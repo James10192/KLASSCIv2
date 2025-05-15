@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use App\Models\Laboratory;
 
 class TeacherController extends Controller
 {
@@ -51,13 +52,22 @@ class TeacherController extends Controller
      * Show the form for creating a new teacher.
      */
     public function create()
-    {
-        $departments = Department::all();
-        $designations = Designation::all();
-        $subjects = Subject::all();
+{
+    $departments = Department::all();
+    $designations = Designation::all();
+    $subjects = Subject::all();
+    $laboratories = Laboratory::all(); // Ajout ici
 
-        return view('teachers.create', compact('departments', 'designations', 'subjects'));
-    }
+    return view('teachers.create', compact('departments', 'designations', 'subjects', 'laboratories'));
+}
+    // public function create()
+    // {
+    //     $departments = Department::all();
+    //     $designations = Designation::all();
+    //     $subjects = Subject::all();
+
+    //     return view('teachers.create', compact('departments', 'designations', 'subjects'));
+    // }
 
     /**
      * Store a newly created teacher in storage.
@@ -87,6 +97,8 @@ class TeacherController extends Controller
             'marital_status' => 'nullable|string|max:20',
             'subjects' => 'nullable|array',
             'subjects.*' => 'exists:subjects,id',
+            'laboratory_id' => 'nullable|exists:laboratories,id'
+
         ]);
 
         DB::beginTransaction();
@@ -127,6 +139,7 @@ class TeacherController extends Controller
                 'pincode' => $request->pincode,
                 'emergency_contact' => $request->emergency_contact,
                 'marital_status' => $request->marital_status,
+                'laboratory_id' => $request->laboratory_id,
             ]);
 
             // Associer les matières à l'enseignant
