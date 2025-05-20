@@ -11,7 +11,7 @@ class DatabaseSeeder extends Seeder
      *
      * @return void
      */
-    public function run()
+    public function run(): void
     {
         // Note: SuperAdminSeeder n'est pas appelé ici car il sera exécuté
         // pendant le processus d'installation via l'interface utilisateur
@@ -47,13 +47,18 @@ class DatabaseSeeder extends Seeder
 
         // Add the expense categories seeder
         $this->call(ESBTPCategorieDepenseSeeder::class);
-        
+
         // Add test users with different roles
         if (app()->environment('local', 'development', 'testing')) {
             $this->call(UsersTestSeeder::class);
-            
+
             // New Test Users Seeder with student, secretary, and admin accounts
             $this->call(TestUsersSeeder::class);
         }
+
+        $this->call([
+            ESBTPDepartmentSeeder::class,
+            ESBTPLaboratorySeeder::class,
+        ]);
     }
 }

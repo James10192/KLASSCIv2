@@ -1,0 +1,46 @@
+/**
+ * Styles pour les images de fallback
+ */
+.placeholder-image {
+    display: block;
+    background-color: #f3f4f6;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+}
+
+.placeholder-circular {
+    border-radius: 50%;
+}
+
+.placeholder-image::before {
+    content: attr(data-text);
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: Arial, sans-serif;
+    font-weight: bold;
+    color: white;
+    background-color: #6366f1;
+}
+
+.placeholder-admin::before {
+    background-color: #6366f1;
+}
+
+.placeholder-teacher::before {
+    background-color: #ec4899;
+}
+
+.placeholder-student::before {
+    background-color: #f59e0b;
+}
+
+.placeholder-generic::before {
+    background-color: #0ea5e9;
+}

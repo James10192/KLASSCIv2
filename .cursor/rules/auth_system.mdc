@@ -1,6 +1,6 @@
 ---
 description: Système d'Authentification et d'Autorisation ESBTP
-globs: 
+globs:
 alwaysApply: true
 ---
 # Système d'Authentification et d'Autorisation ESBTP
@@ -124,19 +124,19 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::create(['name' => 'view filieres']);
         Permission::create(['name' => 'edit filieres']);
         Permission::create(['name' => 'delete filieres']);
-        
+
         // Formations
         Permission::create(['name' => 'create formations']);
         Permission::create(['name' => 'view formations']);
         Permission::create(['name' => 'edit formations']);
         Permission::create(['name' => 'delete formations']);
-        
+
         // Autres permissions...
-        
+
         // Créer les rôles et assigner les permissions
         $superAdmin = Role::create(['name' => 'superAdmin']);
         $superAdmin->givePermissionTo(Permission::all());
-        
+
         $secretaire = Role::create(['name' => 'secretaire']);
         $secretaire->givePermissionTo([
             'view filieres',
@@ -157,7 +157,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'create attendance',
             'view attendances',
         ]);
-        
+
         $etudiant = Role::create(['name' => 'etudiant']);
         $etudiant->givePermissionTo([
             'view own profile',
@@ -184,7 +184,7 @@ use Spatie\Permission\Traits\HasRoles;
 class User extends Authenticatable
 {
     use HasRoles;
-    
+
     // ...
 }
 ```
@@ -200,7 +200,7 @@ public function index()
         $etudiants = ESBTPEtudiant::all();
         return view('etudiants.index', compact('etudiants'));
     }
-    
+
     return abort(403);
 }
 
@@ -255,25 +255,25 @@ public function store(ESBTPEtudiantRequest $request)
 {
     // Créer l'étudiant
     $etudiant = ESBTPEtudiant::create($request->validated());
-    
+
     // Générer un nom d'utilisateur et mot de passe
     $username = strtolower($etudiant->prenom . '.' . $etudiant->nom);
     $password = Str::random(8);
-    
+
     // Créer un compte utilisateur
     $user = User::create([
         'name' => $etudiant->nom . ' ' . $etudiant->prenom,
         'email' => $etudiant->email,
         'password' => Hash::make($password),
     ]);
-    
+
     // Assigner le rôle étudiant
     $user->assignRole('etudiant');
-    
+
     // Lier l'utilisateur à l'étudiant
     $etudiant->user_id = $user->id;
     $etudiant->save();
-    
+
     // Retourner les identifiants pour affichage
     return redirect()
         ->route('etudiants.show', $etudiant)
@@ -302,23 +302,23 @@ public function createSuperAdmin(Request $request)
         'email' => 'required|string|email|max:255|unique:users',
         'password' => 'required|string|min:8|confirmed',
     ]);
-    
+
     // Créer l'utilisateur
     $user = User::create([
         'name' => $request->name,
         'email' => $request->email,
         'password' => Hash::make($request->password),
     ]);
-    
+
     // Assigner le rôle SuperAdmin
     $user->assignRole('superAdmin');
-    
+
     // Marquer l'installation comme terminée
     $this->markInstallationComplete();
-    
+
     // Connecter l'utilisateur
     Auth::login($user);
-    
+
     return redirect()->route('dashboard');
 }
 ```
@@ -353,7 +353,6 @@ Le tableau de bord de l'étudiant affiche :
 // routes/web.php
 Route::middleware(['auth', 'role:superAdmin'])->group(function () {
     Route::resource('filieres', 'ESBTPFiliereController');
-    Route::resource('formations', 'ESBTPFormationController');
     Route::resource('niveaux-etudes', 'ESBTPNiveauEtudeController');
     // Autres routes réservées au SuperAdmin...
 });
@@ -380,4 +379,4 @@ Route::middleware(['auth', 'role:etudiant'])->prefix('etudiant')->group(function
 - Mettre en place des sessions avec expiration
 - Limiter les tentatives de connexion échouées
 - Valider toutes les entrées utilisateur
-- Protéger contre les attaques CSRF 
+- Protéger contre les attaques CSRF

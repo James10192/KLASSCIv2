@@ -46,7 +46,7 @@ class ESBTPAnneeUniversitaire extends Model
 
     /**
      * Obtenir les inscriptions associées à cette année universitaire.
-     * 
+     *
      * Une année universitaire peut avoir plusieurs inscriptions.
      * Par exemple, l'année 2024-2025 peut avoir plusieurs étudiants inscrits.
      */
@@ -58,7 +58,7 @@ class ESBTPAnneeUniversitaire extends Model
     /**
      * Définir cette année universitaire comme l'année en cours.
      * Cette méthode désactive également toutes les autres années universitaires.
-     * 
+     *
      * @return bool
      */
     public function setAsCurrent()
@@ -66,7 +66,7 @@ class ESBTPAnneeUniversitaire extends Model
         // Désactiver toutes les autres années universitaires
         self::where('id', '!=', $this->id)
             ->update(['is_current' => false]);
-        
+
         // Définir cette année comme l'année en cours
         $this->is_current = true;
         return $this->save();

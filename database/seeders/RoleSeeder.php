@@ -124,5 +124,16 @@ class RoleSeeder extends Seeder
             'view_own_profile', 'view_own_exams', 'view_own_grades', 'view_own_bulletin',
             'view_own_timetable', 'receive_messages', 'view_own_attendances'
         ]);
+
+        // Permissions pour le rôle enseignant
+        $enseignant = Role::create(['name' => 'enseignant']);
+        $enseignant->givePermissionTo([
+            'view_own_attendance',
+            'sign_attendance',
+            'view_own_timetable',
+            'view_own_classes',
+            'manage_own_notes',
+            'view_own_students'
+        ]);
     }
 }

@@ -9,14 +9,14 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class ESBTPFacture extends Model
 {
     use HasFactory, SoftDeletes;
-    
+
     /**
      * La table associée au modèle.
      *
      * @var string
      */
     protected $table = 'esbtp_factures';
-    
+
     /**
      * Les attributs qui sont assignables en masse.
      *
@@ -38,7 +38,7 @@ class ESBTPFacture extends Model
         'date_validation',
         'path_fichier',
     ];
-    
+
     /**
      * Les attributs qui doivent être convertis.
      *
@@ -53,7 +53,7 @@ class ESBTPFacture extends Model
         'montant_total' => 'decimal:2',
         'montant_paye' => 'decimal:2',
     ];
-    
+
     /**
      * Relation avec le fournisseur.
      */
@@ -61,7 +61,7 @@ class ESBTPFacture extends Model
     {
         return $this->belongsTo(ESBTPFournisseur::class, 'fournisseur_id');
     }
-    
+
     /**
      * Relation avec l'utilisateur qui a créé la facture.
      */
@@ -69,7 +69,7 @@ class ESBTPFacture extends Model
     {
         return $this->belongsTo(User::class, 'createur_id');
     }
-    
+
     /**
      * Relation avec l'utilisateur qui a validé la facture.
      */
@@ -77,7 +77,7 @@ class ESBTPFacture extends Model
     {
         return $this->belongsTo(User::class, 'validateur_id');
     }
-    
+
     /**
      * Relation avec les détails de la facture.
      */
@@ -85,7 +85,7 @@ class ESBTPFacture extends Model
     {
         return $this->hasMany(ESBTPFactureDetail::class, 'facture_id');
     }
-    
+
     /**
      * Obtenir le montant restant à payer.
      */
@@ -93,7 +93,7 @@ class ESBTPFacture extends Model
     {
         return max(0, $this->montant_total - $this->montant_paye);
     }
-    
+
     /**
      * Obtenir le montant total formaté.
      */
@@ -101,7 +101,7 @@ class ESBTPFacture extends Model
     {
         return number_format($this->montant_total, 0, ',', ' ') . ' FCFA';
     }
-    
+
     /**
      * Déterminer si la facture est payée.
      */
@@ -109,12 +109,27 @@ class ESBTPFacture extends Model
     {
         return $this->statut === 'payée' || $this->montant_paye >= $this->montant_total;
     }
-    
+
     /**
      * Déterminer si la facture est en attente.
      */
     public function estEnAttente()
     {
         return $this->statut === 'en attente';
+    }
+
+    public function etudiant()
+    {
+        return $this->belongsTo(\App\Models\ESBTPEtudiant::class, 'etudiant_id');
+    }
+
+    public function inscription()
+    {
+        return $this->belongsTo(\App\Models\ESBTPInscription::class, 'inscription_id');
+    }
+
+    public function anneeUniversitaire()
+    {
+        return $this->belongsTo(\App\Models\ESBTPAnneeUniversitaire::class, 'annee_universitaire_id');
     }
 }

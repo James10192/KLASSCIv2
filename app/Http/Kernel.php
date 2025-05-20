@@ -41,6 +41,7 @@ class Kernel extends HttpKernel
             \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\UpdateLastLogin::class,
+            \App\Http\Middleware\RouteDebugMiddleware::class,
         ],
 
         'api' => [
@@ -71,5 +72,7 @@ class Kernel extends HttpKernel
         'role' => \App\Http\Middleware\CheckRole::class,
         'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
         'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
+        'validate.device' => \App\Http\Middleware\ValidateAttendanceDevice::class,
+        'attendance.rate_limit' => \App\Http\Middleware\AttendanceRateLimiter::class,
     ];
 }

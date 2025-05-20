@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Carbon\Carbon;
 
 class ESBTPSeanceCours extends Model
 {
@@ -26,17 +27,22 @@ class ESBTPSeanceCours extends Model
         'emploi_temps_id',
         'classe_id',
         'matiere_id',
-        'enseignant',
+        'teacher_id',
         'jour',
         'heure_debut',
         'heure_fin',
         'salle',
         'description',
+        'type',
+        'color',
+        'homework_description',
+        'homework_due_date',
+        'is_recurring',
+        'recurrence_days',
+        'priority',
         'annee_universitaire_id',
         'is_active',
-        'type_seance',
-        'created_at',
-        'updated_at'
+        'date_seance',
     ];
 
     /**
@@ -45,11 +51,29 @@ class ESBTPSeanceCours extends Model
      * @var array
      */
     protected $casts = [
-        'heure_debut' => 'datetime:H:i',
-        'heure_fin' => 'datetime:H:i',
+        'heure_debut' => 'datetime',
+        'heure_fin' => 'datetime',
+        'homework_due_date' => 'date',
+        'is_recurring' => 'boolean',
+        'recurrence_days' => 'array',
+        'is_active' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',
+    ];
+
+    // Session type constants
+    const TYPE_COURSE = 'course';
+    const TYPE_HOMEWORK = 'homework';
+    const TYPE_BREAK = 'break';
+    const TYPE_LUNCH = 'lunch';
+
+    // Default colors for different types
+    const DEFAULT_COLORS = [
+        self::TYPE_COURSE => '#2196F3',   // Blue
+        self::TYPE_HOMEWORK => '#4CAF50', // Green
+        self::TYPE_BREAK => '#FF9800',    // Orange
+        self::TYPE_LUNCH => '#F44336'     // Red
     ];
 
     /**
@@ -78,42 +102,124 @@ class ESBTPSeanceCours extends Model
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
-    public function enseignant()
+    public function teacher()
     {
-        // Cette relation est définie pour permettre le eager loading,
-        // même si le champ 'enseignant' est une chaîne de caractères et non une clé étrangère.
-        // Nous utilisons une relation qui ne causera pas d'erreur lors du eager loading.
-        return $this->belongsTo(User::class, 'id', 'id')->whereRaw('1=0');
+        return $this->belongsTo(ESBTPTeacher::class, 'teacher_id');
     }
 
     /**
-     * Accesseur pour obtenir le nom de l'enseignant.
-     *
-     * @return string
-     */
-    public function getEnseignantNameAttribute()
-    {
-        return !empty($this->enseignant) ? $this->enseignant : 'Non défini';
-    }
-
-    /**
-     * Relation avec l'utilisateur qui a créé la séance.
+     * Relation avec la classe associée à cette séance.
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
-    public function createdBy()
+    public function classe()
     {
-        return $this->belongsTo(User::class, 'created_by');
+        return $this->belongsTo(ESBTPClasse::class, 'classe_id');
     }
 
     /**
-     * Relation avec l'utilisateur qui a mis à jour la séance.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     * Relation avec les présences enseignants (émargements) pour cette séance.
      */
-    public function updatedBy()
+    public function teacherAttendances()
     {
-        return $this->belongsTo(User::class, 'updated_by');
+        return $this->hasMany(ESBTPTeacherAttendance::class, 'course_id');
+    }
+
+    /**
+     * Relation pour la première présence enseignant (émargement unique).
+     */
+    public function teacherAttendance()
+    {
+        return $this->hasOne(ESBTPTeacherAttendance::class, 'course_id');
+    }
+
+    /**
+     * Helper methods for session types
+     */
+    public function isCourse()
+    {
+        return $this->type === self::TYPE_COURSE;
+    }
+
+    public function isHomework()
+    {
+        return $this->type === self::TYPE_HOMEWORK;
+    }
+
+    public function isBreak()
+    {
+        return $this->type === self::TYPE_BREAK;
+    }
+
+    public function isLunch()
+    {
+        return $this->type === self::TYPE_LUNCH;
+    }
+
+    /**
+     * Helper method to get the default color based on type
+     */
+    public function getDefaultColor()
+    {
+        return self::DEFAULT_COLORS[$this->type] ?? '#000000';
+    }
+
+    /**
+     * Accessor to ensure we always have a color
+     */
+    public function getColorAttribute($value)
+    {
+        return $value ?? self::DEFAULT_COLORS[$this->type] ?? '#000000';
+    }
+
+    /**
+     * Helper method to check if the session occurs on a specific day
+     */
+    public function occursOnDay($dayNumber)
+    {
+        if (!$this->is_recurring) {
+            return $this->jour == $dayNumber;
+        }
+        return in_array($dayNumber, $this->recurrence_days ?: []);
+    }
+
+    /**
+     * Scope for active sessions
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    /**
+     * Scopes for different types
+     */
+    public function scopeCourses($query)
+    {
+        return $query->where('type', self::TYPE_COURSE);
+    }
+
+    public function scopeHomework($query)
+    {
+        return $query->where('type', self::TYPE_HOMEWORK);
+    }
+
+    public function scopeBreaks($query)
+    {
+        return $query->where('type', self::TYPE_BREAK);
+    }
+
+    public function scopeLunch($query)
+    {
+        return $query->where('type', self::TYPE_LUNCH);
+    }
+
+    /**
+     * Helper method to get formatted time range
+     */
+    public function getTimeRangeAttribute()
+    {
+        return $this->heure_debut->format('H:i') . ' - ' . $this->heure_fin->format('H:i');
     }
 
     /**
@@ -149,15 +255,6 @@ class ESBTPSeanceCours extends Model
 
         $debut = $this->heure_debut;
         $fin = $this->heure_fin;
-
-        // Convertir les heures en objets Carbon si ce sont des chaînes
-        if (is_string($debut)) {
-            $debut = \Carbon\Carbon::createFromFormat('H:i', $debut);
-        }
-
-        if (is_string($fin)) {
-            $fin = \Carbon\Carbon::createFromFormat('H:i', $fin);
-        }
 
         // Calculer la différence en minutes
         return $fin->diffInMinutes($debut);
@@ -247,5 +344,122 @@ class ESBTPSeanceCours extends Model
         ];
 
         return $jours[$this->jour] ?? 'Jour inconnu';
+    }
+
+    /**
+     * Accessors and Mutators
+     */
+    public function getHeureDebutAttribute($value)
+    {
+        return Carbon::parse($value);
+    }
+
+    public function getHeureFinAttribute($value)
+    {
+        return Carbon::parse($value);
+    }
+
+    public function setHeureDebutAttribute($value)
+    {
+        $this->attributes['heure_debut'] = Carbon::parse($value)->format('H:i:s');
+    }
+
+    public function setHeureFinAttribute($value)
+    {
+        $this->attributes['heure_fin'] = Carbon::parse($value)->format('H:i:s');
+    }
+
+    /**
+     * Helper methods
+     */
+    public function getDuration()
+    {
+        return $this->heure_debut->diffInMinutes($this->heure_fin);
+    }
+
+    public function isOverlapping(ESBTPSeanceCours $other)
+    {
+        if ($this->jour !== $other->jour) {
+            return false;
+        }
+
+        return $this->heure_debut < $other->heure_fin && $this->heure_fin > $other->heure_debut;
+    }
+
+    public function hasConflictWith(ESBTPSeanceCours $other)
+    {
+        if (!$this->isOverlapping($other)) {
+            return false;
+        }
+
+        // Check for same teacher
+        if ($this->teacher_id && $other->teacher_id && $this->teacher_id === $other->teacher_id) {
+            return true;
+        }
+
+        // Check for same room (except for breaks)
+        if ($this->type !== self::TYPE_BREAK && $other->type !== self::TYPE_BREAK &&
+            $this->salle && $other->salle && $this->salle === $other->salle) {
+            return true;
+        }
+
+        // Check for same class
+        return $this->emploi_temps_id === $other->emploi_temps_id;
+    }
+
+    public function getRecurrenceText()
+    {
+        if (!$this->is_recurring || empty($this->recurrence_days)) {
+            return null;
+        }
+
+        $days = collect($this->recurrence_days)->map(function ($day) {
+            $jours = [
+                1 => 'Lundi',
+                2 => 'Mardi',
+                3 => 'Mercredi',
+                4 => 'Jeudi',
+                5 => 'Vendredi',
+                6 => 'Samedi',
+                7 => 'Dimanche'
+            ];
+            return $jours[$day] ?? '';
+        })->filter()->join(', ');
+
+        return "Récurrent chaque : $days";
+    }
+
+    public function getSessionTypeText()
+    {
+        $types = [
+            self::TYPE_COURSE => 'Cours',
+            self::TYPE_HOMEWORK => 'Devoir',
+            self::TYPE_BREAK => 'Récréation',
+            self::TYPE_LUNCH => 'Pause déjeuner'
+        ];
+
+        return $types[$this->type] ?? 'Inconnu';
+    }
+
+    public function getSessionDescription()
+    {
+        $description = $this->getSessionTypeText();
+
+        if (in_array($this->type, [self::TYPE_COURSE, self::TYPE_HOMEWORK])) {
+            $description .= ' - ' . ($this->matiere->name ?? 'Matière non définie');
+            if ($this->teacher) {
+                $description .= ' avec ' . $this->teacher->user->name;
+            }
+        }
+
+        if ($this->salle) {
+            $description .= ' (Salle: ' . $this->salle . ')';
+        }
+
+        if ($this->type === self::TYPE_HOMEWORK && $this->homework_due_date) {
+            $description .= ' - À rendre le ' . Carbon::parse($this->homework_due_date)->format('d/m/Y');
+        }
+
+        return $description;
     }
 }

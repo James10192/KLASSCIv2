@@ -77,3 +77,9 @@ Route::prefix('absences')->group(function () {
     Route::post('/calculer', 'App\Http\Controllers\ESBTPCalculAbsencesController@calculerAbsencesEtudiant');
     Route::post('/resume-par-seance', 'App\Http\Controllers\ESBTPCalculAbsencesController@resumeAbsencesParSeance');
 });
+
+Route::middleware(['auth:sanctum'])->group(function () {
+    // Attendance sync route
+    Route::post('/attendance/sync', [App\Http\Controllers\ESBTP\Api\AttendanceSyncController::class, 'sync'])
+        ->name('api.attendance.sync');
+});

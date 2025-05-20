@@ -8,7 +8,7 @@ use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPNiveauEtude;
-use App\Models\ESBTPFormation;
+
 use App\Models\ESBTPMatiere;
 use App\Models\User;
 
@@ -27,7 +27,6 @@ class SuperAdminController extends Controller
             'totalClasses' => ESBTPClasse::count(),
             'totalFilieres' => ESBTPFiliere::count(),
             'totalNiveauxEtudes' => ESBTPNiveauEtude::count(),
-            'totalFormations' => ESBTPFormation::count(),
             'totalMatieres' => ESBTPMatiere::count(),
             'totalUtilisateurs' => User::count(),
         ];
@@ -40,4 +39,4 @@ class SuperAdminController extends Controller
 
         return view('esbtp.admin.dashboard', compact('stats', 'dernierEtudiants'));
     }
-} 
+}

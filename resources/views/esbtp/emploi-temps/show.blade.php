@@ -314,38 +314,33 @@
                         </div>
                     </div>
 
+                    @php
+                    $typeLabels = [
+                        'course' => 'Cours magistral',
+                        'homework' => 'Devoir',
+                        'break' => 'Récréation',
+                        'lunch' => 'Pause déjeuner',
+                        'autre' => 'Autre',
+                    ];
+                    $typeColors = [
+                        'course' => '#3498db',
+                        'homework' => '#2ecc71',
+                        'break' => '#f39c12',
+                        'lunch' => '#e74c3c',
+                        'autre' => '#95a5a6',
+                    ];
+                    $legendOrder = ['course', 'homework', 'break', 'lunch', 'autre'];
+                    @endphp
+
                     <div class="mb-3">
                         <h6>Légende :</h6>
                         <div class="d-flex flex-wrap">
-                            <div class="legend-item">
-                                <div class="legend-color session-cours"></div>
-                                <small>Cours magistral</small>
+                            @foreach($legendOrder as $type)
+                                <div class="legend-item" style="margin-right: 15px; align-items: center; display: flex;">
+                                    <div class="legend-color" style="width: 15px; height: 15px; border-radius: 3px; margin-right: 5px; background-color: {{ $typeColors[$type] }};"></div>
+                                    <small>{{ $typeLabels[$type] }}</small>
                             </div>
-                            <div class="legend-item">
-                                <div class="legend-color session-td"></div>
-                                <small>Travaux dirigés</small>
-                            </div>
-                            <div class="legend-item">
-                                <div class="legend-color session-tp"></div>
-                                <small>Travaux pratiques</small>
-                            </div>
-                            <div class="legend-item">
-                                <div class="legend-color session-examen"></div>
-                                <small>Examen</small>
-                            </div>
-                            <div class="legend-item">
-                                <div class="legend-color session-autre"></div>
-                                <small>Autre</small>
-                            </div>
-                            <!-- Nouvelles légendes pour les pauses et déjeuners -->
-                            <div class="legend-item">
-                                <div class="legend-color session-pause"></div>
-                                <small>Récréation</small>
-                            </div>
-                            <div class="legend-item">
-                                <div class="legend-color session-dejeuner"></div>
-                                <small>Pause déjeuner</small>
-                            </div>
+                            @endforeach
                         </div>
                     </div>
 
@@ -448,21 +443,53 @@
                                         @endphp
 
                                         @if($seanceToDisplay && $cellOccupied)
+                                            @php
+                                                // Log pour debug
+                                                \Log::info('Affichage séance', [
+                                                    'id' => $seanceToDisplay->id,
+                                                    'type' => $seanceToDisplay->type,
+                                                    'label' => $seanceToDisplay->getSessionTypeText(),
+                                                    'color' => $seanceToDisplay->color,
+                                                ]);
+                                            @endphp
                                             <td class="align-middle" rowspan="{{ $rowspan }}">
-                                                <div class="session-cell session-{{ $seanceToDisplay->type_seance }} {{ $seanceToDisplay->is_active ? '' : 'session-inactive' }}"
+                                                <div class="session-cell"
+                                                     style="background-color: {{ $seanceToDisplay->color }}"
                                                      data-bs-toggle="tooltip"
                                                      data-bs-placement="top"
-                                                     title="{{ is_object($seanceToDisplay->matiere) ? $seanceToDisplay->matiere->name : 'Matière non définie' }} | {{ $seanceToDisplay->enseignantName }} | {{ $seanceToDisplay->salle ?? 'Salle non définie' }} | {{ $seanceToDisplay->heure_debut->format('H:i') }} - {{ $seanceToDisplay->heure_fin->format('H:i') }}">
-                                                    <div class="session-info session-matiere">
-                                                        {{ is_object($seanceToDisplay->matiere) ? $seanceToDisplay->matiere->name : 'Matière non définie' }}
+                                                     title="{{ $seanceToDisplay->getSessionDescription() }}">
+                                                    @if($seanceToDisplay->isBreak() || $seanceToDisplay->isLunch())
+                                                        <div class="session-info session-matiere text-center fw-bold">
+                                                            {{ $seanceToDisplay->getSessionTypeText() }}
+                                                        </div>
+                                                    @elseif($seanceToDisplay->isHomework())
+                                                        <div class="session-info session-matiere fw-bold">
+                                                            {{ $seanceToDisplay->getSessionTypeText() }} : {{ $seanceToDisplay->matiere->name ?? 'Matière non définie' }}
+                                                        </div>
+                                                        @if($seanceToDisplay->homework_due_date)
+                                                            <div class="session-info session-details">
+                                                                À rendre le {{ $seanceToDisplay->homework_due_date->format('d/m/Y') }}
+                                                            </div>
+                                                        @endif
+                                                    @elseif($seanceToDisplay->isCourse())
+                                                        <div class="session-info session-matiere fw-bold">
+                                                            {{ $seanceToDisplay->matiere->name ?? 'Matière non définie' }}
                                                     </div>
                                                     <div class="session-info session-enseignant">
-                                                        {{ $seanceToDisplay->enseignantName }}
+                                                            {{ $seanceToDisplay->teacher ? $seanceToDisplay->teacher->user->name : 'Enseignant non défini' }}
                                                     </div>
                                                     <div class="session-info session-details">
-                                                        {{ $seanceToDisplay->salle ?? 'Salle non définie' }} | {{ $seanceToDisplay->heure_debut->format('H:i') }} - {{ $seanceToDisplay->heure_fin->format('H:i') }}
+                                                            {{ $seanceToDisplay->salle ?? 'Salle non définie' }}
+                                                        </div>
+                                                    @else
+                                                        <div class="session-info session-matiere text-center fw-bold">
+                                                            {{ $seanceToDisplay->getSessionTypeText() }}
+                                                        </div>
+                                                    @endif
+                                                    <div class="session-info session-details mt-1">
+                                                        {{ $seanceToDisplay->heure_debut->format('H:i') }} - {{ $seanceToDisplay->heure_fin->format('H:i') }}
                                                     </div>
-                                                    <div class="session-actions">
+                                                    <div class="session-actions mt-1">
                                                         <div class="btn-group btn-group-sm">
                                                             <a href="{{ route('esbtp.seances-cours.edit', $seanceToDisplay->id) }}" class="btn btn-sm btn-light">
                                                                 <i class="fas fa-edit"></i>
@@ -498,17 +525,35 @@
                             <div class="list-group">
                                 @if(isset($emploiTemps) && is_object($emploiTemps) && is_object($emploiTemps->seances) && $emploiTemps->seances->count() > 0)
                                     @foreach($emploiTemps->seances->sortBy('jour')->sortBy('heure_debut') as $seance)
-                                        <div class="list-group-item seance-list-item {{ $seance->type_seance }}">
+                                        <div class="list-group-item seance-list-item"
+                                             style="border-left: 4px solid {{ $seance->color ?? '#3498db' }};">
                                             <div class="d-flex w-100 justify-content-between">
                                                 <h6 class="mb-1">
-                                                    {{ is_object($seance->matiere) ? $seance->matiere->name : 'Matière non définie' }}
-                                                    <span class="badge bg-secondary">{{ ucfirst($seance->type_seance) }}</span>
+                                                    @if($seance->isBreak() || $seance->isLunch())
+                                                        {{ $seance->getSessionTypeText() }}
+                                                    @elseif($seance->isHomework())
+                                                        {{ $seance->getSessionTypeText() }} : {{ $seance->matiere->name ?? 'Matière non définie' }}
+                                                    @elseif($seance->isCourse())
+                                                        {{ $seance->matiere->name ?? 'Matière non définie' }}
+                                                    @else
+                                                        {{ $seance->getSessionTypeText() }}
+                                                    @endif
+                                                    <span class="badge bg-secondary">{{ $seance->getSessionTypeText() }}</span>
                                                 </h6>
-                                                <small>{{ $seance->jour }}, {{ $seance->heure_debut }} - {{ $seance->heure_fin }}</small>
+                                                <small>
+                                                    {{ $seance->getNomJour() }}, {{ $seance->heure_debut->format('H:i') }} - {{ $seance->heure_fin->format('H:i') }}
+                                                </small>
                                             </div>
                                             <p class="mb-1">
-                                                <strong>Enseignant :</strong> {{ $seance->enseignantName }} |
+                                                        @if($seance->isBreak() || $seance->isLunch())
+                                                            <!-- Rien d'autre à afficher -->
+                                                        @elseif($seance->isHomework())
+                                                            <strong>À rendre le :</strong>
+                                                            {{ $seance->homework_due_date ? $seance->homework_due_date->format('d/m/Y') : 'Non définie' }}
+                                                        @elseif($seance->isCourse())
+                                                            <strong>Enseignant :</strong> {{ $seance->teacher ? $seance->teacher->user->name : 'Non défini' }} |
                                                 <strong>Salle :</strong> {{ $seance->salle ?? 'Non définie' }}
+                                                        @endif
                                             </p>
                                             <div class="d-flex justify-content-end">
                                                 <a href="{{ route('esbtp.seances-cours.edit', $seance->id) }}" class="btn btn-sm btn-warning me-2">
@@ -529,6 +574,8 @@
                                         <p class="mb-0 text-muted">Aucune séance n'a été ajoutée à cet emploi du temps.</p>
                                     </div>
                                 @endif
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

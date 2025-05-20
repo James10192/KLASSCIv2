@@ -28,9 +28,10 @@ class ESBTPInscriptionService
      * @param array $parentsData Données des parents [optionnel]
      * @param array|null $paiementData Données de paiement initial [optionnel]
      * @param int $userId ID de l'utilisateur qui crée l'inscription
+     * @param array $selectedOptionals Additional options for FeeAssignmentService
      * @return ESBTPInscription
      */
-    public function createInscription(array $etudiantData, array $inscriptionData, array $parentsData = [], ?array $paiementData = null, int $userId = null)
+    public function createInscription(array $etudiantData, array $inscriptionData, array $parentsData = [], ?array $paiementData = null, int $userId = null, array $selectedOptionals = [])
     {
         try {
             DB::beginTransaction();
@@ -118,6 +119,43 @@ class ESBTPInscriptionService
 
             // 6. Créer l'inscription
             $inscription = ESBTPInscription::create($inscriptionData);
+
+            // 6bis. Générer automatiquement les frais/échéances pour l'inscription
+            $feeAssignmentService = app(\App\Services\FeeAssignmentService::class);
+            $generatedFees = $feeAssignmentService->assignFeesToInscription($inscription, $selectedOptionals);
+            Log::info('Frais générés automatiquement pour l\'inscription', [
+                'inscription_id' => $inscription->id,
+                'fees' => collect($generatedFees)->pluck('id')
+            ]);
+
+            // 6ter. Générer automatiquement la facture liée à l'inscription
+            $facture = new \App\Models\ESBTPFacture();
+            $facture->numero = 'FAC-' . date('Ymd') . '-' . str_pad($inscription->id, 5, '0', STR_PAD_LEFT);
+            $facture->etudiant_id = $inscription->etudiant_id;
+            $facture->inscription_id = $inscription->id;
+            $facture->annee_universitaire_id = $inscription->annee_universitaire_id;
+            $facture->date_emission = now();
+            $facture->date_echeance = now()->addDays(15); // Par défaut 15 jours après inscription
+            $facture->montant_ht = collect($generatedFees)->sum('amount');
+            $facture->taux_taxe = 0; // À adapter si TVA
+            $facture->montant_taxe = 0; // À adapter si TVA
+            $facture->montant_ttc = $facture->montant_ht + $facture->montant_taxe;
+            $facture->montant_regle = 0;
+            $facture->montant_du = $facture->montant_ttc;
+            $facture->statut = 'émise';
+            $facture->notes = 'Facture générée automatiquement à l\'inscription';
+            $facture->createur_id = $userId;
+            $facture->save();
+            // Générer les détails de la facture à partir des frais
+            foreach ($generatedFees as $fee) {
+                \App\Models\ESBTPFactureDetail::create([
+                    'facture_id' => $facture->id,
+                    'description' => $fee->description,
+                    'quantite' => 1,
+                    'prix_unitaire' => $fee->amount,
+                    'montant' => $fee->amount,
+                ]);
+            }
 
             // 7. Traiter les parents s'ils sont fournis
             if (!empty($parentsData)) {

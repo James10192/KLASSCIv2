@@ -95,7 +95,33 @@ try {
         'inscriptions.view', 'inscriptions.create', 'inscriptions.edit', 'inscriptions.delete', 'inscriptions.validate',
 
         // Paiements - Ajout des permissions pour les paiements
-        'view-paiements', 'create-paiements', 'edit-paiements', 'delete-paiements', 'validate-paiements'
+        'view-paiements', 'create-paiements', 'edit-paiements', 'delete-paiements', 'validate-paiements',
+
+        //Comptabilité
+        'access_comptabilite_module',
+        'view_paiements',
+    'create_paiements',
+    'edit_paiements',
+    'delete_paiements',
+    'view_frais_scolarite',
+    'create_frais_scolarite',
+    'edit_frais_scolarite',
+    'delete_frais_scolarite',
+    'view_depenses',
+    'create_depenses',
+    'edit_depenses',
+    'delete_depenses',
+    'view_salaires',
+    'create_salaires',
+    'edit_salaires',
+    'delete_salaires',
+    'view_bourses',
+    'create_bourses',
+    'edit_bourses',
+    'delete_bourses',
+    'view_reporting_financier',
+    'export_reporting_financier',
+    'view_teacher_dashboard',
     ];
 
     echo "Vérification et création des permissions...\n";
@@ -287,9 +313,142 @@ try {
 
     echo "\nMise à jour des permissions terminée avec succès.\n";
 
+    // Permissions teacher
+    $teacherPermissions = [
+        'view_teacher_dashboard',
+        'access_teacher_attendance',
+        'access_teacher_grades',
+        'access_teacher_timetable',
+        'view_attendances',
+        'create_attendance',
+        'edit_attendances',
+        'view_grades',
+        'create_grade',
+        'edit_grades',
+        'view_timetables',
+        'view_matieres',
+        'send_messages',
+        'receive_messages',
+        // Ajoute ici toutes les permissions nécessaires à l'enseignant
+    ];
+
+    // Créer le rôle teacher s'il n'existe pas
+    $teacherRole = Role::firstOrCreate(['name' => 'teacher', 'guard_name' => 'web']);
+
+    // Vérifier les permissions existantes
+    $existingTeacherPermissions = $teacherRole->permissions->pluck('name')->toArray();
+    echo "Permissions existantes pour le rôle 'teacher' :\n";
+    foreach ($existingTeacherPermissions as $permission) {
+        echo "- $permission\n";
+    }
+
+    // Ajouter les permissions manquantes
+    $addedTeacherPermissions = [];
+    foreach ($teacherPermissions as $permissionName) {
+        if (!in_array($permissionName, $existingTeacherPermissions)) {
+            $permission = Permission::firstOrCreate(['name' => $permissionName, 'guard_name' => 'web']);
+            $teacherRole->givePermissionTo($permission);
+            $addedTeacherPermissions[] = $permissionName;
+        } else {
+            echo "La permission '$permissionName' est déjà attribuée au rôle 'teacher'.\n";
+        }
+    }
+
+    // Afficher les permissions ajoutées
+    if (count($addedTeacherPermissions) > 0) {
+        echo "\nPermissions ajoutées au rôle 'teacher' :\n";
+        foreach ($addedTeacherPermissions as $permission) {
+            echo "- $permission\n";
+        }
+    } else {
+        echo "\nAucune nouvelle permission n'a été ajoutée au rôle 'teacher'.\n";
+    }
+
+    // Vérifier les permissions après mise à jour
+    $teacherRole->refresh();
+    $updatedTeacherPermissions = $teacherRole->permissions->pluck('name')->toArray();
+    echo "\nPermissions actuelles pour le rôle 'teacher' :\n";
+    foreach ($updatedTeacherPermissions as $permission) {
+        echo "- $permission\n";
+    }
+
+    // Permission pour la génération de codes d'émargement
+    $generateAttendanceCodes = 'generate-attendance-codes';
+    if (!Permission::where('name', $generateAttendanceCodes)->exists()) {
+        Permission::create(['name' => $generateAttendanceCodes]);
+        echo "Permission 'generate-attendance-codes' créée.\n";
+    }
+
+    // Attribution au superAdmin
+    $superAdminRole = Role::where('name', 'superAdmin')->first();
+    if ($superAdminRole && !$superAdminRole->hasPermissionTo($generateAttendanceCodes)) {
+        $superAdminRole->givePermissionTo($generateAttendanceCodes);
+        echo "Permission 'generate-attendance-codes' attribuée à superAdmin.\n";
+    }
+
+    // (Optionnel) Attribution au secrétaire
+    $secretaireRole = Role::where('name', 'secretaire')->first();
+    if ($secretaireRole && !$secretaireRole->hasPermissionTo($generateAttendanceCodes)) {
+        $secretaireRole->givePermissionTo($generateAttendanceCodes);
+        echo "Permission 'generate-attendance-codes' attribuée à secretaire.\n";
+    }
+
+    // Permissions pour le rôle étudiant
+    $etudiantPermissions = [
+        'view_own_bulletin',
+        'view_own_profile',
+        'view_own_grades',
+        'view_own_timetable',
+        'view_own_attendances',
+        'view_own_exams',
+        'view_own_attendance',
+    ];
+
+    // Créer le rôle etudiant s'il n'existe pas
+    $etudiantRole = Role::firstOrCreate(['name' => 'etudiant', 'guard_name' => 'web']);
+
+    // Vérifier les permissions existantes
+    $existingEtudiantPermissions = $etudiantRole->permissions->pluck('name')->toArray();
+    echo "Permissions existantes pour le rôle 'etudiant' :\n";
+    foreach ($existingEtudiantPermissions as $permission) {
+        echo "- $permission\n";
+    }
+
+    // Ajouter les permissions manquantes
+    $addedEtudiantPermissions = [];
+    foreach ($etudiantPermissions as $permissionName) {
+        $permission = Permission::firstOrCreate(['name' => $permissionName, 'guard_name' => 'web']);
+        if (!in_array($permissionName, $existingEtudiantPermissions)) {
+            $etudiantRole->givePermissionTo($permission);
+            $addedEtudiantPermissions[] = $permissionName;
+        } else {
+            echo "La permission '$permissionName' est déjà attribuée au rôle 'etudiant'.\n";
+        }
+    }
+
+    // Afficher les permissions ajoutées
+    if (count($addedEtudiantPermissions) > 0) {
+        echo "\nPermissions ajoutées au rôle 'etudiant' :\n";
+        foreach ($addedEtudiantPermissions as $permission) {
+            echo "- $permission\n";
+        }
+    } else {
+        echo "\nAucune nouvelle permission n'a été ajoutée au rôle 'etudiant'.\n";
+    }
+
+    // Vérifier les permissions après mise à jour
+    $etudiantRole->refresh();
+    $updatedEtudiantPermissions = $etudiantRole->permissions->pluck('name')->toArray();
+    echo "\nPermissions actuelles pour le rôle 'etudiant' :\n";
+    foreach ($updatedEtudiantPermissions as $permission) {
+        echo "- $permission\n";
+    }
+
 } catch (\Exception $e) {
     echo "\n❌ ERREUR CRITIQUE: " . $e->getMessage() . "\n";
     echo "Stack trace:\n" . $e->getTraceAsString() . "\n";
 }
+
+
 
 echo "\n=== Fin du script ===\n";

@@ -15,7 +15,7 @@
                         </a>
                     </div>
                 </div>
-                
+
                 <div class="card-body">
                     <!-- Afficher un message de succès s'il existe -->
                     @if(session('success'))
@@ -25,7 +25,7 @@
                             {{ session('success') }}
                         </div>
                     @endif
-                    
+
                     <div class="text-center mb-4">
                         <h2>{{ $annee->name }}</h2>
                         <div class="btn-group">
@@ -45,14 +45,14 @@
                             @endif
                         </div>
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-md-4">
                             <div class="info-box bg-info">
                                 <span class="info-box-icon"><i class="far fa-calendar-alt"></i></span>
                                 <div class="info-box-content">
                                     <span class="info-box-text">Période</span>
-                                    <span class="info-box-number">{{ $annee->start_date->format('d/m/Y') }} au {{ $annee->end_date->format('d/m/Y') }}</span>
+                                    <span class="info-box-number">{{ $annee->start_date ? $annee->start_date->format('d/m/Y') : '-' }} au {{ $annee->end_date->format('d/m/Y') }}</span>
                                 </div>
                             </div>
                         </div>
@@ -75,7 +75,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="card mt-4">
                         <div class="card-header">
                             <h3 class="card-title">Description</h3>
@@ -88,7 +88,7 @@
                             @endif
                         </div>
                     </div>
-                    
+
                     <div class="card mt-4">
                         <div class="card-header">
                             <h3 class="card-title">Inscriptions</h3>
@@ -123,13 +123,13 @@
             <div class="modal-body">
                 <p>Êtes-vous sûr de vouloir supprimer cette année universitaire?</p>
                 <p><strong>{{ $annee->name }}</strong></p>
-                
+
                 @if($annee->inscriptions->count() > 0)
                     <div class="alert alert-warning">
                         <i class="fas fa-exclamation-triangle"></i> Cette année universitaire possède <strong>{{ $annee->inscriptions->count() }}</strong> inscriptions. La suppression ne sera pas possible tant que des inscriptions sont associées à cette année.
                     </div>
                 @endif
-                
+
                 <p class="text-danger mb-0"><i class="fas fa-exclamation-circle"></i> Cette action est irréversible.</p>
             </div>
             <div class="modal-footer">
@@ -145,4 +145,4 @@
         </div>
     </div>
 </div>
-@endsection 
+@endsection

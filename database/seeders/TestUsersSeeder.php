@@ -27,7 +27,7 @@ class TestUsersSeeder extends Seeder
                 Role::create(['name' => $roleName]);
             }
         }
-        
+
         // Create SuperAdmin user
         $superAdmin = User::firstOrCreate(
             ['email' => 'superadmin@esbtp.ci'],
@@ -35,14 +35,15 @@ class TestUsersSeeder extends Seeder
                 'name' => 'Super Admin',
                 'first_name' => 'Super',
                 'last_name' => 'Admin',
+                'username' => 'superadmin',
                 'email_verified_at' => now(),
                 'password' => Hash::make('password123'),
                 'remember_token' => Str::random(10),
             ]
         );
-        
+
         $superAdmin->assignRole('superAdmin');
-        
+
         // Create Secretary user
         $secretaire = User::firstOrCreate(
             ['email' => 'secretaire@esbtp.ci'],
@@ -50,14 +51,15 @@ class TestUsersSeeder extends Seeder
                 'name' => 'Secretaire Test',
                 'first_name' => 'Secretaire',
                 'last_name' => 'Test',
+                'username' => 'secretaire',
                 'email_verified_at' => now(),
                 'password' => Hash::make('password123'),
                 'remember_token' => Str::random(10),
             ]
         );
-        
+
         $secretaire->assignRole('secretaire');
-        
+
         // Create Student user
         $etudiant = User::firstOrCreate(
             ['email' => 'etudiant@esbtp.ci'],
@@ -65,14 +67,15 @@ class TestUsersSeeder extends Seeder
                 'name' => 'Etudiant Test',
                 'first_name' => 'Etudiant',
                 'last_name' => 'Test',
+                'username' => 'etudiant',
                 'email_verified_at' => now(),
                 'password' => Hash::make('password123'),
                 'remember_token' => Str::random(10),
             ]
         );
-        
+
         $etudiant->assignRole('etudiant');
-        
+
         // Create Teacher user
         $teacher = User::firstOrCreate(
             ['email' => 'teacher@esbtp.ci'],
@@ -80,20 +83,21 @@ class TestUsersSeeder extends Seeder
                 'name' => 'Teacher Test',
                 'first_name' => 'Teacher',
                 'last_name' => 'Test',
+                'username' => 'teacher',
                 'email_verified_at' => now(),
                 'password' => Hash::make('password123'),
                 'remember_token' => Str::random(10),
             ]
         );
-        
+
         $teacher->assignRole('teacher');
-        
+
         // Create student profile for the student user if it doesn't exist
         $etudiantProfile = ESBTPEtudiant::where('user_id', $etudiant->id)->first();
         if (!$etudiantProfile) {
             // Try to find a class for the student
             $classe = ESBTPClasse::first();
-            
+
             ESBTPEtudiant::create([
                 'user_id' => $etudiant->id,
                 'matricule' => 'ETU' . date('Y') . str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT),
@@ -109,11 +113,11 @@ class TestUsersSeeder extends Seeder
                 'created_by' => $superAdmin->id,
             ]);
         }
-        
+
         $this->command->info('Test users created successfully:');
         $this->command->info('SuperAdmin - Email: superadmin@esbtp.ci, Password: password123');
         $this->command->info('Secretary - Email: secretaire@esbtp.ci, Password: password123');
         $this->command->info('Student - Email: etudiant@esbtp.ci, Password: password123');
         $this->command->info('Teacher - Email: teacher@esbtp.ci, Password: password123');
     }
-} 
+}

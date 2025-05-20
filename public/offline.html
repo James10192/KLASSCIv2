@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="fr">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>ESBTP - Mode Hors Ligne</title>
+        <link href="/css/app.css" rel="stylesheet" />
+        <style>
+            .offline-container {
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                text-align: center;
+                padding: 20px;
+            }
+            .offline-icon {
+                font-size: 64px;
+                margin-bottom: 20px;
+                color: #dc3545;
+            }
+            .offline-title {
+                font-size: 24px;
+                margin-bottom: 10px;
+                color: #333;
+            }
+            .offline-message {
+                font-size: 16px;
+                color: #666;
+                margin-bottom: 20px;
+            }
+            .offline-info {
+                font-size: 14px;
+                color: #888;
+                max-width: 600px;
+                margin: 0 auto;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="offline-container">
+            <div class="offline-icon">
+                <i class="fas fa-wifi-slash"></i>
+            </div>
+            <h1 class="offline-title">Mode Hors Ligne</h1>
+            <p class="offline-message">Vous êtes actuellement hors ligne</p>
+            <div class="offline-info">
+                <p>
+                    Ne vous inquiétez pas, vous pouvez continuer à marquer les
+                    présences. Elles seront synchronisées automatiquement
+                    lorsque la connexion sera rétablie.
+                </p>
+                <p>Fonctionnalités disponibles hors ligne :</p>
+                <ul class="list-unstyled">
+                    <li>✓ Marquage des présences</li>
+                    <li>✓ Consultation de l'historique récent</li>
+                    <li>✓ Accès aux codes d'émargement déjà générés</li>
+                </ul>
+                <p class="mt-4">
+                    <button
+                        class="btn btn-primary"
+                        onclick="window.location.reload()"
+                    >
+                        <i class="fas fa-sync-alt"></i> Réessayer
+                    </button>
+                </p>
+            </div>
+        </div>
+        <script src="https://kit.fontawesome.com/your-fontawesome-kit.js"></script>
+    </body>
+</html>

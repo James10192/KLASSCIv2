@@ -29,7 +29,7 @@
 
             <form action="{{ route('esbtp.teachers.store') }}" method="POST" enctype="multipart/form-data">
                 @csrf
-                
+
                 <!-- Informations de base utilisateur -->
                 <h4 class="mb-3">Informations d'identification</h4>
                 <div class="row mb-3">
@@ -41,7 +41,7 @@
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
-                        
+
                         <div class="form-group mb-3">
                             <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
                             <input type="email" class="form-control @error('email') is-invalid @enderror" id="email" name="email" value="{{ old('email') }}" required>
@@ -50,7 +50,7 @@
                             @enderror
                         </div>
                     </div>
-                    
+
                     <div class="col-md-6">
                         <div class="form-group mb-3">
                             <label for="username" class="form-label">Nom d'utilisateur <span class="text-danger">*</span></label>
@@ -59,7 +59,7 @@
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
-                        
+
                         <div class="form-group mb-3">
                             <label for="phone" class="form-label">Téléphone</label>
                             <input type="text" class="form-control @error('phone') is-invalid @enderror" id="phone" name="phone" value="{{ old('phone') }}">
@@ -69,7 +69,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <div class="form-group mb-3">
@@ -80,7 +80,7 @@
                             @enderror
                         </div>
                     </div>
-                    
+
                     <div class="col-md-6">
                         <div class="form-group mb-3">
                             <label for="password_confirmation" class="form-label">Confirmer le mot de passe <span class="text-danger">*</span></label>
@@ -88,9 +88,9 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <hr>
-                
+
                 <!-- Informations professionnelles -->
                 <h4 class="mb-3">Informations professionnelles</h4>
                 <div class="row mb-3">
@@ -102,10 +102,21 @@
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
-                        
+
                         <div class="form-group mb-3">
-                            <label for="department_id" class="form-label">Département <span class="text-danger">*</span></label>
-                            <select class="form-select @error('department_id') is-invalid @enderror" id="department_id" name="department_id" required>
+                            <label for="matricule" class="form-label">Matricule <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control @error('matricule') is-invalid @enderror" id="matricule" name="matricule" value="{{ old('matricule') }}" required>
+                            @error('matricule')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="department_id" class="form-label">Département</label>
+                            <select class="form-select @error('department_id') is-invalid @enderror"
+                                id="department_id"
+                                name="department_id"
+                                data-field-type="permanent">
                                 <option value="">Sélectionner un département</option>
                                 @foreach($departments as $department)
                                     <option value="{{ $department->id }}" {{ old('department_id') == $department->id ? 'selected' : '' }}>
@@ -117,10 +128,13 @@
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
-                        
+
                         <div class="form-group mb-3">
                             <label for="laboratory_id" class="form-label">Laboratoire</label>
-                            <select class="form-select @error('laboratory_id') is-invalid @enderror" id="laboratory_id" name="laboratory_id">
+                            <select class="form-select @error('laboratory_id') is-invalid @enderror"
+                                id="laboratory_id"
+                                name="laboratory_id"
+                                data-field-type="permanent">
                                 <option value="">Sélectionner un laboratoire</option>
                                 @foreach($laboratories as $laboratory)
                                     <option value="{{ $laboratory->id }}" {{ old('laboratory_id') == $laboratory->id ? 'selected' : '' }}>
@@ -133,7 +147,7 @@
                             @enderror
                         </div>
                     </div>
-                    
+
                     <div class="col-md-6">
                         <div class="form-group mb-3">
                             <label for="grade" class="form-label">Grade</label>
@@ -149,43 +163,46 @@
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
-                        
+
                         <div class="form-group mb-3">
-                            <label for="status" class="form-label">Statut</label>
-                            <select class="form-select @error('status') is-invalid @enderror" id="status" name="status">
+                            <label for="status" class="form-label">Statut <span class="text-danger">*</span></label>
+                            <select class="form-select @error('status') is-invalid @enderror" id="status" name="status" required>
                                 <option value="">Sélectionner un statut</option>
-                                <option value="PRAG" {{ old('status') == 'PRAG' ? 'selected' : '' }}>PRAG</option>
-                                <option value="MCF" {{ old('status') == 'MCF' ? 'selected' : '' }}>MCF</option>
-                                <option value="PR" {{ old('status') == 'PR' ? 'selected' : '' }}>PR</option>
-                                <option value="Vacataire" {{ old('status') == 'Vacataire' ? 'selected' : '' }}>Vacataire</option>
-                                <option value="ATER" {{ old('status') == 'ATER' ? 'selected' : '' }}>ATER</option>
+                                @foreach($statuses as $value => $label)
+                                    <option value="{{ $value }}" {{ old('status') == $value ? 'selected' : '' }}>{{ $label }}</option>
+                                @endforeach
                             </select>
                             @error('status')
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
-                        
+
                         <div class="form-group mb-3">
-                            <label for="teaching_hours_due" class="form-label">Heures d'enseignement dues</label>
-                            <input type="number" class="form-control @error('teaching_hours_due') is-invalid @enderror" id="teaching_hours_due" name="teaching_hours_due" value="{{ old('teaching_hours_due') }}">
+                            <label for="teaching_hours_due" class="form-label">Heures d'enseignement dues <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control @error('teaching_hours_due') is-invalid @enderror" id="teaching_hours_due" name="teaching_hours_due" value="{{ old('teaching_hours_due') }}" required>
                             @error('teaching_hours_due')
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <div class="form-group mb-3">
-                            <label for="office_location" class="form-label">Emplacement du bureau</label>
-                            <input type="text" class="form-control @error('office_location') is-invalid @enderror" id="office_location" name="office_location" value="{{ old('office_location') }}">
+                            <label for="office_location" class="form-label">Bureau</label>
+                            <input type="text"
+                                class="form-control @error('office_location') is-invalid @enderror"
+                                id="office_location"
+                                name="office_location"
+                                value="{{ old('office_location') }}"
+                                data-field-type="permanent">
                             @error('office_location')
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
                     </div>
-                    
+
                     <div class="col-md-6">
                         <div class="form-group mb-3">
                             <label for="specialties" class="form-label">Spécialités (séparées par des virgules)</label>
@@ -196,43 +213,56 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="row mb-3">
                     <div class="col-12">
                         <div class="form-group mb-3">
-                            <label for="bio" class="form-label">Biographie</label>
-                            <textarea class="form-control @error('bio') is-invalid @enderror" id="bio" name="bio" rows="3">{{ old('bio') }}</textarea>
-                            @error('bio')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="row mb-3">
-                    <div class="col-12">
-                        <div class="form-group mb-3">
-                            <label for="research_interests" class="form-label">Intérêts de recherche (séparés par des virgules)</label>
-                            <input type="text" class="form-control @error('research_interests') is-invalid @enderror" id="research_interests" name="research_interests" value="{{ old('research_interests') }}">
+                            <label for="research_interests" class="form-label">Intérêts de recherche</label>
+                            <textarea class="form-control @error('research_interests') is-invalid @enderror"
+                                id="research_interests"
+                                name="research_interests"
+                                data-field-type="permanent"
+                                rows="3">{{ old('research_interests') }}</textarea>
                             @error('research_interests')
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="row mb-3">
-                    <div class="col-md-6">
+                    <div class="col-12">
+                        <div class="form-group mb-3">
+                            <label for="bio" class="form-label">Biographie</label>
+                            <textarea class="form-control @error('bio') is-invalid @enderror"
+                                id="bio"
+                                name="bio"
+                                data-field-type="permanent"
+                                rows="3">{{ old('bio') }}</textarea>
+                            @error('bio')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-12">
                         <div class="form-group mb-3">
                             <label for="website" class="form-label">Site web</label>
-                            <input type="url" class="form-control @error('website') is-invalid @enderror" id="website" name="website" value="{{ old('website') }}">
+                            <input type="url"
+                                class="form-control @error('website') is-invalid @enderror"
+                                id="website"
+                                name="website"
+                                value="{{ old('website') }}"
+                                data-field-type="permanent">
                             @error('website')
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                     <a href="{{ route('esbtp.teachers.index') }}" class="btn btn-secondary me-md-2">Annuler</a>
                     <button type="submit" class="btn btn-primary">Enregistrer</button>
@@ -245,13 +275,13 @@
 
 @section('scripts')
 <script>
-    // JavaScript for form validation
+    // JavaScript for form validation and dynamic fields
     (function() {
         'use strict';
-        
+
         // Fetch all the forms we want to apply custom validation styles to
         const forms = document.querySelectorAll('.needs-validation');
-        
+
         // Loop over them and prevent submission
         Array.from(forms).forEach(form => {
             form.addEventListener('submit', event => {
@@ -259,22 +289,78 @@
                     event.preventDefault();
                     event.stopPropagation();
                 }
-                
+
                 form.classList.add('was-validated');
             }, false);
         });
-        
+
         // Handle department selection affecting laboratories
         const departmentSelect = document.getElementById('department_id');
         const laboratorySelect = document.getElementById('laboratory_id');
-        
+        const statusSelect = document.getElementById('status');
+
+        // Définir les champs conditionnels
+        const conditionalFields = {
+            permanent: [
+                'department_id',
+                'laboratory_id',
+                'office_location',
+                'research_interests',
+                'bio',
+                'website'
+            ],
+            ater: [
+                'department_id'
+            ],
+            vacataire: []
+        };
+
+        // Fonction pour gérer l'affichage des champs selon le statut
+        function toggleFieldsByStatus(status) {
+            const permanentFields = document.querySelectorAll('[data-field-type="permanent"]');
+            const aterFields = document.querySelectorAll('[data-field-type="ater"]');
+
+            permanentFields.forEach(field => {
+                const fieldContainer = field.closest('.form-group');
+                if (status === 'Vacataire') {
+                    fieldContainer.style.display = 'none';
+                    field.required = false;
+                } else if (status === 'ATER') {
+                    const fieldName = field.getAttribute('name');
+                    if (conditionalFields.ater.includes(fieldName)) {
+                        fieldContainer.style.display = 'block';
+                        field.required = true;
+                    } else {
+                        fieldContainer.style.display = 'none';
+                        field.required = false;
+                    }
+                } else {
+                    fieldContainer.style.display = 'block';
+                    field.required = true;
+                }
+            });
+        }
+
+        // Écouter les changements de statut
+        if (statusSelect) {
+            statusSelect.addEventListener('change', function() {
+                toggleFieldsByStatus(this.value);
+            });
+
+            // Appliquer au chargement si un statut est déjà sélectionné
+            if (statusSelect.value) {
+                toggleFieldsByStatus(statusSelect.value);
+            }
+        }
+
+        // Handle department selection affecting laboratories
         if (departmentSelect && laboratorySelect) {
             departmentSelect.addEventListener('change', function() {
                 const departmentId = this.value;
-                
+
                 // Clear current options
                 laboratorySelect.innerHTML = '<option value="">Sélectionner un laboratoire</option>';
-                
+
                 if (departmentId) {
                     fetch(`/api/departments/${departmentId}/laboratories`)
                         .then(response => response.json())
@@ -292,4 +378,4 @@
         }
     })();
 </script>
-@endsection 
+@endsection

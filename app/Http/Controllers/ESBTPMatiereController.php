@@ -286,8 +286,8 @@ class ESBTPMatiereController extends Controller
                 $query->where('is_active', true);
             }
 
-            $matieres = $query->select('id', 'nom', 'name', 'code', 'coefficient')
-                ->orderBy('nom')
+            $matieres = $query->select('id', 'name', 'code', 'coefficient')
+                ->orderBy('name')
                 ->get();
 
             \Log::info('Nombre de matières trouvées: ' . $matieres->count());
@@ -300,7 +300,7 @@ class ESBTPMatiereController extends Controller
             $formatted = $matieres->map(function ($matiere) {
                 return [
                     'id' => $matiere->id,
-                    'name' => $matiere->nom ?? $matiere->name ?? 'Matière ' . $matiere->id,
+                    'name' => $matiere->name ?? $matiere->nom ?? 'Matière ' . $matiere->id,
                     'code' => $matiere->code ?? '',
                     'coefficient' => $matiere->coefficient ?? 1
                 ];
@@ -325,7 +325,7 @@ class ESBTPMatiereController extends Controller
         $formattedMatieres = $matieres->map(function ($matiere) {
             return [
                 'id' => $matiere->id,
-                'name' => $matiere->nom ?? $matiere->name ?? 'Matière ' . $matiere->id,
+                'name' => $matiere->name ?? $matiere->nom ?? 'Matière ' . $matiere->id,
                 'code' => $matiere->code ?? '',
                 'coefficient' => $matiere->coefficient ?? 1
             ];

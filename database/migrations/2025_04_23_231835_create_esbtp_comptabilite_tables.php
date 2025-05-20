@@ -38,7 +38,7 @@ class CreateEsbtpComptabiliteTables extends Migration
                 $table->json('details_tranches')->nullable(); // Stocke les montants et dates d'échéance pour chaque tranche
                 $table->timestamps();
                 $table->softDeletes();
-                
+
                 // Index unique pour éviter les doublons
                 $table->unique(['filiere_id', 'niveau_etude_id', 'annee_universitaire_id'], 'frais_scolarite_unique');
             });
@@ -123,6 +123,28 @@ class CreateEsbtpComptabiliteTables extends Migration
             });
         }
 
+        // Table des fournisseurs
+        if (!Schema::hasTable('esbtp_fournisseurs')) {
+            Schema::create('esbtp_fournisseurs', function (Blueprint $table) {
+                $table->id();
+                $table->string('code')->unique();
+                $table->string('nom');
+                $table->string('type')->nullable(); // personne physique, entreprise
+                $table->string('adresse')->nullable();
+                $table->string('ville')->nullable();
+                $table->string('pays')->default('Cote Ivoire');
+                $table->string('telephone')->nullable();
+                $table->string('email')->nullable();
+                $table->string('site_web')->nullable();
+                $table->string('numero_fiscal')->nullable();
+                $table->string('compte_bancaire')->nullable();
+                $table->text('notes')->nullable();
+                $table->boolean('est_actif')->default(true);
+                $table->timestamps();
+                $table->softDeletes();
+            });
+        }
+
         // Table des dépenses
         if (!Schema::hasTable('esbtp_depenses')) {
             Schema::create('esbtp_depenses', function (Blueprint $table) {
@@ -142,28 +164,6 @@ class CreateEsbtpComptabiliteTables extends Migration
                 $table->timestamp('date_validation')->nullable();
                 $table->string('path_justificatif')->nullable(); // Chemin vers le document justificatif
                 $table->text('notes_internes')->nullable();
-                $table->timestamps();
-                $table->softDeletes();
-            });
-        }
-
-        // Table des fournisseurs
-        if (!Schema::hasTable('esbtp_fournisseurs')) {
-            Schema::create('esbtp_fournisseurs', function (Blueprint $table) {
-                $table->id();
-                $table->string('code')->unique();
-                $table->string('nom');
-                $table->string('type')->nullable(); // personne physique, entreprise
-                $table->string('adresse')->nullable();
-                $table->string('ville')->nullable();
-                $table->string('pays')->default('Cote Ivoire');
-                $table->string('telephone')->nullable();
-                $table->string('email')->nullable();
-                $table->string('site_web')->nullable();
-                $table->string('numero_fiscal')->nullable();
-                $table->string('compte_bancaire')->nullable();
-                $table->text('notes')->nullable();
-                $table->boolean('est_actif')->default(true);
                 $table->timestamps();
                 $table->softDeletes();
             });
@@ -201,24 +201,21 @@ class CreateEsbtpComptabiliteTables extends Migration
                 $table->decimal('salaire_base', 10, 2);
                 $table->decimal('heures_supplementaires', 10, 2)->default(0);
                 $table->decimal('primes', 10, 2)->default(0);
-                $table->decimal('indemnites', 10, 2)->default(0);
                 $table->decimal('retenues', 10, 2)->default(0);
-                $table->decimal('charges_sociales', 10, 2)->default(0);
-                $table->decimal('impots', 10, 2)->default(0);
-                $table->decimal('montant_net', 10, 2);
+                $table->decimal('net_a_payer', 10, 2);
+                $table->string('statut')->default('en attente'); // en attente, payé, annulé
                 $table->date('date_paiement')->nullable();
+                $table->string('mode_paiement')->nullable();
                 $table->string('reference_paiement')->nullable();
-                $table->string('statut')->default('calculé'); // calculé, validé, payé
-                $table->string('path_bulletin')->nullable(); // Chemin vers le bulletin de paie
+                $table->text('commentaires')->nullable();
                 $table->foreignId('createur_id')->nullable()->constrained('users');
                 $table->foreignId('validateur_id')->nullable()->constrained('users');
                 $table->timestamp('date_validation')->nullable();
-                $table->text('notes')->nullable();
                 $table->timestamps();
                 $table->softDeletes();
-                
-                // Index unique pour éviter les doublons
-                $table->unique(['user_id', 'mois', 'annee'], 'salaire_unique');
+
+                // Index unique pour éviter les doublons de salaire
+                $table->unique(['user_id', 'annee_universitaire_id', 'mois', 'annee'], 'salaire_unique');
             });
         }
 

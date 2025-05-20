@@ -110,6 +110,78 @@
                     </div>
                 </div>
 
+                <!-- Frais obligatoires (lecture seule) -->
+                @if(isset($mandatoryFeeCategories) && $mandatoryFeeCategories->count())
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <h5 class="card-title">Frais obligatoires</h5>
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle mr-1"></i> Le paiement du montant total des frais obligatoires est requis pour valider l'inscription.
+                        </div>
+                        <table class="table table-bordered table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Libellé</th>
+                                    <th>Montant (FCFA)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @php $mandatoryTotal = 0; @endphp
+                                @foreach($mandatoryFeeCategories as $category)
+                                    <tr>
+                                        <td>{{ $category->name }}</td>
+                                        <td>{{ number_format($category->amount, 0, ',', ' ') }}</td>
+                                    </tr>
+                                    @php $mandatoryTotal += $category->amount; @endphp
+                                @endforeach
+                                <tr class="font-weight-bold">
+                                    <td>Total</td>
+                                    <td>{{ number_format($mandatoryTotal, 0, ',', ' ') }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                @endif
+                <!-- Champ de paiement initial obligatoire -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="paiement_montant">Montant du paiement initial <span class="text-danger">*</span></label>
+                            <input type="number" min="1" step="1" class="form-control @error('paiement_montant') is-invalid @enderror" id="paiement_montant" name="paiement_montant" value="{{ old('paiement_montant', isset($mandatoryTotal) ? $mandatoryTotal : '') }}" required>
+                            @error('paiement_montant')
+                                <span class="invalid-feedback" role="alert"><strong>{{ $message }}</strong></span>
+                            @enderror
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Services optionnels (frais) -->
+                @if(isset($optionalFeeCategories) && $optionalFeeCategories->count())
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <h5 class="card-title">Services optionnels</h5>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle mr-1"></i> Sélectionnez les services optionnels auxquels l'étudiant souhaite souscrire (cantine, transport, internat, etc.).
+                        </div>
+                        <div class="form-group">
+                            @foreach($optionalFeeCategories as $category)
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" name="fee_optionals[]" id="fee_optionals_{{ $category->id }}" value="{{ $category->id }}"
+                                        {{ is_array(old('fee_optionals')) && in_array($category->id, old('fee_optionals', [])) ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="fee_optionals_{{ $category->id }}">
+                                        {{ $category->name }}
+                                        @if($category->default_amount)
+                                            <span class="badge bg-primary ms-2">{{ number_format($category->default_amount, 0, ',', ' ') }} FCFA</span>
+                                        @endif
+                                    </label>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+                @endif
+
                 <!-- Informations de l'étudiant -->
                 <div class="row mt-4">
                     <div class="col-md-12 mb-4">
@@ -483,8 +555,14 @@
     </div>
 </div>
 
-<!-- Script pour définir la fonction ouvrirSelecteurClasse immédiatement -->
+@endsection
+
+@push('scripts')
+<!-- Select2 only, jQuery is already loaded in layout -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
 <script>
+    // Define functions in global scope first
     function ouvrirSelecteurClasse() {
         console.log('Ouverture du modal de sélection de classe');
         $('#modal-selecteur-classe').modal('show');
@@ -533,16 +611,67 @@
     function fermerSelecteurClasse() {
         $('#modal-selecteur-classe').modal('hide');
     }
-</script>
-@endsection
 
-@push('scripts')
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    function selectionnerClasse(classeId, classeName) {
+        console.log('Sélection de la classe:', classeId, classeName);
+        document.getElementById('classe_id').value = classeId;
+        document.getElementById('classe_display').value = classeName;
+        document.getElementById('classe_display').classList.add('is-valid');
+        fermerSelecteurClasse();
+    }
 
-<script>
     $(document).ready(function() {
         console.log('DOM chargé - Initialisation du formulaire d\'inscription');
+
+        // Définir la fonction ouvrirSelecteurClasse dans le scope global
+        window.ouvrirSelecteurClasse = function() {
+            console.log('Ouverture du modal de sélection de classe');
+            $('#modal-selecteur-classe').modal('show');
+
+            // Afficher une animation de chargement
+            $('#liste-classes').html('<tr><td colspan="6" class="text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Chargement...</span></div></td></tr>');
+
+            // Charger toutes les classes immédiatement
+            $.ajax({
+                url: "{{ route('esbtp.api.get-classes') }}",
+                method: 'GET',
+                data: {},
+                success: function(response) {
+                    console.log('Réponse API classes:', response);
+                    if (response.length === 0) {
+                        $('#liste-classes').html('<tr><td colspan="6" class="text-center">Aucune classe disponible</td></tr>');
+                        return;
+                    }
+
+                    var html = '';
+                    $.each(response, function(index, classe) {
+                        var displayName = classe.name;
+                        var displayFiliere = classe.filiere_name || '';
+                        var displayNiveau = classe.niveau_name || '';
+                        var displayAnnee = classe.annee_name || '';
+
+                        html += '<tr>';
+                        html += '<td>' + displayName + '</td>';
+                        html += '<td>' + classe.code + '</td>';
+                        html += '<td>' + displayFiliere + '</td>';
+                        html += '<td>' + displayNiveau + '</td>';
+                        html += '<td>' + displayAnnee + '</td>';
+                        html += '<td><button type="button" class="btn btn-sm btn-primary" onclick="selectionnerClasse(' + classe.id + ', \'' + displayName + '\')">Sélectionner</button></td>';
+                        html += '</tr>';
+                    });
+
+                    $('#liste-classes').html(html);
+                },
+                error: function(error) {
+                    console.error('Erreur lors de la récupération des classes:', error);
+                    $('#liste-classes').html('<tr><td colspan="6" class="text-center text-danger">Erreur lors de la récupération des classes</td></tr>');
+                }
+            });
+        };
+
+        window.fermerSelecteurClasse = function() {
+            $('#modal-selecteur-classe').modal('hide');
+        };
 
         // Variables pour gérer les parents
         let parentIndex = 0;

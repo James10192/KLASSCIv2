@@ -345,7 +345,7 @@ class ESBTPClasseController extends Controller
             $matieres = $classe->matieres()
                 ->where('is_active', true)
                 ->orderBy('name')
-                ->get(['id', 'name', 'nom', 'code']);
+                ->get(['id', 'name', 'code']);
 
             return response()->json($matieres);
         } catch (\Exception $e) {

@@ -22,14 +22,14 @@
                             {{ session('success') }}
                         </div>
                     @endif
-                    
+
                     @if(session('error'))
                         <div class="alert alert-danger alert-dismissible">
                             <button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
                             {{ session('error') }}
                         </div>
                     @endif
-                    
+
                     @if($annees->isEmpty())
                         <div class="alert alert-info">
                             Aucune année universitaire n'a été créée. <a href="{{ route('esbtp.annees-universitaires.create') }}">Créer une année universitaire</a>
@@ -40,7 +40,7 @@
                                 <thead>
                                     <tr>
                                         <th>Nom</th>
-                                        <th>Date de début</th>
+                                        <th>Date de rentrée</th>
                                         <th>Date de fin</th>
                                         <th>Description</th>
                                         <th>Statut</th>
@@ -51,14 +51,14 @@
                                     @foreach($annees as $annee)
                                         <tr class="{{ $annee->is_current ? 'table-success' : '' }}">
                                             <td>{{ $annee->name }}</td>
-                                            <td>{{ \Carbon\Carbon::parse($annee->start_date)->format('d/m/Y') }}</td>
-                                            <td>{{ \Carbon\Carbon::parse($annee->end_date)->format('d/m/Y') }}</td>
+                                            <td>{{ $annee->start_date ? (is_a($annee->start_date, 'Carbon\Carbon') ? $annee->start_date->format('d/m/Y') : (\Carbon\Carbon::parse($annee->start_date)->format('d/m/Y'))) : '-' }}</td>
+                                            <td>{{ $annee->end_date ? (is_a($annee->end_date, 'Carbon\Carbon') ? $annee->end_date->format('d/m/Y') : (\Carbon\Carbon::parse($annee->end_date)->format('d/m/Y'))) : '-' }}</td>
                                             <td>{{ Str::limit($annee->description, 100) }}</td>
                                             <td>
                                                 @if($annee->is_current)
                                                     <span class="badge badge-success">Année en cours</span>
                                                 @endif
-                                                
+
                                                 @if($annee->is_active)
                                                     <span class="badge badge-info">Active</span>
                                                 @else
@@ -85,7 +85,7 @@
                                                         <i class="fas fa-trash"></i>
                                                     </button>
                                                 </div>
-                                                
+
                                                 <!-- Modal de confirmation de suppression -->
                                                 <div class="modal fade" id="deleteModal{{ $annee->id }}" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel{{ $annee->id }}" aria-hidden="true">
                                                     <div class="modal-dialog" role="document">
@@ -129,4 +129,4 @@
         </div>
     </div>
 </div>
-@endsection 
+@endsection

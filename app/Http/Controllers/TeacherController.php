@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use App\Models\Laboratory;
-
+// App\....\Laboratory
 class TeacherController extends Controller
 {
     /**
@@ -114,6 +114,9 @@ class TeacherController extends Controller
                 'phone' => $request->phone,
             ]);
 
+            // Attribution du rôle Spatie
+            $user->assignRole('enseignant');
+
             // Gérer l'image de profil
             if ($request->hasFile('profile_image')) {
                 $path = $request->file('profile_image')->store('profile_images', 'public');
@@ -165,12 +168,12 @@ class TeacherController extends Controller
     public function show(Teacher $teacher)
     {
         $teacher->load(['user', 'department', 'designation', 'subjects', 'timetableEntries.class', 'timetableEntries.section', 'timetableEntries.subject']);
-        
+
         // Calculer le taux de présence
         $startDate = now()->subDays(30);
         $endDate = now();
         $attendancePercentage = $teacher->calculateAttendancePercentage($startDate, $endDate);
-        
+
         return view('teachers.show', compact('teacher', 'attendancePercentage'));
     }
 
@@ -235,7 +238,7 @@ class TeacherController extends Controller
             $user->name = $request->name;
             $user->email = $request->email;
             $user->phone = $request->phone;
-            
+
             if ($request->filled('password')) {
                 $user->password = Hash::make($request->password);
             }
@@ -246,11 +249,11 @@ class TeacherController extends Controller
                 if ($user->profile_image) {
                     Storage::disk('public')->delete($user->profile_image);
                 }
-                
+
                 $path = $request->file('profile_image')->store('profile_images', 'public');
                 $user->profile_image = $path;
             }
-            
+
             $user->save();
 
             // Mettre à jour l'enseignant
@@ -300,15 +303,15 @@ class TeacherController extends Controller
 
         try {
             $user = $teacher->user;
-            
+
             // Supprimer l'image de profil si elle existe
             if ($user->profile_image) {
                 Storage::disk('public')->delete($user->profile_image);
             }
-            
+
             // Supprimer l'enseignant (cela supprimera également l'utilisateur grâce à la contrainte onDelete cascade)
             $teacher->delete();
-            
+
             DB::commit();
 
             return redirect()->route('teachers.index')
@@ -326,14 +329,14 @@ class TeacherController extends Controller
     public function timetable(Teacher $teacher)
     {
         $teacher->load(['timetableEntries.class', 'timetableEntries.section', 'timetableEntries.subject']);
-        
+
         $timetable = [];
         $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-        
+
         foreach ($days as $day) {
             $timetable[$day] = $teacher->timetableEntries()->forDay($day)->orderBy('start_time')->get();
         }
-        
+
         return view('teachers.timetable', compact('teacher', 'timetable', 'days'));
     }
 
@@ -344,14 +347,14 @@ class TeacherController extends Controller
     {
         $startDate = $request->start_date ? date('Y-m-d', strtotime($request->start_date)) : date('Y-m-01');
         $endDate = $request->end_date ? date('Y-m-d', strtotime($request->end_date)) : date('Y-m-t');
-        
+
         $attendances = $teacher->attendances()
             ->whereBetween('date', [$startDate, $endDate])
             ->orderBy('date', 'desc')
             ->get();
-        
+
         $attendancePercentage = $teacher->calculateAttendancePercentage($startDate, $endDate);
-        
+
         return view('teachers.attendance', compact('teacher', 'attendances', 'attendancePercentage', 'startDate', 'endDate'));
     }
 
@@ -361,7 +364,7 @@ class TeacherController extends Controller
     public function subjects(Teacher $teacher)
     {
         $teacher->load('subjects');
-        
+
         return view('teachers.subjects', compact('teacher'));
     }
-} 
+}

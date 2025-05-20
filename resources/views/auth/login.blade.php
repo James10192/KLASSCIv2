@@ -44,8 +44,8 @@
 
         body {
             font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.8) 100%), 
-                        url('https://images.unsplash.com/photo-1541888946425-d81bb19240f5?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80');
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.8) 100%),
+                        url('{{ asset('images/login_bg.jpg') }}');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
@@ -250,7 +250,7 @@
             .card-body {
                 padding: 1.5rem;
             }
-            
+
             .login-title {
                 font-size: 1.5rem;
             }

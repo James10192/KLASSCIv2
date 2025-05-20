@@ -19,6 +19,8 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
 use App\Models\User;
+use App\Models\ESBTP\FeeCategory;
+use App\Models\ESBTP\Fee;
 
 class ESBTPInscriptionController extends Controller
 {
@@ -148,13 +150,15 @@ class ESBTPInscriptionController extends Controller
         $anneeUniversitaires = $annees;
         $niveauEtudes = $niveaux;
 
+        // Charger les catégories de frais optionnels
+        $optionalFeeCategories = FeeCategory::where('is_active', true)->where('is_mandatory', false)->get();
+        // Charger les catégories de frais obligatoires
+        $mandatoryFeeCategories = FeeCategory::where('is_active', true)->where('is_mandatory', true)->get();
+
         return view('esbtp.inscriptions.create', compact(
-            'filieres',
-            'niveaux',
-            'annees',
-            'anneeEnCours',
-            'anneeUniversitaires',
-            'niveauEtudes'
+            'filieres', 'niveaux', 'annees', 'anneeEnCours',
+            'anneeUniversitaires', 'niveauEtudes',
+            'optionalFeeCategories', 'mandatoryFeeCategories'
         ));
     }
 
@@ -292,13 +296,25 @@ class ESBTPInscriptionController extends Controller
                 }
             }
 
+            $selectedOptionals = $request->input('fee_optionals', []);
+
+            // Vérifier que le paiement initial couvre le frais d'inscription obligatoire
+            $mandatoryFeeCategories = FeeCategory::where('is_active', true)->where('is_mandatory', true)->get();
+            \Log::info('Catégories obligatoires trouvées', ['categories' => $mandatoryFeeCategories]);
+            $mandatoryTotal = $mandatoryFeeCategories->sum('amount');
+            $initialPayment = $request->input('paiement_montant');
+            if ($mandatoryTotal > 0 && (!$initialPayment || $initialPayment < $mandatoryTotal)) {
+                return back()->withErrors(['paiement_montant' => 'Le paiement initial doit couvrir au moins le montant total des frais obligatoires ('.$mandatoryTotal.' FCFA).'])->withInput();
+            }
+
             // Créer l'inscription
             $inscription = $this->inscriptionService->createInscription(
                 $etudiantData,
                 $inscriptionData,
                 $parentsData,
                 $paiementData,
-                auth()->id()
+                auth()->id(),
+                $selectedOptionals
             );
 
             DB::commit();
@@ -331,17 +347,44 @@ class ESBTPInscriptionController extends Controller
      */
     public function show(ESBTPInscription $inscription)
     {
-        // Charger toutes les relations nécessaires
+        // Charger toutes les relations nécessaires, y compris payments
         $inscription->load([
             'etudiant.parents',
             'filiere',
             'niveau',
             'classe',
             'anneeUniversitaire',
-            'paiements'
+            'paiements',
+            'payments',
         ]);
 
-        return view('esbtp.inscriptions.show', compact('inscription'));
+        // Frais/échéances liés à l'inscription
+        $fees = \App\Models\ESBTP\Fee::where('inscription_id', $inscription->id)->orderBy('due_date')->get();
+        // Paiements validés liés à l'inscription
+        $soldeRestant = $fees->sum(function($fee) {
+            return $fee->amount - $fee->totalPaidAmount();
+        });
+
+        // Charger toutes les catégories de frais obligatoires actives
+        $mandatoryFeeCategories = \App\Models\ESBTP\FeeCategory::where('is_active', true)->where('is_mandatory', true)->get();
+        $mandatoryFeeCategoriesWithRules = [];
+        foreach ($mandatoryFeeCategories as $category) {
+            $rule = \App\Models\ESBTP\FeeCategoryRule::where('fee_category_id', $category->id)
+                ->where('filiere_id', $inscription->filiere_id)
+                ->where('niveau_id', $inscription->niveau_id)
+                ->where(function($q) use ($inscription) {
+                    $q->where('annee_universitaire_id', $inscription->annee_universitaire_id)
+                      ->orWhereNull('annee_universitaire_id');
+                })
+                ->orderByRaw('annee_universitaire_id = ? desc', [$inscription->annee_universitaire_id]) // Priorité à la règle spécifique
+                ->first();
+            $mandatoryFeeCategoriesWithRules[] = [
+                'category' => $category,
+                'rule' => $rule
+            ];
+        }
+
+        return view('esbtp.inscriptions.show', compact('inscription', 'fees', 'soldeRestant', 'mandatoryFeeCategoriesWithRules'));
     }
 
     /**
@@ -414,18 +457,28 @@ class ESBTPInscriptionController extends Controller
         try {
             DB::beginTransaction();
 
+            $data = $request->all();
+            if ($inscription->status !== 'en_attente') {
+                // Empêcher la modification de la classe
+                unset($data['classe_id']);
+                \Log::warning('Tentative de modification de la classe après validation', [
+                    'inscription_id' => $inscription->id,
+                    'user_id' => Auth::id()
+                ]);
+            }
+
             // Mettre à jour l'inscription
-            $inscription->filiere_id = $request->input('filiere_id');
-            $inscription->niveau_id = $request->input('niveau_id');
-            $inscription->classe_id = $request->input('classe_id');
-            $inscription->date_inscription = $request->input('date_inscription');
-            $inscription->type_inscription = $request->input('type_inscription');
-            $inscription->montant_scolarite = $request->input('montant_scolarite');
-            $inscription->frais_inscription = $request->input('frais_inscription');
-            $inscription->observations = $request->input('observations');
+            $inscription->filiere_id = $data['filiere_id'];
+            $inscription->niveau_id = $data['niveau_id'];
+            $inscription->classe_id = $data['classe_id'];
+            $inscription->date_inscription = $data['date_inscription'];
+            $inscription->type_inscription = $data['type_inscription'];
+            $inscription->montant_scolarite = $data['montant_scolarite'];
+            $inscription->frais_inscription = $data['frais_inscription'];
+            $inscription->observations = $data['observations'];
 
             // Mettre à jour le statut et les champs associés
-            $nouveauStatut = $request->input('status');
+            $nouveauStatut = $data['status'];
             $ancienStatut = $inscription->status;
 
             if ($nouveauStatut !== $ancienStatut) {

@@ -1,0 +1,198 @@
+SYSTÈME D'ÉMARGEMENT DES ENSEIGNANTS - PRD
+==========================================
+
+1. APERÇU DU PROJET
+-------------------
+Nom du projet : Système d'émargement numérique des enseignants
+Version : 1.0
+Date de début : [DATE]
+Date de fin prévue : [DATE + 3 semaines]
+
+2. OBJECTIF
+-----------
+Développer un système sécurisé permettant aux enseignants de confirmer leur présence aux cours via un code d'émargement généré quotidiennement, tout en offrant aux administrateurs et secrétaires des outils de gestion et de suivi.
+
+3. CONTEXTE ET JUSTIFICATION
+---------------------------
+- Besoin de moderniser le processus d'émargement
+- Nécessité de garantir la présence physique des enseignants
+- Besoin de statistiques fiables sur l'assiduité
+- Simplification du processus administratif
+
+4. UTILISATEURS CIBLES
+----------------------
+a) Enseignants :
+   - Émargement quotidien
+   - Consultation de l'historique
+
+b) Secrétaires :
+   - Génération des codes
+   - Suivi des présences
+
+c) Administrateurs :
+   - Gestion globale du système
+   - Configuration des paramètres
+   - Génération de rapports
+
+5. FONCTIONNALITÉS CLÉS
+-----------------------
+5.1 Génération des codes
+    - Codes alphanumériques de 6 caractères
+    - Validité de 24h
+    - Unicité garantie
+    - Interface de génération pour admin/secrétaire
+
+5.2 Interface enseignant
+    - Formulaire de saisie du code
+    - Historique des émargements
+    - Statut des présences
+    - Messages d'erreur clairs
+
+5.3 Gestion administrative
+    - Tableau de bord des présences
+    - Génération de rapports
+    - Configuration des paramètres
+    - Export des données
+
+6. SPÉCIFICATIONS TECHNIQUES
+---------------------------
+6.1 Base de données
+    - Table esbtp_attendance_codes
+      * id (PK)
+      * code (unique, 6 chars)
+      * date
+      * expires_at
+      * is_used
+      * attempts
+      * used_by (FK)
+      * used_at
+      * timestamps
+
+    - Table esbtp_enseignant_presence
+      * id (PK)
+      * enseignant_id (FK)
+      * date
+      * time_in
+      * status
+      * ip_address
+      * device_info
+      * signed_at
+      * timestamps
+
+6.2 Sécurité
+    - Limitation à 3 tentatives par code
+    - Validation de l'IP et device_info
+    - Expiration automatique après 24h
+    - Protection contre les attaques par force brute
+
+7. INTERFACES UTILISATEUR
+------------------------
+7.1 Interface administrateur/secrétaire
+    - /esbtp/attendance-codes (index)
+    - /esbtp/attendance-codes/generate
+    - /esbtp/attendance-codes/report
+    - /esbtp/attendance-codes/settings (admin only)
+
+7.2 Interface enseignant
+    - /esbtp/attendance/mark
+    - /esbtp/attendance/history
+
+8. TÂCHES DE DÉVELOPPEMENT
+-------------------------
+[x] 1. Configuration de la base de données
+    - Création des migrations
+    - Création des modèles
+    - Configuration des relations
+
+[x] 2. Développement du backend
+    - Contrôleur ESBTPAttendanceCodeController
+    - Logique de génération des codes
+    - Validation et vérification
+    - Gestion des présences
+
+[x] 3. Développement des interfaces
+    - Vue d'administration des codes
+    - Formulaire d'émargement
+    - Rapports et statistiques
+    - Interface de configuration
+
+[ ] 4. Tests et validation
+    - Tests unitaires
+    - Tests d'intégration
+    - Tests de sécurité
+    - Tests utilisateurs
+
+[ ] 5. Documentation
+    - Guide d'utilisation admin
+    - Guide d'utilisation enseignant
+    - Documentation technique
+    - Guide de maintenance
+
+9. CRITÈRES DE SUCCÈS
+---------------------
+- 100% des enseignants utilisent le système
+- Temps moyen d'émargement < 30 secondes
+- Taux d'erreur < 1%
+- Disponibilité du système > 99.9%
+
+10. CONTRAINTES ET LIMITES
+-------------------------
+- Compatible avec les navigateurs modernes
+- Temps de réponse < 2 secondes
+- Support multilingue (FR)
+- Conforme au RGPD
+
+11. DÉPENDANCES
+--------------
+- Laravel Framework
+- Base de données MySQL/MariaDB
+- Bootstrap pour l'interface
+- Système d'authentification existant
+
+12. RISQUES ET ATTÉNUATIONS
+--------------------------
+Risque 1: Perte de connexion internet
+- Solution: Mode hors ligne avec synchronisation ultérieure
+
+Risque 2: Oubli du code par l'enseignant
+- Solution: Procédure de secours via secrétariat
+
+Risque 3: Tentatives de fraude
+- Solution: Validation IP et device_info
+
+13. PLANNING DE DÉPLOIEMENT
+--------------------------
+Semaine 1:
+- Configuration BD et backend
+- Développement des interfaces de base
+
+Semaine 2:
+- Développement des fonctionnalités avancées
+- Tests initiaux et corrections
+
+Semaine 3:
+- Tests utilisateurs
+- Documentation
+- Formation des utilisateurs
+- Déploiement progressif
+
+14. MAINTENANCE ET SUPPORT
+-------------------------
+- Monitoring quotidien des émargements
+- Backup quotidien des données
+- Support technique disponible 8h-18h
+- Mises à jour mensuelles
+
+15. MÉTRIQUES DE SUIVI
+----------------------
+- Taux d'utilisation quotidien
+- Temps moyen d'émargement
+- Nombre d'erreurs/échecs
+- Satisfaction utilisateur
+
+16. ANNEXES
+-----------
+- Maquettes des interfaces
+- Diagrammes de base de données
+- Workflows des processus
+- Guides d'utilisation

@@ -175,22 +175,29 @@
                         </div>
                     </div>
 
-                    <div class="col-md-4">
-                        <div class="form-group">
-                            <label for="classe_id">Classe <span class="text-danger">*</span></label>
-                            <select class="form-control @error('classe_id') is-invalid @enderror" id="classe_id" name="classe_id" required>
-                                <option value="">Sélectionner une classe</option>
-                                @foreach($classes as $classe)
-                                    <option value="{{ $classe->id }}" {{ old('classe_id', $inscription->classe_id) == $classe->id ? 'selected' : '' }}>
-                                        {{ $classe->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('classe_id')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                    @if($inscription->status === 'en_attente')
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="classe_id" class="form-label">Classe</label>
+                                <select name="classe_id" id="classe_id" class="form-select" required>
+                                    @foreach($classes as $classe)
+                                        <option value="{{ $classe->id }}" @if($inscription->classe_id == $classe->id) selected @endif>
+                                            {{ $classe->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <div class="form-text text-muted">Vous pouvez changer la classe tant que l'inscription n'est pas validée.</div>
+                            </div>
                         </div>
-                    </div>
+                    @else
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label class="form-label">Classe</label>
+                                <input type="text" class="form-control" value="{{ $inscription->classe->name }}" disabled>
+                                <div class="alert alert-warning mt-2">La classe ne peut plus être modifiée après validation de l'inscription.</div>
+                            </div>
+                        </div>
+                    @endif
                 </div>
 
                 <div class="row mb-3">

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\ESBTPEmploiTemps;
 use App\Models\ESBTPSeanceCours;
@@ -551,7 +552,7 @@ class ESBTPEmploiTempsController extends Controller
 
         $validated = $request->validate([
             'matiere_id' => 'required|exists:esbtp_matieres,id',
-            'enseignant_id' => 'nullable|exists:users,id',
+            'enseignant_id' => 'required|exists:users,id',
             'jour' => 'required|string|max:20',
             'heure_debut' => 'required|date_format:H:i',
             'heure_fin' => 'required|date_format:H:i|after:heure_debut',
@@ -563,10 +564,22 @@ class ESBTPEmploiTempsController extends Controller
 
         $validated['emploi_temps_id'] = $emploi_temp->id;
 
-        $seance = ESBTPSeanceCours::create($validated);
+        $seance = new \App\Models\ESBTPSeanceCours();
+        $seance->emploi_temps_id = $validated['emploi_temps_id'];
+        $seance->classe_id = $validated['classe_id'];
+        $seance->matiere_id = $validated['matiere_id'];
+        $seance->enseignant_id = $validated['enseignant_id'];
+        $seance->jour = $validated['jour'];
+        $seance->heure_debut = $validated['heure_debut'];
+        $seance->heure_fin = $validated['heure_fin'];
+        $seance->salle = $validated['salle'] ?? null;
+        $seance->description = $validated['description'] ?? null;
+        $seance->annee_universitaire_id = $validated['annee_universitaire_id'];
+        $seance->is_active = true;
+        $seance->save();
 
-        return redirect()->route('esbtp.emploi-temps.show', $emploi_temp)
-            ->with('success', 'Séance ajoutée avec succès à l\'emploi du temps.');
+        return redirect()->route('esbtp.emploi-temps.show', $validated['emploi_temps_id'])
+            ->with('success', 'Séance ajoutée avec succès.');
     }
 
     /**
@@ -738,23 +751,32 @@ class ESBTPEmploiTempsController extends Controller
      */
     public function generatePdf($id)
     {
-        // Récupérer l'emploi du temps avec ses relations
-        $emploiTemps = ESBTPEmploiTemps::with([
-            'seances.matiere',
-            'classe',
-            'classe.filiere',
-            'classe.niveau',
-            'annee'
-        ])->findOrFail($id);
+        try {
+            $emploiTemps = ESBTPEmploiTemps::with([
+                'seances.matiere',
+                'classe',
+                'classe.filiere',
+                'classe.niveau',
+                'annee'
+            ])->findOrFail($id);
 
-        // Utiliser le service PDF pour générer le document
-        $pdfService = app(ESBTPPDFService::class);
-        $pdf = $pdfService->genererEmploiTempsPDF($emploiTemps);
+            // Utiliser le service PDF pour générer le document
+            $pdfService = app(ESBTPPDFService::class);
+            $pdf = $pdfService->genererEmploiTempsPDF($emploiTemps);
 
-        // Définir le nom du fichier
-        $filename = 'Emploi_du_temps_' . $emploiTemps->classe->name . '_' . $emploiTemps->semestre . '.pdf';
+            // Générer le nom du fichier
+            $filename = 'emploi_temps_' . $emploiTemps->classe->name . '_' . now()->format('Y-m-d') . '.pdf';
 
-        // Retourner le PDF pour téléchargement
-        return $pdf->download($filename);
+            // Retourner le PDF pour téléchargement
+            return $pdf->download($filename);
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de la génération du PDF de l\'emploi du temps', [
+                'error' => $e->getMessage(),
+                'emploi_temps_id' => $id
+            ]);
+
+            return redirect()->back()
+                ->with('error', 'Une erreur est survenue lors de la génération du PDF.');
+        }
     }
 }

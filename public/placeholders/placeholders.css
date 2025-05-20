@@ -1,0 +1,39 @@
+.placeholder-image {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    font-family: 'Inter', sans-serif;
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+}
+
+.placeholder-image::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: radial-gradient(circle at 10px 10px, rgba(255,255,255,0.1) 1px, transparent 0);
+    background-size: 20px 20px;
+}
+
+.placeholder-image-text {
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    padding: 20px;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+}
+
+.logo-placeholder {
+    border-radius: 50%;
+    position: relative;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    letter-spacing: 1px;
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+}

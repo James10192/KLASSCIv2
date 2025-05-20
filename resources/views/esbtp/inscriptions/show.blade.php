@@ -21,6 +21,11 @@
                         <a href="{{ route('esbtp.inscriptions.edit', $inscription) }}" class="btn btn-primary me-2">
                             <i class="fas fa-edit me-1"></i>Modifier
                         </a>
+                        @if($inscription->status === 'en_attente')
+                            <a href="{{ route('esbtp.inscriptions.edit', $inscription) }}" class="btn btn-warning me-2">
+                                <i class="fas fa-exchange-alt me-1"></i>Modifier la classe
+                            </a>
+                        @endif
                         <a href="{{ route('esbtp.inscriptions.index') }}" class="btn btn-secondary">
                             <i class="fas fa-arrow-left me-1"></i>Retour à la liste
                         </a>
@@ -90,7 +95,13 @@
                         <div class="col-md-4">
                             <p><strong>Filière:</strong> {{ $inscription->filiere->name }}</p>
                             <p><strong>Niveau:</strong> {{ $inscription->niveau->name }}</p>
-                            <p><strong>Classe:</strong> {{ $inscription->classe->name }}</p>
+                            <p><strong>Classe:</strong> {{ $inscription->classe->name }}
+                                @if($inscription->status === 'en_attente')
+                                    <span class="text-muted small d-block">Vous pouvez modifier la classe tant que l'inscription n'est pas validée.</span>
+                                @else
+                                    <span class="text-muted small d-block">La classe ne peut plus être modifiée après validation.</span>
+                                @endif
+                            </p>
                         </div>
                         <div class="col-md-4">
                             <p><strong>Année universitaire:</strong> {{ $inscription->anneeUniversitaire->name }}</p>
@@ -102,9 +113,162 @@
                             </p>
                         </div>
                         <div class="col-md-4">
-                            <p><strong>Frais d'inscription:</strong> {{ number_format($inscription->frais_inscription, 0, ',', ' ') }} FCFA</p>
-                            <p><strong>Montant scolarité:</strong> {{ number_format($inscription->montant_scolarite, 0, ',', ' ') }} FCFA</p>
-                            <p><strong>Type d'inscription:</strong> {{ ucfirst(str_replace('_', ' ', $inscription->type_inscription)) }}</p>
+                            <!-- Frais obligatoires (dynamique) -->
+                            <h5 class="card-title">Frais obligatoires</h5>
+                            <div class="table-responsive">
+                                <table class="table table-bordered align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th>Libellé</th>
+                                            <th>Montant</th>
+                                            <th>Échéance</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    @forelse($mandatoryFeeCategoriesWithRules as $item)
+                                        <tr>
+                                            <td>{{ $item['category']->name }}</td>
+                                            <td>
+                                                @if($item['rule'])
+                                                    {{ number_format($item['rule']->amount, 0, ',', ' ') }} FCFA
+                                                @else
+                                                    <span class="badge bg-warning text-dark">À configurer</span>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                @if($item['rule'] && $item['rule']->due_date)
+                                                    {{ \Carbon\Carbon::parse($item['rule']->due_date)->format('d/m/Y') }}
+                                                @elseif($item['rule'])
+                                                    <span class="text-muted">Non défini</span>
+                                                @else
+                                                    <span class="text-muted">-</span>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                @if($item['rule'])
+                                                    <a href="{{ route('esbtp.fee-categories.rules.edit', ['fee_category' => $item['category']->id, 'rule' => $item['rule']->id]) }}" class="btn btn-sm btn-outline-primary">
+                                                        <i class="fas fa-edit"></i> Modifier
+                                                    </a>
+                                                @else
+                                                    <a href="{{ route('esbtp.fee-categories.edit', ['fee_category' => $item['category']->id, 'filiere_id' => $inscription->filiere_id, 'niveau_id' => $inscription->niveau_id, 'annee_universitaire_id' => $inscription->annee_universitaire_id]) }}" class="btn btn-sm btn-warning">
+                                                        <i class="fas fa-cogs"></i> Configurer
+                                                    </a>
+                                                    <span class="ms-2 badge bg-danger">Obligatoire sans règle</span>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="4">
+                                                <div class="alert alert-danger mb-0">
+                                                    Aucun frais obligatoire n'est configuré pour cette classe. <br>
+                                                    <strong>Veuillez configurer les frais d'inscription et de scolarité dans les catégories de frais.</strong>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Situation financière -->
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <h6 class="border-bottom pb-2">Situation financière</h6>
+                        </div>
+                        <div class="col-12">
+                            <script>
+                                // Debug: log $fees and $payments from Blade to JS console
+                                console.log('DEBUG fees:', @json($fees));
+                                console.log('DEBUG payments:', @json(\App\Models\ESBTP\Payment::where('inscription_id', $inscription->id)->orderBy('payment_date')->get()));
+                            </script>
+                            @php
+                                $payments = \App\Models\ESBTP\Payment::where('inscription_id', $inscription->id)->orderBy('payment_date')->get();
+                                $totalPaid = $payments->where('status', 'completed')->sum('amount');
+                                $totalDue = $fees->sum('amount');
+                                $soldeRestant = $totalDue - $totalPaid;
+                            @endphp
+                            @if($fees->count())
+                                <div class="mb-3">
+                                    <strong>Total à payer :</strong> {{ number_format($totalDue, 0, ',', ' ') }} FCFA<br>
+                                    <strong>Total payé :</strong> {{ number_format($totalPaid, 0, ',', ' ') }} FCFA<br>
+                                    <strong>Solde restant :</strong> <span class="{{ $soldeRestant > 0 ? 'text-danger' : 'text-success' }}">{{ number_format($soldeRestant, 0, ',', ' ') }} FCFA</span>
+                                </div>
+                                <h6>Frais générés</h6>
+                                    <table class="table table-bordered align-middle">
+                                        <thead>
+                                            <tr>
+                                            <th>Libellé</th>
+                                                <th>Montant</th>
+                                                <th>Échéance</th>
+                                            <th>Payé</th>
+                                                <th>Statut</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($fees as $fee)
+                                        @php
+                                            $paid = $fee->payments()->where('status', 'completed')->sum('amount');
+                                        @endphp
+                                                <tr>
+                                            <td>{{ $fee->label ?? $fee->description }}</td>
+                                                    <td>{{ number_format($fee->amount, 0, ',', ' ') }} FCFA</td>
+                                            <td>{{ $fee->due_date ? (is_a($fee->due_date, 'Carbon\\Carbon') ? $fee->due_date->format('d/m/Y') : \Carbon\Carbon::parse($fee->due_date)->format('d/m/Y')) : '-' }}</td>
+                                            <td>{{ number_format($paid, 0, ',', ' ') }} FCFA</td>
+                                            <td>
+                                                @if($fee->amount <= $paid)
+                                                    <span class="badge bg-success">Payé</span>
+                                                @elseif($fee->due_date && \Carbon\Carbon::parse($fee->due_date)->isPast())
+                                                            <span class="badge bg-danger">En retard</span>
+                                                        @else
+                                                    <span class="badge bg-warning text-dark">À payer</span>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                    </tbody>
+                                </table>
+                                <h6>Paiements effectués</h6>
+                                <table class="table table-sm table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Montant</th>
+                                            <th>Méthode</th>
+                                            <th>Référence</th>
+                                            <th>Statut</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    @foreach($payments as $payment)
+                                        <tr>
+                                            <td>{{ $payment->payment_date ? (is_a($payment->payment_date, 'Carbon\\Carbon') ? $payment->payment_date->format('d/m/Y') : \Carbon\Carbon::parse($payment->payment_date)->format('d/m/Y')) : '-' }}</td>
+                                            <td>{{ number_format($payment->amount, 0, ',', ' ') }} FCFA</td>
+                                            <td>{{ $payment->payment_method ?? '-' }}</td>
+                                            <td>{{ $payment->reference_number ?? '-' }}</td>
+                                            <td>
+                                                @if($payment->status === 'completed')
+                                                    <span class="badge bg-success">Validé</span>
+                                                @elseif($payment->status === 'pending')
+                                                    <span class="badge bg-warning text-dark">En attente</span>
+                                                @else
+                                                    <span class="badge bg-danger">{{ ucfirst($payment->status) }}</span>
+                                                        @endif
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                            @else
+                                <div class="alert alert-danger">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                    Aucun frais n'a été généré pour cette inscription.<br>
+                                    <strong>Veuillez configurer les frais d'inscription et de scolarité pour cette classe dans le module de gestion des catégories de frais.</strong>
+                                </div>
+                            @endif
                         </div>
                     </div>
 
@@ -175,6 +339,36 @@
                             @endif
                         </div>
                     </div>
+
+                    <h3>Paiements liés à cette inscription</h3>
+                    @if($inscription->payments && $inscription->payments->count())
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Montant</th>
+                                    <th>Méthode</th>
+                                    <th>Statut</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($inscription->payments as $payment)
+                                    <tr>
+                                        <td>{{ $payment->payment_date ? $payment->payment_date->format('d/m/Y') : '' }}</td>
+                                        <td>{{ number_format($payment->amount, 2) }} F CFA</td>
+                                        <td>{{ ucfirst($payment->payment_method) }}</td>
+                                        <td>{{ ucfirst($payment->status) }}</td>
+                                        <td>
+                                            <a href="{{ route('esbtp.payments.show', $payment) }}" class="btn btn-sm btn-info">Voir</a>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    @else
+                        <p>Aucun paiement enregistré pour cette inscription.</p>
+                    @endif
                 </div>
             </div>
         </div>
@@ -262,3 +456,10 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    // Debug : afficher le tableau complet dans la console
+    console.log('mandatoryFeeCategoriesWithRules:', @json($mandatoryFeeCategoriesWithRules));
+</script>
+@endpush

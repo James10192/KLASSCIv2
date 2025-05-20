@@ -16,6 +16,7 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule)
     {
         // $schedule->command('inspire')->hourly();
+        $schedule->command('attendance:mark-unattended-teacher-sessions')->everyTenMinutes();
     }
 
     /**
@@ -41,5 +42,6 @@ class Kernel extends ConsoleKernel
         Commands\FixTimetablesCommand::class,
         Commands\SyncStudentEmailsCommand::class,
         Commands\CreateTestUsersCommand::class,
+        \App\Console\Commands\MarkUnattendedTeacherSessions::class,
     ];
 }

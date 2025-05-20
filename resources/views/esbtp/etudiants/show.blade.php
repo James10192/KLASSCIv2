@@ -10,13 +10,15 @@
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Détails de l'étudiant: {{ $etudiant->nom }} {{ $etudiant->prenoms }}</h5>
                     <div>
+                        @if(isset($etudiant) && $etudiant->id)
                         <a href="{{ route('esbtp.etudiants.edit', ['etudiant' => $etudiant->id]) }}" class="btn btn-warning me-2">
                             <i class="fas fa-edit me-1"></i>Modifier
                         </a>
+                        @endif
                         <a href="{{ route('esbtp.etudiants.index') }}" class="btn btn-secondary">
                             <i class="fas fa-arrow-left me-1"></i>Retour à la liste
                         </a>
-                        <a href="{{ route('esbtp.etudiants.certificat', $etudiant) }}" class="btn btn-success btn-sm" target="_blank">
+                        <a href="{{ route('esbtp.etudiants.certificat', ['etudiant' => $etudiant->id]) }}" class="btn btn-success btn-sm" target="_blank">
                             <i class="fas fa-file-pdf"></i> Certificat de scolarité
                         </a>
                     </div>

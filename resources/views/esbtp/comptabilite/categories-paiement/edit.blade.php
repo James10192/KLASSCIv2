@@ -10,7 +10,7 @@
         gap: 10px;
         margin-top: 10px;
     }
-    
+
     .color-option {
         width: 30px;
         height: 30px;
@@ -19,16 +19,16 @@
         border: 2px solid transparent;
         transition: all 0.2s ease;
     }
-    
+
     .color-option:hover {
         transform: scale(1.1);
     }
-    
+
     .color-option.selected {
         border-color: #333;
         transform: scale(1.1);
     }
-    
+
     .icon-picker-container {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
@@ -40,7 +40,7 @@
         border-radius: 5px;
         margin-top: 10px;
     }
-    
+
     .icon-option {
         display: flex;
         align-items: center;
@@ -51,23 +51,23 @@
         transition: all 0.2s ease;
         background-color: #f8f9fa;
     }
-    
+
     .icon-option:hover {
         background-color: #e9ecef;
     }
-    
+
     .icon-option.selected {
         background-color: #007bff;
         color: white;
     }
-    
+
     .form-preview {
         background-color: #f8f9fa;
         border-radius: 10px;
         padding: 20px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.05);
     }
-    
+
     .preview-header {
         padding: 15px;
         border-radius: 10px;
@@ -76,7 +76,7 @@
         display: flex;
         align-items: center;
     }
-    
+
     .preview-icon {
         font-size: 2rem;
         margin-right: 15px;
@@ -110,11 +110,11 @@
                         </ul>
                     </div>
                     @endif
-                    
+
                     <form action="{{ route('esbtp.comptabilite.categories-paiement.update', $categorie->id) }}" method="POST" id="categoryForm">
                         @csrf
                         @method('PUT')
-                        
+
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label for="nom" class="form-label">Nom de la catégorie <span class="text-danger">*</span></label>
@@ -123,7 +123,7 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-                            
+
                             <div class="col-md-6">
                                 <label for="code" class="form-label">Code <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control @error('code') is-invalid @enderror" id="code" name="code" value="{{ old('code', $categorie->code) }}" required>
@@ -133,7 +133,7 @@
                                 @enderror
                             </div>
                         </div>
-                        
+
                         <div class="mb-3">
                             <label for="description" class="form-label">Description</label>
                             <textarea class="form-control @error('description') is-invalid @enderror" id="description" name="description" rows="3">{{ old('description', $categorie->description) }}</textarea>
@@ -141,7 +141,7 @@
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
-                        
+
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label for="parent_id" class="form-label">Catégorie parente</label>
@@ -160,7 +160,7 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-                            
+
                             <div class="col-md-6">
                                 <label for="ordre" class="form-label">Ordre d'affichage</label>
                                 <input type="number" class="form-control @error('ordre') is-invalid @enderror" id="ordre" name="ordre" value="{{ old('ordre', $categorie->ordre) }}" min="1">
@@ -170,7 +170,7 @@
                                 @enderror
                             </div>
                         </div>
-                        
+
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label for="icone" class="form-label">Icône</label>
@@ -207,7 +207,7 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-                            
+
                             <div class="col-md-6">
                                 <label for="couleur" class="form-label">Couleur</label>
                                 <div class="input-group">
@@ -229,7 +229,7 @@
                                 @enderror
                             </div>
                         </div>
-                        
+
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <div class="form-check form-switch">
@@ -238,7 +238,7 @@
                                 </div>
                                 <small class="form-text text-muted">Les frais obligatoires sont exigés pour tous les étudiants</small>
                             </div>
-                            
+
                             <div class="col-md-6">
                                 <div class="form-check form-switch">
                                     <input class="form-check-input" type="checkbox" id="est_actif" name="est_actif" value="1" {{ old('est_actif', $categorie->est_actif) ? 'checked' : '' }}>
@@ -247,7 +247,7 @@
                                 <small class="form-text text-muted">Les catégories inactives ne peuvent pas être utilisées</small>
                             </div>
                         </div>
-                        
+
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
                             <a href="{{ route('esbtp.comptabilite.categories-paiement.show', $categorie->id) }}" class="btn btn-secondary me-md-2">
                                 <i class="fas fa-times me-1"></i> Annuler
@@ -259,7 +259,7 @@
                     </form>
                 </div>
             </div>
-            
+
             @if($categorie->enfants->count() > 0)
             <div class="card mt-4">
                 <div class="card-header">
@@ -305,7 +305,7 @@
             </div>
             @endif
         </div>
-        
+
         <div class="col-lg-4">
             <div class="card">
                 <div class="card-header">
@@ -326,17 +326,17 @@
                             </p>
                         </div>
                     </div>
-                    
+
                     <div class="alert alert-info mt-4">
                         <h6><i class="fas fa-info-circle me-2"></i>Informations</h6>
                         <p class="mb-2"><strong>Créée le:</strong> {{ $categorie->created_at->format('d/m/Y H:i') }}</p>
                         <p class="mb-2"><strong>Dernière modification:</strong> {{ $categorie->updated_at->format('d/m/Y H:i') }}</p>
-                        
+
                         @if($categorie->parent)
                         <p class="mb-0"><strong>Catégorie parente:</strong> {{ $categorie->parent->nom }}</p>
                         @endif
                     </div>
-                    
+
                     @if($categorie->paiements->count() > 0)
                     <div class="alert alert-warning mt-4">
                         <h6><i class="fas fa-exclamation-triangle me-2"></i>Attention</h6>
@@ -360,7 +360,7 @@
                 option.classList.add('selected');
             }
         });
-        
+
         // Set initial selected color
         const currentColor = '{{ $categorie->couleur }}';
         document.querySelectorAll('.color-option').forEach(option => {
@@ -368,59 +368,59 @@
                 option.classList.add('selected');
             }
         });
-        
+
         // Icon picker
         const iconPicker = document.getElementById('iconPicker');
         const iconPickerToggle = document.getElementById('iconPickerToggle');
         const iconInput = document.getElementById('icone');
         const selectedIconPreview = document.getElementById('selectedIconPreview');
         const previewIcon = document.getElementById('previewIcon');
-        
+
         iconPickerToggle.addEventListener('click', function() {
             iconPicker.classList.toggle('d-none');
         });
-        
+
         document.querySelectorAll('.icon-option').forEach(option => {
             option.addEventListener('click', function() {
                 const icon = this.dataset.icon;
                 iconInput.value = icon;
                 selectedIconPreview.className = icon;
                 previewIcon.className = `${icon} preview-icon`;
-                
+
                 document.querySelectorAll('.icon-option').forEach(opt => {
                     opt.classList.remove('selected');
                 });
                 this.classList.add('selected');
-                
+
                 iconPicker.classList.add('d-none');
             });
         });
-        
+
         // Color picker
         const colorOptions = document.querySelectorAll('.color-option');
         const colorInput = document.getElementById('couleur');
         const colorPicker = document.getElementById('couleurPicker');
         const previewHeader = document.getElementById('previewHeader');
-        
+
         colorOptions.forEach(option => {
             option.addEventListener('click', function() {
                 const color = this.dataset.color;
                 colorInput.value = color;
                 colorPicker.value = color;
                 previewHeader.style.backgroundColor = color;
-                
+
                 colorOptions.forEach(opt => {
                     opt.classList.remove('selected');
                 });
                 this.classList.add('selected');
             });
         });
-        
+
         colorPicker.addEventListener('input', function() {
             const color = this.value;
             colorInput.value = color;
             previewHeader.style.backgroundColor = color;
-            
+
             colorOptions.forEach(opt => {
                 opt.classList.remove('selected');
                 if(opt.dataset.color === color) {
@@ -428,12 +428,12 @@
                 }
             });
         });
-        
+
         colorInput.addEventListener('input', function() {
             const color = this.value;
             colorPicker.value = color;
             previewHeader.style.backgroundColor = color;
-            
+
             colorOptions.forEach(opt => {
                 opt.classList.remove('selected');
                 if(opt.dataset.color === color) {
@@ -441,65 +441,65 @@
                 }
             });
         });
-        
+
         // Live preview
         const nomInput = document.getElementById('nom');
         const codeInput = document.getElementById('code');
         const descriptionInput = document.getElementById('description');
         const obligatoireInput = document.getElementById('est_obligatoire');
         const actifInput = document.getElementById('est_actif');
-        
+
         const previewTitle = document.getElementById('previewTitle');
         const previewCode = document.getElementById('previewCode');
         const previewDescription = document.getElementById('previewDescription');
         const previewObligatoire = document.getElementById('previewObligatoire');
         const previewActif = document.getElementById('previewActif');
-        
+
         nomInput.addEventListener('input', function() {
             previewTitle.textContent = this.value || 'Nom de la catégorie';
         });
-        
+
         codeInput.addEventListener('input', function() {
             previewCode.textContent = this.value || 'CODE';
         });
-        
+
         descriptionInput.addEventListener('input', function() {
             previewDescription.textContent = this.value || 'Aucune description';
         });
-        
+
         obligatoireInput.addEventListener('change', function() {
             previewObligatoire.style.display = this.checked ? 'inline-block' : 'none';
         });
-        
+
         actifInput.addEventListener('change', function() {
             previewActif.style.display = this.checked ? 'inline-block' : 'none';
         });
-        
+
         // Form validation
         document.getElementById('categoryForm').addEventListener('submit', function(event) {
             const nom = nomInput.value.trim();
             const code = codeInput.value.trim();
-            
+
             let isValid = true;
-            
+
             if (nom === '') {
                 nomInput.classList.add('is-invalid');
                 isValid = false;
             } else {
                 nomInput.classList.remove('is-invalid');
             }
-            
+
             if (code === '') {
                 codeInput.classList.add('is-invalid');
                 isValid = false;
             } else {
                 codeInput.classList.remove('is-invalid');
             }
-            
+
             if (!isValid) {
                 event.preventDefault();
             }
         });
     });
 </script>
-@endsection 
+@endsection

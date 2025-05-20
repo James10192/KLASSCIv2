@@ -1,11 +1,11 @@
 ---
 description: Intégration de Base de Données avec Prisma
-globs: 
+globs:
 alwaysApply: true
 ---
 ---
 description: Intégration de Base de Données avec Prisma
-globs: 
+globs:
 alwaysApply: true
 ---
 Ce document détaille l'intégration de Prisma ORM avec Laravel dans l'application ESBTP, fournissant des directives pour la définition du schéma, les migrations, et l'utilisation du client Prisma.
@@ -168,14 +168,7 @@ model ESBTPFiliere {
   classes     ESBTPClasse[]
 }
 
-model ESBTPFormation {
-  id          Int           @id @default(autoincrement())
-  nom         String
-  description String?       @db.Text
-  created_at  DateTime      @default(now())
-  updated_at  DateTime      @updatedAt
-  classes     ESBTPClasse[]
-}
+
 
 model ESBTPNiveauEtude {
   id           Int           @id @default(autoincrement())
@@ -196,7 +189,6 @@ model ESBTPClasse {
   created_at       DateTime          @default(now())
   updated_at       DateTime          @updatedAt
   filiere          ESBTPFiliere      @relation(fields: [filiere_id], references: [id])
-  formation        ESBTPFormation    @relation(fields: [formation_id], references: [id])
   niveau_etude     ESBTPNiveauEtude  @relation(fields: [niveau_etude_id], references: [id])
   etudiants        ESBTPEtudiant[]
   emploisDuTemps   ESBTPEmploiDuTemps[]
@@ -618,4 +610,4 @@ Script pour générer des modèles Eloquent à partir du schéma Prisma:
 - [Documentation Officielle de Prisma](mdc:https:/www.prisma.io/docs)
 - [Prisma avec Laravel (Guides Communautaires)](mdc:https:/github.com/prisma/prisma-examples)
 - [Optimisation des Performances avec Prisma](mdc:https:/www.prisma.io/docs/concepts/components/prisma-client/query-optimization-performance)
-- [Meilleures Pratiques pour le Schéma Prisma](mdc:https:/www.prisma.io/docs/concepts/components/prisma-schema/best-practices) 
+- [Meilleures Pratiques pour le Schéma Prisma](mdc:https:/www.prisma.io/docs/concepts/components/prisma-schema/best-practices)

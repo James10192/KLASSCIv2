@@ -38,8 +38,8 @@
     <!-- Styles supplémentaires -->
     <style>
         /* Amélioration de la visibilité des éléments de la navbar */
-        .navbar-user-name, 
-        .dropdown-user-name, 
+        .navbar-user-name,
+        .dropdown-user-name,
         .dropdown-user-email,
         .notification-title,
         .notification-text,
@@ -48,23 +48,23 @@
         .quick-action-text {
             color: var(--nextadmin-gray-700) !important;
         }
-        
+
         .navbar-title {
             display: flex;
             align-items: center;
         }
-        
+
         /* S'assurer que les icônes sont bien visibles */
-        .navbar-icon i, 
+        .navbar-icon i,
         .menu-icon i {
             color: var(--nextadmin-gray-700);
         }
-        
+
         /* Améliorer le contraste dans les dropdowns */
         .dropdown-item {
             color: var(--nextadmin-gray-700) !important;
         }
-        
+
         .dropdown-header {
             color: var(--nextadmin-gray-900) !important;
             font-weight: 600;
@@ -85,7 +85,7 @@
 
         <div class="sidebar-menu">
                 @if(auth()->check())
-                    @if(auth()->user()->hasRole('superAdmin'))
+                    <!-- Dashboard - Common for all roles -->
                         <div class="menu-category">Tableau de bord</div>
                         <div class="menu-item">
                             <a href="{{ route('dashboard') }}" class="menu-link {{ Request::routeIs('dashboard') ? 'active' : '' }}">
@@ -93,17 +93,19 @@
                                 <div class="menu-text">Accueil</div>
                             </a>
                     </div>
-                        
+
+                    <!-- Academic Management Section -->
+                    @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire'))
                         <div class="menu-category">Gestion académique</div>
-                        
-                        <!-- Accordion Menu - Filières & Classes -->
+
+                        <!-- Programs & Classes -->
                         <div class="menu-accordion">
-                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.filieres.*') || Request::routeIs('esbtp.classes.*') ? 'active' : '' }}">
+                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.filieres.*') || Request::routeIs('esbtp.classes.*') || Request::routeIs('esbtp.niveaux-etudes.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-school"></i></div>
                                 <div class="menu-text">Filières & Classes</div>
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
-                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.filieres.*') || Request::routeIs('esbtp.classes.*') ? 'show' : '' }}">
+                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.filieres.*') || Request::routeIs('esbtp.classes.*') || Request::routeIs('esbtp.niveaux-etudes.*') ? 'show' : '' }}">
                                 <a href="{{ route('esbtp.filieres.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.filieres.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Filières</span>
@@ -116,143 +118,42 @@
                                     <span class="menu-dot"></span>
                                     <span>Niveaux d'études</span>
                                 </a>
-                    </div>
-                        </div>
-                        
-                        <!-- Accordion Menu - Étudiants -->
-                        <div class="menu-accordion">
-                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-user-graduate"></i></div>
-                                <div class="menu-text">Étudiants</div>
-                                <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
-                            </button>
-                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') ? 'show' : '' }}">
-                                <a href="{{ route('esbtp.etudiants.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.etudiants.index') ? 'active' : '' }}">
+                                <a href="{{ route('esbtp.annees-universitaires.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.annees-universitaires.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
-                                    <span>Liste des étudiants</span>
-                                </a>
-                                <a href="{{ route('esbtp.etudiants.create') }}" class="menu-sublink {{ Request::routeIs('esbtp.etudiants.create') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Ajouter un étudiant</span>
-                                </a>
-                                <a href="{{ route('esbtp.inscriptions.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.inscriptions.*') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Inscriptions</span>
-                                </a>
-                    </div>
-                    </div>
-                        
-                        <!-- Accordion Menu - Enseignement -->
-                        <div class="menu-accordion">
-                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.matieres.*') || Request::routeIs('esbtp.evaluations.*') || Request::routeIs('esbtp.emploi-temps.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-chalkboard-teacher"></i></div>
-                                <div class="menu-text">Enseignement</div>
-                                <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
-                            </button>
-                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.matieres.*') || Request::routeIs('esbtp.evaluations.*') || Request::routeIs('esbtp.emploi-temps.*') ? 'show' : '' }}">
-                                <a href="{{ route('esbtp.matieres.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.matieres.*') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Matières</span>
-                                </a>
-                                <a href="{{ route('esbtp.evaluations.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.evaluations.*') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Examens & Évaluations</span>
-                                </a>
-                                <a href="{{ route('esbtp.emploi-temps.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.emploi-temps.*') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Emplois du temps</span>
+                                    <span>Années universitaires</span>
                                 </a>
                             </div>
                         </div>
-                        
-                        <!-- Accordion Menu - Bulletins & Notes -->
+
+                        <!-- Training Cycles -->
                         <div class="menu-accordion">
-                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.notes.*') || Request::routeIs('esbtp.bulletins.*') || Request::routeIs('esbtp.resultats.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-file-alt"></i></div>
-                                <div class="menu-text">Notes & Bulletins</div>
+                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.cycles.*') || Request::routeIs('esbtp.specialties.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-sync-alt"></i></div>
+                                <div class="menu-text">Formation</div>
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
-                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.notes.*') || Request::routeIs('esbtp.bulletins.*') || Request::routeIs('esbtp.resultats.*') ? 'show' : '' }}">
-                                <a href="{{ route('esbtp.notes.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.notes.*') ? 'active' : '' }}">
+                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.cycles.*') || Request::routeIs('esbtp.specialties.*') ? 'show' : '' }}">
+                                <a href="{{ route('esbtp.cycles.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.cycles.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
-                                    <span>Gestion des notes</span>
+                                    <span>Cycles de Formation</span>
                                 </a>
-                                <a href="{{ route('esbtp.bulletins.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.bulletins.*') ? 'active' : '' }}">
+                                <a href="{{ route('esbtp.specialties.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.specialties.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
-                                    <span>Bulletins scolaires</span>
+                                    <span>Spécialités</span>
                                 </a>
-                                <a href="{{ route('esbtp.resultats.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.resultats.*') ? 'active' : '' }}">
+                                <a href="{{ route('esbtp.continuing-education.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.continuing-education.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
-                                    <span>Résultats & Classements</span>
-                                </a>
-                            </div>
-                        </div>
-                        
-                        <div class="menu-category">Administration</div>
-                        
-                        <!-- Accordion Menu - Personnel -->
-                        <div class="menu-accordion">
-                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.enseignants.*') || Request::routeIs('secretaires.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-users-cog"></i></div>
-                                <div class="menu-text">Personnel</div>
-                                <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
-                            </button>
-                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.enseignants.*') || Request::routeIs('secretaires.*') ? 'active' : '' }}">
-                                <a href="{{ route('esbtp.enseignants.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.enseignants.*') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Enseignants</span>
-                                </a>
-                                <a href="{{ route('secretaires.index') }}" class="menu-sublink {{ Request::routeIs('secretaires.*') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Secrétaires</span>
+                                    <span>Formation Continue</span>
                                 </a>
                             </div>
-                        </div>
-                        
-                        <!-- Autres menus -->
-                        <div class="menu-item">
-                            <a href="{{ route('esbtp.attendances.index') }}" class="menu-link {{ Request::routeIs('esbtp.attendances.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-calendar-check"></i></div>
-                                <div class="menu-text">Présences</div>
-                            </a>
-                        </div>
-                        
-                        <div class="menu-item">
-                            <a href="{{ route('esbtp.comptabilite.index') }}" class="menu-link {{ Request::routeIs('esbtp.comptabilite.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-money-bill-wave"></i></div>
-                                <div class="menu-text">Comptabilité</div>
-                            </a>
-                        </div>
-                        
-                        <div class="menu-item">
-                            <a href="{{ route('esbtp.annonces.index') }}" class="menu-link {{ Request::routeIs('esbtp.annonces.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-bullhorn"></i></div>
-                                <div class="menu-text">Annonces</div>
-                            </a>
-                        </div>
-                        
-                        <div class="menu-category">Système</div>
-                        <div class="menu-item">
-                            <a href="{{ route('settings.index') }}" class="menu-link {{ Request::routeIs('settings.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-cog"></i></div>
-                                <div class="menu-text">Paramètres</div>
-                            </a>
                         </div>
                     @endif
 
-                    @if(auth()->user()->hasRole('secretaire'))
-                        <!-- Début section Secrétaire -->
-                        <div class="menu-category">Tableau de bord</div>
-                        <div class="menu-item">
-                            <a href="{{ route('dashboard') }}" class="menu-link {{ Request::routeIs('dashboard') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-home"></i></div>
-                                <div class="menu-text">Accueil</div>
-                            </a>
-                        </div>
-                        
-                        <div class="menu-category">Gestion académique</div>
-                        
-                        <!-- Accordion Menu - Étudiants & Inscriptions -->
+                    <!-- Students Section -->
+                    @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire'))
+                        <div class="menu-category">Étudiants</div>
+
+                        <!-- Student Management -->
                         <div class="menu-accordion">
                             <button class="menu-accordion-btn {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-user-graduate"></i></div>
@@ -260,352 +161,304 @@
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
                             <div class="menu-accordion-content {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') ? 'show' : '' }}">
-                                <a href="{{ route('esbtp.etudiants.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.etudiants.index') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Liste des étudiants</span>
+                                <a href="{{ route('esbtp.etudiants.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.etudiants.*') ? 'active' : '' }}">
+                                    <i class="fas fa-list"></i>
+                                    <span>Liste des Étudiants</span>
                                 </a>
-                                <a href="{{ route('esbtp.etudiants.create') }}" class="menu-sublink {{ Request::routeIs('esbtp.etudiants.create') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Ajouter un étudiant</span>
-                                </a>
-                                <a href="{{ route('esbtp.inscriptions.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.inscriptions.*') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Inscriptions</span>
+                                <a href="{{ route('esbtp.inscriptions.create') }}" class="menu-sublink {{ Request::routeIs('esbtp.inscriptions.create') ? 'active' : '' }}">
+                                    <i class="fas fa-user-plus"></i>
+                                    <span>Nouvelle Inscription</span>
                                 </a>
                             </div>
                         </div>
-                        
-                        <!-- Filières & Classes -->
-                        <div class="menu-accordion">
-                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.filieres.*') || Request::routeIs('esbtp.classes.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-school"></i></div>
-                                <div class="menu-text">Filières & Classes</div>
-                                <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
-                            </button>
-                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.filieres.*') || Request::routeIs('esbtp.classes.*') ? 'show' : '' }}">
-                                <a href="{{ route('esbtp.filieres.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.filieres.*') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Filières</span>
-                                </a>
-                                <a href="{{ route('esbtp.classes.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.classes.*') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Classes</span>
-                                </a>
-                                <a href="{{ route('esbtp.niveaux-etudes.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.niveaux-etudes.*') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Niveaux d'études</span>
-                                </a>
-                            </div>
-                        </div>
-                        
+                    @endif
+
+                    <!-- Teaching Section -->
+                    @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire'))
                         <div class="menu-category">Enseignement</div>
-                        
-                        <!-- Accordion Menu - Notes & Bulletins -->
-                        <div class="menu-accordion">
-                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.notes.*') || Request::routeIs('esbtp.bulletins.*') || Request::routeIs('esbtp.resultats.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-file-alt"></i></div>
-                                <div class="menu-text">Notes & Bulletins</div>
-                                <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
-                            </button>
-                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.notes.*') || Request::routeIs('esbtp.bulletins.*') || Request::routeIs('esbtp.resultats.*') ? 'show' : '' }}">
-                                <a href="{{ route('esbtp.notes.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.notes.*') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Gestion des notes</span>
-                                </a>
-                                <a href="{{ route('esbtp.bulletins.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.bulletins.*') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Bulletins scolaires</span>
-                                </a>
-                                <a href="{{ route('esbtp.resultats.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.resultats.*') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Résultats & Classements</span>
-                                </a>
-                            </div>
-                        </div>
-                        
-                        <!-- Examens & Évaluations -->
-                        <div class="menu-item">
-                            <a href="{{ route('esbtp.evaluations.index') }}" class="menu-link {{ Request::routeIs('esbtp.evaluations.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-clipboard-list"></i></div>
-                                <div class="menu-text">Examens & Évaluations</div>
-                            </a>
-                        </div>
-                        
-                        <!-- Emploi du temps -->
+
+                        <!-- Schedule Management -->
                         <div class="menu-item">
                             <a href="{{ route('esbtp.emploi-temps.index') }}" class="menu-link {{ Request::routeIs('esbtp.emploi-temps.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-calendar-alt"></i></div>
                                 <div class="menu-text">Emplois du temps</div>
                             </a>
                         </div>
-                        
-                        <!-- Gestion de présence -->
-                        <div class="menu-item">
-                            <a href="{{ route('esbtp.attendances.index') }}" class="menu-link {{ Request::routeIs('esbtp.attendances.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-clipboard-check"></i></div>
-                                <div class="menu-text">Gestion des présences</div>
-                            </a>
-                        </div>
-                        
-                        <div class="menu-category">Comptabilité</div>
-                        
-                        <!-- Accordion Menu - Comptabilité -->
+
+                        <!-- Teacher Management -->
                         <div class="menu-accordion">
-                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.comptabilite.*') || Request::routeIs('esbtp.paiements.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-money-bill-wave"></i></div>
-                                <div class="menu-text">Comptabilité</div>
+                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.teachers.*') || Request::routeIs('esbtp.teacher-attendance.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-chalkboard-teacher"></i></div>
+                                <div class="menu-text">Enseignants</div>
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
-                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.comptabilite.*') || Request::routeIs('esbtp.paiements.*') ? 'show' : '' }}">
-                                <a href="{{ route('esbtp.comptabilite.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.index') ? 'active' : '' }}">
+                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.teachers.*') || Request::routeIs('esbtp.teacher-attendance.*') ? 'show' : '' }}">
+                                <a href="{{ route('esbtp.teachers.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.teachers.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
-                                    <span>Tableau de bord</span>
+                                    <span>Liste des enseignants</span>
                                 </a>
-                                <a href="{{ route('esbtp.paiements.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.paiements.*') ? 'active' : '' }}">
+                                <a href="{{ route('esbtp.teacher-attendance.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.teacher-attendance.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
-                                    <span>Paiements</span>
-                                </a>
-                                <a href="{{ route('esbtp.comptabilite.frais-scolarite') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.frais-scolarite*') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Frais de scolarité</span>
-                                </a>
-                                <a href="{{ route('esbtp.comptabilite.rapports') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.rapports*') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Rapports financiers</span>
+                                    <span>Présence enseignants</span>
                                 </a>
                             </div>
                         </div>
-                        
-                        <div class="menu-category">Communication</div>
-                        
-                        <!-- Annonces -->
-                        <div class="menu-item">
-                            <a href="{{ route('esbtp.annonces.index') }}" class="menu-link {{ Request::routeIs('esbtp.annonces.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-bullhorn"></i></div>
-                                <div class="menu-text">Annonces</div>
-                            </a>
-                        </div>
-                        
-                        <!-- Mon compte -->
-                        <div class="menu-item">
-                            <a href="{{ route('admin.profile') }}" class="menu-link {{ Request::routeIs('admin.profile') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-user-circle"></i></div>
-                                <div class="menu-text">Mon profil</div>
-                            </a>
-                        </div>
-                        <!-- Fin section Secrétaire -->
                     @endif
 
-                    @if(auth()->user()->hasRole('teacher') || auth()->user()->hasRole('enseignant'))
-                        <div class="menu-category">Tableau de bord</div>
-                        <div class="menu-item">
-                            <a href="{{ route('dashboard') }}" class="menu-link {{ Request::routeIs('dashboard') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-home"></i></div>
-                                <div class="menu-text">Accueil</div>
-                            </a>
-                        </div>
-                        
-                        <div class="menu-category">Enseignement</div>
-                        
-                        <!-- Gestion des notes -->
-                        <div class="menu-item">
-                            <a href="{{ route('esbtp.notes.index') }}" class="menu-link {{ Request::routeIs('esbtp.notes.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-graduation-cap"></i></div>
-                                <div class="menu-text">Gestion des notes</div>
-                            </a>
+                    <!-- Grades & Reports Section -->
+                    @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire'))
+                        <div class="menu-category">Notes & Rapports</div>
+
+                        <!-- Grades Management -->
+                        <div class="menu-accordion">
+                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.notes.*') || Request::routeIs('esbtp.bulletins.*') || Request::routeIs('esbtp.resultats.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-file-alt"></i></div>
+                                <div class="menu-text">Notes & Bulletins</div>
+                                <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
+                            </button>
+                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.notes.*') || Request::routeIs('esbtp.bulletins.*') || Request::routeIs('esbtp.resultats.*') ? 'show' : '' }}">
+                                <a href="{{ route('esbtp.notes.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.notes.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Gestion des notes</span>
+                                </a>
+                                <a href="{{ route('esbtp.bulletins.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.bulletins.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Bulletins scolaires</span>
+                                </a>
+                                <a href="{{ route('esbtp.resultats.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.resultats.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Résultats & Classements</span>
+                                </a>
+                            </div>
                         </div>
 
-                        <!-- Examens & Évaluations -->
+                        <!-- Exams & Evaluations -->
                         <div class="menu-item">
                             <a href="{{ route('esbtp.evaluations.index') }}" class="menu-link {{ Request::routeIs('esbtp.evaluations.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-file-alt"></i></div>
+                                <div class="menu-icon"><i class="fas fa-clipboard-list"></i></div>
                                 <div class="menu-text">Examens & Évaluations</div>
                             </a>
                         </div>
-                        
-                        <!-- Emploi du temps -->
+                    @endif
+
+                    <!-- Administration Section -->
+                    @if(auth()->user()->hasRole('superAdmin'))
+                        <div class="menu-category">Administration</div>
+
+                        <!-- Staff Management -->
+                        <div class="menu-accordion">
+                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.staff.*') || Request::routeIs('esbtp.roles.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-users-cog"></i></div>
+                                <div class="menu-text">Personnel</div>
+                                <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
+                            </button>
+                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.staff.*') || Request::routeIs('esbtp.roles.*') ? 'show' : '' }}">
+                                <a href="{{ route('esbtp.teachers.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.teachers.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Gestion du personnel</span>
+                                </a>
+                                <a href="{{ route('esbtp.roles.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.roles.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Rôles & Permissions</span>
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Partnerships -->
                         <div class="menu-item">
-                            <a href="{{ route('esbtp.emploi-temps.index') }}" class="menu-link {{ Request::routeIs('esbtp.emploi-temps.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-calendar-alt"></i></div>
-                                <div class="menu-text">Emploi du temps</div>
+                            <a href="{{ route('esbtp.partnerships.index') }}" class="menu-link {{ Request::routeIs('esbtp.partnerships.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-handshake"></i></div>
+                                <div class="menu-text">Partenariats</div>
                             </a>
                         </div>
-                        
-                        <!-- Gestion de présence -->
+                    @endif
+
+                    <!-- Attendance Section -->
+                    @if(auth()->user()->hasRole('teacher'))
+                        <div class="menu-category">Présence</div>
+
+                        <!-- Émargement enseignant -->
                         <div class="menu-item">
-                            <a href="{{ route('esbtp.attendances.index') }}" class="menu-link {{ Request::routeIs('esbtp.attendances.*') ? 'active' : '' }}">
+                            <a href="{{ route('esbtp.attendance.mark') }}" class="menu-link {{ Request::routeIs('esbtp.attendance.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-clipboard-check"></i></div>
-                                <div class="menu-text">Gestion des présences</div>
+                                <div class="menu-text">Émargement enseignant</div>
                             </a>
                         </div>
-                        
-                        <div class="menu-category">Étudiants</div>
-                        
-                        <!-- Liste des étudiants -->
+                    @endif
+
+                    @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire'))
+                        <div class="menu-category">Présence</div>
+
+                        <!-- Historique émargement enseignant -->
                         <div class="menu-item">
-                            <a href="{{ route('esbtp.etudiants.index') }}" class="menu-link {{ Request::routeIs('esbtp.etudiants.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-user-graduate"></i></div>
-                                <div class="menu-text">Liste des étudiants</div>
+                            <a href="{{ route('esbtp.attendance.history') }}" class="menu-link {{ Request::routeIs('esbtp.attendance.history') ? 'active' : '' }}">
+                                <i class="fas fa-history me-2"></i>
+                                Historique émargement enseignant
                             </a>
                         </div>
 
-                        <!-- Classes -->
+                        <!-- Générer code d'émargement -->
                         <div class="menu-item">
-                            <a href="{{ route('esbtp.classes.index') }}" class="menu-link {{ Request::routeIs('esbtp.classes.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-chalkboard"></i></div>
-                                <div class="menu-text">Classes</div>
+                            <a href="{{ route('esbtp.attendance-codes.index') }}" class="menu-link {{ Request::routeIs('esbtp.attendance-codes.index') ? 'active' : '' }}">
+                                <i class="fas fa-key me-2"></i>
+                                Générer code d'émargement
                             </a>
                         </div>
-                        
-                <div class="menu-category">Communication</div>
+                    @endif
 
-                        <!-- Annonces -->
+                    <!-- Accounting Section -->
+                    @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire'))
+                        <div class="menu-category">Gestion financière</div>
+                        <div class="menu-accordion">
+                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.fee-categories.*') || Request::routeIs('esbtp.payment-categories.*') || Request::routeIs('esbtp.fees.*') || Request::routeIs('esbtp.payments.*') || Request::routeIs('esbtp.comptabilite.dashboard') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-coins"></i></div>
+                                <div class="menu-text">Comptabilité</div>
+                                <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
+                            </button>
+                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.fee-categories.*') || Request::routeIs('esbtp.payment-categories.*') || Request::routeIs('esbtp.fees.*') || Request::routeIs('esbtp.payments.*') || Request::routeIs('esbtp.comptabilite.dashboard') ? 'show' : '' }}">
+                                <a href="{{ route('esbtp.comptabilite.dashboard') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.dashboard') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <i class="fas fa-chart-bar me-1"></i>
+                                    <span>Dashboard Comptable</span>
+                                </a>
+                                <a href="{{ route('esbtp.fee-categories.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.fee-categories.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Catégories de frais</span>
+                                </a>
+                                <a href="{{ route('esbtp.payment-categories.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.payment-categories.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Catégories de paiements</span>
+                                </a>
+                                <a href="{{ route('esbtp.fees.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.fees.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Frais</span>
+                                </a>
+                                <a href="{{ route('esbtp.payments.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.payments.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Paiements</span>
+                                </a>
+                                <a href="{{ route('esbtp.comptabilite.factures') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.factures') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <i class="fas fa-file-invoice me-1"></i>
+                                    <span>Factures</span>
+                                </a>
+                                <a href="{{ route('esbtp.comptabilite.depenses') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.depenses') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <i class="fas fa-money-bill me-1"></i>
+                                    <span>Dépenses</span>
+                                </a>
+                                <a href="{{ route('esbtp.comptabilite.bourses') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.bourses') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <i class="fas fa-piggy-bank me-1"></i>
+                                    <span>Bourses</span>
+                                </a>
+                                <a href="{{ route('esbtp.comptabilite.salaires') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.salaires') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <i class="fas fa-user-tie me-1"></i>
+                                    <span>Salaires</span>
+                                </a>
+                                <a href="{{ route('esbtp.comptabilite.fournisseurs') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.fournisseurs') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <i class="fas fa-truck me-1"></i>
+                                    <span>Fournisseurs</span>
+                                </a>
+                                <a href="{{ route('esbtp.comptabilite.rapports') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.rapports') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <i class="fas fa-chart-line me-1"></i>
+                                    <span>Rapports</span>
+                                </a>
+                            </div>
+                        </div>
+                    @endif
+
+                    <!-- Announcements Section -->
+                    @canany(['superAdmin', 'secretaire'])
+                    <div class="menu-category">Annonces</div>
+
+                    <!-- Announcements Management -->
                         <div class="menu-item">
                             <a href="{{ route('esbtp.annonces.index') }}" class="menu-link {{ Request::routeIs('esbtp.annonces.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-bullhorn"></i></div>
                                 <div class="menu-text">Annonces</div>
                             </a>
                         </div>
-                        
-                        <!-- Mon compte -->
-                        <div class="menu-item">
-                            <a href="{{ route('admin.profile') }}" class="menu-link {{ Request::routeIs('admin.profile') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-user-circle"></i></div>
-                                <div class="menu-text">Mon profil</div>
-                            </a>
+                        @endcan
+
+                    <!-- System Section - SuperAdmin Only -->
+                    @if(auth()->user()->hasRole('superAdmin'))
+                        <div class="menu-category">Système</div>
+
+                        <!-- System Settings -->
+                        <div class="menu-accordion">
+                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.settings.*') || Request::routeIs('esbtp.logs.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-cogs"></i></div>
+                                <div class="menu-text">Paramètres</div>
+                                <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
+                            </button>
+                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.settings.*') || Request::routeIs('esbtp.logs.*') ? 'show' : '' }}">
+                                <a href="{{ route('esbtp.settings.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.settings.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Configuration</span>
+                                </a>
+                                <a href="{{ route('esbtp.logs.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.logs.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Journaux système</span>
+                                </a>
+                            </div>
                         </div>
                     @endif
 
-                    @if(auth()->user()->hasRole('etudiant'))
-                        <!-- Début de la section Étudiant -->
-                        <div class="menu-category">Tableau de bord</div>
-                        <div class="menu-item">
-                            <a href="{{ route('dashboard') }}" class="menu-link {{ Request::routeIs('dashboard') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-home"></i></div>
-                                <div class="menu-text">Accueil</div>
-                            </a>
-                        </div>
+                    @canany(['superAdmin', 'secretaire'])
+                    <li class="nav-item">
+                        <a href="{{ route('esbtp.comptabilite.dashboard') }}" class="nav-link {{ request()->routeIs('esbtp.comptabilite.dashboard') ? 'active' : '' }}">
+                            <i class="fas fa-chart-bar me-2"></i>
+                            <span>Comptabilité</span>
+                        </a>
+                    </li>
+                    @endcanany
 
-                        <div class="menu-category">Informations personnelles</div>
-                        
-                        <!-- Numéro matricule -->
-                        <div class="menu-item">
-                            <div class="menu-link">
-                                <div class="menu-icon"><i class="fas fa-id-card"></i></div>
-                                <div class="menu-text">
-                                    Matricule: 
-                                    <span class="fw-bold text-primary">
-                                        @php
-                                            $etudiant = auth()->user()->etudiant;
-                                            echo $etudiant ? $etudiant->matricule : 'N/A';
-                                        @endphp
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Assiduité -->
-                        <div class="menu-item">
-                            <div class="menu-link">
-                                <div class="menu-icon"><i class="fas fa-chart-bar"></i></div>
-                                <div class="menu-text">
-                                    Assiduité: 
-                                    @php
-                                        $etudiant = auth()->user()->etudiant;
-                                        $attendancePercentage = isset($attendancePercentage) ? $attendancePercentage : 
-                                            (auth()->user()->etudiant ? \App\Models\Attendance::getStudentAttendancePercentage(auth()->user()->etudiant->id) : 0);
-                                    @endphp
-                                    <span class="badge {{ $attendancePercentage >= 90 ? 'bg-success' : ($attendancePercentage >= 75 ? 'bg-warning' : 'bg-danger') }}">
-                                        {{ number_format($attendancePercentage, 1) }}%
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Notifications non lues -->
-                        <div class="menu-item">
-                            <a href="{{ route('esbtp.mes-notifications.index') }}" class="menu-link {{ Request::routeIs('esbtp.mes-notifications.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-bell"></i></div>
-                                <div class="menu-text">
-                                    Notifications 
-                                    @php
-                                        $unreadCount = \App\Models\Notification::getUnreadCountForUser(auth()->id());
-                                    @endphp
-                                    @if($unreadCount > 0)
-                                        <span class="badge bg-danger">{{ $unreadCount }}</span>
-                                    @endif
-                                </div>
-                            </a>
-                        </div>
+                    @role('etudiant')
 
-                        <div class="menu-category">Scolarité</div>
-                        
-                        <!-- Mon profil -->
-                        <div class="menu-item">
-                            <a href="{{ route('esbtp.mon-profil.index') }}" class="menu-link {{ Request::routeIs('esbtp.mon-profil.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-user"></i></div>
-                                <div class="menu-text">Mon profil</div>
-                            </a>
-                        </div>
-                        
-                        <!-- Mes notes -->
-                        <div class="menu-item">
-                            <a href="{{ route('esbtp.mes-notes.index') }}" class="menu-link {{ Request::routeIs('esbtp.mes-notes.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-graduation-cap"></i></div>
-                                <div class="menu-text">Mes notes</div>
-                            </a>
-                        </div>
-                        
-                        <!-- Mon emploi du temps -->
-                        <div class="menu-item">
-                            <a href="{{ route('esbtp.mon-emploi-temps.index') }}" class="menu-link {{ Request::routeIs('esbtp.mon-emploi-temps.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-calendar-alt"></i></div>
-                                <div class="menu-text">Mon emploi du temps</div>
-                            </a>
-                        </div>
-                        
-                        <!-- Mes examens -->
-                        <div class="menu-item">
-                            <a href="{{ route('esbtp.mes-evaluations.index') }}" class="menu-link {{ Request::routeIs('esbtp.mes-evaluations.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-file-alt"></i></div>
-                                <div class="menu-text">Mes examens</div>
-                            </a>
-                        </div>
-                        
-                        <!-- Mon bulletin -->
-                        <div class="menu-item">
-                            <a href="{{ route('esbtp.mon-bulletin.index') }}" class="menu-link {{ Request::routeIs('esbtp.mon-bulletin.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-file-invoice"></i></div>
-                                <div class="menu-text">Mon bulletin</div>
-                            </a>
-                        </div>
-                        
-                        <!-- Mes absences -->
-                        <div class="menu-item">
-                            <a href="{{ route('esbtp.mes-absences.index') }}" class="menu-link {{ Request::routeIs('esbtp.mes-absences.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-calendar-check"></i></div>
-                                <div class="menu-text">Mes absences</div>
-                            </a>
-                        </div>
-                        
-                        <div class="menu-category">Communication</div>
-                        
-                        <!-- Mes messages -->
-                        <div class="menu-item">
-                            <a href="{{ route('esbtp.mes-messages.index') }}" class="menu-link {{ Request::routeIs('esbtp.mes-messages.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-envelope"></i></div>
-                                <div class="menu-text">
-                                    Mes messages
-                                    @php
-                                        $unreadMessages = \App\Models\Message::getUnreadCountForUser(auth()->id());
-                                    @endphp
-                                    @if($unreadMessages > 0)
-                                        <span class="badge bg-danger">{{ $unreadMessages }}</span>
-                                    @endif
-                                </div>
-                            </a>
-                        </div>
-                    @endif
+                    <div class="menu-item">
+                        <a href="{{ route('esbtp.mon-emploi-temps.index') }}" class="nav-link {{ request()->routeIs('esbtp.mon-emploi-temps.index') ? 'active' : '' }}">
+                            <div class="menu-icon"><i class="fas fa-clipboard-list"></i></div>
+                            <div class="menu-text">Mon emploi du temps</div>
+                        </a>
+                    </div>
+                    <div class="menu-item">
+                        <a href="{{ route('esbtp.mes-evaluations.index') }}" class="nav-link {{ request()->routeIs('esbtp.mes-evaluations.index') ? 'active' : '' }}">
+                            <div class="menu-icon"><i class="fas fa-clipboard-list"></i></div>
+                            <div class="menu-text">Mes évaluations</div>
+                        </a>
+                    </div>
+                    <div class="menu-item">
+                        <a href="{{ route('esbtp.mes-notes.index') }}" class="nav-link {{ request()->routeIs('esbtp.mes-notes.index') ? 'active' : '' }}">
+                            <div class="menu-icon"><i class="fas fa-clipboard-list me-2"></i></div>
+                            <div class="menu-text">Mes notes</div>
+                        </a>
+                    </div>
+                    <div class="menu-item">
+                        <a href="{{ route('esbtp.mon-bulletin.index') }}" class="nav-link {{ request()->routeIs('esbtp.mon-bulletin.index') ? 'active' : '' }}">
+                            <div class="menu-icon"><i class="fas fa-file-invoice me-2"></i></div>
+                            <div class="menu-text">Mes résultats et bulletin</div>
+                        </a>
+                    </div>
+                    @endrole
+                    <!-- Section profil utilisateur -->
+                <div class="menu-category">Mon compte</div>
+                <li class="nav-item">
+                    @role('etudiant')
+                    <a href="{{ route('esbtp.mon-profil.index') }}" class="nav-link {{ request()->routeIs('esbtp.mon-profil.*') ? 'active' : '' }}">
+                        <i class="fas fa-user-circle nav-icon"></i>
+                        <span>Profil</span>
+                    </a>
+                    @else
+                    <a href="{{ route('admin.profile') }}" class="nav-link {{ request()->routeIs('admin.profile') ? 'active' : '' }}">
+                        <i class="fas fa-user-circle nav-icon"></i>
+                        <span>Profil</span>
+                    </a>
+                    @endrole
+                </li>
                 @endif
             </div>
         </aside>
@@ -623,7 +476,7 @@
                             <span class="ms-2 fw-bold">KLASSCI</span>
                         </div>
                     </div>
-                    
+
                     <div class="navbar-center d-none d-lg-block">
                         <div class="navbar-search">
                             <div class="navbar-search-icon">
@@ -632,7 +485,7 @@
                             <input type="text" placeholder="Rechercher..." class="form-control">
                         </div>
                     </div>
-                    
+
                     <div class="navbar-right">
                         <!-- Notifications -->
                         <div class="dropdown">
@@ -689,7 +542,7 @@
                 </li>
                             </ul>
                         </div>
-                        
+
                         <!-- Messages -->
                         <div class="dropdown">
                             <button class="navbar-icon" type="button" id="messagesDropdown" data-bs-toggle="dropdown" aria-expanded="false">
@@ -849,10 +702,42 @@
 
             <!-- Content -->
             <div class="nextadmin-content">
+                <!-- Flash Messages -->
+                @if(session('success'))
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        {{ session('success') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                @endif
+
+                @if(session('error'))
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        {{ session('error') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                @endif
+
+                @if(session('warning'))
+                    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                        {{ session('warning') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                @endif
+
+                @if(session('info'))
+                    <div class="alert alert-info alert-dismissible fade show" role="alert">
+                        {{ session('info') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                @endif
+
             @yield('content')
         </div>
         </main>
     </div>
+
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 
     <!-- Bootstrap JS with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -860,6 +745,9 @@
     <!-- Custom JavaScript -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Suppression de l'auto-hide des messages flash
+            // Les messages restent affichés jusqu'à fermeture manuelle
+
             // Sidebar Toggle
             const sidebarToggle = document.getElementById('sidebar-toggle');
             const sidebar = document.getElementById('sidebar');
@@ -867,22 +755,22 @@
             if (sidebarToggle && sidebar) {
                 sidebarToggle.addEventListener('click', function() {
                     sidebar.classList.toggle('collapsed');
-                    
+
                     // Adjust for mobile
                     if (window.innerWidth < 992) {
                         sidebar.classList.toggle('show');
                     }
                 });
             }
-            
+
             // Accordion Toggle
             const accordionButtons = document.querySelectorAll('.menu-accordion-btn');
-            
+
             accordionButtons.forEach(button => {
                 button.addEventListener('click', function() {
                     this.classList.toggle('active');
                     const content = this.nextElementSibling;
-                    
+
                     if (content.classList.contains('show')) {
                         content.classList.remove('show');
                     } else {
@@ -900,16 +788,17 @@
                             sidebar.classList.remove('collapsed');
                         }
                     }
-            
+
             // Initial check
             checkWidth();
-            
+
             // Check on resize
             window.addEventListener('resize', checkWidth);
     });
     </script>
 
     <!-- Scripts additionnels -->
-    @yield('scripts')
+    @stack('scripts')
+    @stack('modals')
 </body>
 </html>

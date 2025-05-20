@@ -12,7 +12,7 @@ class Teacher extends Model
 
     /**
      * La table associée au modèle.
-     * 
+     *
      * @var string
      */
     protected $table = 'teachers';
@@ -24,23 +24,17 @@ class Teacher extends Model
      */
     protected $fillable = [
         'user_id',
-        'employee_id',
+        'matricule',
+        'status',
         'department_id',
         'laboratory_id',
-        'specialties',
-        'grade',
-        'status', // PRAG, MCF, PR, vacataire, ATER, etc.
         'teaching_hours_due',
-        'teaching_hours_done',
-        'office_location',
-        'office_hours',
-        'bio',
+        'specialties',
         'research_interests',
-        'publications',
+        'bio',
         'website',
-        'availability',
-        'created_by',
-        'updated_by',
+        'office_location',
+        'grade'
     ];
 
     /**
@@ -49,16 +43,117 @@ class Teacher extends Model
      * @var array<string, string>
      */
     protected $casts = [
+        'teaching_hours_due' => 'float',
         'specialties' => 'array',
-        'office_hours' => 'array',
         'research_interests' => 'array',
-        'publications' => 'array',
-        'availability' => 'array',
+        'deleted_at' => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime'
     ];
 
     /**
+     * Constantes pour les différents statuts d'enseignants
+     */
+    const STATUS_PRAG = 'PRAG';
+    const STATUS_MCF = 'MCF';
+    const STATUS_PR = 'PR';
+    const STATUS_VACATAIRE = 'Vacataire';
+    const STATUS_ATER = 'ATER';
+
+    /**
+     * Liste des statuts disponibles
+     */
+    public static function getAvailableStatuses()
+    {
+        return [
+            self::STATUS_PRAG => 'PRAG',
+            self::STATUS_MCF => 'Maître de conférences',
+            self::STATUS_PR => 'Professeur',
+            self::STATUS_VACATAIRE => 'Vacataire',
+            self::STATUS_ATER => 'ATER',
+        ];
+    }
+
+    /**
+     * Détermine si l'enseignant est permanent
+     */
+    public function isPermanent()
+    {
+        return in_array($this->status, [
+            self::STATUS_PRAG,
+            self::STATUS_MCF,
+            self::STATUS_PR
+        ]);
+    }
+
+    /**
+     * Détermine si l'enseignant est temporaire
+     */
+    public function isTemporary()
+    {
+        return in_array($this->status, [
+            self::STATUS_VACATAIRE,
+            self::STATUS_ATER
+        ]);
+    }
+
+    /**
+     * Obtient les champs requis selon le statut
+     */
+    public static function getRequiredFieldsByStatus($status)
+    {
+        $commonFields = [
+            'name',
+            'email',
+            'username',
+            'matricule',
+            'phone',
+            'teaching_hours_due',
+            'specialties'
+        ];
+
+        $permanentFields = [
+            'department_id',
+            'laboratory_id',
+            'office_location',
+            'research_interests',
+            'bio',
+            'website'
+        ];
+
+        switch ($status) {
+            case self::STATUS_VACATAIRE:
+                return $commonFields;
+            case self::STATUS_ATER:
+                return array_merge($commonFields, ['department_id']);
+            default:
+                return array_merge($commonFields, $permanentFields);
+        }
+    }
+
+    /**
+     * Obtient les champs optionnels selon le statut
+     */
+    public static function getOptionalFieldsByStatus($status)
+    {
+        $allFields = [
+            'department_id',
+            'laboratory_id',
+            'office_location',
+            'research_interests',
+            'bio',
+            'website',
+            'publications',
+            'office_hours'
+        ];
+
+        $requiredFields = self::getRequiredFieldsByStatus($status);
+        return array_diff($allFields, $requiredFields);
+    }
+
+    /**
      * Relation avec l'utilisateur.
-     * 
+     *
      * Un enseignant est lié à un utilisateur.
      * Comme un acteur qui joue un rôle, l'utilisateur est l'acteur
      * et l'enseignant est le rôle avec ses caractéristiques spécifiques.
@@ -168,7 +263,7 @@ class Teacher extends Model
 
     /**
      * Obtenir le nom complet de l'enseignant.
-     * 
+     *
      * @return string
      */
     public function getFullNameAttribute()
@@ -178,7 +273,7 @@ class Teacher extends Model
 
     /**
      * Obtenir l'adresse email de l'enseignant.
-     * 
+     *
      * @return string
      */
     public function getEmailAttribute()
@@ -188,7 +283,7 @@ class Teacher extends Model
 
     /**
      * Obtenir le numéro de téléphone de l'enseignant.
-     * 
+     *
      * @return string|null
      */
     public function getPhoneAttribute()
@@ -198,7 +293,7 @@ class Teacher extends Model
 
     /**
      * Calculer le nombre d'heures restantes à effectuer.
-     * 
+     *
      * @return int
      */
     public function getRemainingHoursAttribute()
@@ -208,7 +303,7 @@ class Teacher extends Model
 
     /**
      * Vérifier si l'enseignant a effectué toutes ses heures.
-     * 
+     *
      * @return bool
      */
     public function getHasCompletedServiceAttribute()
@@ -218,7 +313,7 @@ class Teacher extends Model
 
     /**
      * Obtenir le pourcentage de service effectué.
-     * 
+     *
      * @return float
      */
     public function getServiceCompletionPercentageAttribute()
@@ -226,7 +321,7 @@ class Teacher extends Model
         if ($this->teaching_hours_due == 0) {
             return 100;
         }
-        
+
         return min(100, round(($this->teaching_hours_done / $this->teaching_hours_due) * 100, 2));
     }
 
@@ -253,4 +348,4 @@ class Teacher extends Model
     {
         return $query->where('laboratory_id', $laboratoryId);
     }
-} 
+}

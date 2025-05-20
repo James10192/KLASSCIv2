@@ -30,7 +30,7 @@
             <form action="{{ route('esbtp.teachers.update', $teacher->id) }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
-                
+
                 <!-- Informations de base utilisateur -->
                 <h4 class="mb-3">Informations d'identification</h4>
                 <div class="row mb-3">
@@ -42,7 +42,7 @@
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
-                        
+
                         <div class="form-group mb-3">
                             <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
                             <input type="email" class="form-control @error('email') is-invalid @enderror" id="email" name="email" value="{{ old('email', $teacher->user->email) }}" required>
@@ -51,7 +51,7 @@
                             @enderror
                         </div>
                     </div>
-                    
+
                     <div class="col-md-6">
                         <div class="form-group mb-3">
                             <label for="username" class="form-label">Nom d'utilisateur <span class="text-danger">*</span></label>
@@ -60,7 +60,7 @@
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
-                        
+
                         <div class="form-group mb-3">
                             <label for="phone" class="form-label">Téléphone</label>
                             <input type="text" class="form-control @error('phone') is-invalid @enderror" id="phone" name="phone" value="{{ old('phone', $teacher->user->phone) }}">
@@ -70,7 +70,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <div class="form-group mb-3">
@@ -82,7 +82,7 @@
                             @enderror
                         </div>
                     </div>
-                    
+
                     <div class="col-md-6">
                         <div class="form-group mb-3">
                             <label for="password_confirmation" class="form-label">Confirmer le nouveau mot de passe</label>
@@ -90,14 +90,14 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="form-check form-switch mb-3">
                     <input class="form-check-input" type="checkbox" id="is_active" name="is_active" value="1" {{ $teacher->user->is_active ? 'checked' : '' }}>
                     <label class="form-check-label" for="is_active">Compte actif</label>
                 </div>
-                
+
                 <hr>
-                
+
                 <!-- Informations professionnelles -->
                 <h4 class="mb-3">Informations professionnelles</h4>
                 <div class="row mb-3">
@@ -109,7 +109,7 @@
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
-                        
+
                         <div class="form-group mb-3">
                             <label for="department_id" class="form-label">Département <span class="text-danger">*</span></label>
                             <select class="form-select @error('department_id') is-invalid @enderror" id="department_id" name="department_id" required>
@@ -124,7 +124,7 @@
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
-                        
+
                         <div class="form-group mb-3">
                             <label for="laboratory_id" class="form-label">Laboratoire</label>
                             <select class="form-select @error('laboratory_id') is-invalid @enderror" id="laboratory_id" name="laboratory_id">
@@ -140,7 +140,7 @@
                             @enderror
                         </div>
                     </div>
-                    
+
                     <div class="col-md-6">
                         <div class="form-group mb-3">
                             <label for="grade" class="form-label">Grade</label>
@@ -156,22 +156,20 @@
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
-                        
+
                         <div class="form-group mb-3">
                             <label for="status" class="form-label">Statut</label>
                             <select class="form-select @error('status') is-invalid @enderror" id="status" name="status">
                                 <option value="">Sélectionner un statut</option>
-                                <option value="PRAG" {{ old('status', $teacher->status) == 'PRAG' ? 'selected' : '' }}>PRAG</option>
-                                <option value="MCF" {{ old('status', $teacher->status) == 'MCF' ? 'selected' : '' }}>MCF</option>
-                                <option value="PR" {{ old('status', $teacher->status) == 'PR' ? 'selected' : '' }}>PR</option>
-                                <option value="Vacataire" {{ old('status', $teacher->status) == 'Vacataire' ? 'selected' : '' }}>Vacataire</option>
-                                <option value="ATER" {{ old('status', $teacher->status) == 'ATER' ? 'selected' : '' }}>ATER</option>
+                                @foreach($statuses as $value => $label)
+                                    <option value="{{ $value }}" {{ old('status', $teacher->status) == $value ? 'selected' : '' }}>{{ $label }}</option>
+                                @endforeach
                             </select>
                             @error('status')
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
-                        
+
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
@@ -182,7 +180,7 @@
                                     @enderror
                                 </div>
                             </div>
-                            
+
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
                                     <label for="teaching_hours_done" class="form-label">Heures effectuées</label>
@@ -195,7 +193,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <div class="form-group mb-3">
@@ -206,7 +204,7 @@
                             @enderror
                         </div>
                     </div>
-                    
+
                     <div class="col-md-6">
                         <div class="form-group mb-3">
                             <label for="specialties" class="form-label">Spécialités (séparées par des virgules)</label>
@@ -217,7 +215,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="row mb-3">
                     <div class="col-12">
                         <div class="form-group mb-3">
@@ -229,7 +227,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="row mb-3">
                     <div class="col-12">
                         <div class="form-group mb-3">
@@ -241,7 +239,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <div class="form-group mb-3">
@@ -253,7 +251,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                     <a href="{{ route('esbtp.teachers.index') }}" class="btn btn-secondary me-md-2">Annuler</a>
                     <button type="submit" class="btn btn-primary">Mettre à jour</button>
@@ -269,10 +267,10 @@
     // JavaScript for form validation
     (function() {
         'use strict';
-        
+
         // Fetch all the forms we want to apply custom validation styles to
         const forms = document.querySelectorAll('.needs-validation');
-        
+
         // Loop over them and prevent submission
         Array.from(forms).forEach(form => {
             form.addEventListener('submit', event => {
@@ -280,22 +278,22 @@
                     event.preventDefault();
                     event.stopPropagation();
                 }
-                
+
                 form.classList.add('was-validated');
             }, false);
         });
-        
+
         // Handle department selection affecting laboratories
         const departmentSelect = document.getElementById('department_id');
         const laboratorySelect = document.getElementById('laboratory_id');
-        
+
         if (departmentSelect && laboratorySelect) {
             departmentSelect.addEventListener('change', function() {
                 const departmentId = this.value;
-                
+
                 // Clear current options
                 laboratorySelect.innerHTML = '<option value="">Sélectionner un laboratoire</option>';
-                
+
                 if (departmentId) {
                     fetch(`/api/departments/${departmentId}/laboratories`)
                         .then(response => response.json())
@@ -313,4 +311,4 @@
         }
     })();
 </script>
-@endsection 
+@endsection

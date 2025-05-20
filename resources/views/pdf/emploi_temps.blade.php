@@ -202,6 +202,25 @@
         <p><strong>Classe:</strong> {{ $emploiTemps->classe->name ?? 'Non définie' }} | <strong>Filière:</strong> {{ $emploiTemps->classe->filiere->name ?? 'Non définie' }} | <strong>Année:</strong> {{ $emploiTemps->annee->name ?? 'Non définie' }} | <strong>Période:</strong> Du {{ $emploiTemps->date_debut ? $emploiTemps->date_debut->format('d/m/Y') : 'Non définie' }} au {{ $emploiTemps->date_fin ? $emploiTemps->date_fin->format('d/m/Y') : 'Non définie' }}</p>
     </div>
 
+    @php
+    // --- MAPPING TYPE → LABEL & COULEUR (identique web) ---
+    $typeLabels = [
+        'course' => 'Cours magistral',
+        'homework' => 'Devoir',
+        'break' => 'Récréation',
+        'lunch' => 'Pause déjeuner',
+        'autre' => 'Autre',
+    ];
+    $typeColors = [
+        'course' => '#3498db',
+        'homework' => '#2ecc71',
+        'break' => '#f39c12',
+        'lunch' => '#e74c3c',
+        'autre' => '#95a5a6',
+    ];
+    $legendOrder = ['course', 'homework', 'break', 'lunch', 'autre'];
+    @endphp
+
     <table class="timetable">
         <thead>
             <tr>
@@ -297,10 +316,33 @@
                     @endphp
 
                     @if($seanceToDisplay && $cellOccupied)
-                        <td rowspan="{{ $rowspan }}" class="session-cell session-{{ $seanceToDisplay->type_seance }}">
-                            <strong>{{ $seanceToDisplay->matiere ? $seanceToDisplay->matiere->name : 'Non défini' }}</strong><br>
-                            {{ $seanceToDisplay->enseignantName }}<br>
-                            {{ $seanceToDisplay->salle ?? 'Non défini' }} | {{ $seanceToDisplay->heure_debut->format('H:i') }}-{{ $seanceToDisplay->heure_fin->format('H:i') }}
+                        @php
+                            $type = $seanceToDisplay->type ?? $seanceToDisplay->type_seance;
+                            $label = $typeLabels[$type] ?? ucfirst($type);
+                            $color = $seanceToDisplay->color ?? ($typeColors[$type] ?? '#95a5a6');
+                        @endphp
+                        <td rowspan="{{ $rowspan }}" class="session-cell" style="background-color: {{ $color }}; color: #fff;">
+                            @if($type === 'break')
+                                <div style="text-align:center;font-weight:bold;">Récréation</div>
+                                <div style="text-align:center;">{{ $seanceToDisplay->heure_debut->format('H:i') }} - {{ $seanceToDisplay->heure_fin->format('H:i') }}</div>
+                            @elseif($type === 'lunch')
+                                <div style="text-align:center;font-weight:bold;">Pause déjeuner</div>
+                                <div style="text-align:center;">{{ $seanceToDisplay->heure_debut->format('H:i') }} - {{ $seanceToDisplay->heure_fin->format('H:i') }}</div>
+                            @elseif($type === 'homework')
+                                <div style="font-weight:bold;">Devoir : {{ $seanceToDisplay->matiere ? $seanceToDisplay->matiere->name : 'Matière non définie' }}</div>
+                                @if($seanceToDisplay->homework_due_date)
+                                    <div>À rendre le {{ $seanceToDisplay->homework_due_date->format('d/m/Y') }}</div>
+                                @endif
+                                <div>{{ $seanceToDisplay->heure_debut->format('H:i') }} - {{ $seanceToDisplay->heure_fin->format('H:i') }}</div>
+                            @elseif($type === 'course')
+                                <div style="font-weight:bold;">{{ $seanceToDisplay->matiere ? $seanceToDisplay->matiere->name : 'Matière non définie' }}</div>
+                                <div>{{ $seanceToDisplay->teacher ? $seanceToDisplay->teacher->user->name : 'Enseignant non défini' }}</div>
+                                <div>{{ $seanceToDisplay->salle ?? 'Salle non définie' }}</div>
+                                <div>{{ $seanceToDisplay->heure_debut->format('H:i') }} - {{ $seanceToDisplay->heure_fin->format('H:i') }}</div>
+                            @else
+                                <div style="font-weight:bold;">{{ $label }}</div>
+                                <div>{{ $seanceToDisplay->heure_debut->format('H:i') }} - {{ $seanceToDisplay->heure_fin->format('H:i') }}</div>
+                            @endif
                         </td>
                     @elseif(!$cellOccupied)
                         <td></td>
@@ -319,35 +361,13 @@
 
         <div class="legend">
             <div class="legend-title">Légende :</div>
-            <div class="legend-container">
-                <div class="legend-item">
-                    <div class="legend-color session-cours"></div>
-                    <small>Cours magistral</small>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color session-td"></div>
-                    <small>Travaux dirigés</small>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color session-tp"></div>
-                    <small>Travaux pratiques</small>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color session-examen"></div>
-                    <small>Examen</small>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color session-autre"></div>
-                    <small>Autre</small>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color session-pause"></div>
-                    <small>Récréation</small>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color session-dejeuner"></div>
-                    <small>Pause déjeuner</small>
-                </div>
+            <div class="legend-container" style="display: flex; flex-wrap: wrap; justify-content: center; align-items: center; margin-top: 8px;">
+                @foreach($legendOrder as $type)
+                    <div class="legend-item" style="display: flex; align-items: center; margin: 0 18px 8px 0;">
+                        <div class="legend-color" style="width: 16px; height: 16px; border-radius: 3px; margin-right: 7px; background-color: {{ $typeColors[$type] }};"></div>
+                        <small style="font-size: 10px;">{{ $typeLabels[$type] }}</small>
+                    </div>
+                @endforeach
             </div>
         </div>
 

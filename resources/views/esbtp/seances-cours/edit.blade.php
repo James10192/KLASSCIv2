@@ -1,429 +1,358 @@
 @extends('layouts.app')
 
-@section('title', 'Modifier une séance de cours - ESBTP-yAKRO')
+@section('title', 'Modifier une séance')
+
+@section('styles')
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
+<style>
+    .session-type-card {
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+    }
+    .session-type-card:hover {
+        transform: translateY(-5px);
+    }
+    .session-type-card.selected {
+        border-color: var(--bs-primary);
+        background-color: var(--bs-primary-bg-subtle);
+    }
+    .color-picker {
+        width: 40px;
+        height: 40px;
+        padding: 0;
+        border: none;
+        border-radius: 50%;
+        cursor: pointer;
+    }
+    .recurrence-days {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    .day-checkbox {
+        display: none;
+    }
+    .day-label {
+        padding: 8px 16px;
+        border-radius: 20px;
+        background-color: var(--bs-gray-200);
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    .day-checkbox:checked + .day-label {
+        background-color: var(--bs-primary);
+        color: white;
+    }
+</style>
+@endsection
 
 @section('content')
 <div class="container-fluid">
-    <div class="row mb-3">
+    <div class="row">
         <div class="col-12">
             <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Modifier une séance de cours</h5>
-                    @if($emploiTemps)
-                        <a href="{{ route('esbtp.emploi-temps.show', $seancesCour->emploi_temps_id) }}" class="btn btn-secondary">
-                            <i class="fas fa-arrow-left me-1"></i>Retour à l'emploi du temps
-                        </a>
-                    @else
-                        <a href="{{ route('esbtp.seances-cours.index') }}" class="btn btn-secondary">
-                            <i class="fas fa-arrow-left me-1"></i>Retour à la liste des séances
-                        </a>
-                    @endif
+                <div class="card-header">
+                    <h4 class="card-title">Modifier une séance</h4>
+                    <p class="card-subtitle mb-0">
+                        Classe: {{ $emploiTemps->classe->name }} |
+                        Filière: {{ $emploiTemps->classe->filiere->name }} |
+                        Niveau: {{ $emploiTemps->classe->niveau->name }}
+                    </p>
                 </div>
                 <div class="card-body">
-                    @if ($errors->any())
-                        <div class="alert alert-danger">
-                            <ul class="mb-0">
-                                @foreach ($errors->all() as $error)
-                                    <li>{{ $error }}</li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    @endif
-
-                    <!-- Section de débogage -->
-                    <div class="mb-4 border-start border-warning ps-3 bg-light p-3" id="debug-section">
-                        <h6 class="text-warning">Informations de débogage</h6>
-                        <p class="mb-1"><strong>ID de la séance :</strong> {{ $seancesCour->id }}</p>
-                        <p class="mb-1"><strong>ID de l'emploi du temps :</strong> {{ $seancesCour->emploi_temps_id }}</p>
-                        <p class="mb-1"><strong>Emploi du temps trouvé :</strong> {{ $emploiTemps ? 'Oui' : 'Non' }}</p>
-                        @if($emploiTemps)
-                            <p class="mb-1"><strong>ID de l'emploi du temps trouvé :</strong> {{ $emploiTemps->id }}</p>
-                            <p class="mb-1"><strong>Soft deleted :</strong> {{ $emploiTemps->deleted_at ? 'Oui' : 'Non' }}</p>
-                        @endif
-                        <button type="button" id="check-emploi-temps" class="btn btn-warning btn-sm mt-2">
-                            <i class="fas fa-search me-1"></i>Vérifier l'emploi du temps
-                        </button>
-                        <div id="check-result" class="mt-2"></div>
-                    </div>
-
-                    <div class="mb-4 border-start border-primary ps-3">
-                        <h6 class="text-primary">Informations sur l'emploi du temps</h6>
-                        @if($emploiTemps)
-                            <p class="mb-1"><strong>Classe :</strong> {{ $emploiTemps->classe->name ?? 'Non définie' }}</p>
-                            <p class="mb-1"><strong>Filière :</strong> {{ $emploiTemps->classe->filiere->name ?? 'Non définie' }}</p>
-                            <p class="mb-1"><strong>Niveau :</strong> {{ $emploiTemps->classe->niveau->name ?? 'Non défini' }}</p>
-                            <p class="mb-1"><strong>Année universitaire :</strong> {{ $emploiTemps->annee->name ?? 'Non définie' }}</p>
-                        @else
-                            <p class="mb-1 text-danger">Emploi du temps non disponible. Les informations seront mises à jour après l'enregistrement.</p>
-                        @endif
-                    </div>
-
-                    <form action="{{ route('esbtp.seances-cours.update', $seancesCour->id) }}" method="POST">
+                    <form action="{{ route('esbtp.seances-cours.update', $seancesCour->id) }}" method="POST" id="sessionForm">
                         @csrf
                         @method('PUT')
 
-                        <!-- Type de séance - Moved to the beginning -->
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="type_seance" class="form-label fw-bold">Type de séance *</label>
-                                    <select class="form-select form-select-lg @error('type_seance') is-invalid @enderror" id="type_seance" name="type_seance" required>
-                                        <option value="">Sélectionner un type de séance</option>
-                                        <option value="cours" {{ (old('type_seance', $seancesCour->type_seance) == 'cours') ? 'selected' : '' }}>Cours magistral</option>
-                                        <option value="td" {{ (old('type_seance', $seancesCour->type_seance) == 'td') ? 'selected' : '' }}>Travaux dirigés</option>
-                                        <option value="tp" {{ (old('type_seance', $seancesCour->type_seance) == 'tp') ? 'selected' : '' }}>Travaux pratiques</option>
-                                        <option value="examen" {{ (old('type_seance', $seancesCour->type_seance) == 'examen') ? 'selected' : '' }}>Examen</option>
-                                        <option value="pause" {{ (old('type_seance', $seancesCour->type_seance) == 'pause') ? 'selected' : '' }}>Récréation</option>
-                                        <option value="dejeuner" {{ (old('type_seance', $seancesCour->type_seance) == 'dejeuner') ? 'selected' : '' }}>Pause déjeuner</option>
-                                        <option value="autre" {{ (old('type_seance', $seancesCour->type_seance) == 'autre') ? 'selected' : '' }}>Autre</option>
-                                    </select>
-                                    @error('type_seance')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
+                        <!-- Session Type Selection -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h5 class="mb-3">Type de séance</h5>
+                                <div class="row g-3">
+                                    @foreach($sessionTypes as $type => $label)
+                                    <div class="col-md-3">
+                                        <div class="card session-type-card h-100 {{ $seancesCour->type === $type ? 'selected' : '' }}"
+                                            data-type="{{ $type }}" onclick="selectSessionType('{{ $type }}')">
+                                            <div class="card-body text-center">
+                                                <div class="mb-3">
+                                                    @switch($type)
+                                                        @case('course')
+                                                            <i class="fas fa-chalkboard-teacher fa-2x" style="color: {{ $defaultColors[$type] }}"></i>
+                                                            @break
+                                                        @case('homework')
+                                                            <i class="fas fa-book fa-2x" style="color: {{ $defaultColors[$type] }}"></i>
+                                                            @break
+                                                        @case('break')
+                                                            <i class="fas fa-coffee fa-2x" style="color: {{ $defaultColors[$type] }}"></i>
+                                                            @break
+                                                        @case('lunch')
+                                                            <i class="fas fa-utensils fa-2x" style="color: {{ $defaultColors[$type] }}"></i>
+                                                            @break
+                                                    @endswitch
+                                                </div>
+                                                <h6 class="mb-2">{{ $label }}</h6>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    @endforeach
                                 </div>
+                                <input type="hidden" name="type" id="sessionType" value="{{ old('type', $seancesCour->type) }}" required>
                             </div>
                         </div>
 
-                        <!-- Info message area for session type -->
-                        <div id="session-type-info" class="mb-3" style="display: none;"></div>
-
-                        <!-- Day and time information - Always visible -->
-                        <div class="row mb-3">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label for="jour" class="form-label">Jour *</label>
-                                    <select class="form-select @error('jour') is-invalid @enderror" id="jour" name="jour" required>
+                        <!-- Common Fields -->
+                        <div class="row">
+                            <!-- Day Selection -->
+                            <div class="col-md-6 mb-3">
+                                <label for="jour" class="form-label">Jour</label>
+                                <select name="jour" id="jour" class="form-select" required>
                                         <option value="">Sélectionner un jour</option>
-                                        <option value="1" {{ (old('jour', $seancesCour->jour) == 1) ? 'selected' : '' }}>Lundi</option>
-                                        <option value="2" {{ (old('jour', $seancesCour->jour) == 2) ? 'selected' : '' }}>Mardi</option>
-                                        <option value="3" {{ (old('jour', $seancesCour->jour) == 3) ? 'selected' : '' }}>Mercredi</option>
-                                        <option value="4" {{ (old('jour', $seancesCour->jour) == 4) ? 'selected' : '' }}>Jeudi</option>
-                                        <option value="5" {{ (old('jour', $seancesCour->jour) == 5) ? 'selected' : '' }}>Vendredi</option>
-                                        <option value="6" {{ (old('jour', $seancesCour->jour) == 6) ? 'selected' : '' }}>Samedi</option>
+                                    @foreach($joursSemaine as $value => $label)
+                                        <option value="{{ $value }}" {{ old('jour', $seancesCour->jour) == $value ? 'selected' : '' }}>
+                                            {{ $label }}
+                                        </option>
+                                    @endforeach
                                     </select>
-                                    @error('jour')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
+                            </div>
+
+                            <!-- Time Selection -->
+                            <div class="col-md-3 mb-3">
+                                <label for="heure_debut" class="form-label">Heure de début</label>
+                                <input type="time" class="form-control" id="heure_debut" name="heure_debut"
+                                    value="{{ old('heure_debut', $seancesCour->heure_debut->format('H:i')) }}" required>
+                            </div>
+
+                            <div class="col-md-3 mb-3">
+                                <label for="heure_fin" class="form-label">Heure de fin</label>
+                                <input type="time" class="form-control" id="heure_fin" name="heure_fin"
+                                    value="{{ old('heure_fin', $seancesCour->heure_fin->format('H:i')) }}" required>
+                            </div>
+                        </div>
+
+                        <!-- Color and Recurrence -->
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Couleur</label>
+                                <div class="d-flex gap-2">
+                                    <input type="color" name="color" id="color" class="color-picker"
+                                        value="{{ old('color', $seancesCour->color) }}">
+                                    <span class="ms-2 align-self-center" id="colorLabel">{{ $seancesCour->color }}</span>
                                 </div>
                             </div>
 
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label for="heure_debut" class="form-label">Heure de début *</label>
-                                    <input type="time" class="form-control @error('heure_debut') is-invalid @enderror" id="heure_debut" name="heure_debut" value="{{ old('heure_debut', $seancesCour->heure_debut) }}" required>
-                                    @error('heure_debut')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
+                            <div class="col-md-6 mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="is_recurring" name="is_recurring"
+                                        {{ old('is_recurring', $seancesCour->is_recurring) ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="is_recurring">Séance récurrente</label>
+                                </div>
                                 </div>
                             </div>
 
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label for="heure_fin" class="form-label">Heure de fin *</label>
-                                    <input type="time" class="form-control @error('heure_fin') is-invalid @enderror" id="heure_fin" name="heure_fin" value="{{ old('heure_fin', $seancesCour->heure_fin) }}" required>
-                                    @error('heure_fin')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
+                        <!-- Recurrence Days -->
+                        <div class="row mb-4" id="recurrenceDays" style="display: {{ $seancesCour->is_recurring ? 'block' : 'none' }};">
+                            <div class="col-12">
+                                <label class="form-label">Jours de récurrence</label>
+                                <div class="recurrence-days">
+                                    @foreach($joursSemaine as $value => $label)
+                                        <div>
+                                            <input type="checkbox" class="day-checkbox" name="recurrence_days[]"
+                                                id="day_{{ $value }}" value="{{ $value }}"
+                                                {{ in_array($value, old('recurrence_days', $seancesCour->recurrence_days ?? [])) ? 'checked' : '' }}>
+                                            <label class="day-label" for="day_{{ $value }}">{{ $label }}</label>
+                                        </div>
+                                    @endforeach
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Subject and teacher - Hidden for breaks -->
-                        <div class="row mb-3" id="subject-teacher-row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="matiere_id" class="form-label">Matière *</label>
-                                    <select class="form-select @error('matiere_id') is-invalid @enderror" id="matiere_id" name="matiere_id" required>
-                                        <option value="">Sélectionner une matière</option>
-                                        @foreach($matieres as $matiere)
-                                            <option value="{{ $matiere->id }}" {{ (old('matiere_id', $seancesCour->matiere_id) == $matiere->id) ? 'selected' : '' }}>
-                                                {{ $matiere->code }} - {{ $matiere->name }}
+                        <!-- Dynamic Fields based on Session Type -->
+                        <div id="courseFields" style="display: {{ in_array($seancesCour->type, ['course', 'homework']) ? 'block' : 'none' }};">
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label for="teacher_id" class="form-label">Enseignant</label>
+                                    <select name="teacher_id" id="teacher_id" class="form-select select2">
+                                        <option value="">Sélectionner un enseignant</option>
+                                        @foreach($teachers as $teacher)
+                                            <option value="{{ $teacher->id }}" {{ old('teacher_id', $seancesCour->teacher_id) == $teacher->id ? 'selected' : '' }}>
+                                                {{ $teacher->user->name }}
                                             </option>
                                         @endforeach
                                     </select>
-                                    @error('matiere_id')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
                                 </div>
+
+                                <div class="col-md-4 mb-3">
+                                    <label for="matiere_id" class="form-label">Matière</label>
+                                    <select name="matiere_id" id="matiere_id" class="form-select select2">
+                                        <option value="">Sélectionner une matière</option>
+                                        @foreach($matieres as $matiere)
+                                            <option value="{{ $matiere->id }}" {{ old('matiere_id', $seancesCour->matiere_id) == $matiere->id ? 'selected' : '' }}>
+                                                {{ $matiere->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
                             </div>
 
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="enseignant" class="form-label">Enseignant</label>
-                                    <input type="text" class="form-control @error('enseignant') is-invalid @enderror" id="enseignant" name="enseignant" value="{{ old('enseignant', $seancesCour->enseignant) }}" placeholder="Nom de l'enseignant">
-                                    @error('enseignant')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Classroom and active status - Classroom hidden for recreation -->
-                        <div class="row mb-3">
-                            <div class="col-md-6" id="classroom-col">
-                                <div class="form-group">
-                                    <label for="salle" class="form-label">Salle *</label>
-                                    <input type="text" class="form-control @error('salle') is-invalid @enderror" id="salle" name="salle" value="{{ old('salle', $seancesCour->salle) }}" required>
-                                    @error('salle')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            </div>
-
-                            <div class="col-md-6">
-                                <div class="form-check mt-4">
-                                    <input class="form-check-input" type="checkbox" id="is_active" name="is_active" value="1" {{ (old('is_active', $seancesCour->is_active) == 1) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="is_active">
-                                        Séance active
-                                    </label>
+                                <div class="col-md-4 mb-3">
+                                    <label for="salle" class="form-label">Salle</label>
+                                    <input type="text" class="form-control" id="salle" name="salle"
+                                        value="{{ old('salle', $seancesCour->salle) }}">
                                 </div>
                             </div>
                         </div>
 
-                        <div class="form-group mb-3">
-                            <label for="description" class="form-label">Détails</label>
-                            <textarea class="form-control @error('description') is-invalid @enderror" id="description" name="description" rows="3">{{ old('description', $seancesCour->description) }}</textarea>
-                            @error('description')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                        <div id="homeworkFields" style="display: {{ $seancesCour->type === 'homework' ? 'block' : 'none' }};">
+                            <div class="row">
+                                <div class="col-12 mb-3">
+                                    <label for="homework_description" class="form-label">Description du devoir</label>
+                                    <textarea class="form-control" id="homework_description" name="homework_description"
+                                        rows="3">{{ old('homework_description', $seancesCour->homework_description) }}</textarea>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="homework_due_date" class="form-label">Date de remise</label>
+                                    <input type="date" class="form-control" id="homework_due_date" name="homework_due_date"
+                                        value="{{ old('homework_due_date', $seancesCour->homework_due_date?->format('Y-m-d')) }}">
+                                </div>
+                            </div>
                         </div>
 
-                        <div class="alert alert-info">
-                            <h6 class="alert-heading"><i class="fas fa-info-circle me-2"></i>Information</h6>
-                            <p class="mb-0">Le système vérifiera automatiquement les conflits d'horaires pour cette séance (même enseignant, même salle ou même classe au même moment). Si des conflits sont détectés, vous devrez les résoudre avant de pouvoir enregistrer cette séance.</p>
-                        </div>
-
-                        <div class="d-flex justify-content-between">
-                            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
-                                <i class="fas fa-trash me-1"></i>Supprimer la séance
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>Enregistrer les modifications
+                                </button>
+                                <a href="{{ route('esbtp.emploi-temps.show', $emploiTemps->id) }}" class="btn btn-secondary">
+                                    <i class="fas fa-times me-2"></i>Annuler
+                                </a>
+                                <button type="button" class="btn btn-danger float-end"
+                                    onclick="if(confirm('Êtes-vous sûr de vouloir supprimer cette séance ?')) {
+                                        document.getElementById('delete-form').submit();
+                                    }">
+                                    <i class="fas fa-trash me-2"></i>Supprimer
                             </button>
-                            <div>
-                                <button type="reset" class="btn btn-secondary me-2">Annuler</button>
-                                <button type="submit" class="btn btn-primary">Enregistrer les modifications</button>
                             </div>
                         </div>
+                    </form>
+
+                    <form id="delete-form" action="{{ route('esbtp.seances-cours.destroy', $seancesCour->id) }}" method="POST" style="display: none;">
+                        @csrf
+                        @method('DELETE')
                     </form>
                 </div>
             </div>
         </div>
     </div>
 </div>
+@endsection
 
-<!-- Modal de confirmation de suppression -->
-<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="deleteModalLabel">Confirmation de suppression</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>Êtes-vous sûr de vouloir supprimer cette séance de cours ?</p>
-                <p class="fw-bold">
-                    @php
-                        $jours = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
-                        $jour = isset($jours[$seancesCour->jour]) ? $jours[$seancesCour->jour] : 'Jour inconnu';
-                    @endphp
-                    {{ $jour }} de {{ $seancesCour->heure_debut }} à {{ $seancesCour->heure_fin }} -
-                    {{ $seancesCour->matiere->name ?? 'Matière inconnue' }}
-                </p>
-                <p class="text-danger">
-                    <i class="fas fa-exclamation-triangle me-1"></i>
-                    <strong>Attention :</strong> Cette action est irréversible.
-                </p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <form action="{{ route('esbtp.seances-cours.destroy', $seancesCour->id) }}" method="POST">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-danger">Confirmer la suppression</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-@section('scripts')
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/fr.js"></script>
 <script>
-    $(document).ready(function() {
-        console.log('Document ready - edit form');
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Select2
+    $('.select2').select2({
+        theme: 'bootstrap-5'
+    });
 
-        // Amélioration des listes déroulantes avec Select2
-        $('#matiere_id').select2({
-            theme: 'bootstrap-5',
-            width: '100%',
-            placeholder: 'Sélectionnez un élément'
-        });
+    // Initialize Flatpickr for time inputs
+    flatpickr("input[type=time]", {
+        enableTime: true,
+        noCalendar: true,
+        dateFormat: "H:i",
+        time_24hr: true,
+        locale: "fr"
+    });
 
-        // Validation des horaires
-        $('#heure_fin').on('change', function() {
-            const heureDebut = $('#heure_debut').val();
-            const heureFin = $(this).val();
+    // Initialize Flatpickr for date inputs
+    flatpickr("input[type=date]", {
+        locale: "fr",
+        minDate: "today"
+    });
 
-            if (heureDebut && heureFin && heureDebut >= heureFin) {
-                alert("L'heure de fin doit être postérieure à l'heure de début.");
-                $(this).val('{{ $seancesCour->heure_fin }}');
-            }
-        });
+    // Handle recurring checkbox
+    document.getElementById('is_recurring').addEventListener('change', function() {
+        document.getElementById('recurrenceDays').style.display = this.checked ? 'block' : 'none';
+    });
 
-        $('#heure_debut').on('change', function() {
-            const heureDebut = $(this).val();
-            const heureFin = $('#heure_fin').val();
+    // Handle color picker
+    document.getElementById('color').addEventListener('input', function(e) {
+        document.getElementById('colorLabel').textContent = e.target.value;
+    });
 
-            if (heureDebut && heureFin && heureDebut >= heureFin) {
-                alert("L'heure de début doit être antérieure à l'heure de fin.");
-                $(this).val('{{ $seancesCour->heure_debut }}');
-            }
-        });
+    // Initialize the form with the current session type
+    selectSessionType('{{ $seancesCour->type }}');
+});
 
-        // Function to toggle fields based on session type
-        function toggleFieldsBySessionType() {
-            console.log('Toggle function called');
-            const sessionType = $('#type_seance').val();
-            console.log('Session type:', sessionType);
+function selectSessionType(type) {
+    // Update hidden input
+    document.getElementById('sessionType').value = type;
 
-            // If no session type is selected, show all fields
-            if (!sessionType) {
-                $('#subject-teacher-row').show();
-                $('#classroom-col').show();
-                $('#session-type-info').hide();
-                $('#matiere_id').prop('required', true);
-                $('#salle').prop('required', true);
-                return;
-            }
+    // Update UI
+    document.querySelectorAll('.session-type-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+    document.querySelector(`[data-type="${type}"]`).classList.add('selected');
 
-            const isBreak = sessionType === 'pause' || sessionType === 'dejeuner';
-            console.log('Is break:', isBreak);
+    // Show/hide relevant fields
+    document.getElementById('courseFields').style.display =
+        (type === 'course' || type === 'homework') ? 'block' : 'none';
+    document.getElementById('homeworkFields').style.display =
+        (type === 'homework') ? 'block' : 'none';
 
-            // Info message area
-            const $infoMessage = $('#session-type-info');
+    // Update color picker with default color if no custom color is set
+    const defaultColors = @json($defaultColors);
+    const currentColor = document.getElementById('color').value;
+    if (!currentColor || currentColor === '#000000') {
+        document.getElementById('color').value = defaultColors[type];
+        document.getElementById('colorLabel').textContent = defaultColors[type];
+    }
 
-            // Toggle visibility with animation
-            if (isBreak) {
-                console.log('Hiding fields for break');
-                $('#subject-teacher-row').slideUp(300);
+    // Update required fields
+    const teacherField = document.getElementById('teacher_id');
+    const matiereField = document.getElementById('matiere_id');
+    const salleField = document.getElementById('salle');
+    const homeworkDescField = document.getElementById('homework_description');
+    const homeworkDueDateField = document.getElementById('homework_due_date');
 
-                // Make hidden fields not required
-                $('#matiere_id').prop('required', false);
-                $('#enseignant').prop('required', false);
-
-                // For recreation, hide classroom too, but keep it for lunch break
-                if (sessionType === 'pause') {
-                    console.log('Hiding classroom for recreation');
-                    $('#classroom-col').slideUp(300);
-                    $('#salle').prop('required', false);
-
-                    // Update info message
-                    $infoMessage.html('<div class="alert alert-info mt-2"><i class="fas fa-info-circle me-2"></i><strong>Récréation :</strong> Seuls le jour et les horaires sont requis.</div>').slideDown(300);
+    if (type === 'course' || type === 'homework') {
+        teacherField.required = true;
+        matiereField.required = true;
+        salleField.required = true;
                 } else {
-                    console.log('Showing classroom for lunch break');
-                    $('#classroom-col').slideDown(300);
-                    $('#salle').prop('required', true);
+        teacherField.required = false;
+        matiereField.required = false;
+        salleField.required = false;
+    }
 
-                    // Update info message
-                    $infoMessage.html('<div class="alert alert-info mt-2"><i class="fas fa-info-circle me-2"></i><strong>Pause déjeuner :</strong> La salle est requise mais pas la matière ni l\'enseignant.</div>').slideDown(300);
-                }
-            } else {
-                console.log('Showing all fields');
-                // Show all fields and make them required again
-                $('#subject-teacher-row').slideDown(300);
-                $('#classroom-col').slideDown(300);
-
-                $('#matiere_id').prop('required', true);
-                $('#enseignant').prop('required', false); // Keep enseignant optional
-                $('#salle').prop('required', true);
-
-                // Update info message based on session type
-                let infoText = '';
-                switch(sessionType) {
-                    case 'cours':
-                        infoText = '<strong>Cours magistral :</strong> Tous les champs sont disponibles.';
-                        break;
-                    case 'td':
-                        infoText = '<strong>Travaux dirigés :</strong> Tous les champs sont disponibles.';
-                        break;
-                    case 'tp':
-                        infoText = '<strong>Travaux pratiques :</strong> Tous les champs sont disponibles.';
-                        break;
-                    case 'examen':
-                        infoText = '<strong>Examen :</strong> Tous les champs sont disponibles.';
-                        break;
-                    case 'autre':
-                        infoText = '<strong>Autre type de séance :</strong> Tous les champs sont disponibles.';
-                        break;
-                }
-
-                if (infoText) {
-                    $infoMessage.html('<div class="alert alert-info mt-2"><i class="fas fa-info-circle me-2"></i>' + infoText + '</div>').slideDown(300);
+    if (type === 'homework') {
+        homeworkDescField.required = true;
+        homeworkDueDateField.required = true;
                 } else {
-                    $infoMessage.slideUp(300);
-                }
-            }
-        }
+        homeworkDescField.required = false;
+        homeworkDueDateField.required = false;
+    }
+}
 
-        // Call the function on page load
-        console.log('Page loaded, calling toggle function');
-        toggleFieldsBySessionType();
+// Form validation
+document.getElementById('sessionForm').addEventListener('submit', function(e) {
+    const type = document.getElementById('sessionType').value;
+    if (!type) {
+        e.preventDefault();
+        alert('Veuillez sélectionner un type de séance');
+        return;
+    }
 
-        // Bind the change event directly
-        $('#type_seance').on('change', function() {
-            console.log('Dropdown changed to: ' + $(this).val());
-            toggleFieldsBySessionType();
-        });
-
-        // Afficher les informations de débogage dans la console
-        console.log('Débogage séance de cours:', {
-            seance_id: {{ $seancesCour->id }},
-            emploi_temps_id: {{ $seancesCour->emploi_temps_id }},
-            emploi_temps_trouve: {{ $emploiTemps ? 'true' : 'false' }},
-            @if($emploiTemps)
-            emploi_temps: {
-                id: {{ $emploiTemps->id }},
-                classe_id: {{ $emploiTemps->classe_id }},
-                deleted_at: '{{ $emploiTemps->deleted_at }}',
-            },
-            @endif
-        });
-
-        // Fonction pour vérifier l'existence de l'emploi du temps
-        $('#check-emploi-temps').on('click', function() {
-            const emploiTempsId = {{ $seancesCour->emploi_temps_id }};
-            const resultDiv = $('#check-result');
-
-            resultDiv.html('<div class="spinner-border spinner-border-sm text-warning" role="status"><span class="visually-hidden">Chargement...</span></div> Vérification en cours...');
-
-            // Vérifier l'existence de l'emploi du temps via une requête AJAX
-            $.ajax({
-                url: `/api/check-emploi-temps/${emploiTempsId}`,
-                method: 'GET',
-                success: function(data) {
-                    console.log('Résultat de la vérification:', data);
-
-                    if (data.exists) {
-                        resultDiv.html(`<div class="alert alert-success mb-0">L'emploi du temps existe (ID: ${data.id})</div>`);
-                    } else {
-                        resultDiv.html(`<div class="alert alert-danger mb-0">L'emploi du temps n'existe pas</div>`);
-                    }
-
-                    // Afficher les détails complets
-                    if (data.details) {
-                        const detailsHtml = `
-                            <div class="mt-2">
-                                <strong>Détails:</strong>
-                                <pre class="bg-light p-2 mt-1" style="font-size: 0.8rem;">${JSON.stringify(data.details, null, 2)}</pre>
-                            </div>
-                        `;
-                        resultDiv.append(detailsHtml);
-                    }
-                },
-                error: function(xhr, status, error) {
-                    console.error('Erreur lors de la vérification:', error);
-                    resultDiv.html(`<div class="alert alert-danger mb-0">Erreur lors de la vérification: ${error}</div>`);
-                }
-            });
-        });
+    const startTime = document.getElementById('heure_debut').value;
+    const endTime = document.getElementById('heure_fin').value;
+    if (startTime && endTime && startTime >= endTime) {
+        e.preventDefault();
+        alert('L\'heure de fin doit être postérieure à l\'heure de début');
+        return;
+    }
     });
 </script>
-@endsection
-@endsection
+@endpush

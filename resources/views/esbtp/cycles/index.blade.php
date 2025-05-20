@@ -3,10 +3,25 @@
 @section('title', 'Gestion des Cycles de Formation')
 
 @section('content')
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <!-- Alertes de session -->
+<div class="content-wrapper">
+    <div class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1 class="m-0">Gestion des Cycles de Formation</h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Tableau de bord</a></li>
+                        <li class="breadcrumb-item active">Cycles de Formation</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="content">
+        <div class="container-fluid">
             @if(session('success'))
                 <div class="alert alert-success alert-dismissible">
                     <button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
@@ -21,46 +36,28 @@
                 </div>
             @endif
 
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">Liste des Cycles de Formation</h3>
-                    <div class="card-tools">
-                        <a href="{{ route('esbtp.cycles.create') }}" class="btn btn-primary btn-sm">
-                            <i class="fas fa-plus"></i> Nouveau Cycle
-                        </a>
-                    </div>
-                </div>
-                <!-- /.card-header -->
-                <div class="card-body">
-                    <ul class="nav nav-tabs" id="cycleTabs" role="tablist">
-                        <li class="nav-item">
-                            <a class="nav-link active" id="active-tab" data-toggle="tab" href="#active" role="tab" aria-controls="active" aria-selected="true">
-                                Actifs <span class="badge badge-success">{{ $activeCycles->count() }}</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" id="inactive-tab" data-toggle="tab" href="#inactive" role="tab" aria-controls="inactive" aria-selected="false">
-                                Inactifs <span class="badge badge-warning">{{ $inactiveCycles->count() }}</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" id="archived-tab" data-toggle="tab" href="#archived" role="tab" aria-controls="archived" aria-selected="false">
-                                Archivés <span class="badge badge-danger">{{ $archivedCycles->count() }}</span>
-                            </a>
-                        </li>
-                    </ul>
-                    
-                    <div class="tab-content mt-3" id="cycleTabsContent">
-                        <!-- Cycles actifs -->
-                        <div class="tab-pane fade show active" id="active" role="tabpanel" aria-labelledby="active-tab">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Cycles Actifs</h3>
+                            <div class="card-tools">
+                                @can('create cycles')
+                                <a href="{{ route('esbtp.cycles.create') }}" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-plus"></i> Nouveau Cycle
+                                </a>
+                                @endcan
+                            </div>
+                        </div>
+                        <div class="card-body">
                             <div class="table-responsive">
-                                <table class="table table-bordered table-striped datatable">
+                                <table class="table table-bordered table-striped">
                                     <thead>
                                         <tr>
                                             <th>ID</th>
                                             <th>Nom</th>
                                             <th>Code</th>
-                                            <th>Durée</th>
+                                            <th>Durée (années)</th>
                                             <th>Diplôme</th>
                                             <th>Spécialités</th>
                                             <th>Actions</th>
@@ -79,19 +76,25 @@
                                                 </td>
                                                 <td>
                                                     <div class="btn-group">
+                                                        @can('view cycles')
                                                         <a href="{{ route('esbtp.cycles.show', $cycle->id) }}" class="btn btn-info btn-sm">
-                                                            <i class="fas fa-eye"></i> Voir
+                                                            <i class="fas fa-eye"></i>
                                                         </a>
+                                                        @endcan
+                                                        @can('edit cycles')
                                                         <a href="{{ route('esbtp.cycles.edit', $cycle->id) }}" class="btn btn-warning btn-sm">
-                                                            <i class="fas fa-edit"></i> Modifier
+                                                            <i class="fas fa-edit"></i>
                                                         </a>
-                                                        <form action="{{ route('esbtp.cycles.destroy', $cycle->id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir archiver ce cycle?');">
+                                                        @endcan
+                                                        @can('delete cycles')
+                                                        <button type="button" class="btn btn-danger btn-sm" onclick="confirmDelete('{{ $cycle->id }}')">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                        <form id="delete-form-{{ $cycle->id }}" action="{{ route('esbtp.cycles.destroy', $cycle->id) }}" method="POST" style="display: none;">
                                                             @csrf
                                                             @method('DELETE')
-                                                            <button type="submit" class="btn btn-danger btn-sm">
-                                                                <i class="fas fa-trash"></i> Archiver
-                                                            </button>
                                                         </form>
+                                                        @endcan
                                                     </div>
                                                 </td>
                                             </tr>
@@ -100,17 +103,22 @@
                                 </table>
                             </div>
                         </div>
-                        
-                        <!-- Cycles inactifs -->
-                        <div class="tab-pane fade" id="inactive" role="tabpanel" aria-labelledby="inactive-tab">
+                    </div>
+
+                    <!-- Cycles Inactifs -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Cycles Inactifs</h3>
+                        </div>
+                        <div class="card-body">
                             <div class="table-responsive">
-                                <table class="table table-bordered table-striped datatable">
+                                <table class="table table-bordered table-striped">
                                     <thead>
                                         <tr>
                                             <th>ID</th>
                                             <th>Nom</th>
                                             <th>Code</th>
-                                            <th>Durée</th>
+                                            <th>Durée (années)</th>
                                             <th>Diplôme</th>
                                             <th>Spécialités</th>
                                             <th>Actions</th>
@@ -129,19 +137,25 @@
                                                 </td>
                                                 <td>
                                                     <div class="btn-group">
+                                                        @can('view cycles')
                                                         <a href="{{ route('esbtp.cycles.show', $cycle->id) }}" class="btn btn-info btn-sm">
-                                                            <i class="fas fa-eye"></i> Voir
+                                                            <i class="fas fa-eye"></i>
                                                         </a>
+                                                        @endcan
+                                                        @can('edit cycles')
                                                         <a href="{{ route('esbtp.cycles.edit', $cycle->id) }}" class="btn btn-warning btn-sm">
-                                                            <i class="fas fa-edit"></i> Modifier
+                                                            <i class="fas fa-edit"></i>
                                                         </a>
-                                                        <form action="{{ route('esbtp.cycles.destroy', $cycle->id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir archiver ce cycle?');">
+                                                        @endcan
+                                                        @can('delete cycles')
+                                                        <button type="button" class="btn btn-danger btn-sm" onclick="confirmDelete('{{ $cycle->id }}')">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                        <form id="delete-form-{{ $cycle->id }}" action="{{ route('esbtp.cycles.destroy', $cycle->id) }}" method="POST" style="display: none;">
                                                             @csrf
                                                             @method('DELETE')
-                                                            <button type="submit" class="btn btn-danger btn-sm">
-                                                                <i class="fas fa-trash"></i> Archiver
-                                                            </button>
                                                         </form>
+                                                        @endcan
                                                     </div>
                                                 </td>
                                             </tr>
@@ -150,17 +164,22 @@
                                 </table>
                             </div>
                         </div>
-                        
-                        <!-- Cycles archivés -->
-                        <div class="tab-pane fade" id="archived" role="tabpanel" aria-labelledby="archived-tab">
+                    </div>
+
+                    <!-- Cycles Archivés -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Cycles Archivés</h3>
+                        </div>
+                        <div class="card-body">
                             <div class="table-responsive">
-                                <table class="table table-bordered table-striped datatable">
+                                <table class="table table-bordered table-striped">
                                     <thead>
                                         <tr>
                                             <th>ID</th>
                                             <th>Nom</th>
                                             <th>Code</th>
-                                            <th>Durée</th>
+                                            <th>Durée (années)</th>
                                             <th>Diplôme</th>
                                             <th>Spécialités</th>
                                             <th>Actions</th>
@@ -179,23 +198,28 @@
                                                 </td>
                                                 <td>
                                                     <div class="btn-group">
+                                                        @can('view cycles')
                                                         <a href="{{ route('esbtp.cycles.show', $cycle->id) }}" class="btn btn-info btn-sm">
-                                                            <i class="fas fa-eye"></i> Voir
+                                                            <i class="fas fa-eye"></i>
                                                         </a>
-                                                        <form action="{{ route('esbtp.cycles.restore', $cycle->id) }}" method="POST" style="display: inline;">
+                                                        @endcan
+                                                        @can('restore cycles')
+                                                        <button type="button" class="btn btn-success btn-sm" onclick="confirmRestore('{{ $cycle->id }}')">
+                                                            <i class="fas fa-undo"></i>
+                                                        </button>
+                                                        <form id="restore-form-{{ $cycle->id }}" action="{{ route('esbtp.cycles.restore', $cycle->id) }}" method="POST" style="display: none;">
                                                             @csrf
-                                                            @method('PUT')
-                                                            <button type="submit" class="btn btn-success btn-sm">
-                                                                <i class="fas fa-trash-restore"></i> Restaurer
-                                                            </button>
                                                         </form>
-                                                        <form action="{{ route('esbtp.cycles.force-delete', $cycle->id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer définitivement ce cycle? Cette action est irréversible.');">
+                                                        @endcan
+                                                        @can('force delete cycles')
+                                                        <button type="button" class="btn btn-danger btn-sm" onclick="confirmForceDelete('{{ $cycle->id }}')">
+                                                            <i class="fas fa-times"></i>
+                                                        </button>
+                                                        <form id="force-delete-form-{{ $cycle->id }}" action="{{ route('esbtp.cycles.force-delete', $cycle->id) }}" method="POST" style="display: none;">
                                                             @csrf
                                                             @method('DELETE')
-                                                            <button type="submit" class="btn btn-danger btn-sm">
-                                                                <i class="fas fa-times-circle"></i> Supprimer
-                                                            </button>
                                                         </form>
+                                                        @endcan
                                                     </div>
                                                 </td>
                                             </tr>
@@ -206,43 +230,30 @@
                         </div>
                     </div>
                 </div>
-                <!-- /.card-body -->
             </div>
-            <!-- /.card -->
         </div>
-        <!-- /.col -->
     </div>
-    <!-- /.row -->
 </div>
 @endsection
 
-@section('scripts')
+@push('scripts')
 <script>
-    $(document).ready(function() {
-        // Initialiser DataTables pour chaque tableau
-        $('.datatable').DataTable({
-            "paging": true,
-            "lengthChange": true,
-            "searching": true,
-            "ordering": true,
-            "info": true,
-            "autoWidth": false,
-            "responsive": true,
-            "language": {
-                "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/French.json"
-            }
-        });
-        
-        // Conserver l'onglet actif après rechargement de la page
-        $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
-            localStorage.setItem('activeCycleTab', $(e.target).attr('href'));
-        });
-        
-        var activeTab = localStorage.getItem('activeCycleTab');
-        
-        if (activeTab) {
-            $('#cycleTabs a[href="' + activeTab + '"]').tab('show');
-        }
-    });
+function confirmDelete(id) {
+    if (confirm('Êtes-vous sûr de vouloir archiver ce cycle ?')) {
+        document.getElementById('delete-form-' + id).submit();
+    }
+}
+
+function confirmRestore(id) {
+    if (confirm('Êtes-vous sûr de vouloir restaurer ce cycle ?')) {
+        document.getElementById('restore-form-' + id).submit();
+    }
+}
+
+function confirmForceDelete(id) {
+    if (confirm('Êtes-vous sûr de vouloir supprimer définitivement ce cycle ? Cette action est irréversible.')) {
+        document.getElementById('force-delete-form-' + id).submit();
+    }
+}
 </script>
-@endsection 
+@endpush

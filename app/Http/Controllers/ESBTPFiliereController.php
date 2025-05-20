@@ -33,7 +33,7 @@ class ESBTPFiliereController extends Controller
     {
         $filieres = ESBTPFiliere::where('is_active', true)->get();
         $niveaux = ESBTPNiveauEtude::all();
-        $matieres = ESBTPMatiere::where('is_active', true)->get();
+        $matieres = ESBTPMatiere::where('is_active', true)->orderBy('name')->get();
 
         return view('esbtp.filieres.create', compact('filieres', 'niveaux', 'matieres'));
     }
@@ -117,7 +117,7 @@ class ESBTPFiliereController extends Controller
             ->where('is_active', true)
             ->get();
         $niveaux = ESBTPNiveauEtude::all();
-        $matieres = ESBTPMatiere::where('is_active', true)->get();
+        $matieres = ESBTPMatiere::where('is_active', true)->orderBy('name')->get();
 
         return view('esbtp.filieres.edit', compact('filiere', 'filieres', 'niveaux', 'matieres'));
     }

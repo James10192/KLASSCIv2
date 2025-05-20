@@ -20,9 +20,9 @@ class DepensesController extends Controller
         $depenses = ESBTPDepense::with('categorie')
             ->orderBy('date_depense', 'desc')
             ->paginate(10);
-        
+
         $categories = ESBTPCategorieDepense::all();
-        
+
         return view('esbtp.comptabilite.depenses.index', compact('depenses', 'categories'));
     }
 
@@ -54,12 +54,12 @@ class DepensesController extends Controller
             'mode_paiement' => 'required|string',
             'reference' => 'nullable|string|unique:esbtp_depenses,reference',
         ]);
-        
+
         $validated['createur_id'] = Auth::id();
         $validated['statut'] = 'validée';
-        
+
         ESBTPDepense::create($validated);
-        
+
         return redirect()->route('esbtp.comptabilite.depenses')
             ->with('success', 'Dépense enregistrée avec succès.');
     }
@@ -85,8 +85,8 @@ class DepensesController extends Controller
     public function edit($id)
     {
         $depense = ESBTPDepense::findOrFail($id);
-        $categories = ESBTPCategorieDepense::where('est_actif', true)->orderBy('nom')->get();
-        
+        $categories = ESBTPCategorieDepense::where('est_actif', true)->orderBy('name')->get();
+
         return view('esbtp.comptabilite.depenses.edit', compact('depense', 'categories'));
     }
 
@@ -100,7 +100,7 @@ class DepensesController extends Controller
     public function update(Request $request, $id)
     {
         $depense = ESBTPDepense::findOrFail($id);
-        
+
         $validated = $request->validate([
             'libelle' => 'required|string|max:255',
             'montant' => 'required|numeric|min:0',
@@ -110,9 +110,9 @@ class DepensesController extends Controller
             'mode_paiement' => 'required|string',
             'reference' => 'nullable|string|unique:esbtp_depenses,reference,' . $id,
         ]);
-        
+
         $depense->update($validated);
-        
+
         return redirect()->route('esbtp.comptabilite.depenses')
             ->with('success', 'Dépense mise à jour avec succès.');
     }
@@ -127,14 +127,14 @@ class DepensesController extends Controller
     {
         $depense = ESBTPDepense::findOrFail($id);
         $depense->delete();
-        
+
         return redirect()->route('esbtp.comptabilite.depenses')
             ->with('success', 'Dépense supprimée avec succès.');
     }
-    
+
     /**
      * Display the expense categories management page.
-     * 
+     *
      * @return \Illuminate\Http\Response
      */
     public function categories()
@@ -142,13 +142,13 @@ class DepensesController extends Controller
         $categories = ESBTPCategorieDepense::withCount('depenses')
             ->orderBy('nom')
             ->get();
-            
+
         return view('esbtp.comptabilite.depenses.categories', compact('categories'));
     }
-    
+
     /**
      * Store a new expense category.
-     * 
+     *
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
@@ -159,16 +159,16 @@ class DepensesController extends Controller
             'description' => 'nullable|string',
             'code' => 'required|string|unique:esbtp_categories_depenses,code',
         ]);
-        
+
         ESBTPCategorieDepense::create($validated);
-        
+
         return redirect()->route('esbtp.comptabilite.depenses.categories')
             ->with('success', 'Catégorie de dépense créée avec succès.');
     }
-    
+
     /**
      * Update an expense category.
-     * 
+     *
      * @param  \Illuminate\Http\Request  $request
      * @param  int  $id
      * @return \Illuminate\Http\Response
@@ -176,38 +176,38 @@ class DepensesController extends Controller
     public function updateCategory(Request $request, $id)
     {
         $category = ESBTPCategorieDepense::findOrFail($id);
-        
+
         $validated = $request->validate([
             'nom' => 'required|string|max:255|unique:esbtp_categories_depenses,nom,'.$id,
             'description' => 'nullable|string',
             'code' => 'required|string|unique:esbtp_categories_depenses,code,'.$id,
         ]);
-        
+
         $category->update($validated);
-        
+
         return redirect()->route('esbtp.comptabilite.depenses.categories')
             ->with('success', 'Catégorie de dépense mise à jour avec succès.');
     }
-    
+
     /**
      * Delete an expense category.
-     * 
+     *
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
     public function destroyCategory($id)
     {
         $category = ESBTPCategorieDepense::findOrFail($id);
-        
+
         // Check if the category has expenses
         if ($category->depenses()->count() > 0) {
             return redirect()->route('esbtp.comptabilite.depenses.categories')
                 ->with('error', 'Impossible de supprimer cette catégorie car elle est associée à des dépenses.');
         }
-        
+
         $category->delete();
-        
+
         return redirect()->route('esbtp.comptabilite.depenses.categories')
             ->with('success', 'Catégorie de dépense supprimée avec succès.');
     }
-} 
+}

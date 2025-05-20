@@ -1,169 +1,168 @@
 @extends('layouts.app')
 
 @section('title', 'Détails du Département')
-@section('page_title', 'Informations du Département')
+@section('page_title', 'Détails du Département')
 
 @section('content')
-<div class="row">
-    <div class="col-md-4">
-        <!-- Carte d'information du département -->
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title">{{ $department->name }}</h5>
-                <span class="badge {{ $department->is_active ? 'bg-success' : 'bg-danger' }}">
-                    {{ $department->is_active ? 'Actif' : 'Inactif' }}
-                </span>
-            </div>
-            <div class="card-body text-center">
-                @if($department->logo)
-                    <img src="{{ asset('storage/' . $department->logo) }}" class="img-fluid rounded mb-3" style="max-height: 200px;" alt="Logo du département">
-                @else
-                    <div class="bg-light rounded p-4 mb-3">
-                        <i class="fas fa-building fa-5x text-secondary"></i>
-                        <p class="text-muted mt-2">Aucun logo</p>
-                    </div>
-                @endif
-                
-                <h4>{{ $department->name }}</h4>
-                <h6 class="text-muted">Code: {{ $department->code }}</h6>
-                
-                @if($department->head_name)
-                    <p class="mt-3">
-                        <i class="fas fa-user-tie me-2"></i> <strong>Responsable:</strong> {{ $department->head_name }}
-                    </p>
-                @endif
-            </div>
-            <div class="card-footer">
-                <div class="d-flex justify-content-between">
-                    <a href="{{ route('esbtp.departments.index') }}" class="btn btn-secondary">
-                        <i class="fas fa-arrow-left"></i> Retour
-                    </a>
-                    <div>
-                        <a href="{{ route('esbtp.departments.edit', $department) }}" class="btn btn-warning">
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">{{ $department->name }}</h3>
+                    <div class="card-tools">
+                        <a href="{{ route('esbtp.departments.index') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Retour à la liste
+                        </a>
+                        <a href="{{ route('esbtp.departments.edit', $department) }}" class="btn btn-primary">
                             <i class="fas fa-edit"></i> Modifier
                         </a>
-                        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
-                            <i class="fas fa-trash"></i> Supprimer
-                        </button>
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-8">
-        <!-- Description et détails -->
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title">Description</h5>
-            </div>
-            <div class="card-body">
-                @if($department->description)
-                    <div class="mb-4">
-                        {!! $department->description !!}
-                    </div>
-                @else
-                    <p class="text-muted">Aucune description disponible pour ce département.</p>
-                @endif
-                
-                <hr>
-                
-                <h5>Informations complémentaires</h5>
-                <div class="row mt-3">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <strong><i class="fas fa-calendar-alt me-2"></i> Créé le:</strong>
-                            <p>{{ $department->created_at->format('d/m/Y à H:i') }}</p>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <strong><i class="fas fa-edit me-2"></i> Dernière modification:</strong>
-                            <p>{{ $department->updated_at->format('d/m/Y à H:i') }}</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Statistiques -->
-        <div class="card mt-4">
-            <div class="card-header">
-                <h5 class="card-title">Statistiques</h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-4">
-                        <div class="small-box bg-info">
-                            <div class="inner">
-                                <h3>{{ $department->specialties_count ?? 0 }}</h3>
-                                <p>Spécialités</p>
-                            </div>
-                            <div class="icon">
-                                <i class="fas fa-graduation-cap"></i>
-                            </div>
-                            <a href="{{ route('esbtp.specialties.index', ['department_id' => $department->id]) }}" class="small-box-footer">
-                                Voir les spécialités <i class="fas fa-arrow-circle-right"></i>
-                            </a>
-                        </div>
-                    </div>
-                    
-                    <div class="col-md-4">
-                        <div class="small-box bg-success">
-                            <div class="inner">
-                                <h3>{{ $department->cycles_count ?? 0 }}</h3>
-                                <p>Cycles</p>
-                            </div>
-                            <div class="icon">
-                                <i class="fas fa-sync-alt"></i>
-                            </div>
-                            <a href="{{ route('esbtp.cycles.index', ['department_id' => $department->id]) }}" class="small-box-footer">
-                                Voir les cycles <i class="fas fa-arrow-circle-right"></i>
-                            </a>
-                        </div>
-                    </div>
-                    
-                    <div class="col-md-4">
-                        <div class="small-box bg-warning">
-                            <div class="inner">
-                                <h3>{{ $department->students_count ?? 0 }}</h3>
-                                <p>Étudiants</p>
-                            </div>
-                            <div class="icon">
-                                <i class="fas fa-users"></i>
-                            </div>
-                            <a href="#" class="small-box-footer">
-                                Voir les étudiants <i class="fas fa-arrow-circle-right"></i>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
-<!-- Modal de confirmation de suppression -->
-<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="deleteModalLabel">Confirmer la suppression</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>Êtes-vous sûr de vouloir supprimer le département <strong>{{ $department->name }}</strong> ?</p>
-                <p class="text-danger">Cette action est réversible, mais supprimera temporairement l'accès à ce département.</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <form action="{{ route('esbtp.departments.destroy', $department) }}" method="POST">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-danger">Confirmer la suppression</button>
-                </form>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Informations de base -->
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h4 class="card-title">Informations de base</h4>
+                                </div>
+                                <div class="card-body">
+                                    <table class="table table-bordered">
+                                        <tr>
+                                            <th style="width: 30%">Code</th>
+                                            <td>{{ $department->code }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Statut</th>
+                                            <td>
+                                                @if($department->is_active)
+                                                    <span class="badge bg-success">Actif</span>
+                                                @else
+                                                    <span class="badge bg-warning">Inactif</span>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th>Description</th>
+                                            <td>{{ $department->description ?: 'Non définie' }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Date de création</th>
+                                            <td>{{ $department->created_at->format('d/m/Y H:i') }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Dernière modification</th>
+                                            <td>{{ $department->updated_at->format('d/m/Y H:i') }}</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Informations du responsable -->
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h4 class="card-title">Informations du responsable</h4>
+                                </div>
+                                <div class="card-body">
+                                    <table class="table table-bordered">
+                                        <tr>
+                                            <th style="width: 30%">Chef de département</th>
+                                            <td>{{ $department->head_name ?: 'Non défini' }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Titre</th>
+                                            <td>{{ $department->head_title ?: 'Non défini' }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Email</th>
+                                            <td>{{ $department->email ?: 'Non défini' }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Téléphone</th>
+                                            <td>{{ $department->phone ?: 'Non défini' }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Bureau</th>
+                                            <td>{{ $department->office_location ?: 'Non défini' }}</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Statistiques -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h4 class="card-title">Statistiques</h4>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <div class="info-box">
+                                                <span class="info-box-icon bg-info"><i class="fas fa-graduation-cap"></i></span>
+                                                <div class="info-box-content">
+                                                    <span class="info-box-text">Spécialités</span>
+                                                    <span class="info-box-number">{{ $department->specialties->count() }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="info-box">
+                                                <span class="info-box-icon bg-success"><i class="fas fa-chalkboard-teacher"></i></span>
+                                                <div class="info-box-content">
+                                                    <span class="info-box-text">Enseignants</span>
+                                                    <span class="info-box-number">{{ $department->teachers->count() }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="info-box">
+                                                <span class="info-box-icon bg-warning"><i class="fas fa-user-graduate"></i></span>
+                                                <div class="info-box-content">
+                                                    <span class="info-box-text">Étudiants</span>
+                                                    <span class="info-box-number">{{ $department->students->count() }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="info-box">
+                                                <span class="info-box-icon bg-primary"><i class="fas fa-book"></i></span>
+                                                <div class="info-box-content">
+                                                    <span class="info-box-text">Formations continues</span>
+                                                    <span class="info-box-number">{{ $department->continuingEducationPrograms->count() }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-footer">
+                    <div class="btn-group">
+                        <a href="{{ route('esbtp.departments.edit', $department) }}" class="btn btn-primary">
+                            <i class="fas fa-edit"></i> Modifier
+                        </a>
+                        <form action="{{ route('esbtp.departments.destroy', $department) }}" method="POST" class="d-inline">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="btn btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce département ?')">
+                                <i class="fas fa-trash"></i> Supprimer
+                            </button>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
-@endsection 
+@endsection

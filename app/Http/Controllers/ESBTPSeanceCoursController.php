@@ -11,6 +11,9 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use App\Models\ESBTPTeacher;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 class ESBTPSeanceCoursController extends Controller
 {
@@ -171,32 +174,38 @@ class ESBTPSeanceCoursController extends Controller
      */
     public function create(Request $request)
     {
-        // Récupérer tous les emplois du temps pour le dropdown
-        $emploisTemps = ESBTPEmploiTemps::with('classe.filiere', 'classe.niveau')->orderBy('created_at', 'desc')->get();
+        try {
+            // Validate required parameters
+            $request->validate([
+                'emploi_temps_id' => 'required|exists:esbtp_emploi_temps,id',
+                'jour' => 'required|integer|min:1|max:7',
+                'heure_debut' => 'required|date_format:H:i',
+            ]);
 
-        // Initialiser les variables
-        $emploiTemps = null;
-        $classe = null;
+        // Récupérer l'emploi du temps
+            $emploiTemps = ESBTPEmploiTemps::with('classe.filiere', 'classe.niveau')
+                ->findOrFail($request->emploi_temps_id);
 
-        // Vérifier si un emploi du temps est spécifié
-        if ($request->has('emploi_temps_id')) {
-            try {
-                $emploiTemps = ESBTPEmploiTemps::findOrFail($request->emploi_temps_id);
-                $classe = ESBTPClasse::with('filiere', 'niveau')->findOrFail($emploiTemps->classe_id);
-            } catch (\Exception $e) {
-                // Si l'emploi du temps n'existe pas, on continue sans erreur
-                // mais on garde la trace de l'erreur pour le débogage
-                \Log::warning("Emploi du temps non trouvé: " . $request->emploi_temps_id);
-                // On ne redirige pas, on laisse l'utilisateur choisir un emploi du temps valide
-            }
-        }
+            // Récupérer les enseignants actifs
+        $teachers = ESBTPTeacher::with('user')
+                ->where('is_active', true)
+            ->get()
+                ->sortBy('user.name');
 
         // Récupérer les matières
-        $matieres = ESBTPMatiere::where('is_active', true)->orderBy('name')->get();
+            $matieres = ESBTPMatiere::where('is_active', true)
+                ->orderBy('name')
+                ->get();
 
-        // Récupérer les enseignants disponibles
-        $enseignants = User::role('enseignant')->where('is_active', true)->orderBy('name')->get();
+            // Définir les types de séances disponibles
+            $sessionTypes = [
+                ESBTPSeanceCours::TYPE_COURSE => 'Cours',
+                ESBTPSeanceCours::TYPE_HOMEWORK => 'Devoir',
+                ESBTPSeanceCours::TYPE_BREAK => 'Récréation',
+                ESBTPSeanceCours::TYPE_LUNCH => 'Pause déjeuner'
+            ];
 
+        // Définir les jours de la semaine
         $joursSemaine = [
             1 => 'Lundi',
             2 => 'Mardi',
@@ -207,24 +216,22 @@ class ESBTPSeanceCoursController extends Controller
             7 => 'Dimanche'
         ];
 
-        // Récupérer les paramètres d'URL
-        $jour = $request->get('jour');
-        $heure_debut = $request->get('heure_debut');
+            // Get default colors
+            $defaultColors = ESBTPSeanceCours::DEFAULT_COLORS;
 
-        // Passer le request à la vue pour pouvoir accéder aux paramètres
-        $request_params = $request;
-
-        return view('esbtp.seances-cours.create', compact(
-            'emploiTemps',
-            'emploisTemps',
-            'classe',
-            'matieres',
-            'enseignants',
-            'joursSemaine',
-            'jour',
-            'heure_debut',
-            'request_params'
-        ));
+            return view('esbtp.seances-cours.create', compact(
+                'emploiTemps',
+                'teachers',
+                'matieres',
+                'sessionTypes',
+                'joursSemaine',
+                'defaultColors',
+                'request'
+            ));
+        } catch (\Exception $e) {
+            Log::error('Error in SeanceCoursController@create: ' . $e->getMessage());
+            return back()->with('error', 'Une erreur est survenue lors du chargement du formulaire.');
+        }
     }
 
     /**
@@ -233,107 +240,202 @@ class ESBTPSeanceCoursController extends Controller
     public function store(Request $request)
     {
         try {
-            // Ajout de logs pour déboguer
-            Log::info('Début de la méthode store pour séance de cours');
-            Log::info('Données reçues:', $request->all());
-            Log::info('Type de séance:', ['type' => $request->input('type_seance')]);
-
-            // Récupérer l'emploi du temps pour obtenir classe_id et annee_universitaire_id
-            $emploiTempsId = $request->input('emploi_temps_id');
-
-            if (!$emploiTempsId) {
-                Log::error('Erreur: emploi_temps_id manquant');
-                return back()->withInput()->with('error', 'L\'identifiant de l\'emploi du temps est requis.');
+            // Get the emploi du temps and its associated classe_id and annee_universitaire_id
+            $emploiTemps = ESBTPEmploiTemps::findOrFail($request->emploi_temps_id);
+            if (!$emploiTemps->classe_id) {
+                throw new \Exception('Aucune classe n\'est associée à cet emploi du temps.');
+            }
+            if (!$emploiTemps->annee_universitaire_id) {
+                throw new \Exception('Aucune année universitaire n\'est associée à cet emploi du temps.');
             }
 
-            $emploiTemps = ESBTPEmploiTemps::find($emploiTempsId);
+            // Log des données reçues
+            \Log::info('Création séance - Données reçues', $request->all());
 
-            if (!$emploiTemps) {
-                Log::error('Erreur: emploi du temps non trouvé avec ID: ' . $emploiTempsId);
-                return back()->withInput()->with('error', 'L\'emploi du temps spécifié n\'existe pas.');
-            }
-
-            Log::info('Emploi du temps trouvé:', [
-                'id' => $emploiTemps->id,
-                'classe_id' => $emploiTemps->classe_id,
-                'annee_universitaire_id' => $emploiTemps->annee_universitaire_id
+            // Validate the basic required fields first
+            $baseValidator = Validator::make($request->all(), [
+            'emploi_temps_id' => 'required|exists:esbtp_emploi_temps,id',
+                'type' => 'required|in:course,homework,break,lunch',
+            'jour' => 'required|integer|min:1|max:7',
+            'heure_debut' => 'required|date_format:H:i',
+                'heure_fin' => 'required|date_format:H:i|after:heure_debut',
             ]);
 
-            // Déterminer le type de séance
-            $typeSeance = $request->input('type_seance');
-            $isPause = $typeSeance === 'pause';
-            $isDejeuner = $typeSeance === 'dejeuner';
-            $isBreak = $isPause || $isDejeuner;
+            // Champs additionnels selon le type
+            $additionalRules = [];
+            $additionalMessages = [];
+            $optionalRules = [];
 
-            Log::info('Type de séance détecté:', [
-                'type' => $typeSeance,
-                'isPause' => $isPause,
-                'isDejeuner' => $isDejeuner,
-                'isBreak' => $isBreak
-            ]);
-
-            // Validation des données avec les champs corrects
-            $validationRules = [
-                'jour' => 'required|integer|min:1|max:7',
-                'heure_debut' => 'required|string',
-                'heure_fin' => 'required|string|after:heure_debut',
-                'type_seance' => 'required|string|in:cours,td,tp,examen,pause,dejeuner,autre',
-                'emploi_temps_id' => 'required|exists:esbtp_emploi_temps,id',
-                'details' => 'nullable|string',
-            ];
-
-            // Ajuster les règles de validation en fonction du type de séance
-            if ($isBreak) {
-                $validationRules['matiere_id'] = 'nullable|exists:esbtp_matieres,id';
-                $validationRules['enseignant'] = 'nullable|string';
-            } else {
-                $validationRules['matiere_id'] = 'required|exists:esbtp_matieres,id';
-                $validationRules['enseignant'] = 'nullable|string';
+            if ($request->type === 'course' || $request->type === 'homework') {
+                $additionalRules['matiere_id'] = 'required|exists:esbtp_matieres,id';
+                $optionalRules['teacher_id'] = 'nullable|exists:esbtp_teachers,id';
+                $optionalRules['salle'] = 'nullable|string|max:50';
+            }
+            if ($request->type === 'homework') {
+                $optionalRules['homework_description'] = 'nullable|string|max:255';
+                $optionalRules['homework_due_date'] = 'nullable|date';
+            }
+            // Pour break/lunch, on force matiere_id, salle, teacher_id à null
+            if ($request->type === 'break' || $request->type === 'lunch') {
+                $request->merge([
+                    'matiere_id' => null,
+                    'teacher_id' => null,
+                    'salle' => null,
+                    'homework_description' => null,
+                    'homework_due_date' => null,
+                ]);
             }
 
-            // Pour les pauses, la salle est optionnelle
-            if ($isPause) {
-                $validationRules['salle'] = 'nullable|string';
-            } else {
-                $validationRules['salle'] = 'required|string';
+            $allRules = array_merge($baseValidator->getRules(), $additionalRules, $optionalRules);
+            $allMessages = array_merge($baseValidator->getMessageBag()->getMessages(), $additionalMessages);
+
+            // Validate all rules
+            $validator = Validator::make($request->all(), $allRules, $allMessages);
+
+            if ($validator->fails()) {
+                \Log::warning('Erreur validation création séance', $validator->errors()->toArray());
+                return redirect()->back()
+                    ->withErrors($validator)
+                    ->withInput();
             }
 
-            $validated = $request->validate($validationRules);
-
-            Log::info('Validation réussie');
-
+            // Start transaction
             DB::beginTransaction();
 
-            $seanceCours = new ESBTPSeanceCours();
-            $seanceCours->classe_id = $emploiTemps->classe_id; // Récupéré de l'emploi du temps
-            $seanceCours->matiere_id = $isBreak ? null : $validated['matiere_id'];
-            $seanceCours->enseignant = $isBreak ? null : $validated['enseignant'];
-            $seanceCours->jour = $validated['jour'];
-            $seanceCours->heure_debut = $validated['heure_debut'];
-            $seanceCours->heure_fin = $validated['heure_fin'];
-            $seanceCours->salle = $isPause ? null : $validated['salle'];
-            $seanceCours->description = $validated['details'] ?? null; // Utilisation du champ details
-            $seanceCours->annee_universitaire_id = $emploiTemps->annee_universitaire_id; // Récupéré de l'emploi du temps
-            $seanceCours->type_seance = $validated['type_seance'];
-            $seanceCours->emploi_temps_id = $validated['emploi_temps_id'];
-            $seanceCours->is_active = $request->has('is_active'); // Gestion du checkbox is_active
+            try {
+                // Check for scheduling conflicts (uniquement pour le jour principal, on peut améliorer pour tous les jours si besoin)
+                $conflicts = $this->checkSchedulingConflicts($request);
+                if (!empty($conflicts)) {
+                    \Log::warning('Conflit horaire lors de la création de séance', $conflicts);
+                    throw ValidationException::withMessages([
+                        'conflicts' => $conflicts
+                    ]);
+                }
 
-            Log::info('Objet séance de cours créé:', $seanceCours->toArray());
+                // Prepare data for creation
+                $data = $validator->validated();
+                $data['classe_id'] = $emploiTemps->classe_id;
+                $data['annee_universitaire_id'] = $emploiTemps->annee_universitaire_id;
 
-            $seanceCours->save();
+                // Calcul automatique de la date de séance
+                // On suppose que jour = 1 (Lundi) à 7 (Dimanche)
+                $dateDebut = $emploiTemps->date_debut instanceof \Carbon\Carbon ? $emploiTemps->date_debut : \Carbon\Carbon::parse($emploiTemps->date_debut);
+                $data['date_seance'] = $dateDebut->copy()->addDays($data['jour'] - 1);
 
-            Log::info('Séance de cours enregistrée avec succès, ID: ' . $seanceCours->id);
+                // Couleur dynamique selon le type
+                if (empty($data['color'])) {
+                    $data['color'] = \App\Models\ESBTPSeanceCours::DEFAULT_COLORS[$data['type']] ?? '#000000';
+                }
 
-            DB::commit();
+                // Log des données à enregistrer
+                \Log::info('Création séance - Données enregistrées', $data);
 
-            return redirect()->route('esbtp.emploi-temps.show', $validated['emploi_temps_id'])
-                ->with('success', 'Séance de cours ajoutée avec succès à l\'emploi du temps.');
+                // Correction : récupérer is_recurring et recurrence_days depuis $request
+                $isRecurring = $request->has('is_recurring');
+                $recurrenceDays = $request->input('recurrence_days', []);
+                if (is_string($recurrenceDays)) {
+                    $recurrenceDays = explode(',', $recurrenceDays);
+                }
+                \Log::info('DEBUG - is_recurring', [
+                    'is_recurring' => $isRecurring,
+                    'recurrence_days' => $recurrenceDays,
+                    'data' => $data
+                ]);
+
+                $createdSessions = [];
+                if ($isRecurring && !empty($recurrenceDays) && is_array($recurrenceDays)) {
+                    foreach ($recurrenceDays as $recurringDay) {
+                        $dataForDay = $data;
+                        $dataForDay['jour'] = $recurringDay;
+                        // Calcul automatique de la date_seance pour chaque jour récurrent
+                        $dataForDay['date_seance'] = $dateDebut->copy()->addDays($recurringDay - 1);
+                        $session = ESBTPSeanceCours::create($dataForDay);
+                        $createdSessions[] = $session->id;
+                        \Log::info('Séance récurrente créée', ['id' => $session->id, 'jour' => $recurringDay]);
+                    }
+                } else {
+                    $session = ESBTPSeanceCours::create($data);
+                    $createdSessions[] = $session->id;
+                    \Log::info('Séance simple créée', ['id' => $session->id, 'jour' => $data['jour']]);
+                }
+                DB::commit();
+                \Log::info('Création séances terminée', ['ids' => $createdSessions]);
+            return redirect()
+                ->route('esbtp.emploi-temps.show', $request->emploi_temps_id)
+                    ->with('success', 'Séance(s) ajoutée(s) avec succès.');
+            } catch (ValidationException $e) {
+                DB::rollBack();
+                \Log::error('Erreur validation transaction création séance', $e->errors());
+                return redirect()->back()
+                    ->withErrors($e->errors())
+                    ->withInput();
+            } catch (\Exception $e) {
+                DB::rollBack();
+                \Log::error('Erreur exception création séance', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+                throw $e;
+            }
         } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Erreur lors de l\'ajout d\'une séance de cours: ' . $e->getMessage());
-            Log::error('Trace: ' . $e->getTraceAsString());
-            return back()->withInput()->with('error', 'Une erreur est survenue lors de la création de la séance de cours: ' . $e->getMessage());
+            \Log::error('Erreur globale création séance', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return back()->with('error', 'Une erreur est survenue lors de la création de la séance : ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Check for scheduling conflicts
+     */
+    private function checkSchedulingConflicts(Request $request)
+    {
+        $conflicts = [];
+
+        $emploiTemps = ESBTPEmploiTemps::findOrFail($request->emploi_temps_id);
+        $dateDebut = $emploiTemps->date_debut instanceof \Carbon\Carbon ? $emploiTemps->date_debut : \Carbon\Carbon::parse($emploiTemps->date_debut);
+        $dateSeance = $dateDebut->copy()->addDays($request->jour - 1);
+
+        // Conflit enseignant sur tous les emplois du temps actifs
+        if (in_array($request->type, ['course', 'homework']) && $request->teacher_id) {
+            $teacherConflictQuery = ESBTPSeanceCours::where('teacher_id', $request->teacher_id)
+                ->where('date_seance', $dateSeance)
+                ->where(function($q) use ($request) {
+                    $q->where('heure_debut', '<', $request->heure_fin)
+                      ->where('heure_fin', '>', $request->heure_debut);
+                })
+                ->whereHas('emploiTemps', function($q) {
+                    $q->where('is_active', 1);
+                });
+            if ($teacherConflictQuery->count() > 0) {
+                $teacher = ESBTPTeacher::find($request->teacher_id);
+                $conflicts[] = "L'enseignant {$teacher->user->name} a déjà un cours à cet horaire sur un emploi du temps actif.";
+            }
+        }
+
+        // Check room conflicts for course and homework
+        if (in_array($request->type, ['course', 'homework']) && $request->salle) {
+            $roomConflicts = ESBTPSeanceCours::where('salle', $request->salle)
+                ->where('date_seance', $dateSeance)
+                ->where('heure_debut', '<', $request->heure_fin)
+                ->where('heure_fin', '>', $request->heure_debut)
+                ->count();
+
+            if ($roomConflicts > 0) {
+                $conflicts[] = "La salle {$request->salle} est déjà occupée à cet horaire";
+            }
+        }
+
+        // Check class conflicts
+        $classConflicts = ESBTPSeanceCours::where('classe_id', $emploiTemps->classe_id)
+            ->where('date_seance', $dateSeance)
+            ->where(function($q) use ($request) {
+                $q->where(function($q) use ($request) {
+                    $q->where('heure_debut', '<', $request->heure_fin)
+                      ->where('heure_fin', '>', $request->heure_debut);
+                });
+            })
+            ->count();
+        if ($classConflicts > 0) {
+            $conflicts[] = "La classe a déjà une séance programmée à cet horaire";
+        }
+
+        return $conflicts;
     }
 
     /**
@@ -341,107 +443,52 @@ class ESBTPSeanceCoursController extends Controller
      */
     public function edit(ESBTPSeanceCours $seancesCour)
     {
-        // Ajouter des logs détaillés pour le débogage
-        \Log::info('Tentative de modification d\'une séance de cours', [
-            'seance_id' => $seancesCour->id,
-            'emploi_temps_id' => $seancesCour->emploi_temps_id,
-            'classe_id' => $seancesCour->classe_id,
-            'annee_universitaire_id' => $seancesCour->annee_universitaire_id
-        ]);
-
-        // Récupérer l'emploi du temps directement depuis la base de données
-        // en utilisant DB::table pour éviter tout problème avec le modèle
-        $emploiTempsDB = \DB::table('esbtp_emploi_temps')
-            ->where('id', $seancesCour->emploi_temps_id)
-            ->first();
-
-        \Log::info('Résultat de la requête DB directe pour l\'emploi du temps', [
-            'emploi_temps_trouve' => $emploiTempsDB ? 'Oui' : 'Non',
-            'emploi_temps_data' => $emploiTempsDB
-        ]);
-
-        // Récupérer l'emploi du temps avec le modèle Eloquent
-        $emploiTemps = \App\Models\ESBTPEmploiTemps::find($seancesCour->emploi_temps_id);
-
-        \Log::info('Résultat de la requête Eloquent pour l\'emploi du temps', [
-            'emploi_temps_trouve' => $emploiTemps ? 'Oui' : 'Non',
-            'emploi_temps_id' => $emploiTemps ? $emploiTemps->id : null,
-            'emploi_temps_deleted_at' => $emploiTemps ? $emploiTemps->deleted_at : null
-        ]);
-
-        // Si l'emploi du temps existe dans la base de données mais pas via Eloquent,
-        // cela pourrait être dû à un soft delete
-        if ($emploiTempsDB && !$emploiTemps) {
-            \Log::warning('L\'emploi du temps existe dans la base de données mais pas via Eloquent, possible soft delete', [
-                'emploi_temps_id' => $seancesCour->emploi_temps_id,
-                'deleted_at' => $emploiTempsDB->deleted_at ?? 'Non disponible'
-            ]);
-
-            // Essayer de récupérer même les emplois du temps supprimés
-            $emploiTemps = \App\Models\ESBTPEmploiTemps::withTrashed()->find($seancesCour->emploi_temps_id);
-
-            \Log::info('Résultat de la requête Eloquent avec withTrashed()', [
-                'emploi_temps_trouve' => $emploiTemps ? 'Oui' : 'Non',
-                'emploi_temps_id' => $emploiTemps ? $emploiTemps->id : null,
-                'emploi_temps_deleted_at' => $emploiTemps ? $emploiTemps->deleted_at : null
-            ]);
-        }
-
-        // Vérifier si l'emploi du temps existe
-        if (!$emploiTemps) {
-            // Log l'erreur pour le débogage
-            \Log::error('Emploi du temps non trouvé pour la séance de cours ID: ' . $seancesCour->id . ', emploi_temps_id: ' . $seancesCour->emploi_temps_id);
-
-            // Essayer de trouver un emploi du temps correspondant à la classe
-            if ($seancesCour->classe_id && $seancesCour->annee_universitaire_id) {
-                \Log::info('Tentative de recherche d\'un emploi du temps pour classe_id: ' . $seancesCour->classe_id . ', annee_universitaire_id: ' . $seancesCour->annee_universitaire_id);
-
-                $emploiTemps = \App\Models\ESBTPEmploiTemps::where('classe_id', $seancesCour->classe_id)
-                    ->where('annee_universitaire_id', $seancesCour->annee_universitaire_id)
-                    ->first();
-
-                if ($emploiTemps) {
-                    // Mettre à jour la séance avec l'emploi du temps trouvé
-                    $seancesCour->emploi_temps_id = $emploiTemps->id;
-                    $seancesCour->save();
-
-                    \Log::info('Emploi du temps trouvé et associé à la séance de cours ID: ' . $seancesCour->id . ', nouvel emploi_temps_id: ' . $emploiTemps->id);
-                } else {
-                    \Log::error('Aucun emploi du temps trouvé pour classe_id: ' . $seancesCour->classe_id . ', annee_universitaire_id: ' . $seancesCour->annee_universitaire_id);
-
-                    // Essayer de trouver n'importe quel emploi du temps pour cette classe
-                    $emploiTemps = \App\Models\ESBTPEmploiTemps::where('classe_id', $seancesCour->classe_id)->first();
-
-                    if ($emploiTemps) {
-                        // Mettre à jour la séance avec l'emploi du temps trouvé
-                        $seancesCour->emploi_temps_id = $emploiTemps->id;
-                        $seancesCour->save();
-
-                        \Log::info('Emploi du temps alternatif trouvé et associé à la séance de cours ID: ' . $seancesCour->id . ', nouvel emploi_temps_id: ' . $emploiTemps->id);
-                    } else {
-                        // Rediriger avec un message d'erreur
-                        return redirect()->route('esbtp.seances-cours.index')
-                            ->with('error', 'L\'emploi du temps associé à cette séance de cours n\'existe pas ou a été supprimé.');
-                    }
-                }
-            } else {
-                \Log::error('Impossible de rechercher un emploi du temps alternatif car classe_id ou annee_universitaire_id est manquant. classe_id: ' . $seancesCour->classe_id . ', annee_universitaire_id: ' . $seancesCour->annee_universitaire_id);
-
-                // Rediriger avec un message d'erreur
-                return redirect()->route('esbtp.seances-cours.index')
-                    ->with('error', 'L\'emploi du temps associé à cette séance de cours n\'existe pas ou a été supprimé.');
+        try {
+            // Check if the session exists
+            if (!$seancesCour->exists) {
+                Log::error('Session not found when trying to edit', [
+                    'session_id' => $seancesCour->id,
+                    'user_id' => Auth::id()
+                ]);
+                return back()->with('error', 'La séance de cours n\'existe pas.');
             }
-        }
 
-        // Si nous avons trouvé un emploi du temps, continuer avec le chargement des données pour la vue
-        if ($emploiTemps) {
-            $classe = \App\Models\ESBTPClasse::with('filiere', 'niveau')->findOrFail($emploiTemps->classe_id);
+            // Check authorization
+            if (!Auth::user()->can('edit', $seancesCour)) {
+                Log::warning('Unauthorized attempt to edit session', [
+                    'session_id' => $seancesCour->id,
+                    'user_id' => Auth::id()
+                ]);
+                return back()->with('error', 'Vous n\'êtes pas autorisé à modifier cette séance.');
+            }
 
-            // Récupérer les matières associées à cette classe ou formation
-            $matieres = \App\Models\ESBTPMatiere::where('is_active', true)->orderBy('name')->get();
+            // Load the emploi du temps with error handling
+            $emploiTemps = $seancesCour->emploiTemps;
+        if (!$emploiTemps) {
+                Log::error('Associated emploi du temps not found', [
+                    'session_id' => $seancesCour->id,
+                    'user_id' => Auth::id()
+                ]);
+                return back()->with('error', 'L\'emploi du temps associé est introuvable.');
+                    }
 
-            // Récupérer les enseignants disponibles
-            $enseignants = \App\Models\User::role('enseignant')->where('is_active', true)->orderBy('name')->get();
+            // Load required data with error handling
+            try {
+                $teachers = ESBTPTeacher::with('user')
+                    ->where('is_active', true)
+                    ->get()
+                    ->sortBy('user.name');
+
+                $matieres = ESBTPMatiere::where('is_active', true)
+                    ->orderBy('name')
+                    ->get();
+
+                $sessionTypes = [
+                    ESBTPSeanceCours::TYPE_COURSE => 'Cours',
+                    ESBTPSeanceCours::TYPE_HOMEWORK => 'Devoir',
+                    ESBTPSeanceCours::TYPE_BREAK => 'Récréation',
+                    ESBTPSeanceCours::TYPE_LUNCH => 'Pause déjeuner'
+                ];
 
             $joursSemaine = [
                 1 => 'Lundi',
@@ -453,18 +500,35 @@ class ESBTPSeanceCoursController extends Controller
                 7 => 'Dimanche'
             ];
 
+                $defaultColors = ESBTPSeanceCours::DEFAULT_COLORS;
+
+            } catch (\Exception $e) {
+                Log::error('Error loading required data for edit form', [
+                    'session_id' => $seancesCour->id,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                return back()->with('error', 'Erreur lors du chargement des données du formulaire.');
+            }
+
             return view('esbtp.seances-cours.edit', compact(
                 'seancesCour',
                 'emploiTemps',
-                'classe',
+                'teachers',
                 'matieres',
-                'enseignants',
-                'joursSemaine'
+                'sessionTypes',
+                'joursSemaine',
+                'defaultColors'
             ));
-        } else {
-            // Si nous n'avons toujours pas d'emploi du temps, rediriger avec un message d'erreur
-            return redirect()->route('esbtp.seances-cours.index')
-                ->with('error', 'L\'emploi du temps associé à cette séance de cours n\'existe pas ou a été supprimé.');
+
+        } catch (\Exception $e) {
+            Log::error('Error in SeanceCoursController@edit', [
+                'session_id' => $seancesCour->id ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'user_id' => Auth::id()
+            ]);
+            return back()->with('error', 'Une erreur est survenue lors du chargement du formulaire de modification: ' . $e->getMessage());
         }
     }
 
@@ -474,86 +538,54 @@ class ESBTPSeanceCoursController extends Controller
     public function update(Request $request, ESBTPSeanceCours $seancesCour)
     {
         try {
-            // Déterminer le type de séance
-            $typeSeance = $request->input('type_seance');
-            $isPause = $typeSeance === 'pause';
-            $isDejeuner = $typeSeance === 'dejeuner';
-            $isBreak = $isPause || $isDejeuner;
-
-            Log::info('Mise à jour de séance - Type détecté:', [
-                'type' => $typeSeance,
-                'isPause' => $isPause,
-                'isDejeuner' => $isDejeuner,
-                'isBreak' => $isBreak
-            ]);
-
-            // Validation avec règles dynamiques
-            $validationRules = [
+            // Base validation rules
+            $rules = [
+                'type' => 'required|in:' . implode(',', [
+                    ESBTPSeanceCours::TYPE_COURSE,
+                    ESBTPSeanceCours::TYPE_HOMEWORK,
+                    ESBTPSeanceCours::TYPE_BREAK,
+                    ESBTPSeanceCours::TYPE_LUNCH
+                ]),
                 'jour' => 'required|integer|min:1|max:7',
-                'heure_debut' => 'required|string',
-                'heure_fin' => 'required|string|after:heure_debut',
-                'type_seance' => 'required|string|in:cours,td,tp,examen,pause,dejeuner,autre',
-                'description' => 'nullable|string',
-                'is_active' => 'boolean',
+                'heure_debut' => 'required|date_format:H:i',
+                'heure_fin' => 'required|date_format:H:i|after:heure_debut',
+                'color' => 'nullable|string',
+                'is_recurring' => 'boolean',
+                'recurrence_days' => 'nullable|array',
+                'recurrence_days.*' => 'integer|min:1|max:7',
+                'priority' => 'integer'
             ];
 
-            // Ajuster les règles de validation en fonction du type de séance
-            if ($isBreak) {
-                $validationRules['matiere_id'] = 'nullable|exists:esbtp_matieres,id';
-                $validationRules['enseignant'] = 'nullable|string|max:255';
-            } else {
-                $validationRules['matiere_id'] = 'required|exists:esbtp_matieres,id';
-                $validationRules['enseignant'] = 'nullable|string|max:255';
-            }
-
-            // Pour les pauses, la salle est optionnelle
-            if ($isPause) {
-                $validationRules['salle'] = 'nullable|string|max:50';
-            } else {
-                $validationRules['salle'] = 'required|string|max:50';
-            }
-
-            $validated = $request->validate($validationRules);
-
-            DB::beginTransaction();
-
-            // Mise à jour des champs
-            $seancesCour->matiere_id = $isBreak ? null : $validated['matiere_id'];
-            $seancesCour->enseignant = $isBreak ? null : $validated['enseignant'];
-            $seancesCour->jour = $validated['jour'];
-            $seancesCour->heure_debut = $validated['heure_debut'];
-            $seancesCour->heure_fin = $validated['heure_fin'];
-            $seancesCour->salle = $isPause ? null : $validated['salle'];
-            $seancesCour->is_active = $request->has('is_active');
-            $seancesCour->type_seance = $validated['type_seance'];
-            $seancesCour->description = $validated['description'] ?? null;
-
-            $seancesCour->save();
-
-            DB::commit();
-
-            // Vérifier si l'emploi du temps existe avant de rediriger
-            $emploiTempsExists = \App\Models\ESBTPEmploiTemps::where('id', $seancesCour->emploi_temps_id)->exists();
-
-            if ($emploiTempsExists) {
-                return redirect()->route('esbtp.emploi-temps.show', $seancesCour->emploi_temps_id)
-                    ->with('success', 'Séance de cours mise à jour avec succès.');
-            } else {
-                // Si l'emploi du temps n'existe pas, rediriger vers la liste des séances
-                \Log::warning('Redirection vers la liste des séances car l\'emploi du temps n\'existe pas', [
-                    'seance_id' => $seancesCour->id,
-                    'emploi_temps_id' => $seancesCour->emploi_temps_id
+            // Add conditional validation rules based on session type
+            if (in_array($request->type, [ESBTPSeanceCours::TYPE_COURSE, ESBTPSeanceCours::TYPE_HOMEWORK])) {
+                $rules = array_merge($rules, [
+                    'teacher_id' => 'required|exists:esbtp_teachers,id',
+                    'matiere_id' => 'required|exists:esbtp_matieres,id',
+                    'salle' => 'required|string|max:50',
                 ]);
 
-                return redirect()->route('esbtp.seances-cours.index')
-                    ->with('success', 'Séance de cours mise à jour avec succès.')
-                    ->with('warning', 'L\'emploi du temps associé n\'existe plus ou a été supprimé.');
+                if ($request->type === ESBTPSeanceCours::TYPE_HOMEWORK) {
+                    $rules = array_merge($rules, [
+                        'homework_description' => 'required|string',
+                        'homework_due_date' => 'required|date|after:today',
+                    ]);
+                }
             }
+
+            // Validate the request
+            $validated = $request->validate($rules);
+
+            // Update the session
+            $seancesCour->update($validated);
+
+            return redirect()
+                ->route('esbtp.emploi-temps.show', $seancesCour->emploi_temps_id)
+                ->with('success', 'Séance mise à jour avec succès.');
         } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Erreur lors de la mise à jour d\'une séance de cours: ' . $e->getMessage());
-            Log::error('Trace: ' . $e->getTraceAsString());
-            return back()->withInput()->with('error', 'Une erreur est survenue lors de la mise à jour de la séance de cours: ' . $e->getMessage());
+            Log::error('Error in SeanceCoursController@update: ' . $e->getMessage());
+            return back()
+                ->withInput()
+                ->with('error', 'Une erreur est survenue lors de la mise à jour de la séance.');
         }
     }
 
@@ -563,14 +595,15 @@ class ESBTPSeanceCoursController extends Controller
     public function destroy(ESBTPSeanceCours $seancesCour)
     {
         try {
-            $emploi_temps_id = $seancesCour->emploi_temps_id;
+            $emploiTempsId = $seancesCour->emploi_temps_id;
             $seancesCour->delete();
 
-            return redirect()->route('esbtp.emploi-temps.show', $emploi_temps_id)
-                ->with('success', 'La séance a été supprimée avec succès.');
+            return redirect()
+                ->route('esbtp.emploi-temps.show', $emploiTempsId)
+                ->with('success', 'Séance supprimée avec succès.');
         } catch (\Exception $e) {
-            return redirect()->back()
-                ->with('error', 'Une erreur est survenue lors de la suppression de la séance: ' . $e->getMessage());
+            Log::error('Error in SeanceCoursController@destroy: ' . $e->getMessage());
+            return back()->with('error', 'Une erreur est survenue lors de la suppression de la séance.');
         }
     }
 

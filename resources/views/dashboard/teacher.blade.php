@@ -107,46 +107,44 @@
                     <div class="upcoming-classes">
                         @if(isset($upcomingClasses) && count($upcomingClasses) > 0)
                             @foreach($upcomingClasses as $seance)
-                                <div class="class-item p-3 mb-3 border rounded">
-                                    <div class="row align-items-center">
-                                        <div class="col-md-2 text-center">
-                                            <div class="date-badge rounded-pill px-3 py-2 bg-primary-light text-primary">
-                                                {{ $seance->date->format('d/m') }}
-                                                <div class="small">{{ $joursSemaine[$seance->jour] ?? '' }}</div>
-                                            </div>
+                                <div class="class-item p-3 mb-3 d-flex align-items-center shadow-sm bg-white rounded border-start border-4 border-primary position-relative" style="transition: box-shadow 0.2s;">
+                                    <div class="date-badge-seance text-center me-4 flex-shrink-0">
+                                        <div class="fw-bold text-primary" style="font-size:1.1rem;">
+                                            {{ \Carbon\Carbon::parse($seance->date_seance)->translatedFormat('l') }}
                                         </div>
-                                        <div class="col-md-8">
-                                            <h6 class="mb-1 fw-semibold">{{ $seance->matiere->name ?? 'Matière non définie' }}</h6>
-                                            <p class="mb-0 text-muted small">
-                                                <i class="fas fa-users me-1"></i> {{ $seance->emploiTemps->classe->name ?? 'Classe non définie' }}
-                                                <span class="ms-2">
-                                                    <i class="fas fa-map-marker-alt me-1"></i>
-                                                    {{ $seance->salle ?? 'Salle non définie' }}
-                                                </span>
-                                                <span class="ms-2">
-                                                    <i class="fas fa-tag me-1"></i>
-                                                    <span class="badge {{ $seance->type_seance == 'cours' ? 'bg-primary' : ($seance->type_seance == 'td' ? 'bg-secondary' : 'bg-success') }}">
-                                                        {{ strtoupper($seance->type_seance) }}
-                                                    </span>
-                                                </span>
-                                            </p>
+                                        <div class="text-dark" style="font-size:1.5rem;line-height:1;">
+                                            {{ \Carbon\Carbon::parse($seance->date_seance)->format('d') }}
                                         </div>
-                                        <div class="col-md-2 text-end">
-                                            <span class="badge bg-primary">
-                                                {{ Carbon\Carbon::parse($seance->heure_debut)->format('H:i') }} -
-                                                {{ Carbon\Carbon::parse($seance->heure_fin)->format('H:i') }}
+                                        <div class="text-muted" style="font-size:0.9rem;">
+                                            {{ \Carbon\Carbon::parse($seance->date_seance)->translatedFormat('F Y') }}
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex align-items-center mb-1">
+                                            <i class="fas fa-book-open text-primary me-2"></i>
+                                            <span class="fw-bold fs-5">{{ $seance->matiere->name ?? 'Matière inconnue' }}</span>
+                                        </div>
+                                        <div class="text-muted mb-1">
+                                            <i class="fas fa-users me-1"></i>
+                                            {{ $seance->classe->name ?? 'Classe inconnue' }}
+                                        </div>
+                                        <div>
+                                            <span class="badge bg-opacity-10 text-primary border border-primary me-2">
+                                                <i class="far fa-clock me-1"></i>
+                                                {{ \Carbon\Carbon::parse($seance->heure_debut)->format('H:i') }} - {{ \Carbon\Carbon::parse($seance->heure_fin)->format('H:i') }}
                                             </span>
+                                            @if($seance->salle)
+                                                <span class="badge bg-opacity-10 text-info border border-info">
+                                                    <i class="fas fa-door-open me-1"></i>
+                                                    {{ $seance->salle }}
+                                                </span>
+                                            @endif
                                         </div>
                                     </div>
                                 </div>
                             @endforeach
                         @else
-                            <div class="text-center py-5">
-                                <div class="mb-3">
-                                    <i class="fas fa-calendar-check fa-3x text-muted"></i>
-                                </div>
-                                <h6 class="text-muted">Aucun cours programmé prochainement</h6>
-                            </div>
+                            <div class="alert alert-info">Aucune séance à venir.</div>
                         @endif
                     </div>
                 </div>
@@ -186,25 +184,25 @@
                                         <div class="progress-bar bg-primary" role="progressbar" style="width: 100%"></div>
                                     </div>
                                 </div>
-                                
+
                                 <div class="stat-item mb-3">
                                     <div class="d-flex justify-content-between align-items-center mb-1">
                                         <span class="fw-semibold">Cours assurés</span>
                                         <span class="badge bg-success">{{ $attendanceStats['attendedCourses'] ?? 0 }}</span>
                                     </div>
                                     <div class="progress" style="height: 8px;">
-                                        <div class="progress-bar bg-success" role="progressbar" 
+                                        <div class="progress-bar bg-success" role="progressbar"
                                              style="width: {{ isset($attendanceStats['attendedCourses']) && isset($attendanceStats['totalCourses']) && $attendanceStats['totalCourses'] > 0 ? ($attendanceStats['attendedCourses'] / $attendanceStats['totalCourses'] * 100) : 0 }}%"></div>
                                     </div>
                                 </div>
-                                
+
                                 <div class="stat-item">
                                     <div class="d-flex justify-content-between align-items-center mb-1">
                                         <span class="fw-semibold">Cours manqués</span>
                                         <span class="badge bg-danger">{{ $attendanceStats['absentCourses'] ?? 0 }}</span>
                                     </div>
                                     <div class="progress" style="height: 8px;">
-                                        <div class="progress-bar bg-danger" role="progressbar" 
+                                        <div class="progress-bar bg-danger" role="progressbar"
                                              style="width: {{ isset($attendanceStats['absentCourses']) && isset($attendanceStats['totalCourses']) && $attendanceStats['totalCourses'] > 0 ? ($attendanceStats['absentCourses'] / $attendanceStats['totalCourses'] * 100) : 0 }}%"></div>
                                     </div>
                                 </div>
@@ -271,7 +269,7 @@
     // Configuration du graphique de taux de présence
     document.addEventListener('DOMContentLoaded', function() {
         var ctx = document.getElementById('attendanceChart');
-        
+
         if(ctx) {
             var attendanceChart = new Chart(ctx, {
                 type: 'doughnut',
@@ -279,7 +277,7 @@
                     labels: ['Présent', 'Absent'],
                     datasets: [{
                         data: [
-                            {{ isset($attendanceStats['attendedCourses']) ? $attendanceStats['attendedCourses'] : 0 }}, 
+                            {{ isset($attendanceStats['attendedCourses']) ? $attendanceStats['attendedCourses'] : 0 }},
                             {{ isset($attendanceStats['absentCourses']) ? $attendanceStats['absentCourses'] : 0 }}
                         ],
                         backgroundColor: ['#22c55e', '#ef4444'],
@@ -315,21 +313,24 @@
 @endsection
 
 @section('styles')
+@parent
 <style>
-    .date-badge {
-        background-color: rgba(99, 102, 241, 0.1);
-        color: var(--nextadmin-primary);
-        font-weight: 600;
+    .date-badge-seance {
+        min-width: 70px;
+        background: linear-gradient(135deg, #e0e7ff 0%, #f1f5f9 100%);
+        border-radius: 16px;
+        padding: 8px 0;
+        box-shadow: 0 2px 8px rgba(99,102,241,0.07);
+        margin-right: 1rem;
     }
-    
     .class-item {
-        transition: all 0.3s ease;
-        border-left: 4px solid var(--nextadmin-primary) !important;
+        border-left: 4px solid #6366f1 !important;
+        transition: box-shadow 0.2s, border-color 0.2s;
     }
-    
     .class-item:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 6px 24px rgba(99,102,241,0.10);
+        border-left-color: #4338ca !important;
+        background: #f8fafc;
     }
 </style>
-@endsection 
+@endsection

@@ -8,6 +8,9 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
 use Illuminate\Validation\Rule;
+use App\Models\Department;
+use App\Models\Laboratory;
+use App\Models\Teacher;
 
 class TeacherAdminController extends Controller
 {
@@ -33,7 +36,10 @@ class TeacherAdminController extends Controller
      */
     public function create()
     {
-        return view('esbtp.teachers.create');
+        $departments = Department::all();
+        $laboratories = Laboratory::all();
+        $statuses = Teacher::getAvailableStatuses();
+        return view('esbtp.teachers.create', compact('departments', 'laboratories', 'statuses'));
     }
 
     /**
@@ -41,12 +47,41 @@ class TeacherAdminController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
+        // Validation de base pour tous les statuts
+        $baseRules = [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'username' => 'required|string|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
-        ]);
+            'matricule' => 'required|string|max:50|unique:teachers,matricule',
+            'phone' => 'required|string|max:20',
+            'status' => 'required|string|in:' . implode(',', array_keys(Teacher::getAvailableStatuses())),
+            'teaching_hours_due' => 'required|numeric|min:0',
+            'specialties' => 'required|string',
+        ];
+
+        // Règles supplémentaires selon le statut
+        $status = $request->input('status');
+        if (!in_array($status, [Teacher::STATUS_VACATAIRE])) {
+            $baseRules = array_merge($baseRules, [
+                'department_id' => 'required|exists:departments,id',
+                'laboratory_id' => 'required|exists:laboratories,id',
+                'office_location' => 'required|string',
+                'research_interests' => 'required|string',
+                'bio' => 'required|string',
+            ]);
+        }
+
+        // Si ATER, département requis mais pas les autres champs
+        if ($status === Teacher::STATUS_ATER) {
+            $baseRules['department_id'] = 'required|exists:departments,id';
+            unset($baseRules['laboratory_id']);
+            unset($baseRules['office_location']);
+            unset($baseRules['research_interests']);
+            unset($baseRules['bio']);
+        }
+
+        $request->validate($baseRules);
 
         DB::beginTransaction();
         try {
@@ -56,19 +91,46 @@ class TeacherAdminController extends Controller
                 'email' => $request->email,
                 'username' => $request->username,
                 'password' => Hash::make($request->password),
+                'phone' => $request->phone,
                 'is_active' => true,
             ]);
-            
+
+            // Create teacher record with all possible fields
+            $teacherData = [
+                'matricule' => $request->matricule,
+                'status' => $request->status,
+                'teaching_hours_due' => $request->teaching_hours_due,
+                'specialties' => $request->specialties,
+            ];
+
+            // Ajouter les champs optionnels s'ils sont fournis
+            $optionalFields = [
+                'department_id',
+                'laboratory_id',
+                'office_location',
+                'research_interests',
+                'bio',
+                'website',
+                'grade',
+            ];
+
+            foreach ($optionalFields as $field) {
+                if ($request->filled($field)) {
+                    $teacherData[$field] = $request->$field;
+                }
+            }
+
+            $user->teacher()->create($teacherData);
+
             // Assign teacher role
             $role = Role::where('name', 'teacher')->first();
             if (!$role) {
-                // Create role if it doesn't exist
                 $role = Role::create(['name' => 'teacher']);
             }
             $user->assignRole($role);
-            
+
             DB::commit();
-            
+
             return redirect()
                 ->route('esbtp.teachers.index')
                 ->with('success', 'Enseignant créé avec succès.');
@@ -104,7 +166,7 @@ class TeacherAdminController extends Controller
     public function update(Request $request, $id)
     {
         $teacher = User::role(['teacher', 'enseignant'])->findOrFail($id);
-        
+
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => [
@@ -128,15 +190,15 @@ class TeacherAdminController extends Controller
             $teacher->name = $request->name;
             $teacher->email = $request->email;
             $teacher->username = $request->username;
-            
+
             if ($request->filled('password')) {
                 $teacher->password = Hash::make($request->password);
             }
-            
+
             $teacher->save();
-            
+
             DB::commit();
-            
+
             return redirect()
                 ->route('esbtp.teachers.index')
                 ->with('success', 'Enseignant mis à jour avec succès.');
@@ -154,16 +216,16 @@ class TeacherAdminController extends Controller
     public function destroy($id)
     {
         $teacher = User::role(['teacher', 'enseignant'])->findOrFail($id);
-        
+
         DB::beginTransaction();
         try {
             // Remove roles first
             $teacher->roles()->detach();
             // Delete the user
             $teacher->delete();
-            
+
             DB::commit();
-            
+
             return redirect()
                 ->route('esbtp.teachers.index')
                 ->with('success', 'Enseignant supprimé avec succès.');
@@ -173,4 +235,4 @@ class TeacherAdminController extends Controller
                 ->with('error', 'Une erreur est survenue lors de la suppression de l\'enseignant: ' . $e->getMessage());
         }
     }
-} 
+}

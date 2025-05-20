@@ -119,6 +119,16 @@ class ESBTPInscription extends Model
     }
 
     /**
+     * Relation avec les paiements centralisés (nouveau système).
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function payments()
+    {
+        return $this->hasMany(\App\Models\ESBTP\Payment::class, 'inscription_id');
+    }
+
+    /**
      * Utilisateur qui a validé l'inscription.
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
@@ -188,7 +198,7 @@ class ESBTPInscription extends Model
         if ($this->montant_scolarite <= 0) {
             return 100;
         }
-        
+
         return min(100, round(($this->montant_paye / $this->montant_scolarite) * 100));
     }
 
@@ -224,11 +234,11 @@ class ESBTPInscription extends Model
     public function scopeAnneeEnCours($query)
     {
         $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
-        
+
         if (!$anneeEnCours) {
             return $query->whereRaw('1=0'); // Retourne une requête vide si aucune année en cours
         }
-        
+
         return $query->where('annee_universitaire_id', $anneeEnCours->id);
     }
 
@@ -240,11 +250,11 @@ class ESBTPInscription extends Model
     public function getEstPourAnneeEnCoursAttribute()
     {
         $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
-        
+
         if (!$anneeEnCours) {
             return false;
         }
-        
+
         return $this->annee_universitaire_id === $anneeEnCours->id;
     }
 

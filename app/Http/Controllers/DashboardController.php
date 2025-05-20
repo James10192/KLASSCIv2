@@ -14,7 +14,7 @@ use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPParent;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPFiliere;
-use App\Models\ESBTPFormation;
+
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPEvaluation;
@@ -58,17 +58,17 @@ class DashboardController extends Controller
         if ($user->hasRole('superAdmin')) {
             return $this->superAdminDashboard();
         }
-        
+
         // Vérifier si l'utilisateur est un secrétaire
         if ($user->hasRole('secretaire')) {
             return $this->secretaireDashboard();
         }
-        
+
         // Vérifier si l'utilisateur est un enseignant
         if ($user->hasRole(['teacher', 'enseignant'])) {
             return redirect()->route('teacher.dashboard');
         }
-        
+
         // Vérifier si l'utilisateur est un étudiant
         if ($user->hasRole('etudiant')) {
             return $this->etudiantDashboard();
@@ -105,12 +105,6 @@ class DashboardController extends Controller
             $data['recentFilieres'] = collect();
         }
 
-        // Formations
-        try {
-            $data['totalFormations'] = ESBTPFormation::count();
-        } catch (\Exception $e) {
-            $data['totalFormations'] = 0;
-        }
 
         // Niveaux d'études
         try {
@@ -306,7 +300,7 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
         $student = ESBTPEtudiant::where('user_id', $user->id)->first();
-        
+
         if (!$student) {
             // Au lieu de rediriger, afficher une vue spéciale pour les étudiants sans profil
             return view('dashboard.etudiant_setup', [
@@ -318,7 +312,7 @@ class DashboardController extends Controller
             'user' => $user,
             'student' => $student
         ];
-        
+
         // Récupérer l'emploi du temps d'aujourd'hui pour l'étudiant
         try {
             $today = strtolower(date('l'));
@@ -332,7 +326,7 @@ class DashboardController extends Controller
         } catch (\Exception $e) {
             $data['todayTimetable'] = collect();
         }
-        
+
         // Récupérer les notifications récentes pour l'étudiant
         try {
             $data['notifications'] = ESBTPAnnonce::where(function($query) use ($student) {
@@ -354,7 +348,7 @@ class DashboardController extends Controller
         } catch (\Exception $e) {
             $data['notifications'] = collect();
         }
-        
+
         // Récupérer les notes récentes de l'étudiant
         try {
             $data['recentGrades'] = ESBTPNote::with(['evaluation.matiere'])
@@ -365,20 +359,20 @@ class DashboardController extends Controller
         } catch (\Exception $e) {
             $data['recentGrades'] = collect();
         }
-        
+
         // Récupérer les statistiques de présence de l'étudiant
         try {
             $attendances = ESBTPAttendance::where('etudiant_id', $student->id)->get();
             $totalAttendances = $attendances->count();
-            
+
             $data['attendanceStats'] = [
                 'total' => $totalAttendances,
                 'present' => $attendances->where('status', 'present')->count(),
                 'absent' => $attendances->where('status', 'absent')->count(),
                 'late' => $attendances->where('status', 'late')->count(),
                 'excused' => $attendances->where('status', 'excused')->count(),
-                'rate' => $totalAttendances > 0 
-                    ? round(($attendances->where('status', 'present')->count() + $attendances->where('status', 'late')->count()) / $totalAttendances * 100, 2) 
+                'rate' => $totalAttendances > 0
+                    ? round(($attendances->where('status', 'present')->count() + $attendances->where('status', 'late')->count()) / $totalAttendances * 100, 2)
                     : 0
             ];
         } catch (\Exception $e) {
@@ -391,7 +385,7 @@ class DashboardController extends Controller
                 'rate' => 0
             ];
         }
-        
+
         return view('dashboard.etudiant', $data);
     }
 
@@ -401,7 +395,7 @@ class DashboardController extends Controller
     public function genericDashboard()
     {
         $user = Auth::user();
-        
+
         return view('dashboard.index', [
             'user' => $user
         ]);
