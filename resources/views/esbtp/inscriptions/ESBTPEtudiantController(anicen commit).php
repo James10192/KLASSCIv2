@@ -889,89 +889,50 @@ class ESBTPEtudiantController extends Controller
      */
     public function searchParents(Request $request)
     {
-        \Log::info('Recherche de parents - Début', [
-            'request' => $request->all(),
-            'headers' => $request->headers->all()
-        ]);
-
         $search = $request->input('q', '');
         $page = $request->input('page', 1);
         $perPage = 10;
 
-        \Log::info('Paramètres de recherche', [
-            'search' => $search,
-            'page' => $page,
-            'perPage' => $perPage
-        ]);
-
         // Si la recherche est trop courte, renvoyer un résultat vide
         if (strlen($search) < 2) {
-            \Log::info('Recherche trop courte');
             return response()->json([
                 'items' => [],
                 'pagination' => ['more' => false]
             ]);
         }
 
-        try {
-            // Rechercher les parents correspondant à la requête
-            $query = ESBTPParent::where(function($query) use ($search) {
-                $query->where('nom', 'like', "%{$search}%")
-                      ->orWhere('prenoms', 'like', "%{$search}%")
-                      ->orWhere('telephone', 'like', "%{$search}%");
-            })
-            ->select('id', 'nom', 'prenoms', 'telephone');
+        // Rechercher les parents correspondant à la requête
+        $parents = ESBTPParent::where(function($query) use ($search) {
+            $query->where('nom', 'like', "%{$search}%")
+                  ->orWhere('prenoms', 'like', "%{$search}%")
+                  ->orWhere('telephone', 'like', "%{$search}%");
+        })
+        ->select('id', 'nom', 'prenoms', 'telephone')
+        ->skip(($page - 1) * $perPage)
+        ->take($perPage + 1) // Prendre un de plus pour vérifier s'il y a d'autres pages
+        ->get();
 
-            \Log::info('Requête SQL', [
-                'sql' => $query->toSql(),
-                'bindings' => $query->getBindings()
-            ]);
+        $hasMorePages = $parents->count() > $perPage;
 
-            $parents = $query->skip(($page - 1) * $perPage)
-                            ->take($perPage + 1)
-                            ->get();
-
-            \Log::info('Résultats de la recherche', [
-                'count' => $parents->count(),
-                'parents' => $parents->toArray()
-            ]);
-
-            $hasMorePages = $parents->count() > $perPage;
-
-            if ($hasMorePages) {
-                $parents = $parents->take($perPage);
-            }
-
-            // Formater les résultats pour Select2
-            $formattedParents = $parents->map(function($parent) {
-                return [
-                    'id' => $parent->id,
-                    'nom' => $parent->nom,
-                    'prenoms' => $parent->prenoms,
-                    'telephone' => $parent->telephone,
-                    'text' => $parent->nom . ' ' . $parent->prenoms . ' (' . $parent->telephone . ')'
-                ];
-            });
-
-            $response = [
-                'items' => $formattedParents,
-                'pagination' => ['more' => $hasMorePages]
-            ];
-
-            \Log::info('Réponse finale', $response);
-
-            return response()->json($response);
-        } catch (\Exception $e) {
-            \Log::error('Erreur lors de la recherche des parents', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            return response()->json([
-                'error' => 'Une erreur est survenue lors de la recherche des parents',
-                'message' => $e->getMessage()
-            ], 500);
+        if ($hasMorePages) {
+            $parents = $parents->take($perPage);
         }
+
+        // Formater les résultats pour Select2
+        $formattedParents = $parents->map(function($parent) {
+            return [
+                'id' => $parent->id,
+                'nom' => $parent->nom,
+                'prenoms' => $parent->prenoms,
+                'telephone' => $parent->telephone,
+                'text' => $parent->nom . ' ' . $parent->prenoms . ' (' . $parent->telephone . ')'
+            ];
+        });
+
+        return response()->json([
+            'items' => $formattedParents,
+            'pagination' => ['more' => $hasMorePages]
+        ]);
     }
 
     /**

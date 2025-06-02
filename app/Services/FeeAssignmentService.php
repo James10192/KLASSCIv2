@@ -80,7 +80,7 @@ class FeeAssignmentService
                         'installments_allowed' => true,
                         'min_installment_amount' => $rule->min_installment_amount,
                         'late_fee' => $rule->late_fee,
-                        'status' => 'pending',
+                        'status' => 'active',
                     ]);
                     $generatedFees[] = $fee;
                 }
@@ -107,7 +107,7 @@ class FeeAssignmentService
                     'installments_allowed' => false,
                     'min_installment_amount' => $rule->min_installment_amount,
                     'late_fee' => $rule->late_fee,
-                    'status' => 'pending',
+                    'status' => 'active',
                 ]);
                 $generatedFees[] = $fee;
             }

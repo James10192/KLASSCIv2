@@ -9,7 +9,7 @@
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
                     <h5 class="mb-0">Notifications</h5>
-                    @if($notifications->isNotEmpty())
+                    @if($notifications->where('is_read', false)->isNotEmpty())
                         <button class="btn btn-outline-secondary btn-sm mark-all-read">
                             <i class="fas fa-check-double me-1"></i> Tout marquer comme lu
                         </button>
@@ -27,10 +27,10 @@
                     @else
                         <div class="list-group list-group-flush">
                             @foreach($notifications as $notification)
-                                <div class="list-group-item notification-item {{ !$notification->read_at ? 'unread' : '' }}"
+                                <div class="list-group-item notification-item {{ !$notification->is_read ? 'unread' : '' }}"
                                      id="notification-{{ $notification->id }}"
-                                     @if(isset($notification->data['link']))
-                                         onclick="window.location.href='{{ $notification->data['link'] }}'; markAsRead('{{ $notification->id }}');"
+                                     @if($notification->link)
+                                         onclick="window.location.href='{{ $notification->link }}'; markAsRead('{{ $notification->id }}');"
                                      @else
                                          onclick="markAsRead('{{ $notification->id }}');"
                                      @endif
@@ -38,15 +38,15 @@
                                     <div class="row">
                                         <div class="col-md-8">
                                             <div class="d-flex align-items-center mb-2">
-                                                @if(isset($notification->data['type']) && $notification->data['type'] == 'danger')
+                                                @if($notification->type == 'danger' || $notification->type == 'error')
                                                     <span class="notification-icon bg-danger-light text-danger me-2">
                                                         <i class="fas fa-exclamation-circle"></i>
                                                     </span>
-                                                @elseif(isset($notification->data['type']) && $notification->data['type'] == 'warning')
+                                                @elseif($notification->type == 'warning')
                                                     <span class="notification-icon bg-warning-light text-warning me-2">
                                                         <i class="fas fa-exclamation-triangle"></i>
                                                     </span>
-                                                @elseif(isset($notification->data['type']) && $notification->data['type'] == 'success')
+                                                @elseif($notification->type == 'success')
                                                     <span class="notification-icon bg-success-light text-success me-2">
                                                         <i class="fas fa-check-circle"></i>
                                                     </span>
@@ -55,19 +55,22 @@
                                                         <i class="fas fa-info-circle"></i>
                                                     </span>
                                                 @endif
-                                                <h6 class="mb-0 fw-semibold">{{ $notification->data['title'] ?? 'Notification' }}</h6>
-                                                @if(!$notification->read_at)
+                                                <h6 class="mb-0 fw-semibold">{{ $notification->title ?? 'Notification' }}</h6>
+                                                @if(!$notification->is_read)
                                                     <span class="ms-2 badge bg-warning">Nouveau</span>
                                                 @endif
                                             </div>
-                                            <p class="notification-message">{{ $notification->data['message'] ?? '' }}</p>
+                                            <p class="notification-message">{{ $notification->message ?? '' }}</p>
                                             <div class="d-flex align-items-center mt-2">
                                                 <small class="text-muted">{{ $notification->created_at->diffForHumans() }}</small>
+                                                @if($notification->sender)
+                                                    <small class="text-muted ms-2">• Par {{ $notification->sender->name }}</small>
+                                                @endif
                                             </div>
                                         </div>
                                         <div class="col-md-4 d-flex align-items-center justify-content-end">
-                                            @if(str_contains(strtolower($notification->data['title'] ?? ''), 'absence'))
-                                                <a href="{{ $notification->data['link'] ?? route('esbtp.mes-absences.index') }}" class="btn btn-primary btn-sm" onclick="event.stopPropagation();">
+                                            @if(str_contains(strtolower($notification->title ?? ''), 'absence'))
+                                                <a href="{{ $notification->link ?? route('esbtp.mes-absences.index') }}" class="btn btn-primary btn-sm" onclick="event.stopPropagation();">
                                                     <i class="fas fa-file-alt me-1"></i> Justifier l'absence
                                                 </a>
                                             @endif
@@ -142,7 +145,7 @@
 @push('scripts')
 <script>
 function markAsRead(id) {
-    fetch(`{{ url('notifications') }}/${id}/read`, {
+    fetch(`{{ route('notifications.mark-as-read', '') }}/${id}`, {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -162,11 +165,7 @@ function markAsRead(id) {
 document.querySelector('.mark-all-read')?.addEventListener('click', function(e) {
     e.preventDefault();
 
-    @if(auth()->check() && auth()->user()->hasRole('etudiant'))
-    fetch('{{ route("esbtp.mes-notifications.markAllAsRead") }}', {
-    @else
-    fetch('{{ route("notifications.markAllAsRead") }}', {
-    @endif
+    fetch('{{ route("notifications.mark-all-as-read") }}', {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -179,6 +178,12 @@ document.querySelector('.mark-all-read')?.addEventListener('click', function(e) 
             const badge = item.querySelector('.badge');
             if (badge) badge.remove();
         });
+
+        // Masquer le bouton "Tout marquer comme lu" s'il n'y a plus de notifications non lues
+        const unreadCount = document.querySelectorAll('.notification-item.unread').length;
+        if (unreadCount === 0) {
+            this.style.display = 'none';
+        }
     });
 });
 </script>

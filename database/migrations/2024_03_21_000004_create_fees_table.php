@@ -19,7 +19,7 @@ return new class extends Migration
             $table->boolean('installments_allowed')->default(false);
             $table->decimal('min_installment_amount', 10, 2)->nullable();
             $table->decimal('late_fee', 10, 2)->nullable();
-            $table->enum('status', ['active', 'inactive'])->default('active');
+            $table->enum('status', ['active', 'inactive', 'pending'])->default('pending');
             $table->timestamps();
             $table->softDeletes();
         });

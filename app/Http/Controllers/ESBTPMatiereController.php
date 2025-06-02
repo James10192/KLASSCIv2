@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPNiveauEtude;
-use App\Models\ESBTPUniteEnseignement;
 use App\Models\ESBTPClasse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -20,7 +19,7 @@ class ESBTPMatiereController extends Controller
      */
     public function index()
     {
-        $matieres = ESBTPMatiere::with(['uniteEnseignement', 'filieres', 'niveaux'])->get();
+        $matieres = ESBTPMatiere::with(['filieres', 'niveaux'])->get();
 
         return view('esbtp.matieres.index', compact('matieres'));
     }
@@ -32,11 +31,13 @@ class ESBTPMatiereController extends Controller
      */
     public function create()
     {
-        $filieres = ESBTPFiliere::all();
-        $niveaux = ESBTPNiveauEtude::all();
-        $unitesEnseignement = ESBTPUniteEnseignement::all();
+        $this->authorize('create', ESBTPMatiere::class);
 
-        return view('esbtp.matieres.create', compact('filieres', 'niveaux', 'unitesEnseignement'));
+        $filieres = ESBTPFiliere::where('is_active', true)->get();
+        $niveauxEtudes = ESBTPNiveauEtude::all();
+        $unitesEnseignement = collect(); // Collection vide temporaire
+
+        return view('esbtp.matieres.create', compact('filieres', 'niveauxEtudes', 'unitesEnseignement'));
     }
 
     /**
@@ -97,7 +98,7 @@ class ESBTPMatiereController extends Controller
     public function show(ESBTPMatiere $matiere)
     {
         // Charger les relations
-        $matiere->load(['uniteEnseignement', 'filieres', 'niveaux', 'createdBy', 'updatedBy']);
+        $matiere->load(['filieres', 'niveaux', 'createdBy', 'updatedBy']);
 
         return view('esbtp.matieres.show', compact('matiere'));
     }
@@ -110,32 +111,13 @@ class ESBTPMatiereController extends Controller
      */
     public function edit(ESBTPMatiere $matiere)
     {
-        // Charger les relations
-        $matiere->load([
-            'uniteEnseignement',
-            'filieres',
-            'niveaux',
-            'seancesCours',
-            'evaluations'
-        ]);
+        $this->authorize('update', $matiere);
 
-        // Récupérer les données pour les listes déroulantes
-        $filieres = ESBTPFiliere::all();
-        $niveaux = ESBTPNiveauEtude::all();
-        $unitesEnseignement = ESBTPUniteEnseignement::all();
+        $filieres = ESBTPFiliere::where('is_active', true)->get();
+        $niveauxEtudes = ESBTPNiveauEtude::all();
+        $unitesEnseignement = collect(); // Collection vide temporaire
 
-        // Obtenir les IDs actuellement associés
-        $filiereIds = $matiere->filieres->pluck('id')->toArray();
-        $niveauIds = $matiere->niveaux->pluck('id')->toArray();
-
-        return view('esbtp.matieres.edit', compact(
-            'matiere',
-            'filieres',
-            'niveaux',
-            'unitesEnseignement',
-            'filiereIds',
-            'niveauIds'
-        ));
+        return view('esbtp.matieres.edit', compact('matiere', 'filieres', 'niveauxEtudes', 'unitesEnseignement'));
     }
 
     /**

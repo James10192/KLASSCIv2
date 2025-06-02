@@ -173,13 +173,16 @@ class ESBTPMatiere extends Model
 
     /**
      * Récupère l'unité d'enseignement associée à la matière.
+     * TEMPORAIREMENT COMMENTÉ - Table esbtp_unites_enseignement n'existe pas
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
+    /*
     public function uniteEnseignement()
     {
         return $this->belongsTo(ESBTPUniteEnseignement::class, 'unite_enseignement_id');
     }
+    */
 
     /**
      * Relation avec les niveaux d'études associés à cette matière.

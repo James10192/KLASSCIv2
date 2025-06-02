@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Models\Notification; // Notre modèle personnalisé
 use Illuminate\Support\Facades\Auth;
-use App\Notifications\ESBTPNotification;
 use Carbon\Carbon;
 
 class ESBTPNotificationController extends Controller
@@ -27,12 +27,17 @@ class ESBTPNotificationController extends Controller
 
         // Si la requête est AJAX (pour le dropdown), retourner une vue partielle
         if (request()->ajax()) {
-            $notifications = $user->notifications()->latest()->take(5)->get();
+            $notifications = Notification::where('user_id', $user->id)
+                ->latest()
+                ->take(5)
+                ->get();
             return view('notifications.partials.dropdown-items', compact('notifications'));
         }
 
         // Sinon, retourner la vue complète avec pagination
-        $notifications = $user->notifications()->paginate(10);
+        $notifications = Notification::where('user_id', $user->id)
+            ->latest()
+            ->paginate(10);
 
         return view('notifications.index', compact('notifications'));
     }
@@ -40,8 +45,11 @@ class ESBTPNotificationController extends Controller
     public function markAsRead($id)
     {
         $user = Auth::user();
-        $notification = $user->notifications()->findOrFail($id);
-        $notification->markAsRead();
+        $notification = Notification::where('user_id', $user->id)
+            ->where('id', $id)
+            ->firstOrFail();
+
+        $notification->update(['is_read' => true, 'read_at' => now()]);
 
         // Prune old read notifications
         $this->pruneOldReadNotifications($user);
@@ -64,7 +72,9 @@ class ESBTPNotificationController extends Controller
     public function markAllAsRead()
     {
         $user = Auth::user();
-        $user->unreadNotifications->markAsRead();
+        Notification::where('user_id', $user->id)
+            ->where('is_read', false)
+            ->update(['is_read' => true, 'read_at' => now()]);
 
         // Prune old read notifications
         $this->pruneOldReadNotifications($user);
@@ -75,7 +85,9 @@ class ESBTPNotificationController extends Controller
     public function getUnreadCount()
     {
         $user = Auth::user();
-        $count = $user->unreadNotifications()->count();
+        $count = Notification::where('user_id', $user->id)
+            ->where('is_read', false)
+            ->count();
 
         return response()->json(['count' => $count]);
     }
@@ -86,8 +98,8 @@ class ESBTPNotificationController extends Controller
     protected function pruneOldReadNotifications($user)
     {
         // Supprimer les notifications lues il y a plus de 7 jours
-        $user->notifications()
-            ->whereNotNull('read_at')
+        Notification::where('user_id', $user->id)
+            ->where('is_read', true)
             ->where('read_at', '<=', Carbon::now()->subDays(self::DAYS_TO_KEEP_READ_NOTIFICATIONS))
             ->delete();
     }
@@ -97,24 +109,34 @@ class ESBTPNotificationController extends Controller
      */
     protected function limitUserNotifications($user)
     {
-        $count = $user->notifications()->count();
+        $count = Notification::where('user_id', $user->id)->count();
 
         if ($count > self::MAX_NOTIFICATIONS_PER_USER) {
             $excess = $count - self::MAX_NOTIFICATIONS_PER_USER;
 
             // D'abord, supprimons les notifications lues les plus anciennes
-            $readCount = $user->notifications()
-                ->whereNotNull('read_at')
+            $readNotifications = Notification::where('user_id', $user->id)
+                ->where('is_read', true)
                 ->orderBy('created_at')
                 ->limit($excess)
-                ->delete();
+                ->get();
+
+            foreach ($readNotifications as $notification) {
+                $notification->delete();
+                $excess--;
+                if ($excess <= 0) break;
+            }
 
             // Si on a toujours des notifications en excès, supprimer les plus anciennes non lues
-            if ($readCount < $excess) {
-                $user->notifications()
+            if ($excess > 0) {
+                $oldNotifications = Notification::where('user_id', $user->id)
                     ->orderBy('created_at')
-                    ->limit($excess - $readCount)
-                    ->delete();
+                    ->limit($excess)
+                    ->get();
+
+                foreach ($oldNotifications as $notification) {
+                    $notification->delete();
+                }
             }
         }
     }

@@ -13,9 +13,17 @@ use App\Models\ESBTPFiliere;
 use App\Models\ESBTPNiveauEtude;
 use Carbon\Carbon;
 use App\Notifications\ESBTPNotification;
+use App\Services\NotificationService;
 
 class ESBTPAnnonceController extends Controller
 {
+    protected $notificationService;
+
+    public function __construct(NotificationService $notificationService)
+    {
+        $this->notificationService = $notificationService;
+    }
+
     /**
      * Affiche la liste des annonces.
      *
@@ -465,67 +473,7 @@ class ESBTPAnnonceController extends Controller
      */
     private function sendAnnonceNotification(ESBTPAnnonce $annonce)
     {
-        try {
-            // Récupérer la liste des étudiants à notifier en fonction du type d'annonce
-            $etudiants = collect();
-
-            if ($annonce->type == 'general') {
-                // Pour les annonces générales, notifier tous les étudiants actifs
-                // Suppression de whereHas('user') pour envoyer à tous les étudiants
-                $etudiants = ESBTPEtudiant::all();
-            } elseif ($annonce->type == 'classe') {
-                // Pour les annonces de classe, notifier les étudiants des classes concernées
-                // Suppression de whereHas('user') pour envoyer à tous les étudiants des classes concernées
-                $etudiants = ESBTPEtudiant::whereHas('classe_active', function($query) use ($annonce) {
-                    $query->whereIn('id', $annonce->classes->pluck('id'));
-                })
-                ->get();
-            } elseif ($annonce->type == 'etudiant') {
-                // Pour les annonces destinées à des étudiants spécifiques
-                // Suppression de whereHas('user') pour envoyer à tous les étudiants sélectionnés
-                $etudiants = $annonce->etudiants()->get();
-            }
-
-            // Déterminer le type de notification en fonction de la priorité
-            $notificationType = 'info';
-            if ($annonce->priorite == 1) {
-                $notificationType = 'warning';
-            } elseif ($annonce->priorite == 2) {
-                $notificationType = 'danger';
-            }
-
-            // Notifier chaque étudiant
-            $notifiedCount = 0;
-            foreach ($etudiants as $etudiant) {
-                // N'envoyer la notification que si l'étudiant a un compte utilisateur
-                if ($etudiant->user) {
-                    try {
-                        $etudiant->user->notify(new ESBTPNotification(
-                            'Nouvelle annonce: ' . $annonce->titre,
-                            $annonce->contenu,
-                            $notificationType,
-                            ['annonce_id' => $annonce->id]
-                        ));
-                        $notifiedCount++;
-                    } catch (\Exception $e) {
-                        \Log::error("Erreur lors de l'envoi de la notification à l'étudiant #{$etudiant->id}", [
-                            'error' => $e->getMessage()
-                        ]);
-                    }
-                }
-            }
-
-            \Log::info("Notifications envoyées pour l'annonce #{$annonce->id}", [
-                'titre' => $annonce->titre,
-                'type' => $annonce->type,
-                'etudiants_notifies' => $notifiedCount,
-                'total_etudiants' => $etudiants->count()
-            ]);
-        } catch (\Exception $e) {
-            \Log::error("Erreur lors de l'envoi des notifications pour l'annonce #{$annonce->id}", [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-        }
+        // Utiliser le service de notifications centralisé
+        $this->notificationService->notifyNewAnnouncement($annonce);
     }
 }

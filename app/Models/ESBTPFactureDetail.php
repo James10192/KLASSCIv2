@@ -8,14 +8,14 @@ use Illuminate\Database\Eloquent\Model;
 class ESBTPFactureDetail extends Model
 {
     use HasFactory;
-    
+
     /**
      * La table associée au modèle.
      *
      * @var string
      */
     protected $table = 'esbtp_facture_details';
-    
+
     /**
      * Les attributs qui sont assignables en masse.
      *
@@ -23,23 +23,24 @@ class ESBTPFactureDetail extends Model
      */
     protected $fillable = [
         'facture_id',
+        'designation',
         'description',
-        'quantite',
-        'prix_unitaire',
         'montant',
+        'quantite',
+        'total_ligne',
     ];
-    
+
     /**
      * Les attributs qui doivent être convertis.
      *
      * @var array
      */
     protected $casts = [
-        'quantite' => 'decimal:2',
-        'prix_unitaire' => 'decimal:2',
+        'quantite' => 'integer',
         'montant' => 'decimal:2',
+        'total_ligne' => 'decimal:2',
     ];
-    
+
     /**
      * Relation avec la facture.
      */
@@ -47,12 +48,12 @@ class ESBTPFactureDetail extends Model
     {
         return $this->belongsTo(ESBTPFacture::class, 'facture_id');
     }
-    
+
     /**
      * Obtenir le montant formaté.
      */
     public function getMontantFormateAttribute()
     {
-        return number_format($this->montant, 0, ',', ' ') . ' FCFA';
+        return number_format($this->total_ligne, 0, ',', ' ') . ' FCFA';
     }
 }

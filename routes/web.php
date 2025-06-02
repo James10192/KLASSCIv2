@@ -51,6 +51,9 @@ use App\Http\Controllers\ESBTPDepartmentController;
 use App\Http\Controllers\ESBTP\Admin\TeacherAdminController;
 use App\Http\Controllers\ESBTP\ESBTPSettingsController;
 use App\Http\Controllers\ESBTPLogsController;
+use App\Http\Controllers\SearchController;
+use App\Http\Controllers\NavbarController;
+use App\Http\Controllers\TimetableController;
 
 /*
 |--------------------------------------------------------------------------
@@ -122,6 +125,36 @@ Route::get('/password/reset', [ForgotPasswordController::class, 'showLinkRequest
 Route::post('/password/email', [ForgotPasswordController::class, 'sendResetLinkEmail'])->name('password.email');
 Route::get('/password/reset/{token}', [ResetPasswordController::class, 'showResetForm'])->name('password.reset');
 Route::post('/password/reset', [ResetPasswordController::class, 'reset'])->name('password.update');
+
+// Routes pour la navbar (recherche, notifications, messages, actions rapides)
+Route::middleware(['auth'])->group(function () {
+    // Routes de recherche
+    Route::get('/search', [SearchController::class, 'globalSearch'])->name('search.global');
+    Route::get('/search/results', [SearchController::class, 'searchResults'])->name('search.results');
+
+    // Routes pour les fonctionnalités de la navbar
+    Route::prefix('navbar')->name('navbar.')->group(function () {
+        Route::get('/notifications', [NavbarController::class, 'getNotifications'])->name('notifications');
+        Route::get('/messages', [NavbarController::class, 'getMessages'])->name('messages');
+        Route::get('/quick-actions', [NavbarController::class, 'getQuickActions'])->name('quick-actions');
+        Route::get('/stats', [NavbarController::class, 'getDashboardStats'])->name('stats');
+
+        // Actions sur les notifications
+        Route::post('/notifications/{id}/read', [NavbarController::class, 'markNotificationAsRead'])->name('notifications.read');
+        Route::post('/notifications/mark-all-read', [NavbarController::class, 'markAllNotificationsAsRead'])->name('notifications.mark-all-read');
+    });
+
+    // Route pour la page des notifications
+    Route::get('/notifications', [ESBTPNotificationController::class, 'index'])->name('notifications.page');
+    Route::post('/notifications/{id}/mark-as-read', [ESBTPNotificationController::class, 'markAsRead'])->name('notifications.mark-as-read');
+    Route::post('/notifications/mark-all-as-read', [ESBTPNotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-as-read');
+    Route::get('/notifications/unread-count', [ESBTPNotificationController::class, 'getUnreadCount'])->name('notifications.unread-count');
+
+    // Route pour les paramètres utilisateur
+    Route::get('/settings', function() {
+        return view('settings.index');
+    })->name('settings.index');
+});
 
 // Routes accessibles uniquement après authentification
 Route::middleware(['auth', 'installed'])->group(function () {
@@ -315,11 +348,21 @@ Route::middleware(['auth', 'installed'])->group(function () {
             Route::get('emploi-temps/{emploi_temp}/export-pdf', [ESBTPEmploiTempsController::class, 'generatePdf'])
                 ->name('emploi-temps.export-pdf')
                 ->middleware(['permission:view_timetables']);
-                // Routes pour les emplois du temps déjà définies plus haut
 
-            Route::get('emploi-temps/{emploi_temp}/export-pdf', [ESBTPEmploiTempsController::class, 'generatePdf'])
-                ->name('emploi-temps.export-pdf')
+            // Routes pour les emplois du temps standards (TimetableController)
+            Route::resource('timetables', TimetableController::class)
+                ->middleware(['permission:view_timetables|create_timetable|edit_timetables|delete_timetables']);
+
+            // Routes supplémentaires pour les emplois du temps
+            Route::get('timetables/class/{classId}', [TimetableController::class, 'showByClass'])
+                ->name('timetables.class')
                 ->middleware(['permission:view_timetables']);
+            Route::get('timetables/teacher/{teacherId}', [TimetableController::class, 'showByTeacher'])
+                ->name('timetables.teacher')
+                ->middleware(['permission:view_timetables']);
+            Route::get('timetables/student/{studentId}', [TimetableController::class, 'showByStudent'])
+                ->name('timetables.student')
+                ->middleware(['permission:view_own_timetable|view_timetables']);
 
             // Routes pour les résultats
             Route::get('resultats', [ESBTPBulletinController::class, 'resultats'])
@@ -410,6 +453,11 @@ Route::middleware(['auth', 'installed'])->group(function () {
                 Route::put('/{bulletin}', [ESBTPBulletinController::class, 'update'])->name('update');
                 Route::delete('/{bulletin}', [ESBTPBulletinController::class, 'destroy'])->name('destroy');
                 Route::get('/select', [ESBTPBulletinController::class, 'select'])->name('select');
+                Route::get('/generate', [ESBTPBulletinController::class, 'generateBulletin'])->name('generate');
+
+                // Routes pour la configuration des matières
+                Route::get('/config-matieres', [ESBTPBulletinController::class, 'configMatieresTypeFormation'])->name('config-matieres');
+                Route::post('/save-config-matieres', [ESBTPBulletinController::class, 'saveConfigMatieresTypeFormation'])->name('save-config-matieres');
 
                 // Route pour la signature des bulletins
                 Route::post('bulletins/{bulletin}/signer/{role}', [ESBTPBulletinController::class, 'signer'])
@@ -478,32 +526,6 @@ Route::middleware(['auth', 'installed'])->group(function () {
                 ->name('classes.matieres')
                 ->middleware(['permission:view_classes|view classes']);
 
-            // Routes pour les évaluations - visualisation seulement pour secrétaire
-            Route::resource('evaluations', ESBTPEvaluationController::class)
-                ->names([
-                    'index' => 'evaluations.index',
-                    'create' => 'evaluations.create',
-                    'store' => 'evaluations.store',
-                    'show' => 'evaluations.show',
-                    'edit' => 'evaluations.edit',
-                    'update' => 'evaluations.update',
-                    'destroy' => 'evaluations.destroy'
-                ])
-                ->middleware(['permission:view_exams|create_exam|edit_exams|delete_exams']);
-
-            // Ajout des routes spécifiques pour les évaluations
-            Route::patch('/evaluations/{evaluation}/update-status', [ESBTPEvaluationController::class, 'updateStatus'])
-                ->name('evaluations.update-status')
-                ->middleware(['permission:edit_exams']);
-
-            Route::patch('/evaluations/{evaluation}/toggle-published', [ESBTPEvaluationController::class, 'togglePublished'])
-                ->name('evaluations.toggle-published')
-                ->middleware(['permission:edit_exams']);
-
-            Route::patch('/evaluations/{evaluation}/toggle-notes-published', [ESBTPEvaluationController::class, 'toggleNotesPublished'])
-                ->name('evaluations.toggle-notes-published')
-                ->middleware(['permission:edit_exams']);
-
             // Routes pour les notes
             Route::resource('notes', ESBTPNoteController::class)
                 ->names([
@@ -548,12 +570,12 @@ Route::middleware(['auth', 'installed'])->group(function () {
 
             // Route pour accéder à la page des absences
             Route::get('/esbtp/mes-absences', [ESBTPAttendanceController::class, 'studentAttendance'])
-                ->name('esbtp.mes-absences.index')
+                ->name('mes-absences.index')
                 ->middleware(['permission:view_own_attendances|view_attendances']);
 
             // Route pour justifier une absence
             Route::post('/esbtp/mes-absences/{absenceId}/justify', [ESBTPAttendanceController::class, 'justifyAbsence'])
-                ->name('esbtp.mes-absences.justify')
+                ->name('mes-absences.justify')
                 ->middleware(['permission:view_own_attendances|view_attendances']);
 
             // Route de debug pour les absences (accessible uniquement en développement)
@@ -567,8 +589,7 @@ Route::middleware(['auth', 'installed'])->group(function () {
                 ->middleware(['permission:view_own_exams|view_exams']);
 
             // Routes pour les notifications des étudiants
-            Route::get('/mes-notifications', [ESBTPNotificationController::class, 'index'])
-                ->name('mes-notifications.index');
+            Route::get('/mes-notifications', [ESBTPNotificationController::class, 'index'])->name('mes-notifications.index');
             Route::post('/mes-notifications/{id}/read', [ESBTPNotificationController::class, 'markAsRead'])
                 ->name('mes-notifications.read');
             Route::post('/mes-notifications/mark-all-read', [ESBTPNotificationController::class, 'markAllAsRead'])
@@ -594,19 +615,7 @@ Route::middleware(['auth', 'installed'])->group(function () {
             // Suppression de bulletins
             Route::delete('bulletins/{bulletin}', [ESBTPBulletinController::class, 'destroy'])->name('bulletins.destroy');
 
-            // Routes pour les matières - création, modification, suppression
-            Route::get('matieres/create', [ESBTPMatiereController::class, 'create'])->name('matieres.create');
-            Route::post('matieres', [ESBTPMatiereController::class, 'store'])->name('matieres.store');
-            Route::get('matieres/{matiere}/edit', [ESBTPMatiereController::class, 'edit'])->name('matieres.edit');
-            Route::put('matieres/{matiere}', [ESBTPMatiereController::class, 'update'])->name('matieres.update');
-            Route::delete('matieres/{matiere}', [ESBTPMatiereController::class, 'destroy'])->name('matieres.destroy');
 
-            // Routes pour les évaluations - création, modification, suppression
-            Route::get('evaluations/create', [ESBTPEvaluationController::class, 'create'])->name('evaluations.create');
-            Route::post('evaluations', [ESBTPEvaluationController::class, 'store'])->name('evaluations.store');
-            Route::get('evaluations/{evaluation}/edit', [ESBTPEvaluationController::class, 'edit'])->name('evaluations.edit');
-            Route::put('evaluations/{evaluation}', [ESBTPEvaluationController::class, 'update'])->name('evaluations.update');
-            Route::delete('evaluations/{evaluation}', [ESBTPEvaluationController::class, 'destroy'])->name('evaluations.destroy');
 
             // Route de suppression des emplois du temps - Handled by resource route
         });
@@ -620,7 +629,6 @@ Route::middleware(['auth', 'installed'])->group(function () {
         // Teachers routes
         Route::resource('teachers', TeacherAdminController::class);
         Route::put('teachers/{id}/restore', [TeacherAdminController::class, 'restore'])->name('teachers.restore');
-        Route::resource('enseignants', ESBTPEnseignantController::class);
         Route::resource('specialties', ESBTPSpecialtyController::class);
         Route::put('specialties/{id}/restore', [ESBTPSpecialtyController::class, 'restore'])->name('specialties.restore');
         Route::resource('continuing-education', ESBTPContinuingEducationController::class);
@@ -705,14 +713,6 @@ Route::middleware(['auth', 'installed'])->group(function () {
         Route::get('/progression', [StudentProgressionController::class, 'index'])->name('esbtp.progression.index');
         Route::get('/api/progression/recommendations/{classe}/{annee}', [StudentProgressionController::class, 'getRecommendations'])->name('esbtp.progression.recommendations');
         Route::post('/api/progression/process', [StudentProgressionController::class, 'processProgression'])->name('esbtp.progression.process');
-    });
-
-    // Route spécifique pour l'URL /esbtp/mes-absences
-    Route::middleware(['auth', 'role:etudiant'])->group(function () {
-        // Cette route est redondante et sera commentée pour éviter les conflits
-        Route::get('/esbtp/mes-absences', [ESBTPAttendanceController::class, 'studentAttendance'])
-            ->name('esbtp.mes-absences.index')
-            ->middleware(['permission:view_own_attendances|view_attendances']);
     });
 
     // Routes pour l'émargement - Administration
@@ -835,20 +835,6 @@ Route::get('/esbtp/bulletins/select', [ESBTPBulletinController::class, 'select']
     ->name('esbtp.bulletins.select')
     ->middleware(['auth']);
 
-// Route spéciale pour la génération de PDF de bulletins - placée ici pour éviter les conflits
-Route::get('/esbtp-special/bulletins-pdf', [ESBTPBulletinController::class, 'genererPDFParParams'])->name('esbtp.bulletins.pdf-params');
-
-// Routes spéciales pour la prévisualisation et modification des moyennes
-Route::get('/esbtp-special/bulletins/moyennes-preview', [ESBTPBulletinController::class, 'previewMoyennes'])->name('esbtp.bulletins.moyennes-preview');
-Route::post('/esbtp-special/bulletins/moyennes-update', [ESBTPBulletinController::class, 'updateMoyennes'])->name('esbtp.bulletins.moyennes-update');
-
-// Routes spéciales pour la configuration des matières et l'édition des professeurs
-Route::get('/esbtp-special/bulletins/config-matieres', [ESBTPBulletinController::class, 'configMatieresTypeFormation'])->name('esbtp.bulletins.config-matieres');
-Route::post('/esbtp-special/bulletins/save-config-matieres', [ESBTPBulletinController::class, 'saveConfigMatieresTypeFormation'])->name('esbtp.bulletins.save-config-matieres');
-Route::get('/esbtp-special/bulletins/edit-professeurs', [ESBTPBulletinController::class, 'editProfesseurs'])->name('esbtp.bulletins.edit-professeurs');
-Route::post('/esbtp-special/bulletins/save-professeurs', [ESBTPBulletinController::class, 'saveProfesseurs'])->name('esbtp.bulletins.save-professeurs');
-Route::get('/esbtp-special/bulletins/generate', [ESBTPBulletinController::class, 'generate'])->name('esbtp.bulletins.generate');
-
 // Route pour télécharger un bulletin au format PDF
 Route::get('/esbtp/bulletins/{bulletin}/download', [ESBTPBulletinController::class, 'genererPDF'])->name('esbtp.bulletins.download');
 
@@ -869,16 +855,12 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'role:superAdmin'])-
     Route::put('specialties/{id}/restore', [ESBTPSpecialtyController::class, 'restore'])->name('specialties.restore');
     Route::resource('continuing-education', ESBTPContinuingEducationController::class);
     Route::put('continuing-education/{id}/restore', [ESBTPContinuingEducationController::class, 'restore'])->name('continuing-education.restore');
-    Route::resource('esbtp/etudiants', ESBTPStudentController::class, ['as' => 'esbtp'])->parameters(['etudiants' => 'etudiant']);;
+    Route::resource('etudiants', ESBTPStudentController::class)->parameters(['etudiants' => 'etudiant']);
     Route::put('students/{id}/restore', [ESBTPStudentController::class, 'restore'])->name('students.restore');
 });
 
 // Routes pour l'espace enseignant
 Route::middleware(['auth', 'role:teacher'])->group(function () {
-    // Tableau de bord enseignant
-    Route::get('/teacher/dashboard', [TeacherDashboardController::class, 'index'])->name('teacher.dashboard');
-    Route::get('/teacher/timetable', [TeacherDashboardController::class, 'showTimetable'])->name('teacher.timetable');
-
     // Gestion des notes
     Route::prefix('esbtp/notes')->name('esbtp.notes.')->group(function () {
         Route::get('/', [ESBTPNoteController::class, 'index'])->name('index');
@@ -1130,18 +1112,5 @@ Route::middleware(['auth', 'role:superAdmin|secretaire'])->group(function () {
         'update' => 'esbtp.annees-universitaires.update',
         'destroy' => 'esbtp.annees-universitaires.destroy',
     ]);
-});
-// ... existing code ...
-
-// Émargement enseignant (présence par code du jour)
-Route::middleware(['auth', 'role:teacher'])->prefix('enseignant/attendance')->name('esbtp.attendance.')->group(function () {
-    Route::get('/', [\App\Http\Controllers\ESBTP\ESBTPTeacherAttendanceController::class, 'index'])->name('mark');
-    Route::post('/mark', [\App\Http\Controllers\ESBTP\ESBTPTeacherAttendanceController::class, 'mark'])->name('mark.submit');
-    Route::get('/history', [\App\Http\Controllers\ESBTP\ESBTPTeacherAttendanceController::class, 'history'])->name('history');
-});
-
-// ... existing code ...
-Route::middleware(['auth', 'role:superAdmin'])->group(function () {
-    Route::get('/admin/attendance/history', [\App\Http\Controllers\ESBTP\ESBTPTeacherAttendanceController::class, 'adminHistory'])->name('admin.attendance.history');
 });
 // ... existing code ...

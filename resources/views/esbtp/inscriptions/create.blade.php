@@ -3,21 +3,1318 @@
 @section('title', 'Nouvelle Inscription')
 
 @push('styles')
+<!-- Choices.js CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
 <style>
-    .select2-container {
-        width: 100% !important;
+    /* Variables CSS pour la cohérence */
+    :root {
+        --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        --danger-gradient: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        --glass-bg: rgba(255, 255, 255, 0.25);
+        --glass-border: rgba(255, 255, 255, 0.18);
+        --shadow-soft: 0 8px 32px rgba(31, 38, 135, 0.37);
+        --shadow-hover: 0 15px 35px rgba(31, 38, 135, 0.5);
+        --border-radius: 16px;
+        --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    .select2-selection {
-        height: 38px !important;
-        border: 1px solid #ced4da !important;
+
+    /* Glassmorphism pour les conteneurs principaux */
+    .card {
+        background: var(--glass-bg);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow-soft);
+        transition: var(--transition);
     }
-    .select2-selection__rendered {
-        line-height: 36px !important;
+
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-hover);
     }
-    .select2-selection__arrow {
-        height: 36px !important;
+
+    /* Styles ultra-modernes pour Choices.js */
+    .choices {
+        margin-bottom: 0;
+        font-size: 14px;
+        position: relative;
+    }
+
+    .choices__inner {
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(10px);
+        border: 2px solid transparent;
+        border-radius: 12px;
+        font-size: 14px;
+        min-height: 48px;
+        padding: 12px 16px 8px;
+        transition: var(--transition);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .choices__inner::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: var(--primary-gradient);
+        opacity: 0;
+        transition: var(--transition);
+        z-index: -1;
+    }
+
+    .choices__inner:focus-within {
+        border-color: #667eea;
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+    }
+
+    .choices__inner:focus-within::before {
+        opacity: 0.1;
+    }
+
+    .choices__list--dropdown {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 16px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        z-index: 1050;
+        overflow: hidden;
+        animation: dropdownSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    @keyframes dropdownSlideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-10px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    .choices__item--selectable {
+        padding: 16px 20px;
+        transition: var(--transition);
+        position: relative;
+        overflow: hidden;
+        border-radius: 8px;
+        margin: 4px 8px;
+    }
+
+    .choices__item--selectable::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: var(--primary-gradient);
+        transition: var(--transition);
+        z-index: -1;
+    }
+
+    .choices__item--selectable:hover {
+        color: white;
+        transform: translateX(5px);
+    }
+
+    .choices__item--selectable:hover::before {
+        left: 0;
+    }
+
+    .choices__item--selectable.is-highlighted {
+        background: var(--primary-gradient);
+        color: white;
+        transform: translateX(5px);
+    }
+
+    .choices__placeholder {
+        color: #8b9dc3;
+        opacity: 1;
+        font-style: italic;
+    }
+
+    .choices__input {
+        background-color: transparent;
+        border: 0;
+        font-size: 14px;
+        margin-bottom: 0;
+        padding: 0;
+        color: #2d3748;
+    }
+
+    .choices__input:focus {
+        outline: 0;
+    }
+
+    /* Bouton d'ajout ultra-moderne avec glassmorphism */
+    .add-parent-container {
+        display: flex;
+        justify-content: center;
+        margin: 3rem 0;
+        padding: 2rem;
+        background: var(--glass-bg);
+        backdrop-filter: blur(15px);
+        border-radius: 24px;
+        border: 2px dashed rgba(102, 126, 234, 0.3);
+        transition: var(--transition);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .add-parent-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: var(--primary-gradient);
+        opacity: 0;
+        transition: var(--transition);
+        z-index: -1;
+    }
+
+    .add-parent-container:hover {
+        border-color: #667eea;
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-hover);
+    }
+
+    .add-parent-container:hover::before {
+        opacity: 0.1;
+    }
+
+    .btn-add-parent {
+        background: var(--primary-gradient);
+        border: none;
+        color: white;
+        padding: 16px 40px;
+        border-radius: 50px;
+        font-weight: 600;
+        font-size: 16px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        transition: var(--transition);
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .btn-add-parent::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        transition: var(--transition);
+        transform: translate(-50%, -50%);
+    }
+
+    .btn-add-parent:hover::before {
+        width: 300px;
+        height: 300px;
+    }
+
+    .btn-add-parent:hover {
+        transform: translateY(-3px) scale(1.05);
+        box-shadow: 0 15px 35px rgba(102, 126, 234, 0.6);
+        color: white;
+    }
+
+    .btn-add-parent:active {
+        transform: translateY(-1px) scale(1.02);
+    }
+
+    .btn-add-parent i {
+        margin-right: 12px;
+        font-size: 18px;
+        transition: var(--transition);
+        position: relative;
+        z-index: 1;
+    }
+
+    .btn-add-parent:hover i {
+        transform: rotate(180deg) scale(1.2);
+    }
+
+    /* Boutons de suppression stylés */
+    .remove-parent {
+        background: var(--danger-gradient);
+        border: none;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 25px;
+        font-weight: 500;
+        transition: var(--transition);
+        box-shadow: 0 4px 15px rgba(250, 112, 154, 0.4);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .remove-parent::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        transition: var(--transition);
+        transform: translate(-50%, -50%);
+    }
+
+    .remove-parent:hover::before {
+        width: 200px;
+        height: 200px;
+    }
+
+    .remove-parent:hover {
+        transform: translateY(-2px) scale(1.05);
+        box-shadow: 0 8px 25px rgba(250, 112, 154, 0.6);
+        color: white;
+    }
+
+    /* Cartes de parents avec effet glassmorphism */
+    .parent-item {
+        transition: var(--transition);
+        border: 1px solid var(--glass-border);
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: var(--shadow-soft);
+        background: var(--glass-bg);
+        backdrop-filter: blur(10px);
+        position: relative;
+    }
+
+    .parent-item::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: var(--primary-gradient);
+        transform: scaleX(0);
+        transition: var(--transition);
+    }
+
+    .parent-item:hover {
+        transform: translateY(-8px) scale(1.02);
+        box-shadow: var(--shadow-hover);
+    }
+
+    .parent-item:hover::before {
+        transform: scaleX(1);
+    }
+
+    .parent-item .card-body {
+        padding: 2rem;
+        background: transparent;
+    }
+
+    /* Titres avec effet néon */
+    .section-title {
+        color: #2d3748;
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        position: relative;
+        padding-left: 20px;
+        font-size: 1.5rem;
+    }
+
+    .section-title::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 6px;
+        height: 30px;
+        background: var(--primary-gradient);
+        border-radius: 3px;
+        box-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
+    }
+
+    .section-title::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 6px;
+        height: 30px;
+        background: var(--primary-gradient);
+        border-radius: 3px;
+        filter: blur(10px);
+        opacity: 0.7;
+    }
+
+    /* Checkboxes personnalisées */
+    .form-check-input {
+        width: 20px;
+        height: 20px;
+        border: 2px solid #667eea;
+        border-radius: 6px;
+        transition: var(--transition);
+        position: relative;
+    }
+
+    .form-check-input:checked {
+        background: var(--primary-gradient);
+        border-color: #667eea;
+        box-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
+    }
+
+    .form-check-input:focus {
+        box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.25);
+    }
+
+    .form-check-label {
+        font-weight: 500;
+        color: #4a5568;
+        margin-left: 8px;
+        transition: var(--transition);
+    }
+
+    .form-check:hover .form-check-label {
+        color: #667eea;
+    }
+
+    /* Inputs avec effet glassmorphism */
+    .form-control {
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(10px);
+        border: 2px solid transparent;
+        border-radius: 12px;
+        padding: 12px 16px;
+        transition: var(--transition);
+        font-size: 14px;
+    }
+
+    .form-control:focus {
+        background: rgba(255, 255, 255, 0.95);
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.15);
+        transform: translateY(-2px);
+    }
+
+    /* Labels stylés */
+    .form-label {
+        font-weight: 600;
+        color: #4a5568;
+        margin-bottom: 8px;
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* États d'erreur avec style moderne */
+    .choices.is-invalid .choices__inner {
+        border-color: #fa709a;
+        box-shadow: 0 0 0 0.25rem rgba(250, 112, 154, 0.25);
+    }
+
+    .form-control.is-invalid {
+        border-color: #fa709a;
+        box-shadow: 0 0 0 0.25rem rgba(250, 112, 154, 0.25);
+    }
+
+    /* États de chargement et messages */
+    .choices__list--dropdown .choices__item--loading,
+    .choices__list--dropdown .choices__item--no-results {
+        padding: 20px;
+        text-align: center;
+        color: #8b9dc3;
+        font-style: italic;
+        background: rgba(139, 157, 195, 0.1);
+        border-radius: 8px;
+        margin: 8px;
+    }
+
+    /* Animations avancées */
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+
+    @keyframes slideInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+    }
+
+    .parent-item {
+        animation: slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .btn-add-parent {
+        animation: float 3s ease-in-out infinite;
+    }
+
+    /* Boutons principaux stylés */
+    .btn-primary {
+        background: var(--primary-gradient);
+        border: none;
+        border-radius: 12px;
+        padding: 12px 24px;
+        font-weight: 600;
+        transition: var(--transition);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .btn-primary::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+        transition: left 0.5s;
+    }
+
+    .btn-primary:hover::before {
+        left: 100%;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+        color: white;
+    }
+
+    .btn-secondary {
+        background: rgba(108, 117, 125, 0.1);
+        backdrop-filter: blur(10px);
+        border: 2px solid rgba(108, 117, 125, 0.3);
+        border-radius: 12px;
+        padding: 12px 24px;
+        font-weight: 600;
+        transition: var(--transition);
+        color: #6c757d;
+    }
+
+    .btn-secondary:hover {
+        background: rgba(108, 117, 125, 0.2);
+        transform: translateY(-2px);
+        color: #495057;
+    }
+
+    /* Alertes modernes */
+    .alert {
+        background: var(--glass-bg);
+        backdrop-filter: blur(10px);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--border-radius);
+        border-left: 4px solid;
+        box-shadow: var(--shadow-soft);
+    }
+
+    .alert-info {
+        border-left-color: #4facfe;
+        background: rgba(79, 172, 254, 0.1);
+    }
+
+    .alert-warning {
+        border-left-color: #fee140;
+        background: rgba(254, 225, 64, 0.1);
+    }
+
+    .alert-danger {
+        border-left-color: #fa709a;
+        background: rgba(250, 112, 154, 0.1);
+    }
+
+    .alert-success {
+        border-left-color: #00f2fe;
+        background: rgba(0, 242, 254, 0.1);
+    }
+
+    /* Responsive design amélioré */
+    @media (max-width: 768px) {
+        .add-parent-container {
+            margin: 2rem 0;
+            padding: 1.5rem;
+        }
+
+        .btn-add-parent {
+            padding: 14px 30px;
+            font-size: 14px;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+        }
+
+        .parent-item .card-body {
+            padding: 1.5rem;
+        }
+    }
+
+    /* Micro-interactions pour les icônes */
+    .fas, .far {
+        transition: var(--transition);
+    }
+
+    .card-title .fas:hover {
+        transform: scale(1.2) rotate(5deg);
+        color: #667eea;
+    }
+
+    /* Effet de survol pour les conteneurs */
+    .container-fluid {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        min-height: 100vh;
+        padding: 2rem 0;
+    }
+
+    /* Scrollbar personnalisée */
+    ::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: var(--primary-gradient);
+        border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(135deg, #5a67d8 0%, #667eea 100%);
+    }
+
+    /* Styles pour les tags de parents (comme destinataires d'email) */
+    .choices__list--multiple .choices__item {
+        background: var(--primary-gradient);
+        border: none;
+        border-radius: 20px;
+        color: white;
+        font-size: 13px;
+        font-weight: 500;
+        margin: 2px 4px 2px 0;
+        padding: 6px 12px;
+        display: inline-flex;
+        align-items: center;
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        transition: var(--transition);
+        animation: slideInTag 0.3s ease-out;
+    }
+
+    @keyframes slideInTag {
+        from {
+            opacity: 0;
+            transform: translateX(-20px) scale(0.8);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0) scale(1);
+        }
+    }
+
+    .choices__list--multiple .choices__item:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .choices__list--multiple .choices__item .parent-tag {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .choices__list--multiple .choices__item .parent-tag small {
+        opacity: 0.8;
+        font-size: 11px;
+    }
+
+    .choices__button {
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        border-radius: 50%;
+        color: white;
+        cursor: pointer;
+        font-size: 12px;
+        height: 18px;
+        width: 18px;
+        margin-left: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: var(--transition);
+    }
+
+    .choices__button:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: scale(1.1);
+    }
+
+    .choices__button:focus {
+        outline: 2px solid rgba(255, 255, 255, 0.5);
+        outline-offset: 1px;
+    }
+
+    /* Styles pour les choix dans le dropdown */
+    .parent-choice-item {
+        padding: 8px 0;
+    }
+
+    .parent-choice-item .parent-info {
+        line-height: 1.3;
+    }
+
+    .parent-choice-item strong {
+        color: #2d3748;
+        font-size: 14px;
+    }
+
+    .parent-choice-item small {
+        color: #6c757d;
+        font-size: 12px;
+    }
+
+    /* Animation pour les choix au survol */
+    .choices__item--choice.parent-choice-item:hover {
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+    }
+
+    /* Amélioration du conteneur principal */
+    .choices__inner {
+        min-height: 48px;
+        padding: 8px 12px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .choices__list--multiple {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 2px;
+        margin: 0;
+    }
+
+    /* Style pour le champ de saisie */
+    .choices__input--cloned {
+        background: transparent;
+        border: none;
+        font-size: 14px;
+        min-width: 150px;
+        padding: 4px 0;
+    }
+
+    .choices__input--cloned:focus {
+        outline: none;
+    }
+
+    /* Placeholder amélioré */
+    .choices__placeholder {
+        color: #8b9dc3;
+        font-style: italic;
+        margin: 0;
+        padding: 4px 0;
+    }
+
+    /* Responsive pour mobile */
+    @media (max-width: 768px) {
+        .choices__list--multiple .choices__item {
+            font-size: 12px;
+            padding: 4px 8px;
+            margin: 1px 2px 1px 0;
+        }
+
+        .choices__button {
+            height: 16px;
+            width: 16px;
+            font-size: 10px;
+        }
+
+        .choices__input--cloned {
+            min-width: 100px;
+        }
     }
 </style>
+@endpush
+
+@push('scripts')
+<!-- Choices.js -->
+<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+
+<script>
+    // Variables globales pour les instances Choices.js
+    let parentChoicesInstances = {};
+    let parentCounter = 0;
+
+    // Configuration par défaut pour Choices.js
+    const defaultChoicesConfig = {
+        searchEnabled: true,
+        searchChoices: true,
+        searchFloor: 2,
+        searchResultLimit: 10,
+        shouldSort: false,
+        placeholder: true,
+        placeholderValue: 'Rechercher un parent...',
+        noResultsText: 'Aucun parent trouvé',
+        noChoicesText: 'Aucun parent disponible',
+        itemSelectText: 'Cliquer pour sélectionner',
+        loadingText: 'Recherche en cours...',
+        addItemText: (value) => `Appuyer sur Entrée pour ajouter <b>"${value}"</b>`,
+        maxItemText: (maxItemCount) => `Seulement ${maxItemCount} éléments peuvent être ajoutés`,
+        uniqueItemText: 'Seules des valeurs uniques peuvent être ajoutées',
+        customAddItemText: 'Seules des valeurs correspondant à des conditions spécifiques peuvent être ajoutées',
+        classNames: {
+            containerOuter: 'choices',
+            containerInner: 'choices__inner',
+            input: 'choices__input',
+            inputCloned: 'choices__input--cloned',
+            list: 'choices__list',
+            listItems: 'choices__list--multiple',
+            listSingle: 'choices__list--single',
+            listDropdown: 'choices__list--dropdown',
+            item: 'choices__item',
+            itemSelectable: 'choices__item--selectable',
+            itemDisabled: 'choices__item--disabled',
+            itemChoice: 'choices__item--choice',
+            placeholder: 'choices__placeholder',
+            group: 'choices__group',
+            groupHeading: 'choices__heading',
+            button: 'choices__button',
+            activeState: 'is-active',
+            focusState: 'is-focused',
+            openState: 'is-open',
+            disabledState: 'is-disabled',
+            highlightedState: 'is-highlighted',
+            selectedState: 'is-selected',
+            flippedState: 'is-flipped',
+            loadingState: 'is-loading',
+            noResults: 'has-no-results',
+            noChoices: 'has-no-choices'
+        }
+    };
+
+    // Fonction pour initialiser Choices.js sur un élément select
+    function initializeParentChoice(selectElement) {
+        const selectId = selectElement.id;
+        console.log('=== Initialisation de Choices.js pour:', selectId);
+
+        // Vérifier que l'élément existe
+        if (!selectElement) {
+            console.error('Élément select non trouvé:', selectId);
+            return null;
+        }
+
+        // Détruire l'instance existante si elle existe
+        if (parentChoicesInstances[selectId]) {
+            console.log('Destruction de l\'instance existante pour:', selectId);
+            parentChoicesInstances[selectId].destroy();
+            delete parentChoicesInstances[selectId];
+        }
+
+        // Ajouter l'attribut multiple pour permettre la sélection multiple
+        selectElement.setAttribute('multiple', 'multiple');
+
+        // Configuration pour un comportement similaire aux destinataires d'email
+        const config = {
+            searchEnabled: true,
+            searchChoices: true,
+            searchFloor: 2,
+            searchResultLimit: 10,
+            shouldSort: false,
+            placeholder: true,
+            placeholderValue: 'Rechercher et sélectionner des parents...',
+            noResultsText: 'Aucun parent trouvé',
+            noChoicesText: 'Aucun parent disponible',
+            itemSelectText: 'Cliquer pour sélectionner',
+            loadingText: 'Recherche en cours...',
+            removeItemButton: true, // Permet de supprimer les éléments sélectionnés
+            duplicateItemsAllowed: false, // Évite les doublons
+            maxItemCount: 5, // Limite le nombre de parents sélectionnables
+            searchResultLimit: 10,
+            renderChoiceLimit: 10,
+            callbackOnCreateTemplates: function(template) {
+                return {
+                    item: ({ classNames }, data) => {
+                        return template(`
+                            <div class="${classNames.item} ${data.highlighted ? classNames.highlightedState : classNames.itemSelectable}" data-item data-id="${data.id}" data-value="${data.value}" ${data.active ? 'aria-selected="true"' : ''} ${data.disabled ? 'aria-disabled="true"' : ''}>
+                                <span class="parent-tag">
+                                    <i class="fas fa-user me-1"></i>
+                                    ${data.label}
+                                    ${data.customProperties?.telephone ? `<small class="text-muted ms-1">(${data.customProperties.telephone})</small>` : ''}
+                                </span>
+                                ${!data.disabled ? `<button type="button" class="${classNames.button}" aria-label="Supprimer ${data.label}" data-button><i class="fas fa-times"></i></button>` : ''}
+                            </div>
+                        `);
+                    },
+                    choice: ({ classNames }, data) => {
+                        return template(`
+                            <div class="${classNames.item} ${classNames.itemChoice} ${data.disabled ? classNames.itemDisabled : classNames.itemSelectable}" data-select-text="${this.config.itemSelectText}" data-choice ${data.disabled ? 'data-choice-disabled aria-disabled="true"' : 'data-choice-selectable'} data-id="${data.id}" data-value="${data.value}" ${data.groupId > 0 ? 'role="treeitem"' : 'role="option"'}>
+                                <div class="parent-choice-item">
+                                    <div class="parent-info">
+                                        <strong>${data.customProperties?.nom || ''} ${data.customProperties?.prenoms || ''}</strong>
+                                        <br>
+                                        <small class="text-muted">
+                                            <i class="fas fa-phone me-1"></i>${data.customProperties?.telephone || ''}
+                                            ${data.customProperties?.email ? `<i class="fas fa-envelope ms-2 me-1"></i>${data.customProperties.email}` : ''}
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        `);
+                    }
+                };
+            }
+        };
+
+        console.log('Configuration Choices.js:', config);
+
+        try {
+            // Créer l'instance Choices.js
+            const choices = new Choices(selectElement, config);
+            parentChoicesInstances[selectId] = choices;
+            console.log('Instance Choices.js créée avec succès pour:', selectId);
+
+            // Gérer la recherche asynchrone
+            let searchTimeout;
+            selectElement.addEventListener('search', function(event) {
+                const searchTerm = event.detail.value;
+                console.log('Événement search déclenché:', { selectId, searchTerm });
+
+                if (searchTerm.length >= 2) {
+                    // Effacer le timeout précédent
+                    clearTimeout(searchTimeout);
+
+                    // Définir un nouveau timeout pour éviter trop de requêtes
+                    searchTimeout = setTimeout(() => {
+                        console.log('Lancement de la recherche pour:', searchTerm);
+                        searchParents(searchTerm, choices);
+                    }, 300);
+                } else {
+                    console.log('Terme de recherche trop court:', searchTerm);
+                }
+            });
+
+            // Gérer la sélection
+            selectElement.addEventListener('addItem', function(event) {
+                const selectedParent = event.detail;
+                console.log('Parent ajouté:', selectedParent);
+
+                // Mettre à jour les champs cachés pour tous les parents sélectionnés
+                const parentContainer = selectElement.closest('.parent-item');
+                if (parentContainer) {
+                    updateHiddenParentFields(parentContainer, selectElement);
+                }
+            });
+
+            // Gérer la suppression
+            selectElement.addEventListener('removeItem', function(event) {
+                const removedParent = event.detail;
+                console.log('Parent supprimé:', removedParent);
+
+                // Mettre à jour les champs cachés après suppression
+                const parentContainer = selectElement.closest('.parent-item');
+                if (parentContainer) {
+                    updateHiddenParentFields(parentContainer, selectElement);
+                }
+            });
+
+            return choices;
+        } catch (error) {
+            console.error('Erreur lors de la création de l\'instance Choices.js:', error);
+            return null;
+        }
+    }
+
+    // Fonction pour rechercher les parents via AJAX
+    function searchParents(searchTerm, choicesInstance) {
+        console.log('=== Début de la recherche de parents ===');
+        console.log('Terme de recherche:', searchTerm);
+        console.log('Instance Choices.js:', choicesInstance);
+
+        // Vérifier que l'instance Choices.js existe
+        if (!choicesInstance) {
+            console.error('Instance Choices.js non fournie');
+            return;
+        }
+
+        // Afficher l'état de chargement
+        try {
+            choicesInstance.setChoices([{
+                value: '',
+                label: 'Recherche en cours...',
+                disabled: true
+            }], 'value', 'label', true);
+            console.log('État de chargement affiché');
+        } catch (error) {
+            console.error('Erreur lors de l\'affichage de l\'état de chargement:', error);
+        }
+
+        const url = `{{ route('esbtp.api.search-parents') }}?q=${encodeURIComponent(searchTerm)}`;
+        console.log('URL de la requête:', url);
+
+        fetch(url, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        })
+        .then(response => {
+            console.log('Réponse reçue:', response);
+            console.log('Status:', response.status);
+            console.log('Headers:', response.headers);
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('=== Données reçues ===');
+            console.log('Data complète:', data);
+            console.log('Type de data:', typeof data);
+            console.log('Data.items:', data.items);
+
+            if (data.items && Array.isArray(data.items) && data.items.length > 0) {
+                console.log('Nombre de parents trouvés:', data.items.length);
+
+                // Transformer les données pour Choices.js
+                const choices = data.items.map(parent => {
+                    console.log('Parent à transformer:', parent);
+                    return {
+                        value: parent.id,
+                        label: parent.text || `${parent.nom} ${parent.prenoms} (${parent.telephone})`,
+                        customProperties: {
+                            details: `${parent.telephone || ''} ${parent.email ? '• ' + parent.email : ''}`.trim(),
+                            nom: parent.nom,
+                            prenoms: parent.prenoms,
+                            telephone: parent.telephone
+                        }
+                    };
+                });
+
+                console.log('Choices transformés:', choices);
+
+                // Mettre à jour les choix
+                try {
+                    choicesInstance.setChoices(choices, 'value', 'label', true);
+                    console.log('Choix mis à jour avec succès');
+                } catch (error) {
+                    console.error('Erreur lors de la mise à jour des choix:', error);
+                }
+            } else {
+                console.log('Aucun parent trouvé');
+                // Aucun résultat trouvé
+                try {
+                    choicesInstance.setChoices([{
+                        value: '',
+                        label: 'Aucun parent trouvé',
+                        disabled: true
+                    }], 'value', 'label', true);
+                } catch (error) {
+                    console.error('Erreur lors de l\'affichage du message "aucun résultat":', error);
+                }
+            }
+        })
+        .catch(error => {
+            console.error('=== Erreur lors de la recherche ===');
+            console.error('Erreur:', error);
+            console.error('Stack trace:', error.stack);
+
+            try {
+                choicesInstance.setChoices([{
+                    value: '',
+                    label: 'Erreur lors de la recherche',
+                    disabled: true
+                }], 'value', 'label', true);
+            } catch (setChoicesError) {
+                console.error('Erreur lors de l\'affichage du message d\'erreur:', setChoicesError);
+            }
+        });
+    }
+
+    // Fonction pour mettre à jour les champs cachés
+    function updateParentFields(selectElement, selectedParent) {
+        const parentContainer = selectElement.closest('.parent-item');
+        if (parentContainer) {
+            // Mettre à jour le type de parent
+            const typeInput = parentContainer.querySelector('input[name*="[type]"]');
+            if (typeInput) {
+                typeInput.value = 'existant';
+            }
+
+            // Cacher les champs de nouveau parent
+            const newParentFields = parentContainer.querySelector('.parent-nouveau-section');
+            if (newParentFields) {
+                newParentFields.style.display = 'none';
+            }
+
+            // Créer ou mettre à jour les champs cachés pour les parents sélectionnés
+            updateHiddenParentFields(parentContainer, selectElement);
+        }
+    }
+
+    // Fonction pour mettre à jour les champs cachés avec tous les parents sélectionnés
+    function updateHiddenParentFields(parentContainer, selectElement) {
+        // Supprimer les anciens champs cachés
+        const existingHiddenFields = parentContainer.querySelectorAll('.hidden-parent-field');
+        existingHiddenFields.forEach(field => field.remove());
+
+        // Récupérer tous les parents sélectionnés
+        const choicesInstance = parentChoicesInstances[selectElement.id];
+        if (choicesInstance) {
+            const selectedValues = choicesInstance.getValue();
+            console.log('Parents sélectionnés:', selectedValues);
+
+            // Créer des champs cachés pour chaque parent sélectionné
+            selectedValues.forEach((parent, index) => {
+                if (parent.value) {
+                    const hiddenField = document.createElement('input');
+                    hiddenField.type = 'hidden';
+                    hiddenField.name = `parents[${index}][parent_id]`;
+                    hiddenField.value = parent.value;
+                    hiddenField.className = 'hidden-parent-field';
+                    parentContainer.appendChild(hiddenField);
+
+                    // Ajouter aussi le type
+                    const typeField = document.createElement('input');
+                    typeField.type = 'hidden';
+                    typeField.name = `parents[${index}][type]`;
+                    typeField.value = 'existant';
+                    typeField.className = 'hidden-parent-field';
+                    parentContainer.appendChild(typeField);
+
+                    console.log(`Champ caché créé pour parent ${index}:`, parent.value);
+                }
+            });
+        }
+    }
+
+    // Fonction pour ajouter un nouveau parent
+    function addNewParent() {
+        parentCounter++;
+        const template = document.getElementById('parent-template');
+        const newParent = template.cloneNode(true);
+
+        // Mettre à jour les IDs et noms
+        newParent.id = `parent-${parentCounter}`;
+        newParent.style.display = 'block';
+
+        // Mettre à jour tous les attributs name et id dans le template
+        const inputs = newParent.querySelectorAll('input, select');
+        inputs.forEach(input => {
+            if (input.name) {
+                input.name = input.name.replace('template', parentCounter);
+            }
+            if (input.id) {
+                input.id = input.id.replace('template', parentCounter);
+            }
+        });
+
+        // Ajouter le nouveau parent au conteneur
+        document.getElementById('parents-container').appendChild(newParent);
+
+        // Initialiser Choices.js pour le nouveau select
+        const newSelect = newParent.querySelector('.parent-select');
+        if (newSelect) {
+            initializeParentChoice(newSelect);
+        }
+
+        // Ajouter l'événement de suppression
+        const removeBtn = newParent.querySelector('.remove-parent');
+        if (removeBtn) {
+            removeBtn.addEventListener('click', function() {
+                removeParent(newParent);
+            });
+        }
+
+        // Ajouter l'événement pour la checkbox "parent existant"
+        const existantCheckbox = newParent.querySelector('.parent-existant-checkbox');
+        if (existantCheckbox) {
+            existantCheckbox.addEventListener('change', function() {
+                console.log('Checkbox parent existant changée:', this.checked);
+                toggleParentType(newParent, this.checked);
+            });
+        }
+
+        // Animation d'apparition
+        newParent.style.opacity = '0';
+        newParent.style.transform = 'translateY(30px)';
+        setTimeout(() => {
+            newParent.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+            newParent.style.opacity = '1';
+            newParent.style.transform = 'translateY(0)';
+        }, 100);
+
+        console.log('Nouveau parent ajouté avec ID:', newParent.id);
+    }
+
+    // Fonction pour supprimer un parent
+    function removeParent(parentElement) {
+        // Animation de sortie
+        parentElement.style.transition = 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+        parentElement.style.opacity = '0';
+        parentElement.style.transform = 'translateY(-30px) scale(0.95)';
+
+        setTimeout(() => {
+            // Détruire l'instance Choices.js si elle existe
+            const select = parentElement.querySelector('.parent-select');
+            if (select && parentChoicesInstances[select.id]) {
+                parentChoicesInstances[select.id].destroy();
+                delete parentChoicesInstances[select.id];
+            }
+
+            // Supprimer l'élément du DOM
+            parentElement.remove();
+        }, 400);
+    }
+
+    // Fonction pour basculer entre parent existant et nouveau parent
+    function toggleParentType(parentContainer, isExistant) {
+        console.log('toggleParentType appelée:', { parentContainer, isExistant });
+
+        const selectContainer = parentContainer.querySelector('.parent-existant-section');
+        const newParentFields = parentContainer.querySelector('.parent-nouveau-section');
+        const typeInput = parentContainer.querySelector('input[name*="[type]"]');
+
+        console.log('Éléments trouvés:', {
+            selectContainer: !!selectContainer,
+            newParentFields: !!newParentFields,
+            typeInput: !!typeInput
+        });
+
+        if (isExistant) {
+            if (selectContainer) {
+                selectContainer.style.display = 'block';
+                console.log('Section parent existant affichée');
+            } else {
+                console.error('Section parent existant non trouvée');
+            }
+
+            if (newParentFields) {
+                newParentFields.style.display = 'none';
+                console.log('Section nouveau parent cachée');
+            } else {
+                console.error('Section nouveau parent non trouvée');
+            }
+
+            if (typeInput) {
+                typeInput.value = 'existant';
+                console.log('Type défini sur existant');
+            }
+
+            // Initialiser Choices.js si pas déjà fait
+            const select = parentContainer.querySelector('.parent-select');
+            if (select && !parentChoicesInstances[select.id]) {
+                console.log('Initialisation de Choices.js pour:', select.id);
+                initializeParentChoice(select);
+            }
+        } else {
+            if (selectContainer) {
+                selectContainer.style.display = 'none';
+                console.log('Section parent existant cachée');
+            }
+
+            if (newParentFields) {
+                newParentFields.style.display = 'block';
+                console.log('Section nouveau parent affichée');
+            }
+
+            if (typeInput) {
+                typeInput.value = 'nouveau';
+                console.log('Type défini sur nouveau');
+            }
+        }
+    }
+
+    // Initialisation au chargement de la page
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM chargé - Initialisation du formulaire d\'inscription');
+
+        // Initialiser Choices.js pour tous les selects de parents existants
+        document.querySelectorAll('.parent-select').forEach(select => {
+            initializeParentChoice(select);
+        });
+
+        // Événement pour le bouton d'ajout de parent
+        const addParentBtn = document.getElementById('add-parent-btn');
+        if (addParentBtn) {
+            addParentBtn.addEventListener('click', addNewParent);
+        }
+
+        // Événements pour les checkboxes "parent existant"
+        document.querySelectorAll('.parent-existant-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                console.log('Checkbox parent existant changée:', this.checked);
+                const parentContainer = this.closest('.parent-item');
+                if (parentContainer) {
+                    toggleParentType(parentContainer, this.checked);
+                } else {
+                    console.error('Parent container non trouvé pour la checkbox:', this);
+                }
+            });
+        });
+
+        // Événements pour les boutons de suppression existants
+        document.querySelectorAll('.remove-parent').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const parentElement = this.closest('.parent-item');
+                removeParent(parentElement);
+            });
+        });
+
+        // Validation du formulaire
+        const form = document.getElementById('inscription-form');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                // Validation personnalisée si nécessaire
+                console.log('Soumission du formulaire d\'inscription');
+            });
+        }
+
+        console.log('Initialisation terminée');
+    });
+
+    // Fonction utilitaire pour déboguer
+    function debugChoicesInstances() {
+        console.log('Instances Choices.js actives:', parentChoicesInstances);
+    }
+
+    // Exposer certaines fonctions globalement pour le débogage
+    window.debugChoicesInstances = debugChoicesInstances;
+    window.addNewParent = addNewParent;
+</script>
 @endpush
 
 @section('content')
@@ -69,6 +1366,14 @@
                         </ul>
                     </div>
                 @endif
+
+                <!-- Message pour les champs obligatoires -->
+                <div class="alert alert-warning mb-4">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Les champs marqués d'un astérisque (<span class="text-danger">*</span>) sont obligatoires.
+                    <br>
+                    <small>Assurez-vous de remplir tous les champs obligatoires avant de soumettre le formulaire.</small>
+                </div>
 
                 <!-- Informations générales -->
                 <div class="row">
@@ -148,10 +1453,13 @@
                     <div class="col-md-6">
                         <div class="form-group">
                             <label for="paiement_montant">Montant du paiement initial <span class="text-danger">*</span></label>
-                            <input type="number" min="1" step="1" class="form-control @error('paiement_montant') is-invalid @enderror" id="paiement_montant" name="paiement_montant" value="{{ old('paiement_montant', isset($mandatoryTotal) ? $mandatoryTotal : '') }}" required>
+                            <input type="number" min="1" step="1" class="form-control @error('paiement_montant') is-invalid @enderror"
+                                   id="paiement_montant" name="paiement_montant"
+                                   value="{{ old('paiement_montant', isset($mandatoryTotal) ? $mandatoryTotal : '') }}" required>
                             @error('paiement_montant')
-                                <span class="invalid-feedback" role="alert"><strong>{{ $message }}</strong></span>
+                                <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
+                            <small class="text-muted">Le montant minimum doit couvrir les frais obligatoires</small>
                         </div>
                     </div>
                 </div>
@@ -192,7 +1500,7 @@
 
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label for="nom">Nom</label>
+                        <label for="nom">Nom <span class="text-danger">*</span></label>
                         <input type="text" class="form-control @error('nom') is-invalid @enderror"
                                id="nom" name="nom" value="{{ old('nom') }}" required>
                         @error('nom')
@@ -224,7 +1532,7 @@
 
                 <div class="row">
                     <div class="col-md-4 mb-3">
-                        <label for="date_naissance">Date de naissance</label>
+                        <label for="date_naissance">Date de naissance <span class="text-danger">*</span></label>
                         <input type="date" class="form-control @error('date_naissance') is-invalid @enderror"
                                id="date_naissance" name="date_naissance" value="{{ old('date_naissance') }}" required>
                         @error('date_naissance')
@@ -242,7 +1550,7 @@
                     </div>
 
                     <div class="col-md-4 mb-3">
-                        <label for="sexe">Genre</label>
+                        <label for="sexe">Genre <span class="text-danger">*</span></label>
                         <select class="form-control @error('sexe') is-invalid @enderror" id="sexe" name="sexe" required>
                             <option value="">Sélectionner...</option>
                             <option value="M" {{ old('sexe') == 'M' ? 'selected' : '' }}>Homme</option>
@@ -265,10 +1573,10 @@
                     </div>
 
                     <div class="col-md-4 mb-3">
-                        <label for="telephone">Téléphone</label>
+                        <label for="telephone">Téléphone <span class="text-danger">*</span></label>
                         <input type="text" class="form-control @error('telephone') is-invalid @enderror"
                                id="telephone" name="telephone" value="{{ old('telephone') }}"
-                               placeholder="+225 XX XX XXX XXX">
+                               placeholder="+225 XX XX XXX XXX" required>
                         @error('telephone')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -306,133 +1614,194 @@
                 </div>
 
                 <!-- Informations du parent -->
-                <div class="row mt-4">
-                    <div class="col-md-12 mb-4 d-flex justify-content-between align-items-center">
-                        <h5 class="font-weight-bold">Informations du/des parent(s)/tuteur(s)</h5>
-                        <button type="button" class="btn btn-sm btn-primary" id="add-parent-btn">
-                            <i class="fas fa-plus me-1"></i> Ajouter un parent
-                        </button>
+                <div class="row mt-5">
+                    <div class="col-md-12 mb-4">
+                        <h5 class="section-title">Informations du/des parent(s)/tuteur(s)</h5>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Ajoutez les informations des parents ou tuteurs de l'étudiant. Vous pouvez rechercher des parents existants ou en créer de nouveaux.
                     </div>
-                    <hr>
+                    </div>
                 </div>
 
                 <!-- Container pour les parents -->
                 <div id="parents-container">
                     <!-- Premier parent (toujours présent) -->
-                    <div class="parent-item card mb-3">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">Parent/Tuteur 1</h5>
-                        </div>
+                    <div class="parent-item card mb-4">
                         <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="card-title mb-0 text-primary">
+                                    <i class="fas fa-user-tie me-2"></i>Parent/Tuteur Principal
+                                </h6>
+                            </div>
+
+                            <input type="hidden" name="parents[0][type]" value="nouveau">
+
                             <div class="form-check mb-3">
-                                <input class="form-check-input parent-existant-checkbox" type="checkbox" id="parent_existant_0" name="parents[0][existant]" value="1">
+                                <input class="form-check-input parent-existant-checkbox" type="checkbox" id="parent_existant_0">
                                 <label class="form-check-label" for="parent_existant_0">
-                                    Sélectionner un parent existant
+                                    <i class="fas fa-search me-1"></i>Sélectionner un parent existant
                                 </label>
                             </div>
-                            <!-- Champ caché pour le type de parent -->
-                            <input type="hidden" name="parents[0][type]" id="parent_type_0" value="nouveau">
 
-                            <!-- Sélection d'un parent existant -->
-                            <div class="form-group mb-3 parent-existant-section" style="display: none;">
-                                <label for="parent_id_0">Sélectionner un parent</label>
-                                <select class="form-control parent-select" id="parent_id_0" name="parents[0][parent_id]" data-placeholder="Rechercher un parent...">
-                                    <option value=""></option>
+                            <!-- Section pour parent existant -->
+                            <div class="parent-existant-section" style="display: none;">
+                                <div class="form-group">
+                                    <label class="form-label fw-bold">
+                                        <i class="fas fa-search me-1"></i>Rechercher un parent
+                                    </label>
+                                    <select class="form-control parent-select" id="parent_id_0" name="parents[0][parent_id]">
+                                        <option></option>
                                 </select>
+                                </div>
                             </div>
 
-                            <!-- Nouveau parent -->
+                            <!-- Section pour nouveau parent -->
                             <div class="parent-nouveau-section">
                                 <div class="row">
-                                    <div class="col-md-4 mb-3">
-                                        <label for="parent_nom_0">Nom <span class="text-danger">*</span></label>
-                                        <input type="text" class="form-control" id="parent_nom_0" name="parents[0][nom]" value="{{ old('parents.0.nom') }}">
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <label class="form-label fw-bold">Nom</label>
+                                            <input type="text" class="form-control" name="parents[0][nom]" data-required="true">
                                     </div>
-
-                                    <div class="col-md-4 mb-3">
-                                        <label for="parent_prenoms_0">Prénom(s) <span class="text-danger">*</span></label>
-                                        <input type="text" class="form-control" id="parent_prenoms_0" name="parents[0][prenoms]" value="{{ old('parents.0.prenoms') }}">
                                     </div>
-
-                                    <div class="col-md-4 mb-3">
-                                        <label for="parent_relation_0">Relation <span class="text-danger">*</span></label>
-                                        <select class="form-control" id="parent_relation_0" name="parents[0][relation]">
-                                            <option value="Père" {{ old('parents.0.relation') == 'Père' ? 'selected' : '' }}>Père</option>
-                                            <option value="Mère" {{ old('parents.0.relation') == 'Mère' ? 'selected' : '' }}>Mère</option>
-                                            <option value="Tuteur" {{ old('parents.0.relation', 'Tuteur') == 'Tuteur' ? 'selected' : '' }}>Tuteur</option>
-                                            <option value="Autre" {{ old('parents.0.relation') == 'Autre' ? 'selected' : '' }}>Autre</option>
-                                        </select>
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <label class="form-label fw-bold">Prénom(s)</label>
+                                            <input type="text" class="form-control" name="parents[0][prenoms]" data-required="true">
+                                        </div>
                                     </div>
                                 </div>
 
                                 <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <label for="parent_telephone_0">Téléphone <span class="text-danger">*</span></label>
-                                        <input type="text" class="form-control" id="parent_telephone_0" name="parents[0][telephone]"
-                                               value="{{ old('parents.0.telephone') }}" placeholder="+225 XX XX XXX XXX">
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <label class="form-label fw-bold">Téléphone</label>
+                                            <input type="tel" class="form-control" name="parents[0][telephone]" data-required="true" placeholder="+225 XX XX XXX XXX">
                                     </div>
-
-                                    <div class="col-md-6 mb-3">
-                                        <label for="parent_email_0">Email</label>
-                                        <input type="email" class="form-control" id="parent_email_0" name="parents[0][email]" value="{{ old('parents.0.email') }}">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <label class="form-label fw-bold">Email</label>
+                                            <input type="email" class="form-control" name="parents[0][email]">
+                                        </div>
                                     </div>
                                 </div>
 
                                 <div class="row">
-                                    <div class="col-md-12 mb-3">
-                                        <label for="parent_adresse_0">Adresse</label>
-                                        <textarea class="form-control" id="parent_adresse_0" name="parents[0][adresse]" rows="2">{{ old('parents.0.adresse') }}</textarea>
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <label class="form-label fw-bold">Profession</label>
+                                            <input type="text" class="form-control" name="parents[0][profession]">
                                     </div>
+                                </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <label class="form-label fw-bold">Relation</label>
+                                            <select class="form-control" name="parents[0][relation]" data-required="true">
+                                                <option value="Père">Père</option>
+                                                <option value="Mère">Mère</option>
+                                                <option value="Tuteur">Tuteur</option>
+                                                <option value="Autre">Autre</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-group mb-3">
+                                    <label class="form-label fw-bold">Adresse</label>
+                                    <textarea class="form-control" name="parents[0][adresse]" rows="2"></textarea>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Template pour ajouter de nouveaux parents (caché) -->
-                <template id="parent-template">
-                    <div class="parent-item card mb-3">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">Parent/Tuteur {number}</h5>
-                            <button type="button" class="btn btn-sm btn-danger remove-parent-btn">
-                                <i class="fas fa-times"></i> Supprimer
-                            </button>
-                        </div>
+                <!-- Bouton pour ajouter un parent supplémentaire -->
+                <div class="add-parent-container">
+                    <button type="button" id="add-parent-btn" class="btn btn-add-parent">
+                        <i class="fas fa-plus"></i>
+                        Ajouter un parent/tuteur
+                    </button>
+                </div>
+
+                <!-- Template pour un nouveau parent (caché par défaut) -->
+                <div id="parent-template" style="display: none;">
+                    <div class="card mb-4">
                         <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="card-title mb-0 text-primary">
+                                    <i class="fas fa-user-friends me-2"></i>Parent/Tuteur
+                                </h6>
+                                <button type="button" class="btn btn-sm remove-parent">
+                                    <i class="fas fa-times me-1"></i> Supprimer
+                                </button>
+                            </div>
+
+                            <input type="hidden" name="parents[template][type]" value="nouveau">
+
                             <div class="form-check mb-3">
-                                <input class="form-check-input parent-existant-checkbox" id="parent_existant_{index}" name="parents[{index}][existant]" value="1">
-                                <label class="form-check-label" for="parent_existant_{index}">
-                                    Sélectionner un parent existant
+                                <input class="form-check-input parent-existant-checkbox" type="checkbox" id="parent_existant_template">
+                                <label class="form-check-label" for="parent_existant_template">
+                                    <i class="fas fa-search me-1"></i>Sélectionner un parent existant
                                 </label>
                             </div>
 
-                            <!-- Champ caché pour le type de parent -->
-                            <input type="hidden" name="parents[{index}][type]" id="parent_type_{index}" value="nouveau">
-
-                            <!-- Sélection d'un parent existant -->
-                            <div class="form-group mb-3 parent-existant-section" style="display: none;">
-                                <label for="parent_id_{index}">Sélectionner un parent</label>
-                                <select class="form-control parent-select" id="parent_id_{index}" name="parents[{index}][parent_id]" data-placeholder="Rechercher un parent...">
-                                    <option value=""></option>
+                            <!-- Section pour parent existant -->
+                            <div class="parent-existant-section" style="display: none;">
+                                <div class="form-group">
+                                    <label class="form-label fw-bold">
+                                        <i class="fas fa-search me-1"></i>Rechercher un parent
+                                    </label>
+                                    <select class="form-control parent-select" id="parent_id_template" name="parents[template][parent_id]">
+                                        <option></option>
                                 </select>
+                                </div>
                             </div>
 
-                            <!-- Nouveau parent -->
+                            <!-- Section pour nouveau parent -->
                             <div class="parent-nouveau-section">
                                 <div class="row">
-                                    <div class="col-md-4 mb-3">
-                                        <label for="parent_nom_{index}">Nom <span class="text-danger">*</span></label>
-                                        <input type="text" class="form-control" id="parent_nom_{index}" name="parents[{index}][nom]">
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <label class="form-label fw-bold">Nom</label>
+                                            <input type="text" class="form-control" name="parents[template][nom]" data-required="true">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <label class="form-label fw-bold">Prénom(s)</label>
+                                            <input type="text" class="form-control" name="parents[template][prenoms]" data-required="true">
+                                        </div>
+                                    </div>
                                     </div>
 
-                                    <div class="col-md-4 mb-3">
-                                        <label for="parent_prenoms_{index}">Prénom(s) <span class="text-danger">*</span></label>
-                                        <input type="text" class="form-control" id="parent_prenoms_{index}" name="parents[{index}][prenoms]">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <label class="form-label fw-bold">Téléphone</label>
+                                            <input type="tel" class="form-control" name="parents[template][telephone]" data-required="true" placeholder="+225 XX XX XXX XXX">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <label class="form-label fw-bold">Email</label>
+                                            <input type="email" class="form-control" name="parents[template][email]">
+                                        </div>
+                                    </div>
                                     </div>
 
-                                    <div class="col-md-4 mb-3">
-                                        <label for="parent_relation_{index}">Relation <span class="text-danger">*</span></label>
-                                        <select class="form-control" id="parent_relation_{index}" name="parents[{index}][relation]">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <label class="form-label fw-bold">Profession</label>
+                                            <input type="text" class="form-control" name="parents[template][profession]">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <label class="form-label fw-bold">Relation</label>
+                                            <select class="form-control" name="parents[template][relation]" data-required="true">
                                             <option value="Père">Père</option>
                                             <option value="Mère">Mère</option>
                                             <option value="Tuteur">Tuteur</option>
@@ -440,30 +1809,16 @@
                                         </select>
                                     </div>
                                 </div>
-
-                                <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <label for="parent_telephone_{index}">Téléphone <span class="text-danger">*</span></label>
-                                        <input type="text" class="form-control" id="parent_telephone_{index}" name="parents[{index}][telephone]"
-                                               placeholder="+225 XX XX XXX XXX">
                                     </div>
 
-                                    <div class="col-md-6 mb-3">
-                                        <label for="parent_email_{index}">Email</label>
-                                        <input type="email" class="form-control" id="parent_email_{index}" name="parents[{index}][email]">
+                                <div class="form-group mb-3">
+                                    <label class="form-label fw-bold">Adresse</label>
+                                    <textarea class="form-control" name="parents[template][adresse]" rows="2"></textarea>
                                     </div>
                                 </div>
-
-                                <div class="row">
-                                    <div class="col-md-12 mb-3">
-                                        <label for="parent_adresse_{index}">Adresse</label>
-                                        <textarea class="form-control" id="parent_adresse_{index}" name="parents[{index}][adresse]" rows="2"></textarea>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                </template>
 
                 <!-- Boutons de soumission -->
                 <div class="row mt-4">
@@ -623,7 +1978,7 @@
     $(document).ready(function() {
         console.log('DOM chargé - Initialisation du formulaire d\'inscription');
 
-        // Définir la fonction ouvrirSelecteurClasse dans le scope global
+        // Définir la fonction ouvrirSelecteurClasse dans the global scope
         window.ouvrirSelecteurClasse = function() {
             console.log('Ouverture du modal de sélection de classe');
             $('#modal-selecteur-classe').modal('show');
@@ -677,91 +2032,52 @@
         let parentIndex = 0;
 
         // Initialiser Select2 pour le premier parent
-        initializeSelect2();
+        initializeParentChoices();
+        toggleParentSections();
 
         // Gestionnaire pour ajouter un parent
         $('#add-parent-btn').on('click', function() {
             console.log('Ajout d\'un nouveau parent');
-            // Incrémenter l'index
             parentIndex++;
 
-            // Récupérer le template et remplacer les index
             let template = $('#parent-template').html();
             template = template.replace(/{index}/g, parentIndex);
             template = template.replace(/{number}/g, parentIndex + 1);
 
-            // Ajouter le template au container
             $('#parents-container').append(template);
 
             // Initialiser les nouveaux select2
-            initializeSelect2();
-
-            // Ajouter les gestionnaires d'événements
-            addParentEventListeners();
+            initializeParentChoices();
+            toggleParentSections();
         });
 
         // Initialisation des gestionnaires d'événements pour parents
-        addParentEventListeners();
+        function toggleParentSections() {
+            $('.parent-existant-checkbox').on('change', function() {
+                const parentItem = $(this).closest('.parent-item');
+                const existantSection = parentItem.find('.parent-existant-section');
+                const nouveauSection = parentItem.find('.parent-nouveau-section');
+                const typeInput = parentItem.find('input[name$="[type]"]');
 
-        // Fonction pour initialiser les gestionnaires d'événements des parents
-        function addParentEventListeners() {
-            console.log('Initialisation des événements parents');
-            // Gestion de la suppression d'un parent
-            $('.remove-parent-btn').off('click').on('click', function() {
-                console.log('Suppression d\'un parent');
-                $(this).closest('.parent-item').remove();
-            });
+                if ($(this).is(':checked')) {
+                    existantSection.show();
+                    nouveauSection.hide();
+                    typeInput.val('existant');
 
-            // Gestion de la checkbox "parent existant"
-            $('.parent-existant-checkbox').off('change').on('change', function() {
-                console.log('Toggle parent existant/nouveau');
-                var isChecked = $(this).is(':checked');
-                var parentItem = $(this).closest('.parent-item');
-                var typeField = parentItem.find('[id^="parent_type_"]');
+                    // Réinitialiser Choices.js après avoir affiché la section
+                    setTimeout(function() {
+                        initializeParentChoices();
+                    }, 100);
 
-                if (isChecked) {
-                    parentItem.find('.parent-existant-section').show();
-                    parentItem.find('.parent-nouveau-section').hide();
-                    typeField.val('existant');
+                    // Rendre les champs du nouveau parent non requis
+                    nouveauSection.find('input[required], select[required]').prop('required', false);
+
+                    // Rendre le select du parent existant requis
+                    existantSection.find('select').prop('required', true);
                 } else {
-                    parentItem.find('.parent-existant-section').hide();
-                    parentItem.find('.parent-nouveau-section').show();
-                    typeField.val('nouveau');
-                }
-            });
-
-            // Initialiser l'état pour les parents existants
-            $('.parent-existant-checkbox').trigger('change');
-        }
-
-        // Initialiser Select2 pour les sélecteurs de parents
-        function initializeSelect2() {
-            console.log('Initialisation de Select2');
-            $('.parent-select').select2({
-                placeholder: 'Rechercher un parent...',
-                minimumInputLength: 2,
-                ajax: {
-                    url: '{{ route("esbtp.api.search-parents") }}',
-                    dataType: 'json',
-                    delay: 250,
-                    data: function(params) {
-                        console.log('Recherche de parents:', params.term);
-                        return {
-                            q: params.term
-                        };
-                    },
-                    processResults: function(data) {
-                        console.log('Résultats de la recherche:', data);
-                        return {
-                            results: data.items.map(function(parent) {
-                                return {
-                                    id: parent.id,
-                                    text: parent.nom + ' ' + parent.prenoms + ' (' + parent.telephone + ')'
-                                };
-                            })
-                        };
-                    },
-                    cache: true
+                    existantSection.hide();
+                    nouveauSection.show();
+                    typeInput.val('nouveau');
                 }
             });
         }
@@ -847,6 +2163,94 @@
         if (classeId) {
             $('#classe_display').addClass('is-valid');
         }
+
+        // Validation du formulaire avant soumission
+        $('form').on('submit', function(e) {
+            let isValid = true;
+            let firstError = null;
+
+            // Vérifier la classe
+            if (!$('#classe_id').val()) {
+                isValid = false;
+                $('#classe_display').addClass('is-invalid');
+                if (!firstError) firstError = $('#classe_display');
+                showError('Veuillez sélectionner une classe');
+            }
+
+            // Vérifier les champs obligatoires de l'étudiant
+            const requiredFields = [
+                { id: 'nom', message: 'Le nom est obligatoire' },
+                { id: 'prenoms', message: 'Le(s) prénom(s) est/sont obligatoire(s)' },
+                { id: 'matricule', message: 'Le matricule est obligatoire' },
+                { id: 'date_naissance', message: 'La date de naissance est obligatoire' },
+                { id: 'sexe', message: 'Le genre est obligatoire' },
+                { id: 'telephone', message: 'Le téléphone est obligatoire' },
+                { id: 'paiement_montant', message: 'Le montant du paiement initial est obligatoire' }
+            ];
+
+            requiredFields.forEach(field => {
+                const element = $(`#${field.id}`);
+                if (!element.val()) {
+                    isValid = false;
+                    element.addClass('is-invalid');
+                    if (!firstError) firstError = element;
+                    showError(field.message);
+                }
+            });
+
+            // Vérifier les champs obligatoires du parent
+            const parentFields = [
+                { id: 'parent_nom_0', message: 'Le nom du parent/tuteur est obligatoire' },
+                { id: 'parent_prenoms_0', message: 'Le(s) prénom(s) du parent/tuteur est/sont obligatoire(s)' },
+                { id: 'parent_telephone_0', message: 'Le téléphone du parent/tuteur est obligatoire' },
+                { id: 'parent_relation_0', message: 'La relation avec le parent/tuteur est obligatoire' }
+            ];
+
+            parentFields.forEach(field => {
+                const element = $(`#${field.id}`);
+                if (!element.val()) {
+                    isValid = false;
+                    element.addClass('is-invalid');
+                    if (!firstError) firstError = element;
+                    showError(field.message);
+                }
+            });
+
+            // Si le formulaire n'est pas valide
+            if (!isValid) {
+                e.preventDefault();
+                // Scroll vers la première erreur
+                if (firstError) {
+                    $('html, body').animate({
+                        scrollTop: firstError.offset().top - 100
+                    }, 500);
+                }
+                return false;
+            }
+
+            // Désactiver le bouton de soumission pour éviter les doubles soumissions
+            $(this).find('button[type="submit"]').prop('disabled', true);
+            return true;
+        });
+
+        // Fonction pour afficher les erreurs
+        function showError(message) {
+            const errorAlert = `
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            `;
+            if ($('.alert-danger').length === 0) {
+                $('form').prepend(errorAlert);
+            }
+        }
+
+        // Réinitialiser les erreurs lors de la modification des champs
+        $('input, select').on('change', function() {
+            $(this).removeClass('is-invalid');
+        });
     });
 </script>
 @endpush
+

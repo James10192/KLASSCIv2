@@ -221,10 +221,6 @@
                                     <span class="menu-dot"></span>
                                     <span>Gestion des notes</span>
                                 </a>
-                                <a href="{{ route('esbtp.bulletins.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.bulletins.*') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Bulletins scolaires</span>
-                                </a>
                                 <a href="{{ route('esbtp.resultats.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.resultats.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Résultats & Classements</span>
@@ -274,6 +270,37 @@
                     @endif
 
                     <!-- Attendance Section -->
+                    @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire'))
+                        <div class="menu-category">Présence & Absences</div>
+
+                        <!-- Gestion des présences/absences -->
+                        <div class="menu-accordion">
+                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.attendances.*') || Request::routeIs('esbtp.absences.*') || Request::routeIs('esbtp.teacher-attendance.*') || Request::routeIs('esbtp.attendance-codes.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-calendar-check"></i></div>
+                                <div class="menu-text">Gestion des présences</div>
+                                <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
+                            </button>
+                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.attendances.*') || Request::routeIs('esbtp.absences.*') || Request::routeIs('esbtp.teacher-attendance.*') || Request::routeIs('esbtp.attendance-codes.*') ? 'show' : '' }}">
+                                <a href="{{ route('esbtp.attendances.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.attendances.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Présences étudiants</span>
+                                </a>
+                                <a href="{{ route('esbtp.attendances.rapport-form') }}" class="menu-sublink {{ Request::routeIs('esbtp.attendances.rapport*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Rapports de présence</span>
+                                </a>
+                                <a href="{{ route('esbtp.teacher-attendance.history') }}" class="menu-sublink {{ Request::routeIs('esbtp.teacher-attendance.history') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Historique émargement enseignant</span>
+                                </a>
+                                <a href="{{ route('esbtp.attendance-codes.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.attendance-codes.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Codes d'émargement</span>
+                                </a>
+                            </div>
+                        </div>
+                    @endif
+
                     @if(auth()->user()->hasRole('teacher'))
                         <div class="menu-category">Présence</div>
 
@@ -286,23 +313,31 @@
                         </div>
                     @endif
 
-                    @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire'))
-                        <div class="menu-category">Présence</div>
+                    <!-- Messages Section -->
+                    @if(auth()->user()->hasRole('etudiant'))
+                        <div class="menu-category">Communication</div>
 
-                        <!-- Historique émargement enseignant -->
+                        <!-- Messages -->
                         <div class="menu-item">
-                            <a href="{{ route('esbtp.attendance.history') }}" class="menu-link {{ Request::routeIs('esbtp.attendance.history') ? 'active' : '' }}">
-                                <i class="fas fa-history me-2"></i>
-                                Historique émargement enseignant
+                            <a href="{{ route('esbtp.mes-messages.index') }}" class="menu-link {{ Request::routeIs('esbtp.mes-messages.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-envelope"></i></div>
+                                <div class="menu-text">Messages</div>
                             </a>
                         </div>
 
-                        <!-- Générer code d'émargement -->
+                        <!-- Notifications -->
                         <div class="menu-item">
-                            <a href="{{ route('esbtp.attendance-codes.index') }}" class="menu-link {{ Request::routeIs('esbtp.attendance-codes.index') ? 'active' : '' }}">
-                                <i class="fas fa-key me-2"></i>
-                                Générer code d'émargement
-                            </a>
+                            @if(auth()->user()->hasRole('etudiant'))
+                                <a href="{{ route('esbtp.mes-notifications.index') }}" class="menu-link {{ Request::routeIs('esbtp.mes-notifications.*') ? 'active' : '' }}">
+                                    <div class="menu-icon"><i class="fas fa-bell"></i></div>
+                                    <div class="menu-text">Mes notifications</div>
+                                </a>
+                            @else
+                                <a href="{{ route('notifications.index') }}" class="menu-link {{ Request::routeIs('notifications.*') ? 'active' : '' }}">
+                                    <div class="menu-icon"><i class="fas fa-bell"></i></div>
+                                    <div class="menu-text">Notifications</div>
+                                </a>
+                            @endif
                         </div>
                     @endif
 
@@ -418,47 +453,63 @@
                     @endcanany
 
                     @role('etudiant')
+                    <div class="menu-category">Mon espace étudiant</div>
 
                     <div class="menu-item">
-                        <a href="{{ route('esbtp.mon-emploi-temps.index') }}" class="nav-link {{ request()->routeIs('esbtp.mon-emploi-temps.index') ? 'active' : '' }}">
-                            <div class="menu-icon"><i class="fas fa-clipboard-list"></i></div>
+                        <a href="{{ route('esbtp.mon-emploi-temps.index') }}" class="menu-link {{ request()->routeIs('esbtp.mon-emploi-temps.index') ? 'active' : '' }}">
+                            <div class="menu-icon"><i class="fas fa-calendar-alt"></i></div>
                             <div class="menu-text">Mon emploi du temps</div>
                         </a>
                     </div>
+
                     <div class="menu-item">
-                        <a href="{{ route('esbtp.mes-evaluations.index') }}" class="nav-link {{ request()->routeIs('esbtp.mes-evaluations.index') ? 'active' : '' }}">
+                        <a href="{{ route('esbtp.mes-evaluations.index') }}" class="menu-link {{ request()->routeIs('esbtp.mes-evaluations.index') ? 'active' : '' }}">
                             <div class="menu-icon"><i class="fas fa-clipboard-list"></i></div>
                             <div class="menu-text">Mes évaluations</div>
                         </a>
                     </div>
+
                     <div class="menu-item">
-                        <a href="{{ route('esbtp.mes-notes.index') }}" class="nav-link {{ request()->routeIs('esbtp.mes-notes.index') ? 'active' : '' }}">
-                            <div class="menu-icon"><i class="fas fa-clipboard-list me-2"></i></div>
+                        <a href="{{ route('esbtp.mes-notes.index') }}" class="menu-link {{ request()->routeIs('esbtp.mes-notes.index') ? 'active' : '' }}">
+                            <div class="menu-icon"><i class="fas fa-star"></i></div>
                             <div class="menu-text">Mes notes</div>
                         </a>
                     </div>
+
                     <div class="menu-item">
-                        <a href="{{ route('esbtp.mon-bulletin.index') }}" class="nav-link {{ request()->routeIs('esbtp.mon-bulletin.index') ? 'active' : '' }}">
-                            <div class="menu-icon"><i class="fas fa-file-invoice me-2"></i></div>
+                        <a href="{{ route('esbtp.mes-absences.index') }}" class="menu-link {{ request()->routeIs('esbtp.mes-absences.*') ? 'active' : '' }}">
+                            <div class="menu-icon"><i class="fas fa-calendar-check"></i></div>
+                            <div class="menu-text">Mes absences</div>
+                        </a>
+                    </div>
+
+                    <div class="menu-item">
+                        <a href="{{ route('esbtp.mon-bulletin.index') }}" class="menu-link {{ request()->routeIs('esbtp.mon-bulletin.index') ? 'active' : '' }}">
+                            <div class="menu-icon"><i class="fas fa-file-invoice"></i></div>
                             <div class="menu-text">Mes résultats et bulletin</div>
                         </a>
                     </div>
                     @endrole
+
                     <!-- Section profil utilisateur -->
-                <div class="menu-category">Mon compte</div>
-                <li class="nav-item">
+                    <div class="menu-category">Mon compte</div>
+
                     @role('etudiant')
-                    <a href="{{ route('esbtp.mon-profil.index') }}" class="nav-link {{ request()->routeIs('esbtp.mon-profil.*') ? 'active' : '' }}">
-                        <i class="fas fa-user-circle nav-icon"></i>
-                        <span>Profil</span>
-                    </a>
+                    <div class="menu-item">
+                        <a href="{{ route('esbtp.mon-profil.index') }}" class="menu-link {{ request()->routeIs('esbtp.mon-profil.*') ? 'active' : '' }}">
+                            <div class="menu-icon"><i class="fas fa-user-circle"></i></div>
+                            <div class="menu-text">Profil</div>
+                        </a>
+                    </div>
                     @else
-                    <a href="{{ route('admin.profile') }}" class="nav-link {{ request()->routeIs('admin.profile') ? 'active' : '' }}">
-                        <i class="fas fa-user-circle nav-icon"></i>
-                        <span>Profil</span>
-                    </a>
+                    <div class="menu-item">
+                        <a href="{{ route('admin.profile') }}" class="menu-link {{ request()->routeIs('admin.profile') ? 'active' : '' }}">
+                            <div class="menu-icon"><i class="fas fa-user-circle"></i></div>
+                            <div class="menu-text">Profil</div>
+                        </a>
+                    </div>
                     @endrole
-                </li>
+
                 @endif
             </div>
         </aside>
@@ -482,7 +533,8 @@
                             <div class="navbar-search-icon">
                                 <i class="fas fa-search"></i>
                             </div>
-                            <input type="text" placeholder="Rechercher..." class="form-control">
+                            <input type="text" id="global-search" placeholder="Rechercher..." class="form-control" autocomplete="off">
+                            <div id="search-results" class="search-results" style="display: none;"></div>
                         </div>
                     </div>
 
@@ -491,55 +543,31 @@
                         <div class="dropdown">
                             <button class="navbar-icon" type="button" id="notificationsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="fas fa-bell"></i>
-                                <span class="navbar-badge">3</span>
+                                <span class="navbar-badge" id="notifications-count" style="display: none;">0</span>
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end custom-dropdown" aria-labelledby="notificationsDropdown">
                                 <li>
-                                    <h6 class="dropdown-header">Notifications</h6>
-                </li>
+                                    <h6 class="dropdown-header d-flex justify-content-between align-items-center">
+                                        Notifications
+                                        <button class="btn btn-sm btn-link text-primary p-0" id="mark-all-notifications-read" style="font-size: 0.75rem;">
+                                            Tout marquer comme lu
+                                        </button>
+                                    </h6>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <div id="notifications-list">
+                                    <li class="text-center py-3">
+                                        <div class="spinner-border spinner-border-sm" role="status">
+                                            <span class="visually-hidden">Chargement...</span>
+                                        </div>
+                                    </li>
+                                </div>
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
-                                    <a class="dropdown-item notification-item unread" href="#">
-                                        <div class="notification-icon bg-primary-light text-primary">
-                                            <i class="fas fa-user-plus"></i>
-                                        </div>
-                                        <div class="notification-content">
-                                            <div class="notification-title">Nouvelle inscription</div>
-                                            <div class="notification-text">Un nouvel étudiant s'est inscrit</div>
-                                            <div class="notification-time">Il y a 5 minutes</div>
-                                        </div>
-                    </a>
-                </li>
-                                <li>
-                                    <a class="dropdown-item notification-item" href="#">
-                                        <div class="notification-icon bg-success-light text-success">
-                                            <i class="fas fa-check-circle"></i>
-                                        </div>
-                                        <div class="notification-content">
-                                            <div class="notification-title">Notes publiées</div>
-                                            <div class="notification-text">Les notes de mathématiques sont disponibles</div>
-                                            <div class="notification-time">Il y a 2 heures</div>
-                                        </div>
-                    </a>
-                </li>
-                                <li>
-                                    <a class="dropdown-item notification-item" href="#">
-                                        <div class="notification-icon bg-info-light text-info">
-                                            <i class="fas fa-info-circle"></i>
-                                        </div>
-                                        <div class="notification-content">
-                                            <div class="notification-title">Rappel</div>
-                                            <div class="notification-text">Réunion des enseignants demain</div>
-                                            <div class="notification-time">Il y a 1 jour</div>
-                                        </div>
-                    </a>
-                </li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li>
-                                    <a class="dropdown-item text-center view-all" href="#">
+                                    <a class="dropdown-item text-center view-all" href="{{ route('notifications.index') }}">
                                         Voir toutes les notifications
-                    </a>
-                </li>
+                                    </a>
+                                </li>
                             </ul>
                         </div>
 
@@ -547,156 +575,122 @@
                         <div class="dropdown">
                             <button class="navbar-icon" type="button" id="messagesDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="fas fa-envelope"></i>
-                                <span class="navbar-badge">2</span>
+                                <span class="navbar-badge" id="messages-count" style="display: none;">0</span>
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end custom-dropdown" aria-labelledby="messagesDropdown">
                                 <li>
                                     <h6 class="dropdown-header">Messages</h6>
-                </li>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <div id="messages-list">
+                                    <li class="text-center py-3">
+                                        <div class="spinner-border spinner-border-sm" role="status">
+                                            <span class="visually-hidden">Chargement...</span>
+                                        </div>
+                                    </li>
+                                </div>
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
-                                    <a class="dropdown-item message-item unread" href="#">
-                                        <div class="message-avatar">
-                                            <div class="user-avatar">
-                                                <i class="fas fa-user"></i>
-                                            </div>
-                                        </div>
-                                        <div class="message-content">
-                                            <div class="message-title">Konan Yves</div>
-                                            <div class="message-text">Bonjour, concernant le cours de...</div>
-                                            <div class="message-time">Il y a 10 minutes</div>
-                                        </div>
-                    </a>
-                </li>
-                                <li>
-                                    <a class="dropdown-item message-item" href="#">
-                                        <div class="message-avatar">
-                                            <div class="user-avatar">
-                                                <i class="fas fa-user"></i>
-                                            </div>
-                                        </div>
-                                        <div class="message-content">
-                                            <div class="message-title">Touré Fatima</div>
-                                            <div class="message-text">Merci pour les informations...</div>
-                                            <div class="message-time">Il y a 3 heures</div>
-                                        </div>
-                            </a>
-                </li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li>
-                                    <a class="dropdown-item text-center view-all" href="#">
+                                    <a class="dropdown-item text-center view-all" href="{{ route('esbtp.mes-messages.index') }}">
                                         Voir tous les messages
                                     </a>
-                </li>
-            </ul>
-    </div>
+                                </li>
+                            </ul>
+                        </div>
 
-                    <!-- Quick Actions -->
-                    <div class="dropdown">
+                        <!-- Quick Actions -->
+                        <div class="dropdown">
                             <button class="navbar-icon" type="button" id="quickActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="fas fa-th-large"></i>
-                        </button>
+                            </button>
                             <ul class="dropdown-menu dropdown-menu-end custom-dropdown" aria-labelledby="quickActionsDropdown">
                                 <li>
                                     <h6 class="dropdown-header">Actions rapides</h6>
                                 </li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
-                                    <div class="quick-actions-grid">
-                                        <a href="{{ route('esbtp.etudiants.create') }}" class="quick-action-item">
-                                            <div class="quick-action-icon bg-primary-light text-primary">
-                                                <i class="fas fa-user-plus"></i>
-                            </div>
-                                            <div class="quick-action-text">Nouvel étudiant</div>
-                                        </a>
-                                        <a href="{{ route('esbtp.evaluations.create') }}" class="quick-action-item">
-                                            <div class="quick-action-icon bg-info-light text-info">
-                                                <i class="fas fa-file-alt"></i>
-                                </div>
-                                            <div class="quick-action-text">Créer examen</div>
-                                        </a>
-                                        <a href="{{ route('esbtp.notes.index') }}" class="quick-action-item">
-                                            <div class="quick-action-icon bg-success-light text-success">
-                                                <i class="fas fa-clipboard-list"></i>
-                            </div>
-                                            <div class="quick-action-text">Saisie notes</div>
-                                        </a>
-                                        <a href="{{ route('esbtp.annonces.create') }}" class="quick-action-item">
-                                            <div class="quick-action-icon bg-warning-light text-warning">
-                                                <i class="fas fa-bullhorn"></i>
-                            </div>
-                                            <div class="quick-action-text">Annonce</div>
-                                        </a>
-                        </div>
+                                    <div class="quick-actions-grid" id="quick-actions-list">
+                                        <div class="text-center py-3">
+                                            <div class="spinner-border spinner-border-sm" role="status">
+                                                <span class="visually-hidden">Chargement...</span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </li>
                             </ul>
-                </div>
-
-                <!-- User Profile -->
-                <div class="dropdown ms-2">
-                    <div class="navbar-user" id="profileDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <div class="navbar-avatar">
-                            @if(auth()->check() && auth()->user()->profile_photo_path)
-                                <img src="{{ asset('storage/' . auth()->user()->profile_photo_path) }}" alt="{{ auth()->user()->name }}">
-                        @else
-                                <div class="user-avatar">
-                                    <i class="fas fa-user"></i>
-                                </div>
-                        @endif
                         </div>
-                        <div class="navbar-user-info d-none d-md-block">
-                            <div class="navbar-user-name">{{ auth()->check() ? auth()->user()->name : 'Invité' }}</div>
-                    </div>
-                    </div>
-                    <ul class="dropdown-menu dropdown-menu-end custom-dropdown" aria-labelledby="profileDropdown">
-                        <li>
-                            <div class="dropdown-user-details">
-                                <div class="dropdown-user-avatar">
+
+                        <!-- User Profile -->
+                        <div class="dropdown ms-2">
+                            <div class="navbar-user" id="profileDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <div class="navbar-avatar">
                                     @if(auth()->check() && auth()->user()->profile_photo_path)
                                         <img src="{{ asset('storage/' . auth()->user()->profile_photo_path) }}" alt="{{ auth()->user()->name }}">
-                            @else
+                                    @else
                                         <div class="user-avatar">
                                             <i class="fas fa-user"></i>
                                         </div>
                                     @endif
                                 </div>
-                                <div class="dropdown-user-info">
-                                    <div class="dropdown-user-name">{{ auth()->check() ? auth()->user()->name : 'Invité' }}</div>
-                                    <div class="dropdown-user-email">{{ auth()->check() ? auth()->user()->email : '' }}</div>
+                                <div class="navbar-user-info d-none d-md-block">
+                                    <div class="navbar-user-name">{{ auth()->check() ? auth()->user()->name : 'Invité' }}</div>
                                 </div>
                             </div>
-                        </li>
-                        <li><hr class="dropdown-divider"></li>
-                        @if(auth()->check())
-                            <li>
-                                <a class="dropdown-item" href="#">
-                                    <i class="fas fa-user-circle me-2"></i> Mon profil
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item" href="{{ route('settings.index') }}">
-                                    <i class="fas fa-cog me-2"></i> Paramètres
-                                </a>
-                            </li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li>
-                                <form method="POST" action="{{ route('logout') }}" id="logout-form">
-                                @csrf
-                                    <a class="dropdown-item" href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
-                                        <i class="fas fa-sign-out-alt me-2"></i> Déconnexion
-                                    </a>
-                            </form>
-                        </li>
-                        @else
-                            <li>
-                                <a class="dropdown-item" href="{{ route('login') }}">
-                                    <i class="fas fa-sign-in-alt me-2"></i> Connexion
-                                </a>
-                            </li>
-                        @endif
-                    </ul>
-                </div>
-            </div>
+                            <ul class="dropdown-menu dropdown-menu-end custom-dropdown" aria-labelledby="profileDropdown">
+                                <li>
+                                    <div class="dropdown-user-details">
+                                        <div class="dropdown-user-avatar">
+                                            @if(auth()->check() && auth()->user()->profile_photo_path)
+                                                <img src="{{ asset('storage/' . auth()->user()->profile_photo_path) }}" alt="{{ auth()->user()->name }}">
+                                            @else
+                                                <div class="user-avatar">
+                                                    <i class="fas fa-user"></i>
+                                                </div>
+                                            @endif
+                                        </div>
+                                        <div class="dropdown-user-info">
+                                            <div class="dropdown-user-name">{{ auth()->check() ? auth()->user()->name : 'Invité' }}</div>
+                                            <div class="dropdown-user-email">{{ auth()->check() ? auth()->user()->email : '' }}</div>
+                                        </div>
+                                    </div>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                @if(auth()->check())
+                                    <li>
+                                        @role('etudiant')
+                                            <a class="dropdown-item" href="{{ route('esbtp.mon-profil.index') }}">
+                                                <i class="fas fa-user-circle me-2"></i> Mon profil
+                                            </a>
+                                        @else
+                                            <a class="dropdown-item" href="{{ route('admin.profile') }}">
+                                                <i class="fas fa-user-circle me-2"></i> Mon profil
+                                            </a>
+                                        @endrole
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('settings.index') }}">
+                                            <i class="fas fa-cog me-2"></i> Paramètres
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <form method="POST" action="{{ route('logout') }}" id="logout-form">
+                                            @csrf
+                                            <a class="dropdown-item" href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+                                                <i class="fas fa-sign-out-alt me-2"></i> Déconnexion
+                                            </a>
+                                        </form>
+                                    </li>
+                                @else
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('login') }}">
+                                            <i class="fas fa-sign-in-alt me-2"></i> Connexion
+                                        </a>
+                                    </li>
+                                @endif
+                            </ul>
+                        </div>
+                    </div>
                 </div>
             </nav>
 
@@ -794,7 +788,291 @@
 
             // Check on resize
             window.addEventListener('resize', checkWidth);
-    });
+
+            // Navbar functionality
+            loadNavbarData();
+            setupSearchFunctionality();
+        });
+
+        // Load navbar data (notifications, messages, quick actions)
+        function loadNavbarData() {
+            // Load notifications
+            fetch('{{ route("navbar.notifications") }}')
+                .then(response => response.json())
+                .then(data => {
+                    updateNotifications(data.notifications, data.unread_count);
+                })
+                .catch(error => {
+                    console.error('Error loading notifications:', error);
+                    document.getElementById('notifications-list').innerHTML = '<li class="text-center py-3 text-muted">Erreur de chargement</li>';
+                });
+
+            // Load messages
+            fetch('{{ route("navbar.messages") }}')
+                .then(response => response.json())
+                .then(data => {
+                    updateMessages(data.messages, data.unread_count);
+                })
+                .catch(error => {
+                    console.error('Error loading messages:', error);
+                    document.getElementById('messages-list').innerHTML = '<li class="text-center py-3 text-muted">Erreur de chargement</li>';
+                });
+
+            // Load quick actions
+            fetch('{{ route("navbar.quick-actions") }}')
+                .then(response => response.json())
+                .then(data => {
+                    updateQuickActions(data.actions);
+                })
+                .catch(error => {
+                    console.error('Error loading quick actions:', error);
+                    document.getElementById('quick-actions-list').innerHTML = '<div class="text-center py-3 text-muted">Erreur de chargement</div>';
+                });
+        }
+
+        // Update notifications
+        function updateNotifications(notifications, unreadCount) {
+            const notificationsList = document.getElementById('notifications-list');
+            const notificationsCount = document.getElementById('notifications-count');
+
+            if (unreadCount > 0) {
+                notificationsCount.textContent = unreadCount;
+                notificationsCount.style.display = 'inline';
+            } else {
+                notificationsCount.style.display = 'none';
+            }
+
+            if (notifications.length === 0) {
+                notificationsList.innerHTML = '<li class="text-center py-3 text-muted">Aucune notification</li>';
+                return;
+            }
+
+            let html = '';
+            notifications.forEach(notification => {
+                html += `
+                    <li>
+                        <a class="dropdown-item notification-item ${notification.read ? '' : 'unread'}" href="#" onclick="markNotificationAsRead(${notification.id}, '${notification.url || '#'}')">
+                            <div class="d-flex">
+                                <div class="notification-icon me-2">
+                                    <i class="${notification.icon}"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="notification-title">${notification.title}</div>
+                                    <div class="notification-text">${notification.message}</div>
+                                    <div class="notification-time">${notification.time}</div>
+                                </div>
+                            </div>
+                        </a>
+                    </li>
+                `;
+            });
+            notificationsList.innerHTML = html;
+        }
+
+        // Update messages
+        function updateMessages(messages, unreadCount) {
+            const messagesList = document.getElementById('messages-list');
+            const messagesCount = document.getElementById('messages-count');
+
+            if (unreadCount > 0) {
+                messagesCount.textContent = unreadCount;
+                messagesCount.style.display = 'inline';
+            } else {
+                messagesCount.style.display = 'none';
+            }
+
+            if (messages.length === 0) {
+                messagesList.innerHTML = '<li class="text-center py-3 text-muted">Aucun message</li>';
+                return;
+            }
+
+            let html = '';
+            messages.forEach(message => {
+                html += `
+                    <li>
+                        <a class="dropdown-item message-item" href="${message.url}">
+                            <div class="d-flex">
+                                <div class="message-avatar me-2">
+                                    ${message.avatar ? `<img src="${message.avatar}" alt="${message.sender}">` : '<i class="fas fa-user"></i>'}
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="message-title">${message.title}</div>
+                                    <div class="message-text">${message.message}</div>
+                                    <div class="message-time">${message.time}</div>
+                                </div>
+                            </div>
+                        </a>
+                    </li>
+                `;
+            });
+            messagesList.innerHTML = html;
+        }
+
+        // Update quick actions
+        function updateQuickActions(actions) {
+            const quickActionsList = document.getElementById('quick-actions-list');
+
+            if (actions.length === 0) {
+                quickActionsList.innerHTML = '<div class="text-center py-3 text-muted">Aucune action disponible</div>';
+                return;
+            }
+
+            let html = '';
+            actions.forEach(action => {
+                html += `
+                    <a href="${action.url}" class="quick-action-item">
+                        <div class="quick-action-icon text-${action.color}">
+                            <i class="${action.icon}"></i>
+                        </div>
+                        <div class="quick-action-text">${action.title}</div>
+                    </a>
+                `;
+            });
+            quickActionsList.innerHTML = html;
+        }
+
+        // Setup search functionality
+        function setupSearchFunctionality() {
+            const searchInput = document.getElementById('global-search');
+            const searchResults = document.getElementById('search-results');
+            let searchTimeout;
+
+            if (searchInput) {
+                searchInput.addEventListener('input', function() {
+                    const query = this.value.trim();
+
+                    clearTimeout(searchTimeout);
+
+                    if (query.length < 2) {
+                        searchResults.style.display = 'none';
+                        searchResults.classList.remove('show');
+                        return;
+                    }
+
+                    searchTimeout = setTimeout(() => {
+                        performSearch(query);
+                    }, 300);
+                });
+
+                // Hide search results when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+                        searchResults.style.display = 'none';
+                        searchResults.classList.remove('show');
+                    }
+                });
+
+                // Show search results when focusing on input if there's content
+                searchInput.addEventListener('focus', function() {
+                    if (this.value.trim().length >= 2 && searchResults.innerHTML.trim() !== '') {
+                        searchResults.style.display = 'block';
+                        searchResults.classList.add('show');
+                    }
+                });
+            }
+        }
+
+        // Perform search
+        function performSearch(query) {
+            const searchResults = document.getElementById('search-results');
+
+            searchResults.innerHTML = '<div class="loading-text"><div class="loading-spinner"></div> Recherche...</div>';
+            searchResults.style.display = 'block';
+            searchResults.classList.add('show');
+
+            fetch(`{{ route("search.global") }}?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => {
+                    displaySearchResults(data);
+                })
+                .catch(error => {
+                    console.error('Error performing search:', error);
+                    searchResults.innerHTML = '<div class="search-no-results">Erreur de recherche</div>';
+                });
+        }
+
+        // Display search results
+        function displaySearchResults(data) {
+            const searchResults = document.getElementById('search-results');
+
+            if (!data.results || data.results.length === 0) {
+                searchResults.innerHTML = '<div class="search-no-results">Aucun résultat trouvé</div>';
+                return;
+            }
+
+            let html = '';
+
+            // Group results by category
+            const groupedResults = {};
+            data.results.forEach(result => {
+                if (!groupedResults[result.category]) {
+                    groupedResults[result.category] = [];
+                }
+                groupedResults[result.category].push(result);
+            });
+
+            // Display results by category
+            Object.keys(groupedResults).forEach(category => {
+                html += `<div class="search-category">${category}</div>`;
+                groupedResults[category].forEach(result => {
+                    html += `
+                        <a href="${result.url}" class="search-item">
+                            <div class="search-item-icon bg-${result.color || 'primary'}">
+                                <i class="${result.icon}"></i>
+                            </div>
+                            <div class="search-item-content">
+                                <div class="search-item-title">${result.title}</div>
+                                <div class="search-item-subtitle">${result.description}</div>
+                            </div>
+                        </a>
+                    `;
+                });
+            });
+
+            searchResults.innerHTML = html;
+        }
+
+        // Mark notification as read
+        function markNotificationAsRead(notificationId, url) {
+            fetch(`{{ url('navbar/notifications') }}/${notificationId}/read`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && url !== '#') {
+                    window.location.href = url;
+                }
+                // Reload notifications
+                loadNavbarData();
+            })
+            .catch(error => {
+                console.error('Error marking notification as read:', error);
+            });
+        }
+
+        // Mark all notifications as read
+        document.getElementById('mark-all-notifications-read')?.addEventListener('click', function() {
+            fetch('{{ route("navbar.notifications.mark-all-read") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadNavbarData();
+                }
+            })
+            .catch(error => {
+                console.error('Error marking all notifications as read:', error);
+            });
+        });
     </script>
 
     <!-- Scripts additionnels -->

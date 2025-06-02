@@ -150,10 +150,11 @@ class ESBTPInscriptionService
             foreach ($generatedFees as $fee) {
                 \App\Models\ESBTPFactureDetail::create([
                     'facture_id' => $facture->id,
-                    'description' => $fee->description,
+                    'designation' => $fee->description,
+                    'description' => null,
                     'quantite' => 1,
-                    'prix_unitaire' => $fee->amount,
                     'montant' => $fee->amount,
+                    'total_ligne' => $fee->amount,
                 ]);
             }
 

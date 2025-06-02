@@ -117,50 +117,51 @@
                                 <div class="row">
                                     <div class="col-md-6">
                                         <div class="mb-3">
-                                            <label for="valeur" class="form-label">Note <span class="text-danger">*</span></label>
+                                            <label for="note" class="form-label">Note <span class="text-danger">*</span></label>
                                             <div class="input-group">
                                                 <input type="number"
-                                                       class="form-control @error('valeur') is-invalid @enderror"
-                                                       id="valeur"
-                                                       name="valeur"
-                                                       value="{{ old('valeur', $note->valeur) }}"
+                                                       class="form-control @error('note') is-invalid @enderror"
+                                                       id="note"
+                                                       name="note"
+                                                       value="{{ old('note', $note->note) }}"
                                                        min="0"
                                                        max="{{ $note->evaluation->bareme }}"
                                                        step="0.25"
-                                                       {{ old('absent', $note->absent) ? 'disabled' : '' }}>
+                                                       {{ old('is_absent', $note->is_absent) ? 'disabled' : '' }}>
                                                 <span class="input-group-text">/ {{ $note->evaluation->bareme }}</span>
-                                                @error('valeur')
+                                                @error('note')
                                                     <div class="invalid-feedback">{{ $message }}</div>
                                                 @enderror
                                             </div>
-                                            <div class="form-text">Note équivalente sur 20 : <span id="note_sur_20">{{ number_format(($note->valeur * 20) / $note->evaluation->bareme, 2) }}</span>/20</div>
+                                            <div class="form-text">Note équivalente sur 20 : <span id="note_sur_20">{{ $note->evaluation->bareme > 0 ? number_format(($note->note * 20) / $note->evaluation->bareme, 2) : 0 }}</span>/20</div>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label for="date_saisie" class="form-label">Date de saisie</label>
-                                            <input type="date"
-                                                   class="form-control @error('date_saisie') is-invalid @enderror"
-                                                   id="date_saisie"
-                                                   name="date_saisie"
-                                                   value="{{ old('date_saisie', $note->created_at ? date('Y-m-d', strtotime($note->created_at)) : date('Y-m-d')) }}">
-                                            @error('date_saisie')
-                                                <div class="invalid-feedback">{{ $message }}</div>
-                                            @enderror
+                                        <div class="d-flex flex-column h-100 justify-content-center">
+                                            <div class="form-check">
+                                                <input type="checkbox" name="is_absent" id="is_absent" class="form-check-input"
+                                                    {{ old('is_absent', $note->is_absent) ? 'checked' : '' }}>
+                                                <label for="is_absent" class="form-check-label">
+                                                    <i class="fas fa-user-slash text-danger me-1"></i>Étudiant absent
+                                                </label>
+                                            </div>
+                                            <div class="form-text mt-1">
+                                                <i class="fas fa-info-circle text-info me-1"></i> Cochez cette case si l'étudiant était absent lors de l'évaluation
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
                                 <div class="mb-3">
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input"
-                                               type="checkbox"
-                                               id="absent"
-                                               name="absent"
-                                               value="1"
-                                               {{ old('absent', $note->absent) ? 'checked' : '' }}>
-                                        <label class="form-check-label" for="absent">L'étudiant était absent lors de l'évaluation</label>
-                                    </div>
+                                    <label for="date_saisie" class="form-label">Date de saisie</label>
+                                    <input type="date"
+                                           class="form-control @error('date_saisie') is-invalid @enderror"
+                                           id="date_saisie"
+                                           name="date_saisie"
+                                           value="{{ old('date_saisie', $note->created_at ? date('Y-m-d', strtotime($note->created_at)) : date('Y-m-d')) }}">
+                                    @error('date_saisie')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 </div>
 
                                 <div class="mb-3">
@@ -227,25 +228,25 @@
 <script>
     $(document).ready(function() {
         // Initialize required state on page load
-        const valeurInput = $('#valeur');
-        const absentCheckbox = $('#absent');
+        const noteInput = $('#note');
+        const absentCheckbox = $('#is_absent');
 
         function updateRequiredState() {
             const isAbsent = absentCheckbox.is(':checked');
             console.log('Updating required state - Absent:', isAbsent);
 
-            valeurInput.prop('required', !isAbsent);
-            valeurInput.prop('disabled', isAbsent);
+            noteInput.prop('required', !isAbsent);
+            noteInput.prop('disabled', isAbsent);
 
-            console.log('Required state after update:', valeurInput.prop('required'));
-            console.log('Disabled state after update:', valeurInput.prop('disabled'));
+            console.log('Required state after update:', noteInput.prop('required'));
+            console.log('Disabled state after update:', noteInput.prop('disabled'));
 
             if (isAbsent) {
-                valeurInput.val('');
+                noteInput.val('');
                 $('#note_sur_20').text('--');
                 // Remove validation error if present
-                valeurInput.removeClass('is-invalid');
-                valeurInput.next('.invalid-feedback').remove();
+                noteInput.removeClass('is-invalid');
+                noteInput.next('.invalid-feedback').remove();
             }
         }
 
@@ -255,16 +256,16 @@
 
         // Calcul automatique de la note sur 20
         function updateNoteSur20() {
-            const valeur = parseFloat($('#valeur').val()) || 0;
+            const note = parseFloat($('#note').val()) || 0;
             const bareme = {{ $note->evaluation->bareme }};
-            const noteSur20 = (valeur * 20) / bareme;
+            const noteSur20 = (note * 20) / bareme;
             $('#note_sur_20').text(noteSur20.toFixed(2));
         }
 
-        $('#valeur').on('input', updateNoteSur20);
+        $('#note').on('input', updateNoteSur20);
 
         // Gestion de la case à cocher "Absent"
-        $('#absent').change(function() {
+        $('#is_absent').change(function() {
             console.log('Absent checkbox changed');
             updateRequiredState();
             if ($(this).is(':checked')) {

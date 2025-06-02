@@ -187,7 +187,7 @@
                             <span aria-hidden="true">&times;</span>
                         </button>
                     </div>
-                    <form action="{{ route('esbtp.esbtp.mes-absences.justify', $absence->id) }}" method="POST" enctype="multipart/form-data">
+                    <form action="{{ route('esbtp.mes-absences.justify', $absence->id) }}" method="POST" enctype="multipart/form-data">
                         @csrf
                         <input type="hidden" name="attendance_id" value="{{ $absence->id }}">
                         <div class="modal-body">

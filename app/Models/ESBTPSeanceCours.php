@@ -98,13 +98,11 @@ class ESBTPSeanceCours extends Model
     }
 
     /**
-     * Relation avec l'enseignant associé à cette séance.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     * Relation avec l'enseignant (teacher)
      */
     public function teacher()
     {
-        return $this->belongsTo(ESBTPTeacher::class, 'teacher_id');
+        return $this->belongsTo(User::class, 'teacher_id');
     }
 
     /**
@@ -448,7 +446,7 @@ class ESBTPSeanceCours extends Model
         if (in_array($this->type, [self::TYPE_COURSE, self::TYPE_HOMEWORK])) {
             $description .= ' - ' . ($this->matiere->name ?? 'Matière non définie');
             if ($this->teacher) {
-                $description .= ' avec ' . $this->teacher->user->name;
+                $description .= ' avec ' . $this->teacher->name;
             }
         }
 
@@ -461,5 +459,21 @@ class ESBTPSeanceCours extends Model
         }
 
         return $description;
+    }
+
+    /**
+     * Alias pour la relation enseignant (pour compatibilité)
+     */
+    public function enseignant()
+    {
+        return $this->belongsTo(User::class, 'teacher_id');
+    }
+
+    /**
+     * Accesseur pour obtenir le nom de l'enseignant
+     */
+    public function getEnseignantNameAttribute()
+    {
+        return $this->enseignant ? $this->enseignant->name : 'Non assigné';
     }
 }

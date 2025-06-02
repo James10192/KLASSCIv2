@@ -11,6 +11,7 @@ use App\Models\ESBTPMatiere;
 use App\Models\ESBTPAcademicYear;
 use App\Notifications\AbsenceNotification;
 use App\Services\MatiereService;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -22,10 +23,12 @@ use App\Notifications\ESBTPNotification;
 class ESBTPAttendanceController extends Controller
 {
     protected $matiereService;
+    protected $notificationService;
 
-    public function __construct(MatiereService $matiereService)
+    public function __construct(MatiereService $matiereService, NotificationService $notificationService)
     {
         $this->matiereService = $matiereService;
+        $this->notificationService = $notificationService;
     }
 
     /**
@@ -217,16 +220,16 @@ class ESBTPAttendanceController extends Controller
 
         // Calculate additional statistics for the view
         $totalAttendances = $statsTotal;
-        
+
         // Calculate attendances for this month
         $currentMonth = Carbon::now()->startOfMonth();
         $attendancesThisMonth = ESBTPAttendance::whereDate('date', '>=', $currentMonth)->count();
-        
+
         // Calculate average attendance rate
         $totalRecords = ESBTPAttendance::count();
         $totalPresent = ESBTPAttendance::where('statut', 'present')->count();
         $averageAttendanceRate = $totalRecords > 0 ? round(($totalPresent / $totalRecords) * 100) : 0;
-        
+
         // Calculate number of classes with attendance records
         $classesWithAttendance = DB::table('esbtp_attendances')
             ->join('esbtp_seance_cours', 'esbtp_attendances.seance_cours_id', '=', 'esbtp_seance_cours.id')
@@ -884,22 +887,16 @@ class ESBTPAttendanceController extends Controller
             'admin_comment' => 'nullable|string|max:500',
         ]);
 
+        $etudiant = ESBTPEtudiant::find($absence->etudiant_id);
+
         // Traiter la décision
         if ($request->decision === 'approve') {
             // Approuver la justification
             $absence->statut = 'excuse';
             $absence->save();
 
-            // Notifier l'étudiant que sa justification a été approuvée
-            $etudiant = ESBTPEtudiant::find($absence->etudiant_id);
-            if ($etudiant && $etudiant->user) {
-                $etudiant->user->notify(new ESBTPNotification(
-                    'Justification d\'absence approuvée',
-                    'Votre justification d\'absence pour le cours du ' . $absence->date->format('d/m/Y') . ' a été approuvée.',
-                    'success',
-                    ['absence_id' => $absence->id]
-                ));
-            }
+            // Utiliser le service de notifications
+            $this->notificationService->notifyAbsenceJustificationApproved($absence, $etudiant, auth()->user());
 
             return redirect()->back()->with('success', 'La justification d\'absence a été approuvée');
         } else {
@@ -910,17 +907,8 @@ class ESBTPAttendanceController extends Controller
                 $absence->save();
             }
 
-            // Notifier l'étudiant que sa justification a été rejetée
-            $etudiant = ESBTPEtudiant::find($absence->etudiant_id);
-            if ($etudiant && $etudiant->user) {
-                $etudiant->user->notify(new ESBTPNotification(
-                    'Justification d\'absence rejetée',
-                    'Votre justification d\'absence pour le cours du ' . $absence->date->format('d/m/Y') . ' a été rejetée.' .
-                    ($request->filled('admin_comment') ? ' Commentaire: ' . $request->admin_comment : ''),
-                    'danger',
-                    ['absence_id' => $absence->id]
-                ));
-            }
+            // Utiliser le service de notifications
+            $this->notificationService->notifyAbsenceJustificationRejected($absence, $etudiant, $request->admin_comment, auth()->user());
 
             return redirect()->back()->with('info', 'La justification d\'absence a été rejetée');
         }
@@ -937,49 +925,8 @@ class ESBTPAttendanceController extends Controller
      */
     private function sendJustificationNotificationToAdmins(ESBTPAttendance $absence, ESBTPEtudiant $etudiant, string $justification, ?string $documentPath = null)
     {
-        try {
-            // Récupérer tous les utilisateurs avec les rôles superAdmin et secretaire
-            $admins = User::whereHas('roles', function($query) {
-                $query->whereIn('name', ['superAdmin', 'secretaire']);
-            })->get();
-
-            if ($admins->isEmpty()) {
-                \Log::warning("Aucun administrateur trouvé pour la notification de justification d'absence", [
-                    'etudiant_id' => $etudiant->id,
-                    'absence_id' => $absence->id
-                ]);
-                return;
-            }
-
-            $notificationsCount = 0;
-            // Envoyer la notification à chaque admin
-            foreach ($admins as $admin) {
-                try {
-                    $admin->notify(new AbsenceJustificationNotification($absence, $etudiant, $justification, $documentPath));
-                    $notificationsCount++;
-                } catch (\Exception $e) {
-                    \Log::error("Erreur lors de l'envoi de la notification à l'administrateur", [
-                        'admin_id' => $admin->id,
-                        'admin_email' => $admin->email,
-                        'error' => $e->getMessage()
-                    ]);
-                }
-            }
-
-            \Log::info("Notification de justification d'absence envoyée aux administrateurs", [
-                'etudiant_id' => $etudiant->id,
-                'absence_id' => $absence->id,
-                'notifications_sent' => $notificationsCount,
-                'total_admins' => $admins->count()
-            ]);
-        } catch (\Exception $e) {
-            \Log::error("Erreur lors de l'envoi de la notification de justification d'absence", [
-                'etudiant_id' => $etudiant->id,
-                'absence_id' => $absence->id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-        }
+        // Utiliser le service de notifications centralisé
+        $this->notificationService->notifyAbsenceJustificationSubmitted($absence, $etudiant);
     }
 
     /**
@@ -1004,22 +951,63 @@ class ESBTPAttendanceController extends Controller
                 return;
             }
 
-            // Charger la matière associée à la séance de cours
-            if (!$seanceCours->matiere) {
-                $seanceCours->load('matiere');
-            }
+            // Charger les informations de la séance de cours avec ses relations
+            $seanceCours->load(['matiere', 'emploiTemps.classe']);
 
-            // Envoyer la notification
-            $etudiant->user->notify(new \App\Notifications\AbsenceNotification($etudiant, $seanceCours, $date));
+            // Formater la date et l'heure
+            $dateAbsence = Carbon::parse($date);
+            $jourSemaine = $dateAbsence->locale('fr')->dayName;
+            $dateFormatee = $dateAbsence->format('d/m/Y');
 
-            \Log::info("Notification d'absence envoyée", [
+            // Récupérer les informations du cours
+            $matiereName = $seanceCours->matiere ? $seanceCours->matiere->name : 'Matière non définie';
+            $heureDebut = $seanceCours->heure_debut ? substr($seanceCours->heure_debut, 0, 5) : 'Heure non définie';
+            $heureFin = $seanceCours->heure_fin ? substr($seanceCours->heure_fin, 0, 5) : '';
+            $heureFormatee = $heureDebut . ($heureFin ? ' - ' . $heureFin : '');
+            $classeName = $seanceCours->emploiTemps && $seanceCours->emploiTemps->classe ? $seanceCours->emploiTemps->classe->name : 'Classe non définie';
+
+            // Créer un message détaillé pour le cours
+            $messageDetail = sprintf(
+                "Absence lors d'un cours\n" .
+                "Matière: %s\n" .
+                "Date: %s (%s)\n" .
+                "Heure: %s\n" .
+                "Classe: %s",
+                $matiereName,
+                $dateFormatee,
+                ucfirst($jourSemaine),
+                $heureFormatee,
+                $classeName
+            );
+
+            // Créer une entrée d'absence temporaire pour la notification avec informations enrichies
+            $absence = new ESBTPAttendance();
+            $absence->date = $dateAbsence;
+            $absence->etudiant_id = $etudiantId;
+            $absence->statut = 'absent';
+            $absence->commentaire = $messageDetail;
+            $absence->matiere_id = $seanceCours->matiere_id;
+            $absence->type_activite = 'cours';
+            $absence->heure_debut = $seanceCours->heure_debut;
+            $absence->heure_fin = $seanceCours->heure_fin;
+
+            // Utiliser le service de notifications
+            $this->notificationService->notifyNewAbsence($absence, $etudiant);
+
+            \Log::info("Notification d'absence enrichie envoyée pour le cours", [
                 'etudiant_id' => $etudiantId,
-                'matiere' => $seanceCours->matiere->name ?? 'N/A',
-                'date' => $date
+                'seance_cours_id' => $seanceCours->id,
+                'matiere' => $matiereName,
+                'date' => $dateFormatee,
+                'jour' => $jourSemaine,
+                'heure' => $heureFormatee,
+                'classe' => $classeName
             ]);
+
         } catch (\Exception $e) {
             \Log::error("Erreur lors de l'envoi de la notification d'absence", [
                 'etudiant_id' => $etudiantId,
+                'seance_cours_id' => $seanceCours->id ?? 'unknown',
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
@@ -1088,10 +1076,10 @@ class ESBTPAttendanceController extends Controller
 
         $callback = function() use ($attendances) {
             $file = fopen('php://output', 'w');
-            
+
             // Add UTF-8 BOM to ensure French characters display correctly
             fputs($file, "\xEF\xBB\xBF");
-            
+
             // CSV headers
             fputcsv($file, [
                 'Date',
@@ -1103,7 +1091,7 @@ class ESBTPAttendanceController extends Controller
                 'Heure Fin',
                 'Commentaire'
             ]);
-            
+
             // CSV data
             foreach ($attendances as $attendance) {
                 $row = [
@@ -1116,10 +1104,10 @@ class ESBTPAttendanceController extends Controller
                     $attendance->seanceCours ? substr($attendance->seanceCours->heure_fin, 0, 5) : 'N/A',
                     $attendance->commentaire
                 ];
-                
+
                 fputcsv($file, $row);
             }
-            
+
             fclose($file);
         };
 

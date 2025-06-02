@@ -169,22 +169,56 @@ class ESBTPInscriptionController extends Controller
     {
         // Validation des données
         $validator = Validator::make($request->all(), [
+            'classe_id' => 'required|exists:esbtp_classes,id',
             'nom' => 'required|string|max:100',
             'prenoms' => 'required|string|max:100',
             'sexe' => 'required|in:M,F',
-            'date_naissance' => 'nullable|date',
+            'date_naissance' => 'required|date',
             'lieu_naissance' => 'nullable|string|max:100',
             'telephone' => 'required|string|max:20',
             'email_personnel' => 'nullable|email|max:100',
             'ville' => 'nullable|string|max:100',
             'commune' => 'nullable|string|max:100',
             'photo' => 'nullable|image|max:2048',
-            'matricule' => 'nullable|string|max:20|unique:esbtp_etudiants,matricule',
+            'matricule' => 'required|string|max:20|unique:esbtp_etudiants,matricule',
+            'paiement_montant' => 'required|numeric|min:0',
+            'parents.0.nom' => 'required|string|max:100',
+            'parents.0.prenoms' => 'required|string|max:100',
+            'parents.0.telephone' => 'required|string|max:20',
+            'parents.0.relation' => 'required|string',
+        ], [
+            'classe_id.required' => 'Veuillez sélectionner une classe',
+            'nom.required' => 'Le nom est obligatoire',
+            'prenoms.required' => 'Le(s) prénom(s) est/sont obligatoire(s)',
+            'sexe.required' => 'Le genre est obligatoire',
+            'date_naissance.required' => 'La date de naissance est obligatoire',
+            'telephone.required' => 'Le numéro de téléphone est obligatoire',
+            'matricule.required' => 'Le matricule est obligatoire',
+            'matricule.unique' => 'Ce matricule existe déjà',
+            'paiement_montant.required' => 'Le montant du paiement initial est obligatoire',
+            'parents.0.nom.required' => 'Le nom du parent/tuteur est obligatoire',
+            'parents.0.prenoms.required' => 'Le(s) prénom(s) du parent/tuteur est/sont obligatoire(s)',
+            'parents.0.telephone.required' => 'Le téléphone du parent/tuteur est obligatoire',
+            'parents.0.relation.required' => 'La relation avec le parent/tuteur est obligatoire',
         ]);
 
         if ($validator->fails()) {
             return redirect()->back()
                 ->withErrors($validator)
+                ->withInput();
+        }
+
+        // Vérification des frais obligatoires
+        $mandatoryFeeCategories = FeeCategory::where('is_active', true)
+            ->where('is_mandatory', true)
+            ->get();
+
+        $mandatoryTotal = $mandatoryFeeCategories->sum('amount');
+        $initialPayment = $request->input('paiement_montant');
+
+        if ($mandatoryTotal > 0 && $initialPayment < $mandatoryTotal) {
+            return back()
+                ->withErrors(['paiement_montant' => 'Le paiement initial doit être au moins égal aux frais obligatoires (' . number_format($mandatoryTotal, 0, ',', ' ') . ' FCFA)'])
                 ->withInput();
         }
 
@@ -298,14 +332,14 @@ class ESBTPInscriptionController extends Controller
 
             $selectedOptionals = $request->input('fee_optionals', []);
 
-            // Vérifier que le paiement initial couvre le frais d'inscription obligatoire
-            $mandatoryFeeCategories = FeeCategory::where('is_active', true)->where('is_mandatory', true)->get();
-            \Log::info('Catégories obligatoires trouvées', ['categories' => $mandatoryFeeCategories]);
-            $mandatoryTotal = $mandatoryFeeCategories->sum('amount');
-            $initialPayment = $request->input('paiement_montant');
-            if ($mandatoryTotal > 0 && (!$initialPayment || $initialPayment < $mandatoryTotal)) {
-                return back()->withErrors(['paiement_montant' => 'Le paiement initial doit couvrir au moins le montant total des frais obligatoires ('.$mandatoryTotal.' FCFA).'])->withInput();
-            }
+            // Ajouter un log plus détaillé en cas d'erreur
+            \Log::info('Données de l\'étudiant', [
+                'etudiantData' => $etudiantData,
+                'inscriptionData' => $inscriptionData,
+                'parentsData' => $parentsData,
+                'paiementData' => $paiementData,
+                'selectedOptionals' => $selectedOptionals
+            ]);
 
             // Créer l'inscription
             $inscription = $this->inscriptionService->createInscription(
@@ -335,9 +369,10 @@ class ESBTPInscriptionController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('Erreur lors de l\'inscription: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
 
             return redirect()->back()
-                ->with('error', 'Une erreur est survenue lors de l\'inscription. Veuillez réessayer.')
+                ->with('error', 'Une erreur est survenue lors de l\'inscription. Détails : ' . $e->getMessage())
                 ->withInput();
         }
     }

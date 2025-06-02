@@ -10,6 +10,13 @@ class Notification extends Model
     use HasFactory;
 
     /**
+     * The table associated with the model.
+     *
+     * @var string
+     */
+    protected $table = 'custom_notifications';
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var array<int, string>
@@ -103,7 +110,7 @@ class Notification extends Model
             if (!$userId) {
                 return 0;
             }
-            
+
             return self::where('user_id', $userId)
                 ->where('is_read', false)
                 ->count();
@@ -112,4 +119,4 @@ class Notification extends Model
             return 0;
         }
     }
-} 
+}

@@ -11,9 +11,18 @@ use App\Models\ESBTPMatiere;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Models\ESBTPAnneeUniversitaire;
+use App\Services\NotificationService;
+use Carbon\Carbon;
 
 class ESBTPNoteController extends Controller
 {
+    protected $notificationService;
+
+    public function __construct(NotificationService $notificationService)
+    {
+        $this->notificationService = $notificationService;
+    }
+
     /**
      * Affiche la liste des notes avec filtre par classe et matière
      *
@@ -84,8 +93,8 @@ class ESBTPNoteController extends Controller
         $request->validate([
             'etudiant_id' => 'required|exists:esbtp_etudiants,id',
             'evaluation_id' => 'required|exists:esbtp_evaluations,id',
-            'note' => 'required_unless:is_absent,1|numeric|min:0',
-            'is_absent' => 'sometimes|boolean',
+            'note' => 'required_unless:is_absent,on|numeric|min:0',
+            'is_absent' => 'nullable|in:on,1,true',
             'commentaire' => 'nullable|string',
         ], [
             'etudiant_id.required' => 'L\'étudiant est obligatoire',
@@ -93,7 +102,7 @@ class ESBTPNoteController extends Controller
             'note.required_unless' => 'La note est obligatoire si l\'étudiant n\'est pas absent',
             'note.numeric' => 'La note doit être un nombre',
             'note.min' => 'La note doit être positive',
-            'is_absent.boolean' => 'Le statut d\'absence doit être un booléen',
+            'is_absent.in' => 'Le statut d\'absence n\'est pas valide',
         ]);
 
         try {
@@ -120,6 +129,9 @@ class ESBTPNoteController extends Controller
             // Récupérer la période de l'évaluation
             $semestre = $evaluation->periode;
 
+            // Convertir is_absent en booléen
+            $isAbsent = $request->has('is_absent') && in_array($request->is_absent, ['on', '1', 'true', true]);
+
             // Créer la note
             $note = new ESBTPNote();
             $note->etudiant_id = $request->etudiant_id;
@@ -127,13 +139,18 @@ class ESBTPNoteController extends Controller
             $note->classe_id = $classe_id; // Utiliser la classe de l'évaluation
             $note->matiere_id = $evaluation->matiere_id; // Ajouter le matiere_id de l'évaluation
             $note->semestre = $semestre; // Utiliser la période de l'évaluation
-            $note->note = $request->is_absent ? 0 : $request->note;
-            $note->is_absent = $request->has('is_absent') ? 1 : 0;
+            $note->note = $isAbsent ? 0 : $request->note;
+            $note->is_absent = $isAbsent ? 1 : 0;
             $note->commentaire = $request->commentaire;
             $note->created_by = Auth::id();
             $note->type_evaluation = $evaluation->type; // Ajouter le type d'évaluation
             $note->annee_universitaire = $evaluation->anneeUniversitaire ? $evaluation->anneeUniversitaire->name : 'N/A'; // Ajouter l'année universitaire
             $note->save();
+
+            // Envoyer une notification d'absence si l'étudiant est marqué absent
+            if ($note->is_absent) {
+                $this->sendAbsenceNotificationForNote($note, $evaluation);
+            }
 
             // Débogage : Log des détails de la note créée
             \Log::info('Note créée', [
@@ -194,8 +211,8 @@ class ESBTPNoteController extends Controller
     public function update(Request $request, ESBTPNote $note)
     {
         $request->validate([
-            'note' => 'required_unless:is_absent,1|numeric|min:0',
-            'is_absent' => 'sometimes|boolean',
+            'note' => 'required_unless:is_absent,on|numeric|min:0',
+            'is_absent' => 'nullable|in:on,1,true',
             'commentaire' => 'nullable|string',
         ]);
 
@@ -209,12 +226,15 @@ class ESBTPNoteController extends Controller
                     ->withInput();
             }
 
+            // Convertir is_absent en booléen
+            $isAbsent = $request->has('is_absent') && in_array($request->is_absent, ['on', '1', 'true', true]);
+
             // Synchroniser le semestre avec la période de l'évaluation
             $note->semestre = $evaluation->periode;
 
             // Mettre à jour les autres champs
-            $note->note = $request->is_absent ? 0 : $request->note;
-            $note->is_absent = $request->has('is_absent') ? 1 : 0;
+            $note->note = $isAbsent ? 0 : $request->note;
+            $note->is_absent = $isAbsent ? 1 : 0;
             $note->commentaire = $request->commentaire;
             $note->updated_by = Auth::id();
             $note->save();
@@ -329,6 +349,7 @@ class ESBTPNoteController extends Controller
 
                 if ($note) {
                     // Mise à jour de la note existante
+                    $wasAbsent = $note->is_absent;
                     $note->note = $isAbsent ? 0 : $noteData['valeur'];
                     $note->is_absent = $isAbsent;
                     $note->commentaire = $noteData['commentaire'] ?? null;
@@ -352,6 +373,11 @@ class ESBTPNoteController extends Controller
                     }
 
                     $note->save();
+
+                    // Envoyer une notification d'absence si l'étudiant vient d'être marqué absent
+                    if ($isAbsent && !$wasAbsent) {
+                        $this->sendAbsenceNotificationForNote($note, $evaluation);
+                    }
                 } else {
                     // Création d'une nouvelle note
                     $note = new ESBTPNote();
@@ -367,6 +393,11 @@ class ESBTPNoteController extends Controller
                     $note->commentaire = $noteData['commentaire'] ?? null;
                     $note->created_by = Auth::id();
                     $note->save();
+
+                    // Envoyer une notification d'absence si l'étudiant est marqué absent
+                    if ($isAbsent) {
+                        $this->sendAbsenceNotificationForNote($note, $evaluation);
+                    }
                 }
             }
 
@@ -412,5 +443,93 @@ class ESBTPNoteController extends Controller
     public function saisieRapideForm()
     {
         return view('esbtp.notes.saisie-rapide-form');
+    }
+
+    /**
+     * Envoie une notification d'absence à un étudiant lors de la saisie des notes
+     *
+     * @param ESBTPNote $note
+     * @param ESBTPEvaluation $evaluation
+     * @return void
+     */
+    private function sendAbsenceNotificationForNote(ESBTPNote $note, ESBTPEvaluation $evaluation)
+    {
+        try {
+            // Charger l'étudiant avec sa relation user
+            $etudiant = ESBTPEtudiant::with('user')->find($note->etudiant_id);
+
+            // S'assurer que l'étudiant existe et a un compte utilisateur
+            if (!$etudiant || !$etudiant->user) {
+                \Log::warning("Impossible d'envoyer la notification d'absence pour la note: étudiant ou utilisateur non trouvé", [
+                    'etudiant_id' => $note->etudiant_id,
+                    'note_id' => $note->id
+                ]);
+                return;
+            }
+
+            // Charger la matière associée à l'évaluation
+            $matiere = $evaluation->matiere;
+            $matiereName = $matiere ? $matiere->name : 'Matière non définie';
+
+            // Formater la date et l'heure
+            $dateEvaluation = $evaluation->date_evaluation ? \Carbon\Carbon::parse($evaluation->date_evaluation) : \Carbon\Carbon::now();
+            $jourSemaine = $dateEvaluation->locale('fr')->dayName;
+            $dateFormatee = $dateEvaluation->format('d/m/Y');
+            $heureFormatee = $evaluation->heure_debut ? $evaluation->heure_debut : 'Heure non définie';
+
+            // Déterminer le type d'activité
+            $typeActivite = 'Évaluation';
+            $typeEvaluation = ucfirst($evaluation->type ?? 'évaluation');
+
+            // Créer un message détaillé
+            $messageDetail = sprintf(
+                "Absence lors d'une %s (%s)\n" .
+                "Matière: %s\n" .
+                "Date: %s (%s)\n" .
+                "Heure: %s\n" .
+                "Titre: %s",
+                strtolower($typeActivite),
+                $typeEvaluation,
+                $matiereName,
+                $dateFormatee,
+                ucfirst($jourSemaine),
+                $heureFormatee,
+                $evaluation->titre ?? 'Sans titre'
+            );
+
+            // Créer une entrée d'absence temporaire pour la notification avec informations enrichies
+            $absence = new \App\Models\ESBTPAttendance();
+            $absence->date = $dateEvaluation;
+            $absence->etudiant_id = $note->etudiant_id;
+            $absence->statut = 'absent';
+            $absence->commentaire = $messageDetail;
+            $absence->matiere_id = $evaluation->matiere_id;
+            $absence->type_activite = 'evaluation';
+            $absence->heure_debut = $evaluation->heure_debut;
+            $absence->heure_fin = $evaluation->heure_fin;
+
+            // Utiliser le service de notifications
+            $this->notificationService->notifyNewAbsence($absence, $etudiant);
+
+            \Log::info("Notification d'absence enrichie envoyée pour la note", [
+                'etudiant_id' => $note->etudiant_id,
+                'note_id' => $note->id,
+                'evaluation_id' => $evaluation->id,
+                'matiere' => $matiereName,
+                'date' => $dateFormatee,
+                'jour' => $jourSemaine,
+                'heure' => $heureFormatee,
+                'type' => $typeEvaluation
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error("Erreur lors de l'envoi de la notification d'absence pour la note", [
+                'etudiant_id' => $note->etudiant_id,
+                'note_id' => $note->id,
+                'evaluation_id' => $evaluation->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
     }
 }

@@ -2,6 +2,265 @@
 
 @section('title', 'Créer une annonce - ESBTP-yAKRO')
 
+@push('styles')
+<!-- Choices.js CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+
+<style>
+    /* Styles pour les cartes */
+    .hover-card {
+        transition: all 0.3s ease;
+    }
+    .hover-card:hover {
+        box-shadow: 0 .5rem 1rem rgba(0,0,0,.08)!important;
+        transform: translateY(-2px);
+    }
+
+    /* Amélioration des form-controls */
+    .form-control, .form-select {
+        padding: 0.6rem 0.75rem;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: var(--esbtp-green);
+        box-shadow: 0 0 0 0.15rem rgba(1, 99, 47, 0.15);
+    }
+
+    /* Styles Choices.js modernes */
+    .choices {
+        margin-bottom: 0;
+        font-size: 14px;
+        position: relative;
+    }
+
+    .choices__inner {
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(10px);
+        border: 2px solid transparent;
+        border-radius: 12px;
+        font-size: 14px;
+        min-height: 48px;
+        padding: 12px 16px 8px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .choices__inner::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        opacity: 0;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: -1;
+    }
+
+    .choices__inner:focus-within {
+        border-color: var(--esbtp-green);
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(1, 99, 47, 0.3);
+    }
+
+    .choices__inner:focus-within::before {
+        opacity: 0.1;
+    }
+
+    .choices__list--dropdown {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 16px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        z-index: 1050;
+        overflow: hidden;
+        animation: dropdownSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    @keyframes dropdownSlideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-10px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    .choices__item--selectable {
+        padding: 16px 20px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+        border-radius: 8px;
+        margin: 4px 8px;
+    }
+
+    .choices__item--selectable::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: var(--esbtp-green);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: -1;
+    }
+
+    .choices__item--selectable:hover {
+        color: white;
+        transform: translateX(5px);
+    }
+
+    .choices__item--selectable:hover::before {
+        left: 0;
+    }
+
+    .choices__item--selectable.is-highlighted {
+        background: var(--esbtp-green);
+        color: white;
+        transform: translateX(5px);
+    }
+
+    .choices__list--multiple .choices__item {
+        background: var(--esbtp-green);
+        border: none;
+        border-radius: 20px;
+        color: white;
+        font-size: 13px;
+        font-weight: 500;
+        margin: 2px 4px 2px 0;
+        padding: 6px 12px;
+        display: inline-flex;
+        align-items: center;
+        box-shadow: 0 2px 8px rgba(1, 99, 47, 0.3);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        animation: slideInTag 0.3s ease-out;
+    }
+
+    @keyframes slideInTag {
+        from {
+            opacity: 0;
+            transform: translateX(-20px) scale(0.8);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0) scale(1);
+        }
+    }
+
+    .choices__list--multiple .choices__item:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(1, 99, 47, 0.4);
+    }
+
+    .choices__button {
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        border-radius: 50%;
+        color: white;
+        cursor: pointer;
+        font-size: 12px;
+        height: 18px;
+        width: 18px;
+        margin-left: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .choices__button:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: scale(1.1);
+    }
+
+    .choices__placeholder {
+        color: #8b9dc3;
+        opacity: 1;
+        font-style: italic;
+    }
+
+    .choices__input {
+        background-color: transparent;
+        border: 0;
+        font-size: 14px;
+        margin-bottom: 0;
+        padding: 0;
+        color: #2d3748;
+    }
+
+    .choices__input:focus {
+        outline: 0;
+    }
+
+    .choices.is-invalid .choices__inner {
+        border-color: #dc3545;
+        box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
+    }
+
+    /* Style pour les radios personnalisés */
+    .custom-radio {
+        padding: 10px 15px;
+        border-radius: 0.375rem;
+        border: 1px solid #dee2e6;
+        margin-right: 10px;
+        transition: all 0.2s ease;
+    }
+    .custom-radio:hover {
+        background-color: rgba(1, 99, 47, 0.05);
+        border-color: var(--esbtp-green);
+    }
+    .custom-radio .form-check-input:checked ~ .form-check-label {
+        color: var(--esbtp-green);
+        font-weight: 500;
+    }
+
+    /* Style pour les étiquettes */
+    .form-label {
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+    }
+
+    /* Style pour les zones de formulaire spécifiques */
+    #classes_container, #etudiants_container {
+        transition: all 0.3s ease;
+    }
+
+    /* Style pour l'alerte */
+    .alert-danger {
+        border-left: 4px solid #842029;
+    }
+
+    /* Media queries pour la responsivité */
+    @media (max-width: 991.98px) {
+        .sticky-top {
+            position: relative;
+            top: 0 !important;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .choices__list--multiple .choices__item {
+            font-size: 12px;
+            padding: 4px 8px;
+            margin: 1px 2px 1px 0;
+        }
+
+        .choices__button {
+            height: 16px;
+            width: 16px;
+            font-size: 10px;
+        }
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="container-fluid">
     <div class="row mb-4">
@@ -191,8 +450,8 @@
                                             </div>
 
                             <label for="classes" class="form-label">Classes destinataires <span class="text-danger">*</span></label>
-                            <select class="form-select select2-multiple @error('classes') is-invalid @enderror"
-                                id="classes" name="classes[]" multiple style="width: 100%;" data-placeholder="Sélectionnez une ou plusieurs classes">
+                            <select class="form-select choices-multiple @error('classes') is-invalid @enderror"
+                                id="classes" name="classes[]" multiple data-placeholder="Sélectionnez une ou plusieurs classes">
                                                 @foreach($classes as $classe)
                                                     <option value="{{ $classe->id }}"
                                                         data-filiere="{{ $classe->filiere_id }}"
@@ -240,8 +499,8 @@
                                 <span class="input-group-text bg-white">
                                     <i class="fas fa-user-graduate text-primary"></i>
                                 </span>
-                                <select class="form-select select2-multiple @error('etudiants') is-invalid @enderror"
-                                    id="etudiants" name="etudiants[]" multiple style="width: 100%;" data-placeholder="Sélectionnez un ou plusieurs étudiants">
+                                <select class="form-select choices-multiple @error('etudiants') is-invalid @enderror"
+                                    id="etudiants" name="etudiants[]" multiple data-placeholder="Sélectionnez un ou plusieurs étudiants">
                                                 @foreach($etudiants as $etudiant)
                                                     <option value="{{ $etudiant->id }}"
                                             data-classe="{{ $etudiant->classe_active ? $etudiant->classe_active->id : '' }}"
@@ -265,7 +524,7 @@
 
             <!-- Colonne latérale pour les options -->
             <div class="col-lg-4">
-                <div class="sticky-top" style="top: 80px; z-index: 1000;">
+                <div class="sticky-top" style="top: 80px; z-index: 1;">
                     <!-- Carte des options de publication -->
                     <div class="card shadow-sm border-0 rounded-lg mb-4 hover-card">
                         <div class="card-header bg-white py-3 border-bottom border-light">
@@ -366,111 +625,132 @@
 </div>
 @endsection
 
-@section('styles')
-<style>
-    /* Styles pour les cartes */
-    .hover-card {
-        transition: all 0.3s ease;
-    }
-    .hover-card:hover {
-        box-shadow: 0 .5rem 1rem rgba(0,0,0,.08)!important;
-        transform: translateY(-2px);
-    }
+@push('scripts')
+<!-- Choices.js JavaScript -->
+<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
 
-    /* Amélioration des form-controls */
-    .form-control, .form-select {
-        padding: 0.6rem 0.75rem;
-    }
-    .form-control:focus, .form-select:focus {
-        border-color: var(--esbtp-green);
-        box-shadow: 0 0 0 0.15rem rgba(1, 99, 47, 0.15);
-    }
+<script>
+    // Variables globales pour Choices.js
+    let choicesInstances = {};
 
-    /* Style pour Select2 */
-    .select2-container--default .select2-selection--multiple {
-        border-color: #dee2e6;
-        border-radius: 0.375rem;
-        min-height: 40px;
-        padding: 2px;
-    }
-    .select2-container--default.select2-container--focus .select2-selection--multiple {
-        border-color: var(--esbtp-green);
-        box-shadow: 0 0 0 0.15rem rgba(1, 99, 47, 0.15);
-    }
-    .select2-container--default .select2-selection--multiple .select2-selection__choice {
-        background-color: var(--esbtp-light-green);
-        border-color: var(--esbtp-green);
-        color: var(--esbtp-green);
-        font-size: 0.85rem;
-        border-radius: 50rem;
-        padding: 2px 8px;
-        margin: 3px;
-    }
-    .select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
-        color: var(--esbtp-green);
-        margin-right: 5px;
-        border-right: none;
-    }
-    .select2-container--default .select2-selection--multiple .select2-selection__choice__remove:hover {
-        background-color: rgba(1, 99, 47, 0.2);
-        color: var(--esbtp-green);
-    }
+    // Configuration par défaut pour Choices.js
+    const defaultChoicesConfig = {
+        searchEnabled: true,
+        searchChoices: true,
+        searchFloor: 1,
+        searchResultLimit: 10,
+        shouldSort: false,
+        placeholder: true,
+        placeholderValue: "Rechercher...",
+        noResultsText: "Aucun résultat trouvé",
+        noChoicesText: "Aucun choix disponible",
+        itemSelectText: "Cliquer pour sélectionner",
+        loadingText: "Recherche en cours...",
+        removeItemButton: true,
+        duplicateItemsAllowed: false,
+        maxItemCount: 50,
+        renderChoiceLimit: 20,
+    };
 
-    /* Style pour les radios personnalisés */
-    .custom-radio {
-        padding: 10px 15px;
-        border-radius: 0.375rem;
-        border: 1px solid #dee2e6;
-        margin-right: 10px;
-        transition: all 0.2s ease;
-    }
-    .custom-radio:hover {
-        background-color: rgba(1, 99, 47, 0.05);
-        border-color: var(--esbtp-green);
-    }
-    .custom-radio .form-check-input:checked ~ .form-check-label {
-        color: var(--esbtp-green);
-        font-weight: 500;
-    }
+    // Fonction d'initialisation de Choices.js
+    function initializeChoices(selectElement, customConfig = {}) {
+        const selectId = selectElement.id;
+        console.log("Initialisation de Choices.js pour:", selectId);
 
-    /* Style pour les étiquettes */
-    .form-label {
-        font-weight: 500;
-        margin-bottom: 0.5rem;
-        font-size: 0.9rem;
-    }
+        if (!selectElement) {
+            console.error("Élément select non trouvé:", selectId);
+            return null;
+        }
 
-    /* Style pour les zones de formulaire spécifiques */
-    #classes_container, #etudiants_container {
-        transition: all 0.3s ease;
-    }
+        // Détruire l'instance existante si elle existe
+        if (choicesInstances[selectId]) {
+            choicesInstances[selectId].destroy();
+            delete choicesInstances[selectId];
+        }
 
-    /* Style pour l'alerte */
-    .alert-danger {
-        border-left: 4px solid #842029;
-    }
+        // Fusionner la configuration
+        const config = { ...defaultChoicesConfig, ...customConfig };
 
-    /* Media queries pour la responsivité */
-    @media (max-width: 991.98px) {
-        .sticky-top {
-            position: relative;
-            top: 0 !important;
+        try {
+            const choices = new Choices(selectElement, config);
+            choicesInstances[selectId] = choices;
+            console.log("Instance Choices.js créée avec succès pour:", selectId);
+            return choices;
+        } catch (error) {
+            console.error("Erreur lors de la création de l'instance Choices.js:", error);
+            return null;
         }
     }
-</style>
-@endsection
 
-@push('scripts')
-<script>
-    $(document).ready(function() {
-        // Configuration avancée de Select2
-        $('.select2-multiple').select2({
-            theme: 'bootstrap-5',
-            placeholder: "Sélectionner des options",
-            allowClear: true,
-            closeOnSelect: false,
-            width: '100%'
-        });
+    // Configuration pour les templates personnalisés
+    const multipleSelectConfig = {
+        callbackOnCreateTemplates: function (template) {
+            return {
+                item: ({ classNames }, data) => {
+                    return template(`
+                        <div class="${classNames.item} ${
+                        data.highlighted
+                            ? classNames.highlightedState
+                            : classNames.itemSelectable
+                    }"
+                             data-item data-id="${data.id}" data-value="${data.value}">
+                            <span class="choice-item-content">
+                                ${data.label}
+                            </span>
+                            ${
+                                !data.disabled
+                                    ? `<button type="button" class="${classNames.button}" data-button><i class="fas fa-times"></i></button>`
+                                    : ""
+                            }
+                        </div>
+                    `);
+                },
+                choice: ({ classNames }, data) => {
+                    return template(`
+                        <div class="${classNames.item} ${classNames.itemChoice} ${
+                        data.disabled
+                            ? classNames.itemDisabled
+                            : classNames.itemSelectable
+                    }"
+                             data-select-text="${
+                                 this.config.itemSelectText
+                             }" data-choice
+                             ${
+                                 data.disabled
+                                     ? 'data-choice-disabled aria-disabled="true"'
+                                     : "data-choice-selectable"
+                             }
+                             data-id="${data.id}" data-value="${data.value}">
+                            <div class="choice-content">
+                                ${data.label}
+                            </div>
+                        </div>
+                    `);
+                },
+            };
+        },
+    };
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialiser Choices.js pour les sélecteurs multiples
+        const classesSelect = document.getElementById('classes');
+        const etudiantsSelect = document.getElementById('etudiants');
+
+        if (classesSelect) {
+            const classesChoices = initializeChoices(classesSelect, {
+                ...multipleSelectConfig,
+                placeholderValue: "Sélectionnez une ou plusieurs classes...",
+                maxItemCount: 20,
+            });
+        }
+
+        if (etudiantsSelect) {
+            const etudiantsChoices = initializeChoices(etudiantsSelect, {
+                ...multipleSelectConfig,
+                placeholderValue: "Sélectionnez un ou plusieurs étudiants...",
+                maxItemCount: 50,
+            });
+        }
 
         // Gestion de l'affichage du champ de date de publication
         $('#status').change(function() {
@@ -498,98 +778,132 @@
             }
         }).trigger('change');
 
-        // Filtrage amélioré des classes
+        // Filtrage amélioré des classes avec Choices.js
         $('#filiere_filter, #niveau_filter').change(function() {
             const filiereId = $('#filiere_filter').val();
             const niveauId = $('#niveau_filter').val();
+            const classesChoicesInstance = choicesInstances['classes'];
 
-            $('#classes option').each(function() {
-                const classeFiliereId = $(this).data('filiere');
-                const classeNiveauId = $(this).data('niveau');
+            if (classesChoicesInstance) {
+                // Récupérer toutes les options originales
+                const allOptions = Array.from(document.getElementById('classes').options);
+                const filteredChoices = [];
 
-                let show = true;
+                allOptions.forEach(option => {
+                    const classeFiliereId = option.dataset.filiere;
+                    const classeNiveauId = option.dataset.niveau;
+                    let show = true;
 
-                if (filiereId && classeFiliereId != filiereId) {
-                    show = false;
-                }
+                    if (filiereId && classeFiliereId != filiereId) {
+                        show = false;
+                    }
 
-                if (niveauId && classeNiveauId != niveauId) {
-                    show = false;
-                }
+                    if (niveauId && classeNiveauId != niveauId) {
+                        show = false;
+                    }
 
-                $(this).prop('disabled', !show);
+                    if (show && option.value) {
+                        filteredChoices.push({
+                            value: option.value,
+                            label: option.textContent,
+                            selected: option.selected,
+                            disabled: false
+                        });
+                    }
+                });
 
-                if (!show && $(this).is(':selected')) {
-                    $(this).prop('selected', false);
-                }
-            });
-
-            $('#classes').trigger('change');
+                // Mettre à jour les choix disponibles
+                classesChoicesInstance.setChoices(filteredChoices, 'value', 'label', true);
+            }
         });
 
-        // Filtrage amélioré des étudiants avec meilleure gestion des valeurs vides
+        // Filtrage amélioré des étudiants avec Choices.js
         $('#classe_etudiant_filter').change(function() {
             const classeId = $(this).val();
-            let visibleCount = 0;
+            const etudiantsChoicesInstance = choicesInstances['etudiants'];
 
-            $('#etudiants option').each(function() {
-                const etudiantClasseId = $(this).data('classe');
+            if (etudiantsChoicesInstance) {
+                const allOptions = Array.from(document.getElementById('etudiants').options);
+                const filteredChoices = [];
+                let visibleCount = 0;
 
-                let show = true;
+                allOptions.forEach(option => {
+                    const etudiantClasseId = option.dataset.classe;
+                    let show = true;
 
-                // Si un filtre de classe est sélectionné, n'afficher que les étudiants de cette classe
-                if (classeId && etudiantClasseId !== classeId) {
-                    show = false;
+                    if (classeId && etudiantClasseId !== classeId) {
+                        show = false;
+                    }
+
+                    if (show && option.value) {
+                        filteredChoices.push({
+                            value: option.value,
+                            label: option.textContent,
+                            selected: option.selected,
+                            disabled: false
+                        });
+                        visibleCount++;
+                    }
+                });
+
+                // Mettre à jour les choix disponibles
+                etudiantsChoicesInstance.setChoices(filteredChoices, 'value', 'label', true);
+
+                // Afficher un message informatif
+                const infoMessage = visibleCount > 0
+                    ? `${visibleCount} étudiant(s) disponible(s)`
+                    : "Aucun étudiant disponible avec ce filtre";
+
+                if ($('#etudiants-info').length) {
+                    $('#etudiants-info').text(infoMessage);
+                } else {
+                    $('<div id="etudiants-info" class="text-muted small mt-2 mb-2">' + infoMessage + '</div>').insertBefore('#etudiants');
                 }
-
-                $(this).prop('disabled', !show);
-
-                if (!show && $(this).is(':selected')) {
-                    $(this).prop('selected', false);
-                }
-
-                if (show) {
-                    visibleCount++;
-                }
-            });
-
-            // Afficher un message informatif sur le nombre d'étudiants disponibles après filtrage
-            const infoMessage = visibleCount > 0
-                ? `${visibleCount} étudiant(s) disponible(s)`
-                : "Aucun étudiant disponible avec ce filtre";
-
-            // Mettre à jour ou créer un élément d'information
-            if ($('#etudiants-info').length) {
-                $('#etudiants-info').text(infoMessage);
-            } else {
-                $('<div id="etudiants-info" class="text-muted small mt-2 mb-2">' + infoMessage + '</div>').insertBefore('#etudiants');
             }
-
-            $('#etudiants').trigger('change');
         });
 
         // Sélection améliorée de toutes les classes
         $('#select_all_classes').click(function() {
-            $('#classes option:not(:disabled)').prop('selected', true);
-            $('#classes').trigger('change');
+            const classesChoicesInstance = choicesInstances['classes'];
+            if (classesChoicesInstance) {
+                // Sélectionner toutes les options visibles
+                const availableChoices = classesChoicesInstance._currentState.choices.filter(choice => !choice.disabled);
+                availableChoices.forEach(choice => {
+                    classesChoicesInstance._addItem({
+                        value: choice.value,
+                        label: choice.label,
+                        id: choice.id
+                    });
+                });
 
-            // Ajouter un effet visuel
-            $(this).addClass('btn-success').removeClass('btn-outline-primary');
-            setTimeout(() => {
-                $(this).addClass('btn-outline-primary').removeClass('btn-success');
-            }, 1000);
+                // Effet visuel
+                $(this).addClass('btn-success').removeClass('btn-outline-primary');
+                setTimeout(() => {
+                    $(this).addClass('btn-outline-primary').removeClass('btn-success');
+                }, 1000);
+            }
         });
 
         // Sélection améliorée de tous les étudiants
         $('#select_all_etudiants').click(function() {
-            $('#etudiants option:not(:disabled)').prop('selected', true);
-            $('#etudiants').trigger('change');
+            const etudiantsChoicesInstance = choicesInstances['etudiants'];
+            if (etudiantsChoicesInstance) {
+                // Sélectionner toutes les options visibles
+                const availableChoices = etudiantsChoicesInstance._currentState.choices.filter(choice => !choice.disabled);
+                availableChoices.forEach(choice => {
+                    etudiantsChoicesInstance._addItem({
+                        value: choice.value,
+                        label: choice.label,
+                        id: choice.id
+                    });
+                });
 
-            // Ajouter un effet visuel
-            $(this).addClass('btn-success').removeClass('btn-outline-primary');
-            setTimeout(() => {
-                $(this).addClass('btn-outline-primary').removeClass('btn-success');
-            }, 1000);
+                // Effet visuel
+                $(this).addClass('btn-success').removeClass('btn-outline-primary');
+                setTimeout(() => {
+                    $(this).addClass('btn-outline-primary').removeClass('btn-success');
+                }, 1000);
+            }
         });
 
         // Prévisualisation de la notification de niveau d'urgence
@@ -620,6 +934,30 @@
                     'border-color': ''
                 });
             }, 1500);
+        });
+
+        // Validation du formulaire avec Choices.js
+        $('form').on('submit', function(e) {
+            const selectedType = $('input[name="type"]:checked').val();
+            let isValid = true;
+
+            if (selectedType === 'classe') {
+                const classesChoicesInstance = choicesInstances['classes'];
+                if (classesChoicesInstance && classesChoicesInstance.getValue().length === 0) {
+                    alert('Veuillez sélectionner au moins une classe.');
+                    isValid = false;
+                }
+            } else if (selectedType === 'etudiant') {
+                const etudiantsChoicesInstance = choicesInstances['etudiants'];
+                if (etudiantsChoicesInstance && etudiantsChoicesInstance.getValue().length === 0) {
+                    alert('Veuillez sélectionner au moins un étudiant.');
+                    isValid = false;
+                }
+            }
+
+            if (!isValid) {
+                e.preventDefault();
+            }
         });
     });
 </script>
