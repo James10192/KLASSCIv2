@@ -275,7 +275,7 @@
                                                         <tr>
                                                             <td>{{ $note->evaluation->title }}</td>
                                                             <td><span class="badge bg-secondary">{{ $note->evaluation->type }}</span></td>
-                                                            <td>{{ $note->evaluation->date ? $note->evaluation->date->format('d/m/Y') : 'N/A' }}</td>
+                                                            <td>{{ $note->evaluation->date_evaluation ? $note->evaluation->date_evaluation->format('d/m/Y') : 'N/A' }}</td>
                                                             <td class="text-center">
                                                                 <span class="badge bg-primary px-2 py-1 rounded-pill">{{ $note->evaluation->coefficient }}</span>
                                                             </td>

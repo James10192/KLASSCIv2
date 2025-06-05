@@ -476,7 +476,7 @@
                                                             {{ $seanceToDisplay->matiere->name ?? 'Matière non définie' }}
                                                     </div>
                                                     <div class="session-info session-enseignant">
-                                                            {{ $seanceToDisplay->teacher ? $seanceToDisplay->teacher->user->name : 'Enseignant non défini' }}
+                                                            {{ $seanceToDisplay->teacher ? $seanceToDisplay->teacher->name : 'Non défini' }}
                                                     </div>
                                                     <div class="session-info session-details">
                                                             {{ $seanceToDisplay->salle ?? 'Salle non définie' }}
@@ -551,7 +551,7 @@
                                                             <strong>À rendre le :</strong>
                                                             {{ $seance->homework_due_date ? $seance->homework_due_date->format('d/m/Y') : 'Non définie' }}
                                                         @elseif($seance->isCourse())
-                                                            <strong>Enseignant :</strong> {{ $seance->teacher ? $seance->teacher->user->name : 'Non défini' }} |
+                                                            <strong>Enseignant :</strong> {{ $seance->teacher ? $seance->teacher->name : 'Non défini' }} |
                                                 <strong>Salle :</strong> {{ $seance->salle ?? 'Non définie' }}
                                                         @endif
                                             </p>

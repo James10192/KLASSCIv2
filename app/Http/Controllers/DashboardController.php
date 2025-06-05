@@ -14,7 +14,6 @@ use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPParent;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPFiliere;
-
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPEvaluation;
@@ -31,8 +30,11 @@ use App\Models\ESBTPAcademicYear;
 use App\Models\ESBTPExam;
 use App\Models\ESBTPGrade;
 use App\Models\ESBTPSchedule;
+use App\Models\ESBTPInscription;
+use App\Models\ESBTPTeacher;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
@@ -105,7 +107,6 @@ class DashboardController extends Controller
             $data['recentFilieres'] = collect();
         }
 
-
         // Niveaux d'études
         try {
             $data['totalNiveaux'] = ESBTPNiveauEtude::count();
@@ -125,6 +126,13 @@ class DashboardController extends Controller
             $data['totalMatieres'] = ESBTPMatiere::count();
         } catch (\Exception $e) {
             $data['totalMatieres'] = 0;
+        }
+
+        // Enseignants
+        try {
+            $data['totalTeachers'] = ESBTPTeacher::count();
+        } catch (\Exception $e) {
+            $data['totalTeachers'] = 0;
         }
 
         // Examens
@@ -209,6 +217,101 @@ class DashboardController extends Controller
                 ->get();
         } catch (\Exception $e) {
             $data['recentNotifications'] = collect();
+        }
+
+        // Inscriptions récentes (vraies données)
+        try {
+            $data['recentInscriptions'] = ESBTPInscription::with([
+                'etudiant',
+                'classe.filiere',
+                'etudiant.classe.filiere'
+            ])
+                ->orderBy('created_at', 'desc')
+                ->limit(5)
+                ->get();
+        } catch (\Exception $e) {
+            $data['recentInscriptions'] = collect();
+        }
+
+        // Examens à venir (vraies données)
+        try {
+            $data['upcomingExams'] = ESBTPEvaluation::with(['matiere', 'classe'])
+                ->where('date_evaluation', '>=', now())
+                ->orderBy('date_evaluation', 'asc')
+                ->limit(5)
+                ->get();
+        } catch (\Exception $e) {
+            $data['upcomingExams'] = collect();
+        }
+
+        // Annonces récentes
+        try {
+            $data['recentAnnouncements'] = ESBTPAnnonce::orderBy('created_at', 'desc')
+                ->limit(3)
+                ->get();
+        } catch (\Exception $e) {
+            $data['recentAnnouncements'] = collect();
+        }
+
+        // Statistiques par filière avec couleurs pour le graphique
+        $filiereStatsRaw = ESBTPFiliere::withCount('inscriptions')->get();
+        $colors = ['#6366f1', '#ec4899', '#22c55e', '#f59e0b', '#ef4444', '#0ea5e9', '#8b5cf6', '#f97316', '#06b6d4', '#84cc16', '#f43f5e', '#6366f1'];
+
+        $data['filiereStats'] = $filiereStatsRaw->map(function($filiere, $index) use ($colors) {
+            return [
+                'id' => $filiere->id,
+                'name' => $filiere->name,
+                'students' => $filiere->inscriptions_count,
+                'color' => $colors[$index % count($colors)]
+            ];
+        });
+
+        // Données mensuelles pour les graphiques
+        $data['monthlyStats'] = [];
+        for ($i = 11; $i >= 0; $i--) {
+            $date = now()->subMonths($i);
+            $studentsCount = ESBTPEtudiant::whereYear('created_at', $date->year)
+                ->whereMonth('created_at', $date->month)
+                ->count();
+            $inscriptionsCount = ESBTPInscription::whereYear('created_at', $date->year)
+                ->whereMonth('created_at', $date->month)
+                ->count();
+
+            $data['monthlyStats'][] = [
+                'month' => $date->format('M'),
+                'year' => $date->format('Y'),
+                'students' => $studentsCount,
+                'inscriptions' => $inscriptionsCount,
+            ];
+        }
+
+        // Inscriptions par mois pour le graphique
+        $data['inscriptionsByMonth'] = ESBTPInscription::selectRaw('MONTH(created_at) as month, YEAR(created_at) as year, COUNT(*) as count')
+            ->where('created_at', '>=', now()->subMonths(12))
+            ->groupBy('year', 'month')
+            ->orderBy('year', 'asc')
+            ->orderBy('month', 'asc')
+            ->get();
+
+        // Statistiques de présence
+        try {
+            $totalPresent = ESBTPAttendance::where('status', 'present')->whereDate('date', today())->count();
+            $totalAbsent = ESBTPAttendance::where('status', 'absent')->whereDate('date', today())->count();
+            $attendanceRate = $totalPresent + $totalAbsent > 0
+                ? round(($totalPresent / ($totalPresent + $totalAbsent)) * 100, 1)
+                : 0;
+
+            $data['attendanceStats'] = [
+                'total_present' => $totalPresent,
+                'total_absent' => $totalAbsent,
+                'attendance_rate' => $attendanceRate
+            ];
+        } catch (\Exception $e) {
+            $data['attendanceStats'] = [
+                'total_present' => 0,
+                'total_absent' => 0,
+                'attendance_rate' => 0
+            ];
         }
 
         return view('dashboard.superadmin', $data);
@@ -399,5 +502,273 @@ class DashboardController extends Controller
         return view('dashboard.index', [
             'user' => $user
         ]);
+    }
+
+    /**
+     * Dashboard Super Admin
+     */
+    public function superadmin()
+    {
+        $user = Auth::user();
+
+        // Vérifier que l'utilisateur est bien super admin
+        if (!$user->hasRole('superAdmin')) {
+            abort(403, 'Accès non autorisé');
+        }
+
+        // Statistiques principales
+        $totalStudents = ESBTPEtudiant::count();
+        $totalFilieres = ESBTPFiliere::count();
+        $totalMatieres = ESBTPMatiere::count();
+        $totalClasses = ESBTPClasse::count();
+        $totalTeachers = ESBTPTeacher::count();
+        $totalUsers = User::count();
+
+        // Inscriptions récentes (vraies données)
+        $recentInscriptions = ESBTPInscription::with(['etudiant', 'classe.filiere'])
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
+
+        // Examens à venir (vraies données)
+        $upcomingExams = ESBTPEvaluation::with(['matiere', 'classe'])
+            ->where('date_evaluation', '>=', now())
+            ->orderBy('date_evaluation', 'asc')
+            ->limit(5)
+            ->get();
+
+        // Annonces récentes
+        $recentAnnouncements = ESBTPAnnonce::orderBy('created_at', 'desc')
+            ->limit(3)
+            ->get();
+
+        // Statistiques par filière avec couleurs pour le graphique
+        $filiereStatsRaw = ESBTPFiliere::withCount('inscriptions')->get();
+        $colors = ['#6366f1', '#ec4899', '#22c55e', '#f59e0b', '#ef4444', '#0ea5e9', '#8b5cf6', '#f97316', '#06b6d4', '#84cc16', '#f43f5e', '#6366f1'];
+
+        $filiereStats = $filiereStatsRaw->map(function($filiere, $index) use ($colors) {
+            return [
+                'id' => $filiere->id,
+                'name' => $filiere->name,
+                'students' => $filiere->inscriptions_count,
+                'color' => $colors[$index % count($colors)]
+            ];
+        });
+
+        // Données mensuelles pour les graphiques
+        $monthlyStats = [];
+        for ($i = 11; $i >= 0; $i--) {
+            $date = now()->subMonths($i);
+            $studentsCount = ESBTPEtudiant::whereYear('created_at', $date->year)
+                ->whereMonth('created_at', $date->month)
+                ->count();
+            $inscriptionsCount = ESBTPInscription::whereYear('created_at', $date->year)
+                ->whereMonth('created_at', $date->month)
+                ->count();
+
+            $monthlyStats[] = [
+                'month' => $date->format('M'),
+                'year' => $date->format('Y'),
+                'students' => $studentsCount,
+                'inscriptions' => $inscriptionsCount,
+            ];
+        }
+
+        // Inscriptions par mois pour le graphique
+        $inscriptionsByMonth = ESBTPInscription::selectRaw('MONTH(created_at) as month, YEAR(created_at) as year, COUNT(*) as count')
+            ->where('created_at', '>=', now()->subMonths(12))
+            ->groupBy('year', 'month')
+            ->orderBy('year', 'asc')
+            ->orderBy('month', 'asc')
+            ->get();
+
+        return view('dashboard.superadmin', compact(
+            'totalStudents',
+            'totalFilieres',
+            'totalMatieres',
+            'totalClasses',
+            'totalTeachers',
+            'totalUsers',
+            'recentInscriptions',
+            'upcomingExams',
+            'recentAnnouncements',
+            'filiereStats',
+            'monthlyStats',
+            'inscriptionsByMonth'
+        ));
+    }
+
+    /**
+     * Dashboard Secrétaire
+     */
+    public function secretaire()
+    {
+        $user = Auth::user();
+
+        if (!$user->hasRole('secretaire')) {
+            abort(403, 'Accès non autorisé');
+        }
+
+        // Statistiques pour secrétaire
+        $totalStudents = ESBTPEtudiant::count();
+        $pendingInscriptions = ESBTPInscription::where('status', 'pending')->count();
+        $totalClasses = ESBTPClasse::count();
+        $recentStudents = ESBTPEtudiant::with('classe.filiere')
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+
+        return view('dashboard.secretaire', compact(
+            'totalStudents',
+            'pendingInscriptions',
+            'totalClasses',
+            'recentStudents'
+        ));
+    }
+
+    /**
+     * Dashboard Étudiant
+     */
+    public function etudiant()
+    {
+        $user = Auth::user();
+
+        if (!$user->hasRole('etudiant')) {
+            abort(403, 'Accès non autorisé');
+        }
+
+        // Récupérer l'étudiant associé
+        $etudiant = ESBTPEtudiant::where('user_id', $user->id)->first();
+
+        if (!$etudiant) {
+            abort(404, 'Profil étudiant non trouvé');
+        }
+
+        // Prochains examens pour cet étudiant
+        $upcomingExams = ESBTPEvaluation::where('classe_id', $etudiant->classe_id)
+            ->where('date_evaluation', '>=', now())
+            ->with('matiere')
+            ->orderBy('date_evaluation', 'asc')
+            ->limit(5)
+            ->get();
+
+        // Dernières notes
+        $recentGrades = DB::table('esbtp_notes')
+            ->join('esbtp_evaluations', 'esbtp_notes.evaluation_id', '=', 'esbtp_evaluations.id')
+            ->join('esbtp_matieres', 'esbtp_evaluations.matiere_id', '=', 'esbtp_matieres.id')
+            ->where('esbtp_notes.etudiant_id', $etudiant->id)
+            ->select('esbtp_notes.*', 'esbtp_matieres.nom as matiere_nom', 'esbtp_evaluations.type')
+            ->orderBy('esbtp_notes.created_at', 'desc')
+            ->limit(5)
+            ->get();
+
+        // Annonces pour la classe
+        $announcements = ESBTPAnnonce::whereHas('destinataires', function($query) use ($etudiant) {
+                $query->where('destinataire_type', 'classe')
+                      ->where('destinataire_id', $etudiant->classe_id);
+            })
+            ->orWhereHas('destinataires', function($query) {
+                $query->where('destinataire_type', 'tous');
+            })
+            ->orderBy('created_at', 'desc')
+            ->limit(3)
+            ->get();
+
+        return view('dashboard.etudiant', compact(
+            'etudiant',
+            'upcomingExams',
+            'recentGrades',
+            'announcements'
+        ));
+    }
+
+    /**
+     * Obtenir les statistiques mensuelles
+     */
+    private function getMonthlyStats()
+    {
+        $months = [];
+        for ($i = 11; $i >= 0; $i--) {
+            $date = now()->subMonths($i);
+            $months[] = [
+                'month' => $date->format('M'),
+                'year' => $date->format('Y'),
+                'students' => ESBTPEtudiant::whereYear('created_at', $date->year)
+                    ->whereMonth('created_at', $date->month)
+                    ->count(),
+                'inscriptions' => ESBTPInscription::whereYear('created_at', $date->year)
+                    ->whereMonth('created_at', $date->month)
+                    ->count(),
+            ];
+        }
+        return $months;
+    }
+
+    /**
+     * Obtenir les statistiques de présence
+     */
+    private function getAttendanceStats()
+    {
+        // Vérifier si le modèle de présence existe
+        if (!class_exists('App\Models\ESBTPPresence')) {
+            return [
+                'total_present' => 0,
+                'total_absent' => 0,
+                'attendance_rate' => 0
+            ];
+        }
+
+        $totalPresent = DB::table('esbtp_presences')
+            ->where('statut', 'present')
+            ->whereDate('date', today())
+            ->count();
+
+        $totalAbsent = DB::table('esbtp_presences')
+            ->where('statut', 'absent')
+            ->whereDate('date', today())
+            ->count();
+
+        $attendanceRate = $totalPresent + $totalAbsent > 0
+            ? round(($totalPresent / ($totalPresent + $totalAbsent)) * 100, 1)
+            : 0;
+
+        return [
+            'total_present' => $totalPresent,
+            'total_absent' => $totalAbsent,
+            'attendance_rate' => $attendanceRate
+        ];
+    }
+
+    /**
+     * Obtenir les données financières (simulées)
+     */
+    private function getFinancialData()
+    {
+        // Pour l'instant, données simulées
+        // À remplacer par de vraies données quand le module comptabilité sera implémenté
+        return [
+            'total_paid' => 45070000,
+            'total_due' => 32400000,
+            'monthly_revenue' => [
+                'Jan' => 3500000,
+                'Fév' => 4200000,
+                'Mar' => 3800000,
+                'Avr' => 4100000,
+                'Mai' => 3900000,
+                'Jun' => 4300000,
+            ]
+        ];
+    }
+
+    /**
+     * Générer une couleur aléatoire pour les graphiques
+     */
+    private function getRandomColor()
+    {
+        $colors = [
+            '#6366f1', '#8b5cf6', '#06b6d4', '#10b981',
+            '#f59e0b', '#ef4444', '#ec4899', '#84cc16'
+        ];
+        return $colors[array_rand($colors)];
     }
 }

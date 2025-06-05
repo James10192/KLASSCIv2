@@ -6,7 +6,9 @@ use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvid
 use Illuminate\Support\Facades\Gate;
 use App\Models\ESBTPEmploiTemps;
 use App\Models\ESBTPSeanceCours;
+use App\Models\ESBTPMatiere;
 use App\Policies\ESBTPSeanceCoursPolicy;
+use App\Policies\ESBTPMatierePolicy;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -17,6 +19,7 @@ class AuthServiceProvider extends ServiceProvider
      */
     protected $policies = [
         ESBTPSeanceCours::class => ESBTPSeanceCoursPolicy::class,
+        ESBTPMatiere::class => ESBTPMatierePolicy::class,
     ];
 
     /**

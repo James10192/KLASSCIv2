@@ -6,6 +6,26 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col-12">
+            <!-- DEBUG TEMPORAIRE -->
+            <div class="alert alert-info">
+                <h6>🔍 Debug des données reçues :</h6>
+                <p><strong>Nombre de résultats dans $resultatsData :</strong> {{ count($resultatsData) }}</p>
+                @if(count($resultatsData) > 0)
+                    <p><strong>Détails des résultats :</strong></p>
+                    <ul>
+                        @foreach($resultatsData as $matiereId => $resultat)
+                            <li>
+                                <strong>Matière ID {{ $matiereId }} :</strong> {{ $resultat['matiere']->name ?? 'N/A' }}
+                                - Moyenne: {{ $resultat['moyenne'] ?? 'N/A' }}
+                                - Coefficient: {{ $resultat['coefficient'] ?? 'N/A' }}
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+                <p><strong>Nombre de matières dans $notesByMatiere :</strong> {{ count($notesByMatiere ?? []) }}</p>
+            </div>
+            <!-- FIN DEBUG -->
+
             <div class="card shadow-sm">
                 <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
                     <h5 class="mb-0"><i class="fas fa-edit me-2"></i>Modification des moyennes de {{ $etudiant->nom }} {{ $etudiant->prenoms }}</h5>
@@ -114,6 +134,19 @@
                                                     $calculatedMoyenne = isset($notesByMatiere[$matiereId]) ? $notesByMatiere[$matiereId]['moyenne'] : 0;
                                                     $existingMoyenne = $resultat['moyenne'] ?? $calculatedMoyenne;
                                                 @endphp
+                                                <!-- DEBUG DÉTAILLÉ -->
+                                                <tr style="background-color: #f8f9fa;">
+                                                    <td colspan="6">
+                                                        <small>
+                                                            <strong>🔍 Debug pour matière ID {{ $matiereId }}:</strong><br>
+                                                            - calculatedMoyenne: {{ $calculatedMoyenne }}<br>
+                                                            - resultat['moyenne']: {{ $resultat['moyenne'] ?? 'NULL' }}<br>
+                                                            - existingMoyenne: {{ $existingMoyenne }}<br>
+                                                            - number_format($existingMoyenne, 2): {{ number_format($existingMoyenne, 2) }}<br>
+                                                            - resultat['coefficient']: {{ $resultat['coefficient'] ?? 'NULL' }}
+                                                        </small>
+                                                    </td>
+                                                </tr>
                                                 <tr>
                                                     <td>{{ $i++ }}</td>
                                                     <td>{{ $resultat['matiere']->name }} {{ $resultat['matiere']->code ? '(' . $resultat['matiere']->code . ')' : '(ID: ' . $resultat['matiere']->id . ')' }}</td>

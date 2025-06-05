@@ -792,15 +792,15 @@
                 allOptions.forEach(option => {
                     const classeFiliereId = option.dataset.filiere;
                     const classeNiveauId = option.dataset.niveau;
-                    let show = true;
+                let show = true;
 
-                    if (filiereId && classeFiliereId != filiereId) {
-                        show = false;
-                    }
+                if (filiereId && classeFiliereId != filiereId) {
+                    show = false;
+                }
 
-                    if (niveauId && classeNiveauId != niveauId) {
-                        show = false;
-                    }
+                if (niveauId && classeNiveauId != niveauId) {
+                    show = false;
+                }
 
                     if (show && option.value) {
                         filteredChoices.push({
@@ -825,15 +825,15 @@
             if (etudiantsChoicesInstance) {
                 const allOptions = Array.from(document.getElementById('etudiants').options);
                 const filteredChoices = [];
-                let visibleCount = 0;
+            let visibleCount = 0;
 
                 allOptions.forEach(option => {
                     const etudiantClasseId = option.dataset.classe;
-                    let show = true;
+                let show = true;
 
-                    if (classeId && etudiantClasseId !== classeId) {
-                        show = false;
-                    }
+                if (classeId && etudiantClasseId !== classeId) {
+                    show = false;
+                }
 
                     if (show && option.value) {
                         filteredChoices.push({
@@ -842,23 +842,23 @@
                             selected: option.selected,
                             disabled: false
                         });
-                        visibleCount++;
-                    }
-                });
+                    visibleCount++;
+                }
+            });
 
                 // Mettre à jour les choix disponibles
                 etudiantsChoicesInstance.setChoices(filteredChoices, 'value', 'label', true);
 
                 // Afficher un message informatif
-                const infoMessage = visibleCount > 0
-                    ? `${visibleCount} étudiant(s) disponible(s)`
-                    : "Aucun étudiant disponible avec ce filtre";
+            const infoMessage = visibleCount > 0
+                ? `${visibleCount} étudiant(s) disponible(s)`
+                : "Aucun étudiant disponible avec ce filtre";
 
-                if ($('#etudiants-info').length) {
-                    $('#etudiants-info').text(infoMessage);
-                } else {
-                    $('<div id="etudiants-info" class="text-muted small mt-2 mb-2">' + infoMessage + '</div>').insertBefore('#etudiants');
-                }
+            if ($('#etudiants-info').length) {
+                $('#etudiants-info').text(infoMessage);
+            } else {
+                $('<div id="etudiants-info" class="text-muted small mt-2 mb-2">' + infoMessage + '</div>').insertBefore('#etudiants');
+            }
             }
         });
 
@@ -877,10 +877,10 @@
                 });
 
                 // Effet visuel
-                $(this).addClass('btn-success').removeClass('btn-outline-primary');
-                setTimeout(() => {
-                    $(this).addClass('btn-outline-primary').removeClass('btn-success');
-                }, 1000);
+            $(this).addClass('btn-success').removeClass('btn-outline-primary');
+            setTimeout(() => {
+                $(this).addClass('btn-outline-primary').removeClass('btn-success');
+            }, 1000);
             }
         });
 
@@ -899,10 +899,10 @@
                 });
 
                 // Effet visuel
-                $(this).addClass('btn-success').removeClass('btn-outline-primary');
-                setTimeout(() => {
-                    $(this).addClass('btn-outline-primary').removeClass('btn-success');
-                }, 1000);
+            $(this).addClass('btn-success').removeClass('btn-outline-primary');
+            setTimeout(() => {
+                $(this).addClass('btn-outline-primary').removeClass('btn-success');
+            }, 1000);
             }
         });
 

@@ -152,16 +152,16 @@
                                     </div>
                                 </div>
 
-                                <div class="mb-3">
-                                    <label for="date_saisie" class="form-label">Date de saisie</label>
-                                    <input type="date"
-                                           class="form-control @error('date_saisie') is-invalid @enderror"
-                                           id="date_saisie"
-                                           name="date_saisie"
-                                           value="{{ old('date_saisie', $note->created_at ? date('Y-m-d', strtotime($note->created_at)) : date('Y-m-d')) }}">
-                                    @error('date_saisie')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
+                                        <div class="mb-3">
+                                            <label for="date_saisie" class="form-label">Date de saisie</label>
+                                            <input type="date"
+                                                   class="form-control @error('date_saisie') is-invalid @enderror"
+                                                   id="date_saisie"
+                                                   name="date_saisie"
+                                                   value="{{ old('date_saisie', $note->created_at ? date('Y-m-d', strtotime($note->created_at)) : date('Y-m-d')) }}">
+                                            @error('date_saisie')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
                                 </div>
 
                                 <div class="mb-3">

@@ -1,485 +1,554 @@
+@php
+use App\Helpers\SettingsHelper;
+
+// Récupérer les paramètres de l'établissement et PDF
+$schoolInfo = SettingsHelper::getSchoolInfo();
+$pdfSettings = SettingsHelper::getPdfSettings();
+@endphp
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-    <title>Bulletin de {{ $bulletin->etudiant ? $bulletin->etudiant->nom . ' ' . $bulletin->etudiant->prenoms : 'l\'étudiant' }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bulletin de Notes</title>
     <style>
-        /* Reset CSS */
+        @page {
+            margin: 10mm;
+            size: A4 portrait;
+        }
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
-        /* Styles généraux */
         body {
             font-family: Arial, sans-serif;
-            font-size: 8pt;
+            font-size: 11px;
             line-height: 1.3;
-            background-color: white;
-            color: #000;
+            color: #2c3e50;
         }
 
-        /* En-tête */
         .header {
-            width: 100%;
-            display: table;
-            margin-bottom: 5px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px;
+            border-radius: 5px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
-        .header-row {
-            display: table-row;
-            width: 100%;
-        }
+
         .header-left {
-            display: table-cell;
-            width: 30%;
-            vertical-align: top;
-            text-align: left;
-            padding: 3px;
+            flex: 1;
         }
+
         .header-center {
-            display: table-cell;
-            width: 40%;
-            vertical-align: middle;
+            flex: 2;
             text-align: center;
-            padding: 3px;
         }
+
         .header-right {
-            display: table-cell;
-            width: 30%;
-            vertical-align: top;
+            flex: 1;
             text-align: right;
-            padding: 3px;
         }
-        .republic-title {
-            font-weight: bold;
-            font-size: 9pt;
-        }
-        .motto {
-            font-style: italic;
-            font-size: 8pt;
-        }
-        .ministry-title {
-            font-size: 8pt;
-        }
-        .bulletin-header {
-            font-weight: bold;
-            font-size: 10pt;
-            text-transform: uppercase;
-        }
-        .period-header {
-            font-weight: bold;
-            font-size: 9pt;
-            text-transform: uppercase;
-        }
+
         .school-name {
+            font-size: 14px;
             font-weight: bold;
-            font-size: 9pt;
-            color: #0A6B31; /* Couleur verte du logo ESBTP */
-        }
-        .school-contact {
-            font-size: 7pt;
-        }
-        .academic-year {
-            font-size: 8pt;
-            font-weight: bold;
-            margin-top: 2px;
+            margin-bottom: 2px;
         }
 
-        /* Logo ESBTP */
-        .esbtp-logo {
-            width: 100px;
-            height: 50px;
-            margin: 0 auto;
-            text-align: center;
-        }
-        .esbtp-logo img {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
+        .school-info {
+            font-size: 9px;
+            opacity: 0.9;
         }
 
-        /* Informations de l'étudiant */
-        .student-info-container {
-            border: 1px solid #000;
-            padding: 3px;
-            margin-top: 5px;
+        .bulletin-title {
+            font-size: 16px;
+            font-weight: bold;
+            text-transform: uppercase;
         }
+
+        .logo {
+            max-height: 40px;
+            max-width: 60px;
+        }
+
         .student-info {
-            width: 100%;
-            margin-bottom: 5px;
-        }
-        .student-table-left, .student-table-right {
-            width: 50%;
-            float: left;
-        }
-        .student-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 8pt;
-        }
-        .student-table td {
-            padding: 3px;
-        }
-        .fw-bold {
-            font-weight: bold;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 8px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
         }
 
-        /* Tableaux des notes */
+        .student-left, .student-right {
+            flex: 1;
+        }
+
+        .info-row {
+            margin-bottom: 3px;
+            font-size: 10px;
+        }
+
+        .info-label {
+            font-weight: bold;
+            display: inline-block;
+            width: 80px;
+        }
+
         .grades-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 5px;
-            font-size: 7pt;
+            margin-bottom: 8px;
+            font-size: 10px;
         }
-        .grades-table th, .grades-table td {
-            border: 0.5px solid #000;
-            padding: 3px;
-            text-align: center;
-        }
+
         .grades-table th {
-            font-weight: bold;
-            background-color: #f2f2f2;
-        }
-        .section-header {
-            background-color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            font-weight: bold;
+            padding: 6px 4px;
             text-align: center;
-            font-size: 8pt;
-        }
-        .total-row {
-            background-color: #f2f2f2;
+            font-size: 9px;
             font-weight: bold;
         }
 
-        /* Tableau des absences */
+        .grades-table td {
+            border: 1px solid #dee2e6;
+            padding: 4px;
+            text-align: center;
+        }
+
+        .grades-table .matiere-name {
+            text-align: left;
+            font-weight: bold;
+            max-width: 120px;
+        }
+
+        .section-title {
+            background: #2c3e50;
+            color: white;
+            padding: 4px 8px;
+            font-weight: bold;
+            font-size: 10px;
+            margin-bottom: 4px;
+            border-radius: 3px;
+        }
+
         .absence-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 5px;
-            font-size: 7pt;
-        }
-        .absence-table td {
-            border: 0.5px solid #000;
-            padding: 3px;
+            margin-bottom: 8px;
+            font-size: 10px;
         }
 
-        /* Résultats */
-        .results-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 5px;
-            font-size: 7pt;
+        .absence-table th, .absence-table td {
+            border: 1px solid #dee2e6;
+            padding: 4px;
+            text-align: center;
         }
-        .results-table td {
-            border: 0.5px solid #000;
-            padding: 3px;
+
+        .absence-table th {
+            background: #6c757d;
+            color: white;
+            font-size: 9px;
         }
+
+        .results-section {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .results-left, .results-right {
+            width: 48%;
+        }
+
+        .result-box {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 6px;
+            margin-bottom: 6px;
+        }
+
+        .result-title {
+            font-weight: bold;
+            font-size: 10px;
+            color: #2c3e50;
+            margin-bottom: 4px;
+        }
+
         .result-value {
-            text-align: center;
+            font-size: 12px;
             font-weight: bold;
+            color: #667eea;
         }
-        .result-cadre {
-            padding: 0px 1px;
+
+        .mentions-section {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 8px;
+            margin-bottom: 8px;
+        }
+
+        .mentions-title {
+            font-weight: bold;
+            font-size: 10px;
+            margin-bottom: 6px;
+            color: #2c3e50;
+        }
+
+        .mentions-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .mention-item {
+            display: flex;
+            align-items: center;
+            font-size: 9px;
+        }
+
+        .checkbox {
+            width: 12px;
+            height: 12px;
+            border: 1px solid #2c3e50;
+            margin-right: 4px;
             display: inline-block;
-            border: 0.5px solid #000;
+            text-align: center;
+            line-height: 10px;
+            font-size: 8px;
         }
 
-        /* Décision et signature */
+        .checkbox.checked {
+            background: #28a745;
+            color: white;
+        }
+
         .decision-section {
-            width: 100%;
-            margin-top: 5px;
-            display: table;
-        }
-        .decision-title,
-        .signature-title {
-            font-weight: bold;
-            font-size: 8pt;
-            margin-bottom: 3px;
-            text-align: center;
-        }
-        .decision-result {
-            font-weight: bold;
-            font-size: 9pt;
-            margin-top: 3px;
-            font-style: italic;
-            text-align: center;
-        }
-        .decision-col,
-        .signature-col {
-            width: 33%;
-            display: table-cell;
-            text-align: center;
-            font-size: 7pt;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 8px;
+            margin-bottom: 8px;
         }
 
-        /* Pied de page */
-        .footer {
-            margin-top: 5px;
-            font-size: 7pt;
-            text-align: center;
-            font-style: italic;
-            border-top: 0.5px solid #000;
-            padding-top: 3px;
+        .decision-title {
+            font-weight: bold;
+            font-size: 10px;
+            margin-bottom: 6px;
+            color: #2c3e50;
         }
 
-        /* Contrôle de la mise en page */
-        @page {
-            size: A4 portrait;
-            margin: 0.5cm;
+        .decision-lines {
+            border-bottom: 1px solid #ccc;
+            height: 20px;
+            margin-bottom: 4px;
         }
+
+        .signatures {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 12px;
+        }
+
+        .signature-box {
+            width: 45%;
+            text-align: center;
+            border-top: 1px dashed #666;
+            padding-top: 4px;
+            font-size: 9px;
+        }
+
+        .page-break {
+            page-break-before: always;
+        }
+
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .font-bold { font-weight: bold; }
+        .text-sm { font-size: 9px; }
     </style>
 </head>
 <body>
-    <!-- En-tête -->
+    <!-- En-tête du bulletin -->
     <div class="header">
-        <div class="header-row">
-            <div class="header-left">
-                <p class="republic-title">République de Côte d'Ivoire</p>
-                <p class="motto">Union-Discipline-Travail</p>
-                <p class="ministry-title">Ministère de l'Enseignement Supérieur</p>
-                <p class="ministry-title">et de la Recherche Scientifique</p>
+        <div class="header-left">
+            @if(!empty($logo))
+                <img src="{{ $logo }}" alt="Logo" class="logo">
+            @endif
+        </div>
+        <div class="header-center">
+            <div class="school-name">{{ $school_name ?? 'ESBTP-yAKRO' }}</div>
+            <div class="school-info">{{ $school_address ?? '' }}</div>
+            <div class="school-info">{{ $school_phone ?? '' }}</div>
+            <div class="bulletin-title">Bulletin de Notes</div>
+        </div>
+        <div class="header-right">
+            <div class="school-info">{{ $school_email ?? '' }}</div>
+            <div class="school-info">Année: {{ $anneeUniversitaire->libelle ?? '' }}</div>
+            <div class="school-info">{{ ucfirst($periode ?? '') }}</div>
+        </div>
+    </div>
+
+    <!-- Informations de l'étudiant -->
+    <div class="student-info">
+        <div class="student-left">
+            <div class="info-row">
+                <span class="info-label">Nom :</span>
+                <span>{{ $etudiant->nom ?? '' }} {{ $etudiant->prenoms ?? '' }}</span>
             </div>
-            <div class="header-center"></div>
-            <div class="header-right">
-                <p class="bulletin-header">BULLETIN DE NOTES</p>
-                <p class="period-header">{{ strtoupper($bulletin->periode == 'semestre1' ? 'PREMIER SEMESTRE' : ($bulletin->periode == 'semestre2' ? 'DEUXIÈME SEMESTRE' : 'ANNUEL')) }}</p>
-                <p>Edition du: {{ date('d/m/Y') }}</p>
-                <p>Cycle: </p>
-                <p>Brevet de Technicien Supérieur</p>
-                <p>BTS</p>
+            <div class="info-row">
+                <span class="info-label">Matricule :</span>
+                <span>{{ $etudiant->matricule ?? '' }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Classe :</span>
+                <span>{{ $classe->name ?? $classe->nom ?? '' }}</span>
             </div>
         </div>
-
-        <div class="header-row">
-            <div class="header-left">
-                <div class="logo">
-                    <img src="{{ public_path('images/LOGO-KLASSCI-PNG.png') }}" alt="Logo KLASSCI"
-                          onerror="this.onerror=null; this.src='{{ public_path('images/LOGO-KLASSCI-PNG.png') }}';"
-                          style="max-height: 80px;">
-                </div>
+        <div class="student-right">
+            <div class="info-row">
+                <span class="info-label">Date :</span>
+                <span>{{ $date_edition ?? date('d/m/Y') }}</span>
             </div>
-            <div class="header-center">
-                <p class="school-name">Ecole Spéciale</p>
-                <p class="school-name">du Bâtiment et des Travaux Publics</p>
-                <p class="school-contact">BP 2541 Yamoussoukro - Email: esbtpabidjan@esbtp-ci.net</p>
-                <p class="school-contact">Tél/Fax: 30 64 39 93 - Cel: 07 07 79 84 85</p>
+            <div class="info-row">
+                <span class="info-label">Effectif :</span>
+                <span>{{ $effectif ?? $effectifClasse ?? 0 }}</span>
             </div>
-            <div class="header-right">
-                <p class="academic-year">Année Scolaire: {{ $bulletin->anneeUniversitaire ? $bulletin->anneeUniversitaire->annee_debut . '-' . $bulletin->anneeUniversitaire->annee_fin : 'Non définie' }}</p>
+            <div class="info-row">
+                <span class="info-label">Rang :</span>
+                <span>{{ $rang ?? 'N/A' }}</span>
             </div>
         </div>
     </div>
 
-    <div class="student-info-container">
-        <!-- Informations de l'étudiant -->
-        <div class="student-info">
-            <div class="student-table-left">
-                <table class="student-table">
-                    <tr>
-                        <td class="fw-bold">Matricule :</td>
-                        <td>{{ $bulletin->etudiant ? $bulletin->etudiant->matricule : 'Non défini' }}</td>
-                    </tr>
-                    <tr>
-                        <td class="fw-bold">Nom et Prénoms :</td>
-                        <td>{{ $bulletin->etudiant ? $bulletin->etudiant->nom . ' ' . $bulletin->etudiant->prenoms : 'Non défini' }}</td>
-                    </tr>
-                    <tr>
-                        <td class="fw-bold">Date de Naissance :</td>
-                        <td>{{ $bulletin->etudiant && $bulletin->etudiant->date_naissance ? $bulletin->etudiant->date_naissance->format('d/m/Y') : 'Non définie' }}</td>
-                    </tr>
-                    <tr>
-                        <td class="fw-bold">Redoublant :</td>
-                        <td>{{ $bulletin->etudiant && $bulletin->etudiant->redoublant ? 'Oui' : 'Non' }}</td>
-                    </tr>
-                </table>
+    <!-- Matières Générales -->
+    @if(isset($resultatsGeneraux) && $resultatsGeneraux->count() > 0)
+    <div class="section-title">MATIÈRES GÉNÉRALES</div>
+    <table class="grades-table">
+        <thead>
+            <tr>
+                <th style="width: 25%;">Matières</th>
+                <th style="width: 8%;">Coef</th>
+                <th style="width: 10%;">Note 1</th>
+                <th style="width: 10%;">Note 2</th>
+                <th style="width: 10%;">Note 3</th>
+                <th style="width: 12%;">Moyenne</th>
+                <th style="width: 10%;">Rang</th>
+                <th style="width: 15%;">Professeur</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($resultatsGeneraux as $resultat)
+            <tr>
+                <td class="matiere-name">{{ $resultat->matiere->nom ?? $resultat->matiere->name ?? 'N/A' }}</td>
+                <td>{{ $resultat->coefficient ?? 1 }}</td>
+                <td>{{ $resultat->note1 ?? '-' }}</td>
+                <td>{{ $resultat->note2 ?? '-' }}</td>
+                <td>{{ $resultat->note3 ?? '-' }}</td>
+                <td class="font-bold">{{ number_format($resultat->moyenne ?? 0, 2) }}</td>
+                <td>{{ $resultat->rang ?? '-' }}</td>
+                <td class="text-sm">{{ $resultat->professeur ?? '-' }}</td>
+            </tr>
+            @endforeach
+            <tr style="background: #e9ecef;">
+                <td class="font-bold">MOYENNE GÉNÉRALE</td>
+                <td>-</td>
+                <td>-</td>
+                <td>-</td>
+                <td>-</td>
+                <td class="font-bold">{{ number_format($moyenneGeneraux ?? 0, 2) }}</td>
+                <td>-</td>
+                <td>-</td>
+            </tr>
+        </tbody>
+    </table>
+    @endif
+
+    <!-- Matières Techniques -->
+    @if(isset($resultatsTechniques) && $resultatsTechniques->count() > 0)
+    <div class="section-title">MATIÈRES TECHNIQUES</div>
+    <table class="grades-table">
+        <thead>
+            <tr>
+                <th style="width: 25%;">Matières</th>
+                <th style="width: 8%;">Coef</th>
+                <th style="width: 10%;">Note 1</th>
+                <th style="width: 10%;">Note 2</th>
+                <th style="width: 10%;">Note 3</th>
+                <th style="width: 12%;">Moyenne</th>
+                <th style="width: 10%;">Rang</th>
+                <th style="width: 15%;">Professeur</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($resultatsTechniques as $resultat)
+            <tr>
+                <td class="matiere-name">{{ $resultat->matiere->nom ?? $resultat->matiere->name ?? 'N/A' }}</td>
+                <td>{{ $resultat->coefficient ?? 1 }}</td>
+                <td>{{ $resultat->note1 ?? '-' }}</td>
+                <td>{{ $resultat->note2 ?? '-' }}</td>
+                <td>{{ $resultat->note3 ?? '-' }}</td>
+                <td class="font-bold">{{ number_format($resultat->moyenne ?? 0, 2) }}</td>
+                <td>{{ $resultat->rang ?? '-' }}</td>
+                <td class="text-sm">{{ $resultat->professeur ?? '-' }}</td>
+            </tr>
+            @endforeach
+            <tr style="background: #e9ecef;">
+                <td class="font-bold">MOYENNE TECHNIQUE</td>
+                <td>-</td>
+                <td>-</td>
+                <td>-</td>
+                <td>-</td>
+                <td class="font-bold">{{ number_format($moyenneTechnique ?? 0, 2) }}</td>
+                <td>-</td>
+                <td>-</td>
+            </tr>
+        </tbody>
+    </table>
+    @endif
+
+    <!-- Tableau des absences -->
+    <div class="section-title">ABSENCES</div>
+    <table class="absence-table">
+        <thead>
+            <tr>
+                <th>Absences Justifiées</th>
+                <th>Absences Non Justifiées</th>
+                <th>Total Absences</th>
+                <th>Note d'Assiduité</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>{{ $absencesJustifiees ?? $absences_justifiees ?? 0 }}h</td>
+                <td>{{ $absencesNonJustifiees ?? $absences_non_justifiees ?? 0 }}h</td>
+                <td>{{ ($absencesJustifiees ?? 0) + ($absencesNonJustifiees ?? 0) }}h</td>
+                <td class="font-bold">{{ number_format($note_assiduite ?? 0, 2) }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- Résultats et statistiques -->
+    <div class="results-section">
+        <div class="results-left">
+            <div class="result-box">
+                <div class="result-title">Moyenne Brute</div>
+                <div class="result-value">{{ number_format($moyenneBrute ?? $moyenneGenerale ?? 0, 2) }}/20</div>
             </div>
-            <div class="student-table-right">
-                <table class="student-table">
-                    <tr>
-                        <td class="fw-bold">Classe :</td>
-                        <td>{{ $bulletin->classe ? $bulletin->classe->name : 'Non définie' }}</td>
-                    </tr>
-                    <tr>
-                        <td class="fw-bold">Année d'étude :</td>
-                        <td>{{ $bulletin->classe && $bulletin->classe->niveau ? $bulletin->classe->niveau->name : 'Non définie' }}</td>
-                    </tr>
-                    <tr>
-                        <td class="fw-bold">Effectif :</td>
-                        <td>{{ $bulletin->effectif_classe ?? '0' }}</td>
-                    </tr>
-                </table>
+            <div class="result-box">
+                <div class="result-title">Moyenne avec Assiduité</div>
+                <div class="result-value">{{ number_format($moyenneAvecAssiduite ?? $moyenneSemestre ?? 0, 2) }}/20</div>
             </div>
-            <div style="clear: both;"></div>
+            <div class="result-box">
+                <div class="result-title">Rang</div>
+                <div class="result-value">{{ $rang ?? 'N/A' }}/{{ $effectif ?? $effectifClasse ?? 0 }}</div>
+            </div>
         </div>
-
-        <!-- Tableau des matières et notes - Enseignement Général -->
-        <table class="grades-table">
-            <thead>
-                <tr>
-                    <th>Matière</th>
-                    <th>Moyenne M</th>
-                    <th>Coef C</th>
-                    <th>Moy.Pond M*C</th>
-                    <th>Rang</th>
-                    <th>Professeurs</th>
-                    <th>Appréciations</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr class="section-header">
-                    <td colspan="7">Enseignement Général</td>
-                </tr>
-                @forelse($resultatsGeneraux as $resultat)
-                    <tr>
-                        <td style="text-align: left;">{{ $resultat->matiere && ($resultat->matiere->nom || $resultat->matiere->name) ? ($resultat->matiere->nom ?: $resultat->matiere->name) : 'Matière non définie' }}</td>
-                        <td>{{ number_format($resultat->moyenne, 2, '.', '') }}</td>
-                        <td>{{ $resultat->coefficient }}</td>
-                        <td>{{ number_format($resultat->moyenne * $resultat->coefficient, 2, '.', '') }}</td>
-                        <td>{{ $resultat->rang ?? '-' }}</td>
-                        <td>{{ $resultat->professeur ?? 'N/A' }}</td>
-                        <td>{{ $resultat->appreciation ?? 'N/A' }}</td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="7">Aucun résultat disponible pour cette section</td>
-                    </tr>
-                @endforelse
-                <tr class="total-row">
-                    <td style="text-align: left;">Moyenne enseignement général</td>
-                    <td colspan="6">{{ number_format($moyenneGeneraux, 2, '.', '') }}</td>
-                </tr>
-            </tbody>
-        </table>
-
-        <!-- Tableau des notes - Enseignement Technique -->
-        <table class="grades-table">
-            <thead>
-                <tr class="section-header">
-                    <td colspan="7">Enseignement Technique</td>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($resultatsTechniques as $resultat)
-                    <tr>
-                        <td style="text-align: left;">{{ $resultat->matiere && ($resultat->matiere->nom || $resultat->matiere->name) ? ($resultat->matiere->nom ?: $resultat->matiere->name) : 'Matière non définie' }}</td>
-                        <td>{{ number_format($resultat->moyenne, 2, '.', '') }}</td>
-                        <td>{{ $resultat->coefficient }}</td>
-                        <td>{{ number_format($resultat->moyenne * $resultat->coefficient, 2, '.', '') }}</td>
-                        <td>{{ $resultat->rang ?? '-' }}</td>
-                        <td>{{ $resultat->professeur ?? 'N/A' }}</td>
-                        <td>{{ $resultat->appreciation ?? 'N/A' }}</td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="7">Aucun résultat disponible pour cette section</td>
-                    </tr>
-                @endforelse
-                <tr class="total-row">
-                    <td style="text-align: left;">Moyenne enseignement technique</td>
-                    <td colspan="6">{{ number_format($moyenneTechnique, 2, '.', '') }}</td>
-                </tr>
-            </tbody>
-        </table>
-
-        <!-- Absences -->
-        <table class="absence-table">
-            <thead>
-                <tr class="section-header">
-                    <td colspan="2">Nombre d'heures d'absence</td>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>Absences justifiées</td>
-                    <td>{{ isset($absencesJustifiees) ? $absencesJustifiees : (isset($absences_justifiees) ? $absences_justifiees : (isset($bulletin->absences_justifiees) ? $bulletin->absences_justifiees : '00')) }} Heure(s)</td>
-                </tr>
-                <tr>
-                    <td>Absences non justifiées</td>
-                    <td>{{ isset($absencesNonJustifiees) ? $absencesNonJustifiees : (isset($absences_non_justifiees) ? $absences_non_justifiees : (isset($bulletin->absences_non_justifiees) ? $bulletin->absences_non_justifiees : '00')) }} Heure(s)</td>
-                </tr>
-            </tbody>
-        </table>
-
-        <!-- Résultats -->
-        <table class="results-table">
-            <thead>
-                <tr class="section-header">
-                    <td colspan="6">RESULTATS</td>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>Moyenne Brute</td>
-                    <td class="result-value"><span class="result-cadre">{{ number_format($moyenneGenerale, 2, '.', '') }}</span></td>
-                    <td style="text-align: center;">MENTION</td>
-                    <td></td>
-                    <td style="text-align: center;">STATISTIQUES</td>
-                    <td></td>
-                </tr>
-                <tr>
-                    <td>Note d'assiduité</td>
-                    <td class="result-value"><span class="result-cadre">{{ $noteAssiduite ?? '0.00' }}</span></td>
-                    <td style="text-align: center;">Félicitation</td>
-                    <td><span class="result-cadre">{{ (isset($bulletin->mention) && $bulletin->mention == 'Félicitation') ? 'X' : '' }}</span></td>
-                    <td></td>
-                    <td></td>
-                </tr>
-                <tr>
-                    <td>Moyenne 1er Semestre</td>
-                    <td class="result-value"><span class="result-cadre">{{ $moyenneSemestre1 ?? '0.00' }}</span></td>
-                    <td style="text-align: center;">Encouragement</td>
-                    <td><span class="result-cadre">{{ (isset($bulletin->mention) && $bulletin->mention == 'Encouragement') ? 'X' : '' }}</span></td>
-                    <td>Plus forte moyenne</td>
-                    <td><span class="result-cadre">{{ $plusForteMoyenne ?? '0.00' }}</span></td>
-                </tr>
-                <tr>
-                    <td>Rang</td>
-                    <td class="result-value"><span class="result-cadre">{{ $bulletin->rang ?? 'N/A' }}</span></td>
-                    <td style="text-align: center;">Tableau d'honneur</td>
-                    <td><span class="result-cadre">{{ (isset($bulletin->mention) && $bulletin->mention == 'Tableau d\'honneur') ? 'X' : '' }}</span></td>
-                    <td>Plus faible moyenne</td>
-                    <td><span class="result-cadre">{{ $plusFaibleMoyenne ?? '0.00' }}</span></td>
-                </tr>
-                <tr>
-                    <td></td>
-                    <td></td>
-                    <td style="text-align: center;">Avertissement (Travail)</td>
-                    <td><span class="result-cadre">{{ (isset($bulletin->mention) && $bulletin->mention == 'Avertissement (Travail)') ? 'X' : '' }}</span></td>
-                    <td>Moyenne de la classe</td>
-                    <td><span class="result-cadre">{{ $moyenneClasse ?? '0.00' }}</span></td>
-                </tr>
-                <tr>
-                    <td></td>
-                    <td></td>
-                    <td style="text-align: center;">Blâme (Conduite)</td>
-                    <td><span class="result-cadre">{{ (isset($bulletin->mention) && $bulletin->mention == 'Blâme (Conduite)') ? 'X' : '' }}</span></td>
-                    <td></td>
-                    <td></td>
-                </tr>
-            </tbody>
-        </table>
-
-        <!-- Signatures et décision -->
-        <div class="decision-section">
-            <div class="decision-col">
-                <p class="decision-title">Décision du conseil de classe</p>
-                <p class="decision-result">{{ $bulletin->decision_conseil ?? 'Travail Insuffisant' }}</p>
+        <div class="results-right">
+            <div class="result-box">
+                <div class="result-title">Meilleure Moyenne</div>
+                <div class="result-value">{{ number_format($meilleure_moyenne ?? $plusForteMoyenne ?? 0, 2) }}/20</div>
             </div>
-            <div class="signature-col">
-                <p class="signature-title">Signature de la Directrice des Etudes</p>
-                @if(isset($bulletin->signature_direction) && $bulletin->signature_direction)
-                    <img src="{{ public_path('img/signatures/direction.png') }}" height="40" alt="Signature Direction">
-                @endif
+            <div class="result-box">
+                <div class="result-title">Plus Faible Moyenne</div>
+                <div class="result-value">{{ number_format($plus_faible_moyenne ?? $plusFaibleMoyenne ?? 0, 2) }}/20</div>
             </div>
+            <div class="result-box">
+                <div class="result-title">Moyenne de Classe</div>
+                <div class="result-value">{{ number_format($moyenne_classe ?? $moyenneClasse ?? 0, 2) }}/20</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mentions et appréciations -->
+    <div class="mentions-section">
+        <div class="mentions-title">MENTIONS ET APPRÉCIATIONS</div>
+        <div class="mentions-grid">
+            @php
+                $moyenne = $moyenneAvecAssiduite ?? $moyenneSemestre ?? $moyenneGenerale ?? 0;
+            @endphp
+            <div class="mention-item">
+                <span class="checkbox {{ $moyenne >= 16 ? 'checked' : '' }}">{{ $moyenne >= 16 ? '✓' : '' }}</span>
+                Félicitations (≥ 16)
+            </div>
+            <div class="mention-item">
+                <span class="checkbox {{ $moyenne >= 14 && $moyenne < 16 ? 'checked' : '' }}">{{ $moyenne >= 14 && $moyenne < 16 ? '✓' : '' }}</span>
+                Tableau d'honneur (≥ 14)
+            </div>
+            <div class="mention-item">
+                <span class="checkbox {{ $moyenne >= 12 && $moyenne < 14 ? 'checked' : '' }}">{{ $moyenne >= 12 && $moyenne < 14 ? '✓' : '' }}</span>
+                Encouragements (≥ 12)
+            </div>
+            <div class="mention-item">
+                <span class="checkbox {{ $moyenne >= 10 && $moyenne < 12 ? 'checked' : '' }}">{{ $moyenne >= 10 && $moyenne < 12 ? '✓' : '' }}</span>
+                Passable (≥ 10)
+            </div>
+            <div class="mention-item">
+                <span class="checkbox {{ $moyenne >= 8 && $moyenne < 10 ? 'checked' : '' }}">{{ $moyenne >= 8 && $moyenne < 10 ? '✓' : '' }}</span>
+                Avertissement (≥ 8)
+            </div>
+            <div class="mention-item">
+                <span class="checkbox {{ $moyenne < 8 ? 'checked' : '' }}">{{ $moyenne < 8 ? '✓' : '' }}</span>
+                Blâme (< 8)
+            </div>
+        </div>
+    </div>
+
+    <!-- Décision du conseil de classe -->
+    <div class="decision-section">
+        <div class="decision-title">DÉCISION DU CONSEIL DE CLASSE</div>
+        <div style="display: flex; gap: 20px; margin-bottom: 8px;">
+            <div class="mention-item">
+                <span class="checkbox"></span>
+                Passage en classe supérieure
+            </div>
+            <div class="mention-item">
+                <span class="checkbox"></span>
+                Redoublement
+            </div>
+            <div class="mention-item">
+                <span class="checkbox"></span>
+                Exclusion définitive
+            </div>
+            <div class="mention-item">
+                <span class="checkbox"></span>
+                Exclusion temporaire
+            </div>
+        </div>
+        <div class="decision-lines"></div>
+        <div class="decision-lines"></div>
+        <div class="decision-lines"></div>
+    </div>
+
+    <!-- Signatures -->
+    <div class="signatures">
+        <div class="signature-box">
+            <div class="font-bold">{{ $director_title ?? 'Directeur' }}</div>
+            <div style="margin-top: 20px;">{{ $director_name ?? '' }}</div>
+        </div>
+        <div class="signature-box">
+            <div class="font-bold">Professeur Principal</div>
+            <div style="margin-top: 20px;"></div>
         </div>
     </div>
 
     <!-- Pied de page -->
-    <div class="footer">
-        <p>Bulletin informatisé, aucun duplicata n'est délivré</p>
+    @if(!empty($pdf_footer_text))
+    <div style="text-align: center; margin-top: 12px; font-size: 8px; color: #666;">
+        {{ $pdf_footer_text }}
     </div>
+    @endif
 </body>
 </html>
+
+

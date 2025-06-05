@@ -34,6 +34,7 @@ use App\Models\ESBTPAttendance;
 use App\Models\ESBTPCycle;
 use Carbon\Carbon;
 use App\Services\ESBTP\ESBTPAbsenceService;
+use App\Helpers\SettingsHelper;
 
 class ESBTPBulletinController extends Controller
 {
@@ -42,6 +43,81 @@ class ESBTPBulletinController extends Controller
     public function __construct(ESBTPAbsenceService $absenceService)
     {
         $this->absenceService = $absenceService;
+    }
+
+    /**
+     * Récupère les configurations depuis les settings pour les PDF
+     */
+    private function getPDFConfig()
+    {
+        return [
+            // Informations de l'établissement
+            'school_name' => SettingsHelper::get('establishment.school_name', 'École Spéciale du Bâtiment et des Travaux Publics'),
+            'school_type' => SettingsHelper::get('establishment.school_type', 'Enseignement Supérieur Technique'),
+            'school_authorization' => SettingsHelper::get('establishment.authorization_number', ''),
+            'school_address' => SettingsHelper::get('establishment.address', 'BP 2541 Yamoussoukro'),
+            'school_phone' => SettingsHelper::get('establishment.phone', 'Tél/Fax: 30 64 39 93 - Cel: 05 93 34 26 : 07 72 88 56'),
+            'school_email' => SettingsHelper::get('establishment.email', 'esbtp@aviso.ci'),
+            'school_website' => SettingsHelper::get('establishment.website', ''),
+            'school_city' => SettingsHelper::get('establishment.city', 'Yamoussoukro'),
+            'school_country' => SettingsHelper::get('establishment.country', 'Côte d\'Ivoire'),
+            'director_name' => SettingsHelper::get('establishment.director_name', ''),
+            'director_title' => SettingsHelper::get('establishment.director_title', 'Directeur'),
+
+            // Configuration PDF
+            'pdf_margin_top' => SettingsHelper::get('pdf.margin_top', 15),
+            'pdf_margin_bottom' => SettingsHelper::get('pdf.margin_bottom', 15),
+            'pdf_margin_left' => SettingsHelper::get('pdf.margin_left', 10),
+            'pdf_margin_right' => SettingsHelper::get('pdf.margin_right', 10),
+            'pdf_font_size' => SettingsHelper::get('pdf.font_size', 12),
+            'pdf_header_font_size' => SettingsHelper::get('pdf.header_font_size', 14),
+            'pdf_title_font_size' => SettingsHelper::get('pdf.title_font_size', 16),
+            'pdf_show_watermark' => SettingsHelper::get('pdf.show_watermark', false),
+            'pdf_watermark_text' => SettingsHelper::get('pdf.watermark_text', 'CONFIDENTIEL'),
+            'pdf_show_signature' => SettingsHelper::get('pdf.show_signature', true),
+            'pdf_header_text' => SettingsHelper::get('pdf.header_text', ''),
+            'pdf_footer_text' => SettingsHelper::get('pdf.footer_text', ''),
+
+            // Logo
+            'school_logo' => SettingsHelper::get('establishment.logo', 'images/esbtp_logo.png'),
+        ];
+    }
+
+    /**
+     * Prépare le logo en base64 pour l'intégration dans le PDF
+     */
+    private function prepareLogoBase64($logoPath)
+    {
+        // Essayer d'abord le chemin depuis les settings
+        $fullPath = public_path($logoPath);
+
+        if (file_exists($fullPath)) {
+            $logoType = pathinfo($fullPath, PATHINFO_EXTENSION);
+            $logoData = file_get_contents($fullPath);
+            Log::info('Logo chargé avec succès depuis: ' . $fullPath);
+            return 'data:image/' . $logoType . ';base64,' . base64_encode($logoData);
+        }
+
+        // Essayer les chemins alternatifs
+        $alternativePaths = [
+            'images/esbtp_logo.png',
+            'images/logo.jpeg',
+            'images/esbtp_logo_white.png',
+            'storage/logos/' . basename($logoPath)
+        ];
+
+        foreach ($alternativePaths as $altPath) {
+            $fullPath = public_path($altPath);
+            if (file_exists($fullPath)) {
+                $logoType = pathinfo($fullPath, PATHINFO_EXTENSION);
+                $logoData = file_get_contents($fullPath);
+                Log::info('Logo alternatif chargé avec succès depuis: ' . $fullPath);
+                return 'data:image/' . $logoType . ';base64,' . base64_encode($logoData);
+            }
+        }
+
+        Log::warning('Aucun logo trouvé pour le chemin: ' . $logoPath);
+        return null;
     }
 
     /**
@@ -614,6 +690,8 @@ class ESBTPBulletinController extends Controller
             }
 
             // Générer le PDF avec les configurations de l'école
+            $config = $this->getPDFConfig();
+
             $data = [
                 'bulletin' => $bulletin,
                 'resultatsGeneraux' => $resultatsGeneraux,
@@ -624,15 +702,7 @@ class ESBTPBulletinController extends Controller
                 'absencesNonJustifiees' => $bulletin->absences_non_justifiees,
                 'absences_justifiees' => $bulletin->absences_justifiees,
                 'absences_non_justifiees' => $bulletin->absences_non_justifiees,
-                'config' => [
-                    'school_name' => config('school.name', 'École Spéciale du Bâtiment et des Travaux Publics'),
-                    'school_type' => config('school.type', 'Enseignement Supérieur Technique'),
-                    'school_authorization' => config('school.authorization', ''),
-                    'school_address' => config('school.address', 'BP 2541 Yamoussoukro'),
-                    'school_phone' => config('school.phone', 'Tél/Fax: 30 64 39 93 - Cel: 05 93 34 26 : 07 72 88 56'),
-                    'school_email' => config('school.email', 'esbtp@aviso.ci'),
-                    'school_logo' => config('school.logo', 'images/esbtp_logo.png'),
-                ]
+                'config' => $config
             ];
 
             // Log des variables d'absences pour debugging
@@ -645,27 +715,12 @@ class ESBTPBulletinController extends Controller
                 'data_absences_non_justifiees' => $data['absences_non_justifiees'] ?? 'Non défini',
             ]);
 
-            // Debugging des chemins pour le logo
-            Log::info('Chemin du logo configuré: ' . $data['config']['school_logo']);
-            Log::info('Chemin absolu du logo: ' . public_path($data['config']['school_logo']));
-            Log::info('Le fichier existe: ' . (file_exists(public_path($data['config']['school_logo'])) ? 'Oui' : 'Non'));
-
-            // Conversion du logo en base64 pour DomPDF
-            $logoPath = public_path($data['config']['school_logo']);
-            if (file_exists($logoPath)) {
-                $logoType = pathinfo($logoPath, PATHINFO_EXTENSION);
-                $logoData = file_get_contents($logoPath);
-                $logoBase64 = 'data:image/' . $logoType . ';base64,' . base64_encode($logoData);
-                $data['logoBase64'] = $logoBase64;
-                Log::info('Logo converti en base64');
-            } else {
-                $data['logoBase64'] = null;
-                Log::warning('Logo non trouvé: ' . $logoPath);
-            }
+            // Préparer le logo en base64
+            $data['logoBase64'] = $this->prepareLogoBase64($config['school_logo']);
 
             try {
                 Log::info('Chargement de la vue PDF pour le bulletin #' . $bulletin->id);
-                $pdf = PDF::loadView('esbtp.bulletins.pdf', $data);
+                $pdf = PDF::loadView('esbtp.bulletins.bulletin-pdf', $data);
                 $pdf->setPaper('a4', 'portrait');
                 $pdf->setOptions(['dpi' => 150, 'defaultFont' => 'sans-serif']);
 
@@ -768,7 +823,7 @@ class ESBTPBulletinController extends Controller
             ];
         }
     }
-
+/////////////////////
     /**
      * Calcule le total des heures d'absence pour un bulletin.
      *
@@ -2332,32 +2387,11 @@ class ESBTPBulletinController extends Controller
                 $bulletin->anneeUniversitaire = $anneeUniversitaire;
             }
 
-            // Encoder le logo en base64 pour l'intégrer dans le PDF
-            $logoPath = public_path('images/esbtp_logo.png');
-            $logoBase64 = null;
-            if (file_exists($logoPath)) {
-                $logoContent = file_get_contents($logoPath);
-                $logoBase64 = 'data:image/png;base64,' . base64_encode($logoContent);
-                \Log::info('Logo chargé avec succès depuis: ' . $logoPath);
-            } else {
-                \Log::warning('Logo non trouvé au chemin: ' . $logoPath . '. Vérifiez que le fichier existe.');
-                // Essayer avec d'autres noms de fichiers possibles
-                $alternativePaths = [
-                    'images/logo.jpeg',
-                    'images/esbtp_logo_white.png'
-                ];
+            // Récupérer les configurations depuis les settings
+            $config = $this->getPDFConfig();
 
-                foreach ($alternativePaths as $altPath) {
-                    $fullPath = public_path($altPath);
-                    if (file_exists($fullPath)) {
-                        $logoContent = file_get_contents($fullPath);
-                        $ext = pathinfo($fullPath, PATHINFO_EXTENSION);
-                        $logoBase64 = 'data:image/' . $ext . ';base64,' . base64_encode($logoContent);
-                        \Log::info('Logo alternatif chargé avec succès depuis: ' . $fullPath);
-                        break;
-                    }
-                }
-            }
+            // Préparer le logo en base64
+            $logoBase64 = $this->prepareLogoBase64($config['school_logo']);
 
             // Récupérer les résultats pour l'étudiant
             $resultats = ESBTPResultat::where('etudiant_id', $etudiant_id)
@@ -2597,6 +2631,39 @@ class ESBTPBulletinController extends Controller
                     }
                 }
 
+                // Créer un tableau avec les moyennes des étudiants
+                $moyennesClasse = [];
+
+                foreach ($etudiantsClasse as $etud) {
+                    $moyenne = $this->calculerMoyenneEtudiant($etud->id, $classe_id, $periode, $annee_universitaire_id);
+                    if ($moyenne > 0) {
+                        $moyennesClasse[$etud->id] = $moyenne;
+                    }
+                }
+
+                // Trier les moyennes dans l'ordre décroissant
+                arsort($moyennesClasse);
+
+                function formatRangAvecSuffix($rang){
+                    if ($rang == 1) {
+                        return '1er';
+                    }
+                    return $rang . 'ème';
+                }
+                // Déterminer le rang de l'étudiant courant
+                $rang = 'N/A';
+                $position = 1;
+
+                foreach ($moyennesClasse as $id => $moyenne) {
+                    if ($id == $etudiant_id) {
+                        $rang = formatRangAvecSuffix($position);
+                        break;
+                    }
+                    $position++;
+                }
+
+
+
                 // S'assurer que nous avons au moins un étudiant avec une moyenne valide
                 if ($sommeMoyennes > 0) {
                     $moyenneClasse = $sommeMoyennes / $effectifClasse;
@@ -2641,20 +2708,32 @@ class ESBTPBulletinController extends Controller
                 'etudiant' => $etudiant,
                 'classe' => $classe,
                 'anneeUniversitaire' => $anneeUniversitaire,
+                'periode' => $periode,
+                'date_edition' => now()->format('d/m/Y'),
+                'effectif' => $effectifClasse,
                 'resultatsGeneraux' => $resultatsGeneraux,
                 'resultatsTechniques' => $resultatsTechniques,
                 'moyenneGeneraux' => $moyenneGeneraux,
                 'moyenneTechnique' => $moyenneTechnique,
                 'moyenneGenerale' => $moyenneGenerale,
+                'moyenneGlobale' => $moyenneGenerale,
+                'note_assiduite' => $noteAssiduite,
+                'moyenneAvecAssiduite' => $moyenneGenerale + $noteAssiduite,
+                'rang' => $rang,
+                'professeurs' => json_decode($bulletin->professeurs ?? '{}', true),
                 'absencesJustifiees' => $absencesJustifiees,
                 'absencesNonJustifiees' => $absencesNonJustifiees,
                 'noteAssiduite' => $noteAssiduite, // Utiliser la valeur calculée au lieu d'une chaîne vide
-                'moyenneSemestre1' => null, // À implémenter si nécessaire
+                'moyenneSemestre1' =>number_format($moyenneGenerale, 2), // À implémenter si nécessaire
                 'plusForteMoyenne' => $bulletin->plus_forte_moyenne ?? number_format($plusForteMoyenne, 2),
                 'plusFaibleMoyenne' => $bulletin->plus_faible_moyenne ?? number_format($plusFaibleMoyenne, 2),
                 'moyenneClasse' => $bulletin->moyenne_classe ?? number_format($moyenneClasse, 2),
                 'effectifClasse' => $effectifClasse,
-                'logoBase64' => $logoBase64
+                // Variables supplémentaires pour la vue bulletin-pdf.blade.php
+                'meilleure_moyenne' => $plusForteMoyenne,
+                'plus_faible_moyenne' => $plusFaibleMoyenne,
+                'moyenne_classe' => $moyenneClasse,
+                'appreciation' => $this->getMention($moyenneGenerale),
             ];
 
             // Journaliser les données de debug avant génération du PDF
@@ -2684,7 +2763,7 @@ class ESBTPBulletinController extends Controller
             ]);
 
             // Générer le PDF
-            $pdf = PDF::loadView('esbtp.bulletins.pdf', $data);
+            $pdf = PDF::loadView('esbtp.bulletins.bulletin-pdf', $data);
             $pdf->setPaper('a4', 'portrait');
             $pdf->setOptions(['dpi' => 150, 'defaultFont' => 'sans-serif']);
 
@@ -2737,6 +2816,22 @@ class ESBTPBulletinController extends Controller
     {
         $sommeNotes = 0;
         $sommeCoefficients = 0;
+        $request = request();
+                    // Récupérer les paramètres
+                    $classe_id = $request->classe_id;
+                    // Récupérer etudiant_id soit depuis etudiant_id, soit depuis bulletin
+                    $etudiant_id = $request->etudiant_id ?? $request->bulletin;
+                    $periode = $request->periode;
+                    $annee_universitaire_id = $request->annee_universitaire_id;
+                    $anneeUniversitaire = ESBTPAnneeUniversitaire::findOrFail($annee_universitaire_id);
+                                // Calculer les absences depuis les enregistrements d'attendance
+            $dateDebut = $anneeUniversitaire->date_debut;
+            $dateFin = $anneeUniversitaire->date_fin;
+
+        //Utilisation du service d'absences pour calculer les absences
+        $absences = $this->absenceService->calculerDetailAbsences($etudiant_id, $classe_id, $dateDebut, $dateFin);
+        $absencesJustifiees = $absences['justifiees'];
+        $absencesNonJustifiees = $absences['non_justifiees'];
 
         foreach ($resultats as $resultat) {
             $sommeNotes += $resultat->moyenne * $resultat->coefficient;
@@ -2744,7 +2839,7 @@ class ESBTPBulletinController extends Controller
         }
 
         if ($sommeCoefficients > 0) {
-            return $sommeNotes / $sommeCoefficients;
+            return ($sommeNotes / $sommeCoefficients) +$this->calculerNoteAssiduite($absencesJustifiees,$absencesNonJustifiees);
         }
 
         return 0;
@@ -2759,16 +2854,40 @@ class ESBTPBulletinController extends Controller
      */
     private function calculerNoteAssiduite($absencesJustifiees, $absencesNonJustifiees)
     {
+
         // Chaque heure d'absence non justifiée pénalise plus que les justifiées
-        $totalPenalite = ($absencesJustifiees * 0.1) + ($absencesNonJustifiees * 0.5);
+        //$totalPenalite = ($absencesJustifiees * 0.1) + ($absencesNonJustifiees * 0.5);
+         switch (true) {
+                    case $absencesNonJustifiees == 0:
+                        return 0.13;
+                        break;
+                    case $absencesNonJustifiees == 1:
+                        return 0;
+                        break;
+                    case $absencesNonJustifiees == 2:
+                        return -0.13;
+                        break;
+                    case $absencesNonJustifiees == 3:
+                        return -0.39;
+                        break;
+                    case $absencesNonJustifiees == 4:
+                        return -0.39;
+                        break;
+                    case $absencesNonJustifiees >= 5: // 5 ou plus
+                        return -0.5;
+                }
 
         // La note de base est 20, on soustrait les pénalités
-        $note = 20 - $totalPenalite;
+        // $note = 20 + $totalPenalite;
 
-        // La note ne peut pas être négative
-        if ($note < 0) $note = 0;
+        // // La note ne peut pas être négative
+        // if ($note < 0) $note = 0;
 
-        return number_format($note, 2);
+        // //Une note ne peut pas être supérieur à 20
+        // if ($note > 20 ) $note = 20;
+
+        // return number_format($note,2);
+
     }
 
     /**
@@ -3871,5 +3990,39 @@ class ESBTPBulletinController extends Controller
     }
 
 }
+// private function calculerNoteAssiduite($justifiees, $nonJustifiees)
+// {
+//     $totalAbsences = $justifiees + $nonJustifiees;
+
+//     switch ($totalAbsences) {
+//         case 0:
+//             return 0.13;
+//         case 1:
+//             return 0;
+//         case 2:
+//             return -0.13;
+//         case 3:
+//         case 4:
+//             return -0.39;
+//         default: // 5 ou plus
+//             return -0.5;
+//     }
+// }
+// private function calculerNoteAssiduite($justifiees, $nonJustifiees)
+//             {
+//                 $totalAbsences = $justifiees + $nonJustifiees;
+
+//                 if ($totalAbsences == 0) {
+//                     return 0.13;
+//                 } elseif ($totalAbsences == 1) {
+//                     return 0;
+//                 } elseif ($totalAbsences == 2) {
+//                     return -0.13;
+//                 } elseif ($totalAbsences == 3 || $totalAbsences == 4) {
+//                     return -0.39;
+//                 } else { // 5 ou plus
+//                     return -0.5;
+//                 }
+//             }
 
 

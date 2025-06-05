@@ -168,6 +168,7 @@ class ESBTPEmploiTempsController extends Controller
         // Charger les séances pour cet emploi du temps
         $emploi_temp->load([
             'seances.matiere',
+            'seances.teacher',
             'classe',
             'classe.filiere',
             'classe.niveau',

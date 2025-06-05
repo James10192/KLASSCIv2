@@ -165,7 +165,7 @@
                                             <label for="niveau_etude_id" class="form-label">Niveau d'étude</label>
                                             <select class="form-select select2 @error('niveau_etude_id') is-invalid @enderror" id="niveau_etude_id" name="niveau_etude_id">
                                                 <option value="">Sélectionner un niveau d'étude</option>
-                                                @foreach($niveaux as $niveau)
+                                                @foreach($niveauxEtudes as $niveau)
                                                     <option value="{{ $niveau->id }}" {{ old('niveau_etude_id', $matiere->niveaux->contains($niveau->id)) ? 'selected' : '' }}>
                                                         {{ $niveau->name }} ({{ $niveau->code }})
                                                     </option>

@@ -163,15 +163,15 @@ Route::middleware(['auth', 'installed'])->group(function () {
 
     // Routes spécifiques pour chaque type de tableau de bord
     Route::middleware(['role:superAdmin'])->group(function () {
-        Route::get('/dashboard/superadmin', [DashboardController::class, 'superAdminDashboard'])->name('dashboard.superadmin');
+        Route::get('/dashboard/superadmin', [DashboardController::class, 'superadmin'])->name('dashboard.superadmin');
     });
 
     Route::middleware(['role:secretaire'])->group(function () {
-        Route::get('/dashboard/secretaire', [DashboardController::class, 'secretaireDashboard'])->name('dashboard.secretaire');
+        Route::get('/dashboard/secretaire', [DashboardController::class, 'secretaire'])->name('dashboard.secretaire');
     });
 
     Route::middleware(['role:etudiant'])->group(function () {
-        Route::get('/dashboard/etudiant', [DashboardController::class, 'etudiantDashboard'])->name('dashboard.etudiant');
+        Route::get('/dashboard/etudiant', [DashboardController::class, 'etudiant'])->name('dashboard.etudiant');
     });
 
     Route::middleware(['role:teacher'])->group(function () {
@@ -319,7 +319,7 @@ Route::middleware(['auth', 'installed'])->group(function () {
                     'update' => 'matieres.update',
                     'destroy' => 'matieres.destroy'
                 ])
-                ->middleware(['permission:view_matieres|view matieres']);
+                ->middleware(['role:superAdmin|secretaire|teacher']);
 
             // Routes pour les emplois du temps ESBTP
 
@@ -455,10 +455,6 @@ Route::middleware(['auth', 'installed'])->group(function () {
                 Route::get('/select', [ESBTPBulletinController::class, 'select'])->name('select');
                 Route::get('/generate', [ESBTPBulletinController::class, 'generateBulletin'])->name('generate');
 
-                // Routes pour la configuration des matières
-                Route::get('/config-matieres', [ESBTPBulletinController::class, 'configMatieresTypeFormation'])->name('config-matieres');
-                Route::post('/save-config-matieres', [ESBTPBulletinController::class, 'saveConfigMatieresTypeFormation'])->name('save-config-matieres');
-
                 // Route pour la signature des bulletins
                 Route::post('bulletins/{bulletin}/signer/{role}', [ESBTPBulletinController::class, 'signer'])
                     ->name('bulletins.signer')
@@ -472,10 +468,6 @@ Route::middleware(['auth', 'installed'])->group(function () {
                 Route::get('pending', [ESBTPBulletinController::class, 'pending'])
                     ->name('pending')
                     ->middleware(['permission:view_bulletins']);
-
-                // Routes pour la prévisualisation et modification des moyennes
-                Route::get('/moyennes-preview', [ESBTPBulletinController::class, 'previewMoyennes'])->name('moyennes-preview');
-                Route::post('/moyennes-update', [ESBTPBulletinController::class, 'updateMoyennes'])->name('moyennes-update');
             });
 
             // Route for today's timetable - moved outside bulletins group
@@ -713,6 +705,28 @@ Route::middleware(['auth', 'installed'])->group(function () {
         Route::get('/progression', [StudentProgressionController::class, 'index'])->name('esbtp.progression.index');
         Route::get('/api/progression/recommendations/{classe}/{annee}', [StudentProgressionController::class, 'getRecommendations'])->name('esbtp.progression.recommendations');
         Route::post('/api/progression/process', [StudentProgressionController::class, 'processProgression'])->name('esbtp.progression.process');
+
+        // ESBTP Settings Routes
+        Route::get('/settings', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'index'])->name('esbtp.settings.index');
+        Route::put('/settings', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'update'])->name('esbtp.settings.update');
+        Route::post('/settings', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'store'])->name('esbtp.settings.store');
+        Route::delete('/settings/{id}', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'destroy'])->name('esbtp.settings.destroy');
+
+        // ESBTP Settings Backup Routes
+        Route::get('/settings/backups', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'backups'])->name('esbtp.settings.backups');
+        Route::post('/settings/backup', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'createBackup'])->name('esbtp.settings.backup');
+        Route::post('/settings/restore/{id}', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'restoreBackup'])->name('esbtp.settings.restore');
+        Route::get('/settings/backup/{id}/compare', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'compareBackup'])->name('esbtp.settings.backup.compare');
+        Route::post('/settings/backup/{id}/archive', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'archiveBackup'])->name('esbtp.settings.backup.archive');
+        Route::delete('/settings/backup/{id}', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'destroy'])->name('esbtp.settings.backup.delete');
+        Route::post('/settings/backups/cleanup', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'cleanupBackups'])->name('esbtp.settings.backups.cleanup');
+
+        // ESBTP Settings Additional Routes
+        Route::post('/settings/{id}/reset', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'resetToDefault'])->name('esbtp.settings.reset');
+        Route::get('/settings/export', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'export'])->name('esbtp.settings.export');
+        Route::post('/settings/import', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'import'])->name('esbtp.settings.import');
+        Route::get('/settings/status', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'checkStatus'])->name('esbtp.settings.status');
+        Route::post('/settings/validate', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'checkStatus'])->name('esbtp.settings.validate');
     });
 
     // Routes pour l'émargement - Administration
@@ -1059,6 +1073,24 @@ Route::middleware(['auth'])->group(function () {
     // ESBTP Settings Routes
     Route::get('/esbtp/settings', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'index'])->name('esbtp.settings.index');
     Route::put('/esbtp/settings', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'update'])->name('esbtp.settings.update');
+    Route::post('/esbtp/settings', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'store'])->name('esbtp.settings.store');
+    Route::delete('/esbtp/settings/{id}', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'destroy'])->name('esbtp.settings.destroy');
+
+    // ESBTP Settings Backup Routes
+    Route::get('/esbtp/settings/backups', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'backups'])->name('esbtp.settings.backups');
+    Route::post('/esbtp/settings/backup', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'createBackup'])->name('esbtp.settings.backup');
+    Route::post('/esbtp/settings/restore/{id}', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'restoreBackup'])->name('esbtp.settings.restore');
+    Route::get('/esbtp/settings/backup/{id}/compare', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'compareBackup'])->name('esbtp.settings.backup.compare');
+    Route::post('/esbtp/settings/backup/{id}/archive', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'archiveBackup'])->name('esbtp.settings.backup.archive');
+    Route::delete('/esbtp/settings/backup/{id}', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'destroy'])->name('esbtp.settings.backup.delete');
+    Route::post('/esbtp/settings/backups/cleanup', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'cleanupBackups'])->name('esbtp.settings.backups.cleanup');
+
+    // ESBTP Settings Additional Routes
+    Route::post('/esbtp/settings/{id}/reset', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'resetToDefault'])->name('esbtp.settings.reset');
+    Route::get('/esbtp/settings/export', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'export'])->name('esbtp.settings.export');
+    Route::post('/esbtp/settings/import', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'import'])->name('esbtp.settings.import');
+    Route::get('/esbtp/settings/status', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'checkStatus'])->name('esbtp.settings.status');
+    Route::post('/esbtp/settings/validate', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'checkStatus'])->name('esbtp.settings.validate');
 
     // ... existing code ...
 
@@ -1114,3 +1146,78 @@ Route::middleware(['auth', 'role:superAdmin|secretaire'])->group(function () {
     ]);
 });
 // ... existing code ...
+
+// Route de diagnostic temporaire (à supprimer après résolution)
+Route::get('/debug-permissions', function () {
+    $user = auth()->user();
+
+    if (!$user) {
+        return response()->json(['error' => 'Aucun utilisateur connecté']);
+    }
+
+    $data = [
+        'user' => [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+        ],
+        'roles' => $user->getRoleNames()->toArray(),
+        'has_superAdmin_role' => $user->hasRole('superAdmin'),
+        'permissions' => $user->getAllPermissions()->pluck('name')->toArray(),
+    ];
+
+    // Test des permissions pour les matières
+    $matiere = \App\Models\ESBTPMatiere::first();
+    if ($matiere) {
+        $data['matiere_permissions'] = [
+            'matiere_id' => $matiere->id,
+            'matiere_nom' => $matiere->nom,
+            'can_view' => $user->can('view', $matiere),
+            'can_update' => $user->can('update', $matiere),
+            'can_delete' => $user->can('delete', $matiere),
+        ];
+    }
+
+    return response()->json($data, 200, [], JSON_PRETTY_PRINT);
+})->middleware('auth');
+
+// Routes spéciales pour le workflow des bulletins (copiées exactement du GitHub)
+// Route spéciale pour la génération de PDF de bulletins - placée ici pour éviter les conflits
+Route::get('/esbtp-special/bulletins-pdf', [ESBTPBulletinController::class, 'genererPDFParParams'])->name('esbtp.bulletins.pdf-params');
+
+// Routes spéciales pour la prévisualisation et modification des moyennes
+Route::get('/esbtp-special/bulletins/moyennes-preview', [ESBTPBulletinController::class, 'previewMoyennes'])->name('esbtp.bulletins.moyennes-preview');
+Route::post('/esbtp-special/bulletins/moyennes-update', [ESBTPBulletinController::class, 'updateMoyennes'])->name('esbtp.bulletins.moyennes-update');
+
+// Routes spéciales pour la configuration des matières et l'édition des professeurs
+Route::get('/esbtp-special/bulletins/config-matieres', [ESBTPBulletinController::class, 'configMatieresTypeFormation'])->name('esbtp.bulletins.config-matieres');
+Route::post('/esbtp-special/bulletins/save-config-matieres', [ESBTPBulletinController::class, 'saveConfigMatieresTypeFormation'])->name('esbtp.bulletins.save-config-matieres');
+Route::get('/esbtp-special/bulletins/edit-professeurs', [ESBTPBulletinController::class, 'editProfesseurs'])->name('esbtp.bulletins.edit-professeurs');
+Route::post('/esbtp-special/bulletins/save-professeurs', [ESBTPBulletinController::class, 'saveProfesseurs'])->name('esbtp.bulletins.save-professeurs');
+Route::get('/esbtp-special/bulletins/generate', [ESBTPBulletinController::class, 'generate'])->name('esbtp.bulletins.generate-special');
+
+    // Routes pour les bulletins configurables
+    Route::get('/bulletins/configurable', [ESBTPBulletinController::class, 'generateConfigurableBulletin'])->name('esbtp.bulletins.configurable');
+    Route::post('/bulletins/configurable', [ESBTPBulletinController::class, 'generateConfigurableBulletin'])->name('esbtp.bulletins.configurable.generate');
+
+// ... existing code ...
+
+// Routes pour le système de bulletin configurable
+Route::middleware(['auth'])->group(function () {
+    // Test des paramètres de bulletin
+    Route::get('/test-bulletin-parameters', [ESBTPBulletinController::class, 'testBulletinParameters'])
+        ->name('test.bulletin.parameters');
+
+    // Génération de bulletin configurable
+    Route::post('/bulletin/configurable/generate', [ESBTPBulletinController::class, 'generateConfigurableBulletin'])
+        ->name('bulletin.configurable.generate');
+
+    // Prévisualisation de bulletin configurable
+    Route::get('/bulletin/configurable/preview', [ESBTPBulletinController::class, 'previewConfigurableBulletin'])
+        ->name('bulletin.configurable.preview');
+
+    // Interface de test pour bulletin configurable
+    Route::get('/bulletin/configurable/test', function () {
+        return view('esbtp.bulletins.test-configurable');
+    })->name('bulletin.configurable.test');
+});
