@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: May 14, 2025 at 10:40 PM
+-- Generation Time: Jun 10, 2025 at 04:52 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -18,7 +18,7 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Database: `presentation`
+-- Database: `presentation_1`
 --
 
 -- --------------------------------------------------------
@@ -40,7 +40,7 @@ CREATE TABLE `attendances` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -61,7 +61,7 @@ CREATE TABLE `attendance_excuses` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -82,7 +82,7 @@ CREATE TABLE `certificates` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -97,7 +97,7 @@ CREATE TABLE `classes` (
   `session_id` bigint(20) UNSIGNED DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -112,7 +112,7 @@ CREATE TABLE `class_courses` (
   `semester` varchar(191) NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -135,7 +135,53 @@ CREATE TABLE `courses` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `custom_notifications`
+--
+
+CREATE TABLE `custom_notifications` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `user_id` bigint(20) UNSIGNED NOT NULL,
+  `title` varchar(191) NOT NULL,
+  `message` text NOT NULL,
+  `type` varchar(191) NOT NULL DEFAULT 'info',
+  `is_read` tinyint(1) NOT NULL DEFAULT 0,
+  `link` varchar(191) DEFAULT NULL,
+  `sent_by` bigint(20) UNSIGNED DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `custom_notifications`
+--
+
+INSERT INTO `custom_notifications` (`id`, `user_id`, `title`, `message`, `type`, `is_read`, `link`, `sent_by`, `created_at`, `updated_at`) VALUES
+(1, 1, 'Bienvenue dans ESBTP', 'Votre compte a été créé avec succès. Explorez toutes les fonctionnalités disponibles.', 'success', 0, '/dashboard', NULL, '2025-06-02 14:32:38', '2025-06-02 14:32:38'),
+(2, 1, 'Nouvelle année universitaire', 'L\'année universitaire 2024-2025 a été activée. Vous pouvez maintenant créer des classes.', 'info', 0, '/esbtp/classes', NULL, '2025-06-02 14:32:38', '2025-06-02 14:32:38'),
+(3, 1, 'Mise à jour système', 'Le système a été mis à jour avec de nouvelles fonctionnalités. Consultez les notes de version.', 'warning', 1, '#', NULL, '2025-06-02 14:32:38', '2025-06-02 14:32:38'),
+(4, 1, 'Sauvegarde automatique', 'La sauvegarde automatique des données a été effectuée avec succès.', 'success', 1, '#', NULL, '2025-06-02 14:32:38', '2025-06-02 14:32:38'),
+(5, 2, 'Bienvenue dans KLASSCI', 'Votre compte a été configuré avec succès. Explorez toutes les fonctionnalités disponibles.', 'success', 0, '/dashboard', NULL, '2025-06-02 14:39:44', '2025-06-02 14:39:44'),
+(6, 3, 'Bienvenue dans KLASSCI', 'Votre compte a été configuré avec succès. Explorez toutes les fonctionnalités disponibles.', 'success', 1, '/dashboard', NULL, '2025-06-02 14:39:44', '2025-06-02 15:02:36'),
+(7, 4, 'Bienvenue dans KLASSCI', 'Votre compte a été configuré avec succès. Explorez toutes les fonctionnalités disponibles.', 'success', 0, '/dashboard', NULL, '2025-06-02 14:39:44', '2025-06-02 14:39:44'),
+(8, 5, 'Bienvenue dans KLASSCI', 'Votre compte a été configuré avec succès. Explorez toutes les fonctionnalités disponibles.', 'success', 0, '/dashboard', NULL, '2025-06-02 14:39:44', '2025-06-02 14:39:44'),
+(9, 6, 'Bienvenue dans KLASSCI', 'Votre compte a été configuré avec succès. Explorez toutes les fonctionnalités disponibles.', 'success', 0, '/dashboard', NULL, '2025-06-02 14:39:44', '2025-06-02 14:39:44'),
+(10, 7, 'Bienvenue dans KLASSCI', 'Votre compte a été configuré avec succès. Explorez toutes les fonctionnalités disponibles.', 'success', 0, '/dashboard', NULL, '2025-06-02 14:39:44', '2025-06-02 14:39:44'),
+(11, 8, 'Bienvenue dans KLASSCI', 'Votre compte a été configuré avec succès. Explorez toutes les fonctionnalités disponibles.', 'success', 0, '/dashboard', NULL, '2025-06-02 14:39:44', '2025-06-02 14:39:44'),
+(12, 9, 'Bienvenue dans KLASSCI', 'Votre compte a été configuré avec succès. Explorez toutes les fonctionnalités disponibles.', 'success', 0, '/dashboard', NULL, '2025-06-02 14:39:44', '2025-06-02 14:39:44'),
+(13, 14, 'Bienvenue dans KLASSCI', 'Votre compte a été configuré avec succès. Explorez toutes les fonctionnalités disponibles.', 'success', 1, '/dashboard', NULL, '2025-06-02 14:39:44', '2025-06-02 15:38:15'),
+(14, 22, 'Bienvenue dans KLASSCI', 'Votre compte a été configuré avec succès. Explorez toutes les fonctionnalités disponibles.', 'success', 0, '/dashboard', NULL, '2025-06-02 14:39:44', '2025-06-02 14:39:44'),
+(15, 22, 'Nouvelle annonce: TEST', 'je veux savoir si ça marche', 'info', 0, 'http://localhost:8000/esbtp/mes-messages', NULL, '2025-06-02 15:35:57', '2025-06-02 15:35:57'),
+(16, 8, 'Nouvelle annonce: TEST', 'je veux savoir si ça marche', 'info', 0, 'http://localhost:8000/esbtp/mes-messages', NULL, '2025-06-02 15:35:57', '2025-06-02 15:35:57'),
+(17, 14, 'Nouvelle annonce: TEST', 'je veux savoir si ça marche', 'info', 1, 'http://localhost:8000/esbtp/mes-messages', NULL, '2025-06-02 15:35:57', '2025-06-02 15:37:53'),
+(18, 5, 'Nouvelle annonce: TEST', 'je veux savoir si ça marche', 'info', 0, 'http://localhost:8000/esbtp/mes-messages', NULL, '2025-06-02 15:35:57', '2025-06-02 15:35:57'),
+(19, 14, 'Nouvelle absence enregistrée', 'Une absence a été enregistrée pour le cours du 19/05/2025. Vous pouvez la justifier si nécessaire.', 'warning', 1, 'http://localhost:8000/esbtp/esbtp/mes-absences', NULL, '2025-06-02 16:00:08', '2025-06-02 17:17:35'),
+(20, 14, 'Nouvelle absence enregistrée', 'Une absence a été enregistrée pour le cours du 10/10/2025. Vous pouvez la justifier si nécessaire.', 'warning', 0, 'http://localhost:8000/esbtp/esbtp/mes-absences', NULL, '2025-06-02 17:16:52', '2025-06-02 17:16:52'),
+(21, 5, 'Absence lors d\'une évaluation', 'Absence lors d\'une évaluation (Devoir)\nMatière: Mathématiques\nDate: 10/10/2025 (Vendredi)\nHeure: Heure non définie\nTitre: math quiz\n\nVous pouvez justifier cette absence si nécessaire.', 'warning', 0, 'http://localhost:8000/esbtp/esbtp/mes-absences', NULL, '2025-06-02 17:20:15', '2025-06-02 17:20:15');
 
 -- --------------------------------------------------------
 
@@ -154,7 +200,7 @@ CREATE TABLE `departments` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -172,7 +218,7 @@ CREATE TABLE `designations` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -195,7 +241,7 @@ CREATE TABLE `element_constitutifs` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -217,7 +263,7 @@ CREATE TABLE `esbtp_absences` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -235,102 +281,38 @@ CREATE TABLE `esbtp_annee_universitaires` (
   `end_date` date NOT NULL,
   `is_current` tinyint(1) NOT NULL DEFAULT 0,
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
-  `description` text DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL,
   `est_actif` tinyint(1) NOT NULL DEFAULT 0
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `esbtp_annee_universitaires`
 --
 
-INSERT INTO `esbtp_annee_universitaires` (`id`, `name`, `libelle`, `annee_debut`, `annee_fin`, `start_date`, `end_date`, `is_current`, `is_active`, `description`, `created_at`, `updated_at`, `deleted_at`, `est_actif`) VALUES
-(1, '2020-2021', NULL, '2020', '2021', '2020-09-15', '2021-07-15', 0, 0, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL, 0),
-(2, '2021-2022', NULL, '2021', '2022', '2021-09-15', '2022-07-15', 0, 0, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL, 0),
-(3, '2022-2023', NULL, '2022', '2023', '2022-09-15', '2023-07-15', 0, 0, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL, 0),
-(4, '2023-2024', NULL, '2023', '2024', '2023-09-15', '2024-07-15', 0, 0, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL, 0),
-(5, '2024-2025', NULL, '2024', '2025', '2024-09-15', '2025-07-15', 0, 1, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL, 0),
-(6, '2025-2026', NULL, '2025', '2026', '2025-09-15', '2026-07-15', 1, 1, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL, 0),
-(7, '2026-2027', NULL, '2026', '2027', '2026-09-15', '2027-07-15', 0, 1, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL, 0),
-(8, '2027-2028', NULL, '2027', '2028', '2027-09-15', '2028-07-15', 0, 1, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL, 0),
-(9, '2028-2029', NULL, '2028', '2029', '2028-09-15', '2029-07-15', 0, 1, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL, 0),
-(10, '2029-2030', NULL, '2029', '2030', '2029-09-15', '2030-07-15', 0, 1, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL, 0),
-(11, '2030-2031', NULL, '2030', '2031', '2030-09-15', '2031-07-15', 0, 1, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL, 0),
-(12, '2031-2032', NULL, '2031', '2032', '2031-09-15', '2032-07-15', 0, 1, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL, 0),
-(13, '2032-2033', NULL, '2032', '2033', '2032-09-15', '2033-07-15', 0, 1, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL, 0),
-(14, '2033-2034', NULL, '2033', '2034', '2033-09-15', '2034-07-15', 0, 1, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL, 0),
-(15, '2034-2035', NULL, '2034', '2035', '2034-09-15', '2035-07-15', 0, 1, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL, 0),
-(16, '2035-2036', NULL, '2035', '2036', '2035-09-15', '2036-07-15', 0, 1, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL, 0),
-(17, '2036-2037', NULL, '2036', '2037', '2036-09-15', '2037-07-15', 0, 1, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL, 0),
-(18, '2037-2038', NULL, '2037', '2038', '2037-09-15', '2038-07-15', 0, 1, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL, 0),
-(19, '2038-2039', NULL, '2038', '2039', '2038-09-15', '2039-07-15', 0, 1, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL, 0),
-(20, '2039-2040', NULL, '2039', '2040', '2039-09-15', '2040-07-15', 0, 1, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL, 0),
-(21, '2040-2041', NULL, '2040', '2041', '2040-09-15', '2041-07-15', 0, 1, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL, 0),
-(22, '2020-2021', NULL, '2020', '2021', '2020-09-15', '2021-07-15', 0, 0, NULL, '2025-05-07 14:17:41', '2025-05-07 14:17:41', NULL, 0),
-(23, '2021-2022', NULL, '2021', '2022', '2021-09-15', '2022-07-15', 0, 0, NULL, '2025-05-07 14:17:41', '2025-05-07 14:17:41', NULL, 0),
-(24, '2022-2023', NULL, '2022', '2023', '2022-09-15', '2023-07-15', 0, 0, NULL, '2025-05-07 14:17:41', '2025-05-07 14:17:41', NULL, 0),
-(25, '2023-2024', NULL, '2023', '2024', '2023-09-15', '2024-07-15', 0, 0, NULL, '2025-05-07 14:17:41', '2025-05-07 14:17:41', NULL, 0),
-(26, '2024-2025', NULL, '2024', '2025', '2024-09-15', '2025-07-15', 0, 1, NULL, '2025-05-07 14:17:41', '2025-05-07 14:17:41', NULL, 0),
-(27, '2025-2026', NULL, '2025', '2026', '2025-09-15', '2026-07-15', 1, 1, NULL, '2025-05-07 14:17:41', '2025-05-07 14:17:41', NULL, 0),
-(28, '2026-2027', NULL, '2026', '2027', '2026-09-15', '2027-07-15', 0, 1, NULL, '2025-05-07 14:17:41', '2025-05-07 14:17:41', NULL, 0),
-(29, '2027-2028', NULL, '2027', '2028', '2027-09-15', '2028-07-15', 0, 1, NULL, '2025-05-07 14:17:41', '2025-05-07 14:17:41', NULL, 0),
-(30, '2028-2029', NULL, '2028', '2029', '2028-09-15', '2029-07-15', 0, 1, NULL, '2025-05-07 14:17:41', '2025-05-07 14:17:41', NULL, 0),
-(31, '2029-2030', NULL, '2029', '2030', '2029-09-15', '2030-07-15', 0, 1, NULL, '2025-05-07 14:17:41', '2025-05-07 14:17:41', NULL, 0),
-(32, '2030-2031', NULL, '2030', '2031', '2030-09-15', '2031-07-15', 0, 1, NULL, '2025-05-07 14:17:41', '2025-05-07 14:17:41', NULL, 0),
-(33, '2031-2032', NULL, '2031', '2032', '2031-09-15', '2032-07-15', 0, 1, NULL, '2025-05-07 14:17:41', '2025-05-07 14:17:41', NULL, 0),
-(34, '2032-2033', NULL, '2032', '2033', '2032-09-15', '2033-07-15', 0, 1, NULL, '2025-05-07 14:17:41', '2025-05-07 14:17:41', NULL, 0),
-(35, '2033-2034', NULL, '2033', '2034', '2033-09-15', '2034-07-15', 0, 1, NULL, '2025-05-07 14:17:41', '2025-05-07 14:17:41', NULL, 0),
-(36, '2034-2035', NULL, '2034', '2035', '2034-09-15', '2035-07-15', 0, 1, NULL, '2025-05-07 14:17:41', '2025-05-07 14:17:41', NULL, 0),
-(37, '2035-2036', NULL, '2035', '2036', '2035-09-15', '2036-07-15', 0, 1, NULL, '2025-05-07 14:17:41', '2025-05-07 14:17:41', NULL, 0),
-(38, '2036-2037', NULL, '2036', '2037', '2036-09-15', '2037-07-15', 0, 1, NULL, '2025-05-07 14:17:41', '2025-05-07 14:17:41', NULL, 0),
-(39, '2037-2038', NULL, '2037', '2038', '2037-09-15', '2038-07-15', 0, 1, NULL, '2025-05-07 14:17:41', '2025-05-07 14:17:41', NULL, 0),
-(40, '2038-2039', NULL, '2038', '2039', '2038-09-15', '2039-07-15', 0, 1, NULL, '2025-05-07 14:17:41', '2025-05-07 14:17:41', NULL, 0),
-(41, '2039-2040', NULL, '2039', '2040', '2039-09-15', '2040-07-15', 0, 1, NULL, '2025-05-07 14:17:41', '2025-05-07 14:17:41', NULL, 0),
-(42, '2040-2041', NULL, '2040', '2041', '2040-09-15', '2041-07-15', 0, 1, NULL, '2025-05-07 14:17:41', '2025-05-07 14:17:41', NULL, 0),
-(43, '2020-2021', NULL, '2020', '2021', '2020-09-15', '2021-07-15', 0, 0, NULL, '2025-05-07 14:27:48', '2025-05-07 14:27:48', NULL, 0),
-(44, '2021-2022', NULL, '2021', '2022', '2021-09-15', '2022-07-15', 0, 0, NULL, '2025-05-07 14:27:48', '2025-05-07 14:27:48', NULL, 0),
-(45, '2022-2023', NULL, '2022', '2023', '2022-09-15', '2023-07-15', 0, 0, NULL, '2025-05-07 14:27:48', '2025-05-07 14:27:48', NULL, 0),
-(46, '2023-2024', NULL, '2023', '2024', '2023-09-15', '2024-07-15', 0, 0, NULL, '2025-05-07 14:27:48', '2025-05-07 14:27:48', NULL, 0),
-(47, '2024-2025', NULL, '2024', '2025', '2024-09-15', '2025-07-15', 0, 1, NULL, '2025-05-07 14:27:48', '2025-05-07 14:27:48', NULL, 0),
-(48, '2025-2026', NULL, '2025', '2026', '2025-09-15', '2026-07-15', 1, 1, NULL, '2025-05-07 14:27:48', '2025-05-07 14:27:48', NULL, 0),
-(49, '2026-2027', NULL, '2026', '2027', '2026-09-15', '2027-07-15', 0, 1, NULL, '2025-05-07 14:27:48', '2025-05-07 14:27:48', NULL, 0),
-(50, '2027-2028', NULL, '2027', '2028', '2027-09-15', '2028-07-15', 0, 1, NULL, '2025-05-07 14:27:48', '2025-05-07 14:27:48', NULL, 0),
-(51, '2028-2029', NULL, '2028', '2029', '2028-09-15', '2029-07-15', 0, 1, NULL, '2025-05-07 14:27:48', '2025-05-07 14:27:48', NULL, 0),
-(52, '2029-2030', NULL, '2029', '2030', '2029-09-15', '2030-07-15', 0, 1, NULL, '2025-05-07 14:27:48', '2025-05-07 14:27:48', NULL, 0),
-(53, '2030-2031', NULL, '2030', '2031', '2030-09-15', '2031-07-15', 0, 1, NULL, '2025-05-07 14:27:48', '2025-05-07 14:27:48', NULL, 0),
-(54, '2031-2032', NULL, '2031', '2032', '2031-09-15', '2032-07-15', 0, 1, NULL, '2025-05-07 14:27:48', '2025-05-07 14:27:48', NULL, 0),
-(55, '2032-2033', NULL, '2032', '2033', '2032-09-15', '2033-07-15', 0, 1, NULL, '2025-05-07 14:27:48', '2025-05-07 14:27:48', NULL, 0),
-(56, '2033-2034', NULL, '2033', '2034', '2033-09-15', '2034-07-15', 0, 1, NULL, '2025-05-07 14:27:48', '2025-05-07 14:27:48', NULL, 0),
-(57, '2034-2035', NULL, '2034', '2035', '2034-09-15', '2035-07-15', 0, 1, NULL, '2025-05-07 14:27:48', '2025-05-07 14:27:48', NULL, 0),
-(58, '2035-2036', NULL, '2035', '2036', '2035-09-15', '2036-07-15', 0, 1, NULL, '2025-05-07 14:27:48', '2025-05-07 14:27:48', NULL, 0),
-(59, '2036-2037', NULL, '2036', '2037', '2036-09-15', '2037-07-15', 0, 1, NULL, '2025-05-07 14:27:48', '2025-05-07 14:27:48', NULL, 0),
-(60, '2037-2038', NULL, '2037', '2038', '2037-09-15', '2038-07-15', 0, 1, NULL, '2025-05-07 14:27:48', '2025-05-07 14:27:48', NULL, 0),
-(61, '2038-2039', NULL, '2038', '2039', '2038-09-15', '2039-07-15', 0, 1, NULL, '2025-05-07 14:27:48', '2025-05-07 14:27:48', NULL, 0),
-(62, '2039-2040', NULL, '2039', '2040', '2039-09-15', '2040-07-15', 0, 1, NULL, '2025-05-07 14:27:48', '2025-05-07 14:27:48', NULL, 0),
-(63, '2040-2041', NULL, '2040', '2041', '2040-09-15', '2041-07-15', 0, 1, NULL, '2025-05-07 14:27:48', '2025-05-07 14:27:48', NULL, 0),
-(64, '2020-2021', NULL, '2020', '2021', '2020-09-15', '2021-07-15', 0, 0, NULL, '2025-05-07 15:10:07', '2025-05-07 15:10:07', NULL, 0),
-(65, '2021-2022', NULL, '2021', '2022', '2021-09-15', '2022-07-15', 0, 0, NULL, '2025-05-07 15:10:07', '2025-05-07 15:10:07', NULL, 0),
-(66, '2022-2023', NULL, '2022', '2023', '2022-09-15', '2023-07-15', 0, 0, NULL, '2025-05-07 15:10:07', '2025-05-07 15:10:07', NULL, 0),
-(67, '2023-2024', NULL, '2023', '2024', '2023-09-15', '2024-07-15', 0, 0, NULL, '2025-05-07 15:10:07', '2025-05-07 15:10:07', NULL, 0),
-(68, '2024-2025', NULL, '2024', '2025', '2024-09-15', '2025-07-15', 0, 1, NULL, '2025-05-07 15:10:07', '2025-05-07 15:10:07', NULL, 0),
-(69, '2025-2026', NULL, '2025', '2026', '2025-09-15', '2026-07-15', 1, 1, NULL, '2025-05-07 15:10:07', '2025-05-07 15:10:07', NULL, 0),
-(70, '2026-2027', NULL, '2026', '2027', '2026-09-15', '2027-07-15', 0, 1, NULL, '2025-05-07 15:10:07', '2025-05-07 15:10:07', NULL, 0),
-(71, '2027-2028', NULL, '2027', '2028', '2027-09-15', '2028-07-15', 0, 1, NULL, '2025-05-07 15:10:07', '2025-05-07 15:10:07', NULL, 0),
-(72, '2028-2029', NULL, '2028', '2029', '2028-09-15', '2029-07-15', 0, 1, NULL, '2025-05-07 15:10:07', '2025-05-07 15:10:07', NULL, 0),
-(73, '2029-2030', NULL, '2029', '2030', '2029-09-15', '2030-07-15', 0, 1, NULL, '2025-05-07 15:10:07', '2025-05-07 15:10:07', NULL, 0),
-(74, '2030-2031', NULL, '2030', '2031', '2030-09-15', '2031-07-15', 0, 1, NULL, '2025-05-07 15:10:07', '2025-05-07 15:10:07', NULL, 0),
-(75, '2031-2032', NULL, '2031', '2032', '2031-09-15', '2032-07-15', 0, 1, NULL, '2025-05-07 15:10:07', '2025-05-07 15:10:07', NULL, 0),
-(76, '2032-2033', NULL, '2032', '2033', '2032-09-15', '2033-07-15', 0, 1, NULL, '2025-05-07 15:10:07', '2025-05-07 15:10:07', NULL, 0),
-(77, '2033-2034', NULL, '2033', '2034', '2033-09-15', '2034-07-15', 0, 1, NULL, '2025-05-07 15:10:07', '2025-05-07 15:10:07', NULL, 0),
-(78, '2034-2035', NULL, '2034', '2035', '2034-09-15', '2035-07-15', 0, 1, NULL, '2025-05-07 15:10:07', '2025-05-07 15:10:07', NULL, 0),
-(79, '2035-2036', NULL, '2035', '2036', '2035-09-15', '2036-07-15', 0, 1, NULL, '2025-05-07 15:10:07', '2025-05-07 15:10:07', NULL, 0),
-(80, '2036-2037', NULL, '2036', '2037', '2036-09-15', '2037-07-15', 0, 1, NULL, '2025-05-07 15:10:07', '2025-05-07 15:10:07', NULL, 0),
-(81, '2037-2038', NULL, '2037', '2038', '2037-09-15', '2038-07-15', 0, 1, NULL, '2025-05-07 15:10:07', '2025-05-07 15:10:07', NULL, 0),
-(82, '2038-2039', NULL, '2038', '2039', '2038-09-15', '2039-07-15', 0, 1, NULL, '2025-05-07 15:10:07', '2025-05-07 15:10:07', NULL, 0),
-(83, '2039-2040', NULL, '2039', '2040', '2039-09-15', '2040-07-15', 0, 1, NULL, '2025-05-07 15:10:07', '2025-05-07 15:10:07', NULL, 0),
-(84, '2040-2041', NULL, '2040', '2041', '2040-09-15', '2041-07-15', 0, 1, NULL, '2025-05-07 15:10:07', '2025-05-07 15:10:07', NULL, 0);
+INSERT INTO `esbtp_annee_universitaires` (`id`, `name`, `libelle`, `annee_debut`, `annee_fin`, `start_date`, `end_date`, `is_current`, `is_active`, `created_at`, `updated_at`, `deleted_at`, `est_actif`) VALUES
+(1, '2020-2021', NULL, '2020', '2021', '2020-09-15', '2021-07-15', 0, 0, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL, 0),
+(2, '2021-2022', NULL, '2021', '2022', '2021-09-15', '2022-07-15', 0, 0, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL, 0),
+(3, '2022-2023', NULL, '2022', '2023', '2022-09-15', '2023-07-15', 0, 0, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL, 0),
+(4, '2023-2024', NULL, '2023', '2024', '2023-09-15', '2024-07-15', 0, 0, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL, 0),
+(5, '2024-2025', NULL, '2024', '2025', '2024-09-15', '2025-07-15', 0, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL, 0),
+(6, '2025-2026', NULL, '2025', '2026', '2025-09-15', '2026-07-15', 1, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL, 0),
+(7, '2026-2027', NULL, '2026', '2027', '2026-09-15', '2027-07-15', 0, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL, 0),
+(8, '2027-2028', NULL, '2027', '2028', '2027-09-15', '2028-07-15', 0, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL, 0),
+(9, '2028-2029', NULL, '2028', '2029', '2028-09-15', '2029-07-15', 0, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL, 0),
+(10, '2029-2030', NULL, '2029', '2030', '2029-09-15', '2030-07-15', 0, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL, 0),
+(11, '2030-2031', NULL, '2030', '2031', '2030-09-15', '2031-07-15', 0, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL, 0),
+(12, '2031-2032', NULL, '2031', '2032', '2031-09-15', '2032-07-15', 0, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL, 0),
+(13, '2032-2033', NULL, '2032', '2033', '2032-09-15', '2033-07-15', 0, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL, 0),
+(14, '2033-2034', NULL, '2033', '2034', '2033-09-15', '2034-07-15', 0, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL, 0),
+(15, '2034-2035', NULL, '2034', '2035', '2034-09-15', '2035-07-15', 0, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL, 0),
+(16, '2035-2036', NULL, '2035', '2036', '2035-09-15', '2036-07-15', 0, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL, 0),
+(17, '2036-2037', NULL, '2036', '2037', '2036-09-15', '2037-07-15', 0, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL, 0),
+(18, '2037-2038', NULL, '2037', '2038', '2037-09-15', '2038-07-15', 0, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL, 0),
+(19, '2038-2039', NULL, '2038', '2039', '2038-09-15', '2039-07-15', 0, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL, 0),
+(20, '2039-2040', NULL, '2039', '2040', '2039-09-15', '2040-07-15', 0, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL, 0),
+(21, '2040-2041', NULL, '2040', '2041', '2040-09-15', '2041-07-15', 0, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL, 0);
 
 -- --------------------------------------------------------
 
@@ -352,7 +334,14 @@ CREATE TABLE `esbtp_annonces` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `esbtp_annonces`
+--
+
+INSERT INTO `esbtp_annonces` (`id`, `titre`, `contenu`, `type`, `date_publication`, `date_expiration`, `priorite`, `is_published`, `created_by`, `updated_by`, `created_at`, `updated_at`, `deleted_at`) VALUES
+(1, 'TEST', 'je veux savoir si ça marche', 'etudiant', '2025-06-02 15:29:00', '2025-07-02 15:29:00', 0, 1, 3, NULL, '2025-06-02 15:35:57', '2025-06-02 15:35:57', NULL);
 
 -- --------------------------------------------------------
 
@@ -366,7 +355,7 @@ CREATE TABLE `esbtp_annonce_classe` (
   `classe_id` bigint(20) UNSIGNED NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -382,7 +371,17 @@ CREATE TABLE `esbtp_annonce_etudiant` (
   `read_at` datetime DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `esbtp_annonce_etudiant`
+--
+
+INSERT INTO `esbtp_annonce_etudiant` (`id`, `annonce_id`, `etudiant_id`, `is_read`, `read_at`, `created_at`, `updated_at`) VALUES
+(1, 1, 15, 0, NULL, '2025-06-02 15:35:57', '2025-06-02 15:35:57'),
+(2, 1, 2, 0, NULL, '2025-06-02 15:35:57', '2025-06-02 15:35:57'),
+(3, 1, 7, 0, NULL, '2025-06-02 15:35:57', '2025-06-02 15:35:57'),
+(4, 1, 1, 0, NULL, '2025-06-02 15:35:57', '2025-06-02 15:35:57');
 
 -- --------------------------------------------------------
 
@@ -397,7 +396,7 @@ CREATE TABLE `esbtp_annonce_lectures` (
   `read_at` datetime NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -421,7 +420,16 @@ CREATE TABLE `esbtp_attendances` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `esbtp_attendances`
+--
+
+INSERT INTO `esbtp_attendances` (`id`, `seance_cours_id`, `etudiant_id`, `statut`, `date`, `heure_debut`, `heure_fin`, `commentaire`, `document_path`, `justified_at`, `created_by`, `updated_by`, `created_at`, `updated_at`, `deleted_at`) VALUES
+(1, 15, 2, 'present', '2025-05-19', '08:00:00', '12:00:00', NULL, NULL, NULL, 3, NULL, '2025-06-02 16:00:08', '2025-06-02 16:00:08', NULL),
+(2, 15, 7, 'absent', '2025-05-19', '08:00:00', '12:00:00', NULL, NULL, NULL, 3, NULL, '2025-06-02 16:00:08', '2025-06-02 16:00:08', NULL),
+(3, 15, 15, 'present', '2025-05-19', '08:00:00', '12:00:00', NULL, NULL, NULL, 3, NULL, '2025-06-02 16:00:08', '2025-06-02 16:00:08', NULL);
 
 -- --------------------------------------------------------
 
@@ -430,19 +438,28 @@ CREATE TABLE `esbtp_attendances` (
 --
 
 CREATE TABLE `esbtp_attendance_settings` (
-  `id` int(11) NOT NULL,
-  `key` varchar(255) NOT NULL,
-  `value` varchar(255) NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `key` varchar(191) NOT NULL,
+  `value` varchar(191) NOT NULL,
+  `description` varchar(191) DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `esbtp_attendance_settings`
 --
 
-INSERT INTO `esbtp_attendance_settings` (`id`, `key`, `value`, `created_at`, `updated_at`) VALUES
-(1, 'geolocation_required', '0', '2025-05-13 21:34:58', '2025-05-13 21:34:58');
+INSERT INTO `esbtp_attendance_settings` (`id`, `key`, `value`, `description`, `created_at`, `updated_at`) VALUES
+(1, 'code_validity_hours', '24', 'Durée de validité du code en heures', '2025-05-17 15:39:19', '2025-05-17 15:39:19'),
+(2, 'max_attempts', '3', 'Nombre maximum de tentatives de saisie du code', '2025-05-17 15:39:19', '2025-05-17 15:39:19'),
+(3, 'geolocation_required', 'false', 'Exiger la géolocalisation pour l\'émargement', '2025-05-17 15:39:19', '2025-05-17 15:39:19'),
+(4, 'allowed_early_minutes', '30', 'Minutes autorisées avant le début du cours pour émarger', '2025-05-17 15:39:19', '2025-05-17 15:39:19'),
+(5, 'allowed_late_minutes', '60', 'Minutes autorisées après le début du cours pour émarger', '2025-05-17 15:39:19', '2025-05-17 15:39:19'),
+(6, 'max_distance_meters', '100', 'Distance maximale autorisée en mètres pour l\'émargement', '2025-05-17 15:39:21', '2025-05-17 15:39:21'),
+(7, 'display_code_duration', '60', 'Durée d\'affichage du code en minutes avant actualisation', '2025-05-17 15:39:21', '2025-05-17 15:39:21'),
+(8, 'school_latitude', '0', 'Latitude de l\'établissement pour la vérification de la géolocalisation', '2025-05-17 15:39:21', '2025-05-17 15:39:21'),
+(9, 'school_longitude', '0', 'Longitude de l\'établissement pour la vérification de la géolocalisation', '2025-05-17 15:39:21', '2025-05-17 15:39:21');
 
 -- --------------------------------------------------------
 
@@ -467,7 +484,7 @@ CREATE TABLE `esbtp_bourses` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -507,7 +524,14 @@ CREATE TABLE `esbtp_bulletins` (
   `total_absences` double(8,2) NOT NULL DEFAULT 0.00 COMMENT 'Total des heures d''absences',
   `note_assiduite` double(8,2) DEFAULT NULL COMMENT 'Note d''assiduité calculée sur les absences',
   `details_absences` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT 'Détails des absences au format JSON' CHECK (json_valid(`details_absences`))
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `esbtp_bulletins`
+--
+
+INSERT INTO `esbtp_bulletins` (`id`, `etudiant_id`, `classe_id`, `annee_universitaire_id`, `periode`, `moyenne_generale`, `rang`, `effectif_classe`, `appreciation_generale`, `config_matieres`, `professeurs`, `decision_conseil`, `mention`, `signature_directeur`, `signature_responsable`, `signature_parent`, `date_signature_directeur`, `date_signature_responsable`, `date_signature_parent`, `is_published`, `user_id`, `created_by`, `updated_by`, `created_at`, `updated_at`, `deleted_at`, `absences_justifiees`, `absences_non_justifiees`, `total_absences`, `note_assiduite`, `details_absences`) VALUES
+(1, 15, 1, 6, 'semestre1', NULL, NULL, NULL, NULL, '\"{\\\"generales\\\":[2],\\\"techniques\\\":[]}\"', '{\"2\":\"MARC\"}', NULL, NULL, 0, 0, 0, NULL, NULL, NULL, 0, NULL, NULL, 3, '2025-06-03 00:11:21', '2025-06-03 00:11:36', NULL, 0.00, 0.00, 0.00, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -532,7 +556,7 @@ CREATE TABLE `esbtp_bulletin_details` (
   `observations` text DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -550,27 +574,27 @@ CREATE TABLE `esbtp_categories_depenses` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `esbtp_categories_depenses`
 --
 
 INSERT INTO `esbtp_categories_depenses` (`id`, `nom`, `code`, `description`, `parent_id`, `est_actif`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, 'Salaires et charges sociales', 'SALAIRES', 'Dépenses liées aux salaires, primes, indemnités et charges sociales du personnel', NULL, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(2, 'Fournitures pédagogiques', 'PEDAGOG', 'Matériel pédagogique, manuels, supports de cours, etc.', NULL, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(3, 'Équipements informatiques', 'EQUIP_INFO', 'Ordinateurs, imprimantes, projecteurs, et autres matériels informatiques', NULL, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(4, 'Maintenance et réparations', 'MAINT', 'Entretien des bâtiments, réparations diverses, maintenance des équipements', NULL, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(5, 'Frais administratifs', 'ADMIN', 'Dépenses administratives générales', NULL, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(6, 'Factures d\'eau et électricité', 'UTIL', 'Factures d\'eau, d\'électricité et autres services publics', NULL, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(7, 'Services de nettoyage', 'NETTOYAGE', 'Services de nettoyage et d\'entretien des locaux', NULL, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(8, 'Sécurité', 'SECURITE', 'Services de sécurité, équipements de sécurité, etc.', NULL, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(9, 'Assurances', 'ASSUR', 'Assurances diverses (responsabilité civile, locaux, etc.)', NULL, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(10, 'Frais de communication', 'COMM', 'Téléphone, internet, frais postaux, etc.', NULL, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(11, 'Matériel de bureau', 'BUREAU', 'Fournitures de bureau, papeterie, etc.', NULL, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(12, 'Logiciels et licences', 'LOGICIEL', 'Logiciels, licences, abonnements à des services numériques', NULL, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(13, 'Frais de déplacement', 'DEPLACE', 'Transports, missions, frais de déplacement du personnel', NULL, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(14, 'Frais de formation du personnel', 'FORMATION', 'Formations, séminaires, conférences pour le personnel', NULL, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL);
+(1, 'Salaires et charges sociales', 'SALAIRES', 'Dépenses liées aux salaires, primes, indemnités et charges sociales du personnel', NULL, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(2, 'Fournitures pédagogiques', 'PEDAGOG', 'Matériel pédagogique, manuels, supports de cours, etc.', NULL, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(3, 'Équipements informatiques', 'EQUIP_INFO', 'Ordinateurs, imprimantes, projecteurs, et autres matériels informatiques', NULL, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(4, 'Maintenance et réparations', 'MAINT', 'Entretien des bâtiments, réparations diverses, maintenance des équipements', NULL, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(5, 'Frais administratifs', 'ADMIN', 'Dépenses administratives générales', NULL, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(6, 'Factures d\'eau et électricité', 'UTIL', 'Factures d\'eau, d\'électricité et autres services publics', NULL, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(7, 'Services de nettoyage', 'NETTOYAGE', 'Services de nettoyage et d\'entretien des locaux', NULL, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(8, 'Sécurité', 'SECURITE', 'Services de sécurité, équipements de sécurité, etc.', NULL, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(9, 'Assurances', 'ASSUR', 'Assurances diverses (responsabilité civile, locaux, etc.)', NULL, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(10, 'Frais de communication', 'COMM', 'Téléphone, internet, frais postaux, etc.', NULL, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(11, 'Matériel de bureau', 'BUREAU', 'Fournitures de bureau, papeterie, etc.', NULL, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(12, 'Logiciels et licences', 'LOGICIEL', 'Logiciels, licences, abonnements à des services numériques', NULL, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(13, 'Frais de déplacement', 'DEPLACE', 'Transports, missions, frais de déplacement du personnel', NULL, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(14, 'Frais de formation du personnel', 'FORMATION', 'Formations, séminaires, conférences pour le personnel', NULL, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL);
 
 -- --------------------------------------------------------
 
@@ -593,25 +617,25 @@ CREATE TABLE `esbtp_categorie_paiements` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `esbtp_categorie_paiements`
 --
 
 INSERT INTO `esbtp_categorie_paiements` (`id`, `nom`, `code`, `slug`, `description`, `icone`, `couleur`, `est_actif`, `est_obligatoire`, `parent_id`, `ordre`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, 'Frais de scolarité', 'SCOLARITE', 'frais-de-scolarite', 'Frais couvrant la formation académique pour l\'année universitaire', 'fas fa-graduation-cap', '#3498db', 1, 1, NULL, 1, '2025-05-07 11:39:28', '2025-05-07 11:39:28', NULL),
-(2, 'Frais d\'inscription', 'INSCRIPTION', 'frais-inscription', 'Frais administratifs pour l\'inscription à l\'établissement', 'fas fa-file-signature', '#2ecc71', 1, 1, NULL, 2, '2025-05-07 11:39:28', '2025-05-07 11:39:28', NULL),
-(3, 'Frais de dossier', 'DOSSIER', 'frais-dossier', 'Frais pour le traitement du dossier administratif', 'fas fa-folder-open', '#f39c12', 1, 0, NULL, 3, '2025-05-07 11:39:28', '2025-05-07 11:39:28', NULL),
-(4, 'Frais d\'examen', 'EXAMEN', 'frais-examen', 'Frais relatifs aux examens et évaluations', 'fas fa-edit', '#e74c3c', 1, 0, NULL, 4, '2025-05-07 11:39:28', '2025-05-07 11:39:28', NULL),
-(5, 'Frais de laboratoire', 'LABORATOIRE', 'frais-laboratoire', 'Frais pour l\'utilisation des laboratoires et équipements scientifiques', 'fas fa-flask', '#9b59b6', 1, 0, NULL, 5, '2025-05-07 11:39:28', '2025-05-07 11:39:28', NULL),
-(6, 'Frais de stage', 'STAGE', 'frais-stage', 'Frais liés à l\'organisation et au suivi des stages professionnels', 'fas fa-briefcase', '#34495e', 1, 0, NULL, 6, '2025-05-07 11:39:28', '2025-05-07 11:39:28', NULL),
-(7, 'Frais de soutenance', 'SOUTENANCE', 'frais-soutenance', 'Frais pour l\'organisation et l\'évaluation des soutenances', 'fas fa-user-graduate', '#16a085', 1, 0, NULL, 7, '2025-05-07 11:39:28', '2025-05-07 11:39:28', NULL),
-(8, 'Frais de diplôme', 'DIPLOME', 'frais-diplome', 'Frais pour l\'établissement et la délivrance du diplôme', 'fas fa-award', '#27ae60', 1, 0, NULL, 8, '2025-05-07 11:39:28', '2025-05-07 11:39:28', NULL),
-(9, 'Location de matériel', 'LOCATION', 'location-materiel', 'Frais pour la location d\'équipements et de matériel pédagogique', 'fas fa-tools', '#f1c40f', 1, 0, NULL, 9, '2025-05-07 11:39:28', '2025-05-07 11:39:28', NULL),
-(10, 'Services annexes', 'SERVICES', 'services-annexes', 'Services annexes tels que photocopies, impression, cartes étudiantes, etc.', 'fas fa-print', '#e67e22', 1, 0, NULL, 10, '2025-05-07 11:39:28', '2025-05-07 11:39:28', NULL),
-(11, 'Pénalités de retard', 'PENALITES', 'penalites-retard', 'Pénalités appliquées en cas de retard de paiement', 'fas fa-exclamation-triangle', '#c0392b', 1, 0, NULL, 11, '2025-05-07 11:39:28', '2025-05-07 11:39:28', NULL),
-(12, 'Autres recettes', 'AUTRES', 'autres-recettes', 'Autres types de paiements et recettes divers', 'fas fa-ellipsis-h', '#7f8c8d', 1, 0, NULL, 12, '2025-05-07 11:39:28', '2025-05-07 11:39:28', NULL);
+(1, 'Frais de scolarité', 'SCOLARITE', 'frais-de-scolarite', 'Frais couvrant la formation académique pour l\'année universitaire', 'fas fa-graduation-cap', '#3498db', 1, 1, NULL, 1, '2025-05-17 15:39:34', '2025-05-17 15:39:34', NULL),
+(2, 'Frais d\'inscription', 'INSCRIPTION', 'frais-inscription', 'Frais administratifs pour l\'inscription à l\'établissement', 'fas fa-file-signature', '#2ecc71', 1, 1, NULL, 2, '2025-05-17 15:39:34', '2025-05-17 15:39:34', NULL),
+(3, 'Frais de dossier', 'DOSSIER', 'frais-dossier', 'Frais pour le traitement du dossier administratif', 'fas fa-folder-open', '#f39c12', 1, 0, NULL, 3, '2025-05-17 15:39:34', '2025-05-17 15:39:34', NULL),
+(4, 'Frais d\'examen', 'EXAMEN', 'frais-examen', 'Frais relatifs aux examens et évaluations', 'fas fa-edit', '#e74c3c', 1, 0, NULL, 4, '2025-05-17 15:39:34', '2025-05-17 15:39:34', NULL),
+(5, 'Frais de laboratoire', 'LABORATOIRE', 'frais-laboratoire', 'Frais pour l\'utilisation des laboratoires et équipements scientifiques', 'fas fa-flask', '#9b59b6', 1, 0, NULL, 5, '2025-05-17 15:39:34', '2025-05-17 15:39:34', NULL),
+(6, 'Frais de stage', 'STAGE', 'frais-stage', 'Frais liés à l\'organisation et au suivi des stages professionnels', 'fas fa-briefcase', '#34495e', 1, 0, NULL, 6, '2025-05-17 15:39:34', '2025-05-17 15:39:34', NULL),
+(7, 'Frais de soutenance', 'SOUTENANCE', 'frais-soutenance', 'Frais pour l\'organisation et l\'évaluation des soutenances', 'fas fa-user-graduate', '#16a085', 1, 0, NULL, 7, '2025-05-17 15:39:34', '2025-05-17 15:39:34', NULL),
+(8, 'Frais de diplôme', 'DIPLOME', 'frais-diplome', 'Frais pour l\'établissement et la délivrance du diplôme', 'fas fa-award', '#27ae60', 1, 0, NULL, 8, '2025-05-17 15:39:34', '2025-05-17 15:39:34', NULL),
+(9, 'Location de matériel', 'LOCATION', 'location-materiel', 'Frais pour la location d\'équipements et de matériel pédagogique', 'fas fa-tools', '#f1c40f', 1, 0, NULL, 9, '2025-05-17 15:39:34', '2025-05-17 15:39:34', NULL),
+(10, 'Services annexes', 'SERVICES', 'services-annexes', 'Services annexes tels que photocopies, impression, cartes étudiantes, etc.', 'fas fa-print', '#e67e22', 1, 0, NULL, 10, '2025-05-17 15:39:34', '2025-05-17 15:39:34', NULL),
+(11, 'Pénalités de retard', 'PENALITES', 'penalites-retard', 'Pénalités appliquées en cas de retard de paiement', 'fas fa-exclamation-triangle', '#c0392b', 1, 0, NULL, 11, '2025-05-17 15:39:34', '2025-05-17 15:39:34', NULL),
+(12, 'Autres recettes', 'AUTRES', 'autres-recettes', 'Autres types de paiements et recettes divers', 'fas fa-ellipsis-h', '#7f8c8d', 1, 0, NULL, 12, '2025-05-17 15:39:34', '2025-05-17 15:39:34', NULL);
 
 -- --------------------------------------------------------
 
@@ -624,25 +648,25 @@ CREATE TABLE `esbtp_classes` (
   `name` varchar(191) NOT NULL,
   `libelle` varchar(191) DEFAULT NULL,
   `code` varchar(191) NOT NULL,
+  `description` text DEFAULT NULL,
+  `capacity` int(11) NOT NULL DEFAULT 50,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
   `filiere_id` bigint(20) UNSIGNED NOT NULL,
   `niveau_etude_id` bigint(20) UNSIGNED NOT NULL,
   `annee_universitaire_id` bigint(20) UNSIGNED NOT NULL,
-  `capacity` int(11) NOT NULL DEFAULT 50,
-  `description` text DEFAULT NULL,
-  `is_active` tinyint(1) NOT NULL DEFAULT 1,
   `created_by` bigint(20) UNSIGNED DEFAULT NULL,
   `updated_by` bigint(20) UNSIGNED DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `esbtp_classes`
 --
 
-INSERT INTO `esbtp_classes` (`id`, `name`, `libelle`, `code`, `filiere_id`, `niveau_etude_id`, `annee_universitaire_id`, `capacity`, `description`, `is_active`, `created_by`, `updated_by`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, '1ère année BTS Génie Civil Option Bâtiment', NULL, '1BTS-GC-BAT', 1, 1, 5, 30, NULL, 1, 1, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11', NULL);
+INSERT INTO `esbtp_classes` (`id`, `name`, `libelle`, `code`, `description`, `capacity`, `is_active`, `filiere_id`, `niveau_etude_id`, `annee_universitaire_id`, `created_by`, `updated_by`, `created_at`, `updated_at`, `deleted_at`) VALUES
+(1, '1ère année BTS Génie Civil Option Bâtiment', NULL, '1BTS-GC-BAT', NULL, 30, 1, 2, 1, 6, 1, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL);
 
 -- --------------------------------------------------------
 
@@ -655,59 +679,60 @@ CREATE TABLE `esbtp_classe_matiere` (
   `classe_id` bigint(20) UNSIGNED NOT NULL,
   `matiere_id` bigint(20) UNSIGNED NOT NULL,
   `coefficient` double(8,2) NOT NULL DEFAULT 1.00,
-  `total_heures` int(11) NOT NULL DEFAULT 30,
+  `total_heures` int(11) NOT NULL DEFAULT 0,
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `esbtp_classe_matiere`
 --
 
-INSERT INTO `esbtp_classe_matiere` (`id`, `classe_id`, `matiere_id`, `coefficient`, `total_heures`, `is_active`, `created_at`, `updated_at`) VALUES
-(1, 1, 1, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(2, 1, 2, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(3, 1, 3, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(4, 1, 4, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(5, 1, 5, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(6, 1, 6, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(7, 1, 7, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(8, 1, 8, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(9, 1, 9, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(10, 1, 10, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(11, 1, 11, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(12, 1, 12, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(13, 1, 13, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(14, 1, 14, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(15, 1, 15, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(16, 1, 16, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(17, 1, 17, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(18, 1, 18, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(19, 1, 19, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(20, 1, 20, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(21, 1, 21, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(22, 1, 22, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(23, 1, 23, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(24, 1, 24, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(25, 1, 25, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(26, 1, 26, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(27, 1, 27, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(28, 1, 28, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(29, 1, 29, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(30, 1, 30, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(31, 1, 31, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(32, 1, 32, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(33, 1, 33, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(34, 1, 34, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(35, 1, 35, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(36, 1, 36, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(37, 1, 37, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(38, 1, 38, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(39, 1, 39, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(40, 1, 40, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(41, 1, 41, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11'),
-(42, 1, 42, 1.00, 0, 1, '2025-05-07 15:17:11', '2025-05-07 15:17:11');
+INSERT INTO `esbtp_classe_matiere` (`id`, `classe_id`, `matiere_id`, `coefficient`, `total_heures`, `is_active`, `created_at`, `updated_at`, `deleted_at`) VALUES
+(1, 1, 1, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(2, 1, 2, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(3, 1, 3, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(4, 1, 4, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(5, 1, 5, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(6, 1, 6, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(7, 1, 7, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(8, 1, 8, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(9, 1, 9, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(10, 1, 10, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(11, 1, 11, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(12, 1, 12, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(13, 1, 13, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(14, 1, 14, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(15, 1, 15, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(16, 1, 16, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(17, 1, 17, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(18, 1, 18, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(19, 1, 19, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(20, 1, 20, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(21, 1, 21, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(22, 1, 22, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(23, 1, 23, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(24, 1, 24, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(25, 1, 25, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(26, 1, 26, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(27, 1, 27, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(28, 1, 28, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(29, 1, 29, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(30, 1, 30, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(31, 1, 31, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(32, 1, 32, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(33, 1, 33, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(34, 1, 34, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(35, 1, 35, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(36, 1, 36, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(37, 1, 37, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(38, 1, 38, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(39, 1, 39, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(40, 1, 40, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(41, 1, 41, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL),
+(42, 1, 42, 1.00, 0, 1, '2025-05-17 15:42:25', '2025-05-17 15:42:25', NULL);
 
 -- --------------------------------------------------------
 
@@ -723,7 +748,7 @@ CREATE TABLE `esbtp_comptabilite_configurations` (
   `description` text DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -748,7 +773,14 @@ CREATE TABLE `esbtp_config_matieres` (
   `deleted_at` timestamp NULL DEFAULT NULL,
   `created_by` bigint(20) UNSIGNED DEFAULT NULL,
   `updated_by` bigint(20) UNSIGNED DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `esbtp_config_matieres`
+--
+
+INSERT INTO `esbtp_config_matieres` (`id`, `matiere_id`, `classe_id`, `annee_universitaire_id`, `periode`, `config`, `coefficient`, `nb_heures_cours`, `nb_heures_td`, `nb_heures_tp`, `is_active`, `created_at`, `updated_at`, `deleted_at`, `created_by`, `updated_by`) VALUES
+(1, 2, 1, 6, 'semestre1', '\"{\\\"type\\\":\\\"general\\\"}\"', 1.0, 0.00, 0.00, 0.00, 1, '2025-06-03 00:11:21', '2025-06-03 00:11:21', NULL, 3, 3);
 
 -- --------------------------------------------------------
 
@@ -767,7 +799,35 @@ CREATE TABLE `esbtp_config_matiere_type_formations` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `esbtp_continuing_education`
+--
+
+CREATE TABLE `esbtp_continuing_education` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `name` varchar(191) NOT NULL,
+  `code` varchar(50) NOT NULL,
+  `department_id` bigint(20) UNSIGNED NOT NULL,
+  `cycle_id` bigint(20) UNSIGNED NOT NULL,
+  `coordinator_name` varchar(191) DEFAULT NULL,
+  `description` text DEFAULT NULL,
+  `duration` int(11) NOT NULL,
+  `duration_unit` enum('days','weeks','months') NOT NULL,
+  `price` decimal(10,2) NOT NULL,
+  `start_date` date NOT NULL,
+  `end_date` date NOT NULL,
+  `prerequisites` text DEFAULT NULL,
+  `objectives` text DEFAULT NULL,
+  `target_audience` text DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -792,7 +852,26 @@ CREATE TABLE `esbtp_cours` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `esbtp_cycles`
+--
+
+CREATE TABLE `esbtp_cycles` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `name` varchar(191) NOT NULL,
+  `code` varchar(50) NOT NULL,
+  `duration_years` int(11) NOT NULL,
+  `diploma_awarded` varchar(191) NOT NULL,
+  `description` text DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -801,12 +880,63 @@ CREATE TABLE `esbtp_cours` (
 --
 
 CREATE TABLE `esbtp_daily_codes` (
-  `id` int(11) NOT NULL,
-  `code` varchar(255) NOT NULL,
-  `status` enum('active','inactive') DEFAULT 'inactive',
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `code` varchar(191) NOT NULL,
+  `valid_from` datetime NOT NULL,
+  `valid_until` datetime NOT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `status` enum('active','expired','cancelled') NOT NULL DEFAULT 'active',
+  `total_attempts` int(11) NOT NULL DEFAULT 0,
+  `successful_attempts` int(11) NOT NULL DEFAULT 0,
+  `failed_attempts` int(11) NOT NULL DEFAULT 0,
+  `last_attempt_at` timestamp NULL DEFAULT NULL,
+  `created_by` bigint(20) UNSIGNED DEFAULT NULL,
+  `updated_by` bigint(20) UNSIGNED DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `esbtp_daily_codes`
+--
+
+INSERT INTO `esbtp_daily_codes` (`id`, `code`, `valid_from`, `valid_until`, `is_active`, `status`, `total_attempts`, `successful_attempts`, `failed_attempts`, `last_attempt_at`, `created_by`, `updated_by`, `created_at`, `updated_at`, `deleted_at`) VALUES
+(1, '5WM9CT', '2025-05-19 01:21:05', '2025-05-20 01:21:05', 1, 'expired', 1, 1, 0, '2025-05-19 17:08:24', 3, NULL, '2025-05-19 01:21:05', '2025-05-20 08:46:05', NULL),
+(2, '54ULCD', '2025-05-20 08:46:05', '2025-05-21 08:46:05', 1, 'cancelled', 0, 0, 0, NULL, 3, NULL, '2025-05-20 08:46:05', '2025-05-23 16:13:33', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `esbtp_departments`
+--
+
+CREATE TABLE `esbtp_departments` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `name` varchar(191) NOT NULL,
+  `code` varchar(191) NOT NULL,
+  `description` text DEFAULT NULL,
+  `head_name` varchar(191) DEFAULT NULL,
+  `head_title` varchar(191) DEFAULT NULL,
+  `email` varchar(191) DEFAULT NULL,
+  `phone` varchar(191) DEFAULT NULL,
+  `office_location` varchar(191) DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_by` bigint(20) UNSIGNED DEFAULT NULL,
+  `updated_by` bigint(20) UNSIGNED DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `esbtp_departments`
+--
+
+INSERT INTO `esbtp_departments` (`id`, `name`, `code`, `description`, `head_name`, `head_title`, `email`, `phone`, `office_location`, `is_active`, `created_by`, `updated_by`, `created_at`, `updated_at`, `deleted_at`) VALUES
+(1, 'Génie Civil', 'GC', 'Département de Génie Civil', 'Dr. Jean Dupont', 'Chef de Département', 'genie.civil@esbtp.edu', '+123456789', 'Bâtiment A, Bureau 101', 1, NULL, NULL, '2025-05-17 15:39:37', '2025-05-17 15:39:37', NULL),
+(2, 'Génie Mécanique', 'GM', 'Département de Génie Mécanique', 'Dr. Marie Martin', 'Chef de Département', 'genie.mecanique@esbtp.edu', '+123456790', 'Bâtiment B, Bureau 201', 1, NULL, NULL, '2025-05-17 15:39:37', '2025-05-17 15:39:37', NULL),
+(3, 'Génie Électrique', 'GE', 'Département de Génie Électrique', 'Dr. Pierre Dubois', 'Chef de Département', 'genie.electrique@esbtp.edu', '+123456791', 'Bâtiment C, Bureau 301', 1, NULL, NULL, '2025-05-17 15:39:37', '2025-05-17 15:39:37', NULL);
 
 -- --------------------------------------------------------
 
@@ -834,7 +964,41 @@ CREATE TABLE `esbtp_depenses` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `esbtp_depenses`
+--
+
+INSERT INTO `esbtp_depenses` (`id`, `categorie_id`, `reference`, `libelle`, `description`, `montant`, `date_depense`, `mode_paiement`, `numero_transaction`, `fournisseur_id`, `statut`, `createur_id`, `validateur_id`, `date_validation`, `path_justificatif`, `notes_internes`, `created_at`, `updated_at`, `deleted_at`) VALUES
+(1, 6, 'FR001040', 'Facture d\'électricité', 'Aijidjie', 100000.00, '2025-05-19', 'espèces', NULL, NULL, 'validée', 3, NULL, NULL, NULL, NULL, '2025-05-19 23:18:26', '2025-05-19 23:18:26', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `esbtp_emplois_du_temps`
+--
+
+CREATE TABLE `esbtp_emplois_du_temps` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `title` varchar(191) NOT NULL,
+  `description` text DEFAULT NULL,
+  `start_date` date NOT NULL,
+  `end_date` date NOT NULL,
+  `start_time` time NOT NULL,
+  `end_time` time NOT NULL,
+  `day_of_week` enum('monday','tuesday','wednesday','thursday','friday','saturday','sunday') NOT NULL,
+  `is_recurring` tinyint(1) NOT NULL DEFAULT 0,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `classe_id` bigint(20) UNSIGNED NOT NULL,
+  `matiere_id` bigint(20) UNSIGNED NOT NULL,
+  `teacher_id` bigint(20) UNSIGNED NOT NULL,
+  `created_by` bigint(20) UNSIGNED DEFAULT NULL,
+  `updated_by` bigint(20) UNSIGNED DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -857,15 +1021,15 @@ CREATE TABLE `esbtp_emploi_temps` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `esbtp_emploi_temps`
 --
 
 INSERT INTO `esbtp_emploi_temps` (`id`, `titre`, `classe_id`, `semestre`, `date_debut`, `date_fin`, `annee_universitaire_id`, `is_active`, `is_current`, `created_by`, `updated_by`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, 'Emploi du temps BTS 1ère année Génie Civil - Semestre 1', 1, 'Semestre 1', '2025-05-05', '2025-05-09', 26, 0, 0, 1, NULL, '2025-05-07 15:28:55', '2025-05-14 20:08:49', NULL),
-(2, 'Emploi du temps BTS 1ère année Génie Civil - Semestre 1', 1, 'Semestre 1', '2025-05-12', '2025-05-16', 69, 1, 1, 1, NULL, '2025-05-14 20:08:49', '2025-05-14 20:08:49', NULL);
+(1, 'Emploi du temps BTS 1ère année Génie Civil - Semestre 1', 1, 'Semestre 1', '2025-05-12', '2025-05-16', 6, 0, 0, 1, NULL, '2025-05-17 15:42:45', '2025-05-19 01:33:26', NULL),
+(2, 'Emploi du temps BTS 1ère année Génie Civil - Semestre 1', 1, 'Semestre 1', '2025-05-19', '2025-05-23', 6, 1, 1, 3, NULL, '2025-05-19 01:33:26', '2025-05-19 01:33:26', NULL);
 
 -- --------------------------------------------------------
 
@@ -879,9 +1043,12 @@ CREATE TABLE `esbtp_enseignant_matiere` (
   `matiere_id` bigint(20) UNSIGNED NOT NULL,
   `annee_universitaire_id` bigint(20) UNSIGNED NOT NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `notes` text DEFAULT NULL,
+  `heures_prevues` int(11) DEFAULT NULL,
+  `heures_effectuees` int(11) NOT NULL DEFAULT 0,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -943,15 +1110,17 @@ CREATE TABLE `esbtp_etudiants` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `esbtp_etudiants`
 --
 
 INSERT INTO `esbtp_etudiants` (`id`, `user_id`, `classe_id`, `annee_universitaire_id`, `matricule`, `nom`, `prenoms`, `sexe`, `date_naissance`, `lieu_naissance`, `ville_naissance`, `commune_naissance`, `nationalite`, `adresse`, `ville`, `commune`, `telephone`, `email`, `email_personnel`, `photo`, `statut`, `groupe_sanguin`, `situation_matrimoniale`, `nombre_enfants`, `urgence_contact_nom`, `urgence_contact_telephone`, `urgence_contact_relation`, `created_by`, `updated_by`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, 6, NULL, NULL, 'ETU2025367', 'Test', 'Etudiant', 'M', '2000-01-01', 'Abidjan', NULL, NULL, NULL, 'Cocody', NULL, NULL, '0700000000', 'etudiant@esbtp.ci', NULL, NULL, 'actif', NULL, NULL, 0, NULL, NULL, NULL, 4, NULL, '2025-05-07 14:27:49', '2025-05-07 14:27:49', NULL),
-(2, 9, NULL, NULL, '12041587AAZ', 'N\'guessan', 'Marc', 'M', '2002-04-16', 'Cocody, abidjan', NULL, NULL, NULL, NULL, 'Abidjan', 'Koumassi', '+2250705843901', NULL, 'djedje@gmail.com', NULL, 'actif', NULL, NULL, 0, NULL, NULL, NULL, 1, 1, '2025-05-14 17:38:12', '2025-05-14 17:38:12', NULL);
+(1, 5, NULL, NULL, 'ETU2025055', 'Test', 'Etudiant', 'M', '2000-01-01', 'Abidjan', NULL, NULL, NULL, 'Cocody', NULL, NULL, '0700000000', 'etudiant@esbtp.ci', NULL, NULL, 'actif', NULL, NULL, 0, NULL, NULL, NULL, 3, NULL, '2025-05-17 15:39:37', '2025-05-17 15:39:37', NULL),
+(2, 8, NULL, NULL, '12047923AB', 'GRAH', 'Marc', 'M', '2002-04-16', 'Codody, ABidjan', NULL, NULL, NULL, NULL, 'Yamoussoukro', 'Yakro', '+2250705843901', NULL, 'Marc@gmail.com', NULL, 'actif', NULL, NULL, 0, NULL, NULL, NULL, 1, 1, '2025-05-17 20:51:04', '2025-05-17 20:51:04', NULL),
+(7, 14, NULL, NULL, '12047923CA', 'GRAHOBI', 'Marco', 'M', '2002-04-16', 'Codody, ABidjan', NULL, NULL, NULL, NULL, 'Yamoussoukro', 'Yakro', '+2250705843901', NULL, 'Marc@gmail.com', NULL, 'actif', NULL, NULL, 0, NULL, NULL, NULL, 3, 3, '2025-05-19 23:02:59', '2025-05-19 23:02:59', NULL),
+(15, 22, NULL, NULL, '12047923BC', 'BIC', 'Marc', 'M', '2002-10-10', 'Codody, ABidjan', NULL, NULL, NULL, NULL, 'Yamoussoukro', 'Yakro', '+2250141540178', NULL, 'bic@indo.com', NULL, 'actif', NULL, NULL, 0, NULL, NULL, NULL, 3, 3, '2025-05-23 23:22:01', '2025-05-23 23:22:01', NULL);
 
 -- --------------------------------------------------------
 
@@ -967,14 +1136,16 @@ CREATE TABLE `esbtp_etudiant_parent` (
   `is_tuteur` tinyint(1) NOT NULL DEFAULT 0,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `esbtp_etudiant_parent`
 --
 
 INSERT INTO `esbtp_etudiant_parent` (`id`, `etudiant_id`, `parent_id`, `relation`, `is_tuteur`, `created_at`, `updated_at`) VALUES
-(1, 2, 1, 'Tuteur', 1, '2025-05-14 17:38:12', '2025-05-14 17:38:12');
+(1, 2, 1, 'Tuteur', 1, '2025-05-17 20:51:04', '2025-05-17 20:51:04'),
+(2, 7, 2, 'Tuteur', 1, '2025-05-19 23:02:59', '2025-05-19 23:02:59'),
+(3, 15, 3, 'Tuteur', 1, '2025-05-23 23:22:02', '2025-05-23 23:22:02');
 
 -- --------------------------------------------------------
 
@@ -984,13 +1155,33 @@ INSERT INTO `esbtp_etudiant_parent` (`id`, `etudiant_id`, `parent_id`, `relation
 
 CREATE TABLE `esbtp_evaluations` (
   `id` bigint(20) UNSIGNED NOT NULL,
-  `title` varchar(191) NOT NULL,
-  `type` enum('examen','devoir','controle','tp','projet','autre') NOT NULL DEFAULT 'examen',
+  `titre` varchar(191) DEFAULT NULL,
+  `description` text DEFAULT NULL,
+  `matiere_id` bigint(20) UNSIGNED NOT NULL,
+  `classe_id` bigint(20) UNSIGNED NOT NULL,
+  `type` varchar(191) NOT NULL,
+  `date_evaluation` date NOT NULL,
+  `coefficient` decimal(3,1) NOT NULL DEFAULT 1.0,
+  `bareme` decimal(5,2) NOT NULL DEFAULT 20.00,
+  `duree_minutes` int(11) DEFAULT NULL,
+  `periode` varchar(191) DEFAULT NULL,
+  `annee_universitaire_id` bigint(20) UNSIGNED NOT NULL,
+  `status` varchar(191) NOT NULL DEFAULT 'draft',
+  `is_published` tinyint(1) NOT NULL DEFAULT 0,
+  `notes_published` tinyint(1) NOT NULL DEFAULT 0,
+  `created_by` bigint(20) UNSIGNED DEFAULT NULL,
+  `updated_by` bigint(20) UNSIGNED DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
-  `deleted_at` timestamp NULL DEFAULT NULL,
-  `is_published` tinyint(1) DEFAULT 0
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  `deleted_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `esbtp_evaluations`
+--
+
+INSERT INTO `esbtp_evaluations` (`id`, `titre`, `description`, `matiere_id`, `classe_id`, `type`, `date_evaluation`, `coefficient`, `bareme`, `duree_minutes`, `periode`, `annee_universitaire_id`, `status`, `is_published`, `notes_published`, `created_by`, `updated_by`, `created_at`, `updated_at`, `deleted_at`) VALUES
+(1, 'math quiz', NULL, 2, 1, 'devoir', '2025-10-10', 1.0, 20.00, NULL, 'semestre1', 5, 'draft', 1, 0, 3, NULL, '2025-06-02 15:54:20', '2025-06-02 15:54:20', NULL);
 
 -- --------------------------------------------------------
 
@@ -1000,7 +1191,7 @@ CREATE TABLE `esbtp_evaluations` (
 
 CREATE TABLE `esbtp_factures` (
   `id` bigint(20) UNSIGNED NOT NULL,
-  `numero_facture` varchar(191) NOT NULL,
+  `numero` varchar(191) NOT NULL,
   `etudiant_id` bigint(20) UNSIGNED NOT NULL,
   `inscription_id` bigint(20) UNSIGNED DEFAULT NULL,
   `annee_universitaire_id` bigint(20) UNSIGNED NOT NULL,
@@ -1021,7 +1212,15 @@ CREATE TABLE `esbtp_factures` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `esbtp_factures`
+--
+
+INSERT INTO `esbtp_factures` (`id`, `numero`, `etudiant_id`, `inscription_id`, `annee_universitaire_id`, `date_emission`, `date_echeance`, `montant_ht`, `taux_taxe`, `montant_taxe`, `montant_ttc`, `montant_regle`, `montant_du`, `statut`, `notes`, `path_pdf`, `createur_id`, `validateur_id`, `date_validation`, `created_at`, `updated_at`, `deleted_at`) VALUES
+(1, 'FAC-20250519-00006', 7, 6, 6, '2025-05-19', '2025-06-03', 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 'émise', 'Facture générée automatiquement à l\'inscription', NULL, 3, NULL, NULL, '2025-05-19 23:02:59', '2025-05-19 23:02:59', NULL),
+(7, 'FAC-20250523-00014', 15, 14, 6, '2025-05-23', '2025-06-07', 500000.00, 0.00, 0.00, 500000.00, 0.00, 500000.00, 'émise', 'Facture générée automatiquement à l\'inscription', NULL, 3, NULL, NULL, '2025-05-23 23:22:02', '2025-05-23 23:22:02', NULL);
 
 -- --------------------------------------------------------
 
@@ -1034,12 +1233,20 @@ CREATE TABLE `esbtp_facture_details` (
   `facture_id` bigint(20) UNSIGNED NOT NULL,
   `designation` varchar(191) NOT NULL,
   `description` text DEFAULT NULL,
+  `prix_unitaire` decimal(10,2) DEFAULT NULL,
   `montant` decimal(10,2) NOT NULL,
   `quantite` int(11) NOT NULL DEFAULT 1,
   `total_ligne` decimal(10,2) NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `esbtp_facture_details`
+--
+
+INSERT INTO `esbtp_facture_details` (`id`, `facture_id`, `designation`, `description`, `prix_unitaire`, `montant`, `quantite`, `total_ligne`, `created_at`, `updated_at`) VALUES
+(1, 7, 'Scolarité annuelle', NULL, NULL, 500000.00, 1, 500000.00, '2025-05-23 23:22:02', '2025-05-23 23:22:02');
 
 -- --------------------------------------------------------
 
@@ -1054,29 +1261,31 @@ CREATE TABLE `esbtp_filieres` (
   `code` varchar(191) NOT NULL,
   `description` text DEFAULT NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
-  `parent_id` varchar(191) DEFAULT NULL,
+  `parent_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `created_by` bigint(20) UNSIGNED DEFAULT NULL,
+  `updated_by` bigint(20) UNSIGNED DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `esbtp_filieres`
 --
 
-INSERT INTO `esbtp_filieres` (`id`, `name`, `libelle`, `code`, `description`, `is_active`, `parent_id`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, 'BTS1 Tronc commun', NULL, 'BTS1-TC', 'BTS première année Tronc Commun', 1, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32', NULL),
-(2, 'BTS1 BATIMENT', NULL, 'BTS1-BAT', 'BTS première année Bâtiment', 1, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32', NULL),
-(3, 'BTS1 GTP', NULL, 'BTS1-GTP', 'BTS première année Génie civil option TRAVAUX D1 IBI', 1, NULL, '2025-05-07 11:39:32', '2025-05-07 15:10:07', NULL),
-(4, 'BTS1 GGT', NULL, 'BTS1-GGT', 'BTS première année Génie civil option GEOMETRE-TOPOGRAPHE', 1, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32', NULL),
-(5, 'BTS1 MGP', NULL, 'BTS1-MGP', 'BTS première année MINE - GEOLOGIE - PETROLE', 1, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32', NULL),
-(6, 'BTS1 URBANISME', NULL, 'BTS1-URB', 'BTS première année Génie civil option URBANISME', 1, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32', NULL),
-(7, 'BTS2 Tronc commun', NULL, 'BTS2-TC', 'BTS deuxième année Tronc Commun', 1, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32', NULL),
-(8, 'BTS2 BAT', NULL, 'BTS2-BAT', 'BTS deuxième année Bâtiment', 1, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32', NULL),
-(9, 'BTS2 GTP', NULL, 'BTS2-GTP', 'BTS deuxième année Génie des Travaux Publics', 1, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32', NULL),
-(10, 'BTS2 GGT', NULL, 'BTS2-GGT', 'BTS deuxième année Génie civil option GEOMETRE-TOPOGRAPHE', 1, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32', NULL),
-(11, 'BTS2 MGP', NULL, 'BTS2-MGP', 'BTS deuxième année MINE - GEOLOGIE - PETROLE', 1, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32', NULL),
-(12, 'BTS2 URBANISME', NULL, 'BTS2-URB', 'BTS deuxième année Génie civil option URBANISME', 1, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32', NULL);
+INSERT INTO `esbtp_filieres` (`id`, `name`, `libelle`, `code`, `description`, `is_active`, `parent_id`, `created_by`, `updated_by`, `created_at`, `updated_at`, `deleted_at`) VALUES
+(1, 'BTS1 Tronc commun', NULL, 'BTS1-TC', 'BTS première année Tronc Commun', 1, NULL, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(2, 'BTS1 BATIMENT', NULL, 'BTS1-BAT', 'BTS première année Bâtiment', 1, NULL, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(3, 'BTS1 GTP', NULL, 'BTS1-GTP', 'BTS première année Génie civil option TRAVAUX PUBLICS', 1, NULL, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(4, 'BTS1 GGT', NULL, 'BTS1-GGT', 'BTS première année Génie civil option GEOMETRE-TOPOGRAPHE', 1, NULL, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(5, 'BTS1 MGP', NULL, 'BTS1-MGP', 'BTS première année MINE - GEOLOGIE - PETROLE', 1, NULL, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(6, 'BTS1 URBANISME', NULL, 'BTS1-URB', 'BTS première année Génie civil option URBANISME', 1, NULL, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(7, 'BTS2 Tronc commun', NULL, 'BTS2-TC', 'BTS deuxième année Tronc Commun', 1, NULL, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(8, 'BTS2 BAT', NULL, 'BTS2-BAT', 'BTS deuxième année Bâtiment', 1, NULL, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(9, 'BTS2 GTP', NULL, 'BTS2-GTP', 'BTS deuxième année Génie des Travaux Publics', 1, NULL, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(10, 'BTS2 GGT', NULL, 'BTS2-GGT', 'BTS deuxième année Génie civil option GEOMETRE-TOPOGRAPHE', 1, NULL, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(11, 'BTS2 MGP', NULL, 'BTS2-MGP', 'BTS deuxième année MINE - GEOLOGIE - PETROLE', 1, NULL, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(12, 'BTS2 URBANISME', NULL, 'BTS2-URB', 'BTS deuxième année Génie civil option URBANISME', 1, NULL, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL);
 
 -- --------------------------------------------------------
 
@@ -1090,25 +1299,25 @@ CREATE TABLE `esbtp_filiere_niveau` (
   `niveau_etude_id` bigint(20) UNSIGNED NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `esbtp_filiere_niveau`
 --
 
 INSERT INTO `esbtp_filiere_niveau` (`id`, `filiere_id`, `niveau_etude_id`, `created_at`, `updated_at`) VALUES
-(1, 1, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(2, 2, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(3, 3, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(4, 4, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(5, 5, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(6, 6, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(7, 7, 2, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(8, 8, 2, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(9, 9, 2, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(10, 10, 2, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(11, 11, 2, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(12, 12, 2, '2025-05-07 13:34:39', '2025-05-07 13:34:39');
+(1, 1, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(2, 2, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(3, 3, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(4, 4, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(5, 5, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(6, 6, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(7, 7, 2, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(8, 8, 2, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(9, 9, 2, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(10, 10, 2, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(11, 11, 2, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(12, 12, 2, '2025-05-17 15:39:36', '2025-05-17 15:39:36');
 
 -- --------------------------------------------------------
 
@@ -1134,7 +1343,14 @@ CREATE TABLE `esbtp_fournisseurs` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `esbtp_fournisseurs`
+--
+
+INSERT INTO `esbtp_fournisseurs` (`id`, `code`, `nom`, `type`, `adresse`, `ville`, `pays`, `telephone`, `email`, `site_web`, `numero_fiscal`, `compte_bancaire`, `notes`, `est_actif`, `created_at`, `updated_at`, `deleted_at`) VALUES
+(1, 'F-20250519-001', 'BIC', NULL, 'bp147', NULL, 'Cote Ivoire', '0141540178', 'bic@indo.com', NULL, NULL, NULL, NULL, 1, '2025-05-19 23:38:11', '2025-05-19 23:40:12', '2025-05-19 23:40:12');
 
 -- --------------------------------------------------------
 
@@ -1154,7 +1370,7 @@ CREATE TABLE `esbtp_frais_scolarite` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -1186,14 +1402,48 @@ CREATE TABLE `esbtp_inscriptions` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `esbtp_inscriptions`
 --
 
 INSERT INTO `esbtp_inscriptions` (`id`, `etudiant_id`, `annee_universitaire_id`, `filiere_id`, `niveau_id`, `classe_id`, `date_inscription`, `type_inscription`, `status`, `montant_scolarite`, `frais_inscription`, `numero_recu`, `date_paiement`, `mode_paiement`, `observations`, `documents_fournis`, `date_validation`, `validated_by`, `created_by`, `updated_by`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, 2, 5, 1, 1, 1, '2025-05-14', 'première_inscription', 'en_attente', 0.00, 0.00, 'INSC-2025-1088', NULL, NULL, NULL, NULL, NULL, NULL, 1, 1, '2025-05-14 17:38:12', '2025-05-14 17:38:12', NULL);
+(1, 2, 6, 2, 1, 1, '2025-05-17', 'première_inscription', 'active', 0.00, 0.00, 'INSC-2025-0200', NULL, NULL, NULL, NULL, '2025-05-17', 1, 1, 1, '2025-05-17 20:51:04', '2025-05-17 20:52:37', NULL),
+(6, 7, 6, 2, 1, 1, '2025-05-19', 'première_inscription', 'active', 0.00, 0.00, 'INSC-2025-3949', NULL, NULL, NULL, NULL, '2025-05-23', 3, 3, 3, '2025-05-19 23:02:59', '2025-05-23 16:04:37', NULL),
+(14, 15, 6, 2, 1, 1, '2025-05-23', 'première_inscription', 'active', 0.00, 0.00, 'INSC-2025-2012', NULL, NULL, NULL, NULL, '2025-05-23', 3, 3, 3, '2025-05-23 23:22:01', '2025-05-23 23:23:07', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `esbtp_laboratories`
+--
+
+CREATE TABLE `esbtp_laboratories` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `name` varchar(191) NOT NULL,
+  `code` varchar(191) NOT NULL,
+  `description` text DEFAULT NULL,
+  `department_id` bigint(20) UNSIGNED NOT NULL,
+  `location` varchar(191) DEFAULT NULL,
+  `capacity` int(11) NOT NULL DEFAULT 0,
+  `equipment` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`equipment`)),
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_by` bigint(20) UNSIGNED DEFAULT NULL,
+  `updated_by` bigint(20) UNSIGNED DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `esbtp_laboratories`
+--
+
+INSERT INTO `esbtp_laboratories` (`id`, `name`, `code`, `description`, `department_id`, `location`, `capacity`, `equipment`, `is_active`, `created_by`, `updated_by`, `created_at`, `updated_at`, `deleted_at`) VALUES
+(1, 'Laboratoire de Matériaux', 'LAB-MAT', 'Laboratoire d\'essais des matériaux de construction', 1, 'Bâtiment A, Niveau -1', 30, '[\"Machine de compression\",\"Four \\u00e0 b\\u00e9ton\",\"Tamiseuse \\u00e9lectrique\",\"Balance de pr\\u00e9cision\"]', 1, NULL, NULL, '2025-05-17 15:39:37', '2025-05-17 15:39:37', NULL),
+(2, 'Laboratoire de Mécanique', 'LAB-MEC', 'Laboratoire de mécanique et d\'essais mécaniques', 2, 'Bâtiment B, Niveau -1', 25, '[\"Machine de traction\",\"Banc d\'essai moteur\",\"\\u00c9quipement de m\\u00e9trologie\",\"Machines-outils CNC\"]', 1, NULL, NULL, '2025-05-17 15:39:37', '2025-05-17 15:39:37', NULL),
+(3, 'Laboratoire d\'Électronique', 'LAB-ELEC', 'Laboratoire d\'électronique et d\'automatisme', 3, 'Bâtiment C, Niveau -1', 20, '[\"Oscilloscopes\",\"G\\u00e9n\\u00e9rateurs de signaux\",\"Stations de soudage\",\"Kits Arduino et Raspberry Pi\"]', 1, NULL, NULL, '2025-05-17 15:39:37', '2025-05-17 15:39:37', NULL);
 
 -- --------------------------------------------------------
 
@@ -1215,104 +1465,102 @@ CREATE TABLE `esbtp_matieres` (
   `niveau_etude_id` bigint(20) UNSIGNED DEFAULT NULL,
   `type_formation` enum('generale','technologique_professionnelle') NOT NULL DEFAULT 'generale',
   `couleur` varchar(191) DEFAULT NULL,
-  `coefficient_default` double(8,2) NOT NULL DEFAULT 1.00,
-  `total_heures_default` int(11) NOT NULL DEFAULT 30,
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
   `created_by` bigint(20) UNSIGNED DEFAULT NULL,
   `updated_by` bigint(20) UNSIGNED DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `esbtp_matieres`
 --
 
-INSERT INTO `esbtp_matieres` (`id`, `name`, `code`, `description`, `coefficient`, `heures_cm`, `heures_td`, `heures_tp`, `heures_stage`, `heures_perso`, `niveau_etude_id`, `type_formation`, `couleur`, `coefficient_default`, `total_heures_default`, `is_active`, `created_by`, `updated_by`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, 'Dessin Technique', 'DESSIN_TECHNIQUE', 'Matière : Dessin Technique', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:38', '2025-05-07 13:34:38', NULL),
-(2, 'Mathématiques', 'MATHEMATIQUES', 'Matière : Mathématiques', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:38', '2025-05-07 13:34:38', NULL),
-(3, 'Physique', 'PHYSIQUE', 'Matière : Physique', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:38', '2025-05-07 13:34:38', NULL),
-(4, 'Chimie', 'CHIMIE', 'Matière : Chimie', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:38', '2025-05-07 13:34:38', NULL),
-(5, 'Informatique', 'INFORMATIQUE', 'Matière : Informatique', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:38', '2025-05-07 13:34:38', NULL),
-(6, 'Français', 'FRANCAIS', 'Matière : Français', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:38', '2025-05-07 13:34:38', NULL),
-(7, 'Anglais', 'ANGLAIS', 'Matière : Anglais', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:38', '2025-05-07 13:34:38', NULL),
-(8, 'Résistance des Matériaux', 'RDM', 'Matière : Résistance des Matériaux', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:38', '2025-05-07 13:34:38', NULL),
-(9, 'Mécanique des Sols', 'MDS', 'Matière : Mécanique des Sols', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:38', '2025-05-07 13:34:38', NULL),
-(10, 'Topographie', 'TOPO', 'Matière : Topographie', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:38', '2025-05-07 13:34:38', NULL),
-(11, 'Construction Métallique', 'CM', 'Matière : Construction Métallique', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:38', '2025-05-07 13:34:38', NULL),
-(12, 'Hydrologie', 'HYDROLOGIE', 'Matière : Hydrologie', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:38', '2025-05-07 13:34:38', NULL),
-(13, 'Hydraulique', 'HYDRAULIQUE', 'Matière : Hydraulique', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:38', '2025-05-07 13:34:38', NULL),
-(14, 'Géotechnique', 'GEOTECHNIQUE', 'Matière : Géotechnique', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:38', '2025-05-07 13:34:38', NULL),
-(15, 'Technique des Engins', 'TECHNIQUE_ENGINS', 'Matière : Technique des Engins', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:38', '2025-05-07 13:34:38', NULL),
-(16, 'IHH', 'IHH', 'Matière : IHH', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:38', '2025-05-07 13:34:38', NULL),
-(17, 'Electricité', 'ELECTRICITE', 'Matière : Electricité', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:38', '2025-05-07 13:34:38', NULL),
-(18, 'Sécurité', 'SECURITE', 'Matière : Sécurité', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:38', '2025-05-07 13:34:38', NULL),
-(19, 'Matériaux', 'MATERIAUX', 'Matière : Matériaux', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:38', '2025-05-07 13:34:38', NULL),
-(20, 'IGC', 'IGC', 'Matière : IGC', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:38', '2025-05-07 13:34:38', NULL),
-(21, 'GRV', 'GRV', 'Matière : GRV', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:38', '2025-05-07 13:34:38', NULL),
-(22, 'Calcul Topo', 'CALCUL_TOPO', 'Matière : Calcul Topo', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:38', '2025-05-07 13:34:38', NULL),
-(23, 'Topo Générale', 'TOPO_GENERALE', 'Matière : Topo Générale', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:38', '2025-05-07 13:34:38', NULL),
-(24, 'TP Topo', 'TP_TOPO', 'Matière : TP Topo', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(25, 'Géochimie', 'GEOCHIMIE', 'Matière : Géochimie', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(26, 'Géologie Générale', 'GEOLOGIE_GENERALE', 'Matière : Géologie Générale', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(27, 'Géologie Historique', 'GEOLOGIE_HISTORIQUE', 'Matière : Géologie Historique', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(28, 'Mécanique des Sols', 'MECA_SOL', 'Matière : Mécanique des Sols', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(29, 'Mécanique des Roches', 'MECA_ROCHE', 'Matière : Mécanique des Roches', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(30, 'Minéralogie', 'MINERALOGIE', 'Matière : Minéralogie', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(31, 'Mécanique des Fluides', 'MECA_FLUIDES', 'Matière : Mécanique des Fluides', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(32, 'Topographie Minière', 'TOPO_MINIERE', 'Matière : Topographie Minière', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(33, 'Architecture', 'ARCHITECTURE', 'Matière : Architecture', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(34, 'Démographie', 'DEMOGRAPHIE', 'Matière : Démographie', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(35, 'Dessin Bâtiment', 'DESSIN_BATIMENT', 'Matière : Dessin Bâtiment', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(36, 'Géographie Urbaine', 'GEOGRAPHIE_URBAINE', 'Matière : Géographie Urbaine', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(37, 'Introduction à l\'urbanisme', 'INTRO_URBANISME', 'Matière : Introduction à l\'urbanisme', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(38, 'Lecture Photo', 'LECTURE_PHOTO', 'Matière : Lecture Photo', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(39, 'Métré et Etude de prix', 'METRE_PRIX', 'Matière : Métré et Etude de prix', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(40, 'Sociologie Urbaine', 'SOCIOLOGIE_URBAINE', 'Matière : Sociologie Urbaine', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(41, 'Technique Graphique', 'TECHNIQUE_GRAPHIQUE', 'Matière : Technique Graphique', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(42, 'Technologie du Bâtiment', 'TECHNO_BAT', 'Matière : Technologie du Bâtiment', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(43, 'Archicad', 'ARCHICAD', 'Matière : Archicad', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(44, 'Béton Armé', 'BETON_ARME', 'Matière : Béton Armé', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(45, 'CAO-DAO', 'CAO_DAO', 'Matière : CAO-DAO', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(46, 'Droit', 'DROIT', 'Matière : Droit', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(47, 'Droit de la Construction', 'DROIT_CONSTRUCTION', 'Matière : Droit de la Construction', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(48, 'Entrepreneuriat', 'ENTREPRENEURIAT', 'Matière : Entrepreneuriat', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(49, 'Gestion', 'GESTION', 'Matière : Gestion', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(50, 'Métré et Etude de Prix', 'METRE_PRIX_1', 'Matière : Métré et Etude de Prix', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(51, 'OGC', 'OGC_1', 'Matière : OGC', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(52, 'Optique', 'OPTIQUE', 'Matière : Optique', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(53, 'Projet', 'PROJET_1', 'Matière : Projet', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(54, 'Statique RDM', 'STATIQUE_RDM_1', 'Matière : Statique RDM', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(55, 'Technique de Recherche d\'emploi', 'TRE_1', 'Matière : Technique de Recherche d\'emploi', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(56, 'Technique d\'expression', 'TECHNIQUE_EXPRESSION', 'Matière : Technique d\'expression', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(57, 'Technologie du Bâtiment-Pathologie', 'TECHNO_BAT_PATHO', 'Matière : Technologie du Bâtiment-Pathologie', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(58, 'Topographie', 'TOPOGRAPHIE', 'Matière : Topographie', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(59, 'Urbanisme', 'URBANISME', 'Matière : Urbanisme', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(60, 'VRD', 'VRD', 'Matière : VRD', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(61, 'Béton Armé', 'BA', 'Matière : Béton Armé', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(62, 'Géotechnique', 'GEO', 'Matière : Géotechnique', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(63, 'Routes', 'ROUTES', 'Matière : Routes', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(64, 'Hydraulique', 'HYDRO', 'Matière : Hydraulique', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(65, 'Alimentation en Eau potable', 'AEP', 'Matière : Alimentation en Eau potable', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(66, 'Assainissement', 'ASSAINISSEMENT', 'Matière : Assainissement', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(67, 'COVADIS', 'COVADIS', 'Matière : COVADIS', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(68, 'Dessin', 'DESSIN', 'Matière : Dessin', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(69, 'Drainage', 'DRAINAGE', 'Matière : Drainage', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(70, 'Entretien Routier', 'ENTRETIEN_ROUTIER', 'Matière : Entretien Routier', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(71, 'Environnement', 'ENVIRONNEMENT', 'Matière : Environnement', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(72, 'Métré et étude de Prix', 'METRE_PRIX_2', 'Matière : Métré et étude de Prix', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(73, 'OGC', 'OGC_2', 'Matière : OGC', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(74, 'Projet', 'PROJET_2', 'Matière : Projet', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(75, 'Qualité et Traitement des Eaux', 'QTE', 'Matière : Qualité et Traitement des Eaux', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(76, 'Signalisation Routière', 'SIGNALISATION', 'Matière : Signalisation Routière', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(77, 'Statique RDM', 'STATIQUE_RDM_2', 'Matière : Statique RDM', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(78, 'Technique de Recherche d\'emploi', 'TRE_2', 'Matière : Technique de Recherche d\'emploi', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(79, 'Techniques Routières', 'TECHNIQUES_ROUTIERES', 'Matière : Techniques Routières', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(80, 'Mathématiques', 'MATH', 'Cours de mathématiques générales', 3, 30, 20, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(81, 'Physique', 'PHYS', 'Cours de physique générale', 3, 30, 20, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(82, 'Français', 'FR', 'Cours de français technique', 2, 20, 10, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(83, 'Anglais Technique', 'ANG', 'Cours d\'anglais technique', 2, 20, 10, 0, 0, 0, NULL, 'generale', NULL, 1.00, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL);
+INSERT INTO `esbtp_matieres` (`id`, `name`, `code`, `description`, `coefficient`, `heures_cm`, `heures_td`, `heures_tp`, `heures_stage`, `heures_perso`, `niveau_etude_id`, `type_formation`, `couleur`, `is_active`, `created_by`, `updated_by`, `created_at`, `updated_at`, `deleted_at`) VALUES
+(1, 'Dessin Technique', 'DESSIN_TECHNIQUE', 'Matière : Dessin Technique', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(2, 'Mathématiques', 'MATHEMATIQUES', 'Matière : Mathématiques', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(3, 'Physique', 'PHYSIQUE', 'Matière : Physique', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(4, 'Chimie', 'CHIMIE', 'Matière : Chimie', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(5, 'Informatique', 'INFORMATIQUE', 'Matière : Informatique', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(6, 'Français', 'FRANCAIS', 'Matière : Français', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(7, 'Anglais', 'ANGLAIS', 'Matière : Anglais', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(8, 'Résistance des Matériaux', 'RDM', 'Matière : Résistance des Matériaux', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(9, 'Mécanique des Sols', 'MDS', 'Matière : Mécanique des Sols', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(10, 'Topographie', 'TOPO', 'Matière : Topographie', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(11, 'Construction Métallique', 'CM', 'Matière : Construction Métallique', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(12, 'Hydrologie', 'HYDROLOGIE', 'Matière : Hydrologie', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(13, 'Hydraulique', 'HYDRAULIQUE', 'Matière : Hydraulique', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(14, 'Géotechnique', 'GEOTECHNIQUE', 'Matière : Géotechnique', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(15, 'Technique des Engins', 'TECHNIQUE_ENGINS', 'Matière : Technique des Engins', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(16, 'IHH', 'IHH', 'Matière : IHH', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(17, 'Electricité', 'ELECTRICITE', 'Matière : Electricité', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(18, 'Sécurité', 'SECURITE', 'Matière : Sécurité', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(19, 'Matériaux', 'MATERIAUX', 'Matière : Matériaux', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(20, 'IGC', 'IGC', 'Matière : IGC', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(21, 'GRV', 'GRV', 'Matière : GRV', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(22, 'Calcul Topo', 'CALCUL_TOPO', 'Matière : Calcul Topo', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(23, 'Topo Générale', 'TOPO_GENERALE', 'Matière : Topo Générale', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(24, 'TP Topo', 'TP_TOPO', 'Matière : TP Topo', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(25, 'Géochimie', 'GEOCHIMIE', 'Matière : Géochimie', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(26, 'Géologie Générale', 'GEOLOGIE_GENERALE', 'Matière : Géologie Générale', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(27, 'Géologie Historique', 'GEOLOGIE_HISTORIQUE', 'Matière : Géologie Historique', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(28, 'Mécanique des Sols', 'MECA_SOL', 'Matière : Mécanique des Sols', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(29, 'Mécanique des Roches', 'MECA_ROCHE', 'Matière : Mécanique des Roches', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(30, 'Minéralogie', 'MINERALOGIE', 'Matière : Minéralogie', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(31, 'Mécanique des Fluides', 'MECA_FLUIDES', 'Matière : Mécanique des Fluides', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(32, 'Topographie Minière', 'TOPO_MINIERE', 'Matière : Topographie Minière', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(33, 'Architecture', 'ARCHITECTURE', 'Matière : Architecture', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(34, 'Démographie', 'DEMOGRAPHIE', 'Matière : Démographie', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(35, 'Dessin Bâtiment', 'DESSIN_BATIMENT', 'Matière : Dessin Bâtiment', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35', NULL),
+(36, 'Géographie Urbaine', 'GEOGRAPHIE_URBAINE', 'Matière : Géographie Urbaine', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(37, 'Introduction à l\'urbanisme', 'INTRO_URBANISME', 'Matière : Introduction à l\'urbanisme', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(38, 'Lecture Photo', 'LECTURE_PHOTO', 'Matière : Lecture Photo', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(39, 'Métré et Etude de prix', 'METRE_PRIX', 'Matière : Métré et Etude de prix', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(40, 'Sociologie Urbaine', 'SOCIOLOGIE_URBAINE', 'Matière : Sociologie Urbaine', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(41, 'Technique Graphique', 'TECHNIQUE_GRAPHIQUE', 'Matière : Technique Graphique', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(42, 'Technologie du Bâtiment', 'TECHNO_BAT', 'Matière : Technologie du Bâtiment', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(43, 'Archicad', 'ARCHICAD', 'Matière : Archicad', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(44, 'Béton Armé', 'BETON_ARME', 'Matière : Béton Armé', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(45, 'CAO-DAO', 'CAO_DAO', 'Matière : CAO-DAO', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(46, 'Droit', 'DROIT', 'Matière : Droit', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(47, 'Droit de la Construction', 'DROIT_CONSTRUCTION', 'Matière : Droit de la Construction', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(48, 'Entrepreneuriat', 'ENTREPRENEURIAT', 'Matière : Entrepreneuriat', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(49, 'Gestion', 'GESTION', 'Matière : Gestion', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(50, 'Métré et Etude de Prix', 'METRE_PRIX_1', 'Matière : Métré et Etude de Prix', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(51, 'OGC', 'OGC_1', 'Matière : OGC', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(52, 'Optique', 'OPTIQUE', 'Matière : Optique', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(53, 'Projet', 'PROJET_1', 'Matière : Projet', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(54, 'Statique RDM', 'STATIQUE_RDM_1', 'Matière : Statique RDM', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(55, 'Technique de Recherche d\'emploi', 'TRE_1', 'Matière : Technique de Recherche d\'emploi', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(56, 'Technique d\'expression', 'TECHNIQUE_EXPRESSION', 'Matière : Technique d\'expression', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(57, 'Technologie du Bâtiment-Pathologie', 'TECHNO_BAT_PATHO', 'Matière : Technologie du Bâtiment-Pathologie', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(58, 'Topographie', 'TOPOGRAPHIE', 'Matière : Topographie', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(59, 'Urbanisme', 'URBANISME', 'Matière : Urbanisme', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(60, 'VRD', 'VRD', 'Matière : VRD', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(61, 'Béton Armé', 'BA', 'Matière : Béton Armé', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(62, 'Géotechnique', 'GEO', 'Matière : Géotechnique', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(63, 'Routes', 'ROUTES', 'Matière : Routes', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(64, 'Hydraulique', 'HYDRO', 'Matière : Hydraulique', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(65, 'Alimentation en Eau potable', 'AEP', 'Matière : Alimentation en Eau potable', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(66, 'Assainissement', 'ASSAINISSEMENT', 'Matière : Assainissement', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(67, 'COVADIS', 'COVADIS', 'Matière : COVADIS', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(68, 'Dessin', 'DESSIN', 'Matière : Dessin', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(69, 'Drainage', 'DRAINAGE', 'Matière : Drainage', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(70, 'Entretien Routier', 'ENTRETIEN_ROUTIER', 'Matière : Entretien Routier', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(71, 'Environnement', 'ENVIRONNEMENT', 'Matière : Environnement', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(72, 'Métré et étude de Prix', 'METRE_PRIX_2', 'Matière : Métré et étude de Prix', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(73, 'OGC', 'OGC_2', 'Matière : OGC', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(74, 'Projet', 'PROJET_2', 'Matière : Projet', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(75, 'Qualité et Traitement des Eaux', 'QTE', 'Matière : Qualité et Traitement des Eaux', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(76, 'Signalisation Routière', 'SIGNALISATION', 'Matière : Signalisation Routière', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(77, 'Statique RDM', 'STATIQUE_RDM_2', 'Matière : Statique RDM', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(78, 'Technique de Recherche d\'emploi', 'TRE_2', 'Matière : Technique de Recherche d\'emploi', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(79, 'Techniques Routières', 'TECHNIQUES_ROUTIERES', 'Matière : Techniques Routières', 1, 0, 0, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(80, 'Mathématiques', 'MATH', 'Cours de mathématiques générales', 3, 30, 20, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(81, 'Physique', 'PHYS', 'Cours de physique générale', 3, 30, 20, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(82, 'Français', 'FR', 'Cours de français technique', 2, 20, 10, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(83, 'Anglais Technique', 'ANG', 'Cours d\'anglais technique', 2, 20, 10, 0, 0, 0, NULL, 'generale', NULL, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL);
 
 -- --------------------------------------------------------
 
@@ -1327,125 +1575,125 @@ CREATE TABLE `esbtp_matiere_filiere` (
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `esbtp_matiere_filiere`
 --
 
 INSERT INTO `esbtp_matiere_filiere` (`id`, `matiere_id`, `filiere_id`, `is_active`, `created_at`, `updated_at`) VALUES
-(1, 1, 1, 1, '2025-05-07 13:34:38', '2025-05-07 13:34:38'),
-(2, 2, 1, 1, '2025-05-07 13:34:38', '2025-05-07 13:34:38'),
-(3, 3, 1, 1, '2025-05-07 13:34:38', '2025-05-07 13:34:38'),
-(4, 4, 1, 1, '2025-05-07 13:34:38', '2025-05-07 13:34:38'),
-(5, 5, 1, 1, '2025-05-07 13:34:38', '2025-05-07 13:34:38'),
-(6, 6, 1, 1, '2025-05-07 13:34:38', '2025-05-07 13:34:38'),
-(7, 7, 1, 1, '2025-05-07 13:34:38', '2025-05-07 13:34:38'),
-(8, 8, 2, 1, '2025-05-07 13:34:38', '2025-05-07 13:34:38'),
-(9, 9, 2, 1, '2025-05-07 13:34:38', '2025-05-07 13:34:38'),
-(10, 10, 2, 1, '2025-05-07 13:34:38', '2025-05-07 13:34:38'),
-(11, 11, 2, 1, '2025-05-07 13:34:38', '2025-05-07 13:34:38'),
-(12, 12, 3, 1, '2025-05-07 13:34:38', '2025-05-07 13:34:38'),
-(13, 13, 3, 1, '2025-05-07 13:34:38', '2025-05-07 13:34:38'),
-(14, 14, 3, 1, '2025-05-07 13:34:38', '2025-05-07 13:34:38'),
-(15, 15, 3, 1, '2025-05-07 13:34:38', '2025-05-07 13:34:38'),
-(16, 16, 3, 1, '2025-05-07 13:34:38', '2025-05-07 13:34:38'),
-(17, 8, 3, 1, '2025-05-07 13:34:38', '2025-05-07 13:34:38'),
-(18, 17, 3, 1, '2025-05-07 13:34:38', '2025-05-07 13:34:38'),
-(19, 18, 3, 1, '2025-05-07 13:34:38', '2025-05-07 13:34:38'),
-(20, 19, 3, 1, '2025-05-07 13:34:38', '2025-05-07 13:34:38'),
-(21, 20, 3, 1, '2025-05-07 13:34:38', '2025-05-07 13:34:38'),
-(22, 5, 3, 1, '2025-05-07 13:34:38', '2025-05-07 13:34:38'),
-(23, 21, 3, 1, '2025-05-07 13:34:38', '2025-05-07 13:34:38'),
-(24, 2, 4, 1, '2025-05-07 13:34:38', '2025-05-07 13:34:38'),
-(25, 22, 4, 1, '2025-05-07 13:34:38', '2025-05-07 13:34:38'),
-(26, 23, 4, 1, '2025-05-07 13:34:38', '2025-05-07 13:34:38'),
-(27, 17, 4, 1, '2025-05-07 13:34:38', '2025-05-07 13:34:38'),
-(28, 18, 4, 1, '2025-05-07 13:34:38', '2025-05-07 13:34:38'),
-(29, 5, 4, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(30, 24, 4, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(31, 17, 5, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(32, 25, 5, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(33, 26, 5, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(34, 27, 5, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(35, 12, 5, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(36, 5, 5, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(37, 28, 5, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(38, 29, 5, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(39, 30, 5, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(40, 18, 5, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(41, 31, 5, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(42, 32, 5, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(43, 33, 6, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(44, 34, 6, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(45, 35, 6, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(46, 17, 6, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(47, 36, 6, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(48, 16, 6, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(49, 5, 6, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(50, 37, 6, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(51, 38, 6, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(52, 39, 6, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(53, 18, 6, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(54, 40, 6, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(55, 41, 6, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(56, 42, 6, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(57, 7, 8, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(58, 33, 8, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(59, 43, 8, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(60, 44, 8, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(61, 45, 8, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(62, 35, 8, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(63, 46, 8, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(64, 47, 8, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(65, 48, 8, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(66, 14, 8, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(67, 49, 8, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(68, 5, 8, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(69, 19, 8, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(70, 2, 8, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(71, 50, 8, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(72, 51, 8, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(73, 52, 8, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(74, 53, 8, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(75, 54, 8, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(76, 55, 8, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(77, 56, 8, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(78, 57, 8, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(79, 58, 8, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(80, 59, 8, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(81, 60, 8, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(82, 61, 9, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(83, 62, 9, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(84, 63, 9, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(85, 64, 9, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(86, 65, 9, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(87, 7, 9, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(88, 66, 9, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(89, 45, 9, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(90, 67, 9, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(91, 68, 9, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(92, 69, 9, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(93, 46, 9, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(94, 48, 9, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(95, 70, 9, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(96, 71, 9, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(97, 21, 9, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(98, 49, 9, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(99, 5, 9, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(100, 19, 9, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(101, 2, 9, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(102, 72, 9, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(103, 73, 9, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(104, 74, 9, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(105, 75, 9, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(106, 76, 9, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(107, 77, 9, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(108, 78, 9, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(109, 56, 9, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(110, 79, 9, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(111, 58, 9, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39'),
-(112, 60, 9, 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39');
+(1, 1, 1, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(2, 2, 1, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(3, 3, 1, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(4, 4, 1, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(5, 5, 1, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(6, 6, 1, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(7, 7, 1, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(8, 8, 2, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(9, 9, 2, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(10, 10, 2, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(11, 11, 2, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(12, 12, 3, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(13, 13, 3, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(14, 14, 3, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(15, 15, 3, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(16, 16, 3, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(17, 8, 3, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(18, 17, 3, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(19, 18, 3, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(20, 19, 3, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(21, 20, 3, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(22, 5, 3, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(23, 21, 3, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(24, 2, 4, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(25, 22, 4, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(26, 23, 4, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(27, 17, 4, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(28, 18, 4, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(29, 5, 4, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(30, 24, 4, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(31, 17, 5, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(32, 25, 5, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(33, 26, 5, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(34, 27, 5, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(35, 12, 5, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(36, 5, 5, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(37, 28, 5, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(38, 29, 5, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(39, 30, 5, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(40, 18, 5, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(41, 31, 5, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(42, 32, 5, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(43, 33, 6, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(44, 34, 6, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(45, 35, 6, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(46, 17, 6, 1, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(47, 36, 6, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(48, 16, 6, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(49, 5, 6, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(50, 37, 6, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(51, 38, 6, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(52, 39, 6, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(53, 18, 6, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(54, 40, 6, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(55, 41, 6, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(56, 42, 6, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(57, 7, 8, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(58, 33, 8, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(59, 43, 8, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(60, 44, 8, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(61, 45, 8, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(62, 35, 8, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(63, 46, 8, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(64, 47, 8, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(65, 48, 8, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(66, 14, 8, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(67, 49, 8, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(68, 5, 8, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(69, 19, 8, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(70, 2, 8, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(71, 50, 8, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(72, 51, 8, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(73, 52, 8, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(74, 53, 8, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(75, 54, 8, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(76, 55, 8, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(77, 56, 8, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(78, 57, 8, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(79, 58, 8, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(80, 59, 8, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(81, 60, 8, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(82, 61, 9, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(83, 62, 9, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(84, 63, 9, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(85, 64, 9, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(86, 65, 9, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(87, 7, 9, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(88, 66, 9, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(89, 45, 9, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(90, 67, 9, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(91, 68, 9, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(92, 69, 9, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(93, 46, 9, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(94, 48, 9, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(95, 70, 9, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(96, 71, 9, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(97, 21, 9, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(98, 49, 9, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(99, 5, 9, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(100, 19, 9, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(101, 2, 9, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(102, 72, 9, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(103, 73, 9, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(104, 74, 9, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(105, 75, 9, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(106, 76, 9, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(107, 77, 9, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(108, 78, 9, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(109, 56, 9, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(110, 79, 9, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(111, 58, 9, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(112, 60, 9, 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36');
 
 -- --------------------------------------------------------
 
@@ -1465,89 +1713,89 @@ CREATE TABLE `esbtp_matiere_niveau` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `esbtp_matiere_niveau`
 --
 
 INSERT INTO `esbtp_matiere_niveau` (`id`, `matiere_id`, `niveau_etude_id`, `coefficient`, `heures_cours`, `is_active`, `created_by`, `updated_by`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, 1, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(2, 2, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(3, 3, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(4, 4, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(5, 5, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(6, 6, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(7, 7, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(8, 8, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(9, 9, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(10, 10, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(11, 11, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(12, 12, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(13, 13, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(14, 14, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(15, 15, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(16, 16, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(17, 17, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(18, 18, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(19, 19, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(20, 20, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(21, 21, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(22, 22, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(23, 23, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(24, 24, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(25, 25, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(26, 26, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(27, 27, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(28, 28, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(29, 29, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(30, 30, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(31, 31, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(32, 32, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(33, 33, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(34, 34, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(35, 35, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(36, 36, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(37, 37, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(38, 38, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(39, 39, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(40, 40, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(41, 41, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(42, 42, 1, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(43, 2, 2, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(44, 5, 2, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(45, 7, 2, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(46, 19, 2, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(47, 21, 2, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(48, 35, 2, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(49, 39, 2, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(50, 43, 2, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(51, 44, 2, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(52, 45, 2, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(53, 46, 2, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(54, 47, 2, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(55, 48, 2, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(56, 49, 2, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(57, 52, 2, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(58, 56, 2, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(59, 57, 2, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(60, 58, 2, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(61, 59, 2, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(62, 60, 2, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(63, 61, 2, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(64, 62, 2, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(65, 63, 2, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(66, 64, 2, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(67, 65, 2, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(68, 66, 2, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(69, 67, 2, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(70, 68, 2, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(71, 69, 2, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(72, 70, 2, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(73, 71, 2, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(74, 75, 2, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(75, 76, 2, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(76, 79, 2, 1, 30, 1, NULL, NULL, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL);
+(1, 1, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(2, 2, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(3, 3, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(4, 4, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(5, 5, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(6, 6, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(7, 7, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(8, 8, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(9, 9, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(10, 10, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(11, 11, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(12, 12, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(13, 13, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(14, 14, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(15, 15, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(16, 16, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(17, 17, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(18, 18, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(19, 19, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(20, 20, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(21, 21, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(22, 22, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(23, 23, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(24, 24, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(25, 25, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(26, 26, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(27, 27, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(28, 28, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(29, 29, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(30, 30, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(31, 31, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(32, 32, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(33, 33, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(34, 34, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(35, 35, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(36, 36, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(37, 37, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(38, 38, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(39, 39, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(40, 40, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(41, 41, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(42, 42, 1, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(43, 2, 2, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(44, 5, 2, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(45, 7, 2, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(46, 19, 2, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(47, 21, 2, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(48, 35, 2, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(49, 39, 2, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(50, 43, 2, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(51, 44, 2, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(52, 45, 2, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(53, 46, 2, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(54, 47, 2, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(55, 48, 2, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(56, 49, 2, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(57, 52, 2, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(58, 56, 2, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(59, 57, 2, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(60, 58, 2, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(61, 59, 2, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(62, 60, 2, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(63, 61, 2, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(64, 62, 2, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(65, 63, 2, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(66, 64, 2, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(67, 65, 2, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(68, 66, 2, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(69, 67, 2, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(70, 68, 2, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(71, 69, 2, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(72, 70, 2, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(73, 71, 2, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(74, 75, 2, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(75, 76, 2, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(76, 79, 2, 1, 30, 1, NULL, NULL, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL);
 
 -- --------------------------------------------------------
 
@@ -1567,29 +1815,15 @@ CREATE TABLE `esbtp_niveau_etudes` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `esbtp_niveau_etudes`
 --
 
 INSERT INTO `esbtp_niveau_etudes` (`id`, `name`, `libelle`, `code`, `type`, `year`, `description`, `is_active`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, 'Première année BTS', NULL, 'BTS1', 'BTS', 1, 'Niveau BTS première année - Formation sur 30 semaines', 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL),
-(2, 'Deuxième année BTS', NULL, 'BTS2', 'BTS', 2, 'Niveau BTS deuxième année - Formation sur 28 semaines', 1, '2025-05-07 13:34:39', '2025-05-07 13:34:39', NULL);
-
--- --------------------------------------------------------
-
---
--- Table structure for table `esbtp_niveau_matiere`
---
-
-CREATE TABLE `esbtp_niveau_matiere` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `niveau_id` bigint(20) UNSIGNED NOT NULL,
-  `matiere_id` bigint(20) UNSIGNED NOT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+(1, 'Première année BTS', NULL, 'BTS1', 'BTS', 1, 'Niveau BTS première année - Formation sur 30 semaines', 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL),
+(2, 'Deuxième année BTS', NULL, 'BTS2', 'BTS', 2, 'Niveau BTS deuxième année - Formation sur 28 semaines', 1, '2025-05-17 15:39:36', '2025-05-17 15:39:36', NULL);
 
 -- --------------------------------------------------------
 
@@ -1617,7 +1851,17 @@ CREATE TABLE `esbtp_notes` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `esbtp_notes`
+--
+
+INSERT INTO `esbtp_notes` (`id`, `evaluation_id`, `matiere_id`, `etudiant_id`, `semestre`, `annee_universitaire`, `note`, `type_evaluation`, `moyenne_matiere`, `rang_matiere`, `appreciation`, `is_absent`, `commentaire`, `classe_id`, `created_by`, `updated_by`, `created_at`, `updated_at`, `deleted_at`) VALUES
+(1, 1, 2, 15, '1', '2024-2025', 15.00, 'devoir', NULL, NULL, NULL, 0, NULL, 1, 3, NULL, '2025-06-02 15:54:35', '2025-06-02 15:54:35', NULL),
+(2, 1, 2, 2, '1', '2024-2025', 15.00, 'devoir', NULL, NULL, NULL, 0, NULL, 1, 3, NULL, '2025-06-02 15:54:35', '2025-06-02 15:54:35', NULL),
+(3, 1, 2, 7, '1', '2024-2025', 0.00, 'devoir', NULL, NULL, NULL, 1, NULL, 1, 3, NULL, '2025-06-02 15:54:35', '2025-06-02 17:12:04', '2025-06-02 17:12:04'),
+(4, 1, 2, 7, '1', '2024-2025', 0.00, 'devoir', NULL, NULL, NULL, 1, NULL, 1, 3, NULL, '2025-06-02 17:16:52', '2025-06-02 17:16:52', NULL);
 
 -- --------------------------------------------------------
 
@@ -1627,6 +1871,7 @@ CREATE TABLE `esbtp_notes` (
 
 CREATE TABLE `esbtp_paiements` (
   `id` bigint(20) UNSIGNED NOT NULL,
+  `categorie_id` bigint(20) UNSIGNED DEFAULT NULL,
   `inscription_id` bigint(20) UNSIGNED NOT NULL,
   `etudiant_id` bigint(20) UNSIGNED NOT NULL,
   `montant` decimal(10,2) NOT NULL,
@@ -1644,10 +1889,8 @@ CREATE TABLE `esbtp_paiements` (
   `updated_by` bigint(20) UNSIGNED DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
-  `deleted_at` timestamp NULL DEFAULT NULL,
-  `categorie_id` bigint(20) UNSIGNED DEFAULT NULL,
-  `type_paiement` varchar(191) DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  `deleted_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -1673,14 +1916,16 @@ CREATE TABLE `esbtp_parents` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `esbtp_parents`
 --
 
 INSERT INTO `esbtp_parents` (`id`, `user_id`, `nom`, `prenoms`, `sexe`, `profession`, `adresse`, `telephone`, `telephone_secondaire`, `email`, `type_piece_identite`, `numero_piece_identite`, `created_by`, `updated_by`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, NULL, 'Marci', 'Marc', 'M', NULL, NULL, '+2258980189780', NULL, 'marc@gmail.com', NULL, NULL, 1, 1, '2025-05-14 17:38:12', '2025-05-14 17:38:12', NULL);
+(1, NULL, 'GRAH', 'Marc', 'M', NULL, NULL, '+2250141540178', NULL, 'Marc@gmail.com', NULL, NULL, 1, 1, '2025-05-17 20:51:04', '2025-05-17 20:51:04', NULL),
+(2, NULL, 'GRAH', 'Marc', 'M', NULL, NULL, '+2250141540178', NULL, 'Marc@gmail.com', NULL, NULL, 3, 3, '2025-05-19 23:02:59', '2025-05-19 23:02:59', NULL),
+(3, NULL, 'BIC', 'Marc', 'M', NULL, NULL, '+2250141540178', NULL, 'bic@indo.com', NULL, NULL, 3, 3, '2025-05-23 23:22:02', '2025-05-23 23:22:02', NULL);
 
 -- --------------------------------------------------------
 
@@ -1704,7 +1949,14 @@ CREATE TABLE `esbtp_resultats` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `esbtp_resultats`
+--
+
+INSERT INTO `esbtp_resultats` (`id`, `etudiant_id`, `classe_id`, `matiere_id`, `periode`, `annee_universitaire_id`, `moyenne`, `coefficient`, `rang`, `appreciation`, `created_by`, `updated_by`, `created_at`, `updated_at`, `deleted_at`) VALUES
+(1, 15, 1, 2, 'semestre1', 6, 15.00, 1.00, NULL, NULL, NULL, NULL, '2025-06-03 00:10:47', '2025-06-03 00:10:47', NULL);
 
 -- --------------------------------------------------------
 
@@ -1725,7 +1977,7 @@ CREATE TABLE `esbtp_resultats_matieres` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -1742,23 +1994,21 @@ CREATE TABLE `esbtp_salaires` (
   `salaire_base` decimal(10,2) NOT NULL,
   `heures_supplementaires` decimal(10,2) NOT NULL DEFAULT 0.00,
   `primes` decimal(10,2) NOT NULL DEFAULT 0.00,
-  `indemnites` decimal(10,2) NOT NULL DEFAULT 0.00,
   `retenues` decimal(10,2) NOT NULL DEFAULT 0.00,
-  `charges_sociales` decimal(10,2) NOT NULL DEFAULT 0.00,
-  `impots` decimal(10,2) NOT NULL DEFAULT 0.00,
-  `montant_net` decimal(10,2) NOT NULL,
+  `net_a_payer` decimal(10,2) NOT NULL,
+  `statut` varchar(191) NOT NULL DEFAULT 'en attente',
   `date_paiement` date DEFAULT NULL,
+  `mode_paiement` varchar(191) DEFAULT NULL,
   `reference_paiement` varchar(191) DEFAULT NULL,
-  `statut` varchar(191) NOT NULL DEFAULT 'calculé',
-  `path_bulletin` varchar(191) DEFAULT NULL,
+  `commentaires` text DEFAULT NULL,
   `createur_id` bigint(20) UNSIGNED DEFAULT NULL,
   `validateur_id` bigint(20) UNSIGNED DEFAULT NULL,
   `date_validation` timestamp NULL DEFAULT NULL,
-  `notes` text DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
-  `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  `deleted_at` timestamp NULL DEFAULT NULL,
+  `montant_net` decimal(12,2) NOT NULL DEFAULT 0.00
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -1770,20 +2020,123 @@ CREATE TABLE `esbtp_seance_cours` (
   `id` bigint(20) UNSIGNED NOT NULL,
   `emploi_temps_id` bigint(20) UNSIGNED NOT NULL,
   `classe_id` bigint(20) UNSIGNED NOT NULL,
-  `matiere_id` bigint(20) UNSIGNED NOT NULL,
+  `matiere_id` bigint(20) UNSIGNED DEFAULT NULL,
   `enseignant` varchar(191) DEFAULT NULL,
   `jour` varchar(191) NOT NULL,
+  `date_seance` date DEFAULT NULL,
   `heure_debut` time NOT NULL,
   `heure_fin` time NOT NULL,
   `salle` varchar(191) DEFAULT NULL,
   `description` text DEFAULT NULL,
-  `is_active` tinyint(1) NOT NULL DEFAULT 1,
   `type_seance` varchar(191) NOT NULL DEFAULT 'cours',
+  `is_fixed_time` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'True for fixed-time sessions like breaks and lunch',
   `annee_universitaire_id` bigint(20) UNSIGNED NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL,
+  `teacher_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `type` enum('course','homework','break','lunch') NOT NULL DEFAULT 'course',
+  `color` varchar(191) DEFAULT NULL,
+  `homework_description` text DEFAULT NULL,
+  `homework_due_date` date DEFAULT NULL,
+  `is_recurring` tinyint(1) NOT NULL DEFAULT 0,
+  `recurrence_days` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`recurrence_days`)),
+  `priority` int(11) NOT NULL DEFAULT 0,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `esbtp_seance_cours`
+--
+
+INSERT INTO `esbtp_seance_cours` (`id`, `emploi_temps_id`, `classe_id`, `matiere_id`, `enseignant`, `jour`, `date_seance`, `heure_debut`, `heure_fin`, `salle`, `description`, `type_seance`, `is_fixed_time`, `annee_universitaire_id`, `created_at`, `updated_at`, `deleted_at`, `teacher_id`, `type`, `color`, `homework_description`, `homework_due_date`, `is_recurring`, `recurrence_days`, `priority`, `is_active`) VALUES
+(1, 1, 1, 7, NULL, '1', '2025-05-12', '08:00:00', '10:00:00', 'Salle A', NULL, 'cours', 0, 6, '2025-05-17 16:18:05', '2025-05-17 16:30:37', NULL, 1, 'course', '#2196f3', NULL, NULL, 0, NULL, 0, 1),
+(2, 1, 1, 7, NULL, '1', '2025-05-12', '14:00:00', '17:00:00', 'Salle A', NULL, 'cours', 0, 6, '2025-05-17 16:32:31', '2025-05-17 16:32:31', NULL, 1, 'homework', '#4caf50', 'DEVOIR D\'ANGLAIS', '2025-05-24', 0, '[\"1\",\"2\",\"3\",\"4\",\"5\"]', 0, 1),
+(3, 1, 1, NULL, NULL, '1', '2025-05-12', '10:00:00', '10:30:00', NULL, NULL, 'cours', 0, 6, '2025-05-17 16:33:35', '2025-05-17 16:33:35', NULL, NULL, 'break', '#ff9800', NULL, NULL, 0, NULL, 0, 1),
+(4, 1, 1, NULL, NULL, '2', '2025-05-13', '12:00:00', '13:30:00', NULL, NULL, 'cours', 0, 6, '2025-05-17 16:35:27', '2025-05-17 17:51:21', '2025-05-17 17:51:21', NULL, 'lunch', '#f44336', NULL, NULL, 0, '[\"1\",\"2\",\"3\",\"4\"]', 0, 1),
+(5, 1, 1, 7, NULL, '2', '2025-05-13', '14:00:00', '17:00:00', 'Salle A', 'Devoir: DEVOIR ANGLAIS', 'cours', 0, 6, '2025-05-17 16:39:33', '2025-05-17 16:39:33', NULL, 1, 'homework', '#4caf50', 'DEVOIR ANGLAIS', '2025-05-30', 0, NULL, 0, 1),
+(6, 1, 1, 7, NULL, '2', '2025-05-13', '08:00:00', '10:00:00', 'Salle A', 'Cours - Anglais avec koua (Salle: Salle A)', 'cours', 0, 6, '2025-05-17 17:07:59', '2025-05-17 17:07:59', NULL, 1, 'course', '#2196f3', NULL, NULL, 0, 'null', 0, 1),
+(7, 1, 1, NULL, NULL, '1', '2025-05-12', '12:00:00', '14:00:00', NULL, NULL, 'cours', 0, 6, '2025-05-17 17:51:43', '2025-05-17 17:54:03', '2025-05-17 17:54:03', NULL, 'lunch', '#F44336', NULL, NULL, 0, NULL, 0, 1),
+(8, 1, 1, NULL, NULL, '1', '2025-05-12', '12:00:00', '14:00:00', NULL, NULL, 'cours', 0, 6, '2025-05-17 17:54:20', '2025-05-17 17:57:57', '2025-05-17 17:57:57', NULL, 'lunch', '#F44336', NULL, NULL, 0, NULL, 0, 1),
+(9, 1, 1, NULL, NULL, '1', '2025-05-12', '12:00:00', '14:00:00', NULL, NULL, 'cours', 0, 6, '2025-05-17 17:58:16', '2025-05-17 17:58:16', NULL, NULL, 'lunch', '#F44336', NULL, NULL, 0, NULL, 0, 1),
+(10, 1, 1, NULL, NULL, '2', '2025-05-13', '12:00:00', '14:00:00', NULL, NULL, 'cours', 0, 6, '2025-05-17 17:58:17', '2025-05-17 17:58:17', NULL, NULL, 'lunch', '#F44336', NULL, NULL, 0, NULL, 0, 1),
+(11, 1, 1, NULL, NULL, '3', '2025-05-14', '12:00:00', '14:00:00', NULL, NULL, 'cours', 0, 6, '2025-05-17 17:58:17', '2025-05-17 17:58:17', NULL, NULL, 'lunch', '#F44336', NULL, NULL, 0, NULL, 0, 1),
+(12, 1, 1, NULL, NULL, '4', '2025-05-15', '12:00:00', '14:00:00', NULL, NULL, 'cours', 0, 6, '2025-05-17 17:58:17', '2025-05-17 17:58:17', NULL, NULL, 'lunch', '#F44336', NULL, NULL, 0, NULL, 0, 1),
+(13, 1, 1, NULL, NULL, '5', '2025-05-16', '12:00:00', '14:00:00', NULL, NULL, 'cours', 0, 6, '2025-05-17 17:58:17', '2025-05-17 17:58:17', NULL, NULL, 'lunch', '#F44336', NULL, NULL, 0, NULL, 0, 1),
+(14, 1, 1, 7, NULL, '3', '2025-05-14', '08:00:00', '08:45:00', 'Salle A', NULL, 'cours', 0, 6, '2025-05-17 18:18:54', '2025-05-17 18:18:54', NULL, 1, 'course', '#2196F3', NULL, NULL, 0, NULL, 0, 1),
+(15, 2, 1, 7, NULL, '1', '2025-05-19', '08:00:00', '12:00:00', 'Salle A', NULL, 'cours', 0, 6, '2025-05-19 01:33:50', '2025-05-19 01:33:50', NULL, 1, 'course', '#2196F3', NULL, NULL, 0, NULL, 0, 1),
+(16, 2, 1, 65, NULL, '1', '2025-05-19', '14:00:00', '17:00:00', 'Salle A', NULL, 'cours', 0, 6, '2025-05-19 01:34:07', '2025-05-19 17:03:13', '2025-05-19 17:03:13', 2, 'course', '#2196F3', NULL, NULL, 0, NULL, 0, 1),
+(17, 2, 1, 7, NULL, '1', '2025-05-20', '13:00:00', '14:00:00', 'Salle A', NULL, 'cours', 0, 6, '2025-05-19 13:13:56', '2025-05-19 17:02:57', '2025-05-19 17:02:57', 1, 'course', '#2196F3', NULL, NULL, 0, NULL, 0, 1),
+(18, 2, 1, 7, NULL, '2', '2025-05-21', '08:00:00', '10:00:00', 'Salle A', NULL, 'cours', 0, 6, '2025-05-19 13:19:17', '2025-05-19 17:03:01', '2025-05-19 17:03:01', 1, 'course', '#2196F3', NULL, NULL, 0, NULL, 0, 1),
+(19, 2, 1, 7, NULL, '2', '2025-05-20', '10:00:00', '12:00:00', 'Salle A', NULL, 'cours', 0, 6, '2025-05-19 16:47:53', '2025-05-19 17:03:06', '2025-05-19 17:03:06', 1, 'course', '#2196F3', NULL, NULL, 0, NULL, 0, 1),
+(20, 2, 1, 7, NULL, '1', '2025-05-19', '16:00:00', '17:00:00', 'Salle A', NULL, 'cours', 0, 6, '2025-05-19 17:03:32', '2025-05-19 17:03:32', NULL, 1, 'course', '#2196F3', NULL, NULL, 0, NULL, 0, 1);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `esbtp_security_events`
+--
+
+CREATE TABLE `esbtp_security_events` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `user_id` bigint(20) UNSIGNED NOT NULL,
+  `event_type` varchar(191) NOT NULL,
+  `description` text NOT NULL,
+  `ip_address` varchar(191) NOT NULL,
+  `device_info` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`device_info`)),
+  `metadata` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`metadata`)),
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `esbtp_specialties`
+--
+
+CREATE TABLE `esbtp_specialties` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `name` varchar(191) NOT NULL,
+  `code` varchar(191) NOT NULL,
+  `department_id` bigint(20) UNSIGNED NOT NULL,
+  `cycle_id` bigint(20) UNSIGNED NOT NULL,
+  `coordinator_name` varchar(191) DEFAULT NULL,
+  `description` text DEFAULT NULL,
+  `career_opportunities` text DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `esbtp_students`
+--
+
+CREATE TABLE `esbtp_students` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `name` varchar(191) NOT NULL,
+  `registration_number` varchar(50) NOT NULL,
+  `department_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `cycle_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `class_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `date_of_birth` date NOT NULL,
+  `gender` enum('male','female','other') NOT NULL,
+  `address` text DEFAULT NULL,
+  `phone` varchar(20) DEFAULT NULL,
+  `email` varchar(191) NOT NULL,
+  `guardian_name` varchar(191) NOT NULL,
+  `guardian_phone` varchar(20) NOT NULL,
+  `guardian_email` varchar(191) DEFAULT NULL,
+  `guardian_address` text DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -1803,7 +2156,126 @@ CREATE TABLE `esbtp_student_grades` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `esbtp_teachers`
+--
+
+CREATE TABLE `esbtp_teachers` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `user_id` bigint(20) UNSIGNED NOT NULL,
+  `matricule` varchar(191) NOT NULL,
+  `title` varchar(191) DEFAULT NULL,
+  `specialization` varchar(191) DEFAULT NULL,
+  `status` varchar(191) NOT NULL,
+  `teaching_hours_due` decimal(8,2) NOT NULL DEFAULT 0.00,
+  `bio` text DEFAULT NULL,
+  `phone` varchar(191) DEFAULT NULL,
+  `email` varchar(191) DEFAULT NULL,
+  `address` varchar(191) DEFAULT NULL,
+  `city` varchar(191) DEFAULT NULL,
+  `country` varchar(191) DEFAULT NULL,
+  `postal_code` varchar(191) DEFAULT NULL,
+  `research_interests` text DEFAULT NULL,
+  `website` varchar(191) DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `department_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `laboratory_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `grade` varchar(191) DEFAULT NULL,
+  `office_location` varchar(191) DEFAULT NULL,
+  `employee_id` varchar(191) DEFAULT NULL,
+  `created_by` bigint(20) UNSIGNED DEFAULT NULL,
+  `updated_by` bigint(20) UNSIGNED DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `esbtp_teachers`
+--
+
+INSERT INTO `esbtp_teachers` (`id`, `user_id`, `matricule`, `title`, `specialization`, `status`, `teaching_hours_due`, `bio`, `phone`, `email`, `address`, `city`, `country`, `postal_code`, `research_interests`, `website`, `is_active`, `department_id`, `laboratory_id`, `grade`, `office_location`, `employee_id`, `created_by`, `updated_by`, `created_at`, `updated_at`, `deleted_at`) VALUES
+(1, 7, '001', NULL, NULL, 'vacataire', 10.00, NULL, '+2250705843901', 'koua@gmail.com', NULL, NULL, NULL, NULL, NULL, NULL, 1, 1, NULL, NULL, NULL, 'EMP-2025-0001', 1, NULL, '2025-05-17 15:41:07', '2025-05-17 15:41:07', NULL),
+(2, 9, '002', NULL, NULL, 'vacataire', 10.00, NULL, '+2250705843901', 'koua1@gmail.com', NULL, NULL, NULL, NULL, NULL, NULL, 1, 1, NULL, NULL, NULL, 'EMP-2025-0002', 3, NULL, '2025-05-18 21:20:34', '2025-05-18 21:20:34', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `esbtp_teacher_attendance`
+--
+
+CREATE TABLE `esbtp_teacher_attendance` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `teacher_id` bigint(20) UNSIGNED NOT NULL,
+  `emploi_du_temps_id` bigint(20) UNSIGNED NOT NULL,
+  `daily_code_id` bigint(20) UNSIGNED NOT NULL,
+  `signed_at` datetime NOT NULL,
+  `ip_address` varchar(45) DEFAULT NULL,
+  `geolocation_data` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`geolocation_data`)),
+  `device_info` varchar(191) DEFAULT NULL,
+  `status` enum('present','late','not_signed') DEFAULT 'not_signed',
+  `attempt_count` int(11) NOT NULL DEFAULT 1,
+  `validation_status` enum('pending','validated','rejected') NOT NULL DEFAULT 'pending',
+  `validation_notes` text DEFAULT NULL,
+  `validated_by` bigint(20) UNSIGNED DEFAULT NULL,
+  `validated_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `esbtp_teacher_attendances`
+--
+
+CREATE TABLE `esbtp_teacher_attendances` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `teacher_id` bigint(20) UNSIGNED NOT NULL,
+  `course_id` bigint(20) UNSIGNED NOT NULL,
+  `daily_code_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `date` date NOT NULL,
+  `status` varchar(191) NOT NULL,
+  `attempts` int(11) NOT NULL DEFAULT 0,
+  `validated_at` datetime DEFAULT NULL,
+  `device_info` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`device_info`)),
+  `geolocation_data` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`geolocation_data`)),
+  `ip_address` varchar(191) DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `esbtp_teacher_attendances`
+--
+
+INSERT INTO `esbtp_teacher_attendances` (`id`, `teacher_id`, `course_id`, `daily_code_id`, `date`, `status`, `attempts`, `validated_at`, `device_info`, `geolocation_data`, `ip_address`, `created_at`, `updated_at`) VALUES
+(1, 1, 1, NULL, '2025-05-12', 'not_signed', 0, NULL, NULL, NULL, NULL, '2025-05-19 16:30:30', '2025-05-19 16:30:30'),
+(2, 1, 6, NULL, '2025-05-13', 'not_signed', 0, NULL, NULL, NULL, NULL, '2025-05-19 16:30:30', '2025-05-19 16:30:30'),
+(3, 1, 14, NULL, '2025-05-14', 'not_signed', 0, NULL, NULL, NULL, NULL, '2025-05-19 16:30:30', '2025-05-19 16:30:30'),
+(4, 1, 15, NULL, '2025-05-19', 'not_signed', 0, NULL, NULL, NULL, NULL, '2025-05-19 16:30:30', '2025-05-19 16:30:30'),
+(5, 7, 20, 1, '2025-05-19', 'fait', 0, NULL, NULL, NULL, NULL, '2025-05-19 17:08:24', '2025-05-19 17:08:24'),
+(6, 1, 2, NULL, '2025-05-12', 'not_signed', 0, NULL, NULL, NULL, NULL, '2025-05-19 17:20:00', '2025-05-19 17:20:00'),
+(7, 1, 5, NULL, '2025-05-13', 'not_signed', 0, NULL, NULL, NULL, NULL, '2025-05-19 17:20:00', '2025-05-19 17:20:00'),
+(8, 1, 20, NULL, '2025-05-19', 'not_signed', 0, NULL, NULL, NULL, NULL, '2025-05-19 17:20:00', '2025-05-19 17:20:00');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `esbtp_teacher_cycle`
+--
+
+CREATE TABLE `esbtp_teacher_cycle` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `teacher_id` bigint(20) UNSIGNED NOT NULL,
+  `cycle_id` bigint(20) UNSIGNED NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -1826,29 +2298,7 @@ CREATE TABLE `esbtp_transactions_financieres` (
   `createur_id` bigint(20) UNSIGNED DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `esbtp_unites_enseignement`
---
-
-CREATE TABLE `esbtp_unites_enseignement` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `name` varchar(191) NOT NULL,
-  `code` varchar(191) NOT NULL,
-  `description` text DEFAULT NULL,
-  `credit` int(11) NOT NULL DEFAULT 0,
-  `filiere_id` bigint(20) UNSIGNED DEFAULT NULL,
-  `niveau_id` bigint(20) UNSIGNED DEFAULT NULL,
-  `is_active` tinyint(1) NOT NULL DEFAULT 1,
-  `created_by` bigint(20) UNSIGNED DEFAULT NULL,
-  `updated_by` bigint(20) UNSIGNED DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -1874,7 +2324,7 @@ CREATE TABLE `evaluations` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -1893,7 +2343,7 @@ CREATE TABLE `exams` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -1909,7 +2359,118 @@ CREATE TABLE `failed_jobs` (
   `payload` longtext NOT NULL,
   `exception` longtext NOT NULL,
   `failed_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `fees`
+--
+
+CREATE TABLE `fees` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `inscription_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `fee_category_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `class_id` bigint(20) UNSIGNED NOT NULL,
+  `academic_year_id` bigint(20) UNSIGNED NOT NULL,
+  `amount` decimal(10,2) NOT NULL,
+  `description` text DEFAULT NULL,
+  `due_date` date DEFAULT NULL,
+  `payment_schedule` enum('one_time','monthly','termly','yearly') NOT NULL,
+  `installments_allowed` tinyint(1) NOT NULL DEFAULT 0,
+  `min_installment_amount` decimal(10,2) DEFAULT NULL,
+  `late_fee` decimal(10,2) DEFAULT NULL,
+  `status` enum('active','inactive','pending') DEFAULT 'pending',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `fees`
+--
+
+INSERT INTO `fees` (`id`, `inscription_id`, `fee_category_id`, `class_id`, `academic_year_id`, `amount`, `description`, `due_date`, `payment_schedule`, `installments_allowed`, `min_installment_amount`, `late_fee`, `status`, `created_at`, `updated_at`, `deleted_at`) VALUES
+(6, 14, 4, 1, 6, 500000.00, 'Scolarité annuelle', '2025-05-23', 'one_time', 0, NULL, NULL, 'active', '2025-05-23 23:22:02', '2025-05-23 23:22:02', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `fee_categories`
+--
+
+CREATE TABLE `fee_categories` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `name` varchar(191) NOT NULL,
+  `code` varchar(191) NOT NULL,
+  `description` text DEFAULT NULL,
+  `default_amount` decimal(10,2) DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `is_mandatory` tinyint(1) NOT NULL DEFAULT 0,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `fee_categories`
+--
+
+INSERT INTO `fee_categories` (`id`, `name`, `code`, `description`, `default_amount`, `is_active`, `is_mandatory`, `created_at`, `updated_at`, `deleted_at`) VALUES
+(1, 'Frais de scolarité', 'FS', NULL, 1000000.00, 1, 0, '2025-05-18 14:58:21', '2025-05-18 14:58:21', NULL),
+(2, 'Frais de cantine', 'FC001', NULL, 25000.00, 1, 0, '2025-05-18 15:15:36', '2025-05-18 15:15:36', NULL),
+(3, 'Frais d\'inscription', 'INSCR', 'Frais d\'inscription obligatoires pour toute nouvelle inscription', 2000000.00, 1, 1, '2025-05-20 00:18:41', '2025-05-20 17:10:45', NULL),
+(4, 'Scolarité annuelle', 'SCOLA', 'Frais de scolarité pour l\'année universitaire', 500000.00, 1, 1, '2025-05-20 00:18:41', '2025-05-20 17:11:19', NULL),
+(5, 'Cantine', 'CANT', 'Service optionnel de restauration', NULL, 1, 0, '2025-05-20 00:18:41', '2025-05-20 00:18:41', NULL),
+(6, 'Transport', 'TRANSP', 'Service optionnel de transport scolaire', NULL, 1, 0, '2025-05-20 00:18:41', '2025-05-20 00:18:41', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `fee_category_rules`
+--
+
+CREATE TABLE `fee_category_rules` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `fee_category_id` bigint(20) UNSIGNED NOT NULL,
+  `filiere_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `niveau_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `annee_universitaire_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `amount` decimal(10,2) NOT NULL,
+  `payment_schedule` enum('one_time','monthly','termly','yearly') NOT NULL DEFAULT 'one_time',
+  `installments_allowed` tinyint(1) NOT NULL DEFAULT 0,
+  `min_installment_amount` decimal(10,2) DEFAULT NULL,
+  `late_fee` decimal(10,2) DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `fee_category_rules`
+--
+
+INSERT INTO `fee_category_rules` (`id`, `fee_category_id`, `filiere_id`, `niveau_id`, `annee_universitaire_id`, `amount`, `payment_schedule`, `installments_allowed`, `min_installment_amount`, `late_fee`, `created_at`, `updated_at`) VALUES
+(1, 2, 2, 1, NULL, 25000.00, 'termly', 1, 10000.00, 2500.00, '2025-05-18 18:54:11', '2025-05-18 18:54:11'),
+(2, 2, NULL, NULL, NULL, 20000000.00, 'monthly', 1, 200000.00, 1000.00, '2025-05-19 13:46:10', '2025-05-19 13:46:10'),
+(3, 3, 2, 1, NULL, 2000000.00, 'termly', 1, 250000.00, 20000.00, '2025-05-20 17:10:07', '2025-05-20 17:10:07'),
+(4, 4, 2, 1, 6, 500000.00, 'one_time', 0, NULL, NULL, '2025-05-20 17:11:09', '2025-05-20 17:11:09');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `fee_category_rule_installments`
+--
+
+CREATE TABLE `fee_category_rule_installments` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `fee_category_rule_id` bigint(20) UNSIGNED NOT NULL,
+  `label` varchar(191) DEFAULT NULL,
+  `offset_days` int(11) NOT NULL,
+  `amount` decimal(12,2) DEFAULT NULL,
+  `pourcentage` int(11) DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -1930,7 +2491,7 @@ CREATE TABLE `grades` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -1946,7 +2507,7 @@ CREATE TABLE `jobs` (
   `reserved_at` int(10) UNSIGNED DEFAULT NULL,
   `available_at` int(10) UNSIGNED NOT NULL,
   `created_at` int(10) UNSIGNED NOT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -1966,7 +2527,7 @@ CREATE TABLE `laboratories` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -1987,7 +2548,7 @@ CREATE TABLE `messages` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -2004,7 +2565,7 @@ CREATE TABLE `message_attachments` (
   `file_size` int(11) NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -2019,7 +2580,7 @@ CREATE TABLE `message_recipients` (
   `read_at` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -2031,7 +2592,7 @@ CREATE TABLE `migrations` (
   `id` int(10) UNSIGNED NOT NULL,
   `migration` varchar(191) NOT NULL,
   `batch` int(11) NOT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `migrations`
@@ -2042,128 +2603,176 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES
 (2, '2019_12_14_000001_create_personal_access_tokens_table', 1),
 (3, '2023_01_01_000000_create_permission_tables', 1),
 (4, '2023_01_01_000001_add_additional_fields_to_permissions_and_roles_tables', 1),
-(5, '2023_06_20_000002_create_student_grades_table', 1),
-(6, '2024_07_10_000000_reorganize_controllers', 1),
-(7, '2025_02_26_000000_create_parcours_table', 1),
-(8, '2025_02_26_000001_create_departments_table', 1),
-(9, '2025_02_26_000002_create_laboratories_table', 1),
-(10, '2025_02_26_000003_create_element_constitutifs_table', 1),
-(11, '2025_02_26_000004_create_ufrs_table', 1),
-(12, '2025_02_26_000005_create_sessions_table', 1),
-(13, '2025_02_26_000006_create_designations_table', 1),
-(14, '2025_02_26_000007_create_sections_table', 1),
-(15, '2025_02_27_200009_create_students_table', 1),
-(16, '2025_02_27_200010_create_teachers_table', 1),
-(17, '2025_02_27_200013_create_evaluations_table', 1),
-(18, '2025_02_27_200014_create_grades_table', 1),
-(19, '2025_02_27_214309_create_certificates_table', 1),
-(20, '2025_02_27_215343_create_notifications_table', 1),
-(21, '2025_02_27_215606_create_messages_table', 1),
-(22, '2025_02_27_215802_create_courses_table', 1),
-(23, '2025_02_27_215803_create_attendances_table', 1),
-(24, '2025_02_27_220141_create_school_classes_table', 1),
-(25, '2025_02_27_220239_create_class_courses_table', 1),
-(26, '2025_02_28_000001_create_classes_table', 1),
-(27, '2025_02_28_000005_create_subjects_table', 1),
-(28, '2025_02_28_000006_create_school_teachers_table', 1),
-(29, '2025_02_28_000008_create_timetables_table', 1),
-(30, '2025_02_28_161015_create_esbtp_filieres_table', 1),
-(31, '2025_02_28_161026_create_esbtp_niveau_etudes_table', 1),
-(32, '2025_02_28_161331_create_esbtp_annee_universitaires_table', 1),
-(33, '2025_02_28_233231_create_semesters_table', 1),
-(34, '2025_03_01_000000_create_esbtp_classes_table', 1),
-(35, '2025_03_01_000003_create_esbtp_matieres_table', 1),
-(36, '2025_03_01_100000_create_esbtp_etudiants_table', 1),
-(37, '2025_03_01_100001_create_esbtp_parents_table', 1),
-(38, '2025_03_01_100002_create_esbtp_inscriptions_table', 1),
-(39, '2025_03_01_100003_create_esbtp_paiements_table', 1),
-(40, '2025_03_01_185915_add_additional_columns_to_permission_tables', 1),
-(41, '2025_03_01_190250_modify_exams_table', 1),
-(42, '2025_03_01_211638_create_settings_table', 1),
-(43, '2025_03_02_075921_create_esbtp_cours_table', 1),
-(44, '2025_03_02_131111_add_annee_debut_to_esbtp_annee_universitaires_table', 1),
-(45, '2025_03_02_134953_add_role_column_to_users_table', 1),
-(46, '2025_03_02_151331_add_last_login_at_to_users_table', 1),
-(47, '2025_03_02_191756_create_esbtp_matiere_niveau_table', 1),
-(48, '2025_03_02_192555_create_esbtp_unites_enseignement_table', 1),
-(49, '2025_03_02_201532_add_active_column_to_esbtp_filieres', 1),
-(50, '2025_03_02_223948_create_esbtp_matiere_filiere_table', 1),
-(51, '2025_03_03_035615_add_email_to_esbtp_etudiants', 1),
-(52, '2025_03_10_095537_create_esbtp_filiere_niveau_table', 1),
-(53, '2025_03_10_105300_add_columns_to_esbtp_filiere_niveau_table', 1),
-(54, '2025_03_10_113757_add_missing_columns_to_esbtp_filiere_niveau_table', 1),
-(55, '2025_03_10_202825_remove_formation_id_from_esbtp_classes', 1),
-(56, '2025_03_10_202942_remove_formation_references', 1),
-(57, '2025_03_10_224800_create_esbtp_emploi_temps_table', 1),
-(58, '2025_03_10_224812_add_is_current_to_esbtp_emploi_temps_table', 1),
-(59, '2025_03_11_081600_create_esbtp_attendances_table', 1),
-(60, '2025_03_11_081628_add_status_to_esbtp_attendances_table', 1),
-(61, '2025_03_11_083905_add_libelle_to_esbtp_tables', 1),
-(62, '2025_03_11_095748_add_est_actif_to_esbtp_annee_universitaires_table', 1),
-(63, '2025_03_13_154632_add_last_login_at_to_users_table', 1),
-(64, '2025_03_13_155400_create_esbtp_bulletins_table', 1),
-(65, '2025_03_13_155406_update_esbtp_bulletins_table', 1),
-(66, '2025_03_13_182823_create_esbtp_filiere_niveau_table', 1),
-(67, '2025_03_13_183030_create_esbtp_matiere_niveau_table', 1),
-(68, '2025_03_13_225219_add_type_and_year_to_esbtp_niveau_etudes_table', 1),
-(69, '2025_03_13_230452_create_esbtp_inscriptions_table', 1),
-(70, '2025_03_13_231220_create_esbtp_unites_enseignement_table', 1),
-(71, '2025_03_13_231953_create_esbtp_matiere_filiere_table', 1),
-(72, '2025_03_13_232731_update_esbtp_matiere_niveau_table', 1),
-(73, '2025_03_13_232830_recreate_esbtp_matiere_niveau_table', 1),
-(74, '2025_03_13_233440_create_esbtp_unites_enseignement_table', 1),
-(75, '2025_03_14_154425_create_esbtp_seance_cours_table', 1),
-(76, '2025_03_14_233112_update_esbtp_emploi_temps_table', 1),
-(77, '2025_03_15_002142_add_emploi_temps_id_to_esbtp_seance_cours_table', 1),
-(78, '2025_03_15_004836_fix_emploi_temps_id_in_esbtp_seance_cours_table', 1),
-(79, '2025_03_15_140635_update_esbtp_seance_cours_table_for_enseignant_text', 1),
-(80, '2025_03_16_143325_add_contact_info_to_users_table', 1),
-(81, '2025_03_16_153718_create_esbtp_annonces_table', 1),
-(82, '2025_03_16_204249_add_missing_fields_to_esbtp_seance_cours_table', 1),
-(83, '2025_03_16_222526_add_foreign_key_constraint_to_esbtp_seances_cours_table', 1),
-(84, '2025_03_16_230825_update_esbtp_attendances_table_for_seance_cours', 1),
-(85, '2025_03_17_000000_add_missing_columns_to_esbtp_evaluations_table', 1),
-(86, '2025_03_17_161433_add_missing_columns_to_esbtp_evaluations_table', 1),
-(87, '2025_03_17_164152_add_evaluation_id_to_esbtp_notes_table', 1),
-(88, '2025_03_17_164854_add_is_absent_to_esbtp_notes_table', 1),
-(89, '2025_03_17_165647_add_commentaire_to_esbtp_notes_table', 1),
-(90, '2025_03_17_210856_add_periode_to_esbtp_evaluations_table', 1),
-(91, '2025_03_18_000000_add_missing_columns_to_esbtp_etudiants', 1),
-(92, '2025_03_18_103356_add_composite_index_to_esbtp_notes_table', 1),
-(93, '2025_03_18_153313_align_semestre_periode_types', 1),
-(94, '2025_03_24_000000_create_esbtp_notes_table', 1),
-(95, '2025_03_25_143735_add_professional_info_to_users_table', 1),
-(96, '2025_03_26_000000_create_esbtp_resultats_matieres_table', 1),
-(97, '2025_03_26_110000_create_esbtp_absences_table', 1),
-(98, '2025_03_27_000000_add_mention_and_signatures_to_bulletins', 1),
-(99, '2025_03_27_120400_add_config_matieres_table', 1),
-(100, '2025_03_27_185955_create_esbtp_config_matiere_type_formations_table', 1),
-(101, '2025_03_28_141900_create_jobs_table', 1),
-(102, '2025_03_28_144333_add_document_path_to_esbtp_attendances_table', 1),
-(103, '2025_03_28_165542_create_failed_jobs_table', 1),
-(104, '2025_03_28_214511_create_esbtp_annonce_lectures_table', 1),
-(105, '2025_03_30_000002_update_esbtp_notes_table', 1),
-(106, '2025_04_01_000000_add_deleted_at_to_users_table', 1),
-(107, '2025_04_01_000001_add_first_name_last_name_to_users_table', 1),
-(108, '2025_04_01_101453_add_soft_delete_to_users_table', 1),
-(109, '2025_04_01_112035_add_ville_commune_to_esbtp_etudiants_table', 1),
-(110, '2025_04_01_112712_add_ville_commune_naissance_to_esbtp_etudiants_table', 1),
-(111, '2025_04_02_091352_add_missing_commentaire_to_esbtp_notes_table', 1),
-(112, '2025_04_02_094730_add_config_column_to_esbtp_config_matieres_table', 1),
-(113, '2025_04_02_095249_add_user_tracking_to_esbtp_config_matieres_table', 1),
-(114, '2025_04_02_161809_add_config_matieres_to_bulletins_table', 1),
-(115, '2025_04_02_195141_add_professeurs_to_esbtp_bulletins_table', 1),
-(116, '2025_04_04_152307_create_esbtp_bulletin_details_table', 1),
-(117, '2025_04_08_091936_add_absences_fields_to_esbtp_bulletins_table', 1),
-(118, '2025_04_09_134922_add_profile_photo_path_to_users_table', 1),
-(119, '2025_04_15_000001_cleanup_filiere_management', 1),
-(120, '2025_04_23_204155_add_evaluation_grades', 1),
-(121, '2025_04_23_231835_create_esbtp_comptabilite_tables', 1),
-(122, '2025_04_28_111123_create_e_s_b_t_p_categorie_paiements_table', 1),
-(123, '2025_04_28_111249_add_categorie_id_to_esbtp_paiements_table', 1),
-(124, '2025_05_05_000000_create_esbtp_resultats_table', 1),
-(125, '2025_05_10_000001_create_esbtp_evaluations_table', 1),
-(126, '2025_05_10_000002_create_esbtp_student_grades_table', 1);
+(5, '2024_03_17_000000_create_esbtp_departments_table', 1),
+(6, '2024_03_17_000000_create_esbtp_niveau_etudes_table', 1),
+(7, '2024_03_17_000001_create_esbtp_filieres_table', 1),
+(8, '2024_03_18_000000_create_esbtp_matieres_table', 1),
+(9, '2024_03_18_000001_create_esbtp_classes_table', 1),
+(10, '2024_03_19_000001_create_esbtp_daily_codes_table', 1),
+(11, '2024_03_19_000003_create_esbtp_attendance_settings_table', 1),
+(12, '2024_03_21_000000_create_academic_years_table', 1),
+(13, '2024_03_21_000001_create_esbtp_matiere_niveau_table', 1),
+(14, '2024_03_21_000001_create_students_table', 1),
+(15, '2024_03_21_000002_add_parent_id_to_esbtp_filieres_table', 1),
+(16, '2024_03_21_000002_create_esbtp_cycles_table', 1),
+(17, '2024_03_21_000002_create_partnerships_table', 1),
+(18, '2024_03_21_000002_create_payment_categories_table', 1),
+(19, '2024_03_21_000003_add_annee_universitaire_id_to_esbtp_classes_table', 1),
+(20, '2024_03_21_000003_create_payments_table', 1),
+(21, '2024_03_21_000004_create_esbtp_classe_matiere_table', 1),
+(22, '2024_03_21_000004_create_fees_table', 1),
+(23, '2024_03_21_000005_create_esbtp_laboratories_table', 1),
+(24, '2024_03_21_000006_create_esbtp_teachers_table', 1),
+(25, '2024_03_21_000007_create_esbtp_emplois_du_temps_table', 1),
+(26, '2024_03_21_000008_create_esbtp_teacher_cycle_table', 1),
+(27, '2024_03_21_000009_create_esbtp_teacher_attendance_table', 1),
+(28, '2024_03_21_000010_add_foreign_keys_to_teacher_attendance_table', 1),
+(29, '2024_03_25_000001_add_fields_to_esbtp_daily_codes_table', 1),
+(30, '2024_03_25_000002_add_fields_to_esbtp_teacher_attendance_table', 1),
+(31, '2024_03_25_000003_add_settings_to_esbtp_attendance_settings_table', 1),
+(32, '2024_03_25_000003_add_status_and_teaching_hours_to_esbtp_teachers', 1),
+(33, '2024_03_25_000003_create_esbtp_security_events_table', 1),
+(34, '2024_05_13_create_esbtp_enseignant_presence_table', 1),
+(35, '2024_07_10_000000_reorganize_controllers', 1),
+(36, '2025_02_26_000000_create_parcours_table', 1),
+(37, '2025_02_26_000001_create_departments_table', 1),
+(38, '2025_02_26_000002_create_laboratories_table', 1),
+(39, '2025_02_26_000003_create_element_constitutifs_table', 1),
+(40, '2025_02_26_000004_create_ufrs_table', 1),
+(41, '2025_02_26_000005_create_sessions_table', 1),
+(42, '2025_02_26_000006_create_designations_table', 1),
+(43, '2025_02_26_000007_create_sections_table', 1),
+(44, '2025_02_27_200009_create_students_table', 1),
+(45, '2025_02_27_200010_create_teachers_table', 1),
+(46, '2025_02_27_200013_create_evaluations_table', 1),
+(47, '2025_02_27_200014_create_grades_table', 1),
+(48, '2025_02_27_214309_create_certificates_table', 1),
+(49, '2025_02_27_215343_create_notifications_table', 1),
+(50, '2025_02_27_215606_create_messages_table', 1),
+(51, '2025_02_27_215802_create_courses_table', 1),
+(52, '2025_02_27_215803_create_attendances_table', 1),
+(53, '2025_02_27_220141_create_school_classes_table', 1),
+(54, '2025_02_27_220239_create_class_courses_table', 1),
+(55, '2025_02_28_000001_create_classes_table', 1),
+(56, '2025_02_28_000005_create_subjects_table', 1),
+(57, '2025_02_28_000006_create_school_teachers_table', 1),
+(58, '2025_02_28_000008_create_timetables_table', 1),
+(59, '2025_02_28_161331_create_esbtp_annee_universitaires_table', 1),
+(60, '2025_02_28_233231_create_semesters_table', 1),
+(61, '2025_03_01_100000_create_esbtp_etudiants_table', 1),
+(62, '2025_03_01_100001_create_esbtp_parents_table', 1),
+(63, '2025_03_01_100002_create_esbtp_inscriptions_table', 1),
+(64, '2025_03_01_100003_create_esbtp_paiements_table', 1),
+(65, '2025_03_01_185915_add_additional_columns_to_permission_tables', 1),
+(66, '2025_03_01_190250_modify_exams_table', 1),
+(67, '2025_03_01_211638_create_settings_table', 1),
+(68, '2025_03_02_075921_create_esbtp_cours_table', 1),
+(69, '2025_03_02_131111_add_annee_debut_to_esbtp_annee_universitaires_table', 1),
+(70, '2025_03_02_134953_add_role_column_to_users_table', 1),
+(71, '2025_03_02_151331_add_last_login_at_to_users_table', 1),
+(72, '2025_03_02_201532_add_active_column_to_esbtp_filieres', 1),
+(73, '2025_03_02_223948_create_esbtp_matiere_filiere_table', 1),
+(74, '2025_03_03_035615_add_email_to_esbtp_etudiants', 1),
+(75, '2025_03_10_095537_create_esbtp_filiere_niveau_table', 1),
+(76, '2025_03_10_105300_add_columns_to_esbtp_filiere_niveau_table', 1),
+(77, '2025_03_10_113757_add_missing_columns_to_esbtp_filiere_niveau_table', 1),
+(78, '2025_03_10_202825_remove_formation_id_from_esbtp_classes', 1),
+(79, '2025_03_10_202942_remove_formation_references', 1),
+(80, '2025_03_10_224800_create_esbtp_emploi_temps_table', 1),
+(81, '2025_03_10_224812_add_is_current_to_esbtp_emploi_temps_table', 1),
+(82, '2025_03_11_081600_create_esbtp_attendances_table', 1),
+(83, '2025_03_11_081628_add_status_to_esbtp_attendances_table', 1),
+(84, '2025_03_11_083905_add_libelle_to_esbtp_tables', 1),
+(85, '2025_03_11_095748_add_est_actif_to_esbtp_annee_universitaires_table', 1),
+(86, '2025_03_13_154632_add_last_login_at_to_users_table', 1),
+(87, '2025_03_13_155400_create_esbtp_bulletins_table', 1),
+(88, '2025_03_13_155406_update_esbtp_bulletins_table', 1),
+(89, '2025_03_14_154425_create_esbtp_seance_cours_table', 1),
+(90, '2025_03_14_233112_update_esbtp_emploi_temps_table', 1),
+(91, '2025_03_15_002142_add_emploi_temps_id_to_esbtp_seance_cours_table', 1),
+(92, '2025_03_15_004836_fix_emploi_temps_id_in_esbtp_seance_cours_table', 1),
+(93, '2025_03_15_140635_update_esbtp_seance_cours_table_for_enseignant_text', 1),
+(94, '2025_03_16_143325_add_contact_info_to_users_table', 1),
+(95, '2025_03_16_153718_create_esbtp_annonces_table', 1),
+(96, '2025_03_16_204249_add_missing_fields_to_esbtp_seance_cours_table', 1),
+(97, '2025_03_16_222526_add_foreign_key_constraint_to_esbtp_seances_cours_table', 1),
+(98, '2025_03_16_230825_update_esbtp_attendances_table_for_seance_cours', 1),
+(99, '2025_03_17_000000_add_missing_columns_to_esbtp_evaluations_table', 1),
+(100, '2025_03_17_161433_add_missing_columns_to_esbtp_evaluations_table', 1),
+(101, '2025_03_17_164152_add_evaluation_id_to_esbtp_notes_table', 1),
+(102, '2025_03_17_164854_add_is_absent_to_esbtp_notes_table', 1),
+(103, '2025_03_17_165647_add_commentaire_to_esbtp_notes_table', 1),
+(104, '2025_03_17_210856_add_periode_to_esbtp_evaluations_table', 1),
+(105, '2025_03_18_000000_add_missing_columns_to_esbtp_etudiants', 1),
+(106, '2025_03_18_103356_add_composite_index_to_esbtp_notes_table', 1),
+(107, '2025_03_18_153313_align_semestre_periode_types', 1),
+(108, '2025_03_24_000000_create_esbtp_notes_table', 1),
+(109, '2025_03_25_143735_add_professional_info_to_users_table', 1),
+(110, '2025_03_26_000000_create_esbtp_resultats_matieres_table', 1),
+(111, '2025_03_26_110000_create_esbtp_absences_table', 1),
+(112, '2025_03_27_000000_add_mention_and_signatures_to_bulletins', 1),
+(113, '2025_03_27_120400_add_config_matieres_table', 1),
+(114, '2025_03_27_185955_create_esbtp_config_matiere_type_formations_table', 1),
+(115, '2025_03_28_141900_create_jobs_table', 1),
+(116, '2025_03_28_144333_add_document_path_to_esbtp_attendances_table', 1),
+(117, '2025_03_28_165542_create_failed_jobs_table', 1),
+(118, '2025_03_28_214511_create_esbtp_annonce_lectures_table', 1),
+(119, '2025_03_30_000002_update_esbtp_notes_table', 1),
+(120, '2025_03_31_000000_create_esbtp_evaluations_table', 1),
+(121, '2025_04_01_000000_add_deleted_at_to_users_table', 1),
+(122, '2025_04_01_000001_add_first_name_last_name_to_users_table', 1),
+(123, '2025_04_01_101453_add_soft_delete_to_users_table', 1),
+(124, '2025_04_01_112035_add_ville_commune_to_esbtp_etudiants_table', 1),
+(125, '2025_04_01_112712_add_ville_commune_naissance_to_esbtp_etudiants_table', 1),
+(126, '2025_04_02_091352_add_missing_commentaire_to_esbtp_notes_table', 1),
+(127, '2025_04_02_094730_add_config_column_to_esbtp_config_matieres_table', 1),
+(128, '2025_04_02_095249_add_user_tracking_to_esbtp_config_matieres_table', 1),
+(129, '2025_04_02_161809_add_config_matieres_to_bulletins_table', 1),
+(130, '2025_04_02_195141_add_professeurs_to_esbtp_bulletins_table', 1),
+(131, '2025_04_04_152307_create_esbtp_bulletin_details_table', 1),
+(132, '2025_04_08_091936_add_absences_fields_to_esbtp_bulletins_table', 1),
+(133, '2025_04_09_134922_add_profile_photo_path_to_users_table', 1),
+(134, '2025_04_15_000001_cleanup_filiere_management', 1),
+(135, '2025_04_23_204155_add_evaluation_grades', 1),
+(136, '2025_04_23_231835_create_esbtp_comptabilite_tables', 1),
+(137, '2025_04_28_111123_create_e_s_b_t_p_categorie_paiements_table', 1),
+(138, '2025_04_28_111249_add_categorie_id_to_esbtp_paiements_table', 1),
+(139, '2025_05_05_000000_create_esbtp_resultats_table', 1),
+(140, '2025_05_10_000002_create_esbtp_student_grades_table', 1),
+(141, '2025_05_15_000001_create_esbtp_continuing_education_table', 1),
+(142, '2025_05_15_000002_create_esbtp_students_table', 1),
+(143, '2025_05_17_114147_create_esbtp_specialties_table', 1),
+(144, '2025_05_17_134521_add_matricule_to_teachers_table', 1),
+(145, '2025_05_17_135336_add_status_to_teachers_table', 1),
+(146, '2025_05_17_135543_add_status_field_to_teachers_table', 1),
+(147, '2024_03_19_000001_add_type_seance_to_esbtp_seance_cours_table', 2),
+(150, '2024_03_19_000000_add_teacher_id_to_esbtp_seance_cours_table', 3),
+(151, '2024_03_19_000001_update_esbtp_seance_cours_table', 3),
+(155, '2024_06_09_000001_add_inscription_id_to_payments_table', 4),
+(156, '2025_05_18_000001_create_fee_categories_table', 4),
+(157, '2025_05_18_000002_add_fee_category_id_to_fees_table', 4),
+(158, '2025_05_18_000004_create_fee_category_rules_table', 5),
+(159, '2025_05_18_000005_create_fee_category_rule_installments_table', 6),
+(160, '2024_06_10_000001_add_inscription_id_to_fees_table', 7),
+(161, '2024_06_10_000002_add_fee_id_to_payments_table', 8),
+(162, '2024_06_10_000001_create_esbtp_teacher_attendances_table', 9),
+(163, '2025_05_19_000001_add_date_seance_to_esbtp_seance_cours_table', 10),
+(164, '2024_06_12_000002_update_status_enum_in_teacher_attendance', 11),
+(165, '2025_05_19_224137_add_is_mandatory_to_fee_categories_table', 12),
+(166, '2025_05_19_225815_add_numero_to_esbtp_factures_table', 13),
+(167, '2025_05_19_230122_remove_numero_facture_from_esbtp_factures_table', 14),
+(168, '2025_05_19_232810_add_montant_net_to_esbtp_salaires_table', 15),
+(169, '2024_03_17_000002_create_esbtp_annee_universitaires_table', 16),
+(170, '2025_06_02_142539_create_custom_notifications_table', 17),
+(171, '2024_03_18_000002_create_esbtp_seance_cours_table', 18),
+(172, '2024_03_18_000003_create_esbtp_teachers_table', 19),
+(173, '2024_03_18_000004_create_esbtp_laboratories_table', 20),
+(174, '2024_03_18_000005_create_esbtp_departments_table', 21),
+(175, '2025_06_02_190258_create_esbtp_enseignant_matiere_table', 22),
+(176, '2025_03_02_000001_enhance_settings_table', 23),
+(177, '2025_03_02_000002_create_settings_backups_table', 23),
+(178, '2025_03_02_000003_fix_fees_status_enum', 23),
+(179, '2025_03_02_000003_fix_settings_categories', 24);
 
 -- --------------------------------------------------------
 
@@ -2175,7 +2784,7 @@ CREATE TABLE `model_has_permissions` (
   `permission_id` bigint(20) UNSIGNED NOT NULL,
   `model_type` varchar(191) NOT NULL,
   `model_id` bigint(20) UNSIGNED NOT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -2187,7 +2796,7 @@ CREATE TABLE `model_has_roles` (
   `role_id` bigint(20) UNSIGNED NOT NULL,
   `model_type` varchar(191) NOT NULL,
   `model_id` bigint(20) UNSIGNED NOT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `model_has_roles`
@@ -2195,14 +2804,16 @@ CREATE TABLE `model_has_roles` (
 
 INSERT INTO `model_has_roles` (`role_id`, `model_type`, `model_id`) VALUES
 (1, 'App\\Models\\User', 1),
-(1, 'App\\Models\\User', 2),
-(1, 'App\\Models\\User', 4),
-(2, 'App\\Models\\User', 5),
-(3, 'App\\Models\\User', 6),
-(3, 'App\\Models\\User', 9),
-(4, 'App\\Models\\User', 8),
-(5, 'App\\Models\\User', 3),
-(5, 'App\\Models\\User', 7);
+(1, 'App\\Models\\User', 3),
+(2, 'App\\Models\\User', 4),
+(3, 'App\\Models\\User', 5),
+(3, 'App\\Models\\User', 8),
+(3, 'App\\Models\\User', 14),
+(3, 'App\\Models\\User', 22),
+(5, 'App\\Models\\User', 2),
+(5, 'App\\Models\\User', 6),
+(5, 'App\\Models\\User', 7),
+(5, 'App\\Models\\User', 9);
 
 -- --------------------------------------------------------
 
@@ -2219,7 +2830,7 @@ CREATE TABLE `notifications` (
   `read_at` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -2238,7 +2849,70 @@ CREATE TABLE `parcours` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `partnerships`
+--
+
+CREATE TABLE `partnerships` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `name` varchar(191) NOT NULL,
+  `organization` varchar(191) NOT NULL,
+  `type` enum('academic','industry','research','other') NOT NULL,
+  `start_date` date NOT NULL,
+  `end_date` date DEFAULT NULL,
+  `description` text DEFAULT NULL,
+  `contact_person` varchar(191) NOT NULL,
+  `contact_email` varchar(191) NOT NULL,
+  `contact_phone` varchar(20) DEFAULT NULL,
+  `status` enum('active','pending','expired') NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `payments`
+--
+
+CREATE TABLE `payments` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `student_id` bigint(20) UNSIGNED NOT NULL,
+  `inscription_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `fee_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `amount` decimal(10,2) NOT NULL,
+  `payment_date` date NOT NULL,
+  `payment_method` enum('cash','bank_transfer','check','mobile_money') NOT NULL,
+  `reference_number` varchar(50) DEFAULT NULL,
+  `description` text DEFAULT NULL,
+  `category_id` bigint(20) UNSIGNED NOT NULL,
+  `status` enum('pending','completed','failed','refunded') NOT NULL DEFAULT 'pending',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `payment_categories`
+--
+
+CREATE TABLE `payment_categories` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `name` varchar(191) NOT NULL,
+  `code` varchar(191) NOT NULL,
+  `description` text DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -2248,169 +2922,159 @@ CREATE TABLE `parcours` (
 
 CREATE TABLE `permissions` (
   `id` bigint(20) UNSIGNED NOT NULL,
-  `name` varchar(125) NOT NULL,
-  `guard_name` varchar(125) NOT NULL,
+  `name` varchar(191) NOT NULL,
+  `guard_name` varchar(191) NOT NULL,
   `category` varchar(191) DEFAULT NULL,
   `description` text DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `permissions`
 --
 
 INSERT INTO `permissions` (`id`, `name`, `guard_name`, `category`, `description`, `created_at`, `updated_at`) VALUES
-(1, 'create filieres', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(2, 'view filieres', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(3, 'edit filieres', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(4, 'delete filieres', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(5, 'create niveau etudes', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(6, 'view niveau etudes', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(7, 'edit niveau etudes', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(8, 'delete niveau etudes', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(9, 'create classes', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(10, 'view classes', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(11, 'edit classes', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(12, 'delete classes', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(13, 'create students', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(14, 'view students', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(15, 'edit students', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(16, 'delete students', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(17, 'view own profile', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(18, 'view own grades', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(19, 'view own timetable', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(20, 'view own bulletin', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(21, 'view own attendances', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(22, 'view own exams', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(23, 'receive own messages', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(24, 'create exams', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(25, 'view exams', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(26, 'edit exams', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(27, 'delete exams', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(28, 'create matieres', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(29, 'view matieres', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(30, 'edit matieres', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(31, 'delete matieres', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(32, 'create grades', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(33, 'view grades', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(34, 'edit grades', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(35, 'delete grades', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(36, 'generate bulletin', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(37, 'view bulletins', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(38, 'edit bulletins', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(39, 'delete bulletins', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(40, 'create timetable', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(41, 'view timetables', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(42, 'edit timetables', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(43, 'delete timetables', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(44, 'send messages', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(45, 'receive messages', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(46, 'create attendance', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(47, 'view attendances', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(48, 'edit attendances', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(49, 'delete attendances', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(50, 'inscriptions.view', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(51, 'inscriptions.create', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(52, 'inscriptions.edit', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(53, 'inscriptions.delete', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(54, 'inscriptions.validate', 'web', NULL, NULL, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(55, 'view_filieres', 'web', NULL, NULL, '2025-05-07 13:41:21', '2025-05-07 13:41:21'),
-(56, 'create_filieres', 'web', NULL, NULL, '2025-05-07 13:41:21', '2025-05-07 13:41:21'),
-(57, 'edit_filieres', 'web', NULL, NULL, '2025-05-07 13:41:21', '2025-05-07 13:41:21'),
-(58, 'delete_filieres', 'web', NULL, NULL, '2025-05-07 13:41:21', '2025-05-07 13:41:21'),
-(59, 'view_formations', 'web', NULL, NULL, '2025-05-07 13:41:21', '2025-05-07 13:41:21'),
-(60, 'create_formations', 'web', NULL, NULL, '2025-05-07 13:41:21', '2025-05-07 13:41:21'),
-(61, 'edit_formations', 'web', NULL, NULL, '2025-05-07 13:41:21', '2025-05-07 13:41:21'),
-(62, 'delete_formations', 'web', NULL, NULL, '2025-05-07 13:41:21', '2025-05-07 13:41:21'),
-(63, 'view_niveaux_etudes', 'web', NULL, NULL, '2025-05-07 13:41:21', '2025-05-07 13:41:21'),
-(64, 'create_niveaux_etudes', 'web', NULL, NULL, '2025-05-07 13:41:21', '2025-05-07 13:41:21'),
-(65, 'edit_niveaux_etudes', 'web', NULL, NULL, '2025-05-07 13:41:21', '2025-05-07 13:41:21'),
-(66, 'delete_niveaux_etudes', 'web', NULL, NULL, '2025-05-07 13:41:21', '2025-05-07 13:41:21'),
-(67, 'view_classes', 'web', NULL, NULL, '2025-05-07 13:41:21', '2025-05-07 13:41:21'),
-(68, 'create_classe', 'web', NULL, NULL, '2025-05-07 13:41:21', '2025-05-07 13:41:21'),
-(69, 'edit_classes', 'web', NULL, NULL, '2025-05-07 13:41:21', '2025-05-07 13:41:21'),
-(70, 'delete_classes', 'web', NULL, NULL, '2025-05-07 13:41:21', '2025-05-07 13:41:21'),
-(71, 'view_students', 'web', NULL, NULL, '2025-05-07 13:41:21', '2025-05-07 13:41:21'),
-(72, 'create_student', 'web', NULL, NULL, '2025-05-07 13:41:21', '2025-05-07 13:41:21'),
-(73, 'edit_students', 'web', NULL, NULL, '2025-05-07 13:41:21', '2025-05-07 13:41:21'),
-(74, 'delete_students', 'web', NULL, NULL, '2025-05-07 13:41:21', '2025-05-07 13:41:21'),
-(75, 'view_own_profile', 'web', NULL, NULL, '2025-05-07 13:41:21', '2025-05-07 13:41:21'),
-(76, 'view_exams', 'web', NULL, NULL, '2025-05-07 13:41:21', '2025-05-07 13:41:21'),
-(77, 'create_exam', 'web', NULL, NULL, '2025-05-07 13:41:21', '2025-05-07 13:41:21'),
-(78, 'edit_exams', 'web', NULL, NULL, '2025-05-07 13:41:21', '2025-05-07 13:41:21'),
-(79, 'delete_exams', 'web', NULL, NULL, '2025-05-07 13:41:22', '2025-05-07 13:41:22'),
-(80, 'view_own_exams', 'web', NULL, NULL, '2025-05-07 13:41:22', '2025-05-07 13:41:22'),
-(81, 'view_matieres', 'web', NULL, NULL, '2025-05-07 13:41:22', '2025-05-07 13:41:22'),
-(82, 'create_matieres', 'web', NULL, NULL, '2025-05-07 13:41:22', '2025-05-07 13:41:22'),
-(83, 'edit_matieres', 'web', NULL, NULL, '2025-05-07 13:41:22', '2025-05-07 13:41:22'),
-(84, 'delete_matieres', 'web', NULL, NULL, '2025-05-07 13:41:22', '2025-05-07 13:41:22'),
-(85, 'view_grades', 'web', NULL, NULL, '2025-05-07 13:41:22', '2025-05-07 13:41:22'),
-(86, 'create_grade', 'web', NULL, NULL, '2025-05-07 13:41:22', '2025-05-07 13:41:22'),
-(87, 'edit_grades', 'web', NULL, NULL, '2025-05-07 13:41:22', '2025-05-07 13:41:22'),
-(88, 'delete_grades', 'web', NULL, NULL, '2025-05-07 13:41:22', '2025-05-07 13:41:22'),
-(89, 'view_own_grades', 'web', NULL, NULL, '2025-05-07 13:41:22', '2025-05-07 13:41:22'),
-(90, 'view_bulletins', 'web', NULL, NULL, '2025-05-07 13:41:22', '2025-05-07 13:41:22'),
-(91, 'generate_bulletin', 'web', NULL, NULL, '2025-05-07 13:41:22', '2025-05-07 13:41:22'),
-(92, 'edit_bulletins', 'web', NULL, NULL, '2025-05-07 13:41:22', '2025-05-07 13:41:22'),
-(93, 'delete_bulletins', 'web', NULL, NULL, '2025-05-07 13:41:22', '2025-05-07 13:41:22'),
-(94, 'view_own_bulletin', 'web', NULL, NULL, '2025-05-07 13:41:22', '2025-05-07 13:41:22'),
-(95, 'view_timetables', 'web', NULL, NULL, '2025-05-07 13:41:22', '2025-05-07 13:41:22'),
-(96, 'create_timetable', 'web', NULL, NULL, '2025-05-07 13:41:22', '2025-05-07 13:41:22'),
-(97, 'edit_timetables', 'web', NULL, NULL, '2025-05-07 13:41:22', '2025-05-07 13:41:22'),
-(98, 'delete_timetables', 'web', NULL, NULL, '2025-05-07 13:41:22', '2025-05-07 13:41:22'),
-(99, 'view_own_timetable', 'web', NULL, NULL, '2025-05-07 13:41:22', '2025-05-07 13:41:22'),
-(100, 'send_messages', 'web', NULL, NULL, '2025-05-07 13:41:23', '2025-05-07 13:41:23'),
-(101, 'receive_messages', 'web', NULL, NULL, '2025-05-07 13:41:23', '2025-05-07 13:41:23'),
-(102, 'view_attendances', 'web', NULL, NULL, '2025-05-07 13:41:23', '2025-05-07 13:41:23'),
-(103, 'create_attendance', 'web', NULL, NULL, '2025-05-07 13:41:23', '2025-05-07 13:41:23'),
-(104, 'edit_attendances', 'web', NULL, NULL, '2025-05-07 13:41:23', '2025-05-07 13:41:23'),
-(105, 'delete_attendances', 'web', NULL, NULL, '2025-05-07 13:41:23', '2025-05-07 13:41:23'),
-(106, 'view_own_attendances', 'web', NULL, NULL, '2025-05-07 13:41:23', '2025-05-07 13:41:23'),
-(107, 'view-paiements', 'web', NULL, NULL, '2025-05-07 13:41:23', '2025-05-07 13:41:23'),
-(108, 'create-paiements', 'web', NULL, NULL, '2025-05-07 13:41:23', '2025-05-07 13:41:23'),
-(109, 'edit-paiements', 'web', NULL, NULL, '2025-05-07 13:41:23', '2025-05-07 13:41:23'),
-(110, 'delete-paiements', 'web', NULL, NULL, '2025-05-07 13:41:23', '2025-05-07 13:41:23'),
-(111, 'validate-paiements', 'web', NULL, NULL, '2025-05-07 13:41:23', '2025-05-07 13:41:23'),
-(112, 'access_comptabilite_module', 'web', NULL, NULL, '2025-05-08 09:40:04', '2025-05-08 09:40:04'),
-(113, 'view_paiements', 'web', NULL, NULL, '2025-05-08 09:40:04', '2025-05-08 09:40:04'),
-(114, 'create_paiements', 'web', NULL, NULL, '2025-05-08 09:40:04', '2025-05-08 09:40:04'),
-(115, 'edit_paiements', 'web', NULL, NULL, '2025-05-08 09:40:04', '2025-05-08 09:40:04'),
-(116, 'delete_paiements', 'web', NULL, NULL, '2025-05-08 09:40:04', '2025-05-08 09:40:04'),
-(117, 'validate_paiements', 'web', NULL, NULL, '2025-05-08 09:40:04', '2025-05-08 09:40:04'),
-(118, 'view_frais_scolarite', 'web', NULL, NULL, '2025-05-08 09:40:04', '2025-05-08 09:40:04'),
-(119, 'view_depenses', 'web', NULL, NULL, '2025-05-08 09:40:04', '2025-05-08 09:40:04'),
-(120, 'view_bourses', 'web', NULL, NULL, '2025-05-08 09:40:04', '2025-05-08 09:40:04'),
-(121, 'view_rapports_financiers', 'web', NULL, NULL, '2025-05-08 09:40:04', '2025-05-08 09:40:04'),
-(122, 'view_comptabilite_dashboard', 'web', NULL, NULL, '2025-05-08 09:40:04', '2025-05-08 09:40:04'),
-(123, 'access_comptabilite', 'web', NULL, NULL, '2025-05-08 09:40:05', '2025-05-08 09:40:05'),
-(124, 'view_comptabilite', 'web', NULL, NULL, '2025-05-08 09:40:05', '2025-05-08 09:40:05'),
-(125, 'view_payments', 'web', NULL, NULL, '2025-05-08 09:40:05', '2025-05-08 09:40:05'),
-(126, 'create_payment', 'web', NULL, NULL, '2025-05-08 09:40:05', '2025-05-08 09:40:05'),
-(127, 'edit_payment', 'web', NULL, NULL, '2025-05-08 09:40:05', '2025-05-08 09:40:05'),
-(128, 'delete_payment', 'web', NULL, NULL, '2025-05-08 09:40:05', '2025-05-08 09:40:05'),
-(129, 'validate_payment', 'web', NULL, NULL, '2025-05-08 09:40:05', '2025-05-08 09:40:05'),
-(130, 'create_frais_scolarite', 'web', NULL, NULL, '2025-05-08 10:42:03', '2025-05-08 10:42:03'),
-(131, 'edit_frais_scolarite', 'web', NULL, NULL, '2025-05-08 10:42:04', '2025-05-08 10:42:04'),
-(132, 'delete_frais_scolarite', 'web', NULL, NULL, '2025-05-08 10:42:04', '2025-05-08 10:42:04'),
-(133, 'create_depenses', 'web', NULL, NULL, '2025-05-08 10:42:04', '2025-05-08 10:42:04'),
-(134, 'edit_depenses', 'web', NULL, NULL, '2025-05-08 10:42:04', '2025-05-08 10:42:04'),
-(135, 'delete_depenses', 'web', NULL, NULL, '2025-05-08 10:42:04', '2025-05-08 10:42:04'),
-(136, 'view_salaires', 'web', NULL, NULL, '2025-05-08 10:42:04', '2025-05-08 10:42:04'),
-(137, 'create_salaires', 'web', NULL, NULL, '2025-05-08 10:42:04', '2025-05-08 10:42:04'),
-(138, 'edit_salaires', 'web', NULL, NULL, '2025-05-08 10:42:04', '2025-05-08 10:42:04'),
-(139, 'delete_salaires', 'web', NULL, NULL, '2025-05-08 10:42:04', '2025-05-08 10:42:04'),
-(140, 'create_bourses', 'web', NULL, NULL, '2025-05-08 10:42:04', '2025-05-08 10:42:04'),
-(141, 'edit_bourses', 'web', NULL, NULL, '2025-05-08 10:42:04', '2025-05-08 10:42:04'),
-(142, 'delete_bourses', 'web', NULL, NULL, '2025-05-08 10:42:04', '2025-05-08 10:42:04'),
-(143, 'view_reporting_financier', 'web', NULL, NULL, '2025-05-08 10:42:04', '2025-05-08 10:42:04'),
-(144, 'export_reporting_financier', 'web', NULL, NULL, '2025-05-08 10:42:04', '2025-05-08 10:42:04'),
-(145, 'create_students', 'web', NULL, NULL, '2025-05-14 19:44:51', '2025-05-14 19:44:51'),
-(146, 'view_own_attendance', 'web', NULL, 'Voir ses propres émargements', '2025-05-14 19:49:31', '2025-05-14 19:49:31'),
-(147, 'sign_attendance', 'web', NULL, 'Signer sa présence', '2025-05-14 19:49:31', '2025-05-14 19:49:31'),
-(148, 'manage_attendance_codes', 'web', NULL, 'Gérer les codes d\'émargement', '2025-05-14 19:49:31', '2025-05-14 19:49:31'),
-(149, 'validate_attendance', 'web', NULL, 'Valider les émargements', '2025-05-14 19:49:31', '2025-05-14 19:49:31'),
-(150, 'view_all_attendance', 'web', NULL, 'Voir tous les émargements', '2025-05-14 19:49:31', '2025-05-14 19:49:31');
+(1, 'create filieres', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(2, 'view filieres', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(3, 'edit filieres', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(4, 'delete filieres', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(5, 'create niveau etudes', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(6, 'view niveau etudes', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(7, 'edit niveau etudes', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(8, 'delete niveau etudes', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(9, 'create classes', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(10, 'view classes', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(11, 'edit classes', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(12, 'delete classes', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(13, 'create students', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(14, 'view students', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(15, 'edit students', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(16, 'delete students', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(17, 'view own profile', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(18, 'view own grades', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(19, 'view own timetable', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(20, 'view own bulletin', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(21, 'view own attendances', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(22, 'view own exams', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(23, 'receive own messages', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(24, 'create exams', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(25, 'view exams', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(26, 'edit exams', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(27, 'delete exams', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(28, 'create matieres', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(29, 'view matieres', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(30, 'edit matieres', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(31, 'delete matieres', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(32, 'create grades', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(33, 'view grades', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(34, 'edit grades', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(35, 'delete grades', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(36, 'generate bulletin', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(37, 'view bulletins', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(38, 'edit bulletins', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(39, 'delete bulletins', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(40, 'create timetable', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(41, 'view timetables', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(42, 'edit timetables', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(43, 'delete timetables', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(44, 'send messages', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(45, 'receive messages', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(46, 'create attendance', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(47, 'view attendances', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(48, 'edit attendances', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(49, 'delete attendances', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(50, 'inscriptions.view', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(51, 'inscriptions.create', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(52, 'inscriptions.edit', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(53, 'inscriptions.delete', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(54, 'inscriptions.validate', 'web', NULL, NULL, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(55, 'view_filieres', 'web', NULL, NULL, '2025-05-17 15:41:54', '2025-05-17 15:41:54'),
+(56, 'create_filieres', 'web', NULL, NULL, '2025-05-17 15:41:54', '2025-05-17 15:41:54'),
+(57, 'edit_filieres', 'web', NULL, NULL, '2025-05-17 15:41:54', '2025-05-17 15:41:54'),
+(58, 'delete_filieres', 'web', NULL, NULL, '2025-05-17 15:41:54', '2025-05-17 15:41:54'),
+(59, 'view_formations', 'web', NULL, NULL, '2025-05-17 15:41:54', '2025-05-17 15:41:54'),
+(60, 'create_formations', 'web', NULL, NULL, '2025-05-17 15:41:54', '2025-05-17 15:41:54'),
+(61, 'edit_formations', 'web', NULL, NULL, '2025-05-17 15:41:54', '2025-05-17 15:41:54'),
+(62, 'delete_formations', 'web', NULL, NULL, '2025-05-17 15:41:54', '2025-05-17 15:41:54'),
+(63, 'view_niveaux_etudes', 'web', NULL, NULL, '2025-05-17 15:41:54', '2025-05-17 15:41:54'),
+(64, 'create_niveaux_etudes', 'web', NULL, NULL, '2025-05-17 15:41:54', '2025-05-17 15:41:54'),
+(65, 'edit_niveaux_etudes', 'web', NULL, NULL, '2025-05-17 15:41:54', '2025-05-17 15:41:54'),
+(66, 'delete_niveaux_etudes', 'web', NULL, NULL, '2025-05-17 15:41:55', '2025-05-17 15:41:55'),
+(67, 'view_classes', 'web', NULL, NULL, '2025-05-17 15:41:55', '2025-05-17 15:41:55'),
+(68, 'create_classe', 'web', NULL, NULL, '2025-05-17 15:41:55', '2025-05-17 15:41:55'),
+(69, 'edit_classes', 'web', NULL, NULL, '2025-05-17 15:41:55', '2025-05-17 15:41:55'),
+(70, 'delete_classes', 'web', NULL, NULL, '2025-05-17 15:41:55', '2025-05-17 15:41:55'),
+(71, 'view_students', 'web', NULL, NULL, '2025-05-17 15:41:55', '2025-05-17 15:41:55'),
+(72, 'create_student', 'web', NULL, NULL, '2025-05-17 15:41:55', '2025-05-17 15:41:55'),
+(73, 'edit_students', 'web', NULL, NULL, '2025-05-17 15:41:55', '2025-05-17 15:41:55'),
+(74, 'delete_students', 'web', NULL, NULL, '2025-05-17 15:41:55', '2025-05-17 15:41:55'),
+(75, 'view_own_profile', 'web', NULL, NULL, '2025-05-17 15:41:55', '2025-05-17 15:41:55'),
+(76, 'view_exams', 'web', NULL, NULL, '2025-05-17 15:41:55', '2025-05-17 15:41:55'),
+(77, 'create_exam', 'web', NULL, NULL, '2025-05-17 15:41:55', '2025-05-17 15:41:55'),
+(78, 'edit_exams', 'web', NULL, NULL, '2025-05-17 15:41:55', '2025-05-17 15:41:55'),
+(79, 'delete_exams', 'web', NULL, NULL, '2025-05-17 15:41:55', '2025-05-17 15:41:55'),
+(80, 'view_own_exams', 'web', NULL, NULL, '2025-05-17 15:41:55', '2025-05-17 15:41:55'),
+(81, 'view_matieres', 'web', NULL, NULL, '2025-05-17 15:41:56', '2025-05-17 15:41:56'),
+(82, 'create_matieres', 'web', NULL, NULL, '2025-05-17 15:41:56', '2025-05-17 15:41:56'),
+(83, 'edit_matieres', 'web', NULL, NULL, '2025-05-17 15:41:56', '2025-05-17 15:41:56'),
+(84, 'delete_matieres', 'web', NULL, NULL, '2025-05-17 15:41:56', '2025-05-17 15:41:56'),
+(85, 'view_grades', 'web', NULL, NULL, '2025-05-17 15:41:56', '2025-05-17 15:41:56'),
+(86, 'create_grade', 'web', NULL, NULL, '2025-05-17 15:41:56', '2025-05-17 15:41:56'),
+(87, 'edit_grades', 'web', NULL, NULL, '2025-05-17 15:41:56', '2025-05-17 15:41:56'),
+(88, 'delete_grades', 'web', NULL, NULL, '2025-05-17 15:41:56', '2025-05-17 15:41:56'),
+(89, 'view_own_grades', 'web', NULL, NULL, '2025-05-17 15:41:56', '2025-05-17 15:41:56'),
+(90, 'view_bulletins', 'web', NULL, NULL, '2025-05-17 15:41:56', '2025-05-17 15:41:56'),
+(91, 'generate_bulletin', 'web', NULL, NULL, '2025-05-17 15:41:56', '2025-05-17 15:41:56'),
+(92, 'edit_bulletins', 'web', NULL, NULL, '2025-05-17 15:41:56', '2025-05-17 15:41:56'),
+(93, 'delete_bulletins', 'web', NULL, NULL, '2025-05-17 15:41:56', '2025-05-17 15:41:56'),
+(94, 'view_own_bulletin', 'web', NULL, NULL, '2025-05-17 15:41:56', '2025-05-17 15:41:56'),
+(95, 'view_timetables', 'web', NULL, NULL, '2025-05-17 15:41:56', '2025-05-17 15:41:56'),
+(96, 'create_timetable', 'web', NULL, NULL, '2025-05-17 15:41:56', '2025-05-17 15:41:56'),
+(97, 'edit_timetables', 'web', NULL, NULL, '2025-05-17 15:41:56', '2025-05-17 15:41:56'),
+(98, 'delete_timetables', 'web', NULL, NULL, '2025-05-17 15:41:56', '2025-05-17 15:41:56'),
+(99, 'view_own_timetable', 'web', NULL, NULL, '2025-05-17 15:41:56', '2025-05-17 15:41:56'),
+(100, 'send_messages', 'web', NULL, NULL, '2025-05-17 15:41:56', '2025-05-17 15:41:56'),
+(101, 'receive_messages', 'web', NULL, NULL, '2025-05-17 15:41:56', '2025-05-17 15:41:56'),
+(102, 'view_attendances', 'web', NULL, NULL, '2025-05-17 15:41:56', '2025-05-17 15:41:56'),
+(103, 'create_attendance', 'web', NULL, NULL, '2025-05-17 15:41:56', '2025-05-17 15:41:56'),
+(104, 'edit_attendances', 'web', NULL, NULL, '2025-05-17 15:41:56', '2025-05-17 15:41:56'),
+(105, 'delete_attendances', 'web', NULL, NULL, '2025-05-17 15:41:56', '2025-05-17 15:41:56'),
+(106, 'view_own_attendances', 'web', NULL, NULL, '2025-05-17 15:41:56', '2025-05-17 15:41:56'),
+(107, 'view-paiements', 'web', NULL, NULL, '2025-05-17 15:41:57', '2025-05-17 15:41:57'),
+(108, 'create-paiements', 'web', NULL, NULL, '2025-05-17 15:41:57', '2025-05-17 15:41:57'),
+(109, 'edit-paiements', 'web', NULL, NULL, '2025-05-17 15:41:57', '2025-05-17 15:41:57'),
+(110, 'delete-paiements', 'web', NULL, NULL, '2025-05-17 15:41:57', '2025-05-17 15:41:57'),
+(111, 'validate-paiements', 'web', NULL, NULL, '2025-05-17 15:41:57', '2025-05-17 15:41:57'),
+(112, 'access_comptabilite_module', 'web', NULL, NULL, '2025-05-17 15:41:57', '2025-05-17 15:41:57'),
+(113, 'view_paiements', 'web', NULL, NULL, '2025-05-17 15:41:57', '2025-05-17 15:41:57'),
+(114, 'create_paiements', 'web', NULL, NULL, '2025-05-17 15:41:57', '2025-05-17 15:41:57'),
+(115, 'edit_paiements', 'web', NULL, NULL, '2025-05-17 15:41:57', '2025-05-17 15:41:57'),
+(116, 'delete_paiements', 'web', NULL, NULL, '2025-05-17 15:41:57', '2025-05-17 15:41:57'),
+(117, 'view_frais_scolarite', 'web', NULL, NULL, '2025-05-17 15:41:57', '2025-05-17 15:41:57'),
+(118, 'create_frais_scolarite', 'web', NULL, NULL, '2025-05-17 15:41:57', '2025-05-17 15:41:57'),
+(119, 'edit_frais_scolarite', 'web', NULL, NULL, '2025-05-17 15:41:57', '2025-05-17 15:41:57'),
+(120, 'delete_frais_scolarite', 'web', NULL, NULL, '2025-05-17 15:41:57', '2025-05-17 15:41:57'),
+(121, 'view_depenses', 'web', NULL, NULL, '2025-05-17 15:41:57', '2025-05-17 15:41:57'),
+(122, 'create_depenses', 'web', NULL, NULL, '2025-05-17 15:41:57', '2025-05-17 15:41:57'),
+(123, 'edit_depenses', 'web', NULL, NULL, '2025-05-17 15:41:57', '2025-05-17 15:41:57'),
+(124, 'delete_depenses', 'web', NULL, NULL, '2025-05-17 15:41:57', '2025-05-17 15:41:57'),
+(125, 'view_salaires', 'web', NULL, NULL, '2025-05-17 15:41:58', '2025-05-17 15:41:58'),
+(126, 'create_salaires', 'web', NULL, NULL, '2025-05-17 15:41:58', '2025-05-17 15:41:58'),
+(127, 'edit_salaires', 'web', NULL, NULL, '2025-05-17 15:41:58', '2025-05-17 15:41:58'),
+(128, 'delete_salaires', 'web', NULL, NULL, '2025-05-17 15:41:58', '2025-05-17 15:41:58'),
+(129, 'view_bourses', 'web', NULL, NULL, '2025-05-17 15:41:58', '2025-05-17 15:41:58'),
+(130, 'create_bourses', 'web', NULL, NULL, '2025-05-17 15:41:58', '2025-05-17 15:41:58'),
+(131, 'edit_bourses', 'web', NULL, NULL, '2025-05-17 15:41:58', '2025-05-17 15:41:58'),
+(132, 'delete_bourses', 'web', NULL, NULL, '2025-05-17 15:41:58', '2025-05-17 15:41:58'),
+(133, 'view_reporting_financier', 'web', NULL, NULL, '2025-05-17 15:41:58', '2025-05-17 15:41:58'),
+(134, 'export_reporting_financier', 'web', NULL, NULL, '2025-05-17 15:41:58', '2025-05-17 15:41:58'),
+(135, 'view_teacher_dashboard', 'web', NULL, NULL, '2025-05-18 21:48:27', '2025-05-18 21:48:27'),
+(136, 'access_teacher_attendance', 'web', NULL, NULL, '2025-05-18 21:48:28', '2025-05-18 21:48:28'),
+(137, 'access_teacher_grades', 'web', NULL, NULL, '2025-05-18 21:48:28', '2025-05-18 21:48:28'),
+(138, 'access_teacher_timetable', 'web', NULL, NULL, '2025-05-18 21:48:28', '2025-05-18 21:48:28'),
+(139, 'generate-attendance-codes', 'web', NULL, NULL, '2025-05-19 00:55:13', '2025-05-19 00:55:13'),
+(140, 'view_own_attendance', 'web', NULL, NULL, '2025-05-20 20:45:43', '2025-05-20 20:45:43');
 
 -- --------------------------------------------------------
 
@@ -2428,7 +3092,7 @@ CREATE TABLE `personal_access_tokens` (
   `last_used_at` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -2438,24 +3102,25 @@ CREATE TABLE `personal_access_tokens` (
 
 CREATE TABLE `roles` (
   `id` bigint(20) UNSIGNED NOT NULL,
-  `name` varchar(125) NOT NULL,
-  `guard_name` varchar(125) NOT NULL,
+  `name` varchar(191) NOT NULL,
+  `guard_name` varchar(191) NOT NULL,
   `description` text DEFAULT NULL,
   `is_default` tinyint(1) NOT NULL DEFAULT 0,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `roles`
 --
 
 INSERT INTO `roles` (`id`, `name`, `guard_name`, `description`, `is_default`, `created_at`, `updated_at`) VALUES
-(1, 'superAdmin', 'web', NULL, 0, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(2, 'secretaire', 'web', NULL, 0, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(3, 'etudiant', 'web', NULL, 0, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(4, 'enseignant', 'web', NULL, 0, '2025-05-07 11:39:32', '2025-05-07 11:39:32'),
-(5, 'teacher', 'web', NULL, 0, '2025-05-07 13:34:39', '2025-05-07 13:34:39');
+(1, 'superAdmin', 'web', NULL, 0, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(2, 'secretaire', 'web', NULL, 0, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(3, 'etudiant', 'web', NULL, 0, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(4, 'enseignant', 'web', NULL, 0, '2025-05-17 15:39:35', '2025-05-17 15:39:35'),
+(5, 'teacher', 'web', NULL, 0, '2025-05-17 15:39:36', '2025-05-17 15:39:36'),
+(6, 'parent', 'web', NULL, 0, '2025-06-02 14:35:48', '2025-06-02 14:35:48');
 
 -- --------------------------------------------------------
 
@@ -2466,7 +3131,7 @@ INSERT INTO `roles` (`id`, `name`, `guard_name`, `description`, `is_default`, `c
 CREATE TABLE `role_has_permissions` (
   `permission_id` bigint(20) UNSIGNED NOT NULL,
   `role_id` bigint(20) UNSIGNED NOT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `role_has_permissions`
@@ -2587,21 +3252,32 @@ INSERT INTO `role_has_permissions` (`permission_id`, `role_id`) VALUES
 (73, 2),
 (74, 1),
 (75, 1),
+(75, 3),
 (76, 1),
 (77, 1),
 (78, 1),
 (79, 1),
 (80, 1),
+(80, 3),
 (81, 1),
 (81, 2),
+(81, 4),
+(81, 5),
 (82, 1),
 (83, 1),
 (84, 1),
 (85, 1),
+(85, 4),
+(85, 5),
 (86, 1),
+(86, 4),
+(86, 5),
 (87, 1),
+(87, 4),
+(87, 5),
 (88, 1),
 (89, 1),
+(89, 3),
 (90, 1),
 (90, 2),
 (91, 1),
@@ -2609,27 +3285,41 @@ INSERT INTO `role_has_permissions` (`permission_id`, `role_id`) VALUES
 (92, 1),
 (93, 1),
 (94, 1),
+(94, 3),
 (95, 1),
 (95, 2),
+(95, 4),
+(95, 5),
 (96, 1),
 (96, 2),
 (97, 1),
 (97, 2),
 (98, 1),
 (99, 1),
-(99, 4),
+(99, 3),
 (100, 1),
 (100, 2),
+(100, 4),
+(100, 5),
 (101, 1),
 (101, 2),
+(101, 4),
+(101, 5),
 (102, 1),
 (102, 2),
+(102, 4),
+(102, 5),
 (103, 1),
 (103, 2),
+(103, 4),
+(103, 5),
 (104, 1),
 (104, 2),
+(104, 4),
+(104, 5),
 (105, 1),
 (106, 1),
+(106, 3),
 (107, 1),
 (107, 2),
 (108, 1),
@@ -2640,56 +3330,40 @@ INSERT INTO `role_has_permissions` (`permission_id`, `role_id`) VALUES
 (111, 1),
 (111, 2),
 (112, 1),
-(112, 2),
 (113, 1),
-(113, 2),
 (114, 1),
-(114, 2),
 (115, 1),
-(115, 2),
 (116, 1),
-(116, 2),
-(117, 2),
+(117, 1),
 (118, 1),
-(118, 2),
 (119, 1),
-(119, 2),
 (120, 1),
-(120, 2),
-(121, 2),
-(122, 2),
-(123, 2),
-(124, 2),
-(125, 2),
-(126, 2),
-(127, 2),
-(128, 2),
-(129, 2),
+(121, 1),
+(122, 1),
+(123, 1),
+(124, 1),
+(125, 1),
+(126, 1),
+(127, 1),
+(128, 1),
+(129, 1),
 (130, 1),
 (131, 1),
 (132, 1),
 (133, 1),
 (134, 1),
 (135, 1),
-(136, 1),
-(137, 1),
-(138, 1),
+(135, 4),
+(135, 5),
+(136, 4),
+(136, 5),
+(137, 4),
+(137, 5),
+(138, 4),
+(138, 5),
 (139, 1),
-(140, 1),
-(141, 1),
-(142, 1),
-(143, 1),
-(144, 1),
-(146, 1),
-(146, 4),
-(147, 1),
-(147, 4),
-(148, 1),
-(148, 2),
-(149, 1),
-(149, 2),
-(150, 1),
-(150, 2);
+(139, 2),
+(140, 3);
 
 -- --------------------------------------------------------
 
@@ -2711,7 +3385,7 @@ CREATE TABLE `school_classes` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -2734,7 +3408,7 @@ CREATE TABLE `school_teachers` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -2755,7 +3429,7 @@ CREATE TABLE `sections` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -2775,7 +3449,7 @@ CREATE TABLE `semesters` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -2795,7 +3469,7 @@ CREATE TABLE `sessions` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -2807,10 +3481,180 @@ CREATE TABLE `settings` (
   `id` bigint(20) UNSIGNED NOT NULL,
   `key` varchar(191) NOT NULL,
   `value` text DEFAULT NULL,
+  `type` varchar(191) NOT NULL DEFAULT 'string',
+  `description` text DEFAULT NULL,
+  `is_required` tinyint(1) NOT NULL DEFAULT 0,
+  `default_value` text DEFAULT NULL,
+  `validation_rules` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`validation_rules`)),
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `requires_restart` tinyint(1) NOT NULL DEFAULT 0,
+  `category` varchar(191) DEFAULT NULL,
+  `sort_order` int(11) NOT NULL DEFAULT 0,
+  `created_by` bigint(20) UNSIGNED DEFAULT NULL,
+  `updated_by` bigint(20) UNSIGNED DEFAULT NULL,
   `group` varchar(191) NOT NULL DEFAULT 'general',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `settings`
+--
+
+INSERT INTO `settings` (`id`, `key`, `value`, `type`, `description`, `is_required`, `default_value`, `validation_rules`, `is_active`, `requires_restart`, `category`, `sort_order`, `created_by`, `updated_by`, `group`, `created_at`, `updated_at`) VALUES
+(1, 'school_name', 'KLASSCI', 'string', 'Nom de l\'établissement', 1, 'ESBTP-yAKRO', '[\"required\",\"string\",\"max:255\"]', 1, 0, 'establishment', 1, 1, 3, 'establishment', '2025-06-02 19:42:22', '2025-06-03 16:57:55'),
+(2, 'school_acronym', 'KLASSCI', 'string', 'Acronyme de l\'établissement', 0, 'ESBTP', '[\"nullable\",\"string\",\"max:10\"]', 1, 0, 'establishment', 2, 1, 3, 'establishment', '2025-06-02 19:42:22', '2025-06-03 16:57:17'),
+(3, 'school_country', 'Côte d\'Ivoire', 'string', 'Pays de l\'établissement', 0, 'Côte d\'Ivoire', '[\"nullable\",\"string\",\"max:100\"]', 1, 0, 'establishment', 5, 1, 3, 'establishment', '2025-06-02 19:42:22', '2025-06-03 15:09:43'),
+(4, 'director_title', 'Directeur Général', 'string', 'Titre du directeur', 0, 'Directeur Général', '[\"nullable\",\"string\",\"max:100\"]', 1, 0, 'establishment', 9, 1, 3, 'establishment', '2025-06-02 19:42:22', '2025-06-03 15:09:43'),
+(5, 'pdf_show_logo', '1', 'boolean', 'Afficher le logo sur les PDF', 0, '1', '[\"boolean\"]', 1, 0, 'pdf', 1, 1, 3, 'pdf', '2025-06-02 19:42:22', '2025-06-03 16:57:56'),
+(7, 'pdf_font_size', '12', 'integer', 'Taille de police pour les PDF', 0, '12', '[\"integer\",\"min:8\",\"max:20\"]', 1, 0, 'pdf', 3, 1, 3, 'pdf', '2025-06-02 19:42:22', '2025-06-03 16:57:17'),
+(8, 'pdf_margin_top', '15', 'integer', 'Marge supérieure des PDF (mm)', 0, '20', '[\"integer\",\"min:10\",\"max:50\"]', 1, 0, 'pdf', 4, 1, 1, 'pdf', '2025-06-02 19:42:22', '2025-06-03 16:46:22'),
+(9, 'pdf_margin_bottom', '15', 'integer', 'Marge inférieure des PDF (mm)', 0, '20', '[\"integer\",\"min:10\",\"max:50\"]', 1, 0, 'pdf', 5, 1, 1, 'pdf', '2025-06-02 19:42:22', '2025-06-03 16:46:22'),
+(10, 'pdf_margin_left', '15', 'integer', 'Marge gauche des PDF (mm)', 0, '15', '[\"integer\",\"min:10\",\"max:50\"]', 1, 0, 'pdf', 6, 1, 1, 'pdf', '2025-06-02 19:42:22', '2025-06-03 09:21:32'),
+(11, 'pdf_margin_right', '15', 'integer', 'Marge droite des PDF (mm)', 0, '15', '[\"integer\",\"min:10\",\"max:50\"]', 1, 0, 'pdf', 7, 1, 1, 'pdf', '2025-06-02 19:42:22', '2025-06-03 09:21:32'),
+(24, 'grade_scale', '20', 'integer', 'Échelle de notation', 0, '20', '[\"in:20,100\"]', 1, 0, 'academic', 3, 1, 1, 'academic', '2025-06-02 19:42:22', '2025-06-03 01:22:23'),
+(25, 'passing_grade', '10', 'integer', 'Note de passage', 0, '10', '[\"numeric\",\"min:0\"]', 1, 0, 'academic', 4, 1, 1, 'academic', '2025-06-02 19:42:22', '2025-06-03 01:22:23'),
+(26, 'attendance_required', '75', 'integer', 'Pourcentage d\'assiduité requis', 0, '75', '[\"integer\",\"min:0\",\"max:100\"]', 1, 0, 'academic', 5, 1, 1, 'academic', '2025-06-02 19:42:22', '2025-06-03 01:22:23'),
+(27, 'late_arrival_tolerance', '15', 'integer', 'Tolérance de retard (minutes)', 0, '15', '[\"integer\",\"min:0\",\"max:60\"]', 1, 0, 'attendance', 2, 1, 1, 'attendance', '2025-06-02 19:42:22', '2025-06-03 01:22:23'),
+(33, 'school_address', 'BP 2541 Yamoussoukro', 'string', 'Adresse de l\'établissement', 0, '', '[\"nullable\",\"string\",\"max:500\"]', 1, 0, 'establishment', 3, 1, 3, 'establishment', '2025-06-03 01:22:22', '2025-06-03 16:34:55'),
+(34, 'school_city', 'Abidjan', 'string', 'Ville de l\'établissement', 0, 'Yamoussoukro', '[\"nullable\",\"string\",\"max:100\"]', 1, 0, 'establishment', 4, 1, 3, 'establishment', '2025-06-03 01:22:22', '2025-06-03 16:57:55'),
+(35, 'school_phone', '30 64 39 93', 'string', 'Téléphone de l\'établissement', 0, '', '[\"nullable\",\"string\",\"max:20\"]', 1, 0, 'establishment', 6, 1, 3, 'establishment', '2025-06-03 01:22:22', '2025-06-03 16:46:22'),
+(36, 'school_email', 'esbtpabidjan@esbtp-ci.net', 'string', 'Email de l\'établissement', 0, '', '[\"nullable\",\"email\",\"max:255\"]', 1, 0, 'establishment', 7, 1, 3, 'establishment', '2025-06-03 01:22:22', '2025-06-03 16:34:55'),
+(37, 'director_name', 'Directeur Général', 'string', 'Nom du directeur', 1, '', '[\"required\",\"string\",\"max:255\"]', 1, 0, 'establishment', 8, 1, 3, 'establishment', '2025-06-03 01:22:23', '2025-06-03 16:46:22'),
+(39, 'attendance_tracking_enabled', '1', 'boolean', 'Activer le suivi d\'assiduité', 0, '1', '[\"boolean\"]', 1, 0, 'attendance', 1, 1, 1, 'attendance', '2025-06-03 01:22:23', '2025-06-03 11:27:36'),
+(40, 'absence_justification_required', '1', 'boolean', 'Justification d\'absence requise', 0, '1', '[\"boolean\"]', 1, 0, 'attendance', 3, 1, 1, 'attendance', '2025-06-03 01:22:23', '2025-06-03 11:27:36'),
+(41, 'bulletin_show_absences', '1', 'string', 'Afficher le tableau des absences', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 24, 1, 1, 'bulletin', '2025-06-03 01:22:23', '2025-06-03 09:41:13'),
+(42, 'bulletin_show_attendance_rate', '1', 'boolean', 'Afficher le taux d\'assiduité sur le bulletin', 0, '1', '[\"boolean\"]', 1, 0, 'bulletin', 2, 1, 1, 'bulletin', '2025-06-03 01:22:23', '2025-06-03 09:21:33'),
+(43, 'bulletin_show_teacher_comments', '1', 'boolean', 'Afficher les commentaires des enseignants', 0, '1', '[\"boolean\"]', 1, 0, 'bulletin', 3, 1, 1, 'bulletin', '2025-06-03 01:22:23', '2025-06-03 09:21:33'),
+(44, 'pdf_header_height', '30', 'integer', 'Hauteur de l\'en-tête PDF (mm)', 0, '30', '[\"integer\",\"min:10\",\"max:100\"]', 1, 0, 'pdf', 8, 1, 1, 'pdf', '2025-06-03 09:21:32', '2025-06-03 09:21:32'),
+(45, 'pdf_footer_height', '20', 'integer', 'Hauteur du pied de page PDF (mm)', 0, '20', '[\"integer\",\"min:10\",\"max:50\"]', 1, 0, 'pdf', 9, 1, 1, 'pdf', '2025-06-03 09:21:32', '2025-06-03 09:21:32'),
+(46, 'app_timezone', 'Africa/Abidjan', 'string', 'Fuseau horaire de l\'application', 0, 'Africa/Abidjan', '[\"string\"]', 1, 0, 'general', 3, 1, 1, 'general', '2025-06-03 09:21:33', '2025-06-03 09:21:33'),
+(47, 'app_locale', 'fr', 'string', 'Langue de l\'application', 0, 'fr', '[\"in:fr,en\"]', 1, 0, 'general', 4, 1, 1, 'general', '2025-06-03 09:21:33', '2025-06-03 09:21:33'),
+(48, 'maintenance_mode', '0', 'boolean', 'Mode maintenance activé', 0, '0', '[\"boolean\"]', 1, 0, 'general', 5, 1, 1, 'general', '2025-06-03 09:21:33', '2025-06-03 11:27:36'),
+(49, 'bulletin_show_header', '1', 'string', 'Afficher l\'en-tête du bulletin', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 1, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(50, 'bulletin_show_logo', '1', 'string', 'Afficher le logo de l\'école', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 2, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(51, 'bulletin_show_school_info', '1', 'string', 'Afficher les informations de l\'école', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 3, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(52, 'bulletin_show_republic_info', '1', 'string', 'Afficher les informations de la République', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 4, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(53, 'bulletin_show_ministry_info', '1', 'string', 'Afficher les informations du ministère', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 5, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(54, 'bulletin_show_edition_date', '1', 'string', 'Afficher la date d\'édition', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 6, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(55, 'bulletin_show_cycle_info', '1', 'string', 'Afficher les informations du cycle (BTS)', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 7, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(56, 'bulletin_show_student_info', '1', 'string', 'Afficher les informations de l\'étudiant', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 8, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(57, 'bulletin_show_matricule', '1', 'string', 'Afficher le matricule', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 9, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(58, 'bulletin_show_birth_date', '1', 'string', 'Afficher la date de naissance', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 10, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(59, 'bulletin_show_redoublant', '1', 'string', 'Afficher le statut redoublant', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 11, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(60, 'bulletin_show_class_info', '1', 'string', 'Afficher les informations de classe', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 12, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(61, 'bulletin_show_effectif', '1', 'string', 'Afficher l\'effectif de la classe', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 13, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(62, 'bulletin_show_subjects_table', '1', 'string', 'Afficher le tableau des matières', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 14, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(63, 'bulletin_show_general_subjects', '1', 'string', 'Afficher les matières d\'enseignement général', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 15, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(64, 'bulletin_show_technical_subjects', '1', 'string', 'Afficher les matières d\'enseignement technique', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 16, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(65, 'bulletin_show_subject_average', '1', 'string', 'Afficher la moyenne par matière', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 17, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(66, 'bulletin_show_coefficient', '1', 'string', 'Afficher les coefficients', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 18, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(67, 'bulletin_show_weighted_average', '1', 'string', 'Afficher la moyenne pondérée', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 19, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(68, 'bulletin_show_rank_per_subject', '1', 'string', 'Afficher le rang par matière', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 20, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(69, 'bulletin_show_teachers', '1', 'string', 'Afficher les professeurs', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 21, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(70, 'bulletin_show_appreciations', '1', 'string', 'Afficher les appréciations', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 22, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(71, 'bulletin_show_section_averages', '1', 'string', 'Afficher les moyennes par section', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 23, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(72, 'bulletin_show_justified_absences', '1', 'string', 'Afficher les absences justifiées', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 25, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(73, 'bulletin_show_unjustified_absences', '1', 'string', 'Afficher les absences non justifiées', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 26, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(74, 'bulletin_show_results_section', '1', 'string', 'Afficher la section résultats', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 27, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(75, 'bulletin_show_raw_average', '1', 'string', 'Afficher la moyenne brute', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 28, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(76, 'bulletin_show_attendance_note', '1', 'string', 'Afficher la note d\'assiduité', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 29, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(77, 'bulletin_show_semester_average', '1', 'string', 'Afficher la moyenne semestrielle', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 30, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(78, 'bulletin_show_student_rank', '1', 'string', 'Afficher le rang de l\'étudiant', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 31, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(79, 'bulletin_show_mentions', '1', 'string', 'Afficher les mentions', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 32, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(80, 'bulletin_show_felicitation', '1', 'string', 'Afficher félicitation', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 33, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(81, 'bulletin_show_encouragement', '1', 'string', 'Afficher encouragement', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 34, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(82, 'bulletin_show_honor_roll', '1', 'string', 'Afficher tableau d\'honneur', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 35, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(83, 'bulletin_show_work_warning', '1', 'string', 'Afficher avertissement travail', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 36, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(84, 'bulletin_show_conduct_blame', '1', 'string', 'Afficher blâme conduite', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 37, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(85, 'bulletin_show_statistics', '1', 'string', 'Afficher les statistiques', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 38, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(86, 'bulletin_show_highest_average', '1', 'string', 'Afficher la plus forte moyenne', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 39, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(87, 'bulletin_show_lowest_average', '1', 'string', 'Afficher la plus faible moyenne', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 40, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(88, 'bulletin_show_class_average', '1', 'string', 'Afficher la moyenne de classe', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 41, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(89, 'bulletin_show_council_decision', '1', 'string', 'Afficher la décision du conseil de classe', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 42, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(90, 'bulletin_show_signature', '1', 'string', 'Afficher la signature', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 43, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(91, 'bulletin_show_director_signature', '1', 'string', 'Afficher la signature de la directrice', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 44, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(92, 'bulletin_auto_calculate_rank', '1', 'string', 'Calculer automatiquement le rang', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 45, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(93, 'bulletin_auto_calculate_mention', '1', 'string', 'Calculer automatiquement la mention', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 46, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(94, 'bulletin_auto_calculate_attendance', '1', 'string', 'Calculer automatiquement l\'assiduité', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 47, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(95, 'bulletin_require_teacher_assignment', '1', 'string', 'Exiger l\'assignation des professeurs', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 48, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(96, 'bulletin_require_subject_config', '1', 'string', 'Exiger la configuration des matières', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 49, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(97, 'bulletin_validate_averages', '1', 'string', 'Valider les moyennes avant génération', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 50, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(98, 'bulletin_felicitation_threshold', '16', 'string', 'Seuil pour félicitation', 0, '16', '[\"string\"]', 1, 0, 'bulletin', 51, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(99, 'bulletin_encouragement_threshold', '14', 'string', 'Seuil pour encouragement', 0, '14', '[\"string\"]', 1, 0, 'bulletin', 52, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(100, 'bulletin_honor_roll_threshold', '12', 'string', 'Seuil pour tableau d\'honneur', 0, '12', '[\"string\"]', 1, 0, 'bulletin', 53, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(101, 'bulletin_work_warning_threshold', '8', 'string', 'Seuil pour avertissement travail', 0, '8', '[\"string\"]', 1, 0, 'bulletin', 54, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(102, 'bulletin_school_name_custom', '', 'string', 'Nom personnalisé de l\'école (vide = utiliser config)', 0, '', '[\"string\"]', 1, 0, 'bulletin', 55, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(103, 'bulletin_republic_text', 'République de Côte d\'Ivoire', 'string', 'Texte de la République', 0, 'République de Côte d\'Ivoire', '[\"string\"]', 1, 0, 'bulletin', 56, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(104, 'bulletin_union_text', 'Union-Discipline-Travail', 'string', 'Devise nationale', 0, 'Union-Discipline-Travail', '[\"string\"]', 1, 0, 'bulletin', 57, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(105, 'bulletin_ministry_text', 'Ministère de l\'Enseignement Supérieur et de la Recherche Scientifique', 'string', 'Nom du ministère', 0, 'Ministère de l\'Enseignement Supérieur et de la Recherche Scientifique', '[\"string\"]', 1, 0, 'bulletin', 58, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(106, 'bulletin_cycle_text', 'Brevet de Technicien Supérieur', 'string', 'Nom du cycle', 0, 'Brevet de Technicien Supérieur', '[\"string\"]', 1, 0, 'bulletin', 59, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(107, 'bulletin_cycle_abbreviation', 'BTS', 'string', 'Abréviation du cycle', 0, 'BTS', '[\"string\"]', 1, 0, 'bulletin', 60, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(108, 'bulletin_show_print_button', '1', 'string', 'Afficher le bouton d\'impression', 0, '1', '[\"string\"]', 1, 0, 'bulletin', 61, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(109, 'bulletin_paper_format', 'A4', 'string', 'Format du papier (A4, A3, Letter)', 0, 'A4', '[\"string\"]', 1, 0, 'bulletin', 62, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(110, 'bulletin_orientation', 'portrait', 'string', 'Orientation (portrait, landscape)', 0, 'portrait', '[\"string\"]', 1, 0, 'bulletin', 63, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(111, 'bulletin_font_size', '11', 'string', 'Taille de police (px)', 0, '11', '[\"string\"]', 1, 0, 'bulletin', 64, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(112, 'bulletin_dpi', '150', 'string', 'Résolution DPI pour PDF', 0, '150', '[\"string\"]', 1, 0, 'bulletin', 65, 1, 1, 'bulletin', '2025-06-03 09:41:13', '2025-06-03 09:41:13'),
+(113, 'establishment.school_name', '', 'string', NULL, 0, NULL, NULL, 1, 0, 'establishment', 0, NULL, 1, 'general', '2025-06-03 14:16:27', '2025-06-03 15:09:29'),
+(114, 'establishment.director_name', 'Dr. Test DIRECTEUR', 'string', NULL, 0, NULL, NULL, 1, 0, 'establishment', 0, NULL, 1, 'general', '2025-06-03 14:16:27', '2025-06-03 15:09:29'),
+(115, 'pdf.font_size', 'abc', 'string', NULL, 0, NULL, NULL, 1, 0, 'pdf', 0, NULL, 1, 'general', '2025-06-03 14:16:27', '2025-06-03 15:09:29'),
+(116, 'school_logo', 'images/LOGO-KLASSCI-PNG.png', 'string', 'Paramètre de l\'établissement', 1, NULL, NULL, 1, 0, 'establishment', 0, 1, NULL, 'general', '2025-06-03 16:34:55', '2025-06-03 16:34:55'),
+(117, 'pdf_header_text', '', 'string', 'Paramètre PDF', 0, NULL, NULL, 1, 0, 'pdf', 0, 1, NULL, 'general', '2025-06-03 16:34:55', '2025-06-03 16:34:55'),
+(118, 'pdf_footer_text', 'Bulletin informatisé, aucun duplicata n\'est délivré', 'string', 'Paramètre PDF', 0, NULL, NULL, 1, 0, 'pdf', 0, 1, 3, 'general', '2025-06-03 16:34:55', '2025-06-03 16:57:17'),
+(119, 'pdf_watermark', '', 'string', 'Paramètre PDF', 0, NULL, NULL, 1, 0, 'pdf', 0, 1, NULL, 'general', '2025-06-03 16:34:55', '2025-06-03 16:34:55'),
+(120, 'pdf_signature_director', '1', 'boolean', 'Paramètre PDF', 0, NULL, NULL, 1, 0, 'pdf', 0, 1, NULL, 'general', '2025-06-03 16:34:55', '2025-06-03 16:34:55'),
+(121, 'school_mobile', '07 07 79 84 85', 'string', 'Numéro de téléphone mobile/cellulaire', 0, NULL, NULL, 1, 0, 'establishment', 7, NULL, 3, 'general', '2025-06-03 16:46:41', '2025-06-03 16:57:17');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `settings_backups`
+--
+
+CREATE TABLE `settings_backups` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `backup_name` varchar(191) NOT NULL,
+  `description` text DEFAULT NULL,
+  `settings_data` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL CHECK (json_valid(`settings_data`)),
+  `backup_type` varchar(191) NOT NULL DEFAULT 'manual',
+  `status` varchar(191) NOT NULL DEFAULT 'active',
+  `backup_date` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `created_by` bigint(20) UNSIGNED NOT NULL,
+  `restored_by` bigint(20) UNSIGNED DEFAULT NULL,
+  `restored_at` timestamp NULL DEFAULT NULL,
+  `restore_notes` text DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `settings_backups`
+--
+
+INSERT INTO `settings_backups` (`id`, `backup_name`, `description`, `settings_data`, `backup_type`, `status`, `backup_date`, `created_by`, `restored_by`, `restored_at`, `restore_notes`, `created_at`, `updated_at`) VALUES
+(4, 'Auto Backup - 2025-06-03 14:40:12', 'Sauvegarde automatique avant modification', '[{\"id\":1,\"key\":\"school_name\",\"value\":\"ESBTP-yAKRO\",\"type\":\"string\",\"description\":\"Nom de l\'\\u00e9tablissement\",\"is_required\":true,\"default_value\":\"ESBTP-yAKRO\",\"validation_rules\":[\"required\",\"string\",\"max:255\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":2,\"key\":\"school_acronym\",\"value\":\"ESBTP\",\"type\":\"string\",\"description\":\"Acronyme de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"ESBTP\",\"validation_rules\":[\"nullable\",\"string\",\"max:10\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":3,\"key\":\"school_country\",\"value\":\"C\\u00f4te d\'Ivoire\",\"type\":\"string\",\"description\":\"Pays de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"C\\u00f4te d\'Ivoire\",\"validation_rules\":[\"nullable\",\"string\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":4,\"key\":\"director_title\",\"value\":\"Directeur G\\u00e9n\\u00e9ral\",\"type\":\"string\",\"description\":\"Titre du directeur\",\"is_required\":false,\"default_value\":\"Directeur G\\u00e9n\\u00e9ral\",\"validation_rules\":[\"nullable\",\"string\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":9,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":5,\"key\":\"pdf_show_logo\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Afficher le logo sur les PDF\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":6,\"key\":\"pdf_logo_position\",\"value\":\"left\",\"type\":\"string\",\"description\":\"Position du logo sur les PDF\",\"is_required\":false,\"default_value\":\"left\",\"validation_rules\":[\"in:left,center,right\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":7,\"key\":\"pdf_font_size\",\"value\":\"12\",\"type\":\"integer\",\"description\":\"Taille de police pour les PDF\",\"is_required\":false,\"default_value\":\"12\",\"validation_rules\":[\"integer\",\"min:8\",\"max:20\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":8,\"key\":\"pdf_margin_top\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"Marge sup\\u00e9rieure des PDF (mm)\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":9,\"key\":\"pdf_margin_bottom\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"Marge inf\\u00e9rieure des PDF (mm)\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":10,\"key\":\"pdf_margin_left\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Marge gauche des PDF (mm)\",\"is_required\":false,\"default_value\":\"15\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":11,\"key\":\"pdf_margin_right\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Marge droite des PDF (mm)\",\"is_required\":false,\"default_value\":\"15\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":7,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":12,\"key\":\"theme_primary_color\",\"value\":\"#007bff\",\"type\":\"string\",\"description\":\"Couleur primaire du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#007bff\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":13,\"key\":\"theme_secondary_color\",\"value\":\"#6c757d\",\"type\":\"string\",\"description\":\"Couleur secondaire du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#6c757d\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":14,\"key\":\"theme_success_color\",\"value\":\"#28a745\",\"type\":\"string\",\"description\":\"Couleur de succ\\u00e8s du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#28a745\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":15,\"key\":\"theme_danger_color\",\"value\":\"#dc3545\",\"type\":\"string\",\"description\":\"Couleur de danger du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#dc3545\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":16,\"key\":\"theme_warning_color\",\"value\":\"#ffc107\",\"type\":\"string\",\"description\":\"Couleur d\'avertissement du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#ffc107\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":17,\"key\":\"theme_info_color\",\"value\":\"#17a2b8\",\"type\":\"string\",\"description\":\"Couleur d\'information du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#17a2b8\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":18,\"key\":\"sidebar_color\",\"value\":\"#343a40\",\"type\":\"string\",\"description\":\"Couleur de la barre lat\\u00e9rale\",\"is_required\":false,\"default_value\":\"#343a40\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":19,\"key\":\"navbar_color\",\"value\":\"#ffffff\",\"type\":\"string\",\"description\":\"Couleur de la barre de navigation\",\"is_required\":false,\"default_value\":\"#ffffff\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":20,\"key\":\"background_color\",\"value\":\"#f8f9fa\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:11:04.000000Z\"},{\"id\":21,\"key\":\"text_color\",\"value\":\"#212529\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:11:04.000000Z\"},{\"id\":22,\"key\":\"link_color\",\"value\":\"#007bff\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:11:04.000000Z\"},{\"id\":23,\"key\":\"semester_system\",\"value\":\"trimester\",\"type\":\"string\",\"description\":\"Syst\\u00e8me de semestres\",\"is_required\":false,\"default_value\":\"trimester\",\"validation_rules\":[\"in:semester,trimester,quarter\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":24,\"key\":\"grade_scale\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"\\u00c9chelle de notation\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"in:20,100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":25,\"key\":\"passing_grade\",\"value\":\"10\",\"type\":\"integer\",\"description\":\"Note de passage\",\"is_required\":false,\"default_value\":\"10\",\"validation_rules\":[\"numeric\",\"min:0\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":26,\"key\":\"attendance_required\",\"value\":\"75\",\"type\":\"integer\",\"description\":\"Pourcentage d\'assiduit\\u00e9 requis\",\"is_required\":false,\"default_value\":\"75\",\"validation_rules\":[\"integer\",\"min:0\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":27,\"key\":\"late_arrival_tolerance\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Tol\\u00e9rance de retard (minutes)\",\"is_required\":false,\"default_value\":\"15\",\"validation_rules\":[\"integer\",\"min:0\",\"max:60\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"attendance\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"attendance\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":28,\"key\":\"email_notifications\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer les notifications par email\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":29,\"key\":\"sms_notifications\",\"value\":\"0\",\"type\":\"boolean\",\"description\":\"Activer les notifications SMS\",\"is_required\":false,\"default_value\":\"0\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":30,\"key\":\"parent_notifications\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer les notifications aux parents\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":31,\"key\":\"teacher_notifications\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer les notifications aux enseignants\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":32,\"key\":\"admin_notifications\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer les notifications aux administrateurs\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":33,\"key\":\"school_address\",\"value\":\"\",\"type\":\"string\",\"description\":\"Adresse de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"nullable\",\"string\",\"max:500\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":34,\"key\":\"school_city\",\"value\":\"Yamoussoukro\",\"type\":\"string\",\"description\":\"Ville de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"Yamoussoukro\",\"validation_rules\":[\"nullable\",\"string\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":35,\"key\":\"school_phone\",\"value\":\"\",\"type\":\"string\",\"description\":\"T\\u00e9l\\u00e9phone de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"nullable\",\"string\",\"max:20\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":36,\"key\":\"school_email\",\"value\":\"\",\"type\":\"string\",\"description\":\"Email de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"nullable\",\"email\",\"max:255\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":7,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":37,\"key\":\"director_name\",\"value\":\"\",\"type\":\"string\",\"description\":\"Nom du directeur\",\"is_required\":true,\"default_value\":\"\",\"validation_rules\":[\"required\",\"string\",\"max:255\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":8,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":38,\"key\":\"current_academic_year\",\"value\":\"\",\"type\":\"string\",\"description\":\"Ann\\u00e9e universitaire actuelle\",\"is_required\":true,\"default_value\":\"\",\"validation_rules\":[\"required\",\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":39,\"key\":\"attendance_tracking_enabled\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer le suivi d\'assiduit\\u00e9\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"attendance\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"attendance\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":40,\"key\":\"absence_justification_required\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Justification d\'absence requise\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"attendance\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"attendance\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":41,\"key\":\"bulletin_show_absences\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le tableau des absences\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":24,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":42,\"key\":\"bulletin_show_attendance_rate\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Afficher le taux d\'assiduit\\u00e9 sur le bulletin\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":43,\"key\":\"bulletin_show_teacher_comments\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Afficher les commentaires des enseignants\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":44,\"key\":\"pdf_header_height\",\"value\":\"30\",\"type\":\"integer\",\"description\":\"Hauteur de l\'en-t\\u00eate PDF (mm)\",\"is_required\":false,\"default_value\":\"30\",\"validation_rules\":[\"integer\",\"min:10\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":8,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-03T09:21:32.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":45,\"key\":\"pdf_footer_height\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"Hauteur du pied de page PDF (mm)\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":9,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-03T09:21:32.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":46,\"key\":\"app_timezone\",\"value\":\"Africa\\/Abidjan\",\"type\":\"string\",\"description\":\"Fuseau horaire de l\'application\",\"is_required\":false,\"default_value\":\"Africa\\/Abidjan\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T09:21:33.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":47,\"key\":\"app_locale\",\"value\":\"fr\",\"type\":\"string\",\"description\":\"Langue de l\'application\",\"is_required\":false,\"default_value\":\"fr\",\"validation_rules\":[\"in:fr,en\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T09:21:33.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":48,\"key\":\"maintenance_mode\",\"value\":\"0\",\"type\":\"boolean\",\"description\":\"Mode maintenance activ\\u00e9\",\"is_required\":false,\"default_value\":\"0\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T09:21:33.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":49,\"key\":\"bulletin_show_header\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher l\'en-t\\u00eate du bulletin\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":50,\"key\":\"bulletin_show_logo\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le logo de l\'\\u00e9cole\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":51,\"key\":\"bulletin_show_school_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de l\'\\u00e9cole\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":52,\"key\":\"bulletin_show_republic_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de la R\\u00e9publique\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":53,\"key\":\"bulletin_show_ministry_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations du minist\\u00e8re\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":54,\"key\":\"bulletin_show_edition_date\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la date d\'\\u00e9dition\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":55,\"key\":\"bulletin_show_cycle_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations du cycle (BTS)\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":7,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":56,\"key\":\"bulletin_show_student_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de l\'\\u00e9tudiant\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":8,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":57,\"key\":\"bulletin_show_matricule\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le matricule\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":9,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":58,\"key\":\"bulletin_show_birth_date\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la date de naissance\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":10,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":59,\"key\":\"bulletin_show_redoublant\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le statut redoublant\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":11,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":60,\"key\":\"bulletin_show_class_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":12,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":61,\"key\":\"bulletin_show_effectif\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher l\'effectif de la classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":13,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":62,\"key\":\"bulletin_show_subjects_table\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le tableau des mati\\u00e8res\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":14,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":63,\"key\":\"bulletin_show_general_subjects\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les mati\\u00e8res d\'enseignement g\\u00e9n\\u00e9ral\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":15,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":64,\"key\":\"bulletin_show_technical_subjects\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les mati\\u00e8res d\'enseignement technique\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":16,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":65,\"key\":\"bulletin_show_subject_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne par mati\\u00e8re\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":17,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":66,\"key\":\"bulletin_show_coefficient\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les coefficients\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":18,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":67,\"key\":\"bulletin_show_weighted_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne pond\\u00e9r\\u00e9e\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":19,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":68,\"key\":\"bulletin_show_rank_per_subject\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le rang par mati\\u00e8re\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":20,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":69,\"key\":\"bulletin_show_teachers\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les professeurs\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":21,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":70,\"key\":\"bulletin_show_appreciations\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les appr\\u00e9ciations\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":22,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":71,\"key\":\"bulletin_show_section_averages\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les moyennes par section\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":23,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":72,\"key\":\"bulletin_show_justified_absences\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les absences justifi\\u00e9es\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":25,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":73,\"key\":\"bulletin_show_unjustified_absences\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les absences non justifi\\u00e9es\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":26,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":74,\"key\":\"bulletin_show_results_section\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la section r\\u00e9sultats\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":27,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":75,\"key\":\"bulletin_show_raw_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne brute\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":28,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":76,\"key\":\"bulletin_show_attendance_note\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la note d\'assiduit\\u00e9\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":29,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":77,\"key\":\"bulletin_show_semester_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne semestrielle\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":30,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":78,\"key\":\"bulletin_show_student_rank\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le rang de l\'\\u00e9tudiant\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":31,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":79,\"key\":\"bulletin_show_mentions\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les mentions\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":32,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":80,\"key\":\"bulletin_show_felicitation\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher f\\u00e9licitation\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":33,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":81,\"key\":\"bulletin_show_encouragement\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher encouragement\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":34,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":82,\"key\":\"bulletin_show_honor_roll\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher tableau d\'honneur\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":35,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":83,\"key\":\"bulletin_show_work_warning\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher avertissement travail\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":36,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":84,\"key\":\"bulletin_show_conduct_blame\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher bl\\u00e2me conduite\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":37,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":85,\"key\":\"bulletin_show_statistics\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les statistiques\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":38,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":86,\"key\":\"bulletin_show_highest_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la plus forte moyenne\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":39,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":87,\"key\":\"bulletin_show_lowest_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la plus faible moyenne\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":40,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":88,\"key\":\"bulletin_show_class_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne de classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":41,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":89,\"key\":\"bulletin_show_council_decision\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la d\\u00e9cision du conseil de classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":42,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":90,\"key\":\"bulletin_show_signature\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la signature\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":43,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":91,\"key\":\"bulletin_show_director_signature\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la signature de la directrice\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":44,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":92,\"key\":\"bulletin_auto_calculate_rank\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Calculer automatiquement le rang\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":45,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":93,\"key\":\"bulletin_auto_calculate_mention\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Calculer automatiquement la mention\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":46,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":94,\"key\":\"bulletin_auto_calculate_attendance\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Calculer automatiquement l\'assiduit\\u00e9\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":47,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":95,\"key\":\"bulletin_require_teacher_assignment\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Exiger l\'assignation des professeurs\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":48,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":96,\"key\":\"bulletin_require_subject_config\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Exiger la configuration des mati\\u00e8res\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":49,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":97,\"key\":\"bulletin_validate_averages\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Valider les moyennes avant g\\u00e9n\\u00e9ration\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":50,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":98,\"key\":\"bulletin_felicitation_threshold\",\"value\":\"16\",\"type\":\"string\",\"description\":\"Seuil pour f\\u00e9licitation\",\"is_required\":false,\"default_value\":\"16\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":51,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":99,\"key\":\"bulletin_encouragement_threshold\",\"value\":\"14\",\"type\":\"string\",\"description\":\"Seuil pour encouragement\",\"is_required\":false,\"default_value\":\"14\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":52,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":100,\"key\":\"bulletin_honor_roll_threshold\",\"value\":\"12\",\"type\":\"string\",\"description\":\"Seuil pour tableau d\'honneur\",\"is_required\":false,\"default_value\":\"12\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":53,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":101,\"key\":\"bulletin_work_warning_threshold\",\"value\":\"8\",\"type\":\"string\",\"description\":\"Seuil pour avertissement travail\",\"is_required\":false,\"default_value\":\"8\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":54,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":102,\"key\":\"bulletin_school_name_custom\",\"value\":\"\",\"type\":\"string\",\"description\":\"Nom personnalis\\u00e9 de l\'\\u00e9cole (vide = utiliser config)\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":55,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":103,\"key\":\"bulletin_republic_text\",\"value\":\"R\\u00e9publique de C\\u00f4te d\'Ivoire\",\"type\":\"string\",\"description\":\"Texte de la R\\u00e9publique\",\"is_required\":false,\"default_value\":\"R\\u00e9publique de C\\u00f4te d\'Ivoire\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":56,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":104,\"key\":\"bulletin_union_text\",\"value\":\"Union-Discipline-Travail\",\"type\":\"string\",\"description\":\"Devise nationale\",\"is_required\":false,\"default_value\":\"Union-Discipline-Travail\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":57,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":105,\"key\":\"bulletin_ministry_text\",\"value\":\"Minist\\u00e8re de l\'Enseignement Sup\\u00e9rieur et de la Recherche Scientifique\",\"type\":\"string\",\"description\":\"Nom du minist\\u00e8re\",\"is_required\":false,\"default_value\":\"Minist\\u00e8re de l\'Enseignement Sup\\u00e9rieur et de la Recherche Scientifique\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":58,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":106,\"key\":\"bulletin_cycle_text\",\"value\":\"Brevet de Technicien Sup\\u00e9rieur\",\"type\":\"string\",\"description\":\"Nom du cycle\",\"is_required\":false,\"default_value\":\"Brevet de Technicien Sup\\u00e9rieur\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":59,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":107,\"key\":\"bulletin_cycle_abbreviation\",\"value\":\"BTS\",\"type\":\"string\",\"description\":\"Abr\\u00e9viation du cycle\",\"is_required\":false,\"default_value\":\"BTS\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":60,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":108,\"key\":\"bulletin_show_print_button\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le bouton d\'impression\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":61,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":109,\"key\":\"bulletin_paper_format\",\"value\":\"A4\",\"type\":\"string\",\"description\":\"Format du papier (A4, A3, Letter)\",\"is_required\":false,\"default_value\":\"A4\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":62,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":110,\"key\":\"bulletin_orientation\",\"value\":\"portrait\",\"type\":\"string\",\"description\":\"Orientation (portrait, landscape)\",\"is_required\":false,\"default_value\":\"portrait\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":63,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":111,\"key\":\"bulletin_font_size\",\"value\":\"11\",\"type\":\"string\",\"description\":\"Taille de police (px)\",\"is_required\":false,\"default_value\":\"11\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":64,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":112,\"key\":\"bulletin_dpi\",\"value\":\"150\",\"type\":\"string\",\"description\":\"R\\u00e9solution DPI pour PDF\",\"is_required\":false,\"default_value\":\"150\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":65,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":113,\"key\":\"establishment.school_name\",\"value\":\"ESBTP - \\u00c9cole Test\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"general\",\"created_at\":\"2025-06-03T14:16:27.000000Z\",\"updated_at\":\"2025-06-03T14:19:22.000000Z\"},{\"id\":114,\"key\":\"establishment.director_name\",\"value\":\"Dr. Jean KOUAME\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"general\",\"created_at\":\"2025-06-03T14:16:27.000000Z\",\"updated_at\":\"2025-06-03T14:18:36.000000Z\"},{\"id\":115,\"key\":\"pdf.font_size\",\"value\":\"14\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"general\",\"created_at\":\"2025-06-03T14:16:27.000000Z\",\"updated_at\":\"2025-06-03T14:18:36.000000Z\"}]', 'automatic', 'active', '2025-06-03 14:40:12', 1, NULL, NULL, NULL, '2025-06-03 14:40:12', '2025-06-03 14:40:12');
+INSERT INTO `settings_backups` (`id`, `backup_name`, `description`, `settings_data`, `backup_type`, `status`, `backup_date`, `created_by`, `restored_by`, `restored_at`, `restore_notes`, `created_at`, `updated_at`) VALUES
+(5, 'Auto Backup - 2025-06-03 14:40:13', 'Sauvegarde automatique avant modification', '[{\"id\":1,\"key\":\"school_name\",\"value\":\"Test School - 14:40:12\",\"type\":\"string\",\"description\":\"Nom de l\'\\u00e9tablissement\",\"is_required\":true,\"default_value\":\"ESBTP-yAKRO\",\"validation_rules\":[\"required\",\"string\",\"max:255\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":1,\"created_by\":1,\"updated_by\":null,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T14:40:13.000000Z\"},{\"id\":2,\"key\":\"school_acronym\",\"value\":\"ESBTP\",\"type\":\"string\",\"description\":\"Acronyme de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"ESBTP\",\"validation_rules\":[\"nullable\",\"string\",\"max:10\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":3,\"key\":\"school_country\",\"value\":\"C\\u00f4te d\'Ivoire\",\"type\":\"string\",\"description\":\"Pays de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"C\\u00f4te d\'Ivoire\",\"validation_rules\":[\"nullable\",\"string\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":4,\"key\":\"director_title\",\"value\":\"Directeur G\\u00e9n\\u00e9ral\",\"type\":\"string\",\"description\":\"Titre du directeur\",\"is_required\":false,\"default_value\":\"Directeur G\\u00e9n\\u00e9ral\",\"validation_rules\":[\"nullable\",\"string\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":9,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":5,\"key\":\"pdf_show_logo\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Afficher le logo sur les PDF\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":6,\"key\":\"pdf_logo_position\",\"value\":\"left\",\"type\":\"string\",\"description\":\"Position du logo sur les PDF\",\"is_required\":false,\"default_value\":\"left\",\"validation_rules\":[\"in:left,center,right\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":7,\"key\":\"pdf_font_size\",\"value\":\"12\",\"type\":\"integer\",\"description\":\"Taille de police pour les PDF\",\"is_required\":false,\"default_value\":\"12\",\"validation_rules\":[\"integer\",\"min:8\",\"max:20\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":8,\"key\":\"pdf_margin_top\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"Marge sup\\u00e9rieure des PDF (mm)\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":9,\"key\":\"pdf_margin_bottom\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"Marge inf\\u00e9rieure des PDF (mm)\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":10,\"key\":\"pdf_margin_left\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Marge gauche des PDF (mm)\",\"is_required\":false,\"default_value\":\"15\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":11,\"key\":\"pdf_margin_right\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Marge droite des PDF (mm)\",\"is_required\":false,\"default_value\":\"15\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":7,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":12,\"key\":\"theme_primary_color\",\"value\":\"#007bff\",\"type\":\"string\",\"description\":\"Couleur primaire du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#007bff\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":13,\"key\":\"theme_secondary_color\",\"value\":\"#6c757d\",\"type\":\"string\",\"description\":\"Couleur secondaire du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#6c757d\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":14,\"key\":\"theme_success_color\",\"value\":\"#28a745\",\"type\":\"string\",\"description\":\"Couleur de succ\\u00e8s du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#28a745\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":15,\"key\":\"theme_danger_color\",\"value\":\"#dc3545\",\"type\":\"string\",\"description\":\"Couleur de danger du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#dc3545\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":16,\"key\":\"theme_warning_color\",\"value\":\"#ffc107\",\"type\":\"string\",\"description\":\"Couleur d\'avertissement du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#ffc107\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":17,\"key\":\"theme_info_color\",\"value\":\"#17a2b8\",\"type\":\"string\",\"description\":\"Couleur d\'information du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#17a2b8\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":18,\"key\":\"sidebar_color\",\"value\":\"#343a40\",\"type\":\"string\",\"description\":\"Couleur de la barre lat\\u00e9rale\",\"is_required\":false,\"default_value\":\"#343a40\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":19,\"key\":\"navbar_color\",\"value\":\"#ffffff\",\"type\":\"string\",\"description\":\"Couleur de la barre de navigation\",\"is_required\":false,\"default_value\":\"#ffffff\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":20,\"key\":\"background_color\",\"value\":\"#f8f9fa\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:11:04.000000Z\"},{\"id\":21,\"key\":\"text_color\",\"value\":\"#212529\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:11:04.000000Z\"},{\"id\":22,\"key\":\"link_color\",\"value\":\"#007bff\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:11:04.000000Z\"},{\"id\":23,\"key\":\"semester_system\",\"value\":\"trimester\",\"type\":\"string\",\"description\":\"Syst\\u00e8me de semestres\",\"is_required\":false,\"default_value\":\"trimester\",\"validation_rules\":[\"in:semester,trimester,quarter\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":24,\"key\":\"grade_scale\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"\\u00c9chelle de notation\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"in:20,100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":25,\"key\":\"passing_grade\",\"value\":\"10\",\"type\":\"integer\",\"description\":\"Note de passage\",\"is_required\":false,\"default_value\":\"10\",\"validation_rules\":[\"numeric\",\"min:0\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":26,\"key\":\"attendance_required\",\"value\":\"75\",\"type\":\"integer\",\"description\":\"Pourcentage d\'assiduit\\u00e9 requis\",\"is_required\":false,\"default_value\":\"75\",\"validation_rules\":[\"integer\",\"min:0\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":27,\"key\":\"late_arrival_tolerance\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Tol\\u00e9rance de retard (minutes)\",\"is_required\":false,\"default_value\":\"15\",\"validation_rules\":[\"integer\",\"min:0\",\"max:60\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"attendance\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"attendance\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":28,\"key\":\"email_notifications\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer les notifications par email\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":29,\"key\":\"sms_notifications\",\"value\":\"0\",\"type\":\"boolean\",\"description\":\"Activer les notifications SMS\",\"is_required\":false,\"default_value\":\"0\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":30,\"key\":\"parent_notifications\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer les notifications aux parents\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":31,\"key\":\"teacher_notifications\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer les notifications aux enseignants\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":32,\"key\":\"admin_notifications\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer les notifications aux administrateurs\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":33,\"key\":\"school_address\",\"value\":\"\",\"type\":\"string\",\"description\":\"Adresse de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"nullable\",\"string\",\"max:500\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":34,\"key\":\"school_city\",\"value\":\"Yamoussoukro\",\"type\":\"string\",\"description\":\"Ville de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"Yamoussoukro\",\"validation_rules\":[\"nullable\",\"string\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":35,\"key\":\"school_phone\",\"value\":\"\",\"type\":\"string\",\"description\":\"T\\u00e9l\\u00e9phone de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"nullable\",\"string\",\"max:20\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":36,\"key\":\"school_email\",\"value\":\"\",\"type\":\"string\",\"description\":\"Email de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"nullable\",\"email\",\"max:255\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":7,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":37,\"key\":\"director_name\",\"value\":\"\",\"type\":\"string\",\"description\":\"Nom du directeur\",\"is_required\":true,\"default_value\":\"\",\"validation_rules\":[\"required\",\"string\",\"max:255\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":8,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":38,\"key\":\"current_academic_year\",\"value\":\"\",\"type\":\"string\",\"description\":\"Ann\\u00e9e universitaire actuelle\",\"is_required\":true,\"default_value\":\"\",\"validation_rules\":[\"required\",\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":39,\"key\":\"attendance_tracking_enabled\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer le suivi d\'assiduit\\u00e9\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"attendance\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"attendance\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":40,\"key\":\"absence_justification_required\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Justification d\'absence requise\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"attendance\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"attendance\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":41,\"key\":\"bulletin_show_absences\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le tableau des absences\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":24,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":42,\"key\":\"bulletin_show_attendance_rate\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Afficher le taux d\'assiduit\\u00e9 sur le bulletin\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":43,\"key\":\"bulletin_show_teacher_comments\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Afficher les commentaires des enseignants\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":44,\"key\":\"pdf_header_height\",\"value\":\"30\",\"type\":\"integer\",\"description\":\"Hauteur de l\'en-t\\u00eate PDF (mm)\",\"is_required\":false,\"default_value\":\"30\",\"validation_rules\":[\"integer\",\"min:10\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":8,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-03T09:21:32.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":45,\"key\":\"pdf_footer_height\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"Hauteur du pied de page PDF (mm)\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":9,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-03T09:21:32.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":46,\"key\":\"app_timezone\",\"value\":\"Africa\\/Abidjan\",\"type\":\"string\",\"description\":\"Fuseau horaire de l\'application\",\"is_required\":false,\"default_value\":\"Africa\\/Abidjan\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T09:21:33.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":47,\"key\":\"app_locale\",\"value\":\"fr\",\"type\":\"string\",\"description\":\"Langue de l\'application\",\"is_required\":false,\"default_value\":\"fr\",\"validation_rules\":[\"in:fr,en\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T09:21:33.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":48,\"key\":\"maintenance_mode\",\"value\":\"0\",\"type\":\"boolean\",\"description\":\"Mode maintenance activ\\u00e9\",\"is_required\":false,\"default_value\":\"0\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T09:21:33.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":49,\"key\":\"bulletin_show_header\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher l\'en-t\\u00eate du bulletin\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":50,\"key\":\"bulletin_show_logo\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le logo de l\'\\u00e9cole\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":51,\"key\":\"bulletin_show_school_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de l\'\\u00e9cole\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":52,\"key\":\"bulletin_show_republic_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de la R\\u00e9publique\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":53,\"key\":\"bulletin_show_ministry_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations du minist\\u00e8re\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":54,\"key\":\"bulletin_show_edition_date\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la date d\'\\u00e9dition\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":55,\"key\":\"bulletin_show_cycle_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations du cycle (BTS)\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":7,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":56,\"key\":\"bulletin_show_student_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de l\'\\u00e9tudiant\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":8,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":57,\"key\":\"bulletin_show_matricule\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le matricule\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":9,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":58,\"key\":\"bulletin_show_birth_date\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la date de naissance\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":10,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":59,\"key\":\"bulletin_show_redoublant\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le statut redoublant\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":11,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":60,\"key\":\"bulletin_show_class_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":12,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":61,\"key\":\"bulletin_show_effectif\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher l\'effectif de la classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":13,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":62,\"key\":\"bulletin_show_subjects_table\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le tableau des mati\\u00e8res\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":14,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":63,\"key\":\"bulletin_show_general_subjects\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les mati\\u00e8res d\'enseignement g\\u00e9n\\u00e9ral\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":15,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":64,\"key\":\"bulletin_show_technical_subjects\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les mati\\u00e8res d\'enseignement technique\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":16,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":65,\"key\":\"bulletin_show_subject_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne par mati\\u00e8re\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":17,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":66,\"key\":\"bulletin_show_coefficient\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les coefficients\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":18,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":67,\"key\":\"bulletin_show_weighted_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne pond\\u00e9r\\u00e9e\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":19,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":68,\"key\":\"bulletin_show_rank_per_subject\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le rang par mati\\u00e8re\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":20,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":69,\"key\":\"bulletin_show_teachers\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les professeurs\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":21,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":70,\"key\":\"bulletin_show_appreciations\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les appr\\u00e9ciations\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":22,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":71,\"key\":\"bulletin_show_section_averages\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les moyennes par section\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":23,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":72,\"key\":\"bulletin_show_justified_absences\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les absences justifi\\u00e9es\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":25,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":73,\"key\":\"bulletin_show_unjustified_absences\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les absences non justifi\\u00e9es\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":26,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":74,\"key\":\"bulletin_show_results_section\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la section r\\u00e9sultats\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":27,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":75,\"key\":\"bulletin_show_raw_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne brute\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":28,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":76,\"key\":\"bulletin_show_attendance_note\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la note d\'assiduit\\u00e9\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":29,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":77,\"key\":\"bulletin_show_semester_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne semestrielle\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":30,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":78,\"key\":\"bulletin_show_student_rank\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le rang de l\'\\u00e9tudiant\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":31,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":79,\"key\":\"bulletin_show_mentions\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les mentions\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":32,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":80,\"key\":\"bulletin_show_felicitation\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher f\\u00e9licitation\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":33,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":81,\"key\":\"bulletin_show_encouragement\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher encouragement\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":34,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":82,\"key\":\"bulletin_show_honor_roll\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher tableau d\'honneur\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":35,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":83,\"key\":\"bulletin_show_work_warning\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher avertissement travail\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":36,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":84,\"key\":\"bulletin_show_conduct_blame\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher bl\\u00e2me conduite\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":37,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":85,\"key\":\"bulletin_show_statistics\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les statistiques\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":38,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":86,\"key\":\"bulletin_show_highest_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la plus forte moyenne\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":39,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":87,\"key\":\"bulletin_show_lowest_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la plus faible moyenne\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":40,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":88,\"key\":\"bulletin_show_class_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne de classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":41,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":89,\"key\":\"bulletin_show_council_decision\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la d\\u00e9cision du conseil de classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":42,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":90,\"key\":\"bulletin_show_signature\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la signature\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":43,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":91,\"key\":\"bulletin_show_director_signature\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la signature de la directrice\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":44,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":92,\"key\":\"bulletin_auto_calculate_rank\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Calculer automatiquement le rang\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":45,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":93,\"key\":\"bulletin_auto_calculate_mention\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Calculer automatiquement la mention\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":46,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":94,\"key\":\"bulletin_auto_calculate_attendance\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Calculer automatiquement l\'assiduit\\u00e9\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":47,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":95,\"key\":\"bulletin_require_teacher_assignment\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Exiger l\'assignation des professeurs\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":48,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":96,\"key\":\"bulletin_require_subject_config\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Exiger la configuration des mati\\u00e8res\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":49,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":97,\"key\":\"bulletin_validate_averages\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Valider les moyennes avant g\\u00e9n\\u00e9ration\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":50,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":98,\"key\":\"bulletin_felicitation_threshold\",\"value\":\"16\",\"type\":\"string\",\"description\":\"Seuil pour f\\u00e9licitation\",\"is_required\":false,\"default_value\":\"16\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":51,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":99,\"key\":\"bulletin_encouragement_threshold\",\"value\":\"14\",\"type\":\"string\",\"description\":\"Seuil pour encouragement\",\"is_required\":false,\"default_value\":\"14\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":52,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":100,\"key\":\"bulletin_honor_roll_threshold\",\"value\":\"12\",\"type\":\"string\",\"description\":\"Seuil pour tableau d\'honneur\",\"is_required\":false,\"default_value\":\"12\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":53,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":101,\"key\":\"bulletin_work_warning_threshold\",\"value\":\"8\",\"type\":\"string\",\"description\":\"Seuil pour avertissement travail\",\"is_required\":false,\"default_value\":\"8\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":54,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":102,\"key\":\"bulletin_school_name_custom\",\"value\":\"\",\"type\":\"string\",\"description\":\"Nom personnalis\\u00e9 de l\'\\u00e9cole (vide = utiliser config)\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":55,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":103,\"key\":\"bulletin_republic_text\",\"value\":\"R\\u00e9publique de C\\u00f4te d\'Ivoire\",\"type\":\"string\",\"description\":\"Texte de la R\\u00e9publique\",\"is_required\":false,\"default_value\":\"R\\u00e9publique de C\\u00f4te d\'Ivoire\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":56,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":104,\"key\":\"bulletin_union_text\",\"value\":\"Union-Discipline-Travail\",\"type\":\"string\",\"description\":\"Devise nationale\",\"is_required\":false,\"default_value\":\"Union-Discipline-Travail\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":57,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":105,\"key\":\"bulletin_ministry_text\",\"value\":\"Minist\\u00e8re de l\'Enseignement Sup\\u00e9rieur et de la Recherche Scientifique\",\"type\":\"string\",\"description\":\"Nom du minist\\u00e8re\",\"is_required\":false,\"default_value\":\"Minist\\u00e8re de l\'Enseignement Sup\\u00e9rieur et de la Recherche Scientifique\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":58,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":106,\"key\":\"bulletin_cycle_text\",\"value\":\"Brevet de Technicien Sup\\u00e9rieur\",\"type\":\"string\",\"description\":\"Nom du cycle\",\"is_required\":false,\"default_value\":\"Brevet de Technicien Sup\\u00e9rieur\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":59,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":107,\"key\":\"bulletin_cycle_abbreviation\",\"value\":\"BTS\",\"type\":\"string\",\"description\":\"Abr\\u00e9viation du cycle\",\"is_required\":false,\"default_value\":\"BTS\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":60,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":108,\"key\":\"bulletin_show_print_button\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le bouton d\'impression\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":61,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":109,\"key\":\"bulletin_paper_format\",\"value\":\"A4\",\"type\":\"string\",\"description\":\"Format du papier (A4, A3, Letter)\",\"is_required\":false,\"default_value\":\"A4\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":62,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":110,\"key\":\"bulletin_orientation\",\"value\":\"portrait\",\"type\":\"string\",\"description\":\"Orientation (portrait, landscape)\",\"is_required\":false,\"default_value\":\"portrait\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":63,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":111,\"key\":\"bulletin_font_size\",\"value\":\"11\",\"type\":\"string\",\"description\":\"Taille de police (px)\",\"is_required\":false,\"default_value\":\"11\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":64,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":112,\"key\":\"bulletin_dpi\",\"value\":\"150\",\"type\":\"string\",\"description\":\"R\\u00e9solution DPI pour PDF\",\"is_required\":false,\"default_value\":\"150\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":65,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":113,\"key\":\"establishment.school_name\",\"value\":\"ESBTP - \\u00c9cole Test\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"general\",\"created_at\":\"2025-06-03T14:16:27.000000Z\",\"updated_at\":\"2025-06-03T14:19:22.000000Z\"},{\"id\":114,\"key\":\"establishment.director_name\",\"value\":\"Dr. Jean KOUAME\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"general\",\"created_at\":\"2025-06-03T14:16:27.000000Z\",\"updated_at\":\"2025-06-03T14:18:36.000000Z\"},{\"id\":115,\"key\":\"pdf.font_size\",\"value\":\"14\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"general\",\"created_at\":\"2025-06-03T14:16:27.000000Z\",\"updated_at\":\"2025-06-03T14:18:36.000000Z\"}]', 'automatic', 'active', '2025-06-03 14:40:13', 1, NULL, NULL, NULL, '2025-06-03 14:40:13', '2025-06-03 14:40:13');
+INSERT INTO `settings_backups` (`id`, `backup_name`, `description`, `settings_data`, `backup_type`, `status`, `backup_date`, `created_by`, `restored_by`, `restored_at`, `restore_notes`, `created_at`, `updated_at`) VALUES
+(9, 'Auto Backup - 2025-06-03 14:43:30', 'Sauvegarde automatique avant modification', '[{\"id\":1,\"key\":\"school_name\",\"value\":\"ESBTP-yAKRO\",\"type\":\"string\",\"description\":\"Nom de l\'\\u00e9tablissement\",\"is_required\":true,\"default_value\":\"ESBTP-yAKRO\",\"validation_rules\":[\"required\",\"string\",\"max:255\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":1,\"created_by\":1,\"updated_by\":null,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T14:40:13.000000Z\"},{\"id\":2,\"key\":\"school_acronym\",\"value\":\"ESBTP\",\"type\":\"string\",\"description\":\"Acronyme de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"ESBTP\",\"validation_rules\":[\"nullable\",\"string\",\"max:10\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":3,\"key\":\"school_country\",\"value\":\"C\\u00f4te d\'Ivoire\",\"type\":\"string\",\"description\":\"Pays de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"C\\u00f4te d\'Ivoire\",\"validation_rules\":[\"nullable\",\"string\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":4,\"key\":\"director_title\",\"value\":\"Directeur G\\u00e9n\\u00e9ral\",\"type\":\"string\",\"description\":\"Titre du directeur\",\"is_required\":false,\"default_value\":\"Directeur G\\u00e9n\\u00e9ral\",\"validation_rules\":[\"nullable\",\"string\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":9,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":5,\"key\":\"pdf_show_logo\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Afficher le logo sur les PDF\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":6,\"key\":\"pdf_logo_position\",\"value\":\"left\",\"type\":\"string\",\"description\":\"Position du logo sur les PDF\",\"is_required\":false,\"default_value\":\"left\",\"validation_rules\":[\"in:left,center,right\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":7,\"key\":\"pdf_font_size\",\"value\":\"12\",\"type\":\"integer\",\"description\":\"Taille de police pour les PDF\",\"is_required\":false,\"default_value\":\"12\",\"validation_rules\":[\"integer\",\"min:8\",\"max:20\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":8,\"key\":\"pdf_margin_top\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"Marge sup\\u00e9rieure des PDF (mm)\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":9,\"key\":\"pdf_margin_bottom\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"Marge inf\\u00e9rieure des PDF (mm)\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":10,\"key\":\"pdf_margin_left\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Marge gauche des PDF (mm)\",\"is_required\":false,\"default_value\":\"15\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":11,\"key\":\"pdf_margin_right\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Marge droite des PDF (mm)\",\"is_required\":false,\"default_value\":\"15\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":7,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":12,\"key\":\"theme_primary_color\",\"value\":\"#007bff\",\"type\":\"string\",\"description\":\"Couleur primaire du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#007bff\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":13,\"key\":\"theme_secondary_color\",\"value\":\"#6c757d\",\"type\":\"string\",\"description\":\"Couleur secondaire du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#6c757d\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":14,\"key\":\"theme_success_color\",\"value\":\"#28a745\",\"type\":\"string\",\"description\":\"Couleur de succ\\u00e8s du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#28a745\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":15,\"key\":\"theme_danger_color\",\"value\":\"#dc3545\",\"type\":\"string\",\"description\":\"Couleur de danger du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#dc3545\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":16,\"key\":\"theme_warning_color\",\"value\":\"#ffc107\",\"type\":\"string\",\"description\":\"Couleur d\'avertissement du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#ffc107\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":17,\"key\":\"theme_info_color\",\"value\":\"#17a2b8\",\"type\":\"string\",\"description\":\"Couleur d\'information du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#17a2b8\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":18,\"key\":\"sidebar_color\",\"value\":\"#343a40\",\"type\":\"string\",\"description\":\"Couleur de la barre lat\\u00e9rale\",\"is_required\":false,\"default_value\":\"#343a40\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":19,\"key\":\"navbar_color\",\"value\":\"#ffffff\",\"type\":\"string\",\"description\":\"Couleur de la barre de navigation\",\"is_required\":false,\"default_value\":\"#ffffff\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":20,\"key\":\"background_color\",\"value\":\"#f8f9fa\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:11:04.000000Z\"},{\"id\":21,\"key\":\"text_color\",\"value\":\"#212529\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:11:04.000000Z\"},{\"id\":22,\"key\":\"link_color\",\"value\":\"#007bff\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:11:04.000000Z\"},{\"id\":23,\"key\":\"semester_system\",\"value\":\"trimester\",\"type\":\"string\",\"description\":\"Syst\\u00e8me de semestres\",\"is_required\":false,\"default_value\":\"trimester\",\"validation_rules\":[\"in:semester,trimester,quarter\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":24,\"key\":\"grade_scale\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"\\u00c9chelle de notation\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"in:20,100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":25,\"key\":\"passing_grade\",\"value\":\"10\",\"type\":\"integer\",\"description\":\"Note de passage\",\"is_required\":false,\"default_value\":\"10\",\"validation_rules\":[\"numeric\",\"min:0\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":26,\"key\":\"attendance_required\",\"value\":\"75\",\"type\":\"integer\",\"description\":\"Pourcentage d\'assiduit\\u00e9 requis\",\"is_required\":false,\"default_value\":\"75\",\"validation_rules\":[\"integer\",\"min:0\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":27,\"key\":\"late_arrival_tolerance\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Tol\\u00e9rance de retard (minutes)\",\"is_required\":false,\"default_value\":\"15\",\"validation_rules\":[\"integer\",\"min:0\",\"max:60\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"attendance\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"attendance\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":28,\"key\":\"email_notifications\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer les notifications par email\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":29,\"key\":\"sms_notifications\",\"value\":\"0\",\"type\":\"boolean\",\"description\":\"Activer les notifications SMS\",\"is_required\":false,\"default_value\":\"0\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":30,\"key\":\"parent_notifications\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer les notifications aux parents\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":31,\"key\":\"teacher_notifications\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer les notifications aux enseignants\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":32,\"key\":\"admin_notifications\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer les notifications aux administrateurs\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":33,\"key\":\"school_address\",\"value\":\"\",\"type\":\"string\",\"description\":\"Adresse de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"nullable\",\"string\",\"max:500\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":34,\"key\":\"school_city\",\"value\":\"Yamoussoukro\",\"type\":\"string\",\"description\":\"Ville de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"Yamoussoukro\",\"validation_rules\":[\"nullable\",\"string\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":35,\"key\":\"school_phone\",\"value\":\"\",\"type\":\"string\",\"description\":\"T\\u00e9l\\u00e9phone de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"nullable\",\"string\",\"max:20\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":36,\"key\":\"school_email\",\"value\":\"\",\"type\":\"string\",\"description\":\"Email de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"nullable\",\"email\",\"max:255\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":7,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":37,\"key\":\"director_name\",\"value\":\"\",\"type\":\"string\",\"description\":\"Nom du directeur\",\"is_required\":true,\"default_value\":\"\",\"validation_rules\":[\"required\",\"string\",\"max:255\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":8,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":38,\"key\":\"current_academic_year\",\"value\":\"\",\"type\":\"string\",\"description\":\"Ann\\u00e9e universitaire actuelle\",\"is_required\":true,\"default_value\":\"\",\"validation_rules\":[\"required\",\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":39,\"key\":\"attendance_tracking_enabled\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer le suivi d\'assiduit\\u00e9\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"attendance\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"attendance\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":40,\"key\":\"absence_justification_required\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Justification d\'absence requise\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"attendance\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"attendance\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":41,\"key\":\"bulletin_show_absences\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le tableau des absences\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":24,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":42,\"key\":\"bulletin_show_attendance_rate\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Afficher le taux d\'assiduit\\u00e9 sur le bulletin\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":43,\"key\":\"bulletin_show_teacher_comments\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Afficher les commentaires des enseignants\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":44,\"key\":\"pdf_header_height\",\"value\":\"30\",\"type\":\"integer\",\"description\":\"Hauteur de l\'en-t\\u00eate PDF (mm)\",\"is_required\":false,\"default_value\":\"30\",\"validation_rules\":[\"integer\",\"min:10\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":8,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-03T09:21:32.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":45,\"key\":\"pdf_footer_height\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"Hauteur du pied de page PDF (mm)\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":9,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-03T09:21:32.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":46,\"key\":\"app_timezone\",\"value\":\"Africa\\/Abidjan\",\"type\":\"string\",\"description\":\"Fuseau horaire de l\'application\",\"is_required\":false,\"default_value\":\"Africa\\/Abidjan\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T09:21:33.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":47,\"key\":\"app_locale\",\"value\":\"fr\",\"type\":\"string\",\"description\":\"Langue de l\'application\",\"is_required\":false,\"default_value\":\"fr\",\"validation_rules\":[\"in:fr,en\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T09:21:33.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":48,\"key\":\"maintenance_mode\",\"value\":\"0\",\"type\":\"boolean\",\"description\":\"Mode maintenance activ\\u00e9\",\"is_required\":false,\"default_value\":\"0\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T09:21:33.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":49,\"key\":\"bulletin_show_header\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher l\'en-t\\u00eate du bulletin\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":50,\"key\":\"bulletin_show_logo\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le logo de l\'\\u00e9cole\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":51,\"key\":\"bulletin_show_school_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de l\'\\u00e9cole\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":52,\"key\":\"bulletin_show_republic_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de la R\\u00e9publique\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":53,\"key\":\"bulletin_show_ministry_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations du minist\\u00e8re\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":54,\"key\":\"bulletin_show_edition_date\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la date d\'\\u00e9dition\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":55,\"key\":\"bulletin_show_cycle_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations du cycle (BTS)\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":7,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":56,\"key\":\"bulletin_show_student_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de l\'\\u00e9tudiant\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":8,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":57,\"key\":\"bulletin_show_matricule\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le matricule\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":9,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":58,\"key\":\"bulletin_show_birth_date\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la date de naissance\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":10,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":59,\"key\":\"bulletin_show_redoublant\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le statut redoublant\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":11,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":60,\"key\":\"bulletin_show_class_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":12,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":61,\"key\":\"bulletin_show_effectif\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher l\'effectif de la classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":13,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":62,\"key\":\"bulletin_show_subjects_table\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le tableau des mati\\u00e8res\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":14,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":63,\"key\":\"bulletin_show_general_subjects\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les mati\\u00e8res d\'enseignement g\\u00e9n\\u00e9ral\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":15,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":64,\"key\":\"bulletin_show_technical_subjects\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les mati\\u00e8res d\'enseignement technique\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":16,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":65,\"key\":\"bulletin_show_subject_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne par mati\\u00e8re\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":17,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":66,\"key\":\"bulletin_show_coefficient\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les coefficients\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":18,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":67,\"key\":\"bulletin_show_weighted_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne pond\\u00e9r\\u00e9e\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":19,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":68,\"key\":\"bulletin_show_rank_per_subject\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le rang par mati\\u00e8re\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":20,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":69,\"key\":\"bulletin_show_teachers\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les professeurs\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":21,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":70,\"key\":\"bulletin_show_appreciations\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les appr\\u00e9ciations\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":22,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":71,\"key\":\"bulletin_show_section_averages\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les moyennes par section\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":23,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":72,\"key\":\"bulletin_show_justified_absences\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les absences justifi\\u00e9es\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":25,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":73,\"key\":\"bulletin_show_unjustified_absences\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les absences non justifi\\u00e9es\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":26,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":74,\"key\":\"bulletin_show_results_section\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la section r\\u00e9sultats\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":27,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":75,\"key\":\"bulletin_show_raw_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne brute\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":28,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":76,\"key\":\"bulletin_show_attendance_note\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la note d\'assiduit\\u00e9\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":29,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":77,\"key\":\"bulletin_show_semester_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne semestrielle\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":30,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":78,\"key\":\"bulletin_show_student_rank\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le rang de l\'\\u00e9tudiant\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":31,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":79,\"key\":\"bulletin_show_mentions\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les mentions\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":32,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":80,\"key\":\"bulletin_show_felicitation\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher f\\u00e9licitation\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":33,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":81,\"key\":\"bulletin_show_encouragement\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher encouragement\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":34,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":82,\"key\":\"bulletin_show_honor_roll\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher tableau d\'honneur\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":35,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":83,\"key\":\"bulletin_show_work_warning\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher avertissement travail\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":36,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":84,\"key\":\"bulletin_show_conduct_blame\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher bl\\u00e2me conduite\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":37,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":85,\"key\":\"bulletin_show_statistics\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les statistiques\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":38,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":86,\"key\":\"bulletin_show_highest_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la plus forte moyenne\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":39,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":87,\"key\":\"bulletin_show_lowest_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la plus faible moyenne\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":40,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":88,\"key\":\"bulletin_show_class_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne de classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":41,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":89,\"key\":\"bulletin_show_council_decision\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la d\\u00e9cision du conseil de classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":42,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":90,\"key\":\"bulletin_show_signature\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la signature\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":43,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":91,\"key\":\"bulletin_show_director_signature\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la signature de la directrice\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":44,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":92,\"key\":\"bulletin_auto_calculate_rank\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Calculer automatiquement le rang\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":45,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":93,\"key\":\"bulletin_auto_calculate_mention\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Calculer automatiquement la mention\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":46,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":94,\"key\":\"bulletin_auto_calculate_attendance\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Calculer automatiquement l\'assiduit\\u00e9\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":47,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":95,\"key\":\"bulletin_require_teacher_assignment\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Exiger l\'assignation des professeurs\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":48,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":96,\"key\":\"bulletin_require_subject_config\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Exiger la configuration des mati\\u00e8res\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":49,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":97,\"key\":\"bulletin_validate_averages\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Valider les moyennes avant g\\u00e9n\\u00e9ration\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":50,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":98,\"key\":\"bulletin_felicitation_threshold\",\"value\":\"16\",\"type\":\"string\",\"description\":\"Seuil pour f\\u00e9licitation\",\"is_required\":false,\"default_value\":\"16\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":51,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":99,\"key\":\"bulletin_encouragement_threshold\",\"value\":\"14\",\"type\":\"string\",\"description\":\"Seuil pour encouragement\",\"is_required\":false,\"default_value\":\"14\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":52,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":100,\"key\":\"bulletin_honor_roll_threshold\",\"value\":\"12\",\"type\":\"string\",\"description\":\"Seuil pour tableau d\'honneur\",\"is_required\":false,\"default_value\":\"12\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":53,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":101,\"key\":\"bulletin_work_warning_threshold\",\"value\":\"8\",\"type\":\"string\",\"description\":\"Seuil pour avertissement travail\",\"is_required\":false,\"default_value\":\"8\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":54,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":102,\"key\":\"bulletin_school_name_custom\",\"value\":\"\",\"type\":\"string\",\"description\":\"Nom personnalis\\u00e9 de l\'\\u00e9cole (vide = utiliser config)\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":55,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":103,\"key\":\"bulletin_republic_text\",\"value\":\"R\\u00e9publique de C\\u00f4te d\'Ivoire\",\"type\":\"string\",\"description\":\"Texte de la R\\u00e9publique\",\"is_required\":false,\"default_value\":\"R\\u00e9publique de C\\u00f4te d\'Ivoire\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":56,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":104,\"key\":\"bulletin_union_text\",\"value\":\"Union-Discipline-Travail\",\"type\":\"string\",\"description\":\"Devise nationale\",\"is_required\":false,\"default_value\":\"Union-Discipline-Travail\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":57,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":105,\"key\":\"bulletin_ministry_text\",\"value\":\"Minist\\u00e8re de l\'Enseignement Sup\\u00e9rieur et de la Recherche Scientifique\",\"type\":\"string\",\"description\":\"Nom du minist\\u00e8re\",\"is_required\":false,\"default_value\":\"Minist\\u00e8re de l\'Enseignement Sup\\u00e9rieur et de la Recherche Scientifique\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":58,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":106,\"key\":\"bulletin_cycle_text\",\"value\":\"Brevet de Technicien Sup\\u00e9rieur\",\"type\":\"string\",\"description\":\"Nom du cycle\",\"is_required\":false,\"default_value\":\"Brevet de Technicien Sup\\u00e9rieur\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":59,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":107,\"key\":\"bulletin_cycle_abbreviation\",\"value\":\"BTS\",\"type\":\"string\",\"description\":\"Abr\\u00e9viation du cycle\",\"is_required\":false,\"default_value\":\"BTS\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":60,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":108,\"key\":\"bulletin_show_print_button\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le bouton d\'impression\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":61,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":109,\"key\":\"bulletin_paper_format\",\"value\":\"A4\",\"type\":\"string\",\"description\":\"Format du papier (A4, A3, Letter)\",\"is_required\":false,\"default_value\":\"A4\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":62,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":110,\"key\":\"bulletin_orientation\",\"value\":\"portrait\",\"type\":\"string\",\"description\":\"Orientation (portrait, landscape)\",\"is_required\":false,\"default_value\":\"portrait\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":63,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":111,\"key\":\"bulletin_font_size\",\"value\":\"11\",\"type\":\"string\",\"description\":\"Taille de police (px)\",\"is_required\":false,\"default_value\":\"11\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":64,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":112,\"key\":\"bulletin_dpi\",\"value\":\"150\",\"type\":\"string\",\"description\":\"R\\u00e9solution DPI pour PDF\",\"is_required\":false,\"default_value\":\"150\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":65,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":113,\"key\":\"establishment.school_name\",\"value\":\"ESBTP - \\u00c9cole Test\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"general\",\"created_at\":\"2025-06-03T14:16:27.000000Z\",\"updated_at\":\"2025-06-03T14:19:22.000000Z\"},{\"id\":114,\"key\":\"establishment.director_name\",\"value\":\"Dr. Jean KOUAME\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"general\",\"created_at\":\"2025-06-03T14:16:27.000000Z\",\"updated_at\":\"2025-06-03T14:18:36.000000Z\"},{\"id\":115,\"key\":\"pdf.font_size\",\"value\":\"14\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"general\",\"created_at\":\"2025-06-03T14:16:27.000000Z\",\"updated_at\":\"2025-06-03T14:18:36.000000Z\"}]', 'automatic', 'active', '2025-06-03 14:43:30', 1, NULL, NULL, NULL, '2025-06-03 14:43:30', '2025-06-03 14:43:30');
+INSERT INTO `settings_backups` (`id`, `backup_name`, `description`, `settings_data`, `backup_type`, `status`, `backup_date`, `created_by`, `restored_by`, `restored_at`, `restore_notes`, `created_at`, `updated_at`) VALUES
+(10, 'Auto Backup - 2025-06-03 14:43:30', 'Sauvegarde automatique avant modification', '[{\"id\":1,\"key\":\"school_name\",\"value\":\"Test School - 14:43:30\",\"type\":\"string\",\"description\":\"Nom de l\'\\u00e9tablissement\",\"is_required\":true,\"default_value\":\"ESBTP-yAKRO\",\"validation_rules\":[\"required\",\"string\",\"max:255\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":1,\"created_by\":1,\"updated_by\":null,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T14:43:30.000000Z\"},{\"id\":2,\"key\":\"school_acronym\",\"value\":\"ESBTP\",\"type\":\"string\",\"description\":\"Acronyme de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"ESBTP\",\"validation_rules\":[\"nullable\",\"string\",\"max:10\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":3,\"key\":\"school_country\",\"value\":\"C\\u00f4te d\'Ivoire\",\"type\":\"string\",\"description\":\"Pays de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"C\\u00f4te d\'Ivoire\",\"validation_rules\":[\"nullable\",\"string\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":4,\"key\":\"director_title\",\"value\":\"Directeur G\\u00e9n\\u00e9ral\",\"type\":\"string\",\"description\":\"Titre du directeur\",\"is_required\":false,\"default_value\":\"Directeur G\\u00e9n\\u00e9ral\",\"validation_rules\":[\"nullable\",\"string\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":9,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":5,\"key\":\"pdf_show_logo\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Afficher le logo sur les PDF\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":6,\"key\":\"pdf_logo_position\",\"value\":\"left\",\"type\":\"string\",\"description\":\"Position du logo sur les PDF\",\"is_required\":false,\"default_value\":\"left\",\"validation_rules\":[\"in:left,center,right\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":7,\"key\":\"pdf_font_size\",\"value\":\"12\",\"type\":\"integer\",\"description\":\"Taille de police pour les PDF\",\"is_required\":false,\"default_value\":\"12\",\"validation_rules\":[\"integer\",\"min:8\",\"max:20\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":8,\"key\":\"pdf_margin_top\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"Marge sup\\u00e9rieure des PDF (mm)\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":9,\"key\":\"pdf_margin_bottom\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"Marge inf\\u00e9rieure des PDF (mm)\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":10,\"key\":\"pdf_margin_left\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Marge gauche des PDF (mm)\",\"is_required\":false,\"default_value\":\"15\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":11,\"key\":\"pdf_margin_right\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Marge droite des PDF (mm)\",\"is_required\":false,\"default_value\":\"15\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":7,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":12,\"key\":\"theme_primary_color\",\"value\":\"#007bff\",\"type\":\"string\",\"description\":\"Couleur primaire du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#007bff\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":13,\"key\":\"theme_secondary_color\",\"value\":\"#6c757d\",\"type\":\"string\",\"description\":\"Couleur secondaire du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#6c757d\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":14,\"key\":\"theme_success_color\",\"value\":\"#28a745\",\"type\":\"string\",\"description\":\"Couleur de succ\\u00e8s du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#28a745\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":15,\"key\":\"theme_danger_color\",\"value\":\"#dc3545\",\"type\":\"string\",\"description\":\"Couleur de danger du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#dc3545\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":16,\"key\":\"theme_warning_color\",\"value\":\"#ffc107\",\"type\":\"string\",\"description\":\"Couleur d\'avertissement du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#ffc107\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":17,\"key\":\"theme_info_color\",\"value\":\"#17a2b8\",\"type\":\"string\",\"description\":\"Couleur d\'information du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#17a2b8\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":18,\"key\":\"sidebar_color\",\"value\":\"#343a40\",\"type\":\"string\",\"description\":\"Couleur de la barre lat\\u00e9rale\",\"is_required\":false,\"default_value\":\"#343a40\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":19,\"key\":\"navbar_color\",\"value\":\"#ffffff\",\"type\":\"string\",\"description\":\"Couleur de la barre de navigation\",\"is_required\":false,\"default_value\":\"#ffffff\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":20,\"key\":\"background_color\",\"value\":\"#f8f9fa\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:11:04.000000Z\"},{\"id\":21,\"key\":\"text_color\",\"value\":\"#212529\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:11:04.000000Z\"},{\"id\":22,\"key\":\"link_color\",\"value\":\"#007bff\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:11:04.000000Z\"},{\"id\":23,\"key\":\"semester_system\",\"value\":\"trimester\",\"type\":\"string\",\"description\":\"Syst\\u00e8me de semestres\",\"is_required\":false,\"default_value\":\"trimester\",\"validation_rules\":[\"in:semester,trimester,quarter\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":24,\"key\":\"grade_scale\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"\\u00c9chelle de notation\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"in:20,100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":25,\"key\":\"passing_grade\",\"value\":\"10\",\"type\":\"integer\",\"description\":\"Note de passage\",\"is_required\":false,\"default_value\":\"10\",\"validation_rules\":[\"numeric\",\"min:0\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":26,\"key\":\"attendance_required\",\"value\":\"75\",\"type\":\"integer\",\"description\":\"Pourcentage d\'assiduit\\u00e9 requis\",\"is_required\":false,\"default_value\":\"75\",\"validation_rules\":[\"integer\",\"min:0\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":27,\"key\":\"late_arrival_tolerance\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Tol\\u00e9rance de retard (minutes)\",\"is_required\":false,\"default_value\":\"15\",\"validation_rules\":[\"integer\",\"min:0\",\"max:60\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"attendance\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"attendance\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":28,\"key\":\"email_notifications\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer les notifications par email\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":29,\"key\":\"sms_notifications\",\"value\":\"0\",\"type\":\"boolean\",\"description\":\"Activer les notifications SMS\",\"is_required\":false,\"default_value\":\"0\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":30,\"key\":\"parent_notifications\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer les notifications aux parents\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":31,\"key\":\"teacher_notifications\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer les notifications aux enseignants\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":32,\"key\":\"admin_notifications\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer les notifications aux administrateurs\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":33,\"key\":\"school_address\",\"value\":\"\",\"type\":\"string\",\"description\":\"Adresse de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"nullable\",\"string\",\"max:500\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":34,\"key\":\"school_city\",\"value\":\"Yamoussoukro\",\"type\":\"string\",\"description\":\"Ville de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"Yamoussoukro\",\"validation_rules\":[\"nullable\",\"string\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":35,\"key\":\"school_phone\",\"value\":\"\",\"type\":\"string\",\"description\":\"T\\u00e9l\\u00e9phone de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"nullable\",\"string\",\"max:20\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":36,\"key\":\"school_email\",\"value\":\"\",\"type\":\"string\",\"description\":\"Email de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"nullable\",\"email\",\"max:255\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":7,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":37,\"key\":\"director_name\",\"value\":\"\",\"type\":\"string\",\"description\":\"Nom du directeur\",\"is_required\":true,\"default_value\":\"\",\"validation_rules\":[\"required\",\"string\",\"max:255\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":8,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":38,\"key\":\"current_academic_year\",\"value\":\"\",\"type\":\"string\",\"description\":\"Ann\\u00e9e universitaire actuelle\",\"is_required\":true,\"default_value\":\"\",\"validation_rules\":[\"required\",\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":39,\"key\":\"attendance_tracking_enabled\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer le suivi d\'assiduit\\u00e9\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"attendance\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"attendance\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":40,\"key\":\"absence_justification_required\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Justification d\'absence requise\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"attendance\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"attendance\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":41,\"key\":\"bulletin_show_absences\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le tableau des absences\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":24,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":42,\"key\":\"bulletin_show_attendance_rate\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Afficher le taux d\'assiduit\\u00e9 sur le bulletin\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":43,\"key\":\"bulletin_show_teacher_comments\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Afficher les commentaires des enseignants\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":44,\"key\":\"pdf_header_height\",\"value\":\"30\",\"type\":\"integer\",\"description\":\"Hauteur de l\'en-t\\u00eate PDF (mm)\",\"is_required\":false,\"default_value\":\"30\",\"validation_rules\":[\"integer\",\"min:10\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":8,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-03T09:21:32.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":45,\"key\":\"pdf_footer_height\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"Hauteur du pied de page PDF (mm)\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":9,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-03T09:21:32.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":46,\"key\":\"app_timezone\",\"value\":\"Africa\\/Abidjan\",\"type\":\"string\",\"description\":\"Fuseau horaire de l\'application\",\"is_required\":false,\"default_value\":\"Africa\\/Abidjan\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T09:21:33.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":47,\"key\":\"app_locale\",\"value\":\"fr\",\"type\":\"string\",\"description\":\"Langue de l\'application\",\"is_required\":false,\"default_value\":\"fr\",\"validation_rules\":[\"in:fr,en\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T09:21:33.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":48,\"key\":\"maintenance_mode\",\"value\":\"0\",\"type\":\"boolean\",\"description\":\"Mode maintenance activ\\u00e9\",\"is_required\":false,\"default_value\":\"0\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T09:21:33.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":49,\"key\":\"bulletin_show_header\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher l\'en-t\\u00eate du bulletin\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":50,\"key\":\"bulletin_show_logo\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le logo de l\'\\u00e9cole\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":51,\"key\":\"bulletin_show_school_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de l\'\\u00e9cole\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":52,\"key\":\"bulletin_show_republic_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de la R\\u00e9publique\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":53,\"key\":\"bulletin_show_ministry_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations du minist\\u00e8re\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":54,\"key\":\"bulletin_show_edition_date\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la date d\'\\u00e9dition\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":55,\"key\":\"bulletin_show_cycle_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations du cycle (BTS)\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":7,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":56,\"key\":\"bulletin_show_student_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de l\'\\u00e9tudiant\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":8,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":57,\"key\":\"bulletin_show_matricule\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le matricule\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":9,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":58,\"key\":\"bulletin_show_birth_date\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la date de naissance\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":10,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":59,\"key\":\"bulletin_show_redoublant\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le statut redoublant\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":11,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":60,\"key\":\"bulletin_show_class_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":12,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":61,\"key\":\"bulletin_show_effectif\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher l\'effectif de la classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":13,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":62,\"key\":\"bulletin_show_subjects_table\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le tableau des mati\\u00e8res\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":14,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":63,\"key\":\"bulletin_show_general_subjects\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les mati\\u00e8res d\'enseignement g\\u00e9n\\u00e9ral\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":15,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":64,\"key\":\"bulletin_show_technical_subjects\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les mati\\u00e8res d\'enseignement technique\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":16,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":65,\"key\":\"bulletin_show_subject_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne par mati\\u00e8re\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":17,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":66,\"key\":\"bulletin_show_coefficient\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les coefficients\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":18,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":67,\"key\":\"bulletin_show_weighted_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne pond\\u00e9r\\u00e9e\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":19,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":68,\"key\":\"bulletin_show_rank_per_subject\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le rang par mati\\u00e8re\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":20,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":69,\"key\":\"bulletin_show_teachers\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les professeurs\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":21,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":70,\"key\":\"bulletin_show_appreciations\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les appr\\u00e9ciations\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":22,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":71,\"key\":\"bulletin_show_section_averages\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les moyennes par section\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":23,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":72,\"key\":\"bulletin_show_justified_absences\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les absences justifi\\u00e9es\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":25,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":73,\"key\":\"bulletin_show_unjustified_absences\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les absences non justifi\\u00e9es\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":26,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":74,\"key\":\"bulletin_show_results_section\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la section r\\u00e9sultats\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":27,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":75,\"key\":\"bulletin_show_raw_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne brute\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":28,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":76,\"key\":\"bulletin_show_attendance_note\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la note d\'assiduit\\u00e9\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":29,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":77,\"key\":\"bulletin_show_semester_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne semestrielle\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":30,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":78,\"key\":\"bulletin_show_student_rank\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le rang de l\'\\u00e9tudiant\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":31,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":79,\"key\":\"bulletin_show_mentions\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les mentions\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":32,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":80,\"key\":\"bulletin_show_felicitation\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher f\\u00e9licitation\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":33,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":81,\"key\":\"bulletin_show_encouragement\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher encouragement\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":34,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":82,\"key\":\"bulletin_show_honor_roll\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher tableau d\'honneur\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":35,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":83,\"key\":\"bulletin_show_work_warning\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher avertissement travail\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":36,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":84,\"key\":\"bulletin_show_conduct_blame\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher bl\\u00e2me conduite\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":37,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":85,\"key\":\"bulletin_show_statistics\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les statistiques\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":38,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":86,\"key\":\"bulletin_show_highest_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la plus forte moyenne\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":39,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":87,\"key\":\"bulletin_show_lowest_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la plus faible moyenne\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":40,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":88,\"key\":\"bulletin_show_class_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne de classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":41,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":89,\"key\":\"bulletin_show_council_decision\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la d\\u00e9cision du conseil de classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":42,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":90,\"key\":\"bulletin_show_signature\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la signature\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":43,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":91,\"key\":\"bulletin_show_director_signature\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la signature de la directrice\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":44,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":92,\"key\":\"bulletin_auto_calculate_rank\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Calculer automatiquement le rang\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":45,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":93,\"key\":\"bulletin_auto_calculate_mention\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Calculer automatiquement la mention\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":46,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":94,\"key\":\"bulletin_auto_calculate_attendance\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Calculer automatiquement l\'assiduit\\u00e9\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":47,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":95,\"key\":\"bulletin_require_teacher_assignment\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Exiger l\'assignation des professeurs\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":48,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":96,\"key\":\"bulletin_require_subject_config\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Exiger la configuration des mati\\u00e8res\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":49,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":97,\"key\":\"bulletin_validate_averages\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Valider les moyennes avant g\\u00e9n\\u00e9ration\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":50,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":98,\"key\":\"bulletin_felicitation_threshold\",\"value\":\"16\",\"type\":\"string\",\"description\":\"Seuil pour f\\u00e9licitation\",\"is_required\":false,\"default_value\":\"16\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":51,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":99,\"key\":\"bulletin_encouragement_threshold\",\"value\":\"14\",\"type\":\"string\",\"description\":\"Seuil pour encouragement\",\"is_required\":false,\"default_value\":\"14\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":52,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":100,\"key\":\"bulletin_honor_roll_threshold\",\"value\":\"12\",\"type\":\"string\",\"description\":\"Seuil pour tableau d\'honneur\",\"is_required\":false,\"default_value\":\"12\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":53,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":101,\"key\":\"bulletin_work_warning_threshold\",\"value\":\"8\",\"type\":\"string\",\"description\":\"Seuil pour avertissement travail\",\"is_required\":false,\"default_value\":\"8\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":54,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":102,\"key\":\"bulletin_school_name_custom\",\"value\":\"\",\"type\":\"string\",\"description\":\"Nom personnalis\\u00e9 de l\'\\u00e9cole (vide = utiliser config)\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":55,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":103,\"key\":\"bulletin_republic_text\",\"value\":\"R\\u00e9publique de C\\u00f4te d\'Ivoire\",\"type\":\"string\",\"description\":\"Texte de la R\\u00e9publique\",\"is_required\":false,\"default_value\":\"R\\u00e9publique de C\\u00f4te d\'Ivoire\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":56,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":104,\"key\":\"bulletin_union_text\",\"value\":\"Union-Discipline-Travail\",\"type\":\"string\",\"description\":\"Devise nationale\",\"is_required\":false,\"default_value\":\"Union-Discipline-Travail\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":57,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":105,\"key\":\"bulletin_ministry_text\",\"value\":\"Minist\\u00e8re de l\'Enseignement Sup\\u00e9rieur et de la Recherche Scientifique\",\"type\":\"string\",\"description\":\"Nom du minist\\u00e8re\",\"is_required\":false,\"default_value\":\"Minist\\u00e8re de l\'Enseignement Sup\\u00e9rieur et de la Recherche Scientifique\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":58,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":106,\"key\":\"bulletin_cycle_text\",\"value\":\"Brevet de Technicien Sup\\u00e9rieur\",\"type\":\"string\",\"description\":\"Nom du cycle\",\"is_required\":false,\"default_value\":\"Brevet de Technicien Sup\\u00e9rieur\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":59,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":107,\"key\":\"bulletin_cycle_abbreviation\",\"value\":\"BTS\",\"type\":\"string\",\"description\":\"Abr\\u00e9viation du cycle\",\"is_required\":false,\"default_value\":\"BTS\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":60,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":108,\"key\":\"bulletin_show_print_button\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le bouton d\'impression\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":61,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":109,\"key\":\"bulletin_paper_format\",\"value\":\"A4\",\"type\":\"string\",\"description\":\"Format du papier (A4, A3, Letter)\",\"is_required\":false,\"default_value\":\"A4\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":62,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":110,\"key\":\"bulletin_orientation\",\"value\":\"portrait\",\"type\":\"string\",\"description\":\"Orientation (portrait, landscape)\",\"is_required\":false,\"default_value\":\"portrait\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":63,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":111,\"key\":\"bulletin_font_size\",\"value\":\"11\",\"type\":\"string\",\"description\":\"Taille de police (px)\",\"is_required\":false,\"default_value\":\"11\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":64,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":112,\"key\":\"bulletin_dpi\",\"value\":\"150\",\"type\":\"string\",\"description\":\"R\\u00e9solution DPI pour PDF\",\"is_required\":false,\"default_value\":\"150\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":65,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":113,\"key\":\"establishment.school_name\",\"value\":\"ESBTP - \\u00c9cole Test\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"general\",\"created_at\":\"2025-06-03T14:16:27.000000Z\",\"updated_at\":\"2025-06-03T14:19:22.000000Z\"},{\"id\":114,\"key\":\"establishment.director_name\",\"value\":\"Dr. Jean KOUAME\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"general\",\"created_at\":\"2025-06-03T14:16:27.000000Z\",\"updated_at\":\"2025-06-03T14:18:36.000000Z\"},{\"id\":115,\"key\":\"pdf.font_size\",\"value\":\"14\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"general\",\"created_at\":\"2025-06-03T14:16:27.000000Z\",\"updated_at\":\"2025-06-03T14:18:36.000000Z\"}]', 'automatic', 'active', '2025-06-03 14:43:30', 1, NULL, NULL, NULL, '2025-06-03 14:43:30', '2025-06-03 14:43:30');
+INSERT INTO `settings_backups` (`id`, `backup_name`, `description`, `settings_data`, `backup_type`, `status`, `backup_date`, `created_by`, `restored_by`, `restored_at`, `restore_notes`, `created_at`, `updated_at`) VALUES
+(11, 'Auto Backup - 2025-06-03 15:09:29', 'Sauvegarde automatique avant mise à jour des paramètres', '[{\"id\":1,\"key\":\"school_name\",\"value\":\"ESBTP\",\"type\":\"string\",\"description\":\"Nom de l\'\\u00e9tablissement\",\"is_required\":true,\"default_value\":\"ESBTP-yAKRO\",\"validation_rules\":[\"required\",\"string\",\"max:255\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":1,\"created_by\":1,\"updated_by\":null,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T14:43:30.000000Z\"},{\"id\":2,\"key\":\"school_acronym\",\"value\":\"ESBTP\",\"type\":\"string\",\"description\":\"Acronyme de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"ESBTP\",\"validation_rules\":[\"nullable\",\"string\",\"max:10\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":3,\"key\":\"school_country\",\"value\":\"C\\u00f4te d\'Ivoire\",\"type\":\"string\",\"description\":\"Pays de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"C\\u00f4te d\'Ivoire\",\"validation_rules\":[\"nullable\",\"string\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":4,\"key\":\"director_title\",\"value\":\"Directeur G\\u00e9n\\u00e9ral\",\"type\":\"string\",\"description\":\"Titre du directeur\",\"is_required\":false,\"default_value\":\"Directeur G\\u00e9n\\u00e9ral\",\"validation_rules\":[\"nullable\",\"string\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":9,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":5,\"key\":\"pdf_show_logo\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Afficher le logo sur les PDF\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":6,\"key\":\"pdf_logo_position\",\"value\":\"left\",\"type\":\"string\",\"description\":\"Position du logo sur les PDF\",\"is_required\":false,\"default_value\":\"left\",\"validation_rules\":[\"in:left,center,right\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":7,\"key\":\"pdf_font_size\",\"value\":\"12\",\"type\":\"integer\",\"description\":\"Taille de police pour les PDF\",\"is_required\":false,\"default_value\":\"12\",\"validation_rules\":[\"integer\",\"min:8\",\"max:20\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":8,\"key\":\"pdf_margin_top\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"Marge sup\\u00e9rieure des PDF (mm)\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":9,\"key\":\"pdf_margin_bottom\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"Marge inf\\u00e9rieure des PDF (mm)\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":10,\"key\":\"pdf_margin_left\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Marge gauche des PDF (mm)\",\"is_required\":false,\"default_value\":\"15\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":11,\"key\":\"pdf_margin_right\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Marge droite des PDF (mm)\",\"is_required\":false,\"default_value\":\"15\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":7,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":12,\"key\":\"theme_primary_color\",\"value\":\"#007bff\",\"type\":\"string\",\"description\":\"Couleur primaire du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#007bff\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":13,\"key\":\"theme_secondary_color\",\"value\":\"#6c757d\",\"type\":\"string\",\"description\":\"Couleur secondaire du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#6c757d\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":14,\"key\":\"theme_success_color\",\"value\":\"#28a745\",\"type\":\"string\",\"description\":\"Couleur de succ\\u00e8s du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#28a745\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":15,\"key\":\"theme_danger_color\",\"value\":\"#dc3545\",\"type\":\"string\",\"description\":\"Couleur de danger du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#dc3545\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":16,\"key\":\"theme_warning_color\",\"value\":\"#ffc107\",\"type\":\"string\",\"description\":\"Couleur d\'avertissement du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#ffc107\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":17,\"key\":\"theme_info_color\",\"value\":\"#17a2b8\",\"type\":\"string\",\"description\":\"Couleur d\'information du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#17a2b8\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":18,\"key\":\"sidebar_color\",\"value\":\"#343a40\",\"type\":\"string\",\"description\":\"Couleur de la barre lat\\u00e9rale\",\"is_required\":false,\"default_value\":\"#343a40\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":19,\"key\":\"navbar_color\",\"value\":\"#ffffff\",\"type\":\"string\",\"description\":\"Couleur de la barre de navigation\",\"is_required\":false,\"default_value\":\"#ffffff\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":20,\"key\":\"background_color\",\"value\":\"#f8f9fa\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:11:04.000000Z\"},{\"id\":21,\"key\":\"text_color\",\"value\":\"#212529\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:11:04.000000Z\"},{\"id\":22,\"key\":\"link_color\",\"value\":\"#007bff\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:11:04.000000Z\"},{\"id\":23,\"key\":\"semester_system\",\"value\":\"trimester\",\"type\":\"string\",\"description\":\"Syst\\u00e8me de semestres\",\"is_required\":false,\"default_value\":\"trimester\",\"validation_rules\":[\"in:semester,trimester,quarter\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":24,\"key\":\"grade_scale\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"\\u00c9chelle de notation\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"in:20,100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":25,\"key\":\"passing_grade\",\"value\":\"10\",\"type\":\"integer\",\"description\":\"Note de passage\",\"is_required\":false,\"default_value\":\"10\",\"validation_rules\":[\"numeric\",\"min:0\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":26,\"key\":\"attendance_required\",\"value\":\"75\",\"type\":\"integer\",\"description\":\"Pourcentage d\'assiduit\\u00e9 requis\",\"is_required\":false,\"default_value\":\"75\",\"validation_rules\":[\"integer\",\"min:0\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":27,\"key\":\"late_arrival_tolerance\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Tol\\u00e9rance de retard (minutes)\",\"is_required\":false,\"default_value\":\"15\",\"validation_rules\":[\"integer\",\"min:0\",\"max:60\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"attendance\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"attendance\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":28,\"key\":\"email_notifications\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer les notifications par email\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":29,\"key\":\"sms_notifications\",\"value\":\"0\",\"type\":\"boolean\",\"description\":\"Activer les notifications SMS\",\"is_required\":false,\"default_value\":\"0\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":30,\"key\":\"parent_notifications\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer les notifications aux parents\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":31,\"key\":\"teacher_notifications\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer les notifications aux enseignants\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":32,\"key\":\"admin_notifications\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer les notifications aux administrateurs\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":33,\"key\":\"school_address\",\"value\":\"\",\"type\":\"string\",\"description\":\"Adresse de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"nullable\",\"string\",\"max:500\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":34,\"key\":\"school_city\",\"value\":\"Yamoussoukro\",\"type\":\"string\",\"description\":\"Ville de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"Yamoussoukro\",\"validation_rules\":[\"nullable\",\"string\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":35,\"key\":\"school_phone\",\"value\":\"\",\"type\":\"string\",\"description\":\"T\\u00e9l\\u00e9phone de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"nullable\",\"string\",\"max:20\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":36,\"key\":\"school_email\",\"value\":\"\",\"type\":\"string\",\"description\":\"Email de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"nullable\",\"email\",\"max:255\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":7,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":37,\"key\":\"director_name\",\"value\":\"\",\"type\":\"string\",\"description\":\"Nom du directeur\",\"is_required\":true,\"default_value\":\"\",\"validation_rules\":[\"required\",\"string\",\"max:255\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":8,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":38,\"key\":\"current_academic_year\",\"value\":\"\",\"type\":\"string\",\"description\":\"Ann\\u00e9e universitaire actuelle\",\"is_required\":true,\"default_value\":\"\",\"validation_rules\":[\"required\",\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":39,\"key\":\"attendance_tracking_enabled\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer le suivi d\'assiduit\\u00e9\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"attendance\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"attendance\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":40,\"key\":\"absence_justification_required\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Justification d\'absence requise\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"attendance\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"attendance\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":41,\"key\":\"bulletin_show_absences\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le tableau des absences\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":24,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":42,\"key\":\"bulletin_show_attendance_rate\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Afficher le taux d\'assiduit\\u00e9 sur le bulletin\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":43,\"key\":\"bulletin_show_teacher_comments\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Afficher les commentaires des enseignants\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":44,\"key\":\"pdf_header_height\",\"value\":\"30\",\"type\":\"integer\",\"description\":\"Hauteur de l\'en-t\\u00eate PDF (mm)\",\"is_required\":false,\"default_value\":\"30\",\"validation_rules\":[\"integer\",\"min:10\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":8,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-03T09:21:32.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":45,\"key\":\"pdf_footer_height\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"Hauteur du pied de page PDF (mm)\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":9,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-03T09:21:32.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":46,\"key\":\"app_timezone\",\"value\":\"Africa\\/Abidjan\",\"type\":\"string\",\"description\":\"Fuseau horaire de l\'application\",\"is_required\":false,\"default_value\":\"Africa\\/Abidjan\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T09:21:33.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":47,\"key\":\"app_locale\",\"value\":\"fr\",\"type\":\"string\",\"description\":\"Langue de l\'application\",\"is_required\":false,\"default_value\":\"fr\",\"validation_rules\":[\"in:fr,en\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T09:21:33.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":48,\"key\":\"maintenance_mode\",\"value\":\"0\",\"type\":\"boolean\",\"description\":\"Mode maintenance activ\\u00e9\",\"is_required\":false,\"default_value\":\"0\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T09:21:33.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":49,\"key\":\"bulletin_show_header\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher l\'en-t\\u00eate du bulletin\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":50,\"key\":\"bulletin_show_logo\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le logo de l\'\\u00e9cole\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":51,\"key\":\"bulletin_show_school_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de l\'\\u00e9cole\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":52,\"key\":\"bulletin_show_republic_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de la R\\u00e9publique\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":53,\"key\":\"bulletin_show_ministry_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations du minist\\u00e8re\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":54,\"key\":\"bulletin_show_edition_date\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la date d\'\\u00e9dition\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":55,\"key\":\"bulletin_show_cycle_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations du cycle (BTS)\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":7,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":56,\"key\":\"bulletin_show_student_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de l\'\\u00e9tudiant\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":8,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":57,\"key\":\"bulletin_show_matricule\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le matricule\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":9,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":58,\"key\":\"bulletin_show_birth_date\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la date de naissance\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":10,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":59,\"key\":\"bulletin_show_redoublant\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le statut redoublant\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":11,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":60,\"key\":\"bulletin_show_class_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":12,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":61,\"key\":\"bulletin_show_effectif\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher l\'effectif de la classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":13,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":62,\"key\":\"bulletin_show_subjects_table\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le tableau des mati\\u00e8res\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":14,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":63,\"key\":\"bulletin_show_general_subjects\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les mati\\u00e8res d\'enseignement g\\u00e9n\\u00e9ral\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":15,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":64,\"key\":\"bulletin_show_technical_subjects\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les mati\\u00e8res d\'enseignement technique\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":16,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":65,\"key\":\"bulletin_show_subject_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne par mati\\u00e8re\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":17,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":66,\"key\":\"bulletin_show_coefficient\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les coefficients\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":18,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":67,\"key\":\"bulletin_show_weighted_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne pond\\u00e9r\\u00e9e\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":19,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":68,\"key\":\"bulletin_show_rank_per_subject\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le rang par mati\\u00e8re\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":20,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":69,\"key\":\"bulletin_show_teachers\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les professeurs\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":21,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":70,\"key\":\"bulletin_show_appreciations\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les appr\\u00e9ciations\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":22,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":71,\"key\":\"bulletin_show_section_averages\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les moyennes par section\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":23,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":72,\"key\":\"bulletin_show_justified_absences\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les absences justifi\\u00e9es\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":25,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":73,\"key\":\"bulletin_show_unjustified_absences\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les absences non justifi\\u00e9es\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":26,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":74,\"key\":\"bulletin_show_results_section\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la section r\\u00e9sultats\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":27,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":75,\"key\":\"bulletin_show_raw_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne brute\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":28,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":76,\"key\":\"bulletin_show_attendance_note\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la note d\'assiduit\\u00e9\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":29,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":77,\"key\":\"bulletin_show_semester_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne semestrielle\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":30,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":78,\"key\":\"bulletin_show_student_rank\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le rang de l\'\\u00e9tudiant\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":31,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":79,\"key\":\"bulletin_show_mentions\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les mentions\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":32,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":80,\"key\":\"bulletin_show_felicitation\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher f\\u00e9licitation\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":33,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":81,\"key\":\"bulletin_show_encouragement\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher encouragement\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":34,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":82,\"key\":\"bulletin_show_honor_roll\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher tableau d\'honneur\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":35,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":83,\"key\":\"bulletin_show_work_warning\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher avertissement travail\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":36,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":84,\"key\":\"bulletin_show_conduct_blame\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher bl\\u00e2me conduite\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":37,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":85,\"key\":\"bulletin_show_statistics\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les statistiques\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":38,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":86,\"key\":\"bulletin_show_highest_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la plus forte moyenne\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":39,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":87,\"key\":\"bulletin_show_lowest_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la plus faible moyenne\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":40,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":88,\"key\":\"bulletin_show_class_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne de classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":41,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":89,\"key\":\"bulletin_show_council_decision\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la d\\u00e9cision du conseil de classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":42,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":90,\"key\":\"bulletin_show_signature\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la signature\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":43,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":91,\"key\":\"bulletin_show_director_signature\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la signature de la directrice\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":44,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":92,\"key\":\"bulletin_auto_calculate_rank\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Calculer automatiquement le rang\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":45,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":93,\"key\":\"bulletin_auto_calculate_mention\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Calculer automatiquement la mention\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":46,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":94,\"key\":\"bulletin_auto_calculate_attendance\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Calculer automatiquement l\'assiduit\\u00e9\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":47,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":95,\"key\":\"bulletin_require_teacher_assignment\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Exiger l\'assignation des professeurs\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":48,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":96,\"key\":\"bulletin_require_subject_config\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Exiger la configuration des mati\\u00e8res\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":49,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":97,\"key\":\"bulletin_validate_averages\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Valider les moyennes avant g\\u00e9n\\u00e9ration\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":50,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":98,\"key\":\"bulletin_felicitation_threshold\",\"value\":\"16\",\"type\":\"string\",\"description\":\"Seuil pour f\\u00e9licitation\",\"is_required\":false,\"default_value\":\"16\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":51,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":99,\"key\":\"bulletin_encouragement_threshold\",\"value\":\"14\",\"type\":\"string\",\"description\":\"Seuil pour encouragement\",\"is_required\":false,\"default_value\":\"14\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":52,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":100,\"key\":\"bulletin_honor_roll_threshold\",\"value\":\"12\",\"type\":\"string\",\"description\":\"Seuil pour tableau d\'honneur\",\"is_required\":false,\"default_value\":\"12\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":53,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":101,\"key\":\"bulletin_work_warning_threshold\",\"value\":\"8\",\"type\":\"string\",\"description\":\"Seuil pour avertissement travail\",\"is_required\":false,\"default_value\":\"8\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":54,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":102,\"key\":\"bulletin_school_name_custom\",\"value\":\"\",\"type\":\"string\",\"description\":\"Nom personnalis\\u00e9 de l\'\\u00e9cole (vide = utiliser config)\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":55,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":103,\"key\":\"bulletin_republic_text\",\"value\":\"R\\u00e9publique de C\\u00f4te d\'Ivoire\",\"type\":\"string\",\"description\":\"Texte de la R\\u00e9publique\",\"is_required\":false,\"default_value\":\"R\\u00e9publique de C\\u00f4te d\'Ivoire\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":56,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":104,\"key\":\"bulletin_union_text\",\"value\":\"Union-Discipline-Travail\",\"type\":\"string\",\"description\":\"Devise nationale\",\"is_required\":false,\"default_value\":\"Union-Discipline-Travail\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":57,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":105,\"key\":\"bulletin_ministry_text\",\"value\":\"Minist\\u00e8re de l\'Enseignement Sup\\u00e9rieur et de la Recherche Scientifique\",\"type\":\"string\",\"description\":\"Nom du minist\\u00e8re\",\"is_required\":false,\"default_value\":\"Minist\\u00e8re de l\'Enseignement Sup\\u00e9rieur et de la Recherche Scientifique\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":58,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":106,\"key\":\"bulletin_cycle_text\",\"value\":\"Brevet de Technicien Sup\\u00e9rieur\",\"type\":\"string\",\"description\":\"Nom du cycle\",\"is_required\":false,\"default_value\":\"Brevet de Technicien Sup\\u00e9rieur\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":59,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":107,\"key\":\"bulletin_cycle_abbreviation\",\"value\":\"BTS\",\"type\":\"string\",\"description\":\"Abr\\u00e9viation du cycle\",\"is_required\":false,\"default_value\":\"BTS\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":60,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":108,\"key\":\"bulletin_show_print_button\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le bouton d\'impression\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":61,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":109,\"key\":\"bulletin_paper_format\",\"value\":\"A4\",\"type\":\"string\",\"description\":\"Format du papier (A4, A3, Letter)\",\"is_required\":false,\"default_value\":\"A4\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":62,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":110,\"key\":\"bulletin_orientation\",\"value\":\"portrait\",\"type\":\"string\",\"description\":\"Orientation (portrait, landscape)\",\"is_required\":false,\"default_value\":\"portrait\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":63,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":111,\"key\":\"bulletin_font_size\",\"value\":\"11\",\"type\":\"string\",\"description\":\"Taille de police (px)\",\"is_required\":false,\"default_value\":\"11\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":64,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":112,\"key\":\"bulletin_dpi\",\"value\":\"150\",\"type\":\"string\",\"description\":\"R\\u00e9solution DPI pour PDF\",\"is_required\":false,\"default_value\":\"150\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":65,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":113,\"key\":\"establishment.school_name\",\"value\":\"ESBTP - \\u00c9cole Test\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"general\",\"created_at\":\"2025-06-03T14:16:27.000000Z\",\"updated_at\":\"2025-06-03T15:09:29.000000Z\"},{\"id\":114,\"key\":\"establishment.director_name\",\"value\":\"Dr. Jean KOUAME\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"general\",\"created_at\":\"2025-06-03T14:16:27.000000Z\",\"updated_at\":\"2025-06-03T15:09:29.000000Z\"},{\"id\":115,\"key\":\"pdf.font_size\",\"value\":\"14\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"general\",\"created_at\":\"2025-06-03T14:16:27.000000Z\",\"updated_at\":\"2025-06-03T15:09:29.000000Z\"}]', 'automatic', 'active', '2025-06-03 15:09:29', 1, NULL, NULL, NULL, '2025-06-03 15:09:29', '2025-06-03 15:09:29');
+INSERT INTO `settings_backups` (`id`, `backup_name`, `description`, `settings_data`, `backup_type`, `status`, `backup_date`, `created_by`, `restored_by`, `restored_at`, `restore_notes`, `created_at`, `updated_at`) VALUES
+(12, 'Auto Backup - 2025-06-03 15:09:29', 'Sauvegarde automatique avant mise à jour des paramètres', '[{\"id\":1,\"key\":\"school_name\",\"value\":\"ESBTP\",\"type\":\"string\",\"description\":\"Nom de l\'\\u00e9tablissement\",\"is_required\":true,\"default_value\":\"ESBTP-yAKRO\",\"validation_rules\":[\"required\",\"string\",\"max:255\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":1,\"created_by\":1,\"updated_by\":null,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T14:43:30.000000Z\"},{\"id\":2,\"key\":\"school_acronym\",\"value\":\"ESBTP\",\"type\":\"string\",\"description\":\"Acronyme de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"ESBTP\",\"validation_rules\":[\"nullable\",\"string\",\"max:10\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":3,\"key\":\"school_country\",\"value\":\"C\\u00f4te d\'Ivoire\",\"type\":\"string\",\"description\":\"Pays de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"C\\u00f4te d\'Ivoire\",\"validation_rules\":[\"nullable\",\"string\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":4,\"key\":\"director_title\",\"value\":\"Directeur G\\u00e9n\\u00e9ral\",\"type\":\"string\",\"description\":\"Titre du directeur\",\"is_required\":false,\"default_value\":\"Directeur G\\u00e9n\\u00e9ral\",\"validation_rules\":[\"nullable\",\"string\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":9,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":5,\"key\":\"pdf_show_logo\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Afficher le logo sur les PDF\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":6,\"key\":\"pdf_logo_position\",\"value\":\"left\",\"type\":\"string\",\"description\":\"Position du logo sur les PDF\",\"is_required\":false,\"default_value\":\"left\",\"validation_rules\":[\"in:left,center,right\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":7,\"key\":\"pdf_font_size\",\"value\":\"12\",\"type\":\"integer\",\"description\":\"Taille de police pour les PDF\",\"is_required\":false,\"default_value\":\"12\",\"validation_rules\":[\"integer\",\"min:8\",\"max:20\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":8,\"key\":\"pdf_margin_top\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"Marge sup\\u00e9rieure des PDF (mm)\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":9,\"key\":\"pdf_margin_bottom\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"Marge inf\\u00e9rieure des PDF (mm)\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":10,\"key\":\"pdf_margin_left\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Marge gauche des PDF (mm)\",\"is_required\":false,\"default_value\":\"15\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":11,\"key\":\"pdf_margin_right\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Marge droite des PDF (mm)\",\"is_required\":false,\"default_value\":\"15\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":7,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":12,\"key\":\"theme_primary_color\",\"value\":\"#007bff\",\"type\":\"string\",\"description\":\"Couleur primaire du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#007bff\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":13,\"key\":\"theme_secondary_color\",\"value\":\"#6c757d\",\"type\":\"string\",\"description\":\"Couleur secondaire du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#6c757d\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":14,\"key\":\"theme_success_color\",\"value\":\"#28a745\",\"type\":\"string\",\"description\":\"Couleur de succ\\u00e8s du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#28a745\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":15,\"key\":\"theme_danger_color\",\"value\":\"#dc3545\",\"type\":\"string\",\"description\":\"Couleur de danger du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#dc3545\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":16,\"key\":\"theme_warning_color\",\"value\":\"#ffc107\",\"type\":\"string\",\"description\":\"Couleur d\'avertissement du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#ffc107\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":17,\"key\":\"theme_info_color\",\"value\":\"#17a2b8\",\"type\":\"string\",\"description\":\"Couleur d\'information du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#17a2b8\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":18,\"key\":\"sidebar_color\",\"value\":\"#343a40\",\"type\":\"string\",\"description\":\"Couleur de la barre lat\\u00e9rale\",\"is_required\":false,\"default_value\":\"#343a40\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":19,\"key\":\"navbar_color\",\"value\":\"#ffffff\",\"type\":\"string\",\"description\":\"Couleur de la barre de navigation\",\"is_required\":false,\"default_value\":\"#ffffff\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":20,\"key\":\"background_color\",\"value\":\"#f8f9fa\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:11:04.000000Z\"},{\"id\":21,\"key\":\"text_color\",\"value\":\"#212529\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:11:04.000000Z\"},{\"id\":22,\"key\":\"link_color\",\"value\":\"#007bff\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:11:04.000000Z\"},{\"id\":23,\"key\":\"semester_system\",\"value\":\"trimester\",\"type\":\"string\",\"description\":\"Syst\\u00e8me de semestres\",\"is_required\":false,\"default_value\":\"trimester\",\"validation_rules\":[\"in:semester,trimester,quarter\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":24,\"key\":\"grade_scale\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"\\u00c9chelle de notation\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"in:20,100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":25,\"key\":\"passing_grade\",\"value\":\"10\",\"type\":\"integer\",\"description\":\"Note de passage\",\"is_required\":false,\"default_value\":\"10\",\"validation_rules\":[\"numeric\",\"min:0\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":26,\"key\":\"attendance_required\",\"value\":\"75\",\"type\":\"integer\",\"description\":\"Pourcentage d\'assiduit\\u00e9 requis\",\"is_required\":false,\"default_value\":\"75\",\"validation_rules\":[\"integer\",\"min:0\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":27,\"key\":\"late_arrival_tolerance\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Tol\\u00e9rance de retard (minutes)\",\"is_required\":false,\"default_value\":\"15\",\"validation_rules\":[\"integer\",\"min:0\",\"max:60\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"attendance\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"attendance\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":28,\"key\":\"email_notifications\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer les notifications par email\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":29,\"key\":\"sms_notifications\",\"value\":\"0\",\"type\":\"boolean\",\"description\":\"Activer les notifications SMS\",\"is_required\":false,\"default_value\":\"0\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":30,\"key\":\"parent_notifications\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer les notifications aux parents\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":31,\"key\":\"teacher_notifications\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer les notifications aux enseignants\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":32,\"key\":\"admin_notifications\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer les notifications aux administrateurs\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":33,\"key\":\"school_address\",\"value\":\"\",\"type\":\"string\",\"description\":\"Adresse de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"nullable\",\"string\",\"max:500\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":34,\"key\":\"school_city\",\"value\":\"Yamoussoukro\",\"type\":\"string\",\"description\":\"Ville de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"Yamoussoukro\",\"validation_rules\":[\"nullable\",\"string\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":35,\"key\":\"school_phone\",\"value\":\"\",\"type\":\"string\",\"description\":\"T\\u00e9l\\u00e9phone de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"nullable\",\"string\",\"max:20\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":36,\"key\":\"school_email\",\"value\":\"\",\"type\":\"string\",\"description\":\"Email de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"nullable\",\"email\",\"max:255\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":7,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":37,\"key\":\"director_name\",\"value\":\"\",\"type\":\"string\",\"description\":\"Nom du directeur\",\"is_required\":true,\"default_value\":\"\",\"validation_rules\":[\"required\",\"string\",\"max:255\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":8,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":38,\"key\":\"current_academic_year\",\"value\":\"\",\"type\":\"string\",\"description\":\"Ann\\u00e9e universitaire actuelle\",\"is_required\":true,\"default_value\":\"\",\"validation_rules\":[\"required\",\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":39,\"key\":\"attendance_tracking_enabled\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer le suivi d\'assiduit\\u00e9\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"attendance\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"attendance\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":40,\"key\":\"absence_justification_required\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Justification d\'absence requise\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"attendance\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"attendance\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":41,\"key\":\"bulletin_show_absences\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le tableau des absences\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":24,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":42,\"key\":\"bulletin_show_attendance_rate\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Afficher le taux d\'assiduit\\u00e9 sur le bulletin\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":43,\"key\":\"bulletin_show_teacher_comments\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Afficher les commentaires des enseignants\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":44,\"key\":\"pdf_header_height\",\"value\":\"30\",\"type\":\"integer\",\"description\":\"Hauteur de l\'en-t\\u00eate PDF (mm)\",\"is_required\":false,\"default_value\":\"30\",\"validation_rules\":[\"integer\",\"min:10\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":8,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-03T09:21:32.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":45,\"key\":\"pdf_footer_height\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"Hauteur du pied de page PDF (mm)\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":9,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-03T09:21:32.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":46,\"key\":\"app_timezone\",\"value\":\"Africa\\/Abidjan\",\"type\":\"string\",\"description\":\"Fuseau horaire de l\'application\",\"is_required\":false,\"default_value\":\"Africa\\/Abidjan\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T09:21:33.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":47,\"key\":\"app_locale\",\"value\":\"fr\",\"type\":\"string\",\"description\":\"Langue de l\'application\",\"is_required\":false,\"default_value\":\"fr\",\"validation_rules\":[\"in:fr,en\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T09:21:33.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":48,\"key\":\"maintenance_mode\",\"value\":\"0\",\"type\":\"boolean\",\"description\":\"Mode maintenance activ\\u00e9\",\"is_required\":false,\"default_value\":\"0\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T09:21:33.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":49,\"key\":\"bulletin_show_header\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher l\'en-t\\u00eate du bulletin\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":50,\"key\":\"bulletin_show_logo\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le logo de l\'\\u00e9cole\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":51,\"key\":\"bulletin_show_school_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de l\'\\u00e9cole\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":52,\"key\":\"bulletin_show_republic_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de la R\\u00e9publique\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":53,\"key\":\"bulletin_show_ministry_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations du minist\\u00e8re\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":54,\"key\":\"bulletin_show_edition_date\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la date d\'\\u00e9dition\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":55,\"key\":\"bulletin_show_cycle_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations du cycle (BTS)\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":7,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":56,\"key\":\"bulletin_show_student_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de l\'\\u00e9tudiant\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":8,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":57,\"key\":\"bulletin_show_matricule\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le matricule\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":9,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":58,\"key\":\"bulletin_show_birth_date\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la date de naissance\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":10,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":59,\"key\":\"bulletin_show_redoublant\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le statut redoublant\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":11,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":60,\"key\":\"bulletin_show_class_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":12,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":61,\"key\":\"bulletin_show_effectif\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher l\'effectif de la classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":13,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":62,\"key\":\"bulletin_show_subjects_table\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le tableau des mati\\u00e8res\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":14,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":63,\"key\":\"bulletin_show_general_subjects\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les mati\\u00e8res d\'enseignement g\\u00e9n\\u00e9ral\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":15,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":64,\"key\":\"bulletin_show_technical_subjects\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les mati\\u00e8res d\'enseignement technique\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":16,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":65,\"key\":\"bulletin_show_subject_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne par mati\\u00e8re\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":17,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":66,\"key\":\"bulletin_show_coefficient\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les coefficients\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":18,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":67,\"key\":\"bulletin_show_weighted_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne pond\\u00e9r\\u00e9e\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":19,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":68,\"key\":\"bulletin_show_rank_per_subject\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le rang par mati\\u00e8re\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":20,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":69,\"key\":\"bulletin_show_teachers\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les professeurs\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":21,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":70,\"key\":\"bulletin_show_appreciations\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les appr\\u00e9ciations\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":22,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":71,\"key\":\"bulletin_show_section_averages\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les moyennes par section\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":23,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":72,\"key\":\"bulletin_show_justified_absences\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les absences justifi\\u00e9es\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":25,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":73,\"key\":\"bulletin_show_unjustified_absences\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les absences non justifi\\u00e9es\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":26,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":74,\"key\":\"bulletin_show_results_section\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la section r\\u00e9sultats\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":27,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":75,\"key\":\"bulletin_show_raw_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne brute\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":28,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":76,\"key\":\"bulletin_show_attendance_note\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la note d\'assiduit\\u00e9\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":29,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":77,\"key\":\"bulletin_show_semester_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne semestrielle\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":30,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":78,\"key\":\"bulletin_show_student_rank\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le rang de l\'\\u00e9tudiant\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":31,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":79,\"key\":\"bulletin_show_mentions\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les mentions\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":32,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":80,\"key\":\"bulletin_show_felicitation\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher f\\u00e9licitation\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":33,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":81,\"key\":\"bulletin_show_encouragement\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher encouragement\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":34,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":82,\"key\":\"bulletin_show_honor_roll\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher tableau d\'honneur\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":35,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":83,\"key\":\"bulletin_show_work_warning\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher avertissement travail\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":36,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":84,\"key\":\"bulletin_show_conduct_blame\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher bl\\u00e2me conduite\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":37,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":85,\"key\":\"bulletin_show_statistics\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les statistiques\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":38,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":86,\"key\":\"bulletin_show_highest_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la plus forte moyenne\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":39,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":87,\"key\":\"bulletin_show_lowest_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la plus faible moyenne\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":40,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":88,\"key\":\"bulletin_show_class_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne de classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":41,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":89,\"key\":\"bulletin_show_council_decision\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la d\\u00e9cision du conseil de classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":42,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":90,\"key\":\"bulletin_show_signature\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la signature\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":43,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":91,\"key\":\"bulletin_show_director_signature\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la signature de la directrice\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":44,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":92,\"key\":\"bulletin_auto_calculate_rank\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Calculer automatiquement le rang\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":45,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":93,\"key\":\"bulletin_auto_calculate_mention\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Calculer automatiquement la mention\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":46,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":94,\"key\":\"bulletin_auto_calculate_attendance\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Calculer automatiquement l\'assiduit\\u00e9\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":47,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":95,\"key\":\"bulletin_require_teacher_assignment\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Exiger l\'assignation des professeurs\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":48,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":96,\"key\":\"bulletin_require_subject_config\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Exiger la configuration des mati\\u00e8res\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":49,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":97,\"key\":\"bulletin_validate_averages\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Valider les moyennes avant g\\u00e9n\\u00e9ration\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":50,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":98,\"key\":\"bulletin_felicitation_threshold\",\"value\":\"16\",\"type\":\"string\",\"description\":\"Seuil pour f\\u00e9licitation\",\"is_required\":false,\"default_value\":\"16\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":51,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":99,\"key\":\"bulletin_encouragement_threshold\",\"value\":\"14\",\"type\":\"string\",\"description\":\"Seuil pour encouragement\",\"is_required\":false,\"default_value\":\"14\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":52,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":100,\"key\":\"bulletin_honor_roll_threshold\",\"value\":\"12\",\"type\":\"string\",\"description\":\"Seuil pour tableau d\'honneur\",\"is_required\":false,\"default_value\":\"12\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":53,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":101,\"key\":\"bulletin_work_warning_threshold\",\"value\":\"8\",\"type\":\"string\",\"description\":\"Seuil pour avertissement travail\",\"is_required\":false,\"default_value\":\"8\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":54,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":102,\"key\":\"bulletin_school_name_custom\",\"value\":\"\",\"type\":\"string\",\"description\":\"Nom personnalis\\u00e9 de l\'\\u00e9cole (vide = utiliser config)\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":55,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":103,\"key\":\"bulletin_republic_text\",\"value\":\"R\\u00e9publique de C\\u00f4te d\'Ivoire\",\"type\":\"string\",\"description\":\"Texte de la R\\u00e9publique\",\"is_required\":false,\"default_value\":\"R\\u00e9publique de C\\u00f4te d\'Ivoire\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":56,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":104,\"key\":\"bulletin_union_text\",\"value\":\"Union-Discipline-Travail\",\"type\":\"string\",\"description\":\"Devise nationale\",\"is_required\":false,\"default_value\":\"Union-Discipline-Travail\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":57,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":105,\"key\":\"bulletin_ministry_text\",\"value\":\"Minist\\u00e8re de l\'Enseignement Sup\\u00e9rieur et de la Recherche Scientifique\",\"type\":\"string\",\"description\":\"Nom du minist\\u00e8re\",\"is_required\":false,\"default_value\":\"Minist\\u00e8re de l\'Enseignement Sup\\u00e9rieur et de la Recherche Scientifique\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":58,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":106,\"key\":\"bulletin_cycle_text\",\"value\":\"Brevet de Technicien Sup\\u00e9rieur\",\"type\":\"string\",\"description\":\"Nom du cycle\",\"is_required\":false,\"default_value\":\"Brevet de Technicien Sup\\u00e9rieur\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":59,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":107,\"key\":\"bulletin_cycle_abbreviation\",\"value\":\"BTS\",\"type\":\"string\",\"description\":\"Abr\\u00e9viation du cycle\",\"is_required\":false,\"default_value\":\"BTS\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":60,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":108,\"key\":\"bulletin_show_print_button\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le bouton d\'impression\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":61,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":109,\"key\":\"bulletin_paper_format\",\"value\":\"A4\",\"type\":\"string\",\"description\":\"Format du papier (A4, A3, Letter)\",\"is_required\":false,\"default_value\":\"A4\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":62,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":110,\"key\":\"bulletin_orientation\",\"value\":\"portrait\",\"type\":\"string\",\"description\":\"Orientation (portrait, landscape)\",\"is_required\":false,\"default_value\":\"portrait\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":63,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":111,\"key\":\"bulletin_font_size\",\"value\":\"11\",\"type\":\"string\",\"description\":\"Taille de police (px)\",\"is_required\":false,\"default_value\":\"11\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":64,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":112,\"key\":\"bulletin_dpi\",\"value\":\"150\",\"type\":\"string\",\"description\":\"R\\u00e9solution DPI pour PDF\",\"is_required\":false,\"default_value\":\"150\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":65,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":113,\"key\":\"establishment.school_name\",\"value\":\"ESBTP - Test \\u00c9cole\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":0,\"created_by\":null,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T14:16:27.000000Z\",\"updated_at\":\"2025-06-03T15:09:29.000000Z\"},{\"id\":114,\"key\":\"establishment.director_name\",\"value\":\"Dr. Test DIRECTEUR\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":0,\"created_by\":null,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T14:16:27.000000Z\",\"updated_at\":\"2025-06-03T15:09:29.000000Z\"},{\"id\":115,\"key\":\"pdf.font_size\",\"value\":\"13\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":0,\"created_by\":null,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T14:16:27.000000Z\",\"updated_at\":\"2025-06-03T15:09:29.000000Z\"}]', 'automatic', 'active', '2025-06-03 15:09:29', 1, NULL, NULL, NULL, '2025-06-03 15:09:29', '2025-06-03 15:09:29');
+INSERT INTO `settings_backups` (`id`, `backup_name`, `description`, `settings_data`, `backup_type`, `status`, `backup_date`, `created_by`, `restored_by`, `restored_at`, `restore_notes`, `created_at`, `updated_at`) VALUES
+(13, 'Auto Backup - 2025-06-03 15:09:43', 'Sauvegarde automatique avant mise à jour des paramètres', '[{\"id\":1,\"key\":\"school_name\",\"value\":\"ESBTP\",\"type\":\"string\",\"description\":\"Nom de l\'\\u00e9tablissement\",\"is_required\":true,\"default_value\":\"ESBTP-yAKRO\",\"validation_rules\":[\"required\",\"string\",\"max:255\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":1,\"created_by\":1,\"updated_by\":null,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T14:43:30.000000Z\"},{\"id\":2,\"key\":\"school_acronym\",\"value\":\"ESBTP\",\"type\":\"string\",\"description\":\"Acronyme de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"ESBTP\",\"validation_rules\":[\"nullable\",\"string\",\"max:10\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":3,\"key\":\"school_country\",\"value\":\"C\\u00f4te d\'Ivoire\",\"type\":\"string\",\"description\":\"Pays de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"C\\u00f4te d\'Ivoire\",\"validation_rules\":[\"nullable\",\"string\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":4,\"key\":\"director_title\",\"value\":\"Directeur G\\u00e9n\\u00e9ral\",\"type\":\"string\",\"description\":\"Titre du directeur\",\"is_required\":false,\"default_value\":\"Directeur G\\u00e9n\\u00e9ral\",\"validation_rules\":[\"nullable\",\"string\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":9,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":5,\"key\":\"pdf_show_logo\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Afficher le logo sur les PDF\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":6,\"key\":\"pdf_logo_position\",\"value\":\"left\",\"type\":\"string\",\"description\":\"Position du logo sur les PDF\",\"is_required\":false,\"default_value\":\"left\",\"validation_rules\":[\"in:left,center,right\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":7,\"key\":\"pdf_font_size\",\"value\":\"12\",\"type\":\"integer\",\"description\":\"Taille de police pour les PDF\",\"is_required\":false,\"default_value\":\"12\",\"validation_rules\":[\"integer\",\"min:8\",\"max:20\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":8,\"key\":\"pdf_margin_top\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"Marge sup\\u00e9rieure des PDF (mm)\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":9,\"key\":\"pdf_margin_bottom\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"Marge inf\\u00e9rieure des PDF (mm)\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":10,\"key\":\"pdf_margin_left\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Marge gauche des PDF (mm)\",\"is_required\":false,\"default_value\":\"15\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":11,\"key\":\"pdf_margin_right\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Marge droite des PDF (mm)\",\"is_required\":false,\"default_value\":\"15\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":7,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":12,\"key\":\"theme_primary_color\",\"value\":\"#007bff\",\"type\":\"string\",\"description\":\"Couleur primaire du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#007bff\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":13,\"key\":\"theme_secondary_color\",\"value\":\"#6c757d\",\"type\":\"string\",\"description\":\"Couleur secondaire du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#6c757d\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":14,\"key\":\"theme_success_color\",\"value\":\"#28a745\",\"type\":\"string\",\"description\":\"Couleur de succ\\u00e8s du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#28a745\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":15,\"key\":\"theme_danger_color\",\"value\":\"#dc3545\",\"type\":\"string\",\"description\":\"Couleur de danger du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#dc3545\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":16,\"key\":\"theme_warning_color\",\"value\":\"#ffc107\",\"type\":\"string\",\"description\":\"Couleur d\'avertissement du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#ffc107\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":17,\"key\":\"theme_info_color\",\"value\":\"#17a2b8\",\"type\":\"string\",\"description\":\"Couleur d\'information du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#17a2b8\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":18,\"key\":\"sidebar_color\",\"value\":\"#343a40\",\"type\":\"string\",\"description\":\"Couleur de la barre lat\\u00e9rale\",\"is_required\":false,\"default_value\":\"#343a40\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":19,\"key\":\"navbar_color\",\"value\":\"#ffffff\",\"type\":\"string\",\"description\":\"Couleur de la barre de navigation\",\"is_required\":false,\"default_value\":\"#ffffff\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":20,\"key\":\"background_color\",\"value\":\"#f8f9fa\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:11:04.000000Z\"},{\"id\":21,\"key\":\"text_color\",\"value\":\"#212529\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:11:04.000000Z\"},{\"id\":22,\"key\":\"link_color\",\"value\":\"#007bff\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:11:04.000000Z\"},{\"id\":23,\"key\":\"semester_system\",\"value\":\"trimester\",\"type\":\"string\",\"description\":\"Syst\\u00e8me de semestres\",\"is_required\":false,\"default_value\":\"trimester\",\"validation_rules\":[\"in:semester,trimester,quarter\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":24,\"key\":\"grade_scale\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"\\u00c9chelle de notation\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"in:20,100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":25,\"key\":\"passing_grade\",\"value\":\"10\",\"type\":\"integer\",\"description\":\"Note de passage\",\"is_required\":false,\"default_value\":\"10\",\"validation_rules\":[\"numeric\",\"min:0\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":26,\"key\":\"attendance_required\",\"value\":\"75\",\"type\":\"integer\",\"description\":\"Pourcentage d\'assiduit\\u00e9 requis\",\"is_required\":false,\"default_value\":\"75\",\"validation_rules\":[\"integer\",\"min:0\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":27,\"key\":\"late_arrival_tolerance\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Tol\\u00e9rance de retard (minutes)\",\"is_required\":false,\"default_value\":\"15\",\"validation_rules\":[\"integer\",\"min:0\",\"max:60\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"attendance\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"attendance\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":28,\"key\":\"email_notifications\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer les notifications par email\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":29,\"key\":\"sms_notifications\",\"value\":\"0\",\"type\":\"boolean\",\"description\":\"Activer les notifications SMS\",\"is_required\":false,\"default_value\":\"0\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":30,\"key\":\"parent_notifications\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer les notifications aux parents\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":31,\"key\":\"teacher_notifications\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer les notifications aux enseignants\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":32,\"key\":\"admin_notifications\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer les notifications aux administrateurs\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":33,\"key\":\"school_address\",\"value\":\"\",\"type\":\"string\",\"description\":\"Adresse de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"nullable\",\"string\",\"max:500\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":34,\"key\":\"school_city\",\"value\":\"Yamoussoukro\",\"type\":\"string\",\"description\":\"Ville de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"Yamoussoukro\",\"validation_rules\":[\"nullable\",\"string\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":35,\"key\":\"school_phone\",\"value\":\"\",\"type\":\"string\",\"description\":\"T\\u00e9l\\u00e9phone de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"nullable\",\"string\",\"max:20\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":36,\"key\":\"school_email\",\"value\":\"\",\"type\":\"string\",\"description\":\"Email de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"nullable\",\"email\",\"max:255\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":7,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:22.000000Z\"},{\"id\":37,\"key\":\"director_name\",\"value\":\"\",\"type\":\"string\",\"description\":\"Nom du directeur\",\"is_required\":true,\"default_value\":\"\",\"validation_rules\":[\"required\",\"string\",\"max:255\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":8,\"created_by\":1,\"updated_by\":1,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":38,\"key\":\"current_academic_year\",\"value\":\"\",\"type\":\"string\",\"description\":\"Ann\\u00e9e universitaire actuelle\",\"is_required\":true,\"default_value\":\"\",\"validation_rules\":[\"required\",\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":39,\"key\":\"attendance_tracking_enabled\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer le suivi d\'assiduit\\u00e9\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"attendance\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"attendance\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":40,\"key\":\"absence_justification_required\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Justification d\'absence requise\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"attendance\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"attendance\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":41,\"key\":\"bulletin_show_absences\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le tableau des absences\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":24,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":42,\"key\":\"bulletin_show_attendance_rate\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Afficher le taux d\'assiduit\\u00e9 sur le bulletin\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":43,\"key\":\"bulletin_show_teacher_comments\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Afficher les commentaires des enseignants\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":44,\"key\":\"pdf_header_height\",\"value\":\"30\",\"type\":\"integer\",\"description\":\"Hauteur de l\'en-t\\u00eate PDF (mm)\",\"is_required\":false,\"default_value\":\"30\",\"validation_rules\":[\"integer\",\"min:10\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":8,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-03T09:21:32.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":45,\"key\":\"pdf_footer_height\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"Hauteur du pied de page PDF (mm)\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":9,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-03T09:21:32.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":46,\"key\":\"app_timezone\",\"value\":\"Africa\\/Abidjan\",\"type\":\"string\",\"description\":\"Fuseau horaire de l\'application\",\"is_required\":false,\"default_value\":\"Africa\\/Abidjan\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T09:21:33.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":47,\"key\":\"app_locale\",\"value\":\"fr\",\"type\":\"string\",\"description\":\"Langue de l\'application\",\"is_required\":false,\"default_value\":\"fr\",\"validation_rules\":[\"in:fr,en\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T09:21:33.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":48,\"key\":\"maintenance_mode\",\"value\":\"0\",\"type\":\"boolean\",\"description\":\"Mode maintenance activ\\u00e9\",\"is_required\":false,\"default_value\":\"0\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T09:21:33.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":49,\"key\":\"bulletin_show_header\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher l\'en-t\\u00eate du bulletin\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":50,\"key\":\"bulletin_show_logo\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le logo de l\'\\u00e9cole\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":51,\"key\":\"bulletin_show_school_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de l\'\\u00e9cole\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":52,\"key\":\"bulletin_show_republic_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de la R\\u00e9publique\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":53,\"key\":\"bulletin_show_ministry_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations du minist\\u00e8re\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":54,\"key\":\"bulletin_show_edition_date\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la date d\'\\u00e9dition\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":55,\"key\":\"bulletin_show_cycle_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations du cycle (BTS)\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":7,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":56,\"key\":\"bulletin_show_student_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de l\'\\u00e9tudiant\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":8,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":57,\"key\":\"bulletin_show_matricule\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le matricule\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":9,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":58,\"key\":\"bulletin_show_birth_date\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la date de naissance\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":10,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":59,\"key\":\"bulletin_show_redoublant\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le statut redoublant\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":11,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":60,\"key\":\"bulletin_show_class_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":12,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":61,\"key\":\"bulletin_show_effectif\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher l\'effectif de la classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":13,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":62,\"key\":\"bulletin_show_subjects_table\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le tableau des mati\\u00e8res\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":14,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":63,\"key\":\"bulletin_show_general_subjects\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les mati\\u00e8res d\'enseignement g\\u00e9n\\u00e9ral\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":15,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":64,\"key\":\"bulletin_show_technical_subjects\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les mati\\u00e8res d\'enseignement technique\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":16,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":65,\"key\":\"bulletin_show_subject_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne par mati\\u00e8re\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":17,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":66,\"key\":\"bulletin_show_coefficient\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les coefficients\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":18,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":67,\"key\":\"bulletin_show_weighted_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne pond\\u00e9r\\u00e9e\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":19,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":68,\"key\":\"bulletin_show_rank_per_subject\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le rang par mati\\u00e8re\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":20,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":69,\"key\":\"bulletin_show_teachers\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les professeurs\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":21,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":70,\"key\":\"bulletin_show_appreciations\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les appr\\u00e9ciations\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":22,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":71,\"key\":\"bulletin_show_section_averages\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les moyennes par section\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":23,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":72,\"key\":\"bulletin_show_justified_absences\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les absences justifi\\u00e9es\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":25,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":73,\"key\":\"bulletin_show_unjustified_absences\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les absences non justifi\\u00e9es\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":26,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":74,\"key\":\"bulletin_show_results_section\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la section r\\u00e9sultats\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":27,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":75,\"key\":\"bulletin_show_raw_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne brute\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":28,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":76,\"key\":\"bulletin_show_attendance_note\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la note d\'assiduit\\u00e9\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":29,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":77,\"key\":\"bulletin_show_semester_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne semestrielle\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":30,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":78,\"key\":\"bulletin_show_student_rank\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le rang de l\'\\u00e9tudiant\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":31,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":79,\"key\":\"bulletin_show_mentions\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les mentions\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":32,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":80,\"key\":\"bulletin_show_felicitation\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher f\\u00e9licitation\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":33,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":81,\"key\":\"bulletin_show_encouragement\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher encouragement\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":34,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":82,\"key\":\"bulletin_show_honor_roll\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher tableau d\'honneur\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":35,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":83,\"key\":\"bulletin_show_work_warning\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher avertissement travail\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":36,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":84,\"key\":\"bulletin_show_conduct_blame\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher bl\\u00e2me conduite\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":37,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":85,\"key\":\"bulletin_show_statistics\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les statistiques\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":38,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":86,\"key\":\"bulletin_show_highest_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la plus forte moyenne\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":39,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":87,\"key\":\"bulletin_show_lowest_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la plus faible moyenne\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":40,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":88,\"key\":\"bulletin_show_class_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne de classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":41,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":89,\"key\":\"bulletin_show_council_decision\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la d\\u00e9cision du conseil de classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":42,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":90,\"key\":\"bulletin_show_signature\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la signature\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":43,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":91,\"key\":\"bulletin_show_director_signature\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la signature de la directrice\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":44,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":92,\"key\":\"bulletin_auto_calculate_rank\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Calculer automatiquement le rang\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":45,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":93,\"key\":\"bulletin_auto_calculate_mention\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Calculer automatiquement la mention\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":46,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":94,\"key\":\"bulletin_auto_calculate_attendance\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Calculer automatiquement l\'assiduit\\u00e9\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":47,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":95,\"key\":\"bulletin_require_teacher_assignment\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Exiger l\'assignation des professeurs\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":48,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":96,\"key\":\"bulletin_require_subject_config\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Exiger la configuration des mati\\u00e8res\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":49,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":97,\"key\":\"bulletin_validate_averages\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Valider les moyennes avant g\\u00e9n\\u00e9ration\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":50,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":98,\"key\":\"bulletin_felicitation_threshold\",\"value\":\"16\",\"type\":\"string\",\"description\":\"Seuil pour f\\u00e9licitation\",\"is_required\":false,\"default_value\":\"16\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":51,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":99,\"key\":\"bulletin_encouragement_threshold\",\"value\":\"14\",\"type\":\"string\",\"description\":\"Seuil pour encouragement\",\"is_required\":false,\"default_value\":\"14\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":52,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":100,\"key\":\"bulletin_honor_roll_threshold\",\"value\":\"12\",\"type\":\"string\",\"description\":\"Seuil pour tableau d\'honneur\",\"is_required\":false,\"default_value\":\"12\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":53,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":101,\"key\":\"bulletin_work_warning_threshold\",\"value\":\"8\",\"type\":\"string\",\"description\":\"Seuil pour avertissement travail\",\"is_required\":false,\"default_value\":\"8\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":54,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":102,\"key\":\"bulletin_school_name_custom\",\"value\":\"\",\"type\":\"string\",\"description\":\"Nom personnalis\\u00e9 de l\'\\u00e9cole (vide = utiliser config)\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":55,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":103,\"key\":\"bulletin_republic_text\",\"value\":\"R\\u00e9publique de C\\u00f4te d\'Ivoire\",\"type\":\"string\",\"description\":\"Texte de la R\\u00e9publique\",\"is_required\":false,\"default_value\":\"R\\u00e9publique de C\\u00f4te d\'Ivoire\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":56,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":104,\"key\":\"bulletin_union_text\",\"value\":\"Union-Discipline-Travail\",\"type\":\"string\",\"description\":\"Devise nationale\",\"is_required\":false,\"default_value\":\"Union-Discipline-Travail\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":57,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":105,\"key\":\"bulletin_ministry_text\",\"value\":\"Minist\\u00e8re de l\'Enseignement Sup\\u00e9rieur et de la Recherche Scientifique\",\"type\":\"string\",\"description\":\"Nom du minist\\u00e8re\",\"is_required\":false,\"default_value\":\"Minist\\u00e8re de l\'Enseignement Sup\\u00e9rieur et de la Recherche Scientifique\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":58,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":106,\"key\":\"bulletin_cycle_text\",\"value\":\"Brevet de Technicien Sup\\u00e9rieur\",\"type\":\"string\",\"description\":\"Nom du cycle\",\"is_required\":false,\"default_value\":\"Brevet de Technicien Sup\\u00e9rieur\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":59,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":107,\"key\":\"bulletin_cycle_abbreviation\",\"value\":\"BTS\",\"type\":\"string\",\"description\":\"Abr\\u00e9viation du cycle\",\"is_required\":false,\"default_value\":\"BTS\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":60,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":108,\"key\":\"bulletin_show_print_button\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le bouton d\'impression\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":61,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":109,\"key\":\"bulletin_paper_format\",\"value\":\"A4\",\"type\":\"string\",\"description\":\"Format du papier (A4, A3, Letter)\",\"is_required\":false,\"default_value\":\"A4\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":62,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":110,\"key\":\"bulletin_orientation\",\"value\":\"portrait\",\"type\":\"string\",\"description\":\"Orientation (portrait, landscape)\",\"is_required\":false,\"default_value\":\"portrait\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":63,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":111,\"key\":\"bulletin_font_size\",\"value\":\"11\",\"type\":\"string\",\"description\":\"Taille de police (px)\",\"is_required\":false,\"default_value\":\"11\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":64,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":112,\"key\":\"bulletin_dpi\",\"value\":\"150\",\"type\":\"string\",\"description\":\"R\\u00e9solution DPI pour PDF\",\"is_required\":false,\"default_value\":\"150\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":65,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":113,\"key\":\"establishment.school_name\",\"value\":\"\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":0,\"created_by\":null,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T14:16:27.000000Z\",\"updated_at\":\"2025-06-03T15:09:29.000000Z\"},{\"id\":114,\"key\":\"establishment.director_name\",\"value\":\"Dr. Test DIRECTEUR\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":0,\"created_by\":null,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T14:16:27.000000Z\",\"updated_at\":\"2025-06-03T15:09:29.000000Z\"},{\"id\":115,\"key\":\"pdf.font_size\",\"value\":\"abc\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":0,\"created_by\":null,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T14:16:27.000000Z\",\"updated_at\":\"2025-06-03T15:09:29.000000Z\"}]', 'automatic', 'active', '2025-06-03 15:09:43', 3, NULL, NULL, NULL, '2025-06-03 15:09:43', '2025-06-03 15:09:43');
+INSERT INTO `settings_backups` (`id`, `backup_name`, `description`, `settings_data`, `backup_type`, `status`, `backup_date`, `created_by`, `restored_by`, `restored_at`, `restore_notes`, `created_at`, `updated_at`) VALUES
+(14, 'Auto Backup - 2025-06-03 15:15:14', 'Sauvegarde automatique avant modification', '[{\"id\":1,\"key\":\"school_name\",\"value\":\"ESBTP\",\"type\":\"string\",\"description\":\"Nom de l\'\\u00e9tablissement\",\"is_required\":true,\"default_value\":\"ESBTP-yAKRO\",\"validation_rules\":[\"required\",\"string\",\"max:255\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":1,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T15:09:43.000000Z\"},{\"id\":2,\"key\":\"school_acronym\",\"value\":\"ESBTP\",\"type\":\"string\",\"description\":\"Acronyme de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"ESBTP\",\"validation_rules\":[\"nullable\",\"string\",\"max:10\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":2,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T15:09:43.000000Z\"},{\"id\":3,\"key\":\"school_country\",\"value\":\"C\\u00f4te d\'Ivoire\",\"type\":\"string\",\"description\":\"Pays de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"C\\u00f4te d\'Ivoire\",\"validation_rules\":[\"nullable\",\"string\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":5,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T15:09:43.000000Z\"},{\"id\":4,\"key\":\"director_title\",\"value\":\"Directeur G\\u00e9n\\u00e9ral\",\"type\":\"string\",\"description\":\"Titre du directeur\",\"is_required\":false,\"default_value\":\"Directeur G\\u00e9n\\u00e9ral\",\"validation_rules\":[\"nullable\",\"string\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":9,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T15:09:43.000000Z\"},{\"id\":5,\"key\":\"pdf_show_logo\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Afficher le logo sur les PDF\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":6,\"key\":\"pdf_logo_position\",\"value\":\"left\",\"type\":\"string\",\"description\":\"Position du logo sur les PDF\",\"is_required\":false,\"default_value\":\"left\",\"validation_rules\":[\"in:left,center,right\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":7,\"key\":\"pdf_font_size\",\"value\":\"12\",\"type\":\"integer\",\"description\":\"Taille de police pour les PDF\",\"is_required\":false,\"default_value\":\"12\",\"validation_rules\":[\"integer\",\"min:8\",\"max:20\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":8,\"key\":\"pdf_margin_top\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"Marge sup\\u00e9rieure des PDF (mm)\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":9,\"key\":\"pdf_margin_bottom\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"Marge inf\\u00e9rieure des PDF (mm)\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":10,\"key\":\"pdf_margin_left\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Marge gauche des PDF (mm)\",\"is_required\":false,\"default_value\":\"15\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":11,\"key\":\"pdf_margin_right\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Marge droite des PDF (mm)\",\"is_required\":false,\"default_value\":\"15\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":7,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":12,\"key\":\"theme_primary_color\",\"value\":\"#007bff\",\"type\":\"string\",\"description\":\"Couleur primaire du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#007bff\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":13,\"key\":\"theme_secondary_color\",\"value\":\"#6c757d\",\"type\":\"string\",\"description\":\"Couleur secondaire du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#6c757d\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":14,\"key\":\"theme_success_color\",\"value\":\"#28a745\",\"type\":\"string\",\"description\":\"Couleur de succ\\u00e8s du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#28a745\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":15,\"key\":\"theme_danger_color\",\"value\":\"#dc3545\",\"type\":\"string\",\"description\":\"Couleur de danger du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#dc3545\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":16,\"key\":\"theme_warning_color\",\"value\":\"#ffc107\",\"type\":\"string\",\"description\":\"Couleur d\'avertissement du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#ffc107\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":17,\"key\":\"theme_info_color\",\"value\":\"#17a2b8\",\"type\":\"string\",\"description\":\"Couleur d\'information du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#17a2b8\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":18,\"key\":\"sidebar_color\",\"value\":\"#343a40\",\"type\":\"string\",\"description\":\"Couleur de la barre lat\\u00e9rale\",\"is_required\":false,\"default_value\":\"#343a40\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":19,\"key\":\"navbar_color\",\"value\":\"#ffffff\",\"type\":\"string\",\"description\":\"Couleur de la barre de navigation\",\"is_required\":false,\"default_value\":\"#ffffff\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":20,\"key\":\"background_color\",\"value\":\"#f8f9fa\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:11:04.000000Z\"},{\"id\":21,\"key\":\"text_color\",\"value\":\"#212529\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:11:04.000000Z\"},{\"id\":22,\"key\":\"link_color\",\"value\":\"#007bff\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:11:04.000000Z\"},{\"id\":23,\"key\":\"semester_system\",\"value\":\"trimester\",\"type\":\"string\",\"description\":\"Syst\\u00e8me de semestres\",\"is_required\":false,\"default_value\":\"trimester\",\"validation_rules\":[\"in:semester,trimester,quarter\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":24,\"key\":\"grade_scale\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"\\u00c9chelle de notation\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"in:20,100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":25,\"key\":\"passing_grade\",\"value\":\"10\",\"type\":\"integer\",\"description\":\"Note de passage\",\"is_required\":false,\"default_value\":\"10\",\"validation_rules\":[\"numeric\",\"min:0\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":26,\"key\":\"attendance_required\",\"value\":\"75\",\"type\":\"integer\",\"description\":\"Pourcentage d\'assiduit\\u00e9 requis\",\"is_required\":false,\"default_value\":\"75\",\"validation_rules\":[\"integer\",\"min:0\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":27,\"key\":\"late_arrival_tolerance\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Tol\\u00e9rance de retard (minutes)\",\"is_required\":false,\"default_value\":\"15\",\"validation_rules\":[\"integer\",\"min:0\",\"max:60\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"attendance\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"attendance\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":28,\"key\":\"email_notifications\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer les notifications par email\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":29,\"key\":\"sms_notifications\",\"value\":\"0\",\"type\":\"boolean\",\"description\":\"Activer les notifications SMS\",\"is_required\":false,\"default_value\":\"0\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":30,\"key\":\"parent_notifications\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer les notifications aux parents\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":31,\"key\":\"teacher_notifications\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer les notifications aux enseignants\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":32,\"key\":\"admin_notifications\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer les notifications aux administrateurs\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":33,\"key\":\"school_address\",\"value\":\"Sicogi 3\",\"type\":\"string\",\"description\":\"Adresse de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"nullable\",\"string\",\"max:500\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":3,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T15:09:43.000000Z\"},{\"id\":34,\"key\":\"school_city\",\"value\":\"Yamoussoukro\",\"type\":\"string\",\"description\":\"Ville de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"Yamoussoukro\",\"validation_rules\":[\"nullable\",\"string\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":4,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T15:09:43.000000Z\"},{\"id\":35,\"key\":\"school_phone\",\"value\":\"0705843901\",\"type\":\"string\",\"description\":\"T\\u00e9l\\u00e9phone de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"nullable\",\"string\",\"max:20\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":6,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T15:09:43.000000Z\"},{\"id\":36,\"key\":\"school_email\",\"value\":\"MARCEL-_12@outlook.fr\",\"type\":\"string\",\"description\":\"Email de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"nullable\",\"email\",\"max:255\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":7,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T15:09:43.000000Z\"},{\"id\":37,\"key\":\"director_name\",\"value\":\"Marc BIC\",\"type\":\"string\",\"description\":\"Nom du directeur\",\"is_required\":true,\"default_value\":\"\",\"validation_rules\":[\"required\",\"string\",\"max:255\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":8,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T15:09:43.000000Z\"},{\"id\":38,\"key\":\"current_academic_year\",\"value\":\"\",\"type\":\"string\",\"description\":\"Ann\\u00e9e universitaire actuelle\",\"is_required\":true,\"default_value\":\"\",\"validation_rules\":[\"required\",\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":39,\"key\":\"attendance_tracking_enabled\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer le suivi d\'assiduit\\u00e9\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"attendance\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"attendance\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":40,\"key\":\"absence_justification_required\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Justification d\'absence requise\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"attendance\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"attendance\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":41,\"key\":\"bulletin_show_absences\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le tableau des absences\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":24,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":42,\"key\":\"bulletin_show_attendance_rate\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Afficher le taux d\'assiduit\\u00e9 sur le bulletin\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":43,\"key\":\"bulletin_show_teacher_comments\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Afficher les commentaires des enseignants\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":44,\"key\":\"pdf_header_height\",\"value\":\"30\",\"type\":\"integer\",\"description\":\"Hauteur de l\'en-t\\u00eate PDF (mm)\",\"is_required\":false,\"default_value\":\"30\",\"validation_rules\":[\"integer\",\"min:10\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":8,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-03T09:21:32.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":45,\"key\":\"pdf_footer_height\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"Hauteur du pied de page PDF (mm)\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":9,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-03T09:21:32.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":46,\"key\":\"app_timezone\",\"value\":\"Africa\\/Abidjan\",\"type\":\"string\",\"description\":\"Fuseau horaire de l\'application\",\"is_required\":false,\"default_value\":\"Africa\\/Abidjan\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T09:21:33.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":47,\"key\":\"app_locale\",\"value\":\"fr\",\"type\":\"string\",\"description\":\"Langue de l\'application\",\"is_required\":false,\"default_value\":\"fr\",\"validation_rules\":[\"in:fr,en\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T09:21:33.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":48,\"key\":\"maintenance_mode\",\"value\":\"0\",\"type\":\"boolean\",\"description\":\"Mode maintenance activ\\u00e9\",\"is_required\":false,\"default_value\":\"0\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T09:21:33.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":49,\"key\":\"bulletin_show_header\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher l\'en-t\\u00eate du bulletin\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":50,\"key\":\"bulletin_show_logo\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le logo de l\'\\u00e9cole\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":51,\"key\":\"bulletin_show_school_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de l\'\\u00e9cole\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":52,\"key\":\"bulletin_show_republic_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de la R\\u00e9publique\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":53,\"key\":\"bulletin_show_ministry_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations du minist\\u00e8re\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":54,\"key\":\"bulletin_show_edition_date\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la date d\'\\u00e9dition\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":55,\"key\":\"bulletin_show_cycle_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations du cycle (BTS)\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":7,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":56,\"key\":\"bulletin_show_student_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de l\'\\u00e9tudiant\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":8,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":57,\"key\":\"bulletin_show_matricule\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le matricule\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":9,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":58,\"key\":\"bulletin_show_birth_date\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la date de naissance\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":10,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":59,\"key\":\"bulletin_show_redoublant\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le statut redoublant\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":11,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":60,\"key\":\"bulletin_show_class_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":12,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":61,\"key\":\"bulletin_show_effectif\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher l\'effectif de la classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":13,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":62,\"key\":\"bulletin_show_subjects_table\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le tableau des mati\\u00e8res\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":14,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":63,\"key\":\"bulletin_show_general_subjects\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les mati\\u00e8res d\'enseignement g\\u00e9n\\u00e9ral\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":15,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":64,\"key\":\"bulletin_show_technical_subjects\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les mati\\u00e8res d\'enseignement technique\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":16,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":65,\"key\":\"bulletin_show_subject_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne par mati\\u00e8re\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":17,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":66,\"key\":\"bulletin_show_coefficient\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les coefficients\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":18,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":67,\"key\":\"bulletin_show_weighted_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne pond\\u00e9r\\u00e9e\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":19,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":68,\"key\":\"bulletin_show_rank_per_subject\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le rang par mati\\u00e8re\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":20,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":69,\"key\":\"bulletin_show_teachers\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les professeurs\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":21,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":70,\"key\":\"bulletin_show_appreciations\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les appr\\u00e9ciations\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":22,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":71,\"key\":\"bulletin_show_section_averages\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les moyennes par section\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":23,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":72,\"key\":\"bulletin_show_justified_absences\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les absences justifi\\u00e9es\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":25,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":73,\"key\":\"bulletin_show_unjustified_absences\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les absences non justifi\\u00e9es\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":26,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":74,\"key\":\"bulletin_show_results_section\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la section r\\u00e9sultats\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":27,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":75,\"key\":\"bulletin_show_raw_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne brute\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":28,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":76,\"key\":\"bulletin_show_attendance_note\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la note d\'assiduit\\u00e9\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":29,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":77,\"key\":\"bulletin_show_semester_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne semestrielle\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":30,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":78,\"key\":\"bulletin_show_student_rank\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le rang de l\'\\u00e9tudiant\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":31,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":79,\"key\":\"bulletin_show_mentions\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les mentions\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":32,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":80,\"key\":\"bulletin_show_felicitation\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher f\\u00e9licitation\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":33,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":81,\"key\":\"bulletin_show_encouragement\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher encouragement\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":34,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":82,\"key\":\"bulletin_show_honor_roll\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher tableau d\'honneur\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":35,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":83,\"key\":\"bulletin_show_work_warning\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher avertissement travail\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":36,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":84,\"key\":\"bulletin_show_conduct_blame\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher bl\\u00e2me conduite\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":37,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":85,\"key\":\"bulletin_show_statistics\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les statistiques\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":38,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":86,\"key\":\"bulletin_show_highest_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la plus forte moyenne\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":39,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":87,\"key\":\"bulletin_show_lowest_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la plus faible moyenne\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":40,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":88,\"key\":\"bulletin_show_class_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne de classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":41,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":89,\"key\":\"bulletin_show_council_decision\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la d\\u00e9cision du conseil de classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":42,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":90,\"key\":\"bulletin_show_signature\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la signature\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":43,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":91,\"key\":\"bulletin_show_director_signature\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la signature de la directrice\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":44,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":92,\"key\":\"bulletin_auto_calculate_rank\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Calculer automatiquement le rang\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":45,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":93,\"key\":\"bulletin_auto_calculate_mention\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Calculer automatiquement la mention\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":46,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":94,\"key\":\"bulletin_auto_calculate_attendance\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Calculer automatiquement l\'assiduit\\u00e9\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":47,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":95,\"key\":\"bulletin_require_teacher_assignment\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Exiger l\'assignation des professeurs\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":48,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":96,\"key\":\"bulletin_require_subject_config\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Exiger la configuration des mati\\u00e8res\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":49,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":97,\"key\":\"bulletin_validate_averages\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Valider les moyennes avant g\\u00e9n\\u00e9ration\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":50,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":98,\"key\":\"bulletin_felicitation_threshold\",\"value\":\"16\",\"type\":\"string\",\"description\":\"Seuil pour f\\u00e9licitation\",\"is_required\":false,\"default_value\":\"16\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":51,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":99,\"key\":\"bulletin_encouragement_threshold\",\"value\":\"14\",\"type\":\"string\",\"description\":\"Seuil pour encouragement\",\"is_required\":false,\"default_value\":\"14\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":52,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":100,\"key\":\"bulletin_honor_roll_threshold\",\"value\":\"12\",\"type\":\"string\",\"description\":\"Seuil pour tableau d\'honneur\",\"is_required\":false,\"default_value\":\"12\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":53,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":101,\"key\":\"bulletin_work_warning_threshold\",\"value\":\"8\",\"type\":\"string\",\"description\":\"Seuil pour avertissement travail\",\"is_required\":false,\"default_value\":\"8\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":54,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":102,\"key\":\"bulletin_school_name_custom\",\"value\":\"\",\"type\":\"string\",\"description\":\"Nom personnalis\\u00e9 de l\'\\u00e9cole (vide = utiliser config)\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":55,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":103,\"key\":\"bulletin_republic_text\",\"value\":\"R\\u00e9publique de C\\u00f4te d\'Ivoire\",\"type\":\"string\",\"description\":\"Texte de la R\\u00e9publique\",\"is_required\":false,\"default_value\":\"R\\u00e9publique de C\\u00f4te d\'Ivoire\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":56,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":104,\"key\":\"bulletin_union_text\",\"value\":\"Union-Discipline-Travail\",\"type\":\"string\",\"description\":\"Devise nationale\",\"is_required\":false,\"default_value\":\"Union-Discipline-Travail\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":57,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":105,\"key\":\"bulletin_ministry_text\",\"value\":\"Minist\\u00e8re de l\'Enseignement Sup\\u00e9rieur et de la Recherche Scientifique\",\"type\":\"string\",\"description\":\"Nom du minist\\u00e8re\",\"is_required\":false,\"default_value\":\"Minist\\u00e8re de l\'Enseignement Sup\\u00e9rieur et de la Recherche Scientifique\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":58,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":106,\"key\":\"bulletin_cycle_text\",\"value\":\"Brevet de Technicien Sup\\u00e9rieur\",\"type\":\"string\",\"description\":\"Nom du cycle\",\"is_required\":false,\"default_value\":\"Brevet de Technicien Sup\\u00e9rieur\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":59,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":107,\"key\":\"bulletin_cycle_abbreviation\",\"value\":\"BTS\",\"type\":\"string\",\"description\":\"Abr\\u00e9viation du cycle\",\"is_required\":false,\"default_value\":\"BTS\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":60,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":108,\"key\":\"bulletin_show_print_button\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le bouton d\'impression\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":61,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":109,\"key\":\"bulletin_paper_format\",\"value\":\"A4\",\"type\":\"string\",\"description\":\"Format du papier (A4, A3, Letter)\",\"is_required\":false,\"default_value\":\"A4\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":62,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":110,\"key\":\"bulletin_orientation\",\"value\":\"portrait\",\"type\":\"string\",\"description\":\"Orientation (portrait, landscape)\",\"is_required\":false,\"default_value\":\"portrait\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":63,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":111,\"key\":\"bulletin_font_size\",\"value\":\"11\",\"type\":\"string\",\"description\":\"Taille de police (px)\",\"is_required\":false,\"default_value\":\"11\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":64,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":112,\"key\":\"bulletin_dpi\",\"value\":\"150\",\"type\":\"string\",\"description\":\"R\\u00e9solution DPI pour PDF\",\"is_required\":false,\"default_value\":\"150\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":65,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":113,\"key\":\"establishment.school_name\",\"value\":\"\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":0,\"created_by\":null,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T14:16:27.000000Z\",\"updated_at\":\"2025-06-03T15:09:29.000000Z\"},{\"id\":114,\"key\":\"establishment.director_name\",\"value\":\"Dr. Test DIRECTEUR\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":0,\"created_by\":null,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T14:16:27.000000Z\",\"updated_at\":\"2025-06-03T15:09:29.000000Z\"},{\"id\":115,\"key\":\"pdf.font_size\",\"value\":\"abc\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":0,\"created_by\":null,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T14:16:27.000000Z\",\"updated_at\":\"2025-06-03T15:09:29.000000Z\"}]', 'automatic', 'active', '2025-06-03 15:15:14', 1, NULL, NULL, NULL, '2025-06-03 15:15:14', '2025-06-03 15:15:14');
+INSERT INTO `settings_backups` (`id`, `backup_name`, `description`, `settings_data`, `backup_type`, `status`, `backup_date`, `created_by`, `restored_by`, `restored_at`, `restore_notes`, `created_at`, `updated_at`) VALUES
+(15, 'Auto Backup - 2025-06-03 15:15:14', 'Sauvegarde automatique avant modification', '[{\"id\":1,\"key\":\"school_name\",\"value\":\"Test School - 15:15:14\",\"type\":\"string\",\"description\":\"Nom de l\'\\u00e9tablissement\",\"is_required\":true,\"default_value\":\"ESBTP-yAKRO\",\"validation_rules\":[\"required\",\"string\",\"max:255\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":1,\"created_by\":1,\"updated_by\":null,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T15:15:14.000000Z\"},{\"id\":2,\"key\":\"school_acronym\",\"value\":\"ESBTP\",\"type\":\"string\",\"description\":\"Acronyme de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"ESBTP\",\"validation_rules\":[\"nullable\",\"string\",\"max:10\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":2,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T15:09:43.000000Z\"},{\"id\":3,\"key\":\"school_country\",\"value\":\"C\\u00f4te d\'Ivoire\",\"type\":\"string\",\"description\":\"Pays de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"C\\u00f4te d\'Ivoire\",\"validation_rules\":[\"nullable\",\"string\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":5,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T15:09:43.000000Z\"},{\"id\":4,\"key\":\"director_title\",\"value\":\"Directeur G\\u00e9n\\u00e9ral\",\"type\":\"string\",\"description\":\"Titre du directeur\",\"is_required\":false,\"default_value\":\"Directeur G\\u00e9n\\u00e9ral\",\"validation_rules\":[\"nullable\",\"string\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":9,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T15:09:43.000000Z\"},{\"id\":5,\"key\":\"pdf_show_logo\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Afficher le logo sur les PDF\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":6,\"key\":\"pdf_logo_position\",\"value\":\"left\",\"type\":\"string\",\"description\":\"Position du logo sur les PDF\",\"is_required\":false,\"default_value\":\"left\",\"validation_rules\":[\"in:left,center,right\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":7,\"key\":\"pdf_font_size\",\"value\":\"12\",\"type\":\"integer\",\"description\":\"Taille de police pour les PDF\",\"is_required\":false,\"default_value\":\"12\",\"validation_rules\":[\"integer\",\"min:8\",\"max:20\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":8,\"key\":\"pdf_margin_top\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"Marge sup\\u00e9rieure des PDF (mm)\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":9,\"key\":\"pdf_margin_bottom\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"Marge inf\\u00e9rieure des PDF (mm)\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":10,\"key\":\"pdf_margin_left\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Marge gauche des PDF (mm)\",\"is_required\":false,\"default_value\":\"15\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":11,\"key\":\"pdf_margin_right\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Marge droite des PDF (mm)\",\"is_required\":false,\"default_value\":\"15\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":7,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":12,\"key\":\"theme_primary_color\",\"value\":\"#007bff\",\"type\":\"string\",\"description\":\"Couleur primaire du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#007bff\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":13,\"key\":\"theme_secondary_color\",\"value\":\"#6c757d\",\"type\":\"string\",\"description\":\"Couleur secondaire du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#6c757d\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":14,\"key\":\"theme_success_color\",\"value\":\"#28a745\",\"type\":\"string\",\"description\":\"Couleur de succ\\u00e8s du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#28a745\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":15,\"key\":\"theme_danger_color\",\"value\":\"#dc3545\",\"type\":\"string\",\"description\":\"Couleur de danger du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#dc3545\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":16,\"key\":\"theme_warning_color\",\"value\":\"#ffc107\",\"type\":\"string\",\"description\":\"Couleur d\'avertissement du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#ffc107\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":17,\"key\":\"theme_info_color\",\"value\":\"#17a2b8\",\"type\":\"string\",\"description\":\"Couleur d\'information du th\\u00e8me\",\"is_required\":false,\"default_value\":\"#17a2b8\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"interface\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":18,\"key\":\"sidebar_color\",\"value\":\"#343a40\",\"type\":\"string\",\"description\":\"Couleur de la barre lat\\u00e9rale\",\"is_required\":false,\"default_value\":\"#343a40\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":19,\"key\":\"navbar_color\",\"value\":\"#ffffff\",\"type\":\"string\",\"description\":\"Couleur de la barre de navigation\",\"is_required\":false,\"default_value\":\"#ffffff\",\"validation_rules\":[\"regex:\\/^#[0-9A-Fa-f]{6}$\\/\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":20,\"key\":\"background_color\",\"value\":\"#f8f9fa\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:11:04.000000Z\"},{\"id\":21,\"key\":\"text_color\",\"value\":\"#212529\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:11:04.000000Z\"},{\"id\":22,\"key\":\"link_color\",\"value\":\"#007bff\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":0,\"created_by\":null,\"updated_by\":null,\"group\":\"interface\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:11:04.000000Z\"},{\"id\":23,\"key\":\"semester_system\",\"value\":\"trimester\",\"type\":\"string\",\"description\":\"Syst\\u00e8me de semestres\",\"is_required\":false,\"default_value\":\"trimester\",\"validation_rules\":[\"in:semester,trimester,quarter\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":24,\"key\":\"grade_scale\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"\\u00c9chelle de notation\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"in:20,100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":25,\"key\":\"passing_grade\",\"value\":\"10\",\"type\":\"integer\",\"description\":\"Note de passage\",\"is_required\":false,\"default_value\":\"10\",\"validation_rules\":[\"numeric\",\"min:0\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":26,\"key\":\"attendance_required\",\"value\":\"75\",\"type\":\"integer\",\"description\":\"Pourcentage d\'assiduit\\u00e9 requis\",\"is_required\":false,\"default_value\":\"75\",\"validation_rules\":[\"integer\",\"min:0\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":27,\"key\":\"late_arrival_tolerance\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Tol\\u00e9rance de retard (minutes)\",\"is_required\":false,\"default_value\":\"15\",\"validation_rules\":[\"integer\",\"min:0\",\"max:60\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"attendance\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"attendance\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":28,\"key\":\"email_notifications\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer les notifications par email\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":29,\"key\":\"sms_notifications\",\"value\":\"0\",\"type\":\"boolean\",\"description\":\"Activer les notifications SMS\",\"is_required\":false,\"default_value\":\"0\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":30,\"key\":\"parent_notifications\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer les notifications aux parents\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":31,\"key\":\"teacher_notifications\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer les notifications aux enseignants\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":32,\"key\":\"admin_notifications\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer les notifications aux administrateurs\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"notifications\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"notifications\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":33,\"key\":\"school_address\",\"value\":\"Sicogi 3\",\"type\":\"string\",\"description\":\"Adresse de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"nullable\",\"string\",\"max:500\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":3,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T15:09:43.000000Z\"},{\"id\":34,\"key\":\"school_city\",\"value\":\"Yamoussoukro\",\"type\":\"string\",\"description\":\"Ville de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"Yamoussoukro\",\"validation_rules\":[\"nullable\",\"string\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":4,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T15:09:43.000000Z\"},{\"id\":35,\"key\":\"school_phone\",\"value\":\"0705843901\",\"type\":\"string\",\"description\":\"T\\u00e9l\\u00e9phone de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"nullable\",\"string\",\"max:20\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":6,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T15:09:43.000000Z\"},{\"id\":36,\"key\":\"school_email\",\"value\":\"MARCEL-_12@outlook.fr\",\"type\":\"string\",\"description\":\"Email de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"nullable\",\"email\",\"max:255\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":7,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T15:09:43.000000Z\"},{\"id\":37,\"key\":\"director_name\",\"value\":\"Marc BIC\",\"type\":\"string\",\"description\":\"Nom du directeur\",\"is_required\":true,\"default_value\":\"\",\"validation_rules\":[\"required\",\"string\",\"max:255\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":8,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T15:09:43.000000Z\"},{\"id\":38,\"key\":\"current_academic_year\",\"value\":\"\",\"type\":\"string\",\"description\":\"Ann\\u00e9e universitaire actuelle\",\"is_required\":true,\"default_value\":\"\",\"validation_rules\":[\"required\",\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":39,\"key\":\"attendance_tracking_enabled\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer le suivi d\'assiduit\\u00e9\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"attendance\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"attendance\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":40,\"key\":\"absence_justification_required\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Justification d\'absence requise\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"attendance\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"attendance\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":41,\"key\":\"bulletin_show_absences\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le tableau des absences\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":24,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":42,\"key\":\"bulletin_show_attendance_rate\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Afficher le taux d\'assiduit\\u00e9 sur le bulletin\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":43,\"key\":\"bulletin_show_teacher_comments\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Afficher les commentaires des enseignants\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":44,\"key\":\"pdf_header_height\",\"value\":\"30\",\"type\":\"integer\",\"description\":\"Hauteur de l\'en-t\\u00eate PDF (mm)\",\"is_required\":false,\"default_value\":\"30\",\"validation_rules\":[\"integer\",\"min:10\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":8,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-03T09:21:32.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":45,\"key\":\"pdf_footer_height\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"Hauteur du pied de page PDF (mm)\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":9,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-03T09:21:32.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":46,\"key\":\"app_timezone\",\"value\":\"Africa\\/Abidjan\",\"type\":\"string\",\"description\":\"Fuseau horaire de l\'application\",\"is_required\":false,\"default_value\":\"Africa\\/Abidjan\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T09:21:33.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":47,\"key\":\"app_locale\",\"value\":\"fr\",\"type\":\"string\",\"description\":\"Langue de l\'application\",\"is_required\":false,\"default_value\":\"fr\",\"validation_rules\":[\"in:fr,en\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T09:21:33.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":48,\"key\":\"maintenance_mode\",\"value\":\"0\",\"type\":\"boolean\",\"description\":\"Mode maintenance activ\\u00e9\",\"is_required\":false,\"default_value\":\"0\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T09:21:33.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":49,\"key\":\"bulletin_show_header\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher l\'en-t\\u00eate du bulletin\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":50,\"key\":\"bulletin_show_logo\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le logo de l\'\\u00e9cole\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":51,\"key\":\"bulletin_show_school_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de l\'\\u00e9cole\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":52,\"key\":\"bulletin_show_republic_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de la R\\u00e9publique\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":53,\"key\":\"bulletin_show_ministry_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations du minist\\u00e8re\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":54,\"key\":\"bulletin_show_edition_date\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la date d\'\\u00e9dition\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":55,\"key\":\"bulletin_show_cycle_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations du cycle (BTS)\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":7,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":56,\"key\":\"bulletin_show_student_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de l\'\\u00e9tudiant\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":8,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":57,\"key\":\"bulletin_show_matricule\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le matricule\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":9,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":58,\"key\":\"bulletin_show_birth_date\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la date de naissance\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":10,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":59,\"key\":\"bulletin_show_redoublant\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le statut redoublant\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":11,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":60,\"key\":\"bulletin_show_class_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":12,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":61,\"key\":\"bulletin_show_effectif\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher l\'effectif de la classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":13,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":62,\"key\":\"bulletin_show_subjects_table\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le tableau des mati\\u00e8res\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":14,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":63,\"key\":\"bulletin_show_general_subjects\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les mati\\u00e8res d\'enseignement g\\u00e9n\\u00e9ral\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":15,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":64,\"key\":\"bulletin_show_technical_subjects\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les mati\\u00e8res d\'enseignement technique\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":16,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":65,\"key\":\"bulletin_show_subject_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne par mati\\u00e8re\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":17,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":66,\"key\":\"bulletin_show_coefficient\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les coefficients\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":18,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":67,\"key\":\"bulletin_show_weighted_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne pond\\u00e9r\\u00e9e\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":19,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":68,\"key\":\"bulletin_show_rank_per_subject\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le rang par mati\\u00e8re\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":20,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":69,\"key\":\"bulletin_show_teachers\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les professeurs\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":21,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":70,\"key\":\"bulletin_show_appreciations\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les appr\\u00e9ciations\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":22,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":71,\"key\":\"bulletin_show_section_averages\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les moyennes par section\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":23,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":72,\"key\":\"bulletin_show_justified_absences\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les absences justifi\\u00e9es\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":25,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":73,\"key\":\"bulletin_show_unjustified_absences\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les absences non justifi\\u00e9es\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":26,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":74,\"key\":\"bulletin_show_results_section\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la section r\\u00e9sultats\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":27,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":75,\"key\":\"bulletin_show_raw_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne brute\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":28,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":76,\"key\":\"bulletin_show_attendance_note\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la note d\'assiduit\\u00e9\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":29,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":77,\"key\":\"bulletin_show_semester_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne semestrielle\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":30,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":78,\"key\":\"bulletin_show_student_rank\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le rang de l\'\\u00e9tudiant\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":31,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":79,\"key\":\"bulletin_show_mentions\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les mentions\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":32,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":80,\"key\":\"bulletin_show_felicitation\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher f\\u00e9licitation\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":33,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":81,\"key\":\"bulletin_show_encouragement\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher encouragement\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":34,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":82,\"key\":\"bulletin_show_honor_roll\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher tableau d\'honneur\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":35,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":83,\"key\":\"bulletin_show_work_warning\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher avertissement travail\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":36,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":84,\"key\":\"bulletin_show_conduct_blame\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher bl\\u00e2me conduite\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":37,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":85,\"key\":\"bulletin_show_statistics\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les statistiques\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":38,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":86,\"key\":\"bulletin_show_highest_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la plus forte moyenne\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":39,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":87,\"key\":\"bulletin_show_lowest_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la plus faible moyenne\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":40,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":88,\"key\":\"bulletin_show_class_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne de classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":41,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":89,\"key\":\"bulletin_show_council_decision\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la d\\u00e9cision du conseil de classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":42,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":90,\"key\":\"bulletin_show_signature\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la signature\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":43,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":91,\"key\":\"bulletin_show_director_signature\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la signature de la directrice\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":44,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":92,\"key\":\"bulletin_auto_calculate_rank\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Calculer automatiquement le rang\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":45,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":93,\"key\":\"bulletin_auto_calculate_mention\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Calculer automatiquement la mention\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":46,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":94,\"key\":\"bulletin_auto_calculate_attendance\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Calculer automatiquement l\'assiduit\\u00e9\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":47,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":95,\"key\":\"bulletin_require_teacher_assignment\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Exiger l\'assignation des professeurs\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":48,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":96,\"key\":\"bulletin_require_subject_config\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Exiger la configuration des mati\\u00e8res\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":49,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":97,\"key\":\"bulletin_validate_averages\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Valider les moyennes avant g\\u00e9n\\u00e9ration\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":50,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":98,\"key\":\"bulletin_felicitation_threshold\",\"value\":\"16\",\"type\":\"string\",\"description\":\"Seuil pour f\\u00e9licitation\",\"is_required\":false,\"default_value\":\"16\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":51,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":99,\"key\":\"bulletin_encouragement_threshold\",\"value\":\"14\",\"type\":\"string\",\"description\":\"Seuil pour encouragement\",\"is_required\":false,\"default_value\":\"14\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":52,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":100,\"key\":\"bulletin_honor_roll_threshold\",\"value\":\"12\",\"type\":\"string\",\"description\":\"Seuil pour tableau d\'honneur\",\"is_required\":false,\"default_value\":\"12\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":53,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":101,\"key\":\"bulletin_work_warning_threshold\",\"value\":\"8\",\"type\":\"string\",\"description\":\"Seuil pour avertissement travail\",\"is_required\":false,\"default_value\":\"8\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":54,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":102,\"key\":\"bulletin_school_name_custom\",\"value\":\"\",\"type\":\"string\",\"description\":\"Nom personnalis\\u00e9 de l\'\\u00e9cole (vide = utiliser config)\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":55,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":103,\"key\":\"bulletin_republic_text\",\"value\":\"R\\u00e9publique de C\\u00f4te d\'Ivoire\",\"type\":\"string\",\"description\":\"Texte de la R\\u00e9publique\",\"is_required\":false,\"default_value\":\"R\\u00e9publique de C\\u00f4te d\'Ivoire\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":56,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":104,\"key\":\"bulletin_union_text\",\"value\":\"Union-Discipline-Travail\",\"type\":\"string\",\"description\":\"Devise nationale\",\"is_required\":false,\"default_value\":\"Union-Discipline-Travail\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":57,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":105,\"key\":\"bulletin_ministry_text\",\"value\":\"Minist\\u00e8re de l\'Enseignement Sup\\u00e9rieur et de la Recherche Scientifique\",\"type\":\"string\",\"description\":\"Nom du minist\\u00e8re\",\"is_required\":false,\"default_value\":\"Minist\\u00e8re de l\'Enseignement Sup\\u00e9rieur et de la Recherche Scientifique\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":58,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":106,\"key\":\"bulletin_cycle_text\",\"value\":\"Brevet de Technicien Sup\\u00e9rieur\",\"type\":\"string\",\"description\":\"Nom du cycle\",\"is_required\":false,\"default_value\":\"Brevet de Technicien Sup\\u00e9rieur\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":59,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":107,\"key\":\"bulletin_cycle_abbreviation\",\"value\":\"BTS\",\"type\":\"string\",\"description\":\"Abr\\u00e9viation du cycle\",\"is_required\":false,\"default_value\":\"BTS\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":60,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":108,\"key\":\"bulletin_show_print_button\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le bouton d\'impression\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":61,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":109,\"key\":\"bulletin_paper_format\",\"value\":\"A4\",\"type\":\"string\",\"description\":\"Format du papier (A4, A3, Letter)\",\"is_required\":false,\"default_value\":\"A4\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":62,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":110,\"key\":\"bulletin_orientation\",\"value\":\"portrait\",\"type\":\"string\",\"description\":\"Orientation (portrait, landscape)\",\"is_required\":false,\"default_value\":\"portrait\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":63,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":111,\"key\":\"bulletin_font_size\",\"value\":\"11\",\"type\":\"string\",\"description\":\"Taille de police (px)\",\"is_required\":false,\"default_value\":\"11\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":64,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":112,\"key\":\"bulletin_dpi\",\"value\":\"150\",\"type\":\"string\",\"description\":\"R\\u00e9solution DPI pour PDF\",\"is_required\":false,\"default_value\":\"150\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":65,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":113,\"key\":\"establishment.school_name\",\"value\":\"\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":0,\"created_by\":null,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T14:16:27.000000Z\",\"updated_at\":\"2025-06-03T15:09:29.000000Z\"},{\"id\":114,\"key\":\"establishment.director_name\",\"value\":\"Dr. Test DIRECTEUR\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":0,\"created_by\":null,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T14:16:27.000000Z\",\"updated_at\":\"2025-06-03T15:09:29.000000Z\"},{\"id\":115,\"key\":\"pdf.font_size\",\"value\":\"abc\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":0,\"created_by\":null,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T14:16:27.000000Z\",\"updated_at\":\"2025-06-03T15:09:29.000000Z\"}]', 'automatic', 'active', '2025-06-03 15:15:14', 1, NULL, NULL, NULL, '2025-06-03 15:15:14', '2025-06-03 15:15:14');
+INSERT INTO `settings_backups` (`id`, `backup_name`, `description`, `settings_data`, `backup_type`, `status`, `backup_date`, `created_by`, `restored_by`, `restored_at`, `restore_notes`, `created_at`, `updated_at`) VALUES
+(16, 'Auto Backup - 2025-06-03 16:29:23', 'Sauvegarde automatique avant mise à jour des paramètres', '[{\"id\":1,\"key\":\"school_name\",\"value\":\"ESBTP\",\"type\":\"string\",\"description\":\"Nom de l\'\\u00e9tablissement\",\"is_required\":true,\"default_value\":\"ESBTP-yAKRO\",\"validation_rules\":[\"required\",\"string\",\"max:255\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":1,\"created_by\":1,\"updated_by\":null,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T15:15:14.000000Z\"},{\"id\":2,\"key\":\"school_acronym\",\"value\":\"ESBTP\",\"type\":\"string\",\"description\":\"Acronyme de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"ESBTP\",\"validation_rules\":[\"nullable\",\"string\",\"max:10\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":2,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T15:09:43.000000Z\"},{\"id\":3,\"key\":\"school_country\",\"value\":\"C\\u00f4te d\'Ivoire\",\"type\":\"string\",\"description\":\"Pays de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"C\\u00f4te d\'Ivoire\",\"validation_rules\":[\"nullable\",\"string\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":5,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T15:09:43.000000Z\"},{\"id\":4,\"key\":\"director_title\",\"value\":\"Directeur G\\u00e9n\\u00e9ral\",\"type\":\"string\",\"description\":\"Titre du directeur\",\"is_required\":false,\"default_value\":\"Directeur G\\u00e9n\\u00e9ral\",\"validation_rules\":[\"nullable\",\"string\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":9,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T15:09:43.000000Z\"},{\"id\":5,\"key\":\"pdf_show_logo\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Afficher le logo sur les PDF\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":7,\"key\":\"pdf_font_size\",\"value\":\"12\",\"type\":\"integer\",\"description\":\"Taille de police pour les PDF\",\"is_required\":false,\"default_value\":\"12\",\"validation_rules\":[\"integer\",\"min:8\",\"max:20\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":8,\"key\":\"pdf_margin_top\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"Marge sup\\u00e9rieure des PDF (mm)\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":9,\"key\":\"pdf_margin_bottom\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"Marge inf\\u00e9rieure des PDF (mm)\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":10,\"key\":\"pdf_margin_left\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Marge gauche des PDF (mm)\",\"is_required\":false,\"default_value\":\"15\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":11,\"key\":\"pdf_margin_right\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Marge droite des PDF (mm)\",\"is_required\":false,\"default_value\":\"15\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":7,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":24,\"key\":\"grade_scale\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"\\u00c9chelle de notation\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"in:20,100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":25,\"key\":\"passing_grade\",\"value\":\"10\",\"type\":\"integer\",\"description\":\"Note de passage\",\"is_required\":false,\"default_value\":\"10\",\"validation_rules\":[\"numeric\",\"min:0\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":26,\"key\":\"attendance_required\",\"value\":\"75\",\"type\":\"integer\",\"description\":\"Pourcentage d\'assiduit\\u00e9 requis\",\"is_required\":false,\"default_value\":\"75\",\"validation_rules\":[\"integer\",\"min:0\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":27,\"key\":\"late_arrival_tolerance\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Tol\\u00e9rance de retard (minutes)\",\"is_required\":false,\"default_value\":\"15\",\"validation_rules\":[\"integer\",\"min:0\",\"max:60\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"attendance\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"attendance\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":33,\"key\":\"school_address\",\"value\":\"Sicogi 3\",\"type\":\"string\",\"description\":\"Adresse de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"nullable\",\"string\",\"max:500\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":3,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T15:09:43.000000Z\"},{\"id\":34,\"key\":\"school_city\",\"value\":\"Yamoussoukro\",\"type\":\"string\",\"description\":\"Ville de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"Yamoussoukro\",\"validation_rules\":[\"nullable\",\"string\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":4,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T15:09:43.000000Z\"},{\"id\":35,\"key\":\"school_phone\",\"value\":\"0705843901\",\"type\":\"string\",\"description\":\"T\\u00e9l\\u00e9phone de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"nullable\",\"string\",\"max:20\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":6,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T15:09:43.000000Z\"},{\"id\":36,\"key\":\"school_email\",\"value\":\"MARCEL-_12@outlook.fr\",\"type\":\"string\",\"description\":\"Email de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"nullable\",\"email\",\"max:255\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":7,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T15:09:43.000000Z\"},{\"id\":37,\"key\":\"director_name\",\"value\":\"Marc BIC\",\"type\":\"string\",\"description\":\"Nom du directeur\",\"is_required\":true,\"default_value\":\"\",\"validation_rules\":[\"required\",\"string\",\"max:255\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":8,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T15:09:43.000000Z\"},{\"id\":39,\"key\":\"attendance_tracking_enabled\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer le suivi d\'assiduit\\u00e9\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"attendance\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"attendance\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":40,\"key\":\"absence_justification_required\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Justification d\'absence requise\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"attendance\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"attendance\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":41,\"key\":\"bulletin_show_absences\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le tableau des absences\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":24,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":42,\"key\":\"bulletin_show_attendance_rate\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Afficher le taux d\'assiduit\\u00e9 sur le bulletin\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":43,\"key\":\"bulletin_show_teacher_comments\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Afficher les commentaires des enseignants\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":44,\"key\":\"pdf_header_height\",\"value\":\"30\",\"type\":\"integer\",\"description\":\"Hauteur de l\'en-t\\u00eate PDF (mm)\",\"is_required\":false,\"default_value\":\"30\",\"validation_rules\":[\"integer\",\"min:10\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":8,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-03T09:21:32.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":45,\"key\":\"pdf_footer_height\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"Hauteur du pied de page PDF (mm)\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":9,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-03T09:21:32.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":46,\"key\":\"app_timezone\",\"value\":\"Africa\\/Abidjan\",\"type\":\"string\",\"description\":\"Fuseau horaire de l\'application\",\"is_required\":false,\"default_value\":\"Africa\\/Abidjan\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T09:21:33.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":47,\"key\":\"app_locale\",\"value\":\"fr\",\"type\":\"string\",\"description\":\"Langue de l\'application\",\"is_required\":false,\"default_value\":\"fr\",\"validation_rules\":[\"in:fr,en\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T09:21:33.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":48,\"key\":\"maintenance_mode\",\"value\":\"0\",\"type\":\"boolean\",\"description\":\"Mode maintenance activ\\u00e9\",\"is_required\":false,\"default_value\":\"0\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T09:21:33.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":49,\"key\":\"bulletin_show_header\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher l\'en-t\\u00eate du bulletin\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":50,\"key\":\"bulletin_show_logo\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le logo de l\'\\u00e9cole\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":51,\"key\":\"bulletin_show_school_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de l\'\\u00e9cole\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":52,\"key\":\"bulletin_show_republic_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de la R\\u00e9publique\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":53,\"key\":\"bulletin_show_ministry_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations du minist\\u00e8re\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":54,\"key\":\"bulletin_show_edition_date\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la date d\'\\u00e9dition\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":55,\"key\":\"bulletin_show_cycle_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations du cycle (BTS)\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":7,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":56,\"key\":\"bulletin_show_student_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de l\'\\u00e9tudiant\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":8,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":57,\"key\":\"bulletin_show_matricule\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le matricule\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":9,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":58,\"key\":\"bulletin_show_birth_date\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la date de naissance\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":10,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":59,\"key\":\"bulletin_show_redoublant\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le statut redoublant\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":11,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":60,\"key\":\"bulletin_show_class_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":12,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":61,\"key\":\"bulletin_show_effectif\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher l\'effectif de la classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":13,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":62,\"key\":\"bulletin_show_subjects_table\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le tableau des mati\\u00e8res\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":14,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":63,\"key\":\"bulletin_show_general_subjects\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les mati\\u00e8res d\'enseignement g\\u00e9n\\u00e9ral\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":15,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":64,\"key\":\"bulletin_show_technical_subjects\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les mati\\u00e8res d\'enseignement technique\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":16,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":65,\"key\":\"bulletin_show_subject_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne par mati\\u00e8re\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":17,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":66,\"key\":\"bulletin_show_coefficient\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les coefficients\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":18,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":67,\"key\":\"bulletin_show_weighted_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne pond\\u00e9r\\u00e9e\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":19,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":68,\"key\":\"bulletin_show_rank_per_subject\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le rang par mati\\u00e8re\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":20,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":69,\"key\":\"bulletin_show_teachers\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les professeurs\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":21,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":70,\"key\":\"bulletin_show_appreciations\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les appr\\u00e9ciations\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":22,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":71,\"key\":\"bulletin_show_section_averages\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les moyennes par section\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":23,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":72,\"key\":\"bulletin_show_justified_absences\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les absences justifi\\u00e9es\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":25,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":73,\"key\":\"bulletin_show_unjustified_absences\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les absences non justifi\\u00e9es\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":26,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":74,\"key\":\"bulletin_show_results_section\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la section r\\u00e9sultats\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":27,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":75,\"key\":\"bulletin_show_raw_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne brute\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":28,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":76,\"key\":\"bulletin_show_attendance_note\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la note d\'assiduit\\u00e9\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":29,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":77,\"key\":\"bulletin_show_semester_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne semestrielle\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":30,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":78,\"key\":\"bulletin_show_student_rank\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le rang de l\'\\u00e9tudiant\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":31,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":79,\"key\":\"bulletin_show_mentions\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les mentions\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":32,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":80,\"key\":\"bulletin_show_felicitation\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher f\\u00e9licitation\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":33,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":81,\"key\":\"bulletin_show_encouragement\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher encouragement\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":34,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":82,\"key\":\"bulletin_show_honor_roll\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher tableau d\'honneur\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":35,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":83,\"key\":\"bulletin_show_work_warning\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher avertissement travail\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":36,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":84,\"key\":\"bulletin_show_conduct_blame\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher bl\\u00e2me conduite\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":37,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":85,\"key\":\"bulletin_show_statistics\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les statistiques\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":38,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":86,\"key\":\"bulletin_show_highest_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la plus forte moyenne\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":39,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":87,\"key\":\"bulletin_show_lowest_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la plus faible moyenne\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":40,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":88,\"key\":\"bulletin_show_class_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne de classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":41,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":89,\"key\":\"bulletin_show_council_decision\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la d\\u00e9cision du conseil de classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":42,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":90,\"key\":\"bulletin_show_signature\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la signature\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":43,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":91,\"key\":\"bulletin_show_director_signature\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la signature de la directrice\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":44,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":92,\"key\":\"bulletin_auto_calculate_rank\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Calculer automatiquement le rang\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":45,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":93,\"key\":\"bulletin_auto_calculate_mention\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Calculer automatiquement la mention\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":46,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":94,\"key\":\"bulletin_auto_calculate_attendance\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Calculer automatiquement l\'assiduit\\u00e9\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":47,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":95,\"key\":\"bulletin_require_teacher_assignment\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Exiger l\'assignation des professeurs\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":48,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":96,\"key\":\"bulletin_require_subject_config\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Exiger la configuration des mati\\u00e8res\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":49,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":97,\"key\":\"bulletin_validate_averages\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Valider les moyennes avant g\\u00e9n\\u00e9ration\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":50,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":98,\"key\":\"bulletin_felicitation_threshold\",\"value\":\"16\",\"type\":\"string\",\"description\":\"Seuil pour f\\u00e9licitation\",\"is_required\":false,\"default_value\":\"16\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":51,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":99,\"key\":\"bulletin_encouragement_threshold\",\"value\":\"14\",\"type\":\"string\",\"description\":\"Seuil pour encouragement\",\"is_required\":false,\"default_value\":\"14\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":52,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":100,\"key\":\"bulletin_honor_roll_threshold\",\"value\":\"12\",\"type\":\"string\",\"description\":\"Seuil pour tableau d\'honneur\",\"is_required\":false,\"default_value\":\"12\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":53,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":101,\"key\":\"bulletin_work_warning_threshold\",\"value\":\"8\",\"type\":\"string\",\"description\":\"Seuil pour avertissement travail\",\"is_required\":false,\"default_value\":\"8\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":54,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":102,\"key\":\"bulletin_school_name_custom\",\"value\":\"\",\"type\":\"string\",\"description\":\"Nom personnalis\\u00e9 de l\'\\u00e9cole (vide = utiliser config)\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":55,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":103,\"key\":\"bulletin_republic_text\",\"value\":\"R\\u00e9publique de C\\u00f4te d\'Ivoire\",\"type\":\"string\",\"description\":\"Texte de la R\\u00e9publique\",\"is_required\":false,\"default_value\":\"R\\u00e9publique de C\\u00f4te d\'Ivoire\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":56,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":104,\"key\":\"bulletin_union_text\",\"value\":\"Union-Discipline-Travail\",\"type\":\"string\",\"description\":\"Devise nationale\",\"is_required\":false,\"default_value\":\"Union-Discipline-Travail\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":57,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":105,\"key\":\"bulletin_ministry_text\",\"value\":\"Minist\\u00e8re de l\'Enseignement Sup\\u00e9rieur et de la Recherche Scientifique\",\"type\":\"string\",\"description\":\"Nom du minist\\u00e8re\",\"is_required\":false,\"default_value\":\"Minist\\u00e8re de l\'Enseignement Sup\\u00e9rieur et de la Recherche Scientifique\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":58,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":106,\"key\":\"bulletin_cycle_text\",\"value\":\"Brevet de Technicien Sup\\u00e9rieur\",\"type\":\"string\",\"description\":\"Nom du cycle\",\"is_required\":false,\"default_value\":\"Brevet de Technicien Sup\\u00e9rieur\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":59,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":107,\"key\":\"bulletin_cycle_abbreviation\",\"value\":\"BTS\",\"type\":\"string\",\"description\":\"Abr\\u00e9viation du cycle\",\"is_required\":false,\"default_value\":\"BTS\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":60,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":108,\"key\":\"bulletin_show_print_button\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le bouton d\'impression\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":61,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":109,\"key\":\"bulletin_paper_format\",\"value\":\"A4\",\"type\":\"string\",\"description\":\"Format du papier (A4, A3, Letter)\",\"is_required\":false,\"default_value\":\"A4\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":62,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":110,\"key\":\"bulletin_orientation\",\"value\":\"portrait\",\"type\":\"string\",\"description\":\"Orientation (portrait, landscape)\",\"is_required\":false,\"default_value\":\"portrait\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":63,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":111,\"key\":\"bulletin_font_size\",\"value\":\"11\",\"type\":\"string\",\"description\":\"Taille de police (px)\",\"is_required\":false,\"default_value\":\"11\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":64,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":112,\"key\":\"bulletin_dpi\",\"value\":\"150\",\"type\":\"string\",\"description\":\"R\\u00e9solution DPI pour PDF\",\"is_required\":false,\"default_value\":\"150\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":65,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":113,\"key\":\"establishment.school_name\",\"value\":\"\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":0,\"created_by\":null,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T14:16:27.000000Z\",\"updated_at\":\"2025-06-03T15:09:29.000000Z\"},{\"id\":114,\"key\":\"establishment.director_name\",\"value\":\"Dr. Test DIRECTEUR\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":0,\"created_by\":null,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T14:16:27.000000Z\",\"updated_at\":\"2025-06-03T15:09:29.000000Z\"},{\"id\":115,\"key\":\"pdf.font_size\",\"value\":\"abc\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":0,\"created_by\":null,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T14:16:27.000000Z\",\"updated_at\":\"2025-06-03T15:09:29.000000Z\"}]', 'automatic', 'active', '2025-06-03 16:29:23', 3, NULL, NULL, NULL, '2025-06-03 16:29:23', '2025-06-03 16:29:23');
+INSERT INTO `settings_backups` (`id`, `backup_name`, `description`, `settings_data`, `backup_type`, `status`, `backup_date`, `created_by`, `restored_by`, `restored_at`, `restore_notes`, `created_at`, `updated_at`) VALUES
+(17, 'Auto Backup - 2025-06-03 16:57:16', 'Sauvegarde automatique avant mise à jour des paramètres', '[{\"id\":1,\"key\":\"school_name\",\"value\":\"Ecole Sp\\u00e9ciale du B\\u00e2timent et des Travaux Publics\",\"type\":\"string\",\"description\":\"Nom de l\'\\u00e9tablissement\",\"is_required\":true,\"default_value\":\"ESBTP-yAKRO\",\"validation_rules\":[\"required\",\"string\",\"max:255\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":1,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T16:34:55.000000Z\"},{\"id\":2,\"key\":\"school_acronym\",\"value\":\"ESBTP\",\"type\":\"string\",\"description\":\"Acronyme de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"ESBTP\",\"validation_rules\":[\"nullable\",\"string\",\"max:10\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":2,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T16:34:55.000000Z\"},{\"id\":3,\"key\":\"school_country\",\"value\":\"C\\u00f4te d\'Ivoire\",\"type\":\"string\",\"description\":\"Pays de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"C\\u00f4te d\'Ivoire\",\"validation_rules\":[\"nullable\",\"string\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":5,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T15:09:43.000000Z\"},{\"id\":4,\"key\":\"director_title\",\"value\":\"Directeur G\\u00e9n\\u00e9ral\",\"type\":\"string\",\"description\":\"Titre du directeur\",\"is_required\":false,\"default_value\":\"Directeur G\\u00e9n\\u00e9ral\",\"validation_rules\":[\"nullable\",\"string\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":9,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T15:09:43.000000Z\"},{\"id\":5,\"key\":\"pdf_show_logo\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Afficher le logo sur les PDF\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":7,\"key\":\"pdf_font_size\",\"value\":\"12\",\"type\":\"integer\",\"description\":\"Taille de police pour les PDF\",\"is_required\":false,\"default_value\":\"12\",\"validation_rules\":[\"integer\",\"min:8\",\"max:20\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":8,\"key\":\"pdf_margin_top\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Marge sup\\u00e9rieure des PDF (mm)\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T16:46:22.000000Z\"},{\"id\":9,\"key\":\"pdf_margin_bottom\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Marge inf\\u00e9rieure des PDF (mm)\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T16:46:22.000000Z\"},{\"id\":10,\"key\":\"pdf_margin_left\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Marge gauche des PDF (mm)\",\"is_required\":false,\"default_value\":\"15\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":11,\"key\":\"pdf_margin_right\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Marge droite des PDF (mm)\",\"is_required\":false,\"default_value\":\"15\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":7,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":24,\"key\":\"grade_scale\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"\\u00c9chelle de notation\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"in:20,100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":25,\"key\":\"passing_grade\",\"value\":\"10\",\"type\":\"integer\",\"description\":\"Note de passage\",\"is_required\":false,\"default_value\":\"10\",\"validation_rules\":[\"numeric\",\"min:0\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":26,\"key\":\"attendance_required\",\"value\":\"75\",\"type\":\"integer\",\"description\":\"Pourcentage d\'assiduit\\u00e9 requis\",\"is_required\":false,\"default_value\":\"75\",\"validation_rules\":[\"integer\",\"min:0\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":27,\"key\":\"late_arrival_tolerance\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Tol\\u00e9rance de retard (minutes)\",\"is_required\":false,\"default_value\":\"15\",\"validation_rules\":[\"integer\",\"min:0\",\"max:60\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"attendance\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"attendance\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":33,\"key\":\"school_address\",\"value\":\"BP 2541 Yamoussoukro\",\"type\":\"string\",\"description\":\"Adresse de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"nullable\",\"string\",\"max:500\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":3,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T16:34:55.000000Z\"},{\"id\":34,\"key\":\"school_city\",\"value\":\"Yamoussoukro\",\"type\":\"string\",\"description\":\"Ville de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"Yamoussoukro\",\"validation_rules\":[\"nullable\",\"string\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":4,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T16:34:55.000000Z\"},{\"id\":35,\"key\":\"school_phone\",\"value\":\"30 64 39 93\",\"type\":\"string\",\"description\":\"T\\u00e9l\\u00e9phone de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"nullable\",\"string\",\"max:20\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":6,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T16:46:22.000000Z\"},{\"id\":36,\"key\":\"school_email\",\"value\":\"esbtpabidjan@esbtp-ci.net\",\"type\":\"string\",\"description\":\"Email de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"nullable\",\"email\",\"max:255\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":7,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T16:34:55.000000Z\"},{\"id\":37,\"key\":\"director_name\",\"value\":\"Directeur G\\u00e9n\\u00e9ral\",\"type\":\"string\",\"description\":\"Nom du directeur\",\"is_required\":true,\"default_value\":\"\",\"validation_rules\":[\"required\",\"string\",\"max:255\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":8,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T16:46:22.000000Z\"},{\"id\":39,\"key\":\"attendance_tracking_enabled\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer le suivi d\'assiduit\\u00e9\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"attendance\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"attendance\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":40,\"key\":\"absence_justification_required\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Justification d\'absence requise\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"attendance\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"attendance\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":41,\"key\":\"bulletin_show_absences\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le tableau des absences\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":24,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":42,\"key\":\"bulletin_show_attendance_rate\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Afficher le taux d\'assiduit\\u00e9 sur le bulletin\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":43,\"key\":\"bulletin_show_teacher_comments\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Afficher les commentaires des enseignants\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":44,\"key\":\"pdf_header_height\",\"value\":\"30\",\"type\":\"integer\",\"description\":\"Hauteur de l\'en-t\\u00eate PDF (mm)\",\"is_required\":false,\"default_value\":\"30\",\"validation_rules\":[\"integer\",\"min:10\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":8,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-03T09:21:32.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":45,\"key\":\"pdf_footer_height\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"Hauteur du pied de page PDF (mm)\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":9,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-03T09:21:32.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":46,\"key\":\"app_timezone\",\"value\":\"Africa\\/Abidjan\",\"type\":\"string\",\"description\":\"Fuseau horaire de l\'application\",\"is_required\":false,\"default_value\":\"Africa\\/Abidjan\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T09:21:33.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":47,\"key\":\"app_locale\",\"value\":\"fr\",\"type\":\"string\",\"description\":\"Langue de l\'application\",\"is_required\":false,\"default_value\":\"fr\",\"validation_rules\":[\"in:fr,en\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T09:21:33.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":48,\"key\":\"maintenance_mode\",\"value\":\"0\",\"type\":\"boolean\",\"description\":\"Mode maintenance activ\\u00e9\",\"is_required\":false,\"default_value\":\"0\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T09:21:33.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":49,\"key\":\"bulletin_show_header\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher l\'en-t\\u00eate du bulletin\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":50,\"key\":\"bulletin_show_logo\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le logo de l\'\\u00e9cole\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":51,\"key\":\"bulletin_show_school_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de l\'\\u00e9cole\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":52,\"key\":\"bulletin_show_republic_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de la R\\u00e9publique\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":53,\"key\":\"bulletin_show_ministry_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations du minist\\u00e8re\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":54,\"key\":\"bulletin_show_edition_date\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la date d\'\\u00e9dition\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":55,\"key\":\"bulletin_show_cycle_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations du cycle (BTS)\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":7,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":56,\"key\":\"bulletin_show_student_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de l\'\\u00e9tudiant\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":8,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":57,\"key\":\"bulletin_show_matricule\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le matricule\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":9,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":58,\"key\":\"bulletin_show_birth_date\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la date de naissance\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":10,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":59,\"key\":\"bulletin_show_redoublant\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le statut redoublant\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":11,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":60,\"key\":\"bulletin_show_class_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":12,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":61,\"key\":\"bulletin_show_effectif\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher l\'effectif de la classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":13,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":62,\"key\":\"bulletin_show_subjects_table\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le tableau des mati\\u00e8res\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":14,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":63,\"key\":\"bulletin_show_general_subjects\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les mati\\u00e8res d\'enseignement g\\u00e9n\\u00e9ral\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":15,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":64,\"key\":\"bulletin_show_technical_subjects\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les mati\\u00e8res d\'enseignement technique\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":16,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":65,\"key\":\"bulletin_show_subject_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne par mati\\u00e8re\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":17,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":66,\"key\":\"bulletin_show_coefficient\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les coefficients\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":18,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":67,\"key\":\"bulletin_show_weighted_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne pond\\u00e9r\\u00e9e\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":19,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":68,\"key\":\"bulletin_show_rank_per_subject\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le rang par mati\\u00e8re\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":20,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":69,\"key\":\"bulletin_show_teachers\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les professeurs\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":21,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":70,\"key\":\"bulletin_show_appreciations\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les appr\\u00e9ciations\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":22,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":71,\"key\":\"bulletin_show_section_averages\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les moyennes par section\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":23,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":72,\"key\":\"bulletin_show_justified_absences\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les absences justifi\\u00e9es\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":25,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":73,\"key\":\"bulletin_show_unjustified_absences\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les absences non justifi\\u00e9es\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":26,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":74,\"key\":\"bulletin_show_results_section\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la section r\\u00e9sultats\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":27,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":75,\"key\":\"bulletin_show_raw_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne brute\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":28,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":76,\"key\":\"bulletin_show_attendance_note\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la note d\'assiduit\\u00e9\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":29,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":77,\"key\":\"bulletin_show_semester_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne semestrielle\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":30,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":78,\"key\":\"bulletin_show_student_rank\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le rang de l\'\\u00e9tudiant\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":31,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":79,\"key\":\"bulletin_show_mentions\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les mentions\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":32,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":80,\"key\":\"bulletin_show_felicitation\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher f\\u00e9licitation\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":33,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":81,\"key\":\"bulletin_show_encouragement\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher encouragement\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":34,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":82,\"key\":\"bulletin_show_honor_roll\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher tableau d\'honneur\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":35,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":83,\"key\":\"bulletin_show_work_warning\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher avertissement travail\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":36,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":84,\"key\":\"bulletin_show_conduct_blame\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher bl\\u00e2me conduite\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":37,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":85,\"key\":\"bulletin_show_statistics\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les statistiques\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":38,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":86,\"key\":\"bulletin_show_highest_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la plus forte moyenne\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":39,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":87,\"key\":\"bulletin_show_lowest_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la plus faible moyenne\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":40,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":88,\"key\":\"bulletin_show_class_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne de classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":41,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":89,\"key\":\"bulletin_show_council_decision\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la d\\u00e9cision du conseil de classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":42,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":90,\"key\":\"bulletin_show_signature\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la signature\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":43,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":91,\"key\":\"bulletin_show_director_signature\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la signature de la directrice\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":44,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":92,\"key\":\"bulletin_auto_calculate_rank\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Calculer automatiquement le rang\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":45,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":93,\"key\":\"bulletin_auto_calculate_mention\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Calculer automatiquement la mention\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":46,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":94,\"key\":\"bulletin_auto_calculate_attendance\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Calculer automatiquement l\'assiduit\\u00e9\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":47,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":95,\"key\":\"bulletin_require_teacher_assignment\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Exiger l\'assignation des professeurs\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":48,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":96,\"key\":\"bulletin_require_subject_config\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Exiger la configuration des mati\\u00e8res\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":49,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":97,\"key\":\"bulletin_validate_averages\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Valider les moyennes avant g\\u00e9n\\u00e9ration\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":50,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":98,\"key\":\"bulletin_felicitation_threshold\",\"value\":\"16\",\"type\":\"string\",\"description\":\"Seuil pour f\\u00e9licitation\",\"is_required\":false,\"default_value\":\"16\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":51,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":99,\"key\":\"bulletin_encouragement_threshold\",\"value\":\"14\",\"type\":\"string\",\"description\":\"Seuil pour encouragement\",\"is_required\":false,\"default_value\":\"14\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":52,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":100,\"key\":\"bulletin_honor_roll_threshold\",\"value\":\"12\",\"type\":\"string\",\"description\":\"Seuil pour tableau d\'honneur\",\"is_required\":false,\"default_value\":\"12\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":53,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":101,\"key\":\"bulletin_work_warning_threshold\",\"value\":\"8\",\"type\":\"string\",\"description\":\"Seuil pour avertissement travail\",\"is_required\":false,\"default_value\":\"8\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":54,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":102,\"key\":\"bulletin_school_name_custom\",\"value\":\"\",\"type\":\"string\",\"description\":\"Nom personnalis\\u00e9 de l\'\\u00e9cole (vide = utiliser config)\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":55,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":103,\"key\":\"bulletin_republic_text\",\"value\":\"R\\u00e9publique de C\\u00f4te d\'Ivoire\",\"type\":\"string\",\"description\":\"Texte de la R\\u00e9publique\",\"is_required\":false,\"default_value\":\"R\\u00e9publique de C\\u00f4te d\'Ivoire\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":56,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":104,\"key\":\"bulletin_union_text\",\"value\":\"Union-Discipline-Travail\",\"type\":\"string\",\"description\":\"Devise nationale\",\"is_required\":false,\"default_value\":\"Union-Discipline-Travail\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":57,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":105,\"key\":\"bulletin_ministry_text\",\"value\":\"Minist\\u00e8re de l\'Enseignement Sup\\u00e9rieur et de la Recherche Scientifique\",\"type\":\"string\",\"description\":\"Nom du minist\\u00e8re\",\"is_required\":false,\"default_value\":\"Minist\\u00e8re de l\'Enseignement Sup\\u00e9rieur et de la Recherche Scientifique\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":58,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":106,\"key\":\"bulletin_cycle_text\",\"value\":\"Brevet de Technicien Sup\\u00e9rieur\",\"type\":\"string\",\"description\":\"Nom du cycle\",\"is_required\":false,\"default_value\":\"Brevet de Technicien Sup\\u00e9rieur\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":59,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":107,\"key\":\"bulletin_cycle_abbreviation\",\"value\":\"BTS\",\"type\":\"string\",\"description\":\"Abr\\u00e9viation du cycle\",\"is_required\":false,\"default_value\":\"BTS\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":60,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":108,\"key\":\"bulletin_show_print_button\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le bouton d\'impression\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":61,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":109,\"key\":\"bulletin_paper_format\",\"value\":\"A4\",\"type\":\"string\",\"description\":\"Format du papier (A4, A3, Letter)\",\"is_required\":false,\"default_value\":\"A4\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":62,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":110,\"key\":\"bulletin_orientation\",\"value\":\"portrait\",\"type\":\"string\",\"description\":\"Orientation (portrait, landscape)\",\"is_required\":false,\"default_value\":\"portrait\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":63,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":111,\"key\":\"bulletin_font_size\",\"value\":\"11\",\"type\":\"string\",\"description\":\"Taille de police (px)\",\"is_required\":false,\"default_value\":\"11\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":64,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":112,\"key\":\"bulletin_dpi\",\"value\":\"150\",\"type\":\"string\",\"description\":\"R\\u00e9solution DPI pour PDF\",\"is_required\":false,\"default_value\":\"150\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":65,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":113,\"key\":\"establishment.school_name\",\"value\":\"\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":0,\"created_by\":null,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T14:16:27.000000Z\",\"updated_at\":\"2025-06-03T15:09:29.000000Z\"},{\"id\":114,\"key\":\"establishment.director_name\",\"value\":\"Dr. Test DIRECTEUR\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":0,\"created_by\":null,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T14:16:27.000000Z\",\"updated_at\":\"2025-06-03T15:09:29.000000Z\"},{\"id\":115,\"key\":\"pdf.font_size\",\"value\":\"abc\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":0,\"created_by\":null,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T14:16:27.000000Z\",\"updated_at\":\"2025-06-03T15:09:29.000000Z\"},{\"id\":116,\"key\":\"school_logo\",\"value\":\"images\\/LOGO-KLASSCI-PNG.png\",\"type\":\"string\",\"description\":\"Param\\u00e8tre de l\'\\u00e9tablissement\",\"is_required\":true,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":0,\"created_by\":1,\"updated_by\":null,\"group\":\"general\",\"created_at\":\"2025-06-03T16:34:55.000000Z\",\"updated_at\":\"2025-06-03T16:34:55.000000Z\"},{\"id\":117,\"key\":\"pdf_header_text\",\"value\":\"\",\"type\":\"string\",\"description\":\"Param\\u00e8tre PDF\",\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":0,\"created_by\":1,\"updated_by\":null,\"group\":\"general\",\"created_at\":\"2025-06-03T16:34:55.000000Z\",\"updated_at\":\"2025-06-03T16:34:55.000000Z\"},{\"id\":118,\"key\":\"pdf_footer_text\",\"value\":\"Bulletin informatis\\u00e9, aucun duplicata n\'est d\\u00e9livr\\u00e9\",\"type\":\"string\",\"description\":\"Param\\u00e8tre PDF\",\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":0,\"created_by\":1,\"updated_by\":null,\"group\":\"general\",\"created_at\":\"2025-06-03T16:34:55.000000Z\",\"updated_at\":\"2025-06-03T16:34:55.000000Z\"},{\"id\":119,\"key\":\"pdf_watermark\",\"value\":\"\",\"type\":\"string\",\"description\":\"Param\\u00e8tre PDF\",\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":0,\"created_by\":1,\"updated_by\":null,\"group\":\"general\",\"created_at\":\"2025-06-03T16:34:55.000000Z\",\"updated_at\":\"2025-06-03T16:34:55.000000Z\"},{\"id\":120,\"key\":\"pdf_signature_director\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Param\\u00e8tre PDF\",\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":0,\"created_by\":1,\"updated_by\":null,\"group\":\"general\",\"created_at\":\"2025-06-03T16:34:55.000000Z\",\"updated_at\":\"2025-06-03T16:34:55.000000Z\"},{\"id\":121,\"key\":\"school_mobile\",\"value\":\"07 07 79 84 85\",\"type\":\"string\",\"description\":\"Num\\u00e9ro de t\\u00e9l\\u00e9phone mobile\\/cellulaire\",\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":7,\"created_by\":null,\"updated_by\":null,\"group\":\"general\",\"created_at\":\"2025-06-03T16:46:41.000000Z\",\"updated_at\":\"2025-06-03T16:46:41.000000Z\"}]', 'automatic', 'active', '2025-06-03 16:57:16', 3, NULL, NULL, NULL, '2025-06-03 16:57:16', '2025-06-03 16:57:16');
+INSERT INTO `settings_backups` (`id`, `backup_name`, `description`, `settings_data`, `backup_type`, `status`, `backup_date`, `created_by`, `restored_by`, `restored_at`, `restore_notes`, `created_at`, `updated_at`) VALUES
+(18, 'Auto Backup - 2025-06-03 16:57:55', 'Sauvegarde automatique avant mise à jour des paramètres', '[{\"id\":1,\"key\":\"school_name\",\"value\":\"Ecole Sp\\u00e9ciale du B\\u00e2timent et des Travaux Publics\",\"type\":\"string\",\"description\":\"Nom de l\'\\u00e9tablissement\",\"is_required\":true,\"default_value\":\"ESBTP-yAKRO\",\"validation_rules\":[\"required\",\"string\",\"max:255\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":1,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T16:34:55.000000Z\"},{\"id\":2,\"key\":\"school_acronym\",\"value\":\"KLASSCI\",\"type\":\"string\",\"description\":\"Acronyme de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"ESBTP\",\"validation_rules\":[\"nullable\",\"string\",\"max:10\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":2,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T16:57:17.000000Z\"},{\"id\":3,\"key\":\"school_country\",\"value\":\"C\\u00f4te d\'Ivoire\",\"type\":\"string\",\"description\":\"Pays de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"C\\u00f4te d\'Ivoire\",\"validation_rules\":[\"nullable\",\"string\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":5,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T15:09:43.000000Z\"},{\"id\":4,\"key\":\"director_title\",\"value\":\"Directeur G\\u00e9n\\u00e9ral\",\"type\":\"string\",\"description\":\"Titre du directeur\",\"is_required\":false,\"default_value\":\"Directeur G\\u00e9n\\u00e9ral\",\"validation_rules\":[\"nullable\",\"string\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":9,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T15:09:43.000000Z\"},{\"id\":5,\"key\":\"pdf_show_logo\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Afficher le logo sur les PDF\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":1,\"created_by\":1,\"updated_by\":3,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T16:57:17.000000Z\"},{\"id\":7,\"key\":\"pdf_font_size\",\"value\":\"12\",\"type\":\"integer\",\"description\":\"Taille de police pour les PDF\",\"is_required\":false,\"default_value\":\"12\",\"validation_rules\":[\"integer\",\"min:8\",\"max:20\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":3,\"created_by\":1,\"updated_by\":3,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T16:57:17.000000Z\"},{\"id\":8,\"key\":\"pdf_margin_top\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Marge sup\\u00e9rieure des PDF (mm)\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T16:46:22.000000Z\"},{\"id\":9,\"key\":\"pdf_margin_bottom\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Marge inf\\u00e9rieure des PDF (mm)\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T16:46:22.000000Z\"},{\"id\":10,\"key\":\"pdf_margin_left\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Marge gauche des PDF (mm)\",\"is_required\":false,\"default_value\":\"15\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":11,\"key\":\"pdf_margin_right\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Marge droite des PDF (mm)\",\"is_required\":false,\"default_value\":\"15\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":7,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":24,\"key\":\"grade_scale\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"\\u00c9chelle de notation\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"in:20,100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":25,\"key\":\"passing_grade\",\"value\":\"10\",\"type\":\"integer\",\"description\":\"Note de passage\",\"is_required\":false,\"default_value\":\"10\",\"validation_rules\":[\"numeric\",\"min:0\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":26,\"key\":\"attendance_required\",\"value\":\"75\",\"type\":\"integer\",\"description\":\"Pourcentage d\'assiduit\\u00e9 requis\",\"is_required\":false,\"default_value\":\"75\",\"validation_rules\":[\"integer\",\"min:0\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"academic\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"academic\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":27,\"key\":\"late_arrival_tolerance\",\"value\":\"15\",\"type\":\"integer\",\"description\":\"Tol\\u00e9rance de retard (minutes)\",\"is_required\":false,\"default_value\":\"15\",\"validation_rules\":[\"integer\",\"min:0\",\"max:60\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"attendance\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"attendance\",\"created_at\":\"2025-06-02T19:42:22.000000Z\",\"updated_at\":\"2025-06-03T01:22:23.000000Z\"},{\"id\":33,\"key\":\"school_address\",\"value\":\"BP 2541 Yamoussoukro\",\"type\":\"string\",\"description\":\"Adresse de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"nullable\",\"string\",\"max:500\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":3,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T16:34:55.000000Z\"},{\"id\":34,\"key\":\"school_city\",\"value\":\"Yamoussoukro\",\"type\":\"string\",\"description\":\"Ville de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"Yamoussoukro\",\"validation_rules\":[\"nullable\",\"string\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":4,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T16:34:55.000000Z\"},{\"id\":35,\"key\":\"school_phone\",\"value\":\"30 64 39 93\",\"type\":\"string\",\"description\":\"T\\u00e9l\\u00e9phone de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"nullable\",\"string\",\"max:20\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":6,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T16:46:22.000000Z\"},{\"id\":36,\"key\":\"school_email\",\"value\":\"esbtpabidjan@esbtp-ci.net\",\"type\":\"string\",\"description\":\"Email de l\'\\u00e9tablissement\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"nullable\",\"email\",\"max:255\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":7,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:22.000000Z\",\"updated_at\":\"2025-06-03T16:34:55.000000Z\"},{\"id\":37,\"key\":\"director_name\",\"value\":\"Directeur G\\u00e9n\\u00e9ral\",\"type\":\"string\",\"description\":\"Nom du directeur\",\"is_required\":true,\"default_value\":\"\",\"validation_rules\":[\"required\",\"string\",\"max:255\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":8,\"created_by\":1,\"updated_by\":3,\"group\":\"establishment\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T16:46:22.000000Z\"},{\"id\":39,\"key\":\"attendance_tracking_enabled\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Activer le suivi d\'assiduit\\u00e9\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"attendance\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"attendance\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":40,\"key\":\"absence_justification_required\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Justification d\'absence requise\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"attendance\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"attendance\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":41,\"key\":\"bulletin_show_absences\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le tableau des absences\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":24,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":42,\"key\":\"bulletin_show_attendance_rate\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Afficher le taux d\'assiduit\\u00e9 sur le bulletin\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":43,\"key\":\"bulletin_show_teacher_comments\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Afficher les commentaires des enseignants\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T01:22:23.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":44,\"key\":\"pdf_header_height\",\"value\":\"30\",\"type\":\"integer\",\"description\":\"Hauteur de l\'en-t\\u00eate PDF (mm)\",\"is_required\":false,\"default_value\":\"30\",\"validation_rules\":[\"integer\",\"min:10\",\"max:100\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":8,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-03T09:21:32.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":45,\"key\":\"pdf_footer_height\",\"value\":\"20\",\"type\":\"integer\",\"description\":\"Hauteur du pied de page PDF (mm)\",\"is_required\":false,\"default_value\":\"20\",\"validation_rules\":[\"integer\",\"min:10\",\"max:50\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":9,\"created_by\":1,\"updated_by\":1,\"group\":\"pdf\",\"created_at\":\"2025-06-03T09:21:32.000000Z\",\"updated_at\":\"2025-06-03T09:21:32.000000Z\"},{\"id\":46,\"key\":\"app_timezone\",\"value\":\"Africa\\/Abidjan\",\"type\":\"string\",\"description\":\"Fuseau horaire de l\'application\",\"is_required\":false,\"default_value\":\"Africa\\/Abidjan\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T09:21:33.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":47,\"key\":\"app_locale\",\"value\":\"fr\",\"type\":\"string\",\"description\":\"Langue de l\'application\",\"is_required\":false,\"default_value\":\"fr\",\"validation_rules\":[\"in:fr,en\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T09:21:33.000000Z\",\"updated_at\":\"2025-06-03T09:21:33.000000Z\"},{\"id\":48,\"key\":\"maintenance_mode\",\"value\":\"0\",\"type\":\"boolean\",\"description\":\"Mode maintenance activ\\u00e9\",\"is_required\":false,\"default_value\":\"0\",\"validation_rules\":[\"boolean\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"general\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T09:21:33.000000Z\",\"updated_at\":\"2025-06-03T11:27:36.000000Z\"},{\"id\":49,\"key\":\"bulletin_show_header\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher l\'en-t\\u00eate du bulletin\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":1,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":50,\"key\":\"bulletin_show_logo\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le logo de l\'\\u00e9cole\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":2,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":51,\"key\":\"bulletin_show_school_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de l\'\\u00e9cole\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":3,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":52,\"key\":\"bulletin_show_republic_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de la R\\u00e9publique\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":4,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":53,\"key\":\"bulletin_show_ministry_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations du minist\\u00e8re\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":5,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":54,\"key\":\"bulletin_show_edition_date\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la date d\'\\u00e9dition\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":6,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":55,\"key\":\"bulletin_show_cycle_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations du cycle (BTS)\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":7,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":56,\"key\":\"bulletin_show_student_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de l\'\\u00e9tudiant\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":8,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":57,\"key\":\"bulletin_show_matricule\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le matricule\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":9,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":58,\"key\":\"bulletin_show_birth_date\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la date de naissance\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":10,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":59,\"key\":\"bulletin_show_redoublant\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le statut redoublant\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":11,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":60,\"key\":\"bulletin_show_class_info\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les informations de classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":12,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":61,\"key\":\"bulletin_show_effectif\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher l\'effectif de la classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":13,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":62,\"key\":\"bulletin_show_subjects_table\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le tableau des mati\\u00e8res\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":14,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":63,\"key\":\"bulletin_show_general_subjects\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les mati\\u00e8res d\'enseignement g\\u00e9n\\u00e9ral\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":15,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":64,\"key\":\"bulletin_show_technical_subjects\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les mati\\u00e8res d\'enseignement technique\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":16,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":65,\"key\":\"bulletin_show_subject_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne par mati\\u00e8re\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":17,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":66,\"key\":\"bulletin_show_coefficient\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les coefficients\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":18,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":67,\"key\":\"bulletin_show_weighted_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne pond\\u00e9r\\u00e9e\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":19,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":68,\"key\":\"bulletin_show_rank_per_subject\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le rang par mati\\u00e8re\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":20,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":69,\"key\":\"bulletin_show_teachers\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les professeurs\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":21,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":70,\"key\":\"bulletin_show_appreciations\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les appr\\u00e9ciations\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":22,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":71,\"key\":\"bulletin_show_section_averages\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les moyennes par section\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":23,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":72,\"key\":\"bulletin_show_justified_absences\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les absences justifi\\u00e9es\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":25,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":73,\"key\":\"bulletin_show_unjustified_absences\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les absences non justifi\\u00e9es\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":26,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":74,\"key\":\"bulletin_show_results_section\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la section r\\u00e9sultats\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":27,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":75,\"key\":\"bulletin_show_raw_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne brute\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":28,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":76,\"key\":\"bulletin_show_attendance_note\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la note d\'assiduit\\u00e9\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":29,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":77,\"key\":\"bulletin_show_semester_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne semestrielle\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":30,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":78,\"key\":\"bulletin_show_student_rank\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le rang de l\'\\u00e9tudiant\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":31,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":79,\"key\":\"bulletin_show_mentions\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les mentions\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":32,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":80,\"key\":\"bulletin_show_felicitation\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher f\\u00e9licitation\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":33,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":81,\"key\":\"bulletin_show_encouragement\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher encouragement\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":34,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":82,\"key\":\"bulletin_show_honor_roll\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher tableau d\'honneur\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":35,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":83,\"key\":\"bulletin_show_work_warning\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher avertissement travail\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":36,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":84,\"key\":\"bulletin_show_conduct_blame\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher bl\\u00e2me conduite\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":37,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":85,\"key\":\"bulletin_show_statistics\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher les statistiques\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":38,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":86,\"key\":\"bulletin_show_highest_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la plus forte moyenne\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":39,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":87,\"key\":\"bulletin_show_lowest_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la plus faible moyenne\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":40,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":88,\"key\":\"bulletin_show_class_average\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la moyenne de classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":41,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":89,\"key\":\"bulletin_show_council_decision\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la d\\u00e9cision du conseil de classe\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":42,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":90,\"key\":\"bulletin_show_signature\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la signature\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":43,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":91,\"key\":\"bulletin_show_director_signature\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher la signature de la directrice\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":44,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":92,\"key\":\"bulletin_auto_calculate_rank\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Calculer automatiquement le rang\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":45,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":93,\"key\":\"bulletin_auto_calculate_mention\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Calculer automatiquement la mention\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":46,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":94,\"key\":\"bulletin_auto_calculate_attendance\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Calculer automatiquement l\'assiduit\\u00e9\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":47,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":95,\"key\":\"bulletin_require_teacher_assignment\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Exiger l\'assignation des professeurs\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":48,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":96,\"key\":\"bulletin_require_subject_config\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Exiger la configuration des mati\\u00e8res\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":49,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":97,\"key\":\"bulletin_validate_averages\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Valider les moyennes avant g\\u00e9n\\u00e9ration\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":50,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":98,\"key\":\"bulletin_felicitation_threshold\",\"value\":\"16\",\"type\":\"string\",\"description\":\"Seuil pour f\\u00e9licitation\",\"is_required\":false,\"default_value\":\"16\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":51,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":99,\"key\":\"bulletin_encouragement_threshold\",\"value\":\"14\",\"type\":\"string\",\"description\":\"Seuil pour encouragement\",\"is_required\":false,\"default_value\":\"14\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":52,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":100,\"key\":\"bulletin_honor_roll_threshold\",\"value\":\"12\",\"type\":\"string\",\"description\":\"Seuil pour tableau d\'honneur\",\"is_required\":false,\"default_value\":\"12\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":53,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":101,\"key\":\"bulletin_work_warning_threshold\",\"value\":\"8\",\"type\":\"string\",\"description\":\"Seuil pour avertissement travail\",\"is_required\":false,\"default_value\":\"8\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":54,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":102,\"key\":\"bulletin_school_name_custom\",\"value\":\"\",\"type\":\"string\",\"description\":\"Nom personnalis\\u00e9 de l\'\\u00e9cole (vide = utiliser config)\",\"is_required\":false,\"default_value\":\"\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":55,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":103,\"key\":\"bulletin_republic_text\",\"value\":\"R\\u00e9publique de C\\u00f4te d\'Ivoire\",\"type\":\"string\",\"description\":\"Texte de la R\\u00e9publique\",\"is_required\":false,\"default_value\":\"R\\u00e9publique de C\\u00f4te d\'Ivoire\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":56,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":104,\"key\":\"bulletin_union_text\",\"value\":\"Union-Discipline-Travail\",\"type\":\"string\",\"description\":\"Devise nationale\",\"is_required\":false,\"default_value\":\"Union-Discipline-Travail\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":57,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":105,\"key\":\"bulletin_ministry_text\",\"value\":\"Minist\\u00e8re de l\'Enseignement Sup\\u00e9rieur et de la Recherche Scientifique\",\"type\":\"string\",\"description\":\"Nom du minist\\u00e8re\",\"is_required\":false,\"default_value\":\"Minist\\u00e8re de l\'Enseignement Sup\\u00e9rieur et de la Recherche Scientifique\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":58,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":106,\"key\":\"bulletin_cycle_text\",\"value\":\"Brevet de Technicien Sup\\u00e9rieur\",\"type\":\"string\",\"description\":\"Nom du cycle\",\"is_required\":false,\"default_value\":\"Brevet de Technicien Sup\\u00e9rieur\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":59,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":107,\"key\":\"bulletin_cycle_abbreviation\",\"value\":\"BTS\",\"type\":\"string\",\"description\":\"Abr\\u00e9viation du cycle\",\"is_required\":false,\"default_value\":\"BTS\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":60,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":108,\"key\":\"bulletin_show_print_button\",\"value\":\"1\",\"type\":\"string\",\"description\":\"Afficher le bouton d\'impression\",\"is_required\":false,\"default_value\":\"1\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":61,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":109,\"key\":\"bulletin_paper_format\",\"value\":\"A4\",\"type\":\"string\",\"description\":\"Format du papier (A4, A3, Letter)\",\"is_required\":false,\"default_value\":\"A4\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":62,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":110,\"key\":\"bulletin_orientation\",\"value\":\"portrait\",\"type\":\"string\",\"description\":\"Orientation (portrait, landscape)\",\"is_required\":false,\"default_value\":\"portrait\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":63,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":111,\"key\":\"bulletin_font_size\",\"value\":\"11\",\"type\":\"string\",\"description\":\"Taille de police (px)\",\"is_required\":false,\"default_value\":\"11\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":64,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":112,\"key\":\"bulletin_dpi\",\"value\":\"150\",\"type\":\"string\",\"description\":\"R\\u00e9solution DPI pour PDF\",\"is_required\":false,\"default_value\":\"150\",\"validation_rules\":[\"string\"],\"is_active\":true,\"requires_restart\":false,\"category\":\"bulletin\",\"sort_order\":65,\"created_by\":1,\"updated_by\":1,\"group\":\"bulletin\",\"created_at\":\"2025-06-03T09:41:13.000000Z\",\"updated_at\":\"2025-06-03T09:41:13.000000Z\"},{\"id\":113,\"key\":\"establishment.school_name\",\"value\":\"\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":0,\"created_by\":null,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T14:16:27.000000Z\",\"updated_at\":\"2025-06-03T15:09:29.000000Z\"},{\"id\":114,\"key\":\"establishment.director_name\",\"value\":\"Dr. Test DIRECTEUR\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":0,\"created_by\":null,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T14:16:27.000000Z\",\"updated_at\":\"2025-06-03T15:09:29.000000Z\"},{\"id\":115,\"key\":\"pdf.font_size\",\"value\":\"abc\",\"type\":\"string\",\"description\":null,\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":0,\"created_by\":null,\"updated_by\":1,\"group\":\"general\",\"created_at\":\"2025-06-03T14:16:27.000000Z\",\"updated_at\":\"2025-06-03T15:09:29.000000Z\"},{\"id\":116,\"key\":\"school_logo\",\"value\":\"images\\/LOGO-KLASSCI-PNG.png\",\"type\":\"string\",\"description\":\"Param\\u00e8tre de l\'\\u00e9tablissement\",\"is_required\":true,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":0,\"created_by\":1,\"updated_by\":null,\"group\":\"general\",\"created_at\":\"2025-06-03T16:34:55.000000Z\",\"updated_at\":\"2025-06-03T16:34:55.000000Z\"},{\"id\":117,\"key\":\"pdf_header_text\",\"value\":\"\",\"type\":\"string\",\"description\":\"Param\\u00e8tre PDF\",\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":0,\"created_by\":1,\"updated_by\":null,\"group\":\"general\",\"created_at\":\"2025-06-03T16:34:55.000000Z\",\"updated_at\":\"2025-06-03T16:34:55.000000Z\"},{\"id\":118,\"key\":\"pdf_footer_text\",\"value\":\"Bulletin informatis\\u00e9, aucun duplicata n\'est d\\u00e9livr\\u00e9\",\"type\":\"string\",\"description\":\"Param\\u00e8tre PDF\",\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":0,\"created_by\":1,\"updated_by\":3,\"group\":\"general\",\"created_at\":\"2025-06-03T16:34:55.000000Z\",\"updated_at\":\"2025-06-03T16:57:17.000000Z\"},{\"id\":119,\"key\":\"pdf_watermark\",\"value\":\"\",\"type\":\"string\",\"description\":\"Param\\u00e8tre PDF\",\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":0,\"created_by\":1,\"updated_by\":null,\"group\":\"general\",\"created_at\":\"2025-06-03T16:34:55.000000Z\",\"updated_at\":\"2025-06-03T16:34:55.000000Z\"},{\"id\":120,\"key\":\"pdf_signature_director\",\"value\":\"1\",\"type\":\"boolean\",\"description\":\"Param\\u00e8tre PDF\",\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"pdf\",\"sort_order\":0,\"created_by\":1,\"updated_by\":null,\"group\":\"general\",\"created_at\":\"2025-06-03T16:34:55.000000Z\",\"updated_at\":\"2025-06-03T16:34:55.000000Z\"},{\"id\":121,\"key\":\"school_mobile\",\"value\":\"07 07 79 84 85\",\"type\":\"string\",\"description\":\"Num\\u00e9ro de t\\u00e9l\\u00e9phone mobile\\/cellulaire\",\"is_required\":false,\"default_value\":null,\"validation_rules\":null,\"is_active\":true,\"requires_restart\":false,\"category\":\"establishment\",\"sort_order\":7,\"created_by\":null,\"updated_by\":3,\"group\":\"general\",\"created_at\":\"2025-06-03T16:46:41.000000Z\",\"updated_at\":\"2025-06-03T16:57:17.000000Z\"}]', 'automatic', 'active', '2025-06-03 16:57:55', 3, NULL, NULL, NULL, '2025-06-03 16:57:55', '2025-06-03 16:57:55');
 
 -- --------------------------------------------------------
 
@@ -2820,35 +3664,25 @@ CREATE TABLE `settings` (
 
 CREATE TABLE `students` (
   `id` bigint(20) UNSIGNED NOT NULL,
-  `user_id` bigint(20) UNSIGNED NOT NULL,
-  `student_id` varchar(191) NOT NULL COMMENT 'Numéro étudiant',
-  `parcours_id` bigint(20) UNSIGNED DEFAULT NULL,
-  `promotion` varchar(191) DEFAULT NULL COMMENT 'Année d''entrée',
-  `current_year` varchar(191) DEFAULT NULL COMMENT 'L1, L2, L3, M1, M2, etc.',
-  `status` varchar(191) NOT NULL DEFAULT 'active' COMMENT 'Actif, en congé, diplômé, etc.',
-  `registration_date` date DEFAULT NULL,
-  `expected_graduation_date` date DEFAULT NULL,
-  `actual_graduation_date` date DEFAULT NULL,
-  `scholarship_status` varchar(191) DEFAULT NULL,
-  `scholarship_details` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`scholarship_details`)),
-  `special_needs` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`special_needs`)),
-  `international_student` tinyint(1) NOT NULL DEFAULT 0,
-  `country_of_origin` varchar(191) DEFAULT NULL,
-  `visa_status` varchar(191) DEFAULT NULL,
-  `visa_expiry_date` date DEFAULT NULL,
-  `emergency_contact_name` varchar(191) DEFAULT NULL,
-  `emergency_contact_relationship` varchar(191) DEFAULT NULL,
-  `emergency_contact_phone` varchar(191) DEFAULT NULL,
-  `previous_institution` varchar(191) DEFAULT NULL,
-  `previous_qualification` varchar(191) DEFAULT NULL,
-  `admission_score` double(8,2) DEFAULT NULL,
-  `notes` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`notes`)),
-  `created_by` bigint(20) UNSIGNED DEFAULT NULL,
-  `updated_by` bigint(20) UNSIGNED DEFAULT NULL,
+  `name` varchar(191) NOT NULL,
+  `registration_number` varchar(191) NOT NULL,
+  `email` varchar(191) NOT NULL,
+  `phone` varchar(191) DEFAULT NULL,
+  `date_of_birth` date DEFAULT NULL,
+  `place_of_birth` varchar(191) DEFAULT NULL,
+  `gender` enum('male','female') DEFAULT NULL,
+  `address` varchar(191) DEFAULT NULL,
+  `parent_name` varchar(191) DEFAULT NULL,
+  `parent_phone` varchar(191) DEFAULT NULL,
+  `parent_email` varchar(191) DEFAULT NULL,
+  `emergency_contact` varchar(191) DEFAULT NULL,
+  `emergency_phone` varchar(191) DEFAULT NULL,
+  `medical_info` text DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -2860,7 +3694,7 @@ CREATE TABLE `student_grades` (
   `id` bigint(20) UNSIGNED NOT NULL,
   `student_id` bigint(20) UNSIGNED NOT NULL,
   `evaluation_id` bigint(20) UNSIGNED NOT NULL,
-  `grade` double(8,2) DEFAULT NULL,
+  `grade` decimal(5,2) DEFAULT NULL,
   `status` enum('present','absent','exempt') NOT NULL DEFAULT 'present',
   `comment` text DEFAULT NULL,
   `created_by` bigint(20) UNSIGNED DEFAULT NULL,
@@ -2868,7 +3702,7 @@ CREATE TABLE `student_grades` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -2883,7 +3717,7 @@ CREATE TABLE `subjects` (
   `description` text DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -2894,6 +3728,7 @@ CREATE TABLE `subjects` (
 CREATE TABLE `teachers` (
   `id` bigint(20) UNSIGNED NOT NULL,
   `user_id` bigint(20) UNSIGNED NOT NULL,
+  `matricule` varchar(50) NOT NULL,
   `employee_id` varchar(191) NOT NULL COMMENT 'Numéro d''employé',
   `department_id` bigint(20) UNSIGNED DEFAULT NULL,
   `laboratory_id` bigint(20) UNSIGNED DEFAULT NULL,
@@ -2914,7 +3749,7 @@ CREATE TABLE `teachers` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -2935,7 +3770,7 @@ CREATE TABLE `timetables` (
   `session_id` bigint(20) UNSIGNED DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -2958,7 +3793,7 @@ CREATE TABLE `ufrs` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -2993,22 +3828,24 @@ CREATE TABLE `users` (
   `birth_date` date DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL,
   `profile_photo_path` varchar(191) DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `users`
 --
 
 INSERT INTO `users` (`id`, `name`, `first_name`, `last_name`, `username`, `email`, `email_verified_at`, `password`, `is_active`, `remember_token`, `created_at`, `updated_at`, `role`, `last_login_at`, `last_login_ip`, `phone`, `address`, `city`, `position`, `department`, `office_location`, `employee_id`, `appointment_date`, `birth_date`, `deleted_at`, `profile_photo_path`) VALUES
-(1, 'kouame kan pascal', NULL, NULL, 'kouadio', 'pascalkouadio96@gmail.com', NULL, '$2y$10$qyXAa3yEJ3LW0tN21ne1rOnrsxEyT/w.nEizmhfF01LpeojCdlbum', 1, NULL, '2025-05-07 12:56:32', '2025-05-14 16:47:08', 'superAdmin', '2025-05-14 16:47:08', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(2, 'Super Admin', NULL, NULL, 'superadmin_test_133439', 'superadmin@klassci.edu', '2025-05-07 13:34:40', '$2y$10$jm3Ii5Ev86cP/w0zleGupujBuUahp74b9L6ErQXuupV/rL1SFPM5q', 1, NULL, '2025-05-07 13:34:40', '2025-05-07 13:34:40', 'etudiant', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(3, 'Enseignant Test', NULL, NULL, 'enseignant_test_133439', 'enseignant@klassci.edu', '2025-05-07 13:34:40', '$2y$10$ljQ9gcgoKd93A/PxhoiwOe9dCPHjM3I/pGau5LlkmnqTGdDtg7KFO', 1, NULL, '2025-05-07 13:34:40', '2025-05-07 13:34:40', 'etudiant', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(4, 'Super Admin', 'Super', 'Admin', 'superadmin', 'superadmin@esbtp.ci', '2025-05-07 14:27:48', '$2y$10$8a.HTNkdRAO3CLa5zotNzuB8qi/ClFRczT9.cyhB3gaz2/k1VqYJu', 1, 'q4wxcMxSho', '2025-05-07 14:27:48', '2025-05-07 14:27:48', 'etudiant', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(5, 'Secretaire Test', 'Secretaire', 'Test', 'secretaire', 'secretaire@esbtp.ci', '2025-05-07 14:27:48', '$2y$10$Qv8clv.aUr4LAuX508pgM.5Xydsdrk2nWn1oFJt0M2lLsxhdJgbtq', 1, 'GYUaDiCg52', '2025-05-07 14:27:48', '2025-05-07 14:27:48', 'etudiant', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(6, 'Etudiant Test', 'Etudiant', 'Test', 'etudiant', 'etudiant@esbtp.ci', '2025-05-07 14:27:48', '$2y$10$uCHcol/n1VDp2eENxFhNLON0Ek5iym/5hfMp8JCx.SCwkoOIrUTMy', 1, 'cNf6CebVTp', '2025-05-07 14:27:48', '2025-05-07 14:27:48', 'etudiant', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(7, 'Teacher Test', 'Teacher', 'Test', 'teacher', 'teacher@esbtp.ci', '2025-05-07 14:27:48', '$2y$10$Op79m774GcoDH8OSsbpDQuKKNvwKjE.aROXlyPcXLCCh45OVpQc7a', 1, 'ETwQaiTEww', '2025-05-07 14:27:49', '2025-05-07 14:27:49', 'etudiant', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(8, 'N\'guessan', NULL, NULL, 'MARCEL', 'djedjelipatrick@gmail.com', NULL, '$2y$10$Zk6rgTDDFeHxIjjLs8rzqe5v77e66fr23Ilj79Oja7uZRwK07q/TS', 1, NULL, '2025-05-13 20:41:46', '2025-05-14 19:37:29', 'etudiant', '2025-05-14 19:37:29', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(9, 'Marc N\'guessan', 'Marc', 'N\'guessan', 'marc.nguessan', 'marc.nguessan@esbtp.edu', NULL, '$2y$10$LeGTHjMHwgESAn5igc020.YDlm5bQsiFTHips7mjqBqdKlvlk1C.C', 1, NULL, '2025-05-14 17:38:12', '2025-05-14 17:38:12', 'etudiant', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+(1, 'Super Admin', NULL, NULL, 'superadmin_test_153936', 'superadmin@klassci.edu', '2025-05-17 15:39:36', '$2y$10$hXtHz5XduAAz4oQRWAc99epOSqEd91KOAFuMrzSsny2FIixqgpO8S', 1, NULL, '2025-05-17 15:39:36', '2025-05-17 15:40:49', 'etudiant', '2025-05-17 15:40:49', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(2, 'Enseignant Test', NULL, NULL, 'enseignant_test_153936', 'enseignant@klassci.edu', '2025-05-17 15:39:37', '$2y$10$bQoXw1ObYy9mBI3E.TzQjeFhh9KPBeUC4WM9E9KPJxI.szFzmdKEe', 1, NULL, '2025-05-17 15:39:37', '2025-05-17 15:39:37', 'etudiant', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(3, 'Super Admin', 'Super', 'Admin', 'superadmin', 'superadmin@esbtp.ci', '2025-05-17 15:39:37', '$2y$10$IEWZTfjc0R1GCIvNWaCfM.cF9fpUjncrvcmXIpM1TnNnYDQxj24s2', 1, '6pI4znneDh', '2025-05-17 15:39:37', '2025-06-04 13:38:27', 'etudiant', '2025-06-04 13:38:27', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(4, 'Secretaire Test', 'Secretaire', 'Test', 'secretaire', 'secretaire@esbtp.ci', '2025-05-17 15:39:37', '$2y$10$KpAkDzhsB1gQ8lH7PAyTmOzx1W5uXyk.KHgmhjPHXENU547kz3gny', 1, 'Oe6IXRCkVbNM8Si4DhAjP6O4CBpVHJ6uSmDoZYxZVSGBoQIAyKbohpDxieqV', '2025-05-17 15:39:37', '2025-05-17 15:39:37', 'etudiant', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(5, 'Etudiant Test', 'Etudiant', 'Test', 'etudiant', 'etudiant@esbtp.ci', '2025-05-17 15:39:37', '$2y$10$G.q5vw.VPup/Shb918IDKuVU5YXPcqiP9sUCyJC/gSKxAsNu77oq2', 1, 'GlQIgkNsIREnuHqvq9ZI3oLXo7Znrcz9tZ9hsHVCxQMLsrnnmqnu8o5jo50V', '2025-05-17 15:39:37', '2025-05-20 20:06:13', 'etudiant', '2025-05-20 20:06:13', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(6, 'Teacher Test', 'Teacher', 'Test', 'teacher', 'teacher@esbtp.ci', '2025-05-17 15:39:37', '$2y$10$1.M/3yMQQse0tBcpFlJ21u2BC2yW8Q9bRftu4QjoG4ohAprjZZviu', 1, 'AkDuvxRhjeBojriA7GUxFBlfyQ04L0WxdKaubmbrh6yZbJBJVFWklLlIOzwY', '2025-05-17 15:39:37', '2025-05-17 15:39:37', 'etudiant', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(7, 'koua', NULL, NULL, 'koua', 'koua@gmail.com', NULL, '$2y$10$6EfQLxMDVJdwu1VSOBKzbO2oW6Hrq/KTXGXlFK0jp/bXrD5Q.Iflq', 1, NULL, '2025-05-17 15:41:07', '2025-05-20 08:45:06', 'etudiant', '2025-05-20 08:45:06', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(8, 'Marc GRAH', 'Marc', 'GRAH', 'marc.grah', 'marc.grah@esbtp.edu', NULL, '$2y$10$Qs.NTi7Z33UXXLf77mJijOKHwQ4.d8t7dESbJno2kLEpYx.yvwB96', 1, NULL, '2025-05-17 20:51:04', '2025-05-17 20:51:04', 'etudiant', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(9, 'koua', NULL, NULL, 'koua1', 'koua1@gmail.com', NULL, '$2y$10$kQXdSvbCBTKvm28qbkuldur.Su.RPfa2kR5TRUyRI8keuyOxYZNvG', 1, NULL, '2025-05-18 21:20:34', '2025-05-18 21:22:38', 'etudiant', '2025-05-18 21:22:38', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(14, 'Marco GRAHOBI', 'Marco', 'GRAHOBI', 'marco.grahobi', 'marco.grahobi@esbtp.edu', NULL, '$2y$10$7wyNHOrPRf9vpmF2N2m8P.T.E0e4WK3Ho0fovfOvsSSMpN6.eRZoe', 1, NULL, '2025-05-19 23:02:59', '2025-06-02 15:35:13', 'etudiant', '2025-06-02 15:35:13', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(22, 'Marc BIC', 'Marc', 'BIC', 'marc.bic', 'marc.bic@esbtp.edu', NULL, '$2y$10$.eO4UyOhAa4n1MT20HlMf.jd7yGQ26zwWxEjI7zOSmzOSIkPOJCP2', 1, NULL, '2025-05-23 23:22:01', '2025-05-23 23:22:01', 'etudiant', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 --
 -- Indexes for dumped tables
@@ -3064,6 +3901,15 @@ ALTER TABLE `courses`
   ADD UNIQUE KEY `courses_code_unique` (`code`),
   ADD KEY `courses_teacher_id_foreign` (`teacher_id`),
   ADD KEY `courses_ufr_id_foreign` (`ufr_id`);
+
+--
+-- Indexes for table `custom_notifications`
+--
+ALTER TABLE `custom_notifications`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `custom_notifications_sent_by_foreign` (`sent_by`),
+  ADD KEY `custom_notifications_user_id_is_read_index` (`user_id`,`is_read`),
+  ADD KEY `custom_notifications_created_at_index` (`created_at`);
 
 --
 -- Indexes for table `departments`
@@ -3154,7 +4000,7 @@ ALTER TABLE `esbtp_attendances`
 --
 ALTER TABLE `esbtp_attendance_settings`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `key` (`key`);
+  ADD UNIQUE KEY `esbtp_attendance_settings_key_unique` (`key`);
 
 --
 -- Indexes for table `esbtp_bourses`
@@ -3209,11 +4055,14 @@ ALTER TABLE `esbtp_categorie_paiements`
 ALTER TABLE `esbtp_classes`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `esbtp_classes_code_unique` (`code`),
+  ADD KEY `esbtp_classes_filiere_id_foreign` (`filiere_id`),
   ADD KEY `esbtp_classes_niveau_etude_id_foreign` (`niveau_etude_id`),
-  ADD KEY `esbtp_classes_annee_universitaire_id_foreign` (`annee_universitaire_id`),
   ADD KEY `esbtp_classes_created_by_foreign` (`created_by`),
   ADD KEY `esbtp_classes_updated_by_foreign` (`updated_by`),
-  ADD KEY `idx_esbtp_classes_filiere_niveau_annee` (`filiere_id`,`niveau_etude_id`,`annee_universitaire_id`);
+  ADD KEY `esbtp_classes_name_index` (`name`),
+  ADD KEY `esbtp_classes_code_index` (`code`),
+  ADD KEY `esbtp_classes_is_active_index` (`is_active`),
+  ADD KEY `esbtp_classes_annee_universitaire_id_index` (`annee_universitaire_id`);
 
 --
 -- Indexes for table `esbtp_classe_matiere`
@@ -3251,6 +4100,20 @@ ALTER TABLE `esbtp_config_matiere_type_formations`
   ADD KEY `ecmtf_updated_by_foreign` (`updated_by`);
 
 --
+-- Indexes for table `esbtp_continuing_education`
+--
+ALTER TABLE `esbtp_continuing_education`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `esbtp_continuing_education_code_unique` (`code`),
+  ADD KEY `esbtp_continuing_education_department_id_foreign` (`department_id`),
+  ADD KEY `esbtp_continuing_education_cycle_id_foreign` (`cycle_id`),
+  ADD KEY `esbtp_continuing_education_name_index` (`name`),
+  ADD KEY `esbtp_continuing_education_code_index` (`code`),
+  ADD KEY `esbtp_continuing_education_is_active_index` (`is_active`),
+  ADD KEY `esbtp_continuing_education_start_date_index` (`start_date`),
+  ADD KEY `esbtp_continuing_education_end_date_index` (`end_date`);
+
+--
 -- Indexes for table `esbtp_cours`
 --
 ALTER TABLE `esbtp_cours`
@@ -3261,11 +4124,39 @@ ALTER TABLE `esbtp_cours`
   ADD KEY `esbtp_cours_annee_universitaire_id_foreign` (`annee_universitaire_id`);
 
 --
+-- Indexes for table `esbtp_cycles`
+--
+ALTER TABLE `esbtp_cycles`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `esbtp_cycles_code_unique` (`code`),
+  ADD KEY `esbtp_cycles_name_index` (`name`),
+  ADD KEY `esbtp_cycles_code_index` (`code`),
+  ADD KEY `esbtp_cycles_is_active_index` (`is_active`);
+
+--
 -- Indexes for table `esbtp_daily_codes`
 --
 ALTER TABLE `esbtp_daily_codes`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `code` (`code`);
+  ADD UNIQUE KEY `esbtp_daily_codes_code_unique` (`code`),
+  ADD KEY `esbtp_daily_codes_created_by_foreign` (`created_by`),
+  ADD KEY `esbtp_daily_codes_updated_by_foreign` (`updated_by`),
+  ADD KEY `esbtp_daily_codes_code_index` (`code`),
+  ADD KEY `esbtp_daily_codes_valid_from_index` (`valid_from`),
+  ADD KEY `esbtp_daily_codes_valid_until_index` (`valid_until`),
+  ADD KEY `esbtp_daily_codes_is_active_index` (`is_active`);
+
+--
+-- Indexes for table `esbtp_departments`
+--
+ALTER TABLE `esbtp_departments`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `esbtp_departments_code_unique` (`code`),
+  ADD KEY `esbtp_departments_created_by_foreign` (`created_by`),
+  ADD KEY `esbtp_departments_updated_by_foreign` (`updated_by`),
+  ADD KEY `esbtp_departments_name_index` (`name`),
+  ADD KEY `esbtp_departments_code_index` (`code`),
+  ADD KEY `esbtp_departments_is_active_index` (`is_active`);
 
 --
 -- Indexes for table `esbtp_depenses`
@@ -3277,6 +4168,21 @@ ALTER TABLE `esbtp_depenses`
   ADD KEY `esbtp_depenses_fournisseur_id_foreign` (`fournisseur_id`),
   ADD KEY `esbtp_depenses_createur_id_foreign` (`createur_id`),
   ADD KEY `esbtp_depenses_validateur_id_foreign` (`validateur_id`);
+
+--
+-- Indexes for table `esbtp_emplois_du_temps`
+--
+ALTER TABLE `esbtp_emplois_du_temps`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `esbtp_emplois_du_temps_classe_id_foreign` (`classe_id`),
+  ADD KEY `esbtp_emplois_du_temps_matiere_id_foreign` (`matiere_id`),
+  ADD KEY `esbtp_emplois_du_temps_teacher_id_foreign` (`teacher_id`),
+  ADD KEY `esbtp_emplois_du_temps_created_by_foreign` (`created_by`),
+  ADD KEY `esbtp_emplois_du_temps_updated_by_foreign` (`updated_by`),
+  ADD KEY `esbtp_emplois_du_temps_start_date_index` (`start_date`),
+  ADD KEY `esbtp_emplois_du_temps_end_date_index` (`end_date`),
+  ADD KEY `esbtp_emplois_du_temps_day_of_week_index` (`day_of_week`),
+  ADD KEY `esbtp_emplois_du_temps_is_active_index` (`is_active`);
 
 --
 -- Indexes for table `esbtp_emploi_temps`
@@ -3293,15 +4199,19 @@ ALTER TABLE `esbtp_emploi_temps`
 --
 ALTER TABLE `esbtp_enseignant_matiere`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `enseignant_matiere_annee_unique` (`enseignant_id`,`matiere_id`,`annee_universitaire_id`),
-  ADD KEY `esbtp_enseignant_matiere_matiere_id_foreign` (`matiere_id`),
-  ADD KEY `esbtp_enseignant_matiere_annee_universitaire_id_foreign` (`annee_universitaire_id`);
+  ADD UNIQUE KEY `unique_enseignant_matiere_annee` (`enseignant_id`,`matiere_id`,`annee_universitaire_id`),
+  ADD KEY `esbtp_enseignant_matiere_enseignant_id_is_active_index` (`enseignant_id`,`is_active`),
+  ADD KEY `esbtp_enseignant_matiere_matiere_id_is_active_index` (`matiere_id`,`is_active`),
+  ADD KEY `esbtp_enseignant_matiere_annee_universitaire_id_index` (`annee_universitaire_id`);
 
 --
 -- Indexes for table `esbtp_enseignant_presence`
 --
 ALTER TABLE `esbtp_enseignant_presence`
-  ADD PRIMARY KEY (`id`);
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `esbtp_enseignant_presence_enseignant_id_foreign` (`enseignant_id`),
+  ADD KEY `esbtp_enseignant_presence_date_enseignant_id_index` (`date`,`enseignant_id`),
+  ADD KEY `esbtp_enseignant_presence_matiere_id_date_index` (`matiere_id`,`date`);
 
 --
 -- Indexes for table `esbtp_etudiants`
@@ -3328,14 +4238,19 @@ ALTER TABLE `esbtp_etudiant_parent`
 -- Indexes for table `esbtp_evaluations`
 --
 ALTER TABLE `esbtp_evaluations`
-  ADD PRIMARY KEY (`id`);
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `esbtp_evaluations_matiere_id_foreign` (`matiere_id`),
+  ADD KEY `esbtp_evaluations_classe_id_foreign` (`classe_id`),
+  ADD KEY `esbtp_evaluations_annee_universitaire_id_foreign` (`annee_universitaire_id`),
+  ADD KEY `esbtp_evaluations_created_by_foreign` (`created_by`),
+  ADD KEY `esbtp_evaluations_updated_by_foreign` (`updated_by`);
 
 --
 -- Indexes for table `esbtp_factures`
 --
 ALTER TABLE `esbtp_factures`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `esbtp_factures_numero_facture_unique` (`numero_facture`),
+  ADD UNIQUE KEY `esbtp_factures_numero_unique` (`numero`),
   ADD KEY `esbtp_factures_etudiant_id_foreign` (`etudiant_id`),
   ADD KEY `esbtp_factures_inscription_id_foreign` (`inscription_id`),
   ADD KEY `esbtp_factures_annee_universitaire_id_foreign` (`annee_universitaire_id`),
@@ -3354,7 +4269,13 @@ ALTER TABLE `esbtp_facture_details`
 --
 ALTER TABLE `esbtp_filieres`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `esbtp_filieres_code_unique` (`code`);
+  ADD UNIQUE KEY `esbtp_filieres_code_unique` (`code`),
+  ADD KEY `esbtp_filieres_created_by_foreign` (`created_by`),
+  ADD KEY `esbtp_filieres_updated_by_foreign` (`updated_by`),
+  ADD KEY `esbtp_filieres_name_index` (`name`),
+  ADD KEY `esbtp_filieres_code_index` (`code`),
+  ADD KEY `esbtp_filieres_is_active_index` (`is_active`),
+  ADD KEY `esbtp_filieres_parent_id_index` (`parent_id`);
 
 --
 -- Indexes for table `esbtp_filiere_niveau`
@@ -3395,6 +4316,19 @@ ALTER TABLE `esbtp_inscriptions`
   ADD KEY `esbtp_inscriptions_updated_by_foreign` (`updated_by`);
 
 --
+-- Indexes for table `esbtp_laboratories`
+--
+ALTER TABLE `esbtp_laboratories`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `esbtp_laboratories_code_unique` (`code`),
+  ADD KEY `esbtp_laboratories_created_by_foreign` (`created_by`),
+  ADD KEY `esbtp_laboratories_updated_by_foreign` (`updated_by`),
+  ADD KEY `esbtp_laboratories_name_index` (`name`),
+  ADD KEY `esbtp_laboratories_code_index` (`code`),
+  ADD KEY `esbtp_laboratories_is_active_index` (`is_active`),
+  ADD KEY `esbtp_laboratories_department_id_index` (`department_id`);
+
+--
 -- Indexes for table `esbtp_matieres`
 --
 ALTER TABLE `esbtp_matieres`
@@ -3402,7 +4336,10 @@ ALTER TABLE `esbtp_matieres`
   ADD UNIQUE KEY `esbtp_matieres_code_unique` (`code`),
   ADD KEY `esbtp_matieres_niveau_etude_id_foreign` (`niveau_etude_id`),
   ADD KEY `esbtp_matieres_created_by_foreign` (`created_by`),
-  ADD KEY `esbtp_matieres_updated_by_foreign` (`updated_by`);
+  ADD KEY `esbtp_matieres_updated_by_foreign` (`updated_by`),
+  ADD KEY `esbtp_matieres_name_index` (`name`),
+  ADD KEY `esbtp_matieres_code_index` (`code`),
+  ADD KEY `esbtp_matieres_is_active_index` (`is_active`);
 
 --
 -- Indexes for table `esbtp_matiere_filiere`
@@ -3427,15 +4364,12 @@ ALTER TABLE `esbtp_matiere_niveau`
 --
 ALTER TABLE `esbtp_niveau_etudes`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `esbtp_niveau_etudes_code_unique` (`code`);
-
---
--- Indexes for table `esbtp_niveau_matiere`
---
-ALTER TABLE `esbtp_niveau_matiere`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `esbtp_niveau_matiere_niveau_id_matiere_id_unique` (`niveau_id`,`matiere_id`),
-  ADD KEY `esbtp_niveau_matiere_matiere_id_foreign` (`matiere_id`);
+  ADD UNIQUE KEY `esbtp_niveau_etudes_code_unique` (`code`),
+  ADD KEY `esbtp_niveau_etudes_name_index` (`name`),
+  ADD KEY `esbtp_niveau_etudes_code_index` (`code`),
+  ADD KEY `esbtp_niveau_etudes_type_index` (`type`),
+  ADD KEY `esbtp_niveau_etudes_year_index` (`year`),
+  ADD KEY `esbtp_niveau_etudes_is_active_index` (`is_active`);
 
 --
 -- Indexes for table `esbtp_notes`
@@ -3447,7 +4381,7 @@ ALTER TABLE `esbtp_notes`
   ADD KEY `esbtp_notes_classe_id_foreign` (`classe_id`),
   ADD KEY `esbtp_notes_created_by_foreign` (`created_by`),
   ADD KEY `esbtp_notes_updated_by_foreign` (`updated_by`),
-  ADD KEY `esbtp_notes_evaluation_id_index` (`evaluation_id`);
+  ADD KEY `esbtp_notes_evaluation_id_foreign` (`evaluation_id`);
 
 --
 -- Indexes for table `esbtp_paiements`
@@ -3461,7 +4395,8 @@ ALTER TABLE `esbtp_paiements`
   ADD KEY `esbtp_paiements_etudiant_id_inscription_id_index` (`etudiant_id`,`inscription_id`),
   ADD KEY `esbtp_paiements_numero_recu_index` (`numero_recu`),
   ADD KEY `esbtp_paiements_date_paiement_index` (`date_paiement`),
-  ADD KEY `esbtp_paiements_status_index` (`status`);
+  ADD KEY `esbtp_paiements_status_index` (`status`),
+  ADD KEY `esbtp_paiements_categorie_id_foreign` (`categorie_id`);
 
 --
 -- Indexes for table `esbtp_parents`
@@ -3499,7 +4434,7 @@ ALTER TABLE `esbtp_resultats_matieres`
 --
 ALTER TABLE `esbtp_salaires`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `salaire_unique` (`user_id`,`mois`,`annee`),
+  ADD UNIQUE KEY `salaire_unique` (`user_id`,`annee_universitaire_id`,`mois`,`annee`),
   ADD KEY `esbtp_salaires_annee_universitaire_id_foreign` (`annee_universitaire_id`),
   ADD KEY `esbtp_salaires_createur_id_foreign` (`createur_id`),
   ADD KEY `esbtp_salaires_validateur_id_foreign` (`validateur_id`);
@@ -3512,7 +4447,39 @@ ALTER TABLE `esbtp_seance_cours`
   ADD KEY `esbtp_seance_cours_classe_id_foreign` (`classe_id`),
   ADD KEY `esbtp_seance_cours_matiere_id_foreign` (`matiere_id`),
   ADD KEY `esbtp_seance_cours_annee_universitaire_id_foreign` (`annee_universitaire_id`),
-  ADD KEY `esbtp_seance_cours_emploi_temps_id_foreign` (`emploi_temps_id`);
+  ADD KEY `esbtp_seance_cours_emploi_temps_id_foreign` (`emploi_temps_id`),
+  ADD KEY `esbtp_seance_cours_teacher_id_foreign` (`teacher_id`);
+
+--
+-- Indexes for table `esbtp_security_events`
+--
+ALTER TABLE `esbtp_security_events`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `esbtp_security_events_user_id_event_type_index` (`user_id`,`event_type`),
+  ADD KEY `esbtp_security_events_created_at_index` (`created_at`);
+
+--
+-- Indexes for table `esbtp_specialties`
+--
+ALTER TABLE `esbtp_specialties`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `esbtp_specialties_code_unique` (`code`),
+  ADD KEY `esbtp_specialties_department_id_foreign` (`department_id`),
+  ADD KEY `esbtp_specialties_cycle_id_foreign` (`cycle_id`),
+  ADD KEY `esbtp_specialties_name_index` (`name`),
+  ADD KEY `esbtp_specialties_code_index` (`code`),
+  ADD KEY `esbtp_specialties_is_active_index` (`is_active`);
+
+--
+-- Indexes for table `esbtp_students`
+--
+ALTER TABLE `esbtp_students`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `esbtp_students_registration_number_unique` (`registration_number`),
+  ADD UNIQUE KEY `esbtp_students_email_unique` (`email`),
+  ADD KEY `esbtp_students_department_id_foreign` (`department_id`),
+  ADD KEY `esbtp_students_cycle_id_foreign` (`cycle_id`),
+  ADD KEY `esbtp_students_class_id_foreign` (`class_id`);
 
 --
 -- Indexes for table `esbtp_student_grades`
@@ -3525,23 +4492,55 @@ ALTER TABLE `esbtp_student_grades`
   ADD KEY `esbtp_student_grades_updated_by_foreign` (`updated_by`);
 
 --
+-- Indexes for table `esbtp_teachers`
+--
+ALTER TABLE `esbtp_teachers`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `esbtp_teachers_matricule_unique` (`matricule`),
+  ADD UNIQUE KEY `esbtp_teachers_employee_id_unique` (`employee_id`),
+  ADD KEY `esbtp_teachers_user_id_foreign` (`user_id`),
+  ADD KEY `esbtp_teachers_created_by_foreign` (`created_by`),
+  ADD KEY `esbtp_teachers_updated_by_foreign` (`updated_by`),
+  ADD KEY `esbtp_teachers_matricule_index` (`matricule`),
+  ADD KEY `esbtp_teachers_status_index` (`status`),
+  ADD KEY `esbtp_teachers_is_active_index` (`is_active`),
+  ADD KEY `esbtp_teachers_employee_id_index` (`employee_id`),
+  ADD KEY `esbtp_teachers_department_id_index` (`department_id`),
+  ADD KEY `esbtp_teachers_laboratory_id_index` (`laboratory_id`);
+
+--
+-- Indexes for table `esbtp_teacher_attendance`
+--
+ALTER TABLE `esbtp_teacher_attendance`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `teacher_attendance_unique` (`teacher_id`,`emploi_du_temps_id`,`daily_code_id`),
+  ADD KEY `esbtp_teacher_attendance_signed_at_index` (`signed_at`),
+  ADD KEY `esbtp_teacher_attendance_emploi_du_temps_id_foreign` (`emploi_du_temps_id`),
+  ADD KEY `esbtp_teacher_attendance_daily_code_id_foreign` (`daily_code_id`),
+  ADD KEY `esbtp_teacher_attendance_validated_by_foreign` (`validated_by`);
+
+--
+-- Indexes for table `esbtp_teacher_attendances`
+--
+ALTER TABLE `esbtp_teacher_attendances`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `esbtp_teacher_attendances_teacher_id_foreign` (`teacher_id`);
+
+--
+-- Indexes for table `esbtp_teacher_cycle`
+--
+ALTER TABLE `esbtp_teacher_cycle`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `esbtp_teacher_cycle_teacher_id_cycle_id_unique` (`teacher_id`,`cycle_id`),
+  ADD KEY `esbtp_teacher_cycle_cycle_id_foreign` (`cycle_id`);
+
+--
 -- Indexes for table `esbtp_transactions_financieres`
 --
 ALTER TABLE `esbtp_transactions_financieres`
   ADD PRIMARY KEY (`id`),
   ADD KEY `idx_transactionable` (`transactionable_type`,`transactionable_id`),
   ADD KEY `esbtp_transactions_financieres_createur_id_foreign` (`createur_id`);
-
---
--- Indexes for table `esbtp_unites_enseignement`
---
-ALTER TABLE `esbtp_unites_enseignement`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `esbtp_unites_enseignement_code_unique` (`code`),
-  ADD KEY `esbtp_unites_enseignement_filiere_id_foreign` (`filiere_id`),
-  ADD KEY `esbtp_unites_enseignement_niveau_id_foreign` (`niveau_id`),
-  ADD KEY `esbtp_unites_enseignement_created_by_foreign` (`created_by`),
-  ADD KEY `esbtp_unites_enseignement_updated_by_foreign` (`updated_by`);
 
 --
 -- Indexes for table `evaluations`
@@ -3566,6 +4565,40 @@ ALTER TABLE `exams`
 ALTER TABLE `failed_jobs`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `failed_jobs_uuid_unique` (`uuid`);
+
+--
+-- Indexes for table `fees`
+--
+ALTER TABLE `fees`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fees_class_id_foreign` (`class_id`),
+  ADD KEY `fees_academic_year_id_foreign` (`academic_year_id`),
+  ADD KEY `fees_fee_category_id_foreign` (`fee_category_id`),
+  ADD KEY `fees_inscription_id_foreign` (`inscription_id`);
+
+--
+-- Indexes for table `fee_categories`
+--
+ALTER TABLE `fee_categories`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `fee_categories_code_unique` (`code`);
+
+--
+-- Indexes for table `fee_category_rules`
+--
+ALTER TABLE `fee_category_rules`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fee_category_rules_fee_category_id_foreign` (`fee_category_id`),
+  ADD KEY `fee_category_rules_filiere_id_foreign` (`filiere_id`),
+  ADD KEY `fee_category_rules_niveau_id_foreign` (`niveau_id`),
+  ADD KEY `fee_category_rules_annee_universitaire_id_foreign` (`annee_universitaire_id`);
+
+--
+-- Indexes for table `fee_category_rule_installments`
+--
+ALTER TABLE `fee_category_rule_installments`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fee_category_rule_installments_fee_category_rule_id_foreign` (`fee_category_rule_id`);
 
 --
 -- Indexes for table `grades`
@@ -3654,6 +4687,29 @@ ALTER TABLE `parcours`
   ADD KEY `parcours_updated_by_foreign` (`updated_by`);
 
 --
+-- Indexes for table `partnerships`
+--
+ALTER TABLE `partnerships`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `payments`
+--
+ALTER TABLE `payments`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `payments_student_id_foreign` (`student_id`),
+  ADD KEY `payments_category_id_foreign` (`category_id`),
+  ADD KEY `payments_inscription_id_foreign` (`inscription_id`),
+  ADD KEY `payments_fee_id_foreign` (`fee_id`);
+
+--
+-- Indexes for table `payment_categories`
+--
+ALTER TABLE `payment_categories`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `payment_categories_code_unique` (`code`);
+
+--
 -- Indexes for table `permissions`
 --
 ALTER TABLE `permissions`
@@ -3730,18 +4786,29 @@ ALTER TABLE `sessions`
 --
 ALTER TABLE `settings`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `settings_key_unique` (`key`);
+  ADD UNIQUE KEY `settings_key_unique` (`key`),
+  ADD KEY `settings_group_category_index` (`group`,`category`),
+  ADD KEY `settings_is_active_is_required_index` (`is_active`,`is_required`),
+  ADD KEY `settings_created_by_foreign` (`created_by`),
+  ADD KEY `settings_updated_by_foreign` (`updated_by`);
+
+--
+-- Indexes for table `settings_backups`
+--
+ALTER TABLE `settings_backups`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `settings_backups_backup_type_status_index` (`backup_type`,`status`),
+  ADD KEY `settings_backups_backup_date_index` (`backup_date`),
+  ADD KEY `settings_backups_created_by_index` (`created_by`),
+  ADD KEY `settings_backups_restored_by_foreign` (`restored_by`);
 
 --
 -- Indexes for table `students`
 --
 ALTER TABLE `students`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `students_student_id_unique` (`student_id`),
-  ADD KEY `students_user_id_foreign` (`user_id`),
-  ADD KEY `students_parcours_id_foreign` (`parcours_id`),
-  ADD KEY `students_created_by_foreign` (`created_by`),
-  ADD KEY `students_updated_by_foreign` (`updated_by`);
+  ADD UNIQUE KEY `students_registration_number_unique` (`registration_number`),
+  ADD UNIQUE KEY `students_email_unique` (`email`);
 
 --
 -- Indexes for table `student_grades`
@@ -3765,6 +4832,7 @@ ALTER TABLE `subjects`
 ALTER TABLE `teachers`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `teachers_employee_id_unique` (`employee_id`),
+  ADD UNIQUE KEY `teachers_matricule_unique` (`matricule`),
   ADD KEY `teachers_user_id_foreign` (`user_id`),
   ADD KEY `teachers_department_id_foreign` (`department_id`),
   ADD KEY `teachers_laboratory_id_foreign` (`laboratory_id`),
@@ -3840,6 +4908,12 @@ ALTER TABLE `courses`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `custom_notifications`
+--
+ALTER TABLE `custom_notifications`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+
+--
 -- AUTO_INCREMENT for table `departments`
 --
 ALTER TABLE `departments`
@@ -3867,13 +4941,13 @@ ALTER TABLE `esbtp_absences`
 -- AUTO_INCREMENT for table `esbtp_annee_universitaires`
 --
 ALTER TABLE `esbtp_annee_universitaires`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=85;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
 
 --
 -- AUTO_INCREMENT for table `esbtp_annonces`
 --
 ALTER TABLE `esbtp_annonces`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `esbtp_annonce_classe`
@@ -3885,7 +4959,7 @@ ALTER TABLE `esbtp_annonce_classe`
 -- AUTO_INCREMENT for table `esbtp_annonce_etudiant`
 --
 ALTER TABLE `esbtp_annonce_etudiant`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `esbtp_annonce_lectures`
@@ -3897,13 +4971,13 @@ ALTER TABLE `esbtp_annonce_lectures`
 -- AUTO_INCREMENT for table `esbtp_attendances`
 --
 ALTER TABLE `esbtp_attendances`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `esbtp_attendance_settings`
 --
 ALTER TABLE `esbtp_attendance_settings`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT for table `esbtp_bourses`
@@ -3915,7 +4989,7 @@ ALTER TABLE `esbtp_bourses`
 -- AUTO_INCREMENT for table `esbtp_bulletins`
 --
 ALTER TABLE `esbtp_bulletins`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `esbtp_bulletin_details`
@@ -3957,12 +5031,18 @@ ALTER TABLE `esbtp_comptabilite_configurations`
 -- AUTO_INCREMENT for table `esbtp_config_matieres`
 --
 ALTER TABLE `esbtp_config_matieres`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `esbtp_config_matiere_type_formations`
 --
 ALTER TABLE `esbtp_config_matiere_type_formations`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `esbtp_continuing_education`
+--
+ALTER TABLE `esbtp_continuing_education`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
@@ -3972,15 +5052,33 @@ ALTER TABLE `esbtp_cours`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `esbtp_cycles`
+--
+ALTER TABLE `esbtp_cycles`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `esbtp_daily_codes`
 --
 ALTER TABLE `esbtp_daily_codes`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT for table `esbtp_departments`
+--
+ALTER TABLE `esbtp_departments`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `esbtp_depenses`
 --
 ALTER TABLE `esbtp_depenses`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `esbtp_emplois_du_temps`
+--
+ALTER TABLE `esbtp_emplois_du_temps`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
@@ -4005,31 +5103,31 @@ ALTER TABLE `esbtp_enseignant_presence`
 -- AUTO_INCREMENT for table `esbtp_etudiants`
 --
 ALTER TABLE `esbtp_etudiants`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- AUTO_INCREMENT for table `esbtp_etudiant_parent`
 --
 ALTER TABLE `esbtp_etudiant_parent`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `esbtp_evaluations`
 --
 ALTER TABLE `esbtp_evaluations`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `esbtp_factures`
 --
 ALTER TABLE `esbtp_factures`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `esbtp_facture_details`
 --
 ALTER TABLE `esbtp_facture_details`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `esbtp_filieres`
@@ -4047,7 +5145,7 @@ ALTER TABLE `esbtp_filiere_niveau`
 -- AUTO_INCREMENT for table `esbtp_fournisseurs`
 --
 ALTER TABLE `esbtp_fournisseurs`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `esbtp_frais_scolarite`
@@ -4059,7 +5157,13 @@ ALTER TABLE `esbtp_frais_scolarite`
 -- AUTO_INCREMENT for table `esbtp_inscriptions`
 --
 ALTER TABLE `esbtp_inscriptions`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+
+--
+-- AUTO_INCREMENT for table `esbtp_laboratories`
+--
+ALTER TABLE `esbtp_laboratories`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `esbtp_matieres`
@@ -4086,16 +5190,10 @@ ALTER TABLE `esbtp_niveau_etudes`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
--- AUTO_INCREMENT for table `esbtp_niveau_matiere`
---
-ALTER TABLE `esbtp_niveau_matiere`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
-
---
 -- AUTO_INCREMENT for table `esbtp_notes`
 --
 ALTER TABLE `esbtp_notes`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `esbtp_paiements`
@@ -4107,13 +5205,13 @@ ALTER TABLE `esbtp_paiements`
 -- AUTO_INCREMENT for table `esbtp_parents`
 --
 ALTER TABLE `esbtp_parents`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `esbtp_resultats`
 --
 ALTER TABLE `esbtp_resultats`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `esbtp_resultats_matieres`
@@ -4131,6 +5229,24 @@ ALTER TABLE `esbtp_salaires`
 -- AUTO_INCREMENT for table `esbtp_seance_cours`
 --
 ALTER TABLE `esbtp_seance_cours`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
+
+--
+-- AUTO_INCREMENT for table `esbtp_security_events`
+--
+ALTER TABLE `esbtp_security_events`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `esbtp_specialties`
+--
+ALTER TABLE `esbtp_specialties`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `esbtp_students`
+--
+ALTER TABLE `esbtp_students`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
@@ -4140,15 +5256,33 @@ ALTER TABLE `esbtp_student_grades`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `esbtp_transactions_financieres`
+-- AUTO_INCREMENT for table `esbtp_teachers`
 --
-ALTER TABLE `esbtp_transactions_financieres`
+ALTER TABLE `esbtp_teachers`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT for table `esbtp_teacher_attendance`
+--
+ALTER TABLE `esbtp_teacher_attendance`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `esbtp_unites_enseignement`
+-- AUTO_INCREMENT for table `esbtp_teacher_attendances`
 --
-ALTER TABLE `esbtp_unites_enseignement`
+ALTER TABLE `esbtp_teacher_attendances`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+
+--
+-- AUTO_INCREMENT for table `esbtp_teacher_cycle`
+--
+ALTER TABLE `esbtp_teacher_cycle`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `esbtp_transactions_financieres`
+--
+ALTER TABLE `esbtp_transactions_financieres`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
@@ -4167,6 +5301,30 @@ ALTER TABLE `exams`
 -- AUTO_INCREMENT for table `failed_jobs`
 --
 ALTER TABLE `failed_jobs`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `fees`
+--
+ALTER TABLE `fees`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- AUTO_INCREMENT for table `fee_categories`
+--
+ALTER TABLE `fee_categories`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- AUTO_INCREMENT for table `fee_category_rules`
+--
+ALTER TABLE `fee_category_rules`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT for table `fee_category_rule_installments`
+--
+ALTER TABLE `fee_category_rule_installments`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
@@ -4209,7 +5367,7 @@ ALTER TABLE `message_recipients`
 -- AUTO_INCREMENT for table `migrations`
 --
 ALTER TABLE `migrations`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=127;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=180;
 
 --
 -- AUTO_INCREMENT for table `parcours`
@@ -4218,10 +5376,28 @@ ALTER TABLE `parcours`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `partnerships`
+--
+ALTER TABLE `partnerships`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `payments`
+--
+ALTER TABLE `payments`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `payment_categories`
+--
+ALTER TABLE `payment_categories`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `permissions`
 --
 ALTER TABLE `permissions`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=151;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=141;
 
 --
 -- AUTO_INCREMENT for table `personal_access_tokens`
@@ -4233,7 +5409,7 @@ ALTER TABLE `personal_access_tokens`
 -- AUTO_INCREMENT for table `roles`
 --
 ALTER TABLE `roles`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `school_classes`
@@ -4269,7 +5445,13 @@ ALTER TABLE `sessions`
 -- AUTO_INCREMENT for table `settings`
 --
 ALTER TABLE `settings`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=123;
+
+--
+-- AUTO_INCREMENT for table `settings_backups`
+--
+ALTER TABLE `settings_backups`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
 
 --
 -- AUTO_INCREMENT for table `students`
@@ -4311,7 +5493,718 @@ ALTER TABLE `ufrs`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
+
+--
+-- Constraints for dumped tables
+--
+
+--
+-- Constraints for table `attendances`
+--
+ALTER TABLE `attendances`
+  ADD CONSTRAINT `attendances_course_id_foreign` FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `attendances_recorded_by_foreign` FOREIGN KEY (`recorded_by`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `attendances_student_id_foreign` FOREIGN KEY (`student_id`) REFERENCES `students` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `attendances_teacher_id_foreign` FOREIGN KEY (`teacher_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `attendance_excuses`
+--
+ALTER TABLE `attendance_excuses`
+  ADD CONSTRAINT `attendance_excuses_approved_by_foreign` FOREIGN KEY (`approved_by`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `attendance_excuses_attendance_id_foreign` FOREIGN KEY (`attendance_id`) REFERENCES `attendances` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `certificates`
+--
+ALTER TABLE `certificates`
+  ADD CONSTRAINT `certificates_issued_by_foreign` FOREIGN KEY (`issued_by`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `certificates_student_id_foreign` FOREIGN KEY (`student_id`) REFERENCES `students` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `classes`
+--
+ALTER TABLE `classes`
+  ADD CONSTRAINT `classes_session_id_foreign` FOREIGN KEY (`session_id`) REFERENCES `sessions` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `class_courses`
+--
+ALTER TABLE `class_courses`
+  ADD CONSTRAINT `class_courses_course_id_foreign` FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `class_courses_school_class_id_foreign` FOREIGN KEY (`school_class_id`) REFERENCES `school_classes` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `courses`
+--
+ALTER TABLE `courses`
+  ADD CONSTRAINT `courses_teacher_id_foreign` FOREIGN KEY (`teacher_id`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `courses_ufr_id_foreign` FOREIGN KEY (`ufr_id`) REFERENCES `ufrs` (`id`);
+
+--
+-- Constraints for table `custom_notifications`
+--
+ALTER TABLE `custom_notifications`
+  ADD CONSTRAINT `custom_notifications_sent_by_foreign` FOREIGN KEY (`sent_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `custom_notifications_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `departments`
+--
+ALTER TABLE `departments`
+  ADD CONSTRAINT `departments_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `departments_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `designations`
+--
+ALTER TABLE `designations`
+  ADD CONSTRAINT `designations_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `designations_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `element_constitutifs`
+--
+ALTER TABLE `element_constitutifs`
+  ADD CONSTRAINT `element_constitutifs_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `element_constitutifs_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `esbtp_absences`
+--
+ALTER TABLE `esbtp_absences`
+  ADD CONSTRAINT `esbtp_absences_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `esbtp_absences_etudiant_id_foreign` FOREIGN KEY (`etudiant_id`) REFERENCES `esbtp_etudiants` (`id`),
+  ADD CONSTRAINT `esbtp_absences_matiere_id_foreign` FOREIGN KEY (`matiere_id`) REFERENCES `esbtp_matieres` (`id`),
+  ADD CONSTRAINT `esbtp_absences_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`);
+
+--
+-- Constraints for table `esbtp_annonces`
+--
+ALTER TABLE `esbtp_annonces`
+  ADD CONSTRAINT `esbtp_annonces_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `esbtp_annonces_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `esbtp_annonce_classe`
+--
+ALTER TABLE `esbtp_annonce_classe`
+  ADD CONSTRAINT `esbtp_annonce_classe_annonce_id_foreign` FOREIGN KEY (`annonce_id`) REFERENCES `esbtp_annonces` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_annonce_classe_classe_id_foreign` FOREIGN KEY (`classe_id`) REFERENCES `esbtp_classes` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `esbtp_annonce_etudiant`
+--
+ALTER TABLE `esbtp_annonce_etudiant`
+  ADD CONSTRAINT `esbtp_annonce_etudiant_annonce_id_foreign` FOREIGN KEY (`annonce_id`) REFERENCES `esbtp_annonces` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_annonce_etudiant_etudiant_id_foreign` FOREIGN KEY (`etudiant_id`) REFERENCES `esbtp_etudiants` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `esbtp_annonce_lectures`
+--
+ALTER TABLE `esbtp_annonce_lectures`
+  ADD CONSTRAINT `esbtp_annonce_lectures_annonce_id_foreign` FOREIGN KEY (`annonce_id`) REFERENCES `esbtp_annonces` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_annonce_lectures_etudiant_id_foreign` FOREIGN KEY (`etudiant_id`) REFERENCES `esbtp_etudiants` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `esbtp_attendances`
+--
+ALTER TABLE `esbtp_attendances`
+  ADD CONSTRAINT `esbtp_attendances_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `esbtp_attendances_etudiant_id_foreign` FOREIGN KEY (`etudiant_id`) REFERENCES `esbtp_etudiants` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_attendances_seance_cours_id_foreign` FOREIGN KEY (`seance_cours_id`) REFERENCES `esbtp_seance_cours` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_attendances_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`);
+
+--
+-- Constraints for table `esbtp_bourses`
+--
+ALTER TABLE `esbtp_bourses`
+  ADD CONSTRAINT `esbtp_bourses_annee_universitaire_id_foreign` FOREIGN KEY (`annee_universitaire_id`) REFERENCES `esbtp_annee_universitaires` (`id`),
+  ADD CONSTRAINT `esbtp_bourses_createur_id_foreign` FOREIGN KEY (`createur_id`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `esbtp_bourses_etudiant_id_foreign` FOREIGN KEY (`etudiant_id`) REFERENCES `esbtp_etudiants` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `esbtp_bulletins`
+--
+ALTER TABLE `esbtp_bulletins`
+  ADD CONSTRAINT `esbtp_bulletins_annee_universitaire_id_foreign` FOREIGN KEY (`annee_universitaire_id`) REFERENCES `esbtp_annee_universitaires` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_bulletins_classe_id_foreign` FOREIGN KEY (`classe_id`) REFERENCES `esbtp_classes` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_bulletins_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `esbtp_bulletins_etudiant_id_foreign` FOREIGN KEY (`etudiant_id`) REFERENCES `esbtp_etudiants` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_bulletins_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `esbtp_bulletins_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`);
+
+--
+-- Constraints for table `esbtp_bulletin_details`
+--
+ALTER TABLE `esbtp_bulletin_details`
+  ADD CONSTRAINT `esbtp_bulletin_details_bulletin_id_foreign` FOREIGN KEY (`bulletin_id`) REFERENCES `esbtp_bulletins` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_bulletin_details_matiere_id_foreign` FOREIGN KEY (`matiere_id`) REFERENCES `esbtp_matieres` (`id`);
+
+--
+-- Constraints for table `esbtp_categories_depenses`
+--
+ALTER TABLE `esbtp_categories_depenses`
+  ADD CONSTRAINT `esbtp_categories_depenses_parent_id_foreign` FOREIGN KEY (`parent_id`) REFERENCES `esbtp_categories_depenses` (`id`);
+
+--
+-- Constraints for table `esbtp_categorie_paiements`
+--
+ALTER TABLE `esbtp_categorie_paiements`
+  ADD CONSTRAINT `esbtp_categorie_paiements_parent_id_foreign` FOREIGN KEY (`parent_id`) REFERENCES `esbtp_categorie_paiements` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `esbtp_classes`
+--
+ALTER TABLE `esbtp_classes`
+  ADD CONSTRAINT `esbtp_classes_annee_universitaire_id_foreign` FOREIGN KEY (`annee_universitaire_id`) REFERENCES `esbtp_annee_universitaires` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_classes_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `esbtp_classes_filiere_id_foreign` FOREIGN KEY (`filiere_id`) REFERENCES `esbtp_filieres` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_classes_niveau_etude_id_foreign` FOREIGN KEY (`niveau_etude_id`) REFERENCES `esbtp_niveau_etudes` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_classes_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`);
+
+--
+-- Constraints for table `esbtp_classe_matiere`
+--
+ALTER TABLE `esbtp_classe_matiere`
+  ADD CONSTRAINT `esbtp_classe_matiere_classe_id_foreign` FOREIGN KEY (`classe_id`) REFERENCES `esbtp_classes` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_classe_matiere_matiere_id_foreign` FOREIGN KEY (`matiere_id`) REFERENCES `esbtp_matieres` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `esbtp_config_matieres`
+--
+ALTER TABLE `esbtp_config_matieres`
+  ADD CONSTRAINT `esbtp_config_matieres_annee_universitaire_id_foreign` FOREIGN KEY (`annee_universitaire_id`) REFERENCES `esbtp_annee_universitaires` (`id`),
+  ADD CONSTRAINT `esbtp_config_matieres_classe_id_foreign` FOREIGN KEY (`classe_id`) REFERENCES `esbtp_classes` (`id`),
+  ADD CONSTRAINT `esbtp_config_matieres_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `esbtp_config_matieres_matiere_id_foreign` FOREIGN KEY (`matiere_id`) REFERENCES `esbtp_matieres` (`id`),
+  ADD CONSTRAINT `esbtp_config_matieres_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `esbtp_config_matiere_type_formations`
+--
+ALTER TABLE `esbtp_config_matiere_type_formations`
+  ADD CONSTRAINT `ecmtf_annee_id_foreign` FOREIGN KEY (`annee_universitaire_id`) REFERENCES `esbtp_annee_universitaires` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `ecmtf_classe_id_foreign` FOREIGN KEY (`classe_id`) REFERENCES `esbtp_classes` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `ecmtf_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `ecmtf_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `esbtp_continuing_education`
+--
+ALTER TABLE `esbtp_continuing_education`
+  ADD CONSTRAINT `esbtp_continuing_education_cycle_id_foreign` FOREIGN KEY (`cycle_id`) REFERENCES `esbtp_cycles` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_continuing_education_department_id_foreign` FOREIGN KEY (`department_id`) REFERENCES `esbtp_departments` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `esbtp_cours`
+--
+ALTER TABLE `esbtp_cours`
+  ADD CONSTRAINT `esbtp_cours_annee_universitaire_id_foreign` FOREIGN KEY (`annee_universitaire_id`) REFERENCES `esbtp_annee_universitaires` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_cours_classe_id_foreign` FOREIGN KEY (`classe_id`) REFERENCES `esbtp_classes` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_cours_enseignant_id_foreign` FOREIGN KEY (`enseignant_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `esbtp_cours_matiere_id_foreign` FOREIGN KEY (`matiere_id`) REFERENCES `esbtp_matieres` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `esbtp_daily_codes`
+--
+ALTER TABLE `esbtp_daily_codes`
+  ADD CONSTRAINT `esbtp_daily_codes_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `esbtp_daily_codes_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`);
+
+--
+-- Constraints for table `esbtp_departments`
+--
+ALTER TABLE `esbtp_departments`
+  ADD CONSTRAINT `esbtp_departments_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `esbtp_departments_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`);
+
+--
+-- Constraints for table `esbtp_depenses`
+--
+ALTER TABLE `esbtp_depenses`
+  ADD CONSTRAINT `esbtp_depenses_categorie_id_foreign` FOREIGN KEY (`categorie_id`) REFERENCES `esbtp_categories_depenses` (`id`),
+  ADD CONSTRAINT `esbtp_depenses_createur_id_foreign` FOREIGN KEY (`createur_id`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `esbtp_depenses_fournisseur_id_foreign` FOREIGN KEY (`fournisseur_id`) REFERENCES `esbtp_fournisseurs` (`id`),
+  ADD CONSTRAINT `esbtp_depenses_validateur_id_foreign` FOREIGN KEY (`validateur_id`) REFERENCES `users` (`id`);
+
+--
+-- Constraints for table `esbtp_emplois_du_temps`
+--
+ALTER TABLE `esbtp_emplois_du_temps`
+  ADD CONSTRAINT `esbtp_emplois_du_temps_classe_id_foreign` FOREIGN KEY (`classe_id`) REFERENCES `esbtp_classes` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_emplois_du_temps_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `esbtp_emplois_du_temps_matiere_id_foreign` FOREIGN KEY (`matiere_id`) REFERENCES `esbtp_matieres` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_emplois_du_temps_teacher_id_foreign` FOREIGN KEY (`teacher_id`) REFERENCES `esbtp_teachers` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_emplois_du_temps_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`);
+
+--
+-- Constraints for table `esbtp_emploi_temps`
+--
+ALTER TABLE `esbtp_emploi_temps`
+  ADD CONSTRAINT `esbtp_emploi_temps_annee_universitaire_id_foreign` FOREIGN KEY (`annee_universitaire_id`) REFERENCES `esbtp_annee_universitaires` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_emploi_temps_classe_id_foreign` FOREIGN KEY (`classe_id`) REFERENCES `esbtp_classes` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_emploi_temps_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `esbtp_emploi_temps_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`);
+
+--
+-- Constraints for table `esbtp_enseignant_matiere`
+--
+ALTER TABLE `esbtp_enseignant_matiere`
+  ADD CONSTRAINT `esbtp_enseignant_matiere_annee_universitaire_id_foreign` FOREIGN KEY (`annee_universitaire_id`) REFERENCES `esbtp_annee_universitaires` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_enseignant_matiere_enseignant_id_foreign` FOREIGN KEY (`enseignant_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_enseignant_matiere_matiere_id_foreign` FOREIGN KEY (`matiere_id`) REFERENCES `esbtp_matieres` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `esbtp_enseignant_presence`
+--
+ALTER TABLE `esbtp_enseignant_presence`
+  ADD CONSTRAINT `esbtp_enseignant_presence_enseignant_id_foreign` FOREIGN KEY (`enseignant_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_enseignant_presence_matiere_id_foreign` FOREIGN KEY (`matiere_id`) REFERENCES `esbtp_matieres` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `esbtp_etudiants`
+--
+ALTER TABLE `esbtp_etudiants`
+  ADD CONSTRAINT `esbtp_etudiants_annee_universitaire_id_foreign` FOREIGN KEY (`annee_universitaire_id`) REFERENCES `esbtp_annee_universitaires` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `esbtp_etudiants_classe_id_foreign` FOREIGN KEY (`classe_id`) REFERENCES `esbtp_classes` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `esbtp_etudiants_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `esbtp_etudiants_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `esbtp_etudiants_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `esbtp_etudiant_parent`
+--
+ALTER TABLE `esbtp_etudiant_parent`
+  ADD CONSTRAINT `esbtp_etudiant_parent_etudiant_id_foreign` FOREIGN KEY (`etudiant_id`) REFERENCES `esbtp_etudiants` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_etudiant_parent_parent_id_foreign` FOREIGN KEY (`parent_id`) REFERENCES `esbtp_parents` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `esbtp_evaluations`
+--
+ALTER TABLE `esbtp_evaluations`
+  ADD CONSTRAINT `esbtp_evaluations_annee_universitaire_id_foreign` FOREIGN KEY (`annee_universitaire_id`) REFERENCES `esbtp_annee_universitaires` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_evaluations_classe_id_foreign` FOREIGN KEY (`classe_id`) REFERENCES `esbtp_classes` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_evaluations_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `esbtp_evaluations_matiere_id_foreign` FOREIGN KEY (`matiere_id`) REFERENCES `esbtp_matieres` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_evaluations_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`);
+
+--
+-- Constraints for table `esbtp_factures`
+--
+ALTER TABLE `esbtp_factures`
+  ADD CONSTRAINT `esbtp_factures_annee_universitaire_id_foreign` FOREIGN KEY (`annee_universitaire_id`) REFERENCES `esbtp_annee_universitaires` (`id`),
+  ADD CONSTRAINT `esbtp_factures_createur_id_foreign` FOREIGN KEY (`createur_id`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `esbtp_factures_etudiant_id_foreign` FOREIGN KEY (`etudiant_id`) REFERENCES `esbtp_etudiants` (`id`),
+  ADD CONSTRAINT `esbtp_factures_inscription_id_foreign` FOREIGN KEY (`inscription_id`) REFERENCES `esbtp_inscriptions` (`id`),
+  ADD CONSTRAINT `esbtp_factures_validateur_id_foreign` FOREIGN KEY (`validateur_id`) REFERENCES `users` (`id`);
+
+--
+-- Constraints for table `esbtp_facture_details`
+--
+ALTER TABLE `esbtp_facture_details`
+  ADD CONSTRAINT `esbtp_facture_details_facture_id_foreign` FOREIGN KEY (`facture_id`) REFERENCES `esbtp_factures` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `esbtp_filieres`
+--
+ALTER TABLE `esbtp_filieres`
+  ADD CONSTRAINT `esbtp_filieres_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `esbtp_filieres_parent_id_foreign` FOREIGN KEY (`parent_id`) REFERENCES `esbtp_filieres` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `esbtp_filieres_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`);
+
+--
+-- Constraints for table `esbtp_filiere_niveau`
+--
+ALTER TABLE `esbtp_filiere_niveau`
+  ADD CONSTRAINT `esbtp_filiere_niveau_filiere_id_foreign` FOREIGN KEY (`filiere_id`) REFERENCES `esbtp_filieres` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_filiere_niveau_niveau_etude_id_foreign` FOREIGN KEY (`niveau_etude_id`) REFERENCES `esbtp_niveau_etudes` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `esbtp_frais_scolarite`
+--
+ALTER TABLE `esbtp_frais_scolarite`
+  ADD CONSTRAINT `esbtp_frais_scolarite_annee_universitaire_id_foreign` FOREIGN KEY (`annee_universitaire_id`) REFERENCES `esbtp_annee_universitaires` (`id`),
+  ADD CONSTRAINT `esbtp_frais_scolarite_filiere_id_foreign` FOREIGN KEY (`filiere_id`) REFERENCES `esbtp_filieres` (`id`),
+  ADD CONSTRAINT `esbtp_frais_scolarite_niveau_etude_id_foreign` FOREIGN KEY (`niveau_etude_id`) REFERENCES `esbtp_niveau_etudes` (`id`);
+
+--
+-- Constraints for table `esbtp_inscriptions`
+--
+ALTER TABLE `esbtp_inscriptions`
+  ADD CONSTRAINT `esbtp_inscriptions_annee_universitaire_id_foreign` FOREIGN KEY (`annee_universitaire_id`) REFERENCES `esbtp_annee_universitaires` (`id`),
+  ADD CONSTRAINT `esbtp_inscriptions_classe_id_foreign` FOREIGN KEY (`classe_id`) REFERENCES `esbtp_classes` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `esbtp_inscriptions_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `esbtp_inscriptions_etudiant_id_foreign` FOREIGN KEY (`etudiant_id`) REFERENCES `esbtp_etudiants` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_inscriptions_filiere_id_foreign` FOREIGN KEY (`filiere_id`) REFERENCES `esbtp_filieres` (`id`),
+  ADD CONSTRAINT `esbtp_inscriptions_niveau_id_foreign` FOREIGN KEY (`niveau_id`) REFERENCES `esbtp_niveau_etudes` (`id`),
+  ADD CONSTRAINT `esbtp_inscriptions_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `esbtp_inscriptions_validated_by_foreign` FOREIGN KEY (`validated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `esbtp_laboratories`
+--
+ALTER TABLE `esbtp_laboratories`
+  ADD CONSTRAINT `esbtp_laboratories_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `esbtp_laboratories_department_id_foreign` FOREIGN KEY (`department_id`) REFERENCES `esbtp_departments` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_laboratories_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`);
+
+--
+-- Constraints for table `esbtp_matieres`
+--
+ALTER TABLE `esbtp_matieres`
+  ADD CONSTRAINT `esbtp_matieres_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `esbtp_matieres_niveau_etude_id_foreign` FOREIGN KEY (`niveau_etude_id`) REFERENCES `esbtp_niveau_etudes` (`id`),
+  ADD CONSTRAINT `esbtp_matieres_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`);
+
+--
+-- Constraints for table `esbtp_matiere_filiere`
+--
+ALTER TABLE `esbtp_matiere_filiere`
+  ADD CONSTRAINT `esbtp_matiere_filiere_filiere_id_foreign` FOREIGN KEY (`filiere_id`) REFERENCES `esbtp_filieres` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_matiere_filiere_matiere_id_foreign` FOREIGN KEY (`matiere_id`) REFERENCES `esbtp_matieres` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `esbtp_matiere_niveau`
+--
+ALTER TABLE `esbtp_matiere_niveau`
+  ADD CONSTRAINT `esbtp_matiere_niveau_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `esbtp_matiere_niveau_matiere_id_foreign` FOREIGN KEY (`matiere_id`) REFERENCES `esbtp_matieres` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_matiere_niveau_niveau_etude_id_foreign` FOREIGN KEY (`niveau_etude_id`) REFERENCES `esbtp_niveau_etudes` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_matiere_niveau_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`);
+
+--
+-- Constraints for table `esbtp_notes`
+--
+ALTER TABLE `esbtp_notes`
+  ADD CONSTRAINT `esbtp_notes_classe_id_foreign` FOREIGN KEY (`classe_id`) REFERENCES `esbtp_classes` (`id`),
+  ADD CONSTRAINT `esbtp_notes_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `esbtp_notes_etudiant_id_foreign` FOREIGN KEY (`etudiant_id`) REFERENCES `esbtp_etudiants` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_notes_evaluation_id_foreign` FOREIGN KEY (`evaluation_id`) REFERENCES `esbtp_evaluations` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_notes_matiere_id_foreign` FOREIGN KEY (`matiere_id`) REFERENCES `esbtp_matieres` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_notes_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`);
+
+--
+-- Constraints for table `esbtp_paiements`
+--
+ALTER TABLE `esbtp_paiements`
+  ADD CONSTRAINT `esbtp_paiements_categorie_id_foreign` FOREIGN KEY (`categorie_id`) REFERENCES `esbtp_categorie_paiements` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `esbtp_paiements_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `esbtp_paiements_etudiant_id_foreign` FOREIGN KEY (`etudiant_id`) REFERENCES `esbtp_etudiants` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_paiements_inscription_id_foreign` FOREIGN KEY (`inscription_id`) REFERENCES `esbtp_inscriptions` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_paiements_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `esbtp_paiements_validated_by_foreign` FOREIGN KEY (`validated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `esbtp_parents`
+--
+ALTER TABLE `esbtp_parents`
+  ADD CONSTRAINT `esbtp_parents_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `esbtp_parents_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `esbtp_parents_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `esbtp_resultats`
+--
+ALTER TABLE `esbtp_resultats`
+  ADD CONSTRAINT `esbtp_resultats_annee_universitaire_id_foreign` FOREIGN KEY (`annee_universitaire_id`) REFERENCES `esbtp_annee_universitaires` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_resultats_classe_id_foreign` FOREIGN KEY (`classe_id`) REFERENCES `esbtp_classes` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_resultats_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `esbtp_resultats_etudiant_id_foreign` FOREIGN KEY (`etudiant_id`) REFERENCES `esbtp_etudiants` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_resultats_matiere_id_foreign` FOREIGN KEY (`matiere_id`) REFERENCES `esbtp_matieres` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_resultats_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`);
+
+--
+-- Constraints for table `esbtp_resultats_matieres`
+--
+ALTER TABLE `esbtp_resultats_matieres`
+  ADD CONSTRAINT `esbtp_resultats_matieres_bulletin_id_foreign` FOREIGN KEY (`bulletin_id`) REFERENCES `esbtp_bulletins` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_resultats_matieres_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `esbtp_resultats_matieres_matiere_id_foreign` FOREIGN KEY (`matiere_id`) REFERENCES `esbtp_matieres` (`id`),
+  ADD CONSTRAINT `esbtp_resultats_matieres_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`);
+
+--
+-- Constraints for table `esbtp_salaires`
+--
+ALTER TABLE `esbtp_salaires`
+  ADD CONSTRAINT `esbtp_salaires_annee_universitaire_id_foreign` FOREIGN KEY (`annee_universitaire_id`) REFERENCES `esbtp_annee_universitaires` (`id`),
+  ADD CONSTRAINT `esbtp_salaires_createur_id_foreign` FOREIGN KEY (`createur_id`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `esbtp_salaires_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_salaires_validateur_id_foreign` FOREIGN KEY (`validateur_id`) REFERENCES `users` (`id`);
+
+--
+-- Constraints for table `esbtp_seance_cours`
+--
+ALTER TABLE `esbtp_seance_cours`
+  ADD CONSTRAINT `esbtp_seance_cours_annee_universitaire_id_foreign` FOREIGN KEY (`annee_universitaire_id`) REFERENCES `esbtp_annee_universitaires` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_seance_cours_classe_id_foreign` FOREIGN KEY (`classe_id`) REFERENCES `esbtp_classes` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_seance_cours_emploi_temps_id_foreign` FOREIGN KEY (`emploi_temps_id`) REFERENCES `esbtp_emploi_temps` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_seance_cours_matiere_id_foreign` FOREIGN KEY (`matiere_id`) REFERENCES `esbtp_matieres` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_seance_cours_teacher_id_foreign` FOREIGN KEY (`teacher_id`) REFERENCES `esbtp_teachers` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `esbtp_security_events`
+--
+ALTER TABLE `esbtp_security_events`
+  ADD CONSTRAINT `esbtp_security_events_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`);
+
+--
+-- Constraints for table `esbtp_specialties`
+--
+ALTER TABLE `esbtp_specialties`
+  ADD CONSTRAINT `esbtp_specialties_cycle_id_foreign` FOREIGN KEY (`cycle_id`) REFERENCES `esbtp_cycles` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_specialties_department_id_foreign` FOREIGN KEY (`department_id`) REFERENCES `esbtp_departments` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `esbtp_students`
+--
+ALTER TABLE `esbtp_students`
+  ADD CONSTRAINT `esbtp_students_class_id_foreign` FOREIGN KEY (`class_id`) REFERENCES `esbtp_classes` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `esbtp_students_cycle_id_foreign` FOREIGN KEY (`cycle_id`) REFERENCES `esbtp_cycles` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `esbtp_students_department_id_foreign` FOREIGN KEY (`department_id`) REFERENCES `esbtp_departments` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `esbtp_student_grades`
+--
+ALTER TABLE `esbtp_student_grades`
+  ADD CONSTRAINT `esbtp_student_grades_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `esbtp_student_grades_evaluation_id_foreign` FOREIGN KEY (`evaluation_id`) REFERENCES `esbtp_evaluations` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_student_grades_student_id_foreign` FOREIGN KEY (`student_id`) REFERENCES `esbtp_etudiants` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_student_grades_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `esbtp_teachers`
+--
+ALTER TABLE `esbtp_teachers`
+  ADD CONSTRAINT `esbtp_teachers_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `esbtp_teachers_department_id_foreign` FOREIGN KEY (`department_id`) REFERENCES `esbtp_departments` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `esbtp_teachers_laboratory_id_foreign` FOREIGN KEY (`laboratory_id`) REFERENCES `esbtp_laboratories` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `esbtp_teachers_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `esbtp_teachers_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `esbtp_teacher_attendance`
+--
+ALTER TABLE `esbtp_teacher_attendance`
+  ADD CONSTRAINT `esbtp_teacher_attendance_daily_code_id_foreign` FOREIGN KEY (`daily_code_id`) REFERENCES `esbtp_daily_codes` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_teacher_attendance_emploi_du_temps_id_foreign` FOREIGN KEY (`emploi_du_temps_id`) REFERENCES `esbtp_emplois_du_temps` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_teacher_attendance_teacher_id_foreign` FOREIGN KEY (`teacher_id`) REFERENCES `esbtp_teachers` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_teacher_attendance_validated_by_foreign` FOREIGN KEY (`validated_by`) REFERENCES `users` (`id`);
+
+--
+-- Constraints for table `esbtp_teacher_attendances`
+--
+ALTER TABLE `esbtp_teacher_attendances`
+  ADD CONSTRAINT `esbtp_teacher_attendances_teacher_id_foreign` FOREIGN KEY (`teacher_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `esbtp_teacher_cycle`
+--
+ALTER TABLE `esbtp_teacher_cycle`
+  ADD CONSTRAINT `esbtp_teacher_cycle_cycle_id_foreign` FOREIGN KEY (`cycle_id`) REFERENCES `esbtp_cycles` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `esbtp_teacher_cycle_teacher_id_foreign` FOREIGN KEY (`teacher_id`) REFERENCES `esbtp_teachers` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `esbtp_transactions_financieres`
+--
+ALTER TABLE `esbtp_transactions_financieres`
+  ADD CONSTRAINT `esbtp_transactions_financieres_createur_id_foreign` FOREIGN KEY (`createur_id`) REFERENCES `users` (`id`);
+
+--
+-- Constraints for table `evaluations`
+--
+ALTER TABLE `evaluations`
+  ADD CONSTRAINT `evaluations_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `evaluations_element_constitutif_id_foreign` FOREIGN KEY (`element_constitutif_id`) REFERENCES `element_constitutifs` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `evaluations_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `exams`
+--
+ALTER TABLE `exams`
+  ADD CONSTRAINT `exams_semester_id_foreign` FOREIGN KEY (`semester_id`) REFERENCES `semesters` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `exams_session_id_foreign` FOREIGN KEY (`session_id`) REFERENCES `sessions` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `fees`
+--
+ALTER TABLE `fees`
+  ADD CONSTRAINT `fees_academic_year_id_foreign` FOREIGN KEY (`academic_year_id`) REFERENCES `esbtp_annee_universitaires` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fees_class_id_foreign` FOREIGN KEY (`class_id`) REFERENCES `esbtp_classes` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fees_fee_category_id_foreign` FOREIGN KEY (`fee_category_id`) REFERENCES `fee_categories` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fees_inscription_id_foreign` FOREIGN KEY (`inscription_id`) REFERENCES `esbtp_inscriptions` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `fee_category_rules`
+--
+ALTER TABLE `fee_category_rules`
+  ADD CONSTRAINT `fee_category_rules_annee_universitaire_id_foreign` FOREIGN KEY (`annee_universitaire_id`) REFERENCES `esbtp_annee_universitaires` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fee_category_rules_fee_category_id_foreign` FOREIGN KEY (`fee_category_id`) REFERENCES `fee_categories` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fee_category_rules_filiere_id_foreign` FOREIGN KEY (`filiere_id`) REFERENCES `esbtp_filieres` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fee_category_rules_niveau_id_foreign` FOREIGN KEY (`niveau_id`) REFERENCES `esbtp_niveau_etudes` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `fee_category_rule_installments`
+--
+ALTER TABLE `fee_category_rule_installments`
+  ADD CONSTRAINT `fee_category_rule_installments_fee_category_rule_id_foreign` FOREIGN KEY (`fee_category_rule_id`) REFERENCES `fee_category_rules` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `grades`
+--
+ALTER TABLE `grades`
+  ADD CONSTRAINT `grades_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `grades_evaluation_id_foreign` FOREIGN KEY (`evaluation_id`) REFERENCES `evaluations` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `grades_student_id_foreign` FOREIGN KEY (`student_id`) REFERENCES `students` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `grades_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `laboratories`
+--
+ALTER TABLE `laboratories`
+  ADD CONSTRAINT `laboratories_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `laboratories_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `messages`
+--
+ALTER TABLE `messages`
+  ADD CONSTRAINT `messages_parent_id_foreign` FOREIGN KEY (`parent_id`) REFERENCES `messages` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `messages_recipient_id_foreign` FOREIGN KEY (`recipient_id`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `messages_sender_id_foreign` FOREIGN KEY (`sender_id`) REFERENCES `users` (`id`);
+
+--
+-- Constraints for table `message_attachments`
+--
+ALTER TABLE `message_attachments`
+  ADD CONSTRAINT `message_attachments_message_id_foreign` FOREIGN KEY (`message_id`) REFERENCES `messages` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `message_recipients`
+--
+ALTER TABLE `message_recipients`
+  ADD CONSTRAINT `message_recipients_message_id_foreign` FOREIGN KEY (`message_id`) REFERENCES `messages` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `message_recipients_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `model_has_permissions`
+--
+ALTER TABLE `model_has_permissions`
+  ADD CONSTRAINT `model_has_permissions_permission_id_foreign` FOREIGN KEY (`permission_id`) REFERENCES `permissions` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `model_has_roles`
+--
+ALTER TABLE `model_has_roles`
+  ADD CONSTRAINT `model_has_roles_role_id_foreign` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `parcours`
+--
+ALTER TABLE `parcours`
+  ADD CONSTRAINT `parcours_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `parcours_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `payments`
+--
+ALTER TABLE `payments`
+  ADD CONSTRAINT `payments_category_id_foreign` FOREIGN KEY (`category_id`) REFERENCES `payment_categories` (`id`),
+  ADD CONSTRAINT `payments_fee_id_foreign` FOREIGN KEY (`fee_id`) REFERENCES `fees` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `payments_inscription_id_foreign` FOREIGN KEY (`inscription_id`) REFERENCES `esbtp_inscriptions` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `payments_student_id_foreign` FOREIGN KEY (`student_id`) REFERENCES `students` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `role_has_permissions`
+--
+ALTER TABLE `role_has_permissions`
+  ADD CONSTRAINT `role_has_permissions_permission_id_foreign` FOREIGN KEY (`permission_id`) REFERENCES `permissions` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `role_has_permissions_role_id_foreign` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `school_classes`
+--
+ALTER TABLE `school_classes`
+  ADD CONSTRAINT `school_classes_ufr_id_foreign` FOREIGN KEY (`ufr_id`) REFERENCES `ufrs` (`id`);
+
+--
+-- Constraints for table `school_teachers`
+--
+ALTER TABLE `school_teachers`
+  ADD CONSTRAINT `school_teachers_department_id_foreign` FOREIGN KEY (`department_id`) REFERENCES `departments` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `school_teachers_designation_id_foreign` FOREIGN KEY (`designation_id`) REFERENCES `designations` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `school_teachers_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `sections`
+--
+ALTER TABLE `sections`
+  ADD CONSTRAINT `sections_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `sections_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `semesters`
+--
+ALTER TABLE `semesters`
+  ADD CONSTRAINT `semesters_session_id_foreign` FOREIGN KEY (`session_id`) REFERENCES `sessions` (`id`);
+
+--
+-- Constraints for table `sessions`
+--
+ALTER TABLE `sessions`
+  ADD CONSTRAINT `sessions_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `sessions_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `settings`
+--
+ALTER TABLE `settings`
+  ADD CONSTRAINT `settings_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `settings_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `settings_backups`
+--
+ALTER TABLE `settings_backups`
+  ADD CONSTRAINT `settings_backups_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `settings_backups_restored_by_foreign` FOREIGN KEY (`restored_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `student_grades`
+--
+ALTER TABLE `student_grades`
+  ADD CONSTRAINT `student_grades_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `student_grades_evaluation_id_foreign` FOREIGN KEY (`evaluation_id`) REFERENCES `evaluations` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `student_grades_student_id_foreign` FOREIGN KEY (`student_id`) REFERENCES `students` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `student_grades_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `teachers`
+--
+ALTER TABLE `teachers`
+  ADD CONSTRAINT `teachers_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `teachers_department_id_foreign` FOREIGN KEY (`department_id`) REFERENCES `departments` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `teachers_laboratory_id_foreign` FOREIGN KEY (`laboratory_id`) REFERENCES `laboratories` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `teachers_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `teachers_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `timetables`
+--
+ALTER TABLE `timetables`
+  ADD CONSTRAINT `timetables_class_id_foreign` FOREIGN KEY (`class_id`) REFERENCES `classes` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `timetables_section_id_foreign` FOREIGN KEY (`section_id`) REFERENCES `sections` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `timetables_session_id_foreign` FOREIGN KEY (`session_id`) REFERENCES `sessions` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `timetables_subject_id_foreign` FOREIGN KEY (`subject_id`) REFERENCES `subjects` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `timetables_teacher_id_foreign` FOREIGN KEY (`teacher_id`) REFERENCES `teachers` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `ufrs`
+--
+ALTER TABLE `ufrs`
+  ADD CONSTRAINT `ufrs_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `ufrs_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
