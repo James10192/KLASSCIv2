@@ -229,30 +229,6 @@
             line-height: 1.6;
         }
 
-        /* ============= Stats Section ============= */
-        .stats {
-            padding: 5rem 0;
-            background: var(--gradient-primary);
-            color: white;
-        }
-
-        .stat-item {
-            text-align: center;
-            padding: 2rem 1rem;
-        }
-
-        .stat-number {
-            font-size: 3rem;
-            font-weight: 800;
-            margin-bottom: 0.5rem;
-            display: block;
-        }
-
-        .stat-label {
-            font-size: 1.1rem;
-            opacity: 0.9;
-        }
-
         /* ============= Modules Section ============= */
         .modules {
             padding: 5rem 0;
@@ -499,6 +475,91 @@
         .animate-fade-in-up {
             animation: fadeInUp 0.6s ease-out;
         }
+
+        .icon-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+        }
+
+        .category-card {
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            background-color: white;
+            border: 1px solid var(--gray-200);
+            transition: all var(--transition-normal);
+        }
+
+        .category-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .border-purple {
+            border-color: var(--purple) !important;
+        }
+
+        .module-block {
+            background: #f4f8ff;
+            border-radius: 1.2rem;
+            box-shadow: 0 4px 24px 0 rgba(80,112,255,0.07);
+            border-left: 6px solid var(--mod-color);
+            position: relative;
+            min-height: 120px;
+            margin-bottom: 0;
+            padding: 1.5rem 1.5rem 1.5rem 1.2rem;
+            transition: box-shadow 0.2s, transform 0.2s;
+        }
+        .module-block:hover {
+            box-shadow: 0 8px 32px 0 rgba(80,112,255,0.13);
+            transform: translateY(-4px) scale(1.02);
+        }
+        .module-block:before, .module-block:after {
+            content: '';
+            position: absolute;
+            left: -6px;
+            width: 2px;
+            height: 24px;
+            background: var(--mod-color);
+            border-radius: 2px;
+        }
+        .module-block:before { top: -18px; }
+        .module-block:after { bottom: -18px; }
+        .module-icon-big {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 2.2rem;
+            flex-shrink: 0;
+            box-shadow: 0 2px 12px 0 rgba(80,112,255,0.10);
+        }
+        .module-content h5 {
+            color: #1e293b;
+            font-size: 1.18rem;
+            font-weight: 700;
+        }
+        .module-content p {
+            color: #64748b;
+            font-size: 1rem;
+            margin-bottom: 0;
+        }
+        @media (max-width: 991.98px) {
+            .module-block { min-height: 110px; }
+        }
+        @media (max-width: 767.98px) {
+            .module-block { flex-direction: column; align-items: flex-start; padding: 1.2rem; }
+            .module-icon-big { margin-bottom: 1rem; }
+        }
     </style>
 </head>
 <body>
@@ -548,58 +609,27 @@
             <div class="row align-items-center">
                 <div class="col-lg-6" data-aos="fade-right">
                     <div class="hero-content">
-                        <h1>Gérez votre établissement avec <span style="background: linear-gradient(135deg, #fbbf24, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">KLASSCI</span></h1>
-                        <p class="lead">
-                            La solution complète de gestion scolaire pour les établissements d'enseignement supérieur.
-                            Simplifiez la gestion des étudiants, des notes, des emplois du temps et bien plus encore.
+                        <div style="font-size: 0.95rem; color: #64748b; letter-spacing: 1px; font-weight: 600; margin-bottom: 0.5rem;">TOUT-EN-UN</div>
+                        <h1 style="font-family: 'Inter', 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 2.5rem; line-height: 1.2;">
+                            Automatise et simplifie la gestion de votre établissement,<br>
+                            conçu pour des établissements plus efficaces, des équipes plus sereines et des élèves mieux suivis.
+                        </h1>
+                        <p class="lead mt-3" style="font-size: 1.25rem; color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,0.10); font-weight: 500;">
+                            KLASSCI est un logiciel intelligent qui digitalise, simplifie et automatise la gestion des tâches administratives, pédagogiques des établissements et offre un suivi complet des performances des étudiants aux parents.
                         </p>
-                        <div class="d-flex flex-wrap gap-3">
-                            <a href="#demo" class="btn btn-white">
-                                <i class="fas fa-play me-2"></i>
-                                Voir la démo
+                        <div class="d-flex flex-wrap gap-3 mt-4">
+                            <a href="#demo" class="btn btn-warning btn-lg" style="color: #fff; font-weight: 700; min-width: 220px; font-size: 1.25rem; border-radius: 16px;">
+                                Demander une démo
                             </a>
-                            <a href="#contact" class="btn btn-outline-light">
-                                <i class="fas fa-phone me-2"></i>
+                            <a href="#contact" class="btn btn-outline-light btn-lg" style="font-weight: 700; min-width: 220px; font-size: 1.25rem; border-radius: 16px; color: #fff; border: 2px solid #fff; background: rgba(255,255,255,0.08);">
                                 Nous contacter
                             </a>
                         </div>
                     </div>
                 </div>
                 <div class="col-lg-6" data-aos="fade-left">
-                    <div class="hero-image">
-                        <img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80" alt="KLASSCI Dashboard" class="img-fluid">
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Stats Section -->
-    <section class="stats">
-        <div class="container">
-            <div class="row">
-                <div class="col-md-3 col-6" data-aos="fade-up" data-aos-delay="100">
-                    <div class="stat-item">
-                        <span class="stat-number">500+</span>
-                        <span class="stat-label">Établissements</span>
-                    </div>
-                </div>
-                <div class="col-md-3 col-6" data-aos="fade-up" data-aos-delay="200">
-                    <div class="stat-item">
-                        <span class="stat-number">50K+</span>
-                        <span class="stat-label">Étudiants</span>
-                    </div>
-                </div>
-                <div class="col-md-3 col-6" data-aos="fade-up" data-aos-delay="300">
-                    <div class="stat-item">
-                        <span class="stat-number">99.9%</span>
-                        <span class="stat-label">Disponibilité</span>
-                    </div>
-                </div>
-                <div class="col-md-3 col-6" data-aos="fade-up" data-aos-delay="400">
-                    <div class="stat-item">
-                        <span class="stat-number">24/7</span>
-                        <span class="stat-label">Support</span>
+                    <div class="hero-image d-flex justify-content-center align-items-center">
+                        <img src="/images/tableaudeborddemo.jpg" alt="Aperçu logiciel KLASSCI sur PC et tablette" class="img-fluid" style="max-width: 90%; border-radius: 1rem; box-shadow: 0 8px 32px rgba(0,0,0,0.10);">
                     </div>
                 </div>
             </div>
@@ -611,71 +641,67 @@
         <div class="container">
             <div class="row mb-5">
                 <div class="col-lg-8 mx-auto text-center" data-aos="fade-up">
-                    <h2 class="display-5 fw-bold mb-3">Pourquoi choisir KLASSCI ?</h2>
-                    <p class="lead text-muted">
-                        Une solution moderne et intuitive qui révolutionne la gestion de votre établissement
+                    <h2 class="display-5 fw-bold mb-3">Fonctionnalités Clés</h2>
+                    <p class="lead text-muted" style="font-size:1.2rem; color:#6b7280; font-weight:500;">
+                        Découvrez les atouts qui font de KLASSCI un logiciel de gestion scolaire intelligent, complet et personnalisable.
                     </p>
                 </div>
             </div>
-
             <div class="row g-4">
                 <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="100">
-                    <div class="feature-card">
-                        <div class="feature-icon">
-                            <i class="fas fa-users"></i>
-                        </div>
-                        <h4>Gestion des Étudiants</h4>
-                        <p>Gérez facilement les inscriptions, profils étudiants, et suivez leur parcours académique en temps réel.</p>
+                    <div class="feature-card h-100">
+                        <div class="feature-icon"><i class="fas fa-robot"></i></div>
+                        <h4>Digitalisation & automatisation des évaluations</h4>
+                        <p>Automatisez la création, la distribution et la correction des évaluations. Gagnez du temps et réduisez les erreurs grâce à des processus 100 % numériques.</p>
                     </div>
                 </div>
-
+                <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="150">
+                    <div class="feature-card h-100">
+                        <div class="feature-icon"><i class="fas fa-file-alt"></i></div>
+                        <h4>Édition intelligente des bulletins de notes</h4>
+                        <p>Générez des bulletins personnalisés en un clic, avec calcul automatique des moyennes, appréciations et export PDF pour chaque élève.</p>
+                    </div>
+                </div>
                 <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="200">
-                    <div class="feature-card">
-                        <div class="feature-icon">
-                            <i class="fas fa-chart-line"></i>
-                        </div>
-                        <h4>Suivi des Notes</h4>
-                        <p>Système complet de notation avec génération automatique de bulletins et statistiques détaillées.</p>
+                    <div class="feature-card h-100">
+                        <div class="feature-icon"><i class="fas fa-calendar-check"></i></div>
+                        <h4>Programmation automatique des emplois du temps</h4>
+                        <p>Créez des emplois du temps optimisés en tenant compte des disponibilités, des salles et des contraintes pédagogiques. Modifications et notifications instantanées.</p>
                     </div>
                 </div>
-
+                <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="250">
+                    <div class="feature-card h-100">
+                        <div class="feature-icon"><i class="fas fa-coins"></i></div>
+                        <h4>Calcul simplifié des salaires des professeurs vacataires</h4>
+                        <p>Calculez automatiquement les salaires en fonction des heures effectuées, des absences et des taux horaires. Export facile pour la comptabilité.</p>
+                    </div>
+                </div>
                 <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="300">
-                    <div class="feature-card">
-                        <div class="feature-icon">
-                            <i class="fas fa-calendar-alt"></i>
-                        </div>
-                        <h4>Emplois du Temps</h4>
-                        <p>Planification intelligente des cours avec gestion des conflits et notifications automatiques.</p>
+                    <div class="feature-card h-100">
+                        <div class="feature-icon"><i class="fas fa-user-check"></i></div>
+                        <h4>Suivi des présences et absences en temps réel</h4>
+                        <p>Enregistrez les présences en un clic, visualisez les absences et retards, et générez des rapports détaillés pour un meilleur suivi des élèves.</p>
                     </div>
                 </div>
-
+                <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="350">
+                    <div class="feature-card h-100">
+                        <div class="feature-icon"><i class="fas fa-calculator"></i></div>
+                        <h4>Gestion comptable intégrée</h4>
+                        <p>Suivez les paiements, gérez la facturation, les relances et obtenez une vision claire de la situation financière de l'établissement.</p>
+                    </div>
+                </div>
                 <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="400">
-                    <div class="feature-card">
-                        <div class="feature-icon">
-                            <i class="fas fa-mobile-alt"></i>
-                        </div>
-                        <h4>Interface Mobile</h4>
-                        <p>Accès complet depuis n'importe quel appareil avec une interface responsive et intuitive.</p>
+                    <div class="feature-card h-100">
+                        <div class="feature-icon"><i class="fas fa-users-cog"></i></div>
+                        <h4>Suivi parental autonome et personnalisé, accessible partout</h4>
+                        <p>Offrez aux parents un accès sécurisé à l'évolution scolaire de leur enfant : notes, absences, messages, bulletins, accessible sur tous supports.</p>
                     </div>
                 </div>
-
-                <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="500">
-                    <div class="feature-card">
-                        <div class="feature-icon">
-                            <i class="fas fa-shield-alt"></i>
-                        </div>
-                        <h4>Sécurité Avancée</h4>
-                        <p>Protection des données avec chiffrement, sauvegardes automatiques et contrôle d'accès granulaire.</p>
-                    </div>
-                </div>
-
-                <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="600">
-                    <div class="feature-card">
-                        <div class="feature-icon">
-                            <i class="fas fa-cogs"></i>
-                        </div>
-                        <h4>Personnalisable</h4>
-                        <p>Adaptez KLASSCI aux besoins spécifiques de votre établissement avec des modules configurables.</p>
+                <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="450">
+                    <div class="feature-card h-100">
+                        <div class="feature-icon"><i class="fas fa-sliders-h"></i></div>
+                        <h4>Personnalisable & évolutif</h4>
+                        <p>KLASSCI s'adapte à vos besoins spécifiques : modules activables, interface personnalisable, évolutions régulières selon vos retours.</p>
                     </div>
                 </div>
             </div>
@@ -683,154 +709,146 @@
     </section>
 
     <!-- Modules Section -->
-    <section id="modules" class="modules">
-        <div class="container">
-            <div class="row mb-5">
-                <div class="col-lg-8 mx-auto text-center" data-aos="fade-up">
-                    <h2 class="display-5 fw-bold mb-3">Modules Intégrés</h2>
-                    <p class="lead text-muted">
-                        Découvrez tous les modules qui composent la suite KLASSCI
-                    </p>
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col-lg-6" data-aos="fade-right" data-aos-delay="100">
-                    <div class="module-card">
-                        <div class="module-header">
-                            <div class="module-icon">
-                                <i class="fas fa-user-graduate"></i>
-                            </div>
-                            <h3 class="module-title">Gestion Académique</h3>
-                        </div>
-                        <ul class="module-features">
-                            <li>Inscription et gestion des étudiants</li>
-                            <li>Organisation des filières et classes</li>
-                            <li>Gestion des matières et programmes</li>
-                            <li>Suivi du parcours académique</li>
-                            <li>Génération de certificats</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div class="col-lg-6" data-aos="fade-left" data-aos-delay="200">
-                    <div class="module-card">
-                        <div class="module-header">
-                            <div class="module-icon">
-                                <i class="fas fa-clipboard-check"></i>
-                            </div>
-                            <h3 class="module-title">Évaluations & Notes</h3>
-                        </div>
-                        <ul class="module-features">
-                            <li>Création d'examens et évaluations</li>
-                            <li>Saisie et calcul automatique des notes</li>
-                            <li>Génération de bulletins personnalisés</li>
-                            <li>Statistiques et analyses de performance</li>
-                            <li>Système de coefficients flexible</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div class="col-lg-6" data-aos="fade-right" data-aos-delay="300">
-                    <div class="module-card">
-                        <div class="module-header">
-                            <div class="module-icon">
-                                <i class="fas fa-calendar-week"></i>
-                            </div>
-                            <h3 class="module-title">Planning & Emplois du Temps</h3>
-                        </div>
-                        <ul class="module-features">
-                            <li>Planification automatique des cours</li>
-                            <li>Gestion des salles et ressources</li>
-                            <li>Détection des conflits d'horaires</li>
-                            <li>Notifications et rappels</li>
-                            <li>Export et impression des plannings</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div class="col-lg-6" data-aos="fade-left" data-aos-delay="400">
-                    <div class="module-card">
-                        <div class="module-header">
-                            <div class="module-icon">
-                                <i class="fas fa-comments"></i>
-                            </div>
-                            <h3 class="module-title">Communication</h3>
-                        </div>
-                        <ul class="module-features">
-                            <li>Système d'annonces et notifications</li>
-                            <li>Messagerie interne intégrée</li>
-                            <li>Communication avec les parents</li>
-                            <li>Alertes automatiques</li>
-                            <li>Historique des communications</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
+    <section id="modules" class="py-5" style="background:#fff;">
+      <div class="container">
+        <div class="text-center mb-5">
+          <span class="text-uppercase" style="color:#6366f1; font-weight:700; letter-spacing:1px;">NOS MODULES CLÉS</span>
+          <h2 class="fw-bold" style="font-size:2.2rem; color:#1e293b;">Des modules puissants pour votre établissement</h2>
         </div>
+        <div class="row g-4 justify-content-center">
+          <!-- Bloc 1 -->
+          <div class="col-md-6 col-lg-4 d-flex">
+            <div class="module-block d-flex align-items-center w-100" style="--mod-color:#3b82f6;">
+              <div class="module-icon-big" style="background:#3b82f6;"><i class="fas fa-user-graduate"></i></div>
+              <div class="module-content ms-4">
+                <h5 class="fw-bold mb-1">Gestion Académique</h5>
+                <p class="mb-0 text-muted">Inscription et gestion des étudiants, organisation des filières et classes, gestion des matières et programmes, suivi du parcours académique, génération de certificats.</p>
+              </div>
+            </div>
+          </div>
+          <!-- Bloc 2 -->
+          <div class="col-md-6 col-lg-4 d-flex">
+            <div class="module-block d-flex align-items-center w-100" style="--mod-color:#f59e0b;">
+              <div class="module-icon-big" style="background:#f59e0b;"><i class="fas fa-clipboard-check"></i></div>
+              <div class="module-content ms-4">
+                <h5 class="fw-bold mb-1">Évaluations & Notes</h5>
+                <p class="mb-0 text-muted">Création d'examens et évaluations, saisie et calcul automatique des notes, génération de bulletins personnalisés, statistiques et analyses de performance, système de coefficients flexible.</p>
+              </div>
+            </div>
+          </div>
+          <!-- Bloc 3 -->
+          <div class="col-md-6 col-lg-4 d-flex">
+            <div class="module-block d-flex align-items-center w-100" style="--mod-color:#ef4444;">
+              <div class="module-icon-big" style="background:#ef4444;"><i class="fas fa-calendar-week"></i></div>
+              <div class="module-content ms-4">
+                <h5 class="fw-bold mb-1">Planning & Emplois du Temps</h5>
+                <p class="mb-0 text-muted">Planification automatique des cours, gestion des salles et ressources, détection des conflits d'horaires, notifications et rappels, export et impression des plannings.</p>
+              </div>
+            </div>
+          </div>
+          <!-- Bloc 4 -->
+          <div class="col-md-6 col-lg-4 d-flex">
+            <div class="module-block d-flex align-items-center w-100" style="--mod-color:#a3a31a;">
+              <div class="module-icon-big" style="background:#a3a31a;"><i class="fas fa-comments"></i></div>
+              <div class="module-content ms-4">
+                <h5 class="fw-bold mb-1">Communication</h5>
+                <p class="mb-0 text-muted">Système d'annonces et notifications, messagerie interne intégrée, communication avec les parents, alertes automatiques, historique des communications.</p>
+              </div>
+            </div>
+          </div>
+          <!-- Bloc 5 -->
+          <div class="col-md-6 col-lg-4 d-flex">
+            <div class="module-block d-flex align-items-center w-100" style="--mod-color:#a78bfa;">
+              <div class="module-icon-big" style="background:#a78bfa;"><i class="fas fa-coins"></i></div>
+              <div class="module-content ms-4">
+                <h5 class="fw-bold mb-1">Gestion Comptable</h5>
+                <p class="mb-0 text-muted">Suivi des paiements, gestion de la facturation, relances, vision claire de la situation financière, calcul simplifié des salaires des professeurs vacataires.</p>
+              </div>
+            </div>
+          </div>
+          <!-- Bloc 6 -->
+          <div class="col-md-6 col-lg-4 d-flex">
+            <div class="module-block d-flex align-items-center w-100" style="--mod-color:#10b981;">
+              <div class="module-icon-big" style="background:#10b981;"><i class="fas fa-sliders-h"></i></div>
+              <div class="module-content ms-4">
+                <h5 class="fw-bold mb-1">Personnalisation & Évolutivité</h5>
+                <p class="mb-0 text-muted">KLASSCI s'adapte à vos besoins spécifiques : modules activables, interface personnalisable, évolutions régulières selon vos retours.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- Pricing Section -->
-    <section id="pricing" class="pricing">
+    <section id="pricing" class="pricing" style="background: #f8fafc;">
         <div class="container">
-            <div class="row mb-5">
-                <div class="col-lg-8 mx-auto text-center" data-aos="fade-up">
-                    <h2 class="display-5 fw-bold mb-3">Tarifs Transparents</h2>
-                    <p class="lead text-muted">
-                        Choisissez la formule qui correspond à la taille de votre établissement
-                    </p>
-                </div>
+            <div class="text-center mb-5">
+                <img src="/images/LOGO-KLASSCI-PNG.png" alt="KLASSCI" style="height: 60px; margin-bottom: 1.5rem;">
+                <h2 class="display-5 fw-bold mb-3">Choisissez votre formule</h2>
+                <p class="lead text-muted">Des solutions adaptées à la taille et aux besoins de votre établissement</p>
             </div>
-
-            <div class="row g-4">
-                <div class="col-lg-4" data-aos="fade-up" data-aos-delay="100">
-                    <div class="pricing-card">
-                        <h3 class="pricing-title">Starter</h3>
-                        <div class="pricing-price">Gratuit</div>
-                        <div class="pricing-period">Jusqu'à 50 étudiants</div>
+            <div class="row g-4 justify-content-center">
+                <!-- Essentiel -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="pricing-card h-100" style="border:2px solid #f59e0b;">
+                        <h3 class="pricing-title" style="color:#f59e0b;">Essentiel</h3>
+                        <div class="pricing-price" style="color:#f59e0b; font-size:2.5rem; font-weight:800;">1 500 000 XOF</div>
+                        <div class="pricing-period" style="color:#f59e0b;">1ère année</div>
+                        <div class="mb-2" style="color:#f59e0b; font-size:1.1rem;">1 200 000 XOF/an ou 120 000 XOF/mois</div>
                         <ul class="pricing-features">
-                            <li>Gestion de base des étudiants</li>
-                            <li>Notes et bulletins simples</li>
-                            <li>Emploi du temps basique</li>
-                            <li>Support par email</li>
-                            <li>1 utilisateur admin</li>
+                            <li>Installation sur 4 postes</li>
+                            <li>Capacité : 700 étudiants</li>
+                            <li>Capacité : 20 professeurs</li>
+                            <li>Maintenance à l'année</li>
+                            <li>Manuel d'utilisation</li>
+                            <li>Assistance 6/7</li>
+                            <li>Mise à jour de l'ergonomie</li>
+                            <li>Formation</li>
                         </ul>
-                        <a href="#contact" class="btn btn-outline-primary w-100">Commencer gratuitement</a>
+                        <a href="#contact" class="btn btn-outline-warning w-100" style="font-weight:600; border-width:2px;">Demander un devis</a>
                     </div>
                 </div>
-
-                <div class="col-lg-4" data-aos="fade-up" data-aos-delay="200">
-                    <div class="pricing-card featured">
-                        <div class="pricing-badge">Le plus populaire</div>
-                        <h3 class="pricing-title">Professional</h3>
-                        <div class="pricing-price">49€</div>
-                        <div class="pricing-period">par mois / jusqu'à 500 étudiants</div>
+                <!-- Pro -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="pricing-card featured h-100" style="border:2px solid #6366f1; position:relative;">
+                        <div style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);background:#6366f1;color:#fff;padding:0.4rem 1.2rem;border-radius:999px;font-size:1rem;font-weight:700;box-shadow:0 2px 8px rgba(99,102,241,0.15);">Le plus populaire</div>
+                        <h3 class="pricing-title" style="color:#6366f1;">Pro</h3>
+                        <div class="pricing-price" style="color:#6366f1; font-size:2.5rem; font-weight:800;">3 000 000 XOF</div>
+                        <div class="pricing-period" style="color:#6366f1;">1ère année</div>
+                        <div class="mb-2" style="color:#6366f1; font-size:1.1rem;">2 400 000 XOF/an ou 240 000 XOF/mois</div>
                         <ul class="pricing-features">
-                            <li>Toutes les fonctionnalités Starter</li>
-                            <li>Modules avancés complets</li>
-                            <li>Rapports et statistiques</li>
-                            <li>Support prioritaire 24/7</li>
-                            <li>Utilisateurs illimités</li>
-                            <li>Personnalisation avancée</li>
+                            <li>Installation sur 9 postes</li>
+                            <li>Capacité : 3 000 étudiants</li>
+                            <li>Capacité : 30 professeurs</li>
+                            <li>Maintenance à l'année</li>
+                            <li>Manuel d'utilisation</li>
+                            <li>Assistance 6/7</li>
+                            <li>Mise à jour de l'ergonomie</li>
+                            <li>Accès gratuit aux nouvelles fonctionnalités</li>
+                            <li>Formation</li>
                         </ul>
-                        <a href="#contact" class="btn btn-primary-custom w-100">Choisir Professional</a>
+                        <a href="#contact" class="btn btn-primary w-100" style="background:#6366f1;font-weight:700;font-size:1.1rem;">Choisir Pro</a>
                     </div>
                 </div>
-
-                <div class="col-lg-4" data-aos="fade-up" data-aos-delay="300">
-                    <div class="pricing-card">
-                        <h3 class="pricing-title">Enterprise</h3>
-                        <div class="pricing-price">Sur mesure</div>
-                        <div class="pricing-period">Étudiants illimités</div>
+                <!-- Elite -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="pricing-card h-100" style="border:2px solid #0ea5e9;">
+                        <h3 class="pricing-title" style="color:#0ea5e9;">Elite</h3>
+                        <div class="pricing-price" style="color:#0ea5e9; font-size:2.5rem; font-weight:800;">6 000 000 XOF</div>
+                        <div class="pricing-period" style="color:#0ea5e9;">1ère année</div>
+                        <div class="mb-2" style="color:#0ea5e9; font-size:1.1rem;">4 800 000 XOF/an ou 480 000 XOF/mois</div>
                         <ul class="pricing-features">
-                            <li>Toutes les fonctionnalités Pro</li>
-                            <li>Intégrations personnalisées</li>
-                            <li>Formation dédiée</li>
-                            <li>Support dédié</li>
-                            <li>SLA garanti</li>
-                            <li>Développements sur mesure</li>
+                            <li>Installation sur 30 postes</li>
+                            <li>Capacité : illimitée (étudiants/professeurs)</li>
+                            <li>Maintenance à l'année</li>
+                            <li>Assistance 7/7</li>
+                            <li>Manuel d'utilisation</li>
+                            <li>Mise à jour de l'ergonomie</li>
+                            <li>Accès gratuit aux nouvelles fonctionnalités</li>
+                            <li>Formation</li>
                         </ul>
-                        <a href="#contact" class="btn btn-outline-primary w-100">Nous contacter</a>
+                        <a href="#contact" class="btn btn-outline-info w-100" style="font-weight:600; border-width:2px;">Contactez-nous</a>
                     </div>
                 </div>
             </div>
@@ -841,7 +859,7 @@
     <section class="cta">
         <div class="container text-center" data-aos="fade-up">
             <h2>Prêt à transformer votre établissement ?</h2>
-            <p>Rejoignez des centaines d'établissements qui font confiance à KLASSCI</p>
+            <p>Commencer dès maintenant ; Nous contacter. Je veux un design avec des motifs. </p>
             <div class="d-flex flex-wrap justify-content-center gap-3">
                 <a href="#demo" class="btn btn-white">
                     <i class="fas fa-play me-2"></i>
@@ -852,6 +870,67 @@
                     Commencer maintenant
                 </a>
             </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="contact" class="py-5" style="background: linear-gradient(135deg, #f8fafc 60%, #e0e7ff 100%); position:relative;">
+        <div class="container">
+            <div class="row justify-content-center mb-5">
+                <div class="col-lg-8 text-center">
+                    <h2 class="fw-bold mb-3" style="font-size:2.3rem; color:#6366f1;">Contactez-nous</h2>
+                    <p class="lead text-muted mb-0" style="font-size:1.15rem;">Une question, une démo, un devis ? Notre équipe vous répond rapidement et vous accompagne dans votre projet de digitalisation scolaire.</p>
+                </div>
+            </div>
+            <div class="row g-4 align-items-stretch">
+                <div class="col-lg-6">
+                    <div class="card shadow-lg border-0 h-100" style="border-radius:1.5rem;">
+                        <div class="card-body p-4">
+                            <form method="POST" action="#" autocomplete="off">
+                                <div class="mb-3">
+                                    <label for="contactName" class="form-label">Nom complet</label>
+                                    <input type="text" class="form-control form-control-lg" id="contactName" name="name" placeholder="Votre nom" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="contactEmail" class="form-label">Adresse email</label>
+                                    <input type="email" class="form-control form-control-lg" id="contactEmail" name="email" placeholder="exemple@email.com" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="contactPhone" class="form-label">Téléphone</label>
+                                    <input type="tel" class="form-control form-control-lg" id="contactPhone" name="phone" placeholder="Votre numéro">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="contactMessage" class="form-label">Message</label>
+                                    <textarea class="form-control form-control-lg" id="contactMessage" name="message" rows="4" placeholder="Décrivez votre besoin..." required></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-lg w-100" style="background: linear-gradient(90deg,#6366f1,#7c3aed); border:none; border-radius:1rem; font-weight:700;">Envoyer ma demande</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="card shadow-lg border-0 h-100 d-flex flex-column justify-content-center align-items-center" style="border-radius:1.5rem; background: linear-gradient(135deg,#6366f1 10%,#a5b4fc 100%); color:#fff;">
+                        <div class="card-body p-4 w-100">
+                            <h4 class="fw-bold mb-3"><i class="fas fa-headset me-2"></i> Assistance & Infos</h4>
+                            <ul class="list-unstyled mb-4" style="font-size:1.1rem;">
+                                <li class="mb-3"><i class="fas fa-envelope me-2"></i> <a href="mailto:klassci@africandigitconsulting.com" style="color:#fff;text-decoration:underline;">klassci@africandigitconsulting.com</a></li>
+                                <li class="mb-3"><i class="fas fa-phone me-2"></i> <a href="tel:+2252732797523" style="color:#fff;text-decoration:underline;">+225 27 32 79 75 23</a> / <a href="tel:+2250595459843" style="color:#fff;text-decoration:underline;">05 95 45 98 43</a></li>
+                                <li class="mb-3"><i class="fas fa-map-marker-alt me-2"></i> Abidjan, Côte d'Ivoire</li>
+                                <li><i class="fas fa-clock me-2"></i> Lundi - Vendredi : 8h30 - 18h00</li>
+                            </ul>
+                            <div class="d-flex gap-3 mt-3">
+                                <a href="#" class="text-white fs-4"><i class="fab fa-facebook-f"></i></a>
+                                <a href="#" class="text-white fs-4"><i class="fab fa-linkedin-in"></i></a>
+                                <a href="#" class="text-white fs-4"><i class="fab fa-twitter"></i></a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Motif décoratif -->
+            <svg style="position:absolute;bottom:-40px;right:-40px;z-index:0;opacity:0.12;" width="220" height="220" viewBox="0 0 220 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="110" cy="110" r="110" fill="#6366f1"/>
+            </svg>
         </div>
     </section>
 
