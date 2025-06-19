@@ -764,6 +764,105 @@
             min-width: 100px;
         }
     }
+
+    /* Overlay du modal premium : fond clair, pas de noir, pas de blur */
+    .modal-backdrop.show {
+        background-color: rgba(255,255,255,0.18) !important; /* Overlay lumineux */
+        backdrop-filter: none !important;
+    }
+
+    /* Modal premium : effet glassmorphism sur le contenu uniquement */
+    .modal-content {
+        background: rgba(255,255,255,0.92);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-radius: 22px;
+        box-shadow: 0 8px 32px 0 rgba(4,83,203,0.18);
+        border: 1px solid rgba(255,255,255,0.18);
+    }
+
+    @media (max-width: 768px) {
+        .modal-content {
+            border-radius: 14px;
+            padding: 0.5rem;
+        }
+    }
+
+    /* Overlay du modal : version radicale, priorité maximale */
+    body .modal-backdrop.show {
+        background-color: transparent !important;
+        backdrop-filter: none !important;
+        box-shadow: none !important;
+        opacity: 1 !important;
+        z-index: 1050 !important;
+    }
+    /* Pour test ultime, décommente si besoin :
+    body .modal-backdrop.show {
+        display: none !important;
+    }
+    */
+
+    /* Forcer le z-index du modal Bootstrap et de l'overlay */
+    .modal {
+        z-index: 2000 !important;
+    }
+    .modal-backdrop.show {
+        z-index: 1999 !important;
+    }
+
+    /* Overlay du modal custom */
+    #modalCustomOverlay {
+      display: none;
+      position: fixed;
+      z-index: 3000;
+      left: 0; top: 0; right: 0; bottom: 0;
+      background: rgba(4,83,203,0.13);
+      backdrop-filter: blur(2px);
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.2s;
+    }
+    #modalCustomOverlay.active {
+      display: flex;
+      opacity: 1;
+    }
+    #modalCustomContent {
+      background: rgba(255,255,255,0.98);
+      border-radius: 2.2rem;
+      box-shadow: 0 8px 32px 0 rgba(4,83,203,0.18);
+      max-width: 700px;
+      width: 98vw;
+      padding: 2.5rem 2rem 2rem 2rem;
+      position: relative;
+      animation: modalIn 0.25s cubic-bezier(.4,2,.6,1) both;
+    }
+    @keyframes modalIn {
+      from { transform: translateY(40px) scale(0.98); opacity: 0; }
+      to { transform: none; opacity: 1; }
+    }
+    #modalCustomOverlay .modal-close-btn {
+      position: absolute;
+      top: 1.2rem; right: 1.2rem;
+      background: #0453cb;
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      width: 38px; height: 38px;
+      font-size: 1.3rem;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 8px rgba(4,83,203,0.10);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    #modalCustomOverlay .modal-close-btn:hover {
+      background: #1b64d4;
+    }
+    @media (max-width: 600px) {
+      #modalCustomContent { padding: 1.2rem 0.5rem; }
+    }
+    body.modal-open-custom {
+      overflow: hidden !important;
+    }
 </style>
 @endpush
 
@@ -1836,421 +1935,157 @@
     </div>
 </div>
 
-<!-- Modal Sélecteur de Classes -->
-<div class="modal fade" id="modal-selecteur-classe" tabindex="-1" aria-labelledby="modal-selecteur-classe-label" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modal-selecteur-classe-label">Sélectionner une classe</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="row mb-3">
-                    <div class="col-md-3">
-                        <select id="filter_filiere" class="form-select">
-                            <option value="">Filière...</option>
-                            @foreach($filieres as $filiere)
-                                <option value="{{ $filiere->id }}">{{ $filiere->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <select id="filter_niveau" class="form-select">
-                            <option value="">Niveau...</option>
-                            @foreach($niveaux as $niveau)
-                                <option value="{{ $niveau->id }}">{{ $niveau->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <select id="filter_annee" class="form-select">
-                            <option value="">Année...</option>
-                            @foreach($annees as $annee)
-                                <option value="{{ $annee->id }}">{{ $annee->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col-12">
-                        <button id="btn-filtrer-classes" class="btn btn-primary btn-sm">
-                            <i class="fas fa-filter"></i> Filtrer
-                        </button>
-                        <button id="btn-reset-filters" class="btn btn-secondary btn-sm">
-                            <i class="fas fa-undo"></i> Réinitialiser
-                        </button>
-                    </div>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-bordered">
-                        <thead>
-                            <tr>
-                                <th>Nom</th>
-                                <th>Code</th>
-                                <th>Filière</th>
-                                <th>Niveau</th>
-                                <th>Année</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="liste-classes">
-                            <tr>
-                                <td colspan="6" style="padding: 15px; text-align: center; color: #6c757d;">
-                                    Chargement des classes...
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
-            </div>
-        </div>
+<!-- MODAL CUSTOM SÉLECTEUR DE CLASSE (remplace Bootstrap) -->
+<style>
+/* Overlay du modal custom */
+#modalCustomOverlay {
+  display: none;
+  position: fixed;
+  z-index: 3000;
+  left: 0; top: 0; right: 0; bottom: 0;
+  background: rgba(4,83,203,0.13);
+  backdrop-filter: blur(2px);
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s;
+}
+#modalCustomOverlay.active {
+  display: flex;
+  opacity: 1;
+}
+#modalCustomContent {
+  background: rgba(255,255,255,0.98);
+  border-radius: 2.2rem;
+  box-shadow: 0 8px 32px 0 rgba(4,83,203,0.18);
+  max-width: 700px;
+  width: 98vw;
+  padding: 2.5rem 2rem 2rem 2rem;
+  position: relative;
+  animation: modalIn 0.25s cubic-bezier(.4,2,.6,1) both;
+}
+@keyframes modalIn {
+  from { transform: translateY(40px) scale(0.98); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+#modalCustomOverlay .modal-close-btn {
+  position: absolute;
+  top: 1.2rem; right: 1.2rem;
+  background: #0453cb;
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 38px; height: 38px;
+  font-size: 1.3rem;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 8px rgba(4,83,203,0.10);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+#modalCustomOverlay .modal-close-btn:hover {
+  background: #1b64d4;
+}
+@media (max-width: 600px) {
+  #modalCustomContent { padding: 1.2rem 0.5rem; }
+}
+body.modal-open-custom {
+  overflow: hidden !important;
+}
+</style>
+
+<!-- Bouton Sélectionner modifié pour ouvrir le modal custom -->
+<script>
+function ouvrirSelecteurClasse() {
+  document.getElementById('modalCustomOverlay').classList.add('active');
+  document.body.classList.add('modal-open-custom');
+  // Focus sur le premier input du modal si besoin
+  setTimeout(function(){
+    var firstInput = document.querySelector('#modalCustomOverlay input, #modalCustomOverlay select');
+    if(firstInput) firstInput.focus();
+  }, 200);
+}
+function fermerSelecteurClasse() {
+  document.getElementById('modalCustomOverlay').classList.remove('active');
+  document.body.classList.remove('modal-open-custom');
+}
+// Fermer le modal si on clique sur l'overlay
+window.addEventListener('click', function(e){
+  var overlay = document.getElementById('modalCustomOverlay');
+  if(e.target === overlay) fermerSelecteurClasse();
+});
+// Fermer avec ESC
+window.addEventListener('keydown', function(e){
+  if(e.key === 'Escape') fermerSelecteurClasse();
+});
+</script>
+
+<!-- MODAL CUSTOM OVERLAY -->
+<div id="modalCustomOverlay" tabindex="-1" aria-modal="true" role="dialog">
+  <div id="modalCustomContent">
+    <button type="button" class="modal-close-btn" onclick="fermerSelecteurClasse()" aria-label="Fermer">&times;</button>
+    <h4 class="mb-3" style="color:#0453cb;font-weight:600;">Sélectionner une classe</h4>
+    <!-- Copie du contenu du modal Bootstrap/table de sélection -->
+    <div class="row g-2 mb-3">
+      <div class="col-md-4">
+        <select id="filtre-filiere" class="form-select" onchange="filtrerClassesCustom()">
+          <option value="">Filière...</option>
+          <!-- Options dynamiques -->
+        </select>
+      </div>
+      <div class="col-md-4">
+        <select id="filtre-niveau" class="form-select" onchange="filtrerClassesCustom()">
+          <option value="">Niveau...</option>
+          <!-- Options dynamiques -->
+        </select>
+      </div>
+      <div class="col-md-4">
+        <select id="filtre-annee" class="form-select" onchange="filtrerClassesCustom()">
+          <option value="">Année...</option>
+          <!-- Options dynamiques -->
+        </select>
+      </div>
     </div>
+    <div class="table-responsive mb-2">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>NOM</th><th>CODE</th><th>FILIÈRE</th><th>NIVEAU</th><th>ANNÉE</th><th>ACTION</th>
+          </tr>
+        </thead>
+        <tbody id="table-classes-custom">
+          <!-- Lignes dynamiques JS -->
+        </tbody>
+      </table>
+    </div>
+    <div class="d-flex justify-content-end mt-3">
+      <button type="button" class="btn btn-outline-primary" onclick="fermerSelecteurClasse()">Fermer</button>
+    </div>
+  </div>
 </div>
 
-@endsection
-
-@push('scripts')
-<!-- Select2 only, jQuery is already loaded in layout -->
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-
 <script>
-    // Define functions in global scope first
-    function ouvrirSelecteurClasse() {
-        console.log('Ouverture du modal de sélection de classe');
-        $('#modal-selecteur-classe').modal('show');
-
-        // Afficher une animation de chargement
-        $('#liste-classes').html('<tr><td colspan="6" class="text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Chargement...</span></div></td></tr>');
-
-        // Charger toutes les classes immédiatement
-        $.ajax({
-            url: "{{ route('esbtp.api.get-classes') }}",
-            method: 'GET',
-            data: {},
-            success: function(response) {
-                console.log('Réponse API classes:', response);
-                if (response.length === 0) {
-                    $('#liste-classes').html('<tr><td colspan="6" class="text-center">Aucune classe disponible</td></tr>');
-                    return;
-                }
-
-                var html = '';
-                $.each(response, function(index, classe) {
-                    var displayName = classe.name;
-                    var displayFiliere = classe.filiere_name || '';
-                    var displayNiveau = classe.niveau_name || '';
-                    var displayAnnee = classe.annee_name || '';
-
-                    html += '<tr>';
-                    html += '<td>' + displayName + '</td>';
-                    html += '<td>' + classe.code + '</td>';
-                    html += '<td>' + displayFiliere + '</td>';
-                    html += '<td>' + displayNiveau + '</td>';
-                    html += '<td>' + displayAnnee + '</td>';
-                    html += '<td><button type="button" class="btn btn-sm btn-primary" onclick="selectionnerClasse(' + classe.id + ', \'' + displayName + '\')">Sélectionner</button></td>';
-                    html += '</tr>';
-                });
-
-                $('#liste-classes').html(html);
-            },
-            error: function(error) {
-                console.error('Erreur lors de la récupération des classes:', error);
-                $('#liste-classes').html('<tr><td colspan="6" class="text-center text-danger">Erreur lors de la récupération des classes</td></tr>');
-            }
-        });
-    }
-
-    function fermerSelecteurClasse() {
-        $('#modal-selecteur-classe').modal('hide');
-    }
-
-    function selectionnerClasse(classeId, classeName) {
-        console.log('Sélection de la classe:', classeId, classeName);
-        document.getElementById('classe_id').value = classeId;
-        document.getElementById('classe_display').value = classeName;
-        document.getElementById('classe_display').classList.add('is-valid');
-        fermerSelecteurClasse();
-    }
-
-    $(document).ready(function() {
-        console.log('DOM chargé - Initialisation du formulaire d\'inscription');
-
-        // Définir la fonction ouvrirSelecteurClasse dans the global scope
-        window.ouvrirSelecteurClasse = function() {
-            console.log('Ouverture du modal de sélection de classe');
-            $('#modal-selecteur-classe').modal('show');
-
-            // Afficher une animation de chargement
-            $('#liste-classes').html('<tr><td colspan="6" class="text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Chargement...</span></div></td></tr>');
-
-            // Charger toutes les classes immédiatement
-            $.ajax({
-                url: "{{ route('esbtp.api.get-classes') }}",
-                method: 'GET',
-                data: {},
-                success: function(response) {
-                    console.log('Réponse API classes:', response);
-                    if (response.length === 0) {
-                        $('#liste-classes').html('<tr><td colspan="6" class="text-center">Aucune classe disponible</td></tr>');
-                        return;
-                    }
-
-                    var html = '';
-                    $.each(response, function(index, classe) {
-                        var displayName = classe.name;
-                        var displayFiliere = classe.filiere_name || '';
-                        var displayNiveau = classe.niveau_name || '';
-                        var displayAnnee = classe.annee_name || '';
-
-                        html += '<tr>';
-                        html += '<td>' + displayName + '</td>';
-                        html += '<td>' + classe.code + '</td>';
-                        html += '<td>' + displayFiliere + '</td>';
-                        html += '<td>' + displayNiveau + '</td>';
-                        html += '<td>' + displayAnnee + '</td>';
-                        html += '<td><button type="button" class="btn btn-sm btn-primary" onclick="selectionnerClasse(' + classe.id + ', \'' + displayName + '\')">Sélectionner</button></td>';
-                        html += '</tr>';
-                    });
-
-                    $('#liste-classes').html(html);
-                },
-                error: function(error) {
-                    console.error('Erreur lors de la récupération des classes:', error);
-                    $('#liste-classes').html('<tr><td colspan="6" class="text-center text-danger">Erreur lors de la récupération des classes</td></tr>');
-                }
-            });
-        };
-
-        window.fermerSelecteurClasse = function() {
-            $('#modal-selecteur-classe').modal('hide');
-        };
-
-        // Variables pour gérer les parents
-        let parentIndex = 0;
-
-        // Initialiser Select2 pour le premier parent
-        initializeParentChoices();
-        toggleParentSections();
-
-        // Gestionnaire pour ajouter un parent
-        $('#add-parent-btn').on('click', function() {
-            console.log('Ajout d\'un nouveau parent');
-            parentIndex++;
-
-            let template = $('#parent-template').html();
-            template = template.replace(/{index}/g, parentIndex);
-            template = template.replace(/{number}/g, parentIndex + 1);
-
-            $('#parents-container').append(template);
-
-            // Initialiser les nouveaux select2
-            initializeParentChoices();
-            toggleParentSections();
-        });
-
-        // Initialisation des gestionnaires d'événements pour parents
-        function toggleParentSections() {
-            $('.parent-existant-checkbox').on('change', function() {
-                const parentItem = $(this).closest('.parent-item');
-                const existantSection = parentItem.find('.parent-existant-section');
-                const nouveauSection = parentItem.find('.parent-nouveau-section');
-                const typeInput = parentItem.find('input[name$="[type]"]');
-
-                if ($(this).is(':checked')) {
-                    existantSection.show();
-                    nouveauSection.hide();
-                    typeInput.val('existant');
-
-                    // Réinitialiser Choices.js après avoir affiché la section
-                    setTimeout(function() {
-                        initializeParentChoices();
-                    }, 100);
-
-                    // Rendre les champs du nouveau parent non requis
-                    nouveauSection.find('input[required], select[required]').prop('required', false);
-
-                    // Rendre le select du parent existant requis
-                    existantSection.find('select').prop('required', true);
-                } else {
-                    existantSection.hide();
-                    nouveauSection.show();
-                    typeInput.val('nouveau');
-                }
-            });
-        }
-
-        // Filtrer les classes
-        $('#btn-filtrer-classes').on('click', function() {
-            var filiereId = $('#filter_filiere').val();
-            var niveauId = $('#filter_niveau').val();
-            var anneeId = $('#filter_annee').val();
-            var formationId = $('#filter_formation').val();
-
-            // Vérifier qu'au moins un filtre est sélectionné
-            if (!filiereId && !niveauId && !anneeId && !formationId) {
-                alert('Veuillez sélectionner au moins un filtre');
-                return;
-            }
-
-            // Afficher une animation de chargement
-            $('#liste-classes').html('<tr><td colspan="6" class="text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Chargement...</span></div></td></tr>');
-
-            // Faire une requête AJAX pour récupérer les classes
-            $.ajax({
-                url: "{{ route('esbtp.api.get-classes') }}",
-                method: 'GET',
-                data: {
-                    filiere_id: filiereId,
-                    niveau_id: niveauId,
-                    annee_id: anneeId,
-                    formation_id: formationId
-                },
-                success: function(response) {
-                    console.log('Réponse API classes:', response);
-                    if (response.length === 0) {
-                        $('#liste-classes').html('<tr><td colspan="6" class="text-center">Aucune classe trouvée avec ces critères</td></tr>');
-                        return;
-                    }
-
-                    var html = '';
-                    $.each(response, function(index, classe) {
-                        var displayName = classe.name;
-                        var displayFiliere = classe.filiere_name || '';
-                        var displayNiveau = classe.niveau_name || '';
-                        var displayAnnee = classe.annee_name || '';
-
-                        html += '<tr>';
-                        html += '<td>' + displayName + '</td>';
-                        html += '<td>' + classe.code + '</td>';
-                        html += '<td>' + displayFiliere + '</td>';
-                        html += '<td>' + displayNiveau + '</td>';
-                        html += '<td>' + displayAnnee + '</td>';
-                        html += '<td><button type="button" class="btn btn-sm btn-primary" onclick="selectionnerClasse(' + classe.id + ', \'' + displayName + '\')">Sélectionner</button></td>';
-                        html += '</tr>';
-                    });
-
-                    $('#liste-classes').html(html);
-                },
-                error: function(error) {
-                    console.error('Erreur lors de la récupération des classes:', error);
-                    $('#liste-classes').html('<tr><td colspan="6" class="text-center text-danger">Erreur lors de la récupération des classes</td></tr>');
-                }
-            });
-        });
-
-        // Réinitialiser les filtres
-        $('#btn-reset-filters').on('click', function() {
-            $('#filter_filiere').val('');
-            $('#filter_niveau').val('');
-            $('#filter_annee').val('');
-            $('#filter_formation').val('');
-            $('#liste-classes').html('<tr><td colspan="6" style="padding: 15px; text-align: center; color: #6c757d;">Veuillez sélectionner au moins un filtre</td></tr>');
-        });
-
-        window.selectionnerClasse = function(classeId, classeName) {
-            console.log('Sélection de la classe:', classeId, classeName);
-            document.getElementById('classe_id').value = classeId;
-            document.getElementById('classe_display').value = classeName;
-            document.getElementById('classe_display').classList.add('is-valid');
-            fermerSelecteurClasse();
-        };
-
-        // Si une classe était déjà sélectionnée (en cas d'erreur de validation)
-        var classeId = $('#classe_id').val();
-        if (classeId) {
-            $('#classe_display').addClass('is-valid');
-        }
-
-        // Validation du formulaire avant soumission
-        $('form').on('submit', function(e) {
-            let isValid = true;
-            let firstError = null;
-
-            // Vérifier la classe
-            if (!$('#classe_id').val()) {
-                isValid = false;
-                $('#classe_display').addClass('is-invalid');
-                if (!firstError) firstError = $('#classe_display');
-                showError('Veuillez sélectionner une classe');
-            }
-
-            // Vérifier les champs obligatoires de l'étudiant
-            const requiredFields = [
-                { id: 'nom', message: 'Le nom est obligatoire' },
-                { id: 'prenoms', message: 'Le(s) prénom(s) est/sont obligatoire(s)' },
-                { id: 'matricule', message: 'Le matricule est obligatoire' },
-                { id: 'date_naissance', message: 'La date de naissance est obligatoire' },
-                { id: 'sexe', message: 'Le genre est obligatoire' },
-                { id: 'telephone', message: 'Le téléphone est obligatoire' },
-                { id: 'paiement_montant', message: 'Le montant du paiement initial est obligatoire' }
-            ];
-
-            requiredFields.forEach(field => {
-                const element = $(`#${field.id}`);
-                if (!element.val()) {
-                    isValid = false;
-                    element.addClass('is-invalid');
-                    if (!firstError) firstError = element;
-                    showError(field.message);
-                }
-            });
-
-            // Vérifier les champs obligatoires du parent
-            const parentFields = [
-                { id: 'parent_nom_0', message: 'Le nom du parent/tuteur est obligatoire' },
-                { id: 'parent_prenoms_0', message: 'Le(s) prénom(s) du parent/tuteur est/sont obligatoire(s)' },
-                { id: 'parent_telephone_0', message: 'Le téléphone du parent/tuteur est obligatoire' },
-                { id: 'parent_relation_0', message: 'La relation avec le parent/tuteur est obligatoire' }
-            ];
-
-            parentFields.forEach(field => {
-                const element = $(`#${field.id}`);
-                if (!element.val()) {
-                    isValid = false;
-                    element.addClass('is-invalid');
-                    if (!firstError) firstError = element;
-                    showError(field.message);
-                }
-            });
-
-            // Si le formulaire n'est pas valide
-            if (!isValid) {
-                e.preventDefault();
-                // Scroll vers la première erreur
-                if (firstError) {
-                    $('html, body').animate({
-                        scrollTop: firstError.offset().top - 100
-                    }, 500);
-                }
-                return false;
-            }
-
-            // Désactiver le bouton de soumission pour éviter les doubles soumissions
-            $(this).find('button[type="submit"]').prop('disabled', true);
-            return true;
-        });
-
-        // Fonction pour afficher les erreurs
-        function showError(message) {
-            const errorAlert = `
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    ${message}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            `;
-            if ($('.alert-danger').length === 0) {
-                $('form').prepend(errorAlert);
-            }
-        }
-
-        // Réinitialiser les erreurs lors de la modification des champs
-        $('input, select').on('change', function() {
-            $(this).removeClass('is-invalid');
-        });
-    });
+// Exemple de données (à remplacer par AJAX ou variables Laravel)
+var classesData = [
+  {id:1, nom:'1ère année BTS Génie Civil Option Bâtiment', code:'1BTS-GC-BAT', filiere:'BTS1 BATIMENT', niveau:'Première année BTS', annee:'2025-2026'},
+  // ... autres classes dynamiques ...
+];
+function renderClassesCustom() {
+  var tbody = document.getElementById('table-classes-custom');
+  tbody.innerHTML = '';
+  classesData.forEach(function(classe) {
+    var tr = document.createElement('tr');
+    tr.innerHTML = '<td>'+classe.nom+'</td><td>'+classe.code+'</td><td>'+classe.filiere+'</td><td>'+classe.niveau+'</td><td>'+classe.annee+'</td>'+
+      '<td><button type="button" class="btn btn-sm btn-primary" onclick="selectionnerClasseCustom('+classe.id+', \' '+classe.nom.replace(/'/g, "&#39;")+'\')">Sélectionner</button></td>';
+    tbody.appendChild(tr);
+  });
+}
+function selectionnerClasseCustom(id, nom) {
+  // Remplir le champ classe dans le formulaire principal
+  document.getElementById('champ-classe').value = nom.trim();
+  fermerSelecteurClasse();
+}
+// Appel initial
+renderClassesCustom();
 </script>
-@endpush
+<!-- FIN MODAL CUSTOM -->
+@endsection
 

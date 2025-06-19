@@ -74,6 +74,26 @@
 
 @section('content')
 <div class="container-fluid">
+    <!-- HEADER PREMIUM -->
+    <div class="bg-gradient-primary rounded-4 p-5 mb-4 d-flex align-items-center justify-content-between gap-4 animate-fade-in-up" style="background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); min-height: 120px;">
+        <div class="d-flex align-items-center gap-3">
+            <div class="bg-white bg-opacity-25 rounded-circle d-flex align-items-center justify-content-center" style="width:56px;height:56px;">
+                <i class="fas fa-chart-pie fa-2x text-white"></i>
+            </div>
+            <div>
+                <h1 class="h3 fw-bold text-white mb-1">Rapports financiers</h1>
+                <div class="text-white-50">Analysez les finances de l'établissement sur l'année</div>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-lg btn-outline-light fw-bold shadow rounded-3 px-4 py-2 d-flex align-items-center gap-2 animate-fade-in-up" onclick="window.print()">
+                <i class="fas fa-print"></i> Imprimer
+            </button>
+            <button class="btn btn-lg btn-warning fw-bold shadow rounded-3 px-4 py-2 d-flex align-items-center gap-2 animate-fade-in-up">
+                <i class="fas fa-file-pdf"></i> Exporter PDF
+            </button>
+        </div>
+    </div>
     <div class="row mb-4">
         <div class="col-12">
             <div class="card shadow-sm">

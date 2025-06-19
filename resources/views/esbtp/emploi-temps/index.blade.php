@@ -4,97 +4,82 @@
 
 @section('content')
 <div class="container-fluid">
-    <!-- Header and summary stats -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-sm-flex align-items-center justify-content-between">
-                <h1 class="h3 mb-0 text-gray-800">Gestion des emplois du temps</h1>
-                <div class="d-flex gap-2">
-                    @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->can('create_timetable'))
-                        <a href="{{ route('esbtp.emploi-temps.create') }}" class="btn btn-primary d-flex align-items-center">
-                            <i class="fas fa-plus-circle me-2"></i>Nouveau
-                        </a>
-                    @endif
-                    @if(auth()->user()->hasRole('superAdmin'))
-                    <form action="{{ url('esbtp/activate-all-timetables') }}" method="POST" class="d-inline">
-                        @csrf
-                        <button type="submit" class="btn btn-success d-flex align-items-center" title="Active uniquement l'emploi du temps le plus récent pour chaque classe">
-                            <i class="fas fa-check-circle me-2"></i>Activer récents
-                        </button>
-                    </form>
-                    @endif
-                </div>
+    <!-- HEADER PREMIUM -->
+    <div class="bg-gradient-primary rounded-4 p-5 mb-4 d-flex align-items-center justify-content-between" style="background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); min-height: 140px;">
+        <div class="d-flex align-items-center gap-4">
+            <div class="bg-white bg-opacity-25 rounded-circle d-flex align-items-center justify-content-center" style="width:60px;height:60px;">
+                <i class="fas fa-calendar-alt fa-2x text-white"></i>
             </div>
+            <div>
+                <h1 class="text-white fw-bold mb-1" style="font-size:2rem;">Gestion des emplois du temps</h1>
+                <p class="text-white-50 mb-0">Administration avancée des plannings scolaires</p>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->can('create_timetable'))
+                <a href="{{ route('esbtp.emploi-temps.create') }}" class="btn btn-warning btn-lg rounded-pill px-4 fw-bold shadow-sm d-flex align-items-center gap-2">
+                    <i class="fas fa-plus-circle"></i> Nouveau
+                </a>
+            @endif
+            @if(auth()->user()->hasRole('superAdmin'))
+            <form action="{{ url('esbtp/activate-all-timetables') }}" method="POST" class="d-inline">
+                @csrf
+                <button type="submit" class="btn btn-success btn-lg rounded-pill px-4 fw-bold shadow-sm d-flex align-items-center gap-2" title="Active uniquement l'emploi du temps le plus récent pour chaque classe">
+                    <i class="fas fa-check-circle"></i> Activer récents
+                </button>
+            </form>
+            @endif
         </div>
     </div>
 
-    <!-- Stats cards -->
-    <div class="row mb-4">
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Total emplois du temps</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $totalEmploisTemps }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-calendar fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
+    <!-- CARDS STATS PREMIUM -->
+    <div class="row g-4 mb-5 animate-fade-in-up">
+        <div class="col-xl-3 col-md-6">
+            <div class="card shadow-lg border-0 rounded-4 text-center p-4 h-100 hover-lift">
+                <div class="d-flex justify-content-center mb-3">
+                    <span class="d-inline-flex align-items-center justify-content-center bg-primary bg-gradient text-white rounded-circle" style="width:48px;height:48px;font-size:1.5rem;">
+                        <i class="fas fa-calendar"></i>
+                    </span>
                 </div>
+                <div class="display-6 fw-bold mb-1 text-primary">{{ $totalEmploisTemps }}</div>
+                <div class="text-muted mb-2">Total emplois du temps</div>
+                <span class="badge bg-primary bg-gradient rounded-pill px-3 py-2">Plannings</span>
             </div>
         </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-success shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                Emplois du temps actifs</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $emploisTempsActifs }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card shadow-lg border-0 rounded-4 text-center p-4 h-100 hover-lift">
+                <div class="d-flex justify-content-center mb-3">
+                    <span class="d-inline-flex align-items-center justify-content-center bg-success bg-gradient text-white rounded-circle" style="width:48px;height:48px;font-size:1.5rem;">
+                        <i class="fas fa-check-circle"></i>
+                    </span>
                 </div>
+                <div class="display-6 fw-bold mb-1 text-success">{{ $emploisTempsActifs }}</div>
+                <div class="text-muted mb-2">Emplois du temps actifs</div>
+                <span class="badge bg-success bg-gradient rounded-pill px-3 py-2">Actifs</span>
             </div>
         </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-info shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                Total séances de cours</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $totalSeances }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-chalkboard-teacher fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card shadow-lg border-0 rounded-4 text-center p-4 h-100 hover-lift">
+                <div class="d-flex justify-content-center mb-3">
+                    <span class="d-inline-flex align-items-center justify-content-center bg-info bg-gradient text-white rounded-circle" style="width:48px;height:48px;font-size:1.5rem;">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                    </span>
                 </div>
+                <div class="display-6 fw-bold mb-1 text-info">{{ $totalSeances }}</div>
+                <div class="text-muted mb-2">Total séances de cours</div>
+                <span class="badge bg-info bg-gradient rounded-pill px-3 py-2">Séances</span>
             </div>
         </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-warning shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                Année en cours</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $emploisTempsAnneeEnCours }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-graduation-cap fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card shadow-lg border-0 rounded-4 text-center p-4 h-100 hover-lift">
+                <div class="d-flex justify-content-center mb-3">
+                    <span class="d-inline-flex align-items-center justify-content-center bg-warning bg-gradient text-white rounded-circle" style="width:48px;height:48px;font-size:1.5rem;">
+                        <i class="fas fa-graduation-cap"></i>
+                    </span>
                 </div>
+                <div class="display-6 fw-bold mb-1 text-warning">{{ $emploisTempsAnneeEnCours }}</div>
+                <div class="text-muted mb-2">Année en cours</div>
+                <span class="badge bg-warning bg-gradient rounded-pill px-3 py-2">Année</span>
             </div>
         </div>
     </div>
