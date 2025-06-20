@@ -506,7 +506,7 @@
                         </div>
 
                         <!-- Training Cycles -->
-                        <div class="menu-accordion">
+                        <!--<div class="menu-accordion">
                             <button class="menu-accordion-btn {{ Request::routeIs('esbtp.cycles.*') || Request::routeIs('esbtp.specialties.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-sync-alt"></i></div>
                                 <div class="menu-text">Formation</div>
@@ -526,7 +526,7 @@
                                     <span>Formation Continue</span>
                                 </a>
                             </div>
-                        </div>
+                        </div>-->
                     @endif
 
                     <!-- Students Section -->
@@ -629,7 +629,7 @@
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
                             <div class="menu-accordion-content {{ Request::routeIs('esbtp.staff.*') || Request::routeIs('esbtp.roles.*') ? 'show' : '' }}">
-                                <a href="{{ route('esbtp.teachers.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.teachers.*') ? 'active' : '' }}">
+                                <a href="{{ route('esbtp.secretaires.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.secretaires.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Gestion du personnel</span>
                                 </a>
@@ -641,12 +641,12 @@
                         </div>
 
                         <!-- Partnerships -->
-                        <div class="menu-item">
+                        <!--<div class="menu-item">
                             <a href="{{ route('esbtp.partnerships.index') }}" class="menu-link {{ Request::routeIs('esbtp.partnerships.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-handshake"></i></div>
                                 <div class="menu-text">Partenariats</div>
                             </a>
-                        </div>
+                        </div>-->
                     @endif
 
                     <!-- Attendance Section -->

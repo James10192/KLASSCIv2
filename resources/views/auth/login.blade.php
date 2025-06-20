@@ -159,7 +159,7 @@
             <img src="{{ asset('images/LOGO-KLASSCI-PNG.png') }}" alt="KLASSCI Logo" class="login-logo">
             <div style="max-width: 420px; width: 100%; text-align: left;">
                 <h1 class="login-accent" style="font-size:2.2rem;line-height:1.2;">
-                    Débloquez votre <span>potentiel scolaire</span>
+                    Un clic, <span>une gestion simplifiée</span>
                 </h1>
                 <div class="login-desc mb-4">
                     Gérez vos classes, notes, présences et communication en toute simplicité avec KLASSCI.

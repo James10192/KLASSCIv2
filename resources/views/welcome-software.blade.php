@@ -1383,7 +1383,7 @@
             </div>
             <div class="contact-premium-info-row" style="display: flex; align-items: center; gap: 1.1rem; margin-bottom: 1.3rem; font-size: 1.13rem;">
               <span class="contact-premium-info-icon" style="background: #fff; color: #0453cb; border-radius: 50%; width: 2.3rem; height: 2.3rem; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;"><i class="fas fa-envelope"></i></span>
-              <a href="mailto:klassci@africandigitconsulting.com" style="color: #fff; text-decoration: underline; font-size:1.13rem;">contact@africandigitconsulting.com</a>
+              <a href="mailto:klassci@africandigitconsulting.com" style="color: #fff; text-decoration: underline; font-size:1.13rem;">klassci@africandigitconsulting.com</a>
             </div>
             <div class="contact-premium-info-row" style="display: flex; align-items: center; gap: 1.1rem; margin-bottom: 1.3rem; font-size: 1.13rem;">
               <span class="contact-premium-info-icon" style="background: #fff; color: #0453cb; border-radius: 50%; width: 2.3rem; height: 2.3rem; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;"><i class="fas fa-phone"></i></span>
