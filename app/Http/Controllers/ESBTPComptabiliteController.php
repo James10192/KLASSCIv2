@@ -882,11 +882,187 @@ class ESBTPComptabiliteController extends Controller
      */
     public function bourses()
     {
-        $bourses = ESBTPBourse::with(['etudiant', 'anneeUniversitaire', 'createur'])
-            ->orderBy('created_at', 'desc')
-            ->paginate(15);
+        try {
+            $bourses = ESBTPBourse::with(['etudiant', 'anneeUniversitaire', 'createur'])
+                ->orderBy('created_at', 'desc')
+                ->paginate(15);
 
-        return view('esbtp.comptabilite.bourses.index', compact('bourses'));
+            return view('esbtp.comptabilite.bourses.index', compact('bourses'));
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Erreur lors du chargement des bourses : ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Affiche le formulaire de création d'une nouvelle bourse
+     */
+    public function createBourse()
+    {
+        try {
+            $etudiants = ESBTPEtudiant::orderBy('nom')->orderBy('prenoms')->get();
+            $annees = ESBTPAnneeUniversitaire::orderBy('name')->get();
+
+            return view('esbtp.comptabilite.bourses.create', compact('etudiants', 'annees'));
+        } catch (\Exception $e) {
+            return redirect()->route('esbtp.comptabilite.bourses')->with('error', 'Erreur lors du chargement du formulaire : ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Enregistre une nouvelle bourse
+     */
+    public function storeBourse(Request $request)
+    {
+        $request->validate([
+            'etudiant_id' => 'required|exists:esbtp_etudiants,id',
+            'annee_universitaire_id' => 'required|exists:esbtp_annees_universitaires,id',
+            'type_bourse' => 'required|string|max:50',
+            'montant' => 'nullable|numeric|min:0',
+            'pourcentage' => 'nullable|numeric|min:0|max:100',
+            'date_debut' => 'required|date',
+            'date_fin' => 'nullable|date|after:date_debut',
+            'statut' => 'required|in:active,suspendue,terminée',
+            'organisme_financeur' => 'nullable|string|max:255',
+            'conditions' => 'nullable|string',
+            'commentaires' => 'nullable|string',
+        ], [
+            'etudiant_id.required' => 'Veuillez sélectionner un étudiant.',
+            'etudiant_id.exists' => 'L\'étudiant sélectionné n\'existe pas.',
+            'annee_universitaire_id.required' => 'Veuillez sélectionner une année universitaire.',
+            'annee_universitaire_id.exists' => 'L\'année universitaire sélectionnée n\'existe pas.',
+            'type_bourse.required' => 'Veuillez sélectionner un type de bourse.',
+            'montant.numeric' => 'Le montant doit être un nombre.',
+            'montant.min' => 'Le montant doit être positif.',
+            'pourcentage.numeric' => 'Le pourcentage doit être un nombre.',
+            'pourcentage.min' => 'Le pourcentage doit être positif.',
+            'pourcentage.max' => 'Le pourcentage ne peut pas dépasser 100%.',
+            'date_debut.required' => 'La date de début est obligatoire.',
+            'date_debut.date' => 'La date de début doit être une date valide.',
+            'date_fin.date' => 'La date de fin doit être une date valide.',
+            'date_fin.after' => 'La date de fin doit être postérieure à la date de début.',
+            'statut.required' => 'Veuillez sélectionner un statut.',
+            'statut.in' => 'Le statut sélectionné n\'est pas valide.',
+        ]);
+
+        // Validation : soit montant soit pourcentage doit être renseigné
+        if (!$request->montant && !$request->pourcentage) {
+            return back()->withErrors(['montant' => 'Veuillez renseigner soit un montant soit un pourcentage.'])->withInput();
+        }
+
+        if ($request->montant && $request->pourcentage) {
+            return back()->withErrors(['pourcentage' => 'Veuillez renseigner soit un montant soit un pourcentage, pas les deux.'])->withInput();
+        }
+
+        try {
+            $data = $request->all();
+            $data['createur_id'] = auth()->id();
+
+            ESBTPBourse::create($data);
+
+            return redirect()->route('esbtp.comptabilite.bourses')->with('success', 'Bourse créée avec succès.');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Erreur lors de la création de la bourse : ' . $e->getMessage())->withInput();
+        }
+    }
+
+    /**
+     * Affiche les détails d'une bourse
+     */
+    public function showBourse($id)
+    {
+        try {
+            $bourse = ESBTPBourse::with(['etudiant', 'anneeUniversitaire', 'createur'])->findOrFail($id);
+
+            return view('esbtp.comptabilite.bourses.show', compact('bourse'));
+        } catch (\Exception $e) {
+            return redirect()->route('esbtp.comptabilite.bourses')->with('error', 'Bourse non trouvée.');
+        }
+    }
+
+    /**
+     * Affiche le formulaire d'édition d'une bourse
+     */
+    public function editBourse($id)
+    {
+        try {
+            $bourse = ESBTPBourse::findOrFail($id);
+            $etudiants = ESBTPEtudiant::orderBy('nom')->orderBy('prenoms')->get();
+            $annees = ESBTPAnneeUniversitaire::orderBy('name')->get();
+
+            return view('esbtp.comptabilite.bourses.edit', compact('bourse', 'etudiants', 'annees'));
+        } catch (\Exception $e) {
+            return redirect()->route('esbtp.comptabilite.bourses')->with('error', 'Bourse non trouvée.');
+        }
+    }
+
+    /**
+     * Met à jour une bourse
+     */
+    public function updateBourse(Request $request, $id)
+    {
+        $request->validate([
+            'etudiant_id' => 'required|exists:esbtp_etudiants,id',
+            'annee_universitaire_id' => 'required|exists:esbtp_annees_universitaires,id',
+            'type_bourse' => 'required|string|max:50',
+            'montant' => 'nullable|numeric|min:0',
+            'pourcentage' => 'nullable|numeric|min:0|max:100',
+            'date_debut' => 'required|date',
+            'date_fin' => 'nullable|date|after:date_debut',
+            'statut' => 'required|in:active,suspendue,terminée',
+            'organisme_financeur' => 'nullable|string|max:255',
+            'conditions' => 'nullable|string',
+            'commentaires' => 'nullable|string',
+        ], [
+            'etudiant_id.required' => 'Veuillez sélectionner un étudiant.',
+            'etudiant_id.exists' => 'L\'étudiant sélectionné n\'existe pas.',
+            'annee_universitaire_id.required' => 'Veuillez sélectionner une année universitaire.',
+            'annee_universitaire_id.exists' => 'L\'année universitaire sélectionnée n\'existe pas.',
+            'type_bourse.required' => 'Veuillez sélectionner un type de bourse.',
+            'montant.numeric' => 'Le montant doit être un nombre.',
+            'montant.min' => 'Le montant doit être positif.',
+            'pourcentage.numeric' => 'Le pourcentage doit être un nombre.',
+            'pourcentage.min' => 'Le pourcentage doit être positif.',
+            'pourcentage.max' => 'Le pourcentage ne peut pas dépasser 100%.',
+            'date_debut.required' => 'La date de début est obligatoire.',
+            'date_debut.date' => 'La date de début doit être une date valide.',
+            'date_fin.date' => 'La date de fin doit être une date valide.',
+            'date_fin.after' => 'La date de fin doit être postérieure à la date de début.',
+            'statut.required' => 'Veuillez sélectionner un statut.',
+            'statut.in' => 'Le statut sélectionné n\'est pas valide.',
+        ]);
+
+        // Validation : soit montant soit pourcentage doit être renseigné
+        if (!$request->montant && !$request->pourcentage) {
+            return back()->withErrors(['montant' => 'Veuillez renseigner soit un montant soit un pourcentage.'])->withInput();
+        }
+
+        if ($request->montant && $request->pourcentage) {
+            return back()->withErrors(['pourcentage' => 'Veuillez renseigner soit un montant soit un pourcentage, pas les deux.'])->withInput();
+        }
+
+        try {
+            $bourse = ESBTPBourse::findOrFail($id);
+            $bourse->update($request->all());
+
+            return redirect()->route('esbtp.comptabilite.bourses')->with('success', 'Bourse mise à jour avec succès.');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Erreur lors de la mise à jour de la bourse : ' . $e->getMessage())->withInput();
+        }
+    }
+
+    /**
+     * Supprime une bourse
+     */
+    public function destroyBourse($id)
+    {
+        try {
+            $bourse = ESBTPBourse::findOrFail($id);
+            $bourse->delete();
+
+            return redirect()->route('esbtp.comptabilite.bourses')->with('success', 'Bourse supprimée avec succès.');
+        } catch (\Exception $e) {
+            return redirect()->route('esbtp.comptabilite.bourses')->with('error', 'Erreur lors de la suppression de la bourse : ' . $e->getMessage());
+        }
     }
 
     /**

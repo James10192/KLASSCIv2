@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\ESBTPAnneeUniversitaire;
+use App\Models\ESBTPClasse;
+use App\Models\ESBTPInscription;
 
 class Fee extends Model
 {
@@ -51,7 +53,7 @@ class Fee extends Model
 
     public function inscriptions()
     {
-        return $this->hasMany(\App\Models\ESBTP\ESBTPInscription::class, 'fee_id');
+        return $this->hasMany(ESBTPInscription::class, 'fee_id');
     }
 
     public function category()
@@ -61,7 +63,7 @@ class Fee extends Model
 
     public function inscription()
     {
-        return $this->belongsTo(\App\Models\ESBTPInscription::class, 'inscription_id');
+        return $this->belongsTo(ESBTPInscription::class, 'inscription_id');
     }
 
     // Scopes pour le dashboard
@@ -110,5 +112,35 @@ class Fee extends Model
     public function totalPaidAmount()
     {
         return $this->payments()->where('status', 'completed')->sum('amount');
+    }
+
+    // Méthodes utilitaires
+    public function getFormattedAmountAttribute()
+    {
+        return number_format($this->amount, 0, ',', ' ') . ' FCFA';
+    }
+
+    public function getStatusLabelAttribute()
+    {
+        $statuses = [
+            'pending' => 'En attente',
+            'paid' => 'Payé',
+            'partially_paid' => 'Partiellement payé',
+            'cancelled' => 'Annulé',
+        ];
+
+        return $statuses[$this->status] ?? 'Inconnu';
+    }
+
+    public function getStatusColorAttribute()
+    {
+        $colors = [
+            'pending' => 'warning',
+            'paid' => 'success',
+            'partially_paid' => 'info',
+            'cancelled' => 'danger',
+        ];
+
+        return $colors[$this->status] ?? 'secondary';
     }
 }

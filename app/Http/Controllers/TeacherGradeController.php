@@ -375,7 +375,7 @@ class TeacherGradeController extends Controller
         $currentYear = AnneeScolaire::where('id', $evaluation->annee_scolaire_id)->first();
 
         // Récupérer tous les étudiants de la classe
-        $etudiants = $evaluation->classe->etudiants()->orderBy('nom')->orderBy('prenom')->get();
+                    $etudiants = $evaluation->classe->etudiants()->orderBy('nom')->orderBy('prenoms')->get();
 
         // Préparer les données des notes pour l'affichage
         foreach ($etudiants as $etudiant) {
@@ -546,7 +546,7 @@ class TeacherGradeController extends Controller
             ->where('active', 1)
             ->select('id', 'matricule', 'nom', 'prenom')
             ->orderBy('nom')
-            ->orderBy('prenom')
+            ->orderBy('prenoms')
             ->get();
 
         // Si l'évaluation existe, ajouter les notes aux étudiants
