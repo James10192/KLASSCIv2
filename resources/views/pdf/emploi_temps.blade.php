@@ -336,7 +336,7 @@
                                 <div>{{ $seanceToDisplay->heure_debut->format('H:i') }} - {{ $seanceToDisplay->heure_fin->format('H:i') }}</div>
                             @elseif($type === 'course')
                                 <div style="font-weight:bold;">{{ $seanceToDisplay->matiere ? $seanceToDisplay->matiere->name : 'Matière non définie' }}</div>
-                                <div>{{ $seanceToDisplay->teacher ? $seanceToDisplay->teacher->user->name : 'Enseignant non défini' }}</div>
+                                <div>{{ ($seanceToDisplay->teacher && $seanceToDisplay->teacher->user) ? $seanceToDisplay->teacher->user->name : 'Enseignant non défini' }}</div>
                                 <div>{{ $seanceToDisplay->salle ?? 'Salle non définie' }}</div>
                                 <div>{{ $seanceToDisplay->heure_debut->format('H:i') }} - {{ $seanceToDisplay->heure_fin->format('H:i') }}</div>
                             @else

@@ -9,22 +9,24 @@ use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTP\FeeCategory;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPNiveauEtude;
+use App\Models\ESBTPInscription;
 use Illuminate\Http\Request;
 
 class FeeController extends Controller
 {
     public function index()
     {
-        $fees = Fee::with(['class', 'academicYear'])->latest()->get();
+        $fees = Fee::with(['class', 'academicYear', 'category', 'inscription.etudiant'])->latest()->get();
         return view('esbtp.fees.index', compact('fees'));
     }
 
     public function create()
     {
         $categories = FeeCategory::where('is_active', true)->orderBy('name')->get();
-        $inscriptions = \App\Models\ESBTPInscription::with('etudiant')->orderByDesc('id')->get();
+        $classes = ESBTPClasse::with(['filiere', 'niveau', 'annee'])->orderBy('name')->get();
+        $inscriptions = ESBTPInscription::with(['etudiant', 'classe'])->orderByDesc('id')->get();
         $annees = ESBTPAnneeUniversitaire::orderBy('name')->get();
-        return view('esbtp.fees.create', compact('categories', 'inscriptions', 'annees'));
+        return view('esbtp.fees.create', compact('categories', 'classes', 'inscriptions', 'annees'));
     }
 
     public function store(Request $request)
@@ -34,14 +36,16 @@ class FeeController extends Controller
             'fee_category_id' => 'required|exists:fee_categories,id',
             'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
             'amount' => 'required|numeric|min:0',
-            'date' => 'required|date',
+            'due_date' => 'required|date',
             'description' => 'nullable|string',
+            'status' => 'nullable|string|in:pending,paid,partially_paid,cancelled',
         ]);
 
         // Récupérer la classe à partir de l'inscription
-        $inscription = \App\Models\ESBTPInscription::find($validated['inscription_id']);
+        $inscription = ESBTPInscription::find($validated['inscription_id']);
         $validated['class_id'] = $inscription ? $inscription->classe_id : null;
         $validated['academic_year_id'] = $validated['annee_universitaire_id'];
+        $validated['status'] = $validated['status'] ?? 'pending';
 
         Fee::create($validated);
 
@@ -51,15 +55,17 @@ class FeeController extends Controller
 
     public function show(Fee $fee)
     {
+        $fee->load(['class', 'academicYear', 'category', 'inscription.etudiant', 'payments']);
         return view('esbtp.fees.show', compact('fee'));
     }
 
     public function edit(Fee $fee)
     {
         $categories = FeeCategory::where('is_active', true)->orderBy('name')->get();
-        $inscriptions = \App\Models\ESBTPInscription::with('etudiant')->orderByDesc('id')->get();
+        $classes = ESBTPClasse::with(['filiere', 'niveau', 'annee'])->orderBy('name')->get();
+        $inscriptions = ESBTPInscription::with(['etudiant', 'classe'])->orderByDesc('id')->get();
         $annees = ESBTPAnneeUniversitaire::orderBy('name')->get();
-        return view('esbtp.fees.edit', compact('fee', 'categories', 'inscriptions', 'annees'));
+        return view('esbtp.fees.edit', compact('fee', 'categories', 'classes', 'inscriptions', 'annees'));
     }
 
     public function update(Request $request, Fee $fee)
@@ -69,9 +75,15 @@ class FeeController extends Controller
             'fee_category_id' => 'required|exists:fee_categories,id',
             'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
             'amount' => 'required|numeric|min:0',
-            'date' => 'required|date',
+            'due_date' => 'required|date',
             'description' => 'nullable|string',
+            'status' => 'nullable|string|in:pending,paid,partially_paid,cancelled',
         ]);
+
+        // Récupérer la classe à partir de l'inscription
+        $inscription = ESBTPInscription::find($validated['inscription_id']);
+        $validated['class_id'] = $inscription ? $inscription->classe_id : null;
+        $validated['academic_year_id'] = $validated['annee_universitaire_id'];
 
         $fee->update($validated);
 

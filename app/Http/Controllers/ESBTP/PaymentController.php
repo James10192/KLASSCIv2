@@ -13,7 +13,9 @@ class PaymentController extends Controller
 {
     public function index()
     {
-        $payments = Payment::latest()->get();
+        $payments = Payment::with(['student', 'category', 'fee', 'inscription.etudiant'])
+            ->latest()
+            ->paginate(20);
         return view('esbtp.payments.index', compact('payments'));
     }
 
@@ -76,6 +78,7 @@ class PaymentController extends Controller
 
     public function show(Payment $payment)
     {
+        $payment->load(['student', 'category', 'fee', 'inscription.etudiant']);
         return view('esbtp.payments.show', compact('payment'));
     }
 

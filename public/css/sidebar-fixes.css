@@ -367,3 +367,39 @@ button:focus,
 #search-results {
     z-index: 1065 !important;
 }
+
+:root {
+    --primary: #0453cb;
+    --primary-light: #5e91de;
+    --primary-dark: #1b64d4;
+}
+
+/* Adapter toutes les couleurs indigo à la nouvelle palette */
+.menu-link.active, .menu-link:hover, .menu-accordion-btn.active, .menu-accordion-btn:hover, .menu-sublink:hover, .sidebar-menu .active {
+    color: var(--primary) !important;
+    border-color: var(--primary) !important;
+}
+
+/* Correction : texte et icônes blancs sur fond bleu pour les liens actifs de la sidebar */
+.menu-link.active,
+.menu-link:focus,
+.menu-link:active {
+    color: #fff !important;
+}
+.menu-link.active .menu-icon,
+.menu-link:focus .menu-icon,
+.menu-link:active .menu-icon {
+    color: #fff !important;
+}
+
+/* Correction : texte et icônes blancs sur fond bleu pour les liens principaux actifs avec sous-liens */
+.menu-accordion-btn.active,
+.menu-accordion-btn:focus,
+.menu-accordion-btn:active {
+    color: #fff !important;
+}
+.menu-accordion-btn.active .menu-icon,
+.menu-accordion-btn:focus .menu-icon,
+.menu-accordion-btn:active .menu-icon {
+    color: #fff !important;
+}

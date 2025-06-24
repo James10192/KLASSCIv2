@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('title', 'Tableau de Bord')
-
+p
 @section('page-title', 'Tableau de Bord Super Administrateur')
 
 @section('content')

@@ -3,366 +3,71 @@
 @section('title', 'Ajouter un étudiant - ESBTP-yAKRO')
 
 @section('content')
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Ajouter un nouvel étudiant</h5>
-                    <a href="{{ route('esbtp.etudiants.index') }}" class="btn btn-secondary">
-                        <i class="fas fa-arrow-left me-1"></i>Retour à la liste
-                    </a>
+<div class="container-fluid animate-fade-in-up">
+    <div class="row justify-content-center">
+        <div class="col-lg-10 col-md-12">
+            <!-- HEADER PREMIUM -->
+            <div class="bg-gradient-primary rounded-4 p-5 mb-4 d-flex align-items-center justify-content-between gap-4 animate-fade-in-up" style="background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); min-height: 120px;">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="bg-white bg-opacity-25 rounded-circle d-flex align-items-center justify-content-center" style="width:56px;height:56px;">
+                        <i class="fas fa-user-plus fa-2x text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="h3 fw-bold text-white mb-1">Ajouter un nouvel étudiant</h1>
+                        <div class="text-white-50">Formulaire d'inscription d'un étudiant à l'ESBTP</div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    @if ($errors->any())
-                        <div class="alert alert-danger">
-                            <ul class="mb-0">
-                                @foreach ($errors->all() as $error)
-                                    <li>{{ $error }}</li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    @endif
-
-                    <form action="{{ route('esbtp.etudiants.store') }}" method="POST" enctype="multipart/form-data">
-                        @csrf
-
-                        <div class="row mb-4">
-                            <div class="col-12">
-                                <div class="card">
-                                    <div class="card-header bg-light">
-                                        <h6 class="mb-0">Informations personnelles</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="row">
-                                            <div class="col-md-4 mb-3">
-                                                <label for="nom" class="form-label">Nom <span class="text-danger">*</span></label>
-                                                <input type="text" class="form-control @error('nom') is-invalid @enderror" id="nom" name="nom" value="{{ old('nom') }}" required>
-                                                @error('nom')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
-                                            </div>
-                                            <div class="col-md-4 mb-3">
-                                                <label for="prenoms" class="form-label">Prénom(s) <span class="text-danger">*</span></label>
-                                                <input type="text" class="form-control @error('prenoms') is-invalid @enderror" id="prenoms" name="prenoms" value="{{ old('prenoms') }}" required>
-                                                @error('prenoms')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
-                                            </div>
-                                            <div class="col-md-4 mb-3">
-                                                <label for="genre" class="form-label">Genre <span class="text-danger">*</span></label>
-                                                <select class="form-select @error('genre') is-invalid @enderror" id="genre" name="genre" required>
-                                                    <option value="">Sélectionner le genre</option>
-                                                    <option value="M" {{ old('genre') == 'M' ? 'selected' : '' }}>Masculin</option>
-                                                    <option value="F" {{ old('genre') == 'F' ? 'selected' : '' }}>Féminin</option>
-                                                </select>
-                                                @error('genre')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
-                                            </div>
-                                            <div class="col-md-4 mb-3">
-                                                <label for="date_naissance" class="form-label">Date de naissance</label>
-                                                <input type="date" class="form-control @error('date_naissance') is-invalid @enderror" id="date_naissance" name="date_naissance" value="{{ old('date_naissance') }}">
-                                                @error('date_naissance')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
-                                            </div>
-                                            <div class="col-md-4 mb-3">
-                                                <label for="lieu_naissance" class="form-label">Lieu de naissance</label>
-                                                <input type="text" class="form-control @error('lieu_naissance') is-invalid @enderror" id="lieu_naissance" name="lieu_naissance" value="{{ old('lieu_naissance') }}">
-                                                @error('lieu_naissance')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
-                                            </div>
-                                            <div class="col-md-4 mb-3">
-                                                <label for="ville_naissance" class="form-label">Ville de naissance</label>
-                                                <input type="text" class="form-control @error('ville_naissance') is-invalid @enderror" id="ville_naissance" name="ville_naissance" value="{{ old('ville_naissance') }}">
-                                                @error('ville_naissance')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
-                                            </div>
-                                            <div class="col-md-4 mb-3">
-                                                <label for="commune_naissance" class="form-label">Commune de naissance</label>
-                                                <input type="text" class="form-control @error('commune_naissance') is-invalid @enderror" id="commune_naissance" name="commune_naissance" value="{{ old('commune_naissance') }}">
-                                                @error('commune_naissance')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
-                                            </div>
-                                            <div class="col-md-4 mb-3">
-                                                <label for="telephone" class="form-label">Téléphone <span class="text-danger">*</span></label>
-                                                <input type="text" class="form-control @error('telephone') is-invalid @enderror" id="telephone" name="telephone" value="{{ old('telephone') }}" placeholder="+225 XX XX XXX XXX" required>
-                                                @error('telephone')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
-                                            </div>
-                                            <div class="col-md-4 mb-3">
-                                                <label for="email_personnel" class="form-label">Email <span class="text-danger">*</span></label>
-                                                <input type="email" class="form-control @error('email_personnel') is-invalid @enderror" id="email_personnel" name="email_personnel" value="{{ old('email_personnel') }}" required>
-                                                @error('email_personnel')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
-                                            </div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="col-md-4 mb-3">
-                                                <label for="ville" class="form-label">Ville</label>
-                                                <input type="text" class="form-control @error('ville') is-invalid @enderror" id="ville" name="ville" value="{{ old('ville') }}">
-                                                @error('ville')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
-                                            </div>
-                                            <div class="col-md-4 mb-3">
-                                                <label for="commune" class="form-label">Commune</label>
-                                                <input type="text" class="form-control @error('commune') is-invalid @enderror" id="commune" name="commune" value="{{ old('commune') }}">
-                                                @error('commune')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
-                                            </div>
-                                            <div class="col-md-4 mb-3">
-                                                <label for="photo" class="form-label">Photo de profil</label>
-                                                <input type="file" class="form-control @error('photo') is-invalid @enderror" id="photo" name="photo" accept="image/*">
-                                                @error('photo')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
-                                                <small class="form-text text-muted">Format recommandé : JPEG ou PNG, max 2Mo</small>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row mb-4">
-                            <div class="col-12">
-                                <div class="card">
-                                    <div class="card-header bg-light">
-                                        <h6 class="mb-0">Informations d'inscription</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="row">
-                                            <div class="col-md-6 mb-3">
-                                                <label for="date_admission" class="form-label">Date d'admission <span class="text-danger">*</span></label>
-                                                <input type="date" class="form-control @error('date_admission') is-invalid @enderror" id="date_admission" name="date_admission" value="{{ old('date_admission', date('Y-m-d')) }}" required>
-                                                @error('date_admission')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
-                                            </div>
-                                            <div class="col-md-6 mb-3">
-                                                <label for="statut" class="form-label">Statut <span class="text-danger">*</span></label>
-                                                <select class="form-select @error('statut') is-invalid @enderror" id="statut" name="statut" required>
-                                                    <option value="actif" {{ old('statut', 'actif') == 'actif' ? 'selected' : '' }}>Actif</option>
-                                                    <option value="inactif" {{ old('statut') == 'inactif' ? 'selected' : '' }}>Inactif</option>
-                                                </select>
-                                                @error('statut')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
-                                            </div>
-                                        </div>
-
-                                        <div class="row">
-                                            <div class="col-md-4 mb-3">
-                                                <label for="filiere_id" class="form-label">Filière <span class="text-danger">*</span></label>
-                                                <select class="form-select @error('filiere_id') is-invalid @enderror" id="filiere_id" name="filiere_id" required>
-                                                    <option value="">Sélectionner une filière</option>
-                                                    @foreach($filieres as $filiere)
-                                                        <option value="{{ $filiere->id }}" {{ old('filiere_id') == $filiere->id ? 'selected' : '' }}>
-                                                            {{ $filiere->name }} {{ $filiere->parent ? '(Option de '.$filiere->parent->name.')' : '' }}
-                                                        </option>
-                                                    @endforeach
-                                                </select>
-                                                @error('filiere_id')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
-                                            </div>
-                                            <div class="col-md-4 mb-3">
-                                                <label for="niveau_etude_id" class="form-label">Niveau d'études <span class="text-danger">*</span></label>
-                                                <select class="form-select @error('niveau_etude_id') is-invalid @enderror" id="niveau_etude_id" name="niveau_etude_id" required>
-                                                    <option value="">Sélectionner un niveau</option>
-                                                    @foreach($niveaux as $niveau)
-                                                        <option value="{{ $niveau->id }}" {{ old('niveau_etude_id') == $niveau->id ? 'selected' : '' }}>
-                                                            {{ $niveau->name }} ({{ $niveau->type }} - Année {{ $niveau->year }})
-                                                        </option>
-                                                    @endforeach
-                                                </select>
-                                                @error('niveau_etude_id')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
-                                            </div>
-                                            <div class="col-md-4 mb-3">
-                                                <label for="annee_universitaire_id" class="form-label">Année universitaire <span class="text-danger">*</span></label>
-                                                <select class="form-select @error('annee_universitaire_id') is-invalid @enderror" id="annee_universitaire_id" name="annee_universitaire_id" required>
-                                                    <option value="">Sélectionner une année</option>
-                                                    @foreach($annees as $annee)
-                                                        <option value="{{ $annee->id }}" {{ old('annee_universitaire_id') == $annee->id ? 'selected' : '' }}>
-                                                            {{ $annee->name }}
-                                                        </option>
-                                                    @endforeach
-                                                </select>
-                                                @error('annee_universitaire_id')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
-                                            </div>
-                                        </div>
-
-                                        <div class="row">
-                                            <div class="col-md-6 mb-3">
-                                                <label for="classe_id" class="form-label">Classe</label>
-                                                <select class="form-select @error('classe_id') is-invalid @enderror" id="classe_id" name="classe_id">
-                                                    <option value="">Sélectionner une classe</option>
-                                                    <!-- Les classes seront chargées dynamiquement via JavaScript -->
-                                                </select>
-                                                @error('classe_id')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
-                                                <small class="form-text text-muted">La classe sera automatiquement assignée en fonction de la filière et du niveau d'études</small>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row mb-4">
-                            <div class="col-12">
-                                <div class="card">
-                                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                        <h6 class="mb-0">Information(s) sur le(s) parent(s) / tuteur(s)</h6>
-                                        <button type="button" class="btn btn-sm btn-primary" id="add-parent">
-                                            <i class="fas fa-plus me-1"></i>Ajouter un parent
-                                        </button>
-                                    </div>
-                                    <div class="card-body">
-                                        <div id="parents-container">
-                                            <!-- Premier parent (toujours présent) -->
-                                            <div class="parent-item mb-4 p-3 border rounded">
-                                                <div class="d-flex justify-content-between mb-3">
-                                                    <h6>Parent / Tuteur #1</h6>
-                                                    <div class="d-flex align-items-center">
-                                                        <div class="form-check">
-                                                            <input class="form-check-input" type="checkbox" id="parent_existant_0" name="parent_existant[0]" value="1" {{ old('parent_existant.0') ? 'checked' : '' }}>
-                                                            <label class="form-check-label" for="parent_existant_0">
-                                                                Choisir un parent existant
-                                                            </label>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <div class="parent-nouveau {{ old('parent_existant.0') ? 'd-none' : '' }}">
-                                                    <div class="row">
-                                                        <div class="col-md-4 mb-3">
-                                                            <label for="parent_nom_0" class="form-label">Nom <span class="text-danger">*</span></label>
-                                                            <input type="text" class="form-control" id="parent_nom_0" name="parents[0][nom]" value="{{ old('parents.0.nom') }}">
-                                                            @error('parents.0.nom')
-                                                                <div class="invalid-feedback d-block">{{ $message }}</div>
-                                                            @enderror
-                                                        </div>
-                                                        <div class="col-md-4 mb-3">
-                                                            <label for="parent_prenoms_0" class="form-label">Prénom(s) <span class="text-danger">*</span></label>
-                                                            <input type="text" class="form-control" id="parent_prenoms_0" name="parents[0][prenoms]" value="{{ old('parents.0.prenoms') }}">
-                                                            @error('parents.0.prenoms')
-                                                                <div class="invalid-feedback d-block">{{ $message }}</div>
-                                                            @enderror
-                                                        </div>
-                                                        <div class="col-md-4 mb-3">
-                                                            <label for="parent_relation_0" class="form-label">Relation <span class="text-danger">*</span></label>
-                                                            <select class="form-control" id="parent_relation_0" name="parents[0][relation]">
-                                                                <option value="">Sélectionner une relation</option>
-                                                                <option value="Père" {{ old('parents.0.relation') == 'Père' ? 'selected' : '' }}>Père</option>
-                                                                <option value="Mère" {{ old('parents.0.relation') == 'Mère' ? 'selected' : '' }}>Mère</option>
-                                                                <option value="Tuteur" {{ old('parents.0.relation') == 'Tuteur' ? 'selected' : '' }}>Tuteur</option>
-                                                                <option value="Autre" {{ old('parents.0.relation') == 'Autre' ? 'selected' : '' }}>Autre</option>
-                                                            </select>
-                                                            @error('parents.0.relation')
-                                                                <div class="invalid-feedback d-block">{{ $message }}</div>
-                                                            @enderror
-                                                        </div>
-                                                    </div>
-                                                    <div class="row">
-                                                        <div class="col-md-4 mb-3">
-                                                            <label for="parent_telephone_0" class="form-label">Téléphone <span class="text-danger">*</span></label>
-                                                            <input type="text" class="form-control" id="parent_telephone_0" name="parents[0][telephone]" value="{{ old('parents.0.telephone') }}" placeholder="+225 XX XX XXX XXX">
-                                                            @error('parents.0.telephone')
-                                                                <div class="invalid-feedback d-block">{{ $message }}</div>
-                                                            @enderror
-                                                        </div>
-                                                        <div class="col-md-4 mb-3">
-                                                            <label for="parent_email_0" class="form-label">Email</label>
-                                                            <input type="email" class="form-control" id="parent_email_0" name="parents[0][email]" value="{{ old('parents.0.email') }}">
-                                                            @error('parents.0.email')
-                                                                <div class="invalid-feedback d-block">{{ $message }}</div>
-                                                            @enderror
-                                                        </div>
-                                                        <div class="col-md-4 mb-3">
-                                                            <label for="parent_profession_0" class="form-label">Profession</label>
-                                                            <input type="text" class="form-control" id="parent_profession_0" name="parents[0][profession]" value="{{ old('parents.0.profession') }}">
-                                                        </div>
-                                                    </div>
-                                                    <div class="row">
-                                                        <div class="col-md-12 mb-3">
-                                                            <label for="parent_adresse_0" class="form-label">Adresse</label>
-                                                            <textarea class="form-control" id="parent_adresse_0" name="parents[0][adresse]" rows="2">{{ old('parents.0.adresse') }}</textarea>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <div class="parent-existant {{ old('parent_existant.0') ? '' : 'd-none' }}">
-                                                    <div class="row">
-                                                        <div class="col-12 mb-3">
-                                                            <label for="parent_id_0" class="form-label">Sélectionner un parent existant</label>
-                                                            <select class="form-control select-parent" id="parent_id_0" name="parents[0][parent_id]" data-placeholder="Rechercher un parent...">
-                                                                <option value="">Rechercher un parent...</option>
-                                                                @if(old('parents.0.parent_id'))
-                                                                    <option value="{{ old('parents.0.parent_id') }}" selected>Parent ID: {{ old('parents.0.parent_id') }}</option>
-                                                                @endif
-                                                            </select>
-                                                            @error('parents.0.parent_id')
-                                                                <div class="invalid-feedback d-block">{{ $message }}</div>
-                                                            @enderror
-                                                            <small class="form-text text-muted">Commencez à taper le nom, prénom ou téléphone du parent pour le rechercher</small>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row mb-4">
-                            <div class="col-12">
-                                <div class="card">
-                                    <div class="card-header bg-light">
-                                        <h6 class="mb-0">Compte utilisateur</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="row">
-                                            <div class="col-md-6 mb-3">
-                                                <label for="create_account" class="form-label">Créer un compte utilisateur</label>
-                                                <div class="form-check form-switch">
-                                                    <input class="form-check-input" type="checkbox" id="create_account" name="create_account" value="1" {{ old('create_account') ? 'checked' : '' }}>
-                                                    <label class="form-check-label" for="create_account">
-                                                        Oui, créer un compte utilisateur pour cet étudiant
-                                                    </label>
-                                                </div>
-                                                <small class="form-text text-muted">
-                                                    Un compte sera créé avec l'email fourni ci-dessus. Le mot de passe sera généré automatiquement et envoyé par email à l'étudiant.
-                                                </small>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="text-end">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save me-1"></i>Enregistrer l'étudiant
-                            </button>
-                        </div>
-                    </form>
-                </div>
+                <a href="{{ route('esbtp.etudiants.index') }}" class="btn btn-lg btn-secondary fw-bold shadow rounded-3 px-4 py-2 d-flex align-items-center gap-2 animate-fade-in-up">
+                    <i class="fas fa-arrow-left"></i> Retour à la liste
+                </a>
             </div>
+
+            @if ($errors->any())
+                <div class="alert alert-danger d-flex align-items-center glass-alert mb-4">
+                    <i class="fas fa-exclamation-triangle fa-2x me-3 text-danger"></i>
+                    <ul class="mb-0">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+            <form action="{{ route('esbtp.etudiants.store') }}" method="POST" enctype="multipart/form-data">
+                @csrf
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card border-0 shadow-lg rounded-4 premium-glass mb-4">
+                            <div class="card-header bg-white border-0 rounded-top-4">
+                                <h6 class="mb-0 d-flex align-items-center">
+                                    <i class="fas fa-id-card me-2"></i> Informations personnelles
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                @includeIf('esbtp.etudiants._form_personal')
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card border-0 shadow-lg rounded-4 premium-glass mb-4">
+                            <div class="card-header bg-white border-0 rounded-top-4">
+                                <h6 class="mb-0 d-flex align-items-center">
+                                    <i class="fas fa-user-check me-2"></i> Informations d'inscription
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                @includeIf('esbtp.etudiants._form_inscription')
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-end gap-3 mt-4">
+                    <button type="submit" class="btn btn-lg btn-primary fw-bold shadow rounded-3 px-4 py-2 d-flex align-items-center gap-2 animate-fade-in-up">
+                        <i class="fas fa-save"></i> Enregistrer l'étudiant
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

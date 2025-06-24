@@ -28,9 +28,25 @@
                         </div>
                     @endif
 
+                    <!-- HEADER PREMIUM -->
+                    <div class="bg-gradient-primary rounded-4 p-5 mb-4 d-flex align-items-center justify-content-between gap-4 animate-fade-in-up" style="background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); min-height: 120px;">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="bg-white bg-opacity-25 rounded-circle d-flex align-items-center justify-content-center" style="width:56px;height:56px;">
+                                <i class="fas fa-user-graduate fa-2x text-white"></i>
+                            </div>
+                            <div>
+                                <h1 class="h3 fw-bold text-white mb-1">Gestion des étudiants</h1>
+                                <div class="text-white-50">Liste et gestion des étudiants de l'établissement</div>
+                            </div>
+                        </div>
+                        <a href="{{ route('esbtp.inscriptions.create') }}" class="btn btn-lg btn-warning fw-bold shadow rounded-3 px-4 py-2 d-flex align-items-center gap-2 animate-fade-in-up">
+                            <i class="fas fa-plus-circle"></i> Ajouter un étudiant
+                        </a>
+                    </div>
+
                     <!-- Filtres de recherche -->
-                    <div class="card mb-4">
-                        <div class="card-header bg-light">
+                    <div class="card border-0 shadow-sm rounded-4 mb-4 premium-glass">
+                        <div class="card-header bg-white border-0 rounded-top-4">
                             <h6 class="mb-0 d-flex align-items-center">
                                 <i class="fas fa-filter me-2"></i>Filtres de recherche
                             </h6>
@@ -98,8 +114,8 @@
 
                     <!-- Tableau des étudiants -->
                     <div class="table-responsive">
-                        <table class="table table-bordered table-striped datatable">
-                            <thead>
+                        <table class="table table-hover align-middle premium-table mb-0">
+                            <thead class="sticky-top bg-gradient-primary text-white rounded-top-4">
                                 <tr>
                                     <th>Matricule</th>
                                     <th>Photo</th>
@@ -114,16 +130,14 @@
                             </thead>
                             <tbody>
                                 @forelse ($etudiants as $etudiant)
-                                    @php
-                                        $pendingInscription = $etudiant->pending_inscriptions->first();
-                                    @endphp
+                                    @php $pendingInscription = $etudiant->pending_inscriptions->first(); @endphp
                                     <tr @if($pendingInscription) class="table-warning" @endif>
                                         <td>{{ $etudiant->matricule }}</td>
                                         <td class="text-center">
                                             @if($etudiant->photo)
-                                                <img src="{{ asset('storage/'.$etudiant->photo) }}" alt="Photo" class="img-thumbnail" style="width: 50px; height: 50px; object-fit: cover;">
+                                                <img src="{{ asset('storage/'.$etudiant->photo) }}" alt="Photo" class="img-thumbnail rounded-circle shadow" style="width: 50px; height: 50px; object-fit: cover;">
                                             @else
-                                                <div class="bg-light d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                                <div class="bg-light d-flex align-items-center justify-content-center rounded-circle shadow" style="width: 50px; height: 50px;">
                                                     <i class="fas fa-user text-secondary"></i>
                                                 </div>
                                             @endif
@@ -131,7 +145,7 @@
                                         <td>
                                             {{ $etudiant->nom }} {{ $etudiant->prenoms }}
                                             @if($pendingInscription)
-                                                <span class="badge bg-warning text-dark">Inscription en attente</span>
+                                                <span class="badge bg-warning text-dark ms-2">Inscription en attente</span>
                                             @endif
                                         </td>
                                         <td>{{ $etudiant->genre == 'M' ? 'Masculin' : 'Féminin' }}</td>
@@ -161,93 +175,42 @@
                                         </td>
                                         <td>
                                             @if($etudiant->statut == 'actif')
-                                                <span class="badge bg-success">Actif</span>
+                                                <span class="badge bg-success px-3 py-2">Actif</span>
                                             @else
-                                                <span class="badge bg-danger">Inactif</span>
+                                                <span class="badge bg-danger px-3 py-2">Inactif</span>
                                             @endif
                                         </td>
                                         <td>
-                                            <div class="btn-group" role="group">
-                                                <a href="{{ route('esbtp.etudiants.show', $etudiant) }}" class="btn btn-sm btn-info" title="Voir les détails">
+                                            <div class="d-flex">
+                                                <a href="{{ route('esbtp.etudiants.show', $etudiant) }}" class="btn btn-info btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1 me-1" title="Voir les détails">
                                                     <i class="fas fa-eye"></i>
                                                 </a>
-                                                <a href="{{ route('esbtp.etudiants.edit', $etudiant) }}" class="btn btn-sm btn-warning" title="Modifier">
+                                                <a href="{{ route('esbtp.etudiants.edit', $etudiant) }}" class="btn btn-primary btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1 me-1" title="Modifier">
                                                     <i class="fas fa-edit"></i>
                                                 </a>
-
                                                 @if($pendingInscription)
                                                     @can('inscriptions.validate')
-                                                    <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#validationModal{{ $pendingInscription->id }}" title="Valider l'inscription">
+                                                    <button type="button" class="btn btn-success btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1 me-1" data-bs-toggle="modal" data-bs-target="#validationModal{{ $pendingInscription->id }}" title="Valider l'inscription">
                                                         <i class="fas fa-check"></i>
                                                     </button>
-
                                                     <!-- Modal de validation -->
-                                                    <div class="modal fade" id="validationModal{{ $pendingInscription->id }}" tabindex="-1" aria-labelledby="validationModalLabel{{ $pendingInscription->id }}" aria-hidden="true">
-                                                        <div class="modal-dialog">
-                                                            <div class="modal-content">
-                                                                <div class="modal-header">
-                                                                    <h5 class="modal-title" id="validationModalLabel{{ $pendingInscription->id }}">Valider l'inscription de {{ $etudiant->nom }} {{ $etudiant->prenoms }}</h5>
-                                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                                </div>
-                                                                <form action="{{ route('esbtp.inscriptions.valider', $pendingInscription->id) }}" method="POST">
-                                                                    @csrf
-                                                                    @method('PUT')
-                                                                    <div class="modal-body">
-                                                                        <p>Êtes-vous sûr de vouloir valider cette inscription ?</p>
-                                                                        <p>L'étudiant sera automatiquement activé et pourra accéder à son compte.</p>
-                                                                    </div>
-                                                                    <div class="modal-footer">
-                                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                                                                        <button type="submit" class="btn btn-success">Valider l'inscription</button>
-                                                                    </div>
-                                                                </form>
-                                                            </div>
-                                                        </div>
-                                                    </div>
+                                                    @includeIf('esbtp.etudiants._validation_modal', ['pendingInscription' => $pendingInscription, 'etudiant' => $etudiant])
                                                     @endcan
                                                 @endif
-
-                                                <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ $etudiant->id }}" title="Supprimer">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </div>
-
-                                            <!-- Modal de suppression -->
-                                            <div class="modal fade" id="deleteModal{{ $etudiant->id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ $etudiant->id }}" aria-hidden="true">
-                                                <div class="modal-dialog">
-                                                    <div class="modal-content">
-                                                        <div class="modal-header">
-                                                            <h5 class="modal-title" id="deleteModalLabel{{ $etudiant->id }}">Confirmation de suppression</h5>
-                                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                        </div>
-                                                        <div class="modal-body">
-                                                            <p>Êtes-vous sûr de vouloir supprimer l'étudiant <strong>{{ $etudiant->nom }} {{ $etudiant->prenoms }}</strong> ({{ $etudiant->matricule }}) ?</p>
-                                                            <p class="text-danger"><strong>Attention :</strong> Cette action est irréversible et supprimera également toutes les inscriptions et données associées à cet étudiant.</p>
-                                                        </div>
-                                                        <div class="modal-footer">
-                                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                                                            <form action="{{ route('esbtp.etudiants.destroy', $etudiant) }}" method="POST" class="d-inline">
-                                                                @csrf
-                                                                @method('DELETE')
-                                                                <button type="submit" class="btn btn-danger">Confirmer la suppression</button>
-                                                            </form>
-                                                        </div>
-                                                    </div>
-                                                </div>
                                             </div>
                                         </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="8" class="text-center">Aucun étudiant trouvé.</td>
+                                        <td colspan="9" class="text-center">Aucun étudiant trouvé</td>
                                     </tr>
                                 @endforelse
                             </tbody>
                         </table>
                     </div>
 
-                    <div class="mt-4">
-                        {{ $etudiants->appends(request()->query())->links() }}
+                    <div class="d-flex justify-content-center mt-4">
+                        {{ $etudiants->links() }}
                     </div>
                 </div>
             </div>

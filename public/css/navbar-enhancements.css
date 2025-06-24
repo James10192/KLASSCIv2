@@ -313,3 +313,86 @@
         transform: translateX(0);
     }
 }
+
+/* Palette bleue KLASSCI */
+:root {
+    --primary: #0453cb;
+    --primary-light: #5e91de;
+    --primary-dark: #1b64d4;
+}
+
+/* Remplacement des couleurs indigo/rose par la palette bleue */
+
+.border-color, .navbar-search input:focus, .navbar-search input, .navbar-search-icon, .dropdown-header, .dropdown-item, .navbar-icon i, .menu-icon i {
+    border-color: var(--primary) !important;
+    color: var(--primary) !important;
+}
+
+.navbar-search input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 4px 20px rgba(4, 83, 203, 0.15);
+}
+
+.navbar-search-icon {
+    color: var(--primary);
+}
+
+/* Gradients */
+.navbar-badge {
+    background: linear-gradient(135deg, #0453cb, #1b64d4);
+}
+
+/* Autres éléments spécifiques */
+
+/* 1. Texte blanc sur fond bleu pour les liens actifs de la sidebar */
+.menu-link.active,
+.menu-link:focus,
+.menu-link:active {
+    color: #fff !important;
+}
+.menu-link.active .menu-icon,
+.menu-link:focus .menu-icon,
+.menu-link:active .menu-icon {
+    color: #fff !important;
+}
+
+/* 2. Contour du bouton enveloppe plus visible */
+.navbar-icon {
+    border: 2px solid #5e91de !important;
+    border-radius: 12px !important;
+    background: #fff !important;
+    transition: border-color 0.2s;
+}
+.navbar-icon:focus,
+.navbar-icon:hover {
+    border-color: #0453cb !important;
+}
+
+/* 3. Affichage premium du message dans la popup */
+.message-item {
+    background: #eaf2fb !important;
+    border-radius: 12px !important;
+    padding: 16px 18px !important;
+    margin: 8px 0 !important;
+    color: #222 !important;
+    font-size: 15px !important;
+    box-shadow: 0 2px 8px 0 rgba(27,100,212,0.07);
+    display: flex;
+    align-items: flex-start;
+}
+.message-avatar {
+    width: 32px;
+    height: 32px;
+    background: #0453cb;
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 16px;
+    margin-right: 12px;
+}
+.message-content {
+    flex: 1;
+}
