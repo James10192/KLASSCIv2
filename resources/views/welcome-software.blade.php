@@ -1250,7 +1250,7 @@
     </section>
 
     <!-- Pricing Section -->
-    <section id="pricing" class="py-5" style="background:#f8fafc;">
+    <!--<section id="pricing" class="py-5" style="background:#f8fafc;">
       <div class="container">
         <div class="text-center mb-5">
           <span class="text-uppercase" style="color:#6366f1; font-weight:700; letter-spacing:1px;">TARIFS</span>
@@ -1341,7 +1341,7 @@
           .pricing-card { min-height: 340px; }
         }
       </style>
-    </section>
+    </section>-->
 
     <!-- SECTION CONTACT PREMIUM -->
     <section id="contact" class="contact-premium-section" style="background: #f3f7fd; padding: 0 0 4rem 0;">
