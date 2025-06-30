@@ -1250,7 +1250,7 @@
     </section>
 
     <!-- Pricing Section -->
-    <section id="pricing" class="py-5" style="background:#f8fafc;">
+    <!--<section id="pricing" class="py-5" style="background:#f8fafc;">
       <div class="container">
         <div class="text-center mb-5">
           <span class="text-uppercase" style="color:#6366f1; font-weight:700; letter-spacing:1px;">TARIFS</span>
@@ -1258,7 +1258,7 @@
         </div>
         <div class="row g-4 justify-content-center">
           <!-- Essentiel -->
-          <div class="col-lg-4 col-md-6">
+          <!--<div class="col-lg-4 col-md-6">
             <div class="pricing-card h-100 d-flex flex-column align-items-center" style="border:2px solid #f59e0b; border-radius:1.5rem; box-shadow:0 4px 24px 0 rgba(245,158,11,0.07); background:#fff;">
               <h3 class="fw-bold mt-4 mb-2" style="color:#f59e0b; font-size:1.5rem;">Essentiel</h3>
               <div class="fw-bold mb-1" style="color:#f59e0b; font-size:2.5rem;">1 500 000 XOF</div>
@@ -1277,7 +1277,7 @@
             </div>
           </div>
           <!-- Pro -->
-          <div class="col-lg-4 col-md-6">
+          <!--<div class="col-lg-4 col-md-6">
             <div class="pricing-card h-100 d-flex flex-column align-items-center position-relative" style="border:2px solid #6366f1; border-radius:1.5rem; box-shadow:0 4px 24px 0 rgba(99,102,241,0.07); background:#fff;">
               <div style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);background:#6366f1;color:#fff;padding:0.4rem 1.2rem;border-radius:999px;font-size:1rem;font-weight:700;box-shadow:0 2px 8px rgba(99,102,241,0.15);">Le plus populaire</div>
               <h3 class="fw-bold mt-4 mb-2" style="color:#6366f1; font-size:1.5rem;">Pro</h3>
@@ -1298,7 +1298,7 @@
             </div>
           </div>
           <!-- Elite -->
-          <div class="col-lg-4 col-md-6">
+          <!--<div class="col-lg-4 col-md-6">
             <div class="pricing-card h-100 d-flex flex-column align-items-center" style="border:2px solid #0ea5e9; border-radius:1.5rem; box-shadow:0 4px 24px 0 rgba(14,165,233,0.07); background:#fff;">
               <h3 class="fw-bold mt-4 mb-2" style="color:#0ea5e9; font-size:1.5rem;">Elite</h3>
               <div class="fw-bold mb-1" style="color:#0ea5e9; font-size:2.5rem;">6 000 000 XOF</div>
@@ -1341,7 +1341,7 @@
           .pricing-card { min-height: 340px; }
         }
       </style>
-    </section>
+    </section>-->
 
     <!-- SECTION CONTACT PREMIUM -->
     <section id="contact" class="contact-premium-section" style="background: #f3f7fd; padding: 0 0 4rem 0;">
