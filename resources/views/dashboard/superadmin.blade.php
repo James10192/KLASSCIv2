@@ -24,7 +24,7 @@
                     <i class="fas fa-bolt me-2"></i> Actions rapides
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
-                    <li><a class="dropdown-item" href="{{ route('esbtp.etudiants.create') }}"><i class="fas fa-user-plus text-primary me-2"></i> Nouvel étudiant</a></li>
+                    <li><a class="dropdown-item" href="{{ route('esbtp.inscriptions.create') }}"><i class="fas fa-user-plus text-primary me-2"></i> Nouvel étudiant</a></li>
                     <li><a class="dropdown-item" href="{{ route('esbtp.evaluations.create') }}"><i class="fas fa-file-alt text-success me-2"></i> Créer examen</a></li>
                     <li><a class="dropdown-item" href="{{ route('esbtp.annonces.create') }}"><i class="fas fa-bullhorn text-warning me-2"></i> Publier annonce</a></li>
                     <li><hr class="dropdown-divider"></li>
@@ -270,7 +270,7 @@
     <!-- ACTIONS RAPIDES PREMIUM -->
     <div class="row g-4 mb-5 animate-fade-in-up">
         <div class="col-xl-3 col-md-6">
-            <a href="{{ route('esbtp.etudiants.create') }}" class="btn btn-primary btn-lg w-100 d-flex flex-column align-items-center justify-content-center gap-2 py-4 rounded-4 shadow-sm hover-lift">
+            <a href="{{ route('esbtp.inscriptions.create') }}" class="btn btn-primary btn-lg w-100 d-flex flex-column align-items-center justify-content-center gap-2 py-4 rounded-4 shadow-sm hover-lift">
                 <i class="fas fa-user-plus fa-2x"></i>
                 <span class="fw-bold">Nouvel étudiant</span>
             </a>
