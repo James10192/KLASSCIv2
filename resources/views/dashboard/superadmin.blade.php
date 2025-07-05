@@ -270,7 +270,7 @@
     <!-- ACTIONS RAPIDES PREMIUM -->
     <div class="row g-4 mb-5 animate-fade-in-up">
         <div class="col-xl-3 col-md-6">
-            <a href="{{ route('esbtp.etudiants.create') }}" class="btn btn-primary btn-lg w-100 d-flex flex-column align-items-center justify-content-center gap-2 py-4 rounded-4 shadow-sm hover-lift">
+            <a href="{{ route('esbtp.inscriptions.create') }}" class="btn btn-primary btn-lg w-100 d-flex flex-column align-items-center justify-content-center gap-2 py-4 rounded-4 shadow-sm hover-lift">
                 <i class="fas fa-user-plus fa-2x"></i>
                 <span class="fw-bold">Nouvel étudiant</span>
             </a>
