@@ -18,7 +18,7 @@ p
                 </div>
                 <div class="card-footer">
                     <div class="stats">
-                        <a href="{{ route('esbtp.etudiants.index') }}" class="text-primary">Voir la liste complète</a>
+                        <a href="{{ route('esbtp.etudiants.index') }}" class="text-primary">Voir la liste com plète</a>
                     </div>
                 </div>
             </div>
@@ -125,7 +125,7 @@ p
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <a href="{{ route('esbtp.etudiants.create') }}" class="btn btn-primary btn-block">
+                            <a href="{{ route('esbtp.inscriptions.create') }}" class="btn btn-primary btn-block">
                                 <i class="fa fa-user-plus"></i> Ajouter un Étudiant
                             </a>
                         </div>
