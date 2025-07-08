@@ -86,7 +86,7 @@
                                                 </div>
                                             @else
                                                 <span class="text-success">
-                                                    <i class="fas fa-check"></i> Émargé à {{ $attendance->signed_at->format('H:i') }}
+                                                    <i class="fas fa-check"></i> Émargé à {{ $attendance->validated_at->format('H:i') }}
                                                 </span>
                                             @endif
                                         </td>

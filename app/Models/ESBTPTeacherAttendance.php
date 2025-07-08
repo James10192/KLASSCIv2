@@ -27,6 +27,8 @@ class ESBTPTeacherAttendance extends Model
         'date' => 'date',
         'validated_at' => 'datetime',
         'attempts' => 'integer',
+        'device_info' => 'array',
+        'geolocation_data' => 'array',
     ];
 
     /**
@@ -248,5 +250,14 @@ class ESBTPTeacherAttendance extends Model
         }
 
         return $recentAttendance->ip_address === $this->ip_address;
+    }
+
+    /**
+     * Accessor for signed_at to provide backward compatibility
+     * Returns validated_at value
+     */
+    public function getSignedAtAttribute()
+    {
+        return $this->validated_at;
     }
 }

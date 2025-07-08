@@ -300,9 +300,9 @@
                         <a href="{{ route('esbtp.emploi-temps.create') }}" class="btn btn-success">
                             <i class="fas fa-plus-circle me-2"></i>Créer un emploi du temps
                         </a>
-                        <a href="{{ route('esbtp.timetables.today') }}" class="btn btn-info">
+                        <!-- <a href="{{ route('esbtp.timetables.today') }}" class="btn btn-info">
                             <i class="fas fa-calendar-day me-2"></i>Voir l'emploi du temps du jour
-                        </a>
+                        </a> -->
                     </div>
                 </div>
             </div>
