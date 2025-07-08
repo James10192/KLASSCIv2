@@ -25,7 +25,7 @@
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
                     <li><a class="dropdown-item" href="{{ route('esbtp.inscriptions.create') }}"><i class="fas fa-user-plus text-primary me-2"></i> Nouvel étudiant</a></li>
-                    <li><a class="dropdown-item" href="{{ route('esbtp.evaluations.create') }}"><i class="fas fa-file-alt text-success me-2"></i> Créer fexamen</a></li>
+                    <li><a class="dropdown-item" href="{{ route('esbtp.evaluations.create') }}"><i class="fas fa-file-alt text-success me-2"></i> Créer examen</a></li>
                     <li><a class="dropdown-item" href="{{ route('esbtp.annonces.create') }}"><i class="fas fa-bullhorn text-warning me-2"></i> Publier annonce</a></li>
                     <li><hr class="dropdown-divider"></li>
                     <!-- <li><a class="dropdown-item" href="{{ route('esbtp.resultats.index') }}"><i class="fas fa-print text-info me-2"></i> Générer bulletins</a></li> -->
