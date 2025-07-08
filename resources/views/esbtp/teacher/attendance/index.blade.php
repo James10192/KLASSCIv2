@@ -151,7 +151,7 @@
                             <tbody>
                                 @forelse($recentAttendances as $attendance)
                                     <tr>
-                                        <td>{{ $attendance->signed_at->format('d/m/Y H:i') }}</td>
+                                        <td>{{ $attendance->validated_at->format('d/m/Y H:i') }}</td>
                                         <td>
                                             {{ $attendance->emploiDuTemps->matiere->nom }}
                                             ({{ $attendance->emploiDuTemps->classe->nom }})

@@ -22,15 +22,15 @@ class TeacherAttendanceExport implements FromQuery, WithHeadings, WithMapping, S
     {
         $query = ESBTPTeacherAttendance::query()
             ->with(['enseignant', 'emploiDuTemps.classe', 'emploiDuTemps.matiere'])
-            ->orderBy('signed_at', 'desc');
+            ->orderBy('validated_at', 'desc');
 
         // Filtres
         if ($this->request->date_debut) {
-            $query->whereDate('signed_at', '>=', $this->request->date_debut);
+            $query->whereDate('validated_at', '>=', $this->request->date_debut);
         }
 
         if ($this->request->date_fin) {
-            $query->whereDate('signed_at', '<=', $this->request->date_fin);
+            $query->whereDate('validated_at', '<=', $this->request->date_fin);
         }
 
         if ($this->request->enseignant_id) {
@@ -64,12 +64,12 @@ class TeacherAttendanceExport implements FromQuery, WithHeadings, WithMapping, S
     public function map($attendance): array
     {
         return [
-            $attendance->signed_at->format('d/m/Y'),
+            $attendance->validated_at->format('d/m/Y'),
             $attendance->enseignant->nom_complet,
             $attendance->emploiDuTemps->classe->nom,
             $attendance->emploiDuTemps->matiere->nom,
             \Carbon\Carbon::parse($attendance->emploiDuTemps->heure_debut)->format('H:i'),
-            $attendance->signed_at->format('H:i'),
+            $attendance->validated_at->format('H:i'),
             $attendance->isOnTime() ? 'À l\'heure' : 'En retard',
             $attendance->ip_address,
             $attendance->geolocation_data ? json_encode($attendance->geolocation_data) : 'Non disponible'

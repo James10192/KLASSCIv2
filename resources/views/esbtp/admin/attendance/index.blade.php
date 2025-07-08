@@ -110,7 +110,7 @@
                                     {{ $attendance->emploiDuTemps->matiere->nom }}
                                     ({{ $attendance->emploiDuTemps->classe->nom }})
                                 </td>
-                                <td>{{ $attendance->signed_at->format('H:i') }}</td>
+                                <td>{{ $attendance->validated_at->format('H:i') }}</td>
                                 <td>
                                     <span class="badge bg-{{ $attendance->status === 'present' ? 'success' : 'warning' }}">
                                         {{ $attendance->status === 'present' ? 'À l\'heure' : 'En retard' }}

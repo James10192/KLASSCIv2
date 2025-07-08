@@ -41,7 +41,7 @@ class TeacherAttendanceController extends Controller
             ->get();
 
         $attendances = ESBTPTeacherAttendance::where('teacher_id', $user->id)
-            ->whereDate('signed_at', Carbon::today())
+            ->whereDate('validated_at', Carbon::today())
             ->get();
 
         return view('esbtp.teacher-attendance.index', compact('todayCourses', 'attendances'));
@@ -70,9 +70,9 @@ class TeacherAttendanceController extends Controller
         // Récupérer l'historique des émargements
         $attendances = ESBTPTeacherAttendance::with(['emploiDuTemps.matiere', 'emploiDuTemps.classe'])
             ->where('enseignant_id', $teacher->id)
-            ->whereYear('signed_at', $year)
-            ->whereMonth('signed_at', $month)
-            ->orderBy('signed_at', 'desc')
+            ->whereYear('validated_at', $year)
+            ->whereMonth('validated_at', $month)
+            ->orderBy('validated_at', 'desc')
             ->paginate(15);
 
         // Calculer les statistiques
@@ -132,7 +132,7 @@ class TeacherAttendanceController extends Controller
             $attendance = new ESBTPTeacherAttendance([
                 'enseignant_id' => $teacher->id,
                 'daily_code_id' => $dailyCode->id,
-                'signed_at' => now(),
+                'validated_at' => now(),
                 'status' => 'present', // ou calculer en fonction de l'heure
                 'latitude' => $request->latitude,
                 'longitude' => $request->longitude,
@@ -192,7 +192,7 @@ class TeacherAttendanceController extends Controller
             'teacher_id' => auth()->id(),
             'course_id' => $request->course_id,
             'daily_code_id' => $dailyCode->id,
-            'signed_at' => now(),
+            'validated_at' => now(),
             'ip_address' => $request->ip(),
             'device_info' => $request->userAgent()
         ]);

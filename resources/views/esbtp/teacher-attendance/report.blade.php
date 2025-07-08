@@ -86,8 +86,8 @@
                                         <td>{{ $attendance->teacher->name }}</td>
                                         <td>{{ $attendance->course->name }}</td>
                                         <td>{{ $attendance->course->emploiTemps->first()->classe->name }}</td>
-                                        <td>{{ $attendance->signed_at->format('d/m/Y') }}</td>
-                                        <td>{{ $attendance->signed_at->format('H:i') }}</td>
+                                        <td>{{ $attendance->validated_at->format('d/m/Y') }}</td>
+                                        <td>{{ $attendance->validated_at->format('H:i') }}</td>
                                         <td>
                                             @if($attendance->status === 'present')
                                                 <span class="badge bg-success">Présent</span>
@@ -125,7 +125,7 @@
                                                     <p><strong>Enseignant:</strong> {{ $attendance->teacher->name }}</p>
                                                     <p><strong>Matière:</strong> {{ $attendance->course->name }}</p>
                                                     <p><strong>Classe:</strong> {{ $attendance->course->emploiTemps->first()->classe->name }}</p>
-                                                    <p><strong>Date:</strong> {{ $attendance->signed_at->format('d/m/Y H:i') }}</p>
+                                                    <p><strong>Date:</strong> {{ $attendance->validated_at->format('d/m/Y H:i') }}</p>
                                                     <p><strong>IP:</strong> {{ $attendance->ip_address }}</p>
                                                     <p><strong>Appareil:</strong> {{ $attendance->device_info }}</p>
                                                     @if($attendance->latitude && $attendance->longitude)

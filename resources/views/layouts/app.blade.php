@@ -21,6 +21,9 @@
 
     <title>@yield('title', 'KLASSCI')</title>
 
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="{{ asset('images/LOGO-KLASSCI-PNG.png') }}" type="image/x-icon">
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -633,10 +636,10 @@
                                     <span class="menu-dot"></span>
                                     <span>Gestion du personnel</span>
                                 </a>
-                                <a href="{{ route('esbtp.roles.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.roles.*') ? 'active' : '' }}">
+                                <!--<a href="{{ route('esbtp.roles.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.roles.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Rôles & Permissions</span>
-                                </a>
+                                </a>-->
                             </div>
                         </div>
 
