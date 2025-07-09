@@ -1,0 +1,31 @@
+# Task ID: 6
+# Title: Implement Security Features
+# Status: done
+# Dependencies: 4
+# Priority: high
+# Description: Add security measures to prevent fraud and unauthorized access
+# Details:
+Implement IP address and device fingerprinting validation. Add rate limiting to prevent brute force attacks. Create automatic code expiration after 24 hours. Add logging for security events. Implement the 3-attempt limit per code as specified in section 6.2.
+
+# Test Strategy:
+Perform security testing including brute force attempts, IP spoofing tests, and attempt limit verification. Test code expiration logic.
+
+# Subtasks:
+## 1. Implement IP and Device Fingerprinting Validation [done]
+### Dependencies: None
+### Description: Create a system to track and validate user connections based on IP address and device fingerprinting to identify suspicious login attempts
+### Details:
+Create a middleware that captures IP addresses and device information (browser type, OS, screen resolution, etc.) during authentication attempts. Store this information in the database with each verification code request. Implement logic to flag suspicious activities like multiple attempts from different IPs or rapid device switching. Add configuration options to set thresholds for suspicious behavior. Create helper functions to extract and normalize device fingerprints across different platforms.
+
+## 2. Add Rate Limiting and 3-Attempt Verification Limit [done]
+### Dependencies: 6.1
+### Description: Implement rate limiting for API endpoints and enforce the 3-attempt limit per verification code as specified in section 6.2
+### Details:
+Integrate a rate limiting middleware for all authentication endpoints with configurable thresholds (e.g., max 10 requests per minute per IP). Implement the 3-attempt verification limit by tracking failed attempts in the database. After 3 failed attempts for a specific code, invalidate the code and require a new one to be generated. Create appropriate error responses that inform users about rate limits and remaining attempts. Add headers to responses indicating rate limit status (X-RateLimit-Remaining, X-RateLimit-Reset).
+
+## 3. Implement Code Expiration and Security Event Logging [done]
+### Dependencies: 6.1, 6.2
+### Description: Create automatic expiration of verification codes after 24 hours and implement comprehensive logging for security events
+### Details:
+Add a timestamp field to verification codes in the database. Implement logic to check code validity based on creation time, automatically expiring codes after 24 hours. Create a security event logging system that records all security-related events (code generation, verification attempts, suspicious activities, rate limit hits) with appropriate detail levels. Implement a purge mechanism to clean up expired codes from the database. Create an admin interface or API endpoint to review security logs with filtering capabilities. Ensure logs contain sufficient information for forensic analysis without exposing sensitive data.
+

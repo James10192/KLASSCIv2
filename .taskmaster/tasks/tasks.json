@@ -1,0 +1,945 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Étendre le modèle de données pour le module comptabilité",
+        "description": "Créer les migrations pour les nouvelles tables et extensions des tables existantes selon l'architecture technique définie",
+        "details": "Implémenter les migrations Laravel pour:\n1. Nouvelles tables:\n   - esbtp_types_frais (nom, periodicite, conditions_json, montant_fixe, est_obligatoire)\n   - esbtp_relances (etudiant_id, niveau, type, template_id, statut, response_data_json)\n   - esbtp_kpis (nom, valeur, periode, date_calcul, metadata_json)\n   - esbtp_workflow_steps (bon_id, etape, statut, user_id, commentaires, timestamp)\n\n2. Extensions tables existantes:\n   - esbtp_depenses: ajouter numero_bon UNIQUE, statut_workflow, workflow_data_json, approved_by, date_approbation\n   - esbtp_paiements: ajouter reference_externe, metadata_json, relance_id, canal_paiement\n   - esbtp_configurations: ajouter seuils_alertes_json, templates_relances_json, config_workflow_json\n\nCréer également les modèles Eloquent correspondants avec les relations, validations et scopes nécessaires.",
+        "testStrategy": "1. Tests unitaires pour valider la structure des tables\n2. Tests d'intégration pour vérifier les relations entre modèles\n3. Validation manuelle du schéma avec MySQL Workbench\n4. Tests de rollback des migrations pour assurer la réversibilité",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create new tables migrations",
+            "description": "Create migration files for all new tables required in the database extension",
+            "dependencies": [],
+            "details": "Create Laravel migration files for each new table needed. Include proper column definitions with appropriate data types, constraints (primary keys, foreign keys, unique constraints), and indexes. Follow Laravel naming conventions for migration files (e.g., 'yyyy_mm_dd_hhmmss_create_table_name_table.php').",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Extend existing tables migrations",
+            "description": "Create migration files to modify existing tables with new columns or constraints",
+            "dependencies": [
+              1
+            ],
+            "details": "Create Laravel migration files to add new columns, indexes, or constraints to existing tables. Ensure backward compatibility and consider data migration needs. Follow Laravel naming conventions for migration files (e.g., 'yyyy_mm_dd_hhmmss_add_column_to_table_name_table.php').",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Create Eloquent models with relationships",
+            "description": "Develop Eloquent models for new tables and update existing models with new relationships",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Create Eloquent model classes for new tables and update existing models to reflect database changes. Define relationships (hasOne, hasMany, belongsTo, belongsToMany, etc.), fillable properties, casts, and any custom methods needed. Implement any required model events, accessors, or mutators.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Write database tests",
+            "description": "Create comprehensive tests for database operations and model relationships",
+            "dependencies": [
+              3
+            ],
+            "details": "Write PHPUnit tests to verify database migrations, model relationships, and CRUD operations. Include tests for constraints, validation rules, and edge cases. Use database transactions or an in-memory SQLite database for testing to ensure tests don't affect the actual database.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Développer les services de base pour la comptabilité",
+        "description": "Implémenter les services principaux qui encapsuleront la logique métier du module comptabilité",
+        "details": "Créer les classes de service suivantes dans app/Services/:\n\n1. ComptabiliteService.php:\n   - Méthodes pour calculer les KPIs financiers (recettes, dépenses, taux recouvrement)\n   - Logique pour les projections financières\n   - Fonctions d'agrégation statistiques\n\n2. NotificationService.php:\n   - Gestion des templates de notification (email, SMS)\n   - Logique d'envoi multi-canal\n   - Tracking des notifications envoyées\n\n3. PDFService.php:\n   - Génération de documents PDF (reçus, bons de sortie, rapports)\n   - Gestion des templates personnalisables\n   - Intégration QR codes pour traçabilité\n\n4. WorkflowService.php:\n   - Gestion du workflow d'approbation multi-niveaux\n   - Transitions d'états et validation des règles\n   - Historique des actions\n\nUtiliser le pattern d'injection de dépendances pour faciliter les tests.",
+        "testStrategy": "1. Tests unitaires pour chaque méthode de service\n2. Tests avec mocks pour isoler les dépendances\n3. Tests d'intégration pour valider l'interaction entre services\n4. Tests de performance pour les méthodes critiques (calcul KPIs)",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement ComptabiliteService",
+            "description": "Develop the ComptabiliteService class to handle all accounting operations including transaction processing, ledger management, and financial calculations.",
+            "dependencies": [],
+            "details": "Create the ComptabiliteService class with methods for transaction processing, account balancing, ledger entries, and financial reporting. Implement proper error handling and validation logic. Ensure thread safety for concurrent operations and optimize performance for large transaction volumes.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement NotificationService",
+            "description": "Create the NotificationService class to handle all system notifications related to accounting events and status updates.",
+            "dependencies": [
+              1
+            ],
+            "details": "Develop the NotificationService with support for multiple notification channels (email, SMS, in-app). Implement templating for message formatting, priority levels for notifications, and delivery confirmation tracking. Ensure the service integrates with ComptabiliteService to trigger notifications based on accounting events.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Implement PDFService",
+            "description": "Build the PDFService class to generate, manage, and store accounting documents in PDF format.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create the PDFService with capabilities for generating invoices, financial statements, and reports in PDF format. Implement template-based document generation, digital signature support, and secure storage mechanisms. Ensure proper integration with ComptabiliteService to access financial data for document generation.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Implement WorkflowService",
+            "description": "Develop the WorkflowService class to manage approval processes and business workflows for accounting operations.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Create the WorkflowService with state machine implementation for managing approval workflows, role-based permissions, audit logging, and status tracking. Implement integration with NotificationService for workflow status updates and with ComptabiliteService for executing approved accounting operations.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Implement Unit and Integration Tests",
+            "description": "Create comprehensive test suite for all service classes including unit tests and integration tests.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "details": "Develop unit tests for each service class to verify individual functionality. Create integration tests to validate interactions between services. Implement test fixtures and mock objects for external dependencies. Ensure test coverage for normal operations, edge cases, and error handling scenarios. Set up continuous integration to run tests automatically.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Implémenter le dashboard financier temps réel",
+        "description": "Développer l'interface du dashboard avec KPIs dynamiques et graphiques interactifs",
+        "details": "1. Créer un contrôleur DashboardComptabiliteController avec:\n   - Méthode index pour afficher le dashboard\n   - Endpoint API pour rafraîchissement AJAX\n   - Logique de calcul des KPIs via ComptabiliteService\n\n2. Développer les vues Blade:\n   - Layout principal avec grille responsive Bootstrap 5\n   - Composants réutilisables pour KPIs (card-kpi.blade.php)\n   - Templates pour différents types de graphiques\n\n3. Intégrer Chart.js:\n   - Configurer les graphiques d'évolution mensuelle\n   - Graphiques de répartition par filière\n   - Options d'export et personnalisation\n\n4. Implémenter l'actualisation temps réel:\n   - AJAX polling avec intervalle configurable\n   - Optimisation cache Redis pour les données fréquemment accédées\n   - Indicateurs visuels de dernière mise à jour\n\nAjouter le support du mode sombre/clair selon les préférences utilisateur.",
+        "testStrategy": "1. Tests fonctionnels pour valider l'affichage du dashboard\n2. Tests JavaScript pour l'interactivité des graphiques\n3. Tests de performance pour l'actualisation AJAX\n4. Tests d'accessibilité et responsive design\n5. Tests utilisateurs avec les personas définis (Comptable, Directeur Financier)",
+        "priority": "high",
+        "dependencies": [
+          2
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Dashboard Controller and API Endpoints",
+            "description": "Create the controller and API endpoints needed for the real-time dashboard",
+            "dependencies": [],
+            "details": "Create a DashboardController with methods for different dashboard views. Implement RESTful API endpoints that return JSON data for charts and metrics. Ensure endpoints are optimized with proper caching headers. Include authentication middleware to protect dashboard routes. Create dedicated API resources/transformers to format data for frontend consumption.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Develop Blade Views and Components",
+            "description": "Create the Blade templates and components for the dashboard UI",
+            "dependencies": [
+              1
+            ],
+            "details": "Design a responsive dashboard layout with Blade. Create reusable components for charts, metrics cards, and data tables. Implement a sidebar navigation for different dashboard sections. Use CSS Grid/Flexbox for responsive layouts. Add loading states and error handling for asynchronous data loading.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Integrate and Configure Chart.js",
+            "description": "Set up Chart.js library and configure various chart types for the dashboard",
+            "dependencies": [
+              2
+            ],
+            "details": "Install and configure Chart.js library. Create JavaScript modules for different chart types (line, bar, pie, etc.). Implement chart configuration options with consistent styling. Add interactivity features like tooltips and click events. Ensure charts are responsive and work across different screen sizes.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Implement Real-time Data Refresh with Redis Caching",
+            "description": "Set up the real-time data refresh mechanism using Redis for caching",
+            "dependencies": [
+              1,
+              3
+            ],
+            "details": "Configure Redis for dashboard data caching. Implement AJAX polling mechanism for real-time updates. Create background jobs to update Redis cache at regular intervals. Optimize database queries for dashboard metrics. Implement cache invalidation strategy for data freshness.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Test Dashboard Functionality",
+            "description": "Create and execute tests for the dashboard functionality",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "details": "Write feature tests for dashboard controllers and API endpoints. Create browser tests for UI interactions using Laravel Dusk. Test real-time updates and caching mechanisms. Verify dashboard performance under load. Create test fixtures for consistent dashboard testing data.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Développer le système de relances automatisées",
+        "description": "Créer un système complet de relances multi-canal avec workflow à plusieurs niveaux",
+        "details": "1. Créer un contrôleur RelancesController avec:\n   - CRUD pour gestion des templates de relance\n   - Interface de planification des campagnes\n   - Suivi des relances envoyées\n\n2. Implémenter les Jobs Laravel:\n   - EnvoyerRelanceJob.php pour traitement asynchrone\n   - CalculerEfficaciteRelancesJob.php pour statistiques\n\n3. Développer les templates de relance:\n   - Templates HTML responsive pour emails\n   - Templates texte pour SMS\n   - Variables dynamiques pour personnalisation\n\n4. Créer la logique de segmentation:\n   - Critères multiples (montant, ancienneté, filière)\n   - Règles d'escalade entre niveaux de relance\n   - Historique des communications\n\n5. Intégrer les services externes:\n   - Configuration Laravel Mail avec files d'attente\n   - Intégration API SMS (Nexmo/Twilio)\n   - Tracking des ouvertures/clics\n\nUtiliser Redis pour la gestion des files d'attente avec Laravel Horizon.",
+        "testStrategy": "1. Tests unitaires pour la logique de segmentation\n2. Tests d'intégration pour l'envoi d'emails/SMS\n3. Tests de file d'attente pour les jobs asynchrones\n4. Tests de bout en bout pour le workflow complet\n5. Validation manuelle des templates sur différents clients email",
+        "priority": "medium",
+        "dependencies": [
+          2
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Reminder Templates and CRUD Operations",
+            "description": "Create a system for managing reminder templates with full CRUD functionality",
+            "dependencies": [],
+            "details": "Design and implement database schema for templates, create models, controllers, and views for template management. Include fields for subject, body content, variables/placeholders, and channel selection (email/SMS). Implement validation and proper error handling.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Develop Segmentation Logic and Escalation Rules",
+            "description": "Build the logic for segmenting users and implementing escalation rules for reminders",
+            "dependencies": [
+              1
+            ],
+            "details": "Create a flexible system for defining user segments based on attributes and behaviors. Implement escalation rules that determine when and how to send follow-up reminders. Include configuration options for timing, frequency, and channel selection based on reminder response status.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Integrate Email Functionality",
+            "description": "Set up email integration for sending reminders",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement email sending functionality using Laravel's mail system. Create email templates that can be populated with dynamic content from reminder templates. Include tracking for email opens, clicks, and bounces. Set up proper queuing for email dispatch.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Implement SMS Integration",
+            "description": "Set up SMS integration for sending reminders",
+            "dependencies": [
+              1
+            ],
+            "details": "Integrate with an SMS gateway service (like Twilio). Create SMS message formatting that works with reminder templates. Implement delivery status tracking and handle SMS-specific limitations (character count, formatting). Set up proper error handling for failed SMS deliveries.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Set Up Asynchronous Job Processing",
+            "description": "Implement asynchronous processing using Redis and Laravel Horizon",
+            "dependencies": [
+              3,
+              4
+            ],
+            "details": "Configure Redis for job queuing. Set up Laravel Horizon for managing and monitoring queued jobs. Implement job classes for reminder dispatch, status updates, and escalation processing. Create retry logic and failure handling for jobs.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Test Complete Reminder Workflow",
+            "description": "Create comprehensive tests for the entire reminder system",
+            "dependencies": [
+              2,
+              5
+            ],
+            "details": "Develop unit tests for individual components. Create integration tests for the complete workflow from template creation to reminder delivery. Test escalation rules and segmentation logic. Implement end-to-end tests simulating real-world scenarios. Create a test dashboard to visualize system performance.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 7,
+            "title": "Implement Reminder Templates and CRUD Operations",
+            "description": "Create a system for managing reminder templates with full CRUD functionality",
+            "dependencies": [],
+            "details": "Design and implement database models for reminder templates. Create API endpoints for creating, reading, updating, and deleting templates. Include fields for subject, body content, variables for personalization, and channel selection (email/SMS). Add validation rules and implement a user interface for template management.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 8,
+            "title": "Develop Segmentation Logic and Escalation Rules",
+            "description": "Build logic for targeting specific user segments and handling reminder escalation",
+            "dependencies": [
+              7
+            ],
+            "details": "Implement segmentation based on user attributes, behaviors, and preferences. Create rules engine for determining when and how reminders escalate (frequency, channel switching). Design database structure for storing escalation configurations. Build admin interface for managing segmentation criteria and escalation rules.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 9,
+            "title": "Integrate Email Notification System",
+            "description": "Connect the reminder system with email service providers",
+            "dependencies": [
+              7,
+              8
+            ],
+            "details": "Integrate with email service provider API (SendGrid, Mailgun, etc.). Implement email template rendering with variable substitution. Add tracking for email delivery, opens, and clicks. Handle bounces and delivery failures. Create retry logic for failed email deliveries.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 10,
+            "title": "Implement SMS Integration",
+            "description": "Connect the reminder system with SMS service providers",
+            "dependencies": [
+              7,
+              8
+            ],
+            "details": "Integrate with SMS provider API (Twilio, Nexmo, etc.). Implement SMS template rendering with character limits and variable substitution. Add tracking for SMS delivery and responses. Handle delivery failures and implement retry logic. Optimize for cost by minimizing unnecessary SMS sends.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 11,
+            "title": "Set Up Asynchronous Job Processing",
+            "description": "Implement Redis/Horizon for handling reminder jobs asynchronously",
+            "dependencies": [
+              9,
+              10
+            ],
+            "details": "Configure Redis and Laravel Horizon for job queuing. Create job classes for processing reminders. Implement scheduling logic for timed reminders. Add monitoring and error handling for failed jobs. Ensure proper job prioritization and queue management.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 12,
+            "title": "Test Complete Reminder Workflow",
+            "description": "Create comprehensive tests for the entire reminder system",
+            "dependencies": [
+              11
+            ],
+            "details": "Write unit tests for individual components. Create integration tests for the complete workflow. Implement end-to-end tests simulating real user scenarios. Test edge cases like delivery failures and escalation triggers. Verify tracking and reporting functionality. Create load tests to ensure system can handle expected volume.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Implémenter le workflow des bons de sortie numérisés",
+        "description": "Développer le système complet de création, approbation et suivi des bons de sortie",
+        "details": "1. Créer un contrôleur BonsSortieController avec:\n   - Interface de création avec prévisualisation temps réel\n   - Gestion du workflow d'approbation\n   - Historique et suivi des bons\n\n2. Développer l'interface utilisateur:\n   - Formulaire dynamique avec validation côté client\n   - Prévisualisation PDF en temps réel via JavaScript\n   - Interface de suivi du workflow\n\n3. Implémenter le workflow d'approbation:\n   - Définir les étapes (demandeur → validateur → approbateur)\n   - Notifications automatiques aux approbateurs\n   - Commentaires et historique des actions\n\n4. Générer les documents PDF:\n   - Template personnalisable avec logo école\n   - QR codes pour vérification d'authenticité\n   - Signatures numériques des approbateurs\n\n5. Créer l'API pour approbations mobiles:\n   - Endpoints RESTful sécurisés\n   - Authentification via Laravel Sanctum\n   - Réponses optimisées pour appareils mobiles\n\nUtiliser le pattern State Machine pour gérer les transitions d'état du workflow.",
+        "testStrategy": "1. Tests unitaires pour la logique de workflow\n2. Tests d'intégration pour la génération PDF\n3. Tests de bout en bout pour le processus complet\n4. Tests d'interface utilisateur avec Laravel Dusk\n5. Tests de sécurité pour les approbations API",
+        "priority": "medium",
+        "dependencies": [
+          2,
+          3
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Voucher Creation Interface",
+            "description": "Develop a user interface for creating digital vouchers with real-time preview functionality",
+            "dependencies": [],
+            "details": "Create a form interface with fields for voucher details (amount, recipient, expiry date, etc.). Implement real-time preview that updates as users input data. Include validation for all fields and ensure the interface is responsive. Add ability to upload logos and customize voucher appearance.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Develop Approval Workflow State Machine",
+            "description": "Implement the approval workflow using the state machine pattern to manage transitions between approval states",
+            "dependencies": [
+              1
+            ],
+            "details": "Design states (draft, pending approval, approved, rejected, etc.) and transitions between them. Implement guards to validate state transitions. Create event handlers for each transition. Develop notification system for state changes. Document the state machine with a diagram for future reference.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Create PDF Generation Service with QR Codes",
+            "description": "Build a service to generate PDF vouchers with embedded QR codes for verification",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Implement PDF generation using a library like PDFKit or jsPDF. Create templates for different voucher types. Generate unique QR codes containing voucher ID and verification URL. Ensure generated PDFs maintain consistent styling and branding. Implement caching mechanism for improved performance.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Develop Mobile API for Approvals",
+            "description": "Create a RESTful API to enable voucher approvals from mobile devices",
+            "dependencies": [
+              2
+            ],
+            "details": "Design API endpoints for listing pending approvals, viewing voucher details, and submitting approval decisions. Implement authentication and authorization for secure access. Create documentation using Swagger/OpenAPI. Add rate limiting and security headers. Test API endpoints with Postman or similar tool.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Implement End-to-End Testing",
+            "description": "Create comprehensive end-to-end tests for the entire voucher workflow",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "details": "Set up testing framework (Cypress, Selenium, etc.). Create test scenarios covering the complete workflow from creation to approval to PDF generation. Test mobile API integration. Implement mock services for external dependencies. Create CI/CD pipeline integration for automated testing on each deployment.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Développer le système de reporting et analytics avancés",
+        "description": "Créer un générateur de rapports personnalisables avec exports multi-formats et analyses prédictives",
+        "details": "1. Créer un contrôleur ReportingController avec:\n   - Interface de construction de rapports drag-and-drop\n   - Gestion des templates prédéfinis\n   - Planification des rapports automatiques\n\n2. Développer l'interface de construction:\n   - Sélection des champs et filtres\n   - Options de groupement et agrégation\n   - Prévisualisation des résultats\n\n3. Implémenter les exports multi-formats:\n   - PDF avec mise en forme professionnelle via DomPDF\n   - Excel avec formules et formatage via PhpSpreadsheet\n   - CSV pour intégration externe\n\n4. Créer les rapports prédéfinis:\n   - Rapport de recouvrement par filière\n   - Analyse des tendances de paiement\n   - Projections de trésorerie\n   - Suivi des dépenses par catégorie\n\n5. Développer les analyses prédictives:\n   - Algorithmes de projection basés sur l'historique\n   - Détection d'anomalies dans les paiements\n   - Recommandations automatiques\n\nUtiliser des jobs en arrière-plan pour la génération des rapports volumineux.",
+        "testStrategy": "1. Tests unitaires pour les calculs d'analyse\n2. Tests d'intégration pour la génération des exports\n3. Tests de performance pour les rapports volumineux\n4. Validation manuelle des formats d'export\n5. Tests utilisateurs avec les personas définis",
+        "priority": "medium",
+        "dependencies": [
+          2,
+          3
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Report Builder Interface with Drag-and-Drop",
+            "description": "Develop an intuitive drag-and-drop interface for the report builder that allows users to easily select data fields, arrange layouts, and customize visualizations.",
+            "dependencies": [],
+            "details": "Implement responsive UI components for dragging fields, dropping into report sections, and real-time preview. Include functionality for resizing elements, applying formatting, and saving report configurations. Ensure accessibility compliance and cross-browser compatibility.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Data Aggregation and Filtering Logic",
+            "description": "Create robust backend logic for data aggregation, filtering, sorting, and transformation to support the reporting system.",
+            "dependencies": [
+              1
+            ],
+            "details": "Develop query optimization for large datasets, implement caching strategies, design flexible filtering mechanisms with complex conditions, and create aggregation functions (sum, average, count, etc.). Include data validation and error handling for malformed queries.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Multi-Format Export Implementation",
+            "description": "Build export functionality supporting PDF, Excel, and CSV formats while maintaining report formatting and data integrity.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Implement server-side rendering for PDF generation with proper pagination, headers/footers, and image handling. Develop Excel export with formula support, multiple worksheets, and styling. Create optimized CSV export with proper encoding and delimiter handling.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Predefined Report Templates",
+            "description": "Design and implement a library of predefined report templates for common business scenarios and reporting needs.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Create at least 10 industry-standard templates with appropriate visualizations, calculations, and layouts. Include templates for financial reporting, sales analysis, inventory management, and performance metrics. Develop a template management system for saving, categorizing, and sharing templates.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Predictive Analytics Algorithms",
+            "description": "Integrate predictive analytics capabilities into the reporting system to provide forecasting and trend analysis.",
+            "dependencies": [
+              2
+            ],
+            "details": "Implement time-series forecasting algorithms, regression analysis, and anomaly detection. Create visualization components for predictive results with confidence intervals. Develop a system for model training, validation, and deployment with appropriate documentation for non-technical users.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Performance Testing for Large Reports",
+            "description": "Conduct comprehensive performance testing for the reporting system with large datasets and complex report configurations.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              5
+            ],
+            "details": "Design test scenarios with datasets of varying sizes (up to 1M+ rows). Measure and optimize rendering times, export durations, and memory usage. Implement pagination and lazy loading strategies for large reports. Document performance benchmarks and optimization recommendations.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Implémenter le système d'événements et notifications",
+        "description": "Développer l'infrastructure d'événements Laravel et notifications pour les alertes automatiques",
+        "details": "1. Créer les classes d'événements Laravel:\n   - PaiementRecu.php pour déclencher les mises à jour KPIs\n   - BonApprouve.php pour les notifications workflow\n   - SeuilAtteint.php pour les alertes automatiques\n\n2. Développer les listeners correspondants:\n   - Listener pour mise à jour dashboard en temps réel\n   - Listener pour notifications email/push\n   - Listener pour génération de documents\n\n3. Implémenter les notifications Laravel:\n   - Notifications multi-canal (database, mail, SMS)\n   - Templates personnalisables\n   - Préférences utilisateur pour les notifications\n\n4. Créer l'interface de gestion des alertes:\n   - Configuration des seuils d'alerte\n   - Historique des notifications\n   - Centre de notifications utilisateur\n\n5. Développer le système de seuils automatiques:\n   - Définition des KPIs critiques à surveiller\n   - Configuration des conditions d'alerte\n   - Actions automatiques déclenchées\n\nUtiliser le broadcast channel Laravel pour les notifications temps réel.",
+        "testStrategy": "1. Tests unitaires pour les événements et listeners\n2. Tests d'intégration pour le déclenchement des notifications\n3. Tests de bout en bout pour les scénarios d'alerte\n4. Validation des templates sur différents canaux\n5. Tests de performance pour les événements fréquents",
+        "priority": "medium",
+        "dependencies": [
+          2,
+          3
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Laravel Event Classes and Listeners",
+            "description": "Create the event classes and corresponding listeners for the notification system",
+            "dependencies": [],
+            "details": "Create event classes for different system events (e.g., AlertTriggeredEvent, DataThresholdEvent). Implement corresponding listeners that will handle these events. Set up the EventServiceProvider to register all event-listener mappings. Include proper documentation for each event class and listener.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Develop Multi-Channel Notification Implementation",
+            "description": "Implement notification delivery across multiple channels (email, SMS, in-app)",
+            "dependencies": [
+              1
+            ],
+            "details": "Create notification classes that extend Laravel's Notification class. Implement the toMail(), toDatabase(), toSlack(), and other channel methods as needed. Set up notification preferences for users to select their preferred channels. Create templates for each notification type across different channels.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Build Alert Threshold Configuration Interface",
+            "description": "Create an interface for users to configure alert thresholds and notification preferences",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Design and implement a user interface for setting alert thresholds. Create backend controllers and services to handle threshold configuration. Implement validation for threshold values. Add functionality to test threshold configurations. Include user preference settings for notification frequency and urgency levels.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Implement Real-Time Notification Broadcasting",
+            "description": "Set up real-time broadcasting of notifications using Laravel Echo and WebSockets",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Configure Laravel Echo and a WebSocket server (Pusher or Laravel WebSockets). Implement broadcast channels for different notification types. Create the frontend components to receive and display real-time notifications. Add functionality to mark notifications as read and handle notification history. Implement fallback mechanisms for when real-time delivery fails.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Optimiser les performances et la mise en cache",
+        "description": "Implémenter une stratégie de cache avancée et optimiser les performances du système",
+        "details": "1. Configurer Redis pour le cache:\n   - Cache des KPIs fréquemment accédés\n   - Cache des rapports générés\n   - Stratégie d'invalidation intelligente\n\n2. Optimiser les requêtes de base de données:\n   - Créer des index composites sur les colonnes de filtrage\n   - Optimiser les requêtes SQL complexes\n   - Utiliser les eager loading pour les relations\n\n3. Implémenter le lazy loading des assets:\n   - Chargement différé des graphiques\n   - Pagination des données volumineuses\n   - Compression des assets frontend\n\n4. Développer un système de monitoring:\n   - Logs structurés pour les opérations critiques\n   - Métriques de performance (temps de réponse, utilisation mémoire)\n   - Alertes automatiques en cas de dégradation\n\n5. Optimiser le stockage des fichiers:\n   - Compression des PDFs générés\n   - Stratégie de nettoyage des fichiers temporaires\n   - Configuration du filesystem Laravel\n\nUtiliser Laravel Telescope en développement pour identifier les goulots d'étranglement.",
+        "testStrategy": "1. Tests de performance avec différents volumes de données\n2. Benchmarks avant/après optimisations\n3. Tests de charge avec simulation d'utilisateurs concurrents\n4. Monitoring en temps réel pendant les tests\n5. Validation des temps de réponse cibles (dashboard < 2s, rapports < 5s)",
+        "priority": "medium",
+        "dependencies": [
+          3,
+          6
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Redis Cache Configuration and Strategy",
+            "description": "Implement Redis caching to improve application response times",
+            "dependencies": [],
+            "details": "Configure Redis for optimal performance, determine cache expiration policies, identify key application data to cache, implement cache invalidation strategies, and document the caching architecture",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Database Query Optimization and Indexing",
+            "description": "Analyze and optimize database queries to reduce response times",
+            "dependencies": [],
+            "details": "Profile existing queries, identify slow-performing queries, create appropriate indexes, optimize JOIN operations, consider query caching, and refactor ORM usage if necessary",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Frontend Asset Optimization and Lazy Loading",
+            "description": "Optimize frontend assets and implement lazy loading techniques",
+            "dependencies": [],
+            "details": "Minify and bundle JS/CSS, implement code splitting, configure lazy loading for images and components, optimize critical rendering path, and reduce initial load time",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Performance Monitoring Implementation",
+            "description": "Set up tools and systems to monitor application performance",
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "details": "Implement APM tools, set up real-time performance dashboards, configure alerts for performance degradation, track key metrics (response time, throughput, error rates), and establish performance baselines",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Benchmark Testing Before/After Optimizations",
+            "description": "Conduct comprehensive performance testing to measure improvements",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "details": "Document current performance metrics, create test scenarios for load/stress testing, execute benchmark tests after each optimization phase, generate comparative reports, and identify areas for further improvement",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Implémenter la sécurité et l'audit trail",
+        "description": "Renforcer la sécurité du module et implémenter un système complet d'audit trail",
+        "details": "1. Étendre les permissions Spatie:\n   - Créer des permissions granulaires pour chaque fonctionnalité\n   - Configurer les rôles prédéfinis (Comptable, Directeur Financier)\n   - Implémenter les middleware de vérification\n\n2. Sécuriser les API et routes:\n   - Configuration de Laravel Sanctum pour l'authentification API\n   - Rate limiting pour prévenir les abus\n   - Validation des entrées et protection CSRF\n\n3. Implémenter l'audit trail complet:\n   - Intégrer Laravel Auditing pour le suivi des modifications\n   - Journalisation des actions critiques (paiements, approbations)\n   - Interface d'exploration des logs d'audit\n\n4. Sécuriser les données sensibles:\n   - Chiffrement AES-256 pour les données financières\n   - Masquage partiel des informations sensibles dans l'interface\n   - Gestion sécurisée des backups\n\n5. Développer les fonctionnalités de conformité:\n   - Exports des logs d'audit pour conformité\n   - Purge automatique des données selon politique de rétention\n   - Documentation des mesures de sécurité\n\nMettre en place une politique de mots de passe forts et option 2FA.",
+        "testStrategy": "1. Tests de pénétration sur les API et interfaces\n2. Validation des permissions avec différents rôles\n3. Tests d'intégrité de l'audit trail\n4. Vérification du chiffrement des données sensibles\n5. Revue de code axée sécurité",
+        "priority": "high",
+        "dependencies": [
+          1,
+          2
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Permission System with Spatie",
+            "description": "Set up role-based access control using Spatie Laravel-Permission package",
+            "dependencies": [],
+            "details": "Install Spatie Laravel-Permission package, create migration for roles and permissions tables, define core roles (admin, manager, user), create permissions for different actions (view, create, update, delete) on key resources, implement middleware for permission checks, and create a permission management interface for administrators.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Configure API Security with Sanctum and Rate Limiting",
+            "description": "Implement token-based authentication and rate limiting for API endpoints",
+            "dependencies": [
+              1
+            ],
+            "details": "Install Laravel Sanctum, configure token authentication for API routes, implement token issuance and revocation, set up rate limiting middleware with appropriate limits for different endpoints, add IP-based throttling for sensitive operations, and implement proper error responses for authentication and rate limit failures.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Implement Audit Trail with Laravel Auditing",
+            "description": "Set up comprehensive audit logging for all system activities",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Install Laravel Auditing package, configure auditable models for key entities, customize audit output format, implement audit retention policies, create an audit log viewer interface with filtering capabilities, and ensure proper indexing for audit tables to maintain performance.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Implement Sensitive Data Encryption and Masking",
+            "description": "Add encryption for sensitive data and implement data masking in logs and displays",
+            "dependencies": [
+              3
+            ],
+            "details": "Identify all sensitive data fields (PII, financial data, etc.), implement Laravel's encryption features for database storage, create custom casts for encrypted attributes, implement data masking for logs and API responses, ensure proper key management, and document encryption approach for compliance purposes.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Conduct Security Testing and Implement Compliance Features",
+            "description": "Perform security testing and implement features required for compliance standards",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "details": "Run automated security scans using tools like OWASP ZAP, implement CSRF protection, add Content Security Policy headers, configure proper CORS settings, implement account lockout after failed attempts, add two-factor authentication option, create security documentation, and implement any additional features required for compliance with relevant standards.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Développer la stratégie de sauvegarde et migration des données",
+        "description": "Implémenter un système robuste de sauvegarde et créer les scripts de migration des données existantes",
+        "details": "1. Créer le job de sauvegarde automatique:\n   - SauvegardeDataJob.php pour exécution périodique\n   - Configuration des destinations de backup (local + cloud)\n   - Compression et chiffrement des sauvegardes\n\n2. Développer les scripts de migration:\n   - Conversion des données existantes vers le nouveau format\n   - Validation de l'intégrité des données migrées\n   - Procédure de rollback en cas d'échec\n\n3. Implémenter la console de gestion des backups:\n   - Interface admin pour déclencher/restaurer les sauvegardes\n   - Historique des opérations de sauvegarde\n   - Tests de restauration automatiques\n\n4. Créer la documentation technique:\n   - Procédure détaillée de migration\n   - Plan de reprise d'activité\n   - Guide de maintenance du système\n\n5. Développer les outils de validation des données:\n   - Vérification de cohérence après migration\n   - Détection des anomalies potentielles\n   - Rapports de qualité des données\n\nUtiliser AWS S3 ou Google Cloud Storage pour le stockage externe des backups.",
+        "testStrategy": "1. Tests de sauvegarde et restauration complète\n2. Validation des données après migration\n3. Tests de performance des opérations de backup\n4. Simulation de scénarios de reprise après incident\n5. Vérification de l'intégrité des données restaurées",
+        "priority": "high",
+        "dependencies": [
+          1,
+          2
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Automated Backup Job Implementation",
+            "description": "Develop and implement automated backup jobs that regularly save system data with proper scheduling and retention policies.",
+            "dependencies": [],
+            "details": "Create scripts for automated backups with configurable frequency (daily, weekly, monthly), implement compression and encryption for backup files, establish retention policies for backup rotation, set up notification systems for backup success/failure, and document the backup architecture and recovery procedures.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Data Migration Scripts from Existing System",
+            "description": "Develop scripts to safely extract, transform, and load data from the existing system to the new environment.",
+            "dependencies": [
+              1
+            ],
+            "details": "Analyze existing data structures, create data mapping documents, develop extraction scripts from legacy systems, build transformation logic to match new data models, implement incremental migration capabilities, and create rollback procedures in case of migration failure.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Backup Management Interface",
+            "description": "Create a user interface for administrators to monitor, manage, and restore backups as needed.",
+            "dependencies": [
+              1
+            ],
+            "details": "Design an intuitive dashboard showing backup status and history, implement backup browsing and search functionality, create restore wizards with preview capabilities, develop access controls for backup management, and implement logging for all backup-related activities.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Data Validation Tools and Testing Procedures",
+            "description": "Develop tools and procedures to verify data integrity during and after migration and backup processes.",
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "details": "Create data integrity verification tools, develop automated test suites for backup/restore validation, implement comparison tools between source and migrated data, establish procedures for regular backup testing, and create documentation for validation processes and error resolution.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Implement Automated Backup Job System",
+            "description": "Design and implement an automated backup job system that regularly backs up all critical data according to defined schedules and retention policies.",
+            "dependencies": [],
+            "details": "Create a robust backup automation system that includes incremental and full backup capabilities, encryption of backup data, compression to minimize storage requirements, and configurable scheduling. Implement monitoring and notification systems for backup job success/failure. Ensure the system can handle database dumps, file system backups, and application state preservation.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Develop Data Migration Scripts",
+            "description": "Create comprehensive scripts to safely migrate data from the existing system to the new platform while maintaining data integrity and relationships.",
+            "dependencies": [],
+            "details": "Develop migration scripts that map data schemas between old and new systems, handle data transformations as needed, maintain referential integrity, and include transaction support to ensure atomic operations. Include logging and error handling mechanisms, with the ability to rollback failed migrations. Create a staging environment for testing migrations before production execution.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 7,
+            "title": "Create Backup Management Interface",
+            "description": "Design and implement a user-friendly interface for administrators to manage backup operations, view backup history, and perform restore operations.",
+            "dependencies": [
+              5
+            ],
+            "details": "Build an intuitive web-based interface that displays backup status, history, and statistics. Include functionality for manual backup initiation, restore operations with point-in-time recovery options, and backup configuration management. Implement role-based access control for backup administration and audit logging of all backup management activities.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 8,
+            "title": "Develop Data Validation Tools and Testing Procedures",
+            "description": "Create comprehensive tools and procedures to validate data integrity before, during, and after migration and backup operations.",
+            "dependencies": [
+              5,
+              6
+            ],
+            "details": "Implement automated data validation tools that perform checksums, record counts, relationship verification, and business rule validation. Create procedures for sampling and manual verification of critical data. Develop test scenarios that simulate various failure conditions to ensure recovery procedures work as expected. Document all validation procedures and create reports that can be used to certify successful migrations and backups.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 11,
+        "title": "Développer les intégrations externes et API",
+        "description": "Créer les API RESTful et intégrations avec services externes (email, SMS, paiement)",
+        "details": "1. Développer les API internes:\n   - /api/kpis-temps-reel pour le dashboard data streaming\n   - /api/workflow/{bon_id}/approve pour approbations asynchrones\n   - /api/relances/planifier pour déclenchement campagnes\n   - /api/rapports/generer pour génération rapports on-demand\n\n2. Configurer les intégrations email:\n   - Laravel Mail avec files d'attente\n   - Configuration Mailtrap (dev) et SendGrid (prod)\n   - Templates responsive et tracking\n\n3. Intégrer les services SMS:\n   - Configuration Nexmo/Twilio pour notifications\n   - Gestion des réponses et statuts de livraison\n   - Optimisation des coûts d'envoi\n\n4. Préparer l'intégration paiements (future):\n   - Structure pour Stripe/PayPal\n   - Webhooks pour notifications de paiement\n   - Réconciliation automatique des transactions\n\n5. Développer la documentation API:\n   - Documentation OpenAPI/Swagger\n   - Exemples d'utilisation\n   - Environnement de test\n\nUtiliser Laravel Passport ou Sanctum pour sécuriser les API.",
+        "testStrategy": "1. Tests unitaires pour chaque endpoint API\n2. Tests d'intégration avec les services externes\n3. Validation des webhooks et callbacks\n4. Tests de charge pour les API critiques\n5. Documentation et exemples fonctionnels",
+        "priority": "medium",
+        "dependencies": [
+          2,
+          7
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Internal API Endpoints Development",
+            "description": "Design and implement the core internal API endpoints that will serve as the foundation for external integrations",
+            "dependencies": [],
+            "details": "Create RESTful API endpoints with proper authentication, rate limiting, and error handling. Implement request validation, response formatting, and logging. Ensure endpoints follow consistent patterns and are scalable for future expansion.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Email Service Integration",
+            "description": "Integrate with an email service provider to enable sending transactional and marketing emails",
+            "dependencies": [
+              1
+            ],
+            "details": "Research and select an appropriate email service provider (e.g., SendGrid, Mailgun). Implement client libraries, configure templates, handle bounces and delivery failures. Set up email verification flows and implement email queue management.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "SMS Service Integration",
+            "description": "Implement SMS notification capabilities through a third-party SMS service",
+            "dependencies": [
+              1
+            ],
+            "details": "Select an SMS provider (e.g., Twilio, Nexmo). Implement the integration for sending SMS notifications, handling delivery receipts, and managing opt-outs. Create fallback mechanisms and implement retry logic for failed deliveries.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Payment Integration Structure",
+            "description": "Develop the architecture and implementation for integrating with payment processors",
+            "dependencies": [
+              1
+            ],
+            "details": "Design payment flow architecture supporting multiple payment providers. Implement secure handling of payment information, webhook processing for payment events, and reconciliation processes. Create abstractions to allow for easy addition of new payment methods in the future.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "API Documentation with OpenAPI/Swagger",
+            "description": "Create comprehensive API documentation using OpenAPI/Swagger specifications",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "details": "Document all API endpoints with OpenAPI/Swagger specifications. Include request/response examples, authentication requirements, and error codes. Generate interactive API documentation that can be used by internal teams and external partners. Implement automated testing to ensure documentation stays in sync with implementation.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 12,
+        "title": "Préparer la documentation et le déploiement",
+        "description": "Créer la documentation utilisateur complète et préparer la stratégie de déploiement",
+        "details": "1. Développer la documentation utilisateur:\n   - Guide administrateur (4h formation)\n   - Guide comptable (2h formation)\n   - Guide utilisateur standard (1h présentation)\n   - Vidéos tutoriels et FAQ\n\n2. Créer la documentation technique:\n   - Architecture du système\n   - Guide de maintenance\n   - Procédures de troubleshooting\n\n3. Préparer l'environnement de staging:\n   - Configuration identique à la production\n   - Données de test représentatives\n   - Accès pour validation utilisateurs\n\n4. Développer la stratégie de déploiement:\n   - Configuration Blue-Green pour zéro downtime\n   - Scripts de déploiement automatisés\n   - Plan de rollback en cas de problème\n\n5. Implémenter les feature flags:\n   - Activation progressive des fonctionnalités\n   - Configuration par environnement\n   - Monitoring des nouvelles fonctionnalités\n\nUtiliser Laravel Envoy pour les scripts de déploiement.",
+        "testStrategy": "1. Revue de la documentation par les utilisateurs finaux\n2. Tests de déploiement sur environnement de staging\n3. Simulation de rollback\n4. Validation end-to-end des fonctionnalités après déploiement\n5. Tests de formation avec utilisateurs pilotes",
+        "priority": "medium",
+        "dependencies": [
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "User Documentation and Training Materials",
+            "description": "Create comprehensive user documentation and training materials for different user roles",
+            "dependencies": [],
+            "details": "Develop user manuals, quick-start guides, and video tutorials tailored to different user roles (administrators, regular users, etc.). Include screenshots, step-by-step instructions, and FAQ sections. Prepare training materials for onboarding sessions including presentation slides and hands-on exercises.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Technical Documentation and Maintenance Guides",
+            "description": "Develop detailed technical documentation and maintenance guides for developers and system administrators",
+            "dependencies": [],
+            "details": "Create system architecture documentation, API references, database schemas, and code documentation. Include troubleshooting guides, maintenance procedures, backup and recovery protocols, and performance optimization recommendations. Document all third-party integrations and dependencies.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Staging Environment Setup and Testing",
+            "description": "Set up a staging environment that mirrors production and conduct comprehensive testing",
+            "dependencies": [
+              2
+            ],
+            "details": "Configure a staging environment with identical infrastructure to production. Implement automated deployment pipelines to staging. Conduct functional testing, performance testing, security testing, and user acceptance testing in the staging environment. Document the staging environment setup and testing procedures.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Deployment Strategy with Feature Flags and Rollback Plan",
+            "description": "Develop and implement a deployment strategy with feature flags and a comprehensive rollback plan",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "Design a zero-downtime deployment strategy. Implement feature flags for gradual feature rollout and A/B testing. Create a detailed rollback plan including triggers, procedures, and responsibilities. Set up monitoring and alerting for post-deployment issues. Document the entire deployment process and rollback procedures.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      }
+    ],
+    "metadata": {
+      "created": "2025-07-08T23:59:59.079Z",
+      "updated": "2025-07-08T23:59:59.079Z",
+      "description": "Tasks for master context"
+    }
+  }
+}

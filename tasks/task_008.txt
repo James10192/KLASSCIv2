@@ -1,0 +1,31 @@
+# Task ID: 8
+# Title: Implement System Configuration
+# Status: done
+# Dependencies: 3
+# Priority: medium
+# Description: Create admin settings interface for system configuration
+# Details:
+Develop the /esbtp/attendance-codes/settings interface for administrators. Add configuration options for code expiration time, attempt limits, and notification settings. Implement role-based access control to restrict access to administrators only.
+
+# Test Strategy:
+Test settings persistence and application. Verify access control prevents unauthorized users from accessing settings. Test each configuration option affects system behavior correctly.
+
+# Subtasks:
+## 1. Create Admin Settings Interface Layout [done]
+### Dependencies: None
+### Description: Develop the UI layout for the system configuration page at /esbtp/attendance-codes/settings
+### Details:
+Create a responsive admin interface with sections for code expiration time, attempt limits, and notification settings. Include form elements like dropdowns for time selection, number inputs for attempt limits, and toggle switches for notification options. Design should follow the application's existing UI patterns and include save/cancel buttons. Ensure the page has proper routing configured in the application.
+
+## 2. Implement Role-Based Access Control [done]
+### Dependencies: 8.1
+### Description: Add authentication and authorization checks to restrict access to administrators only
+### Details:
+Modify the route configuration to require admin privileges. Implement middleware or guards that verify the user's role before allowing access to the settings page. Create redirect logic for unauthorized users with appropriate error messages. Test with different user roles to ensure only administrators can access the configuration page. Update navigation menus to only show this option to admin users.
+
+## 3. Connect Settings to Backend and Implement Functionality [done]
+### Dependencies: 8.1, 8.2
+### Description: Implement the business logic for saving and retrieving configuration settings
+### Details:
+Create API endpoints for fetching current configuration and updating settings. Implement form submission handlers that validate input and send data to the backend. Add success/error notifications for configuration changes. Ensure settings are immediately applied throughout the system when updated. Include confirmation dialogs for changes that might affect system behavior. Add input validation to prevent invalid configurations.
+

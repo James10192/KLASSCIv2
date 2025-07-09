@@ -54,6 +54,8 @@ use App\Http\Controllers\ESBTPLogsController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\NavbarController;
 use App\Http\Controllers\TimetableController;
+use App\Http\Controllers\ESBTP\ESBTPAuditController;
+use App\Http\Controllers\ESBTP\ESBTPSecurityController;
 
 /*
 |--------------------------------------------------------------------------
@@ -907,6 +909,10 @@ Route::middleware(['auth', 'permission:access_comptabilite_module'])->prefix('es
     // Dashboard comptabilité
     Route::get('/', [ESBTPComptabiliteController::class, 'index'])->name('index');
 
+    // Dashboard avancé avec KPIs temps réel
+    Route::get('/dashboard-avance', [ESBTPComptabiliteController::class, 'dashboardAvance'])->name('dashboard-avance');
+    Route::get('/kpis-temps-reel', [ESBTPComptabiliteController::class, 'kpisTempsReel'])->name('kpis-temps-reel');
+
     // Paiements
     // Gestion des paiements
     Route::get('/paiements', [ESBTPComptabiliteController::class, 'paiements'])->name('paiements');
@@ -986,6 +992,36 @@ Route::middleware(['auth', 'permission:access_comptabilite_module'])->prefix('es
     Route::get('/rapports/generate', [ESBTPComptabiliteController::class, 'generateReport'])->name('rapports.generate');
     Route::post('/rapports/export', [ESBTPComptabiliteController::class, 'exportReport'])->name('rapports.export');
 
+    // Routes avancées pour le générateur de rapports - Task #6
+    Route::prefix('rapports')->name('rapports.')->group(function () {
+        Route::get('/builder', [ESBTPComptabiliteController::class, 'rapportsAvances'])->name('builder')
+            ->middleware(['permission:comptabilite.dashboard.view']);
+
+        Route::post('/generer', [ESBTPComptabiliteController::class, 'genererRapportPersonnalise'])->name('generer')
+            ->middleware(['permission:comptabilite.reports.export', 'throttle:10,1']);
+
+        Route::post('/schedule', [ESBTPComptabiliteController::class, 'programmerRapport'])->name('schedule')
+            ->middleware(['permission:comptabilite.reports.export', 'throttle:5,1']);
+
+        Route::get('/scheduled', [ESBTPComptabiliteController::class, 'listeRapportsProgrammes'])->name('scheduled')
+            ->middleware(['permission:comptabilite.dashboard.view']);
+
+        Route::post('/analytics/predictive', [ESBTPComptabiliteController::class, 'analysesPredictives'])->name('analytics.predictive')
+            ->middleware(['permission:comptabilite.dashboard.view', 'throttle:20,1']);
+
+        Route::get('/analytics/cashflow', [ESBTPComptabiliteController::class, 'projectionCashFlow'])->name('analytics.cashflow')
+            ->middleware(['permission:comptabilite.dashboard.view']);
+
+        Route::get('/analytics/anomalies', [ESBTPComptabiliteController::class, 'detectionAnomalies'])->name('analytics.anomalies')
+            ->middleware(['permission:comptabilite.dashboard.view']);
+
+        Route::get('/templates', [ESBTPComptabiliteController::class, 'modelesRapports'])->name('templates')
+            ->middleware(['permission:comptabilite.dashboard.view']);
+
+        Route::post('/templates', [ESBTPComptabiliteController::class, 'sauvegarderModele'])->name('templates.save')
+            ->middleware(['permission:comptabilite.config.manage']);
+    });
+
     // Configuration du module comptabilité
     Route::get('/configuration', [ESBTPComptabiliteController::class, 'configuration'])->name('configuration');
     Route::post('/configuration', [ESBTPComptabiliteController::class, 'updateConfiguration'])->name('configuration.update');
@@ -1000,6 +1036,66 @@ Route::middleware(['auth', 'permission:access_comptabilite_module'])->prefix('es
         Route::put('/{categorie}', [ESBTPCategoriePaiementController::class, 'update'])->name('update');
         Route::delete('/{categorie}', [ESBTPCategoriePaiementController::class, 'destroy'])->name('destroy');
         Route::patch('/{categorie}/toggle-status', [ESBTPCategoriePaiementController::class, 'toggleStatus'])->name('toggle-status');
+    });
+
+    // Gestion des bons de sortie avec workflow
+    Route::prefix('bons-sortie')->name('bons-sortie.')->group(function () {
+        Route::get('/', [ESBTPComptabiliteController::class, 'bonsSortie'])->name('index');
+        Route::get('/create', [ESBTPComptabiliteController::class, 'createBonSortie'])->name('create');
+        Route::post('/', [ESBTPComptabiliteController::class, 'storeBonSortie'])->name('store');
+        Route::get('/{id}', [ESBTPComptabiliteController::class, 'showBonSortie'])->name('show')->where('id', '[0-9]+');
+        Route::get('/{id}/edit', [ESBTPComptabiliteController::class, 'editBonSortie'])->name('edit')->where('id', '[0-9]+');
+        Route::put('/{id}', [ESBTPComptabiliteController::class, 'updateBonSortie'])->name('update')->where('id', '[0-9]+');
+
+        // Actions workflow
+        Route::post('/{id}/approuver', [ESBTPComptabiliteController::class, 'approuverBon'])->name('approuver')->where('id', '[0-9]+')
+            ->middleware(['permission:comptabilite.bons.approve', 'throttle:30,1']);
+        Route::post('/{id}/rejeter', [ESBTPComptabiliteController::class, 'rejeterBon'])->name('rejeter')->where('id', '[0-9]+')
+            ->middleware(['permission:comptabilite.bons.approve', 'throttle:30,1']);
+        Route::post('/{id}/soumettre', [ESBTPComptabiliteController::class, 'soumettreApprobation'])->name('soumettre')->where('id', '[0-9]+')
+            ->middleware(['throttle:20,1']);
+        Route::post('/{id}/payer', [ESBTPComptabiliteController::class, 'marquerCommePaye'])->name('payer')->where('id', '[0-9]+')
+            ->middleware(['permission:comptabilite.bons.pay', 'throttle:20,1']);
+
+        // Génération PDF
+        Route::get('/{id}/pdf', [ESBTPComptabiliteController::class, 'genererPDFBon'])->name('pdf')->where('id', '[0-9]+')
+            ->middleware(['throttle:5,1']);
+    });
+
+    // Gestion des relances automatisées
+    Route::prefix('relances')->name('relances.')->group(function () {
+        Route::get('/', [ESBTPComptabiliteController::class, 'gestionRelances'])->name('index');
+        Route::get('/config', [ESBTPComptabiliteController::class, 'configurationRelances'])->name('config');
+        Route::get('/{id}', [ESBTPComptabiliteController::class, 'showRelance'])->name('show')->where('id', '[0-9]+');
+
+        // Actions sur les relances
+        Route::post('/planifier', [ESBTPComptabiliteController::class, 'planifierRelances'])->name('planifier')
+            ->middleware(['permission:comptabilite.relances.send', 'throttle:10,1']);
+        Route::post('/{id}/renvoyer', [ESBTPComptabiliteController::class, 'renvoyerRelance'])->name('renvoyer')->where('id', '[0-9]+')
+            ->middleware(['permission:comptabilite.relances.send', 'throttle:30,1']);
+        Route::post('/executer', [ESBTPComptabiliteController::class, 'executerRelances'])->name('executer')
+            ->middleware(['permission:comptabilite.relances.send', 'throttle:5,1']);
+
+        // Configuration
+        Route::post('/config/templates', [ESBTPComptabiliteController::class, 'sauvegarderTemplates'])->name('config.templates');
+        Route::post('/config/parametres', [ESBTPComptabiliteController::class, 'sauvegarderParametres'])->name('config.parametres');
+        Route::post('/config/preview', [ESBTPComptabiliteController::class, 'previewTemplate'])->name('config.preview');
+
+        // Aperçus et statistiques
+        Route::get('/apercu-etudiants', [ESBTPComptabiliteController::class, 'apercuRelances'])->name('apercu');
+
+        // NOUVELLES ROUTES ANALYTICS AVANCÉES - Tâche #4
+        Route::get('/analytics', [ESBTPComptabiliteController::class, 'analyticsRelances'])->name('analytics')
+            ->middleware(['permission:comptabilite.dashboard.view']);
+
+        Route::post('/planifier-avancees', [ESBTPComptabiliteController::class, 'planifierRelancesAvancees'])->name('planifier.avancees')
+            ->middleware(['permission:comptabilite.relances.send', 'throttle:5,1']);
+
+        Route::get('/export', [ESBTPComptabiliteController::class, 'exportAnalyticsRelances'])->name('export')
+            ->middleware(['permission:comptabilite.reports.export']);
+
+        Route::post('/preview-segmentation', [ESBTPComptabiliteController::class, 'previewSegmentation'])->name('preview.segmentation')
+            ->middleware(['permission:comptabilite.relances.send']);
     });
 
     // Dashboard comptabilité
@@ -1220,4 +1316,67 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/bulletin/configurable/test', function () {
         return view('esbtp.bulletins.test-configurable');
     })->name('bulletin.configurable.test');
+});
+
+// ... existing code ...
+
+// Routes ESBTP Audit et Sécurité (Task #10)
+Route::middleware(['auth', 'throttle:audit'])->prefix('esbtp/audit')->name('esbtp.audit.')->group(function () {
+    // Page principale d'audit
+    Route::get('/', [ESBTPAuditController::class, 'index'])->name('index');
+
+    // Données d'audit via AJAX (avec rate limiting strict)
+    Route::get('/data', [ESBTPAuditController::class, 'getAuditData'])
+        ->middleware('throttle:30,1')
+        ->name('data');
+
+    // Détails d'un audit spécifique
+    Route::get('/{id}', [ESBTPAuditController::class, 'show'])
+        ->where('id', '[0-9]+')
+        ->name('show');
+
+    // Audits spécifiques à la comptabilité
+    Route::get('/comptabilite', [ESBTPAuditController::class, 'comptabiliteAudits'])
+        ->middleware('permission:comptabilite.audit.view')
+        ->name('comptabilite');
+
+    // Surveillance de l'activité des utilisateurs
+    Route::get('/user-activity', [ESBTPAuditController::class, 'userActivity'])
+        ->middleware('permission:security.users.monitor')
+        ->name('user-activity');
+
+    // Export des audits (avec rate limiting très strict)
+    Route::middleware(['throttle:5,1', 'permission:security.audit.export'])->group(function () {
+        Route::get('/export/excel', [ESBTPAuditController::class, 'exportExcel'])->name('export.excel');
+        Route::get('/export/pdf', [ESBTPAuditController::class, 'exportPdf'])->name('export.pdf');
+    });
+});
+
+// Routes de sécurité avancées (Task #10)
+Route::middleware(['auth', 'throttle:security'])->prefix('esbtp/security')->name('esbtp.security.')->group(function () {
+    // Tableau de bord sécurité (superAdmin uniquement)
+    Route::get('/dashboard', [ESBTPSecurityController::class, 'dashboard'])
+        ->middleware('permission:admin.system.security')
+        ->name('dashboard');
+
+    // Gestion des événements de sécurité
+    Route::get('/events', [ESBTPSecurityController::class, 'securityEvents'])
+        ->middleware('permission:security.events.view')
+        ->name('events');
+
+    // Monitoring des connexions suspectes
+    Route::get('/suspicious-logins', [ESBTPSecurityController::class, 'suspiciousLogins'])
+        ->middleware('permission:security.users.monitor')
+        ->name('suspicious-logins');
+
+    // Gestion des backups sécurisés
+    Route::middleware('permission:security.backup.view')->group(function () {
+        Route::get('/backups', [ESBTPSecurityController::class, 'backups'])->name('backups');
+        Route::post('/backups/create', [ESBTPSecurityController::class, 'createBackup'])
+            ->middleware(['permission:security.backup.create', 'throttle:1,60'])
+            ->name('backups.create');
+        Route::post('/backups/{id}/restore', [ESBTPSecurityController::class, 'restoreBackup'])
+            ->middleware(['permission:security.backup.restore', 'throttle:1,300'])
+            ->name('backups.restore');
+    });
 });

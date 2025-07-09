@@ -775,6 +775,16 @@
                                     <i class="fas fa-user-tie me-1"></i>
                                     <span>Salaires</span>
                                 </a>
+                                <a href="{{ route('esbtp.comptabilite.bons-sortie.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.bons-sortie.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <i class="fas fa-file-export me-1"></i>
+                                    <span>Bons de Sortie</span>
+                                </a>
+                                <a href="{{ route('esbtp.comptabilite.relances.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.relances.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <i class="fas fa-bell me-1"></i>
+                                    <span>Relances</span>
+                                </a>
                                 <a href="{{ route('esbtp.comptabilite.fournisseurs') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.fournisseurs') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <i class="fas fa-truck me-1"></i>

@@ -1,0 +1,109 @@
+{
+	"meta": {
+		"generatedAt": "2025-07-09T00:01:56.377Z",
+		"tasksAnalyzed": 12,
+		"totalTasks": 12,
+		"analysisCount": 12,
+		"thresholdScore": 5,
+		"projectName": "Task Master",
+		"usedResearch": true
+	},
+	"complexityAnalysis": [
+		{
+			"taskId": 1,
+			"taskTitle": "Étendre le modèle de données pour le module comptabilité",
+			"complexityScore": 6,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Break down the database extension task into subtasks covering: 1) Creating new tables migrations, 2) Extending existing tables migrations, 3) Creating Eloquent models with relationships, and 4) Writing database tests",
+			"reasoning": "This task involves creating multiple database migrations and models with relationships. The complexity comes from ensuring proper database design, relationships between tables, and validation rules. The task is well-defined with clear requirements but requires careful implementation to ensure data integrity."
+		},
+		{
+			"taskId": 2,
+			"taskTitle": "Développer les services de base pour la comptabilité",
+			"complexityScore": 7,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Divide the accounting services implementation into subtasks for each service class: 1) ComptabiliteService, 2) NotificationService, 3) PDFService, 4) WorkflowService, and 5) Unit and integration tests for all services",
+			"reasoning": "This task involves implementing multiple service classes with complex business logic. Each service has distinct responsibilities and requires different technical approaches. The dependency injection pattern adds complexity, and comprehensive testing is needed to ensure reliability."
+		},
+		{
+			"taskId": 3,
+			"taskTitle": "Implémenter le dashboard financier temps réel",
+			"complexityScore": 8,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Break down the real-time dashboard implementation into: 1) Controller and API endpoints, 2) Blade views and components, 3) Chart.js integration and configuration, 4) Real-time data refresh mechanism with Redis caching, and 5) Testing dashboard functionality",
+			"reasoning": "This task combines backend data processing with complex frontend visualization. The real-time aspect adds significant complexity, requiring AJAX polling, Redis caching, and optimized queries. The interactive charts and responsive design further increase the technical challenges."
+		},
+		{
+			"taskId": 4,
+			"taskTitle": "Développer le système de relances automatisées",
+			"complexityScore": 8,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Divide the automated reminder system into: 1) Reminder templates and CRUD, 2) Segmentation logic and escalation rules, 3) Email integration, 4) SMS integration, 5) Asynchronous job processing with Redis/Horizon, and 6) Testing the complete reminder workflow",
+			"reasoning": "This task involves complex business logic for segmentation and escalation, integration with external services (email, SMS), asynchronous processing, and template management. The multi-channel approach and tracking requirements add significant complexity."
+		},
+		{
+			"taskId": 5,
+			"taskTitle": "Implémenter le workflow des bons de sortie numérisés",
+			"complexityScore": 7,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Break down the digital voucher workflow into: 1) Voucher creation interface with real-time preview, 2) Approval workflow implementation using state machine pattern, 3) PDF generation with QR codes, 4) Mobile API for approvals, and 5) End-to-end testing of the workflow",
+			"reasoning": "This task requires implementing a state machine for workflow, real-time PDF generation, QR code integration, and a mobile API. The approval process with multiple steps and the need for digital signatures add complexity."
+		},
+		{
+			"taskId": 6,
+			"taskTitle": "Développer le système de reporting et analytics avancés",
+			"complexityScore": 9,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Divide the advanced reporting system into: 1) Report builder interface with drag-and-drop, 2) Data aggregation and filtering logic, 3) Multi-format export implementation (PDF, Excel, CSV), 4) Predefined report templates, 5) Predictive analytics algorithms, and 6) Performance testing for large reports",
+			"reasoning": "This is one of the most complex tasks, involving a drag-and-drop interface, complex data processing, multiple export formats, and predictive analytics. The combination of UI complexity and advanced data processing makes this particularly challenging."
+		},
+		{
+			"taskId": 7,
+			"taskTitle": "Implémenter le système d'événements et notifications",
+			"complexityScore": 6,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Break down the events and notifications system into: 1) Laravel event classes and listeners, 2) Multi-channel notification implementation, 3) Alert threshold configuration interface, and 4) Real-time notification broadcasting",
+			"reasoning": "This task involves implementing Laravel's event system with multiple listeners and notification channels. The complexity comes from ensuring proper event handling, real-time broadcasting, and configurable alert thresholds."
+		},
+		{
+			"taskId": 8,
+			"taskTitle": "Optimiser les performances et la mise en cache",
+			"complexityScore": 7,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Divide the performance optimization task into: 1) Redis cache configuration and strategy, 2) Database query optimization and indexing, 3) Frontend asset optimization and lazy loading, 4) Performance monitoring implementation, and 5) Benchmark testing before/after optimizations",
+			"reasoning": "Performance optimization requires deep technical knowledge across multiple areas: caching strategies, database optimization, frontend performance, and monitoring. The task involves identifying bottlenecks and implementing targeted solutions."
+		},
+		{
+			"taskId": 9,
+			"taskTitle": "Implémenter la sécurité et l'audit trail",
+			"complexityScore": 8,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Break down the security and audit implementation into: 1) Permission system with Spatie, 2) API security with Sanctum and rate limiting, 3) Audit trail implementation with Laravel Auditing, 4) Sensitive data encryption and masking, and 5) Security testing and compliance features",
+			"reasoning": "Security implementation requires specialized knowledge and careful attention to detail. The task involves multiple security layers: permissions, API security, audit logging, encryption, and compliance features. Any oversight could lead to security vulnerabilities."
+		},
+		{
+			"taskId": 10,
+			"taskTitle": "Développer la stratégie de sauvegarde et migration des données",
+			"complexityScore": 7,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Divide the backup and migration strategy into: 1) Automated backup job implementation, 2) Data migration scripts from existing system, 3) Backup management interface, and 4) Data validation tools and testing procedures",
+			"reasoning": "This task involves critical data operations with no margin for error. The complexity comes from ensuring data integrity during migration, implementing secure and reliable backup procedures, and creating comprehensive validation tools."
+		},
+		{
+			"taskId": 11,
+			"taskTitle": "Développer les intégrations externes et API",
+			"complexityScore": 7,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Break down the external integrations task into: 1) Internal API endpoints development, 2) Email service integration, 3) SMS service integration, 4) Payment integration structure, and 5) API documentation with OpenAPI/Swagger",
+			"reasoning": "This task requires integrating with multiple external services and creating reliable API endpoints. The complexity comes from handling different service protocols, managing asynchronous callbacks, and ensuring proper error handling and documentation."
+		},
+		{
+			"taskId": 12,
+			"taskTitle": "Préparer la documentation et le déploiement",
+			"complexityScore": 6,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Divide the documentation and deployment task into: 1) User documentation and training materials, 2) Technical documentation and maintenance guides, 3) Staging environment setup and testing, and 4) Deployment strategy with feature flags and rollback plan",
+			"reasoning": "While less technically complex than other tasks, this requires comprehensive documentation for different user roles, technical documentation, and a robust deployment strategy. The feature flag implementation and zero-downtime deployment add some technical complexity."
+		}
+	]
+}

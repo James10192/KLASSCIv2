@@ -1,0 +1,190 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Mise en place des migrations et modèles de données",
+        "description": "Créer les nouvelles tables et étendre les tables existantes selon les spécifications du PRD pour supporter les fonctionnalités avancées de comptabilité.",
+        "details": "Créer les migrations Laravel pour:\n1. Nouvelles tables:\n   - `esbtp_types_frais` (nom, periodicite, conditions_json, montant_fixe, est_obligatoire)\n   - `esbtp_relances` (etudiant_id, niveau, type, template_id, statut, response_data_json)\n   - `esbtp_kpis` (nom, valeur, periode, date_calcul, metadata_json)\n   - `esbtp_workflow_steps` (bon_id, etape, statut, user_id, commentaires, timestamp)\n\n2. Extensions des tables existantes:\n   - `esbtp_depenses`: ajouter numero_bon (UNIQUE), statut_workflow, workflow_data_json, approved_by, date_approbation\n   - `esbtp_paiements`: ajouter reference_externe, metadata_json, relance_id, canal_paiement\n   - `esbtp_configurations`: ajouter seuils_alertes_json, templates_relances_json, config_workflow_json\n\n3. Créer ou étendre les modèles Eloquent correspondants avec:\n   - Relations appropriées (belongsTo, hasMany, etc.)\n   - Mutators/Accessors pour les champs JSON\n   - Scopes pour les requêtes fréquentes\n   - Règles de validation\n\n4. Créer des seeders pour les données de test initiales",
+        "testStrategy": "1. Tests unitaires pour valider les relations entre modèles\n2. Tests de migration pour vérifier la création correcte des tables\n3. Tests de rollback pour vérifier la réversibilité des migrations\n4. Tests d'intégrité pour valider les contraintes (clés étrangères, unicité)\n5. Vérifier que les seeders fonctionnent correctement",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 2,
+        "title": "Développement des services de base",
+        "description": "Créer les services principaux qui encapsuleront la logique métier du module comptabilité étendu.",
+        "details": "Implémenter les services suivants dans le répertoire `app/Services/`:\n\n1. `ComptabiliteService.php`:\n   - Méthodes de calcul des KPIs financiers (recettes, dépenses, taux recouvrement)\n   - Logique de projection financière\n   - Méthodes d'agrégation pour les tableaux de bord\n\n2. `NotificationService.php`:\n   - Gestion des templates de notification (email, SMS)\n   - Logique d'envoi multi-canal\n   - Suivi des statuts d'envoi\n\n3. `PDFService.php`:\n   - Génération de documents PDF (reçus, bons de sortie, rapports)\n   - Gestion des templates PDF personnalisables\n   - Intégration QR codes pour traçabilité\n\n4. `ReportingService.php`:\n   - Génération de rapports personnalisés\n   - Exports multi-formats (PDF, Excel, CSV)\n   - Logique de programmation des rapports\n\n5. `WorkflowService.php`:\n   - Gestion des étapes d'approbation\n   - Transitions d'état pour les bons de sortie\n   - Historique des actions\n\nUtiliser l'injection de dépendances Laravel pour faciliter les tests et la maintenance.",
+        "testStrategy": "1. Tests unitaires pour chaque méthode de service avec PHPUnit\n2. Tests d'intégration pour vérifier l'interaction entre services\n3. Mocks pour simuler les dépendances externes (email, SMS)\n4. Tests de cas limites et d'exceptions\n5. Benchmarks pour les méthodes critiques en performance",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Implémentation du dashboard financier temps réel",
+        "description": "Développer le dashboard interactif avec KPIs financiers dynamiques et graphiques pour visualiser les données comptables en temps réel.",
+        "details": "1. Créer un contrôleur `DashboardComptabiliteController.php` avec:\n   - Méthode `index()` pour afficher le dashboard principal\n   - Méthode `getKPIs()` pour récupérer les données en AJAX\n   - Méthode `getChartData()` pour alimenter les graphiques\n\n2. Développer les vues Blade:\n   - `dashboard/index.blade.php` - Layout principal\n   - Composants réutilisables:\n     - `components/kpi-card.blade.php`\n     - `components/chart-container.blade.php`\n\n3. Intégrer Chart.js pour les visualisations:\n   - Graphique d'évolution mensuelle des recettes/dépenses\n   - Graphique de répartition par filière\n   - Graphique de taux de recouvrement\n\n4. Implémenter l'actualisation en temps réel:\n   - AJAX polling toutes les 30 secondes\n   - Mise à jour des KPIs sans rechargement de page\n\n5. Ajouter le système d'alertes:\n   - Notifications visuelles pour seuils critiques\n   - Indicateurs colorés (vert/orange/rouge) selon performance\n\nUtiliser Bootstrap 5 pour le responsive design et assurer la compatibilité avec le thème NextAdmin existant.",
+        "testStrategy": "1. Tests fonctionnels pour vérifier le rendu du dashboard\n2. Tests JavaScript pour valider l'actualisation AJAX\n3. Tests de performance pour mesurer le temps de chargement\n4. Tests d'intégration avec les services de données\n5. Tests cross-browser pour assurer la compatibilité\n6. Tests d'accessibilité pour conformité WCAG",
+        "priority": "high",
+        "dependencies": [
+          1,
+          2
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "Système de relances automatisées multi-canal",
+        "description": "Développer le système de relances automatiques pour les paiements en retard avec support multi-canal (Email/SMS/Courrier) et workflows de relance à plusieurs niveaux.",
+        "details": "1. Créer un contrôleur `RelancesController.php` avec:\n   - CRUD complet pour les relances\n   - Interface de configuration des templates\n   - Tableau de bord de suivi des campagnes\n\n2. Implémenter les Jobs Laravel:\n   - `EnvoyerRelanceJob.php` pour traitement asynchrone\n   - `PlanifierRelancesJob.php` pour l'automatisation\n\n3. Développer les templates de relance:\n   - Templates email HTML responsive\n   - Templates SMS avec variables dynamiques\n   - Templates PDF pour courriers\n\n4. Créer la logique de segmentation:\n   ```php\n   // Exemple de segmentation par niveau de retard\n   public function segmenterEtudiants() {\n       $niveau1 = Etudiant::with('paiements')\n           ->whereHas('paiements', function($q) {\n               $q->where('date_echeance', '<', now()->subDays(15));\n               $q->where('date_echeance', '>', now()->subDays(30));\n           })->get();\n       \n       $niveau2 = Etudiant::with('paiements')\n           ->whereHas('paiements', function($q) {\n               $q->where('date_echeance', '<', now()->subDays(30));\n               $q->where('date_echeance', '>', now()->subDays(60));\n           })->get();\n       \n       // etc.\n   }\n   ```\n\n5. Intégrer avec services externes:\n   - Configuration SendGrid/Mailjet pour emails\n   - Configuration Nexmo/Twilio pour SMS\n\n6. Développer le tableau de bord de suivi:\n   - Taux d'ouverture/clic des emails\n   - Taux de réponse SMS\n   - Efficacité des campagnes",
+        "testStrategy": "1. Tests unitaires pour la logique de segmentation\n2. Tests d'intégration avec les services d'envoi\n3. Tests de file d'attente pour les jobs asynchrones\n4. Tests de templates avec différentes variables\n5. Tests de bout en bout pour le workflow complet\n6. Mocks pour simuler les réponses des services externes",
+        "priority": "medium",
+        "dependencies": [
+          1,
+          2
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "Workflow de bons de sortie numérisés",
+        "description": "Développer le système de bons de sortie numérisés avec workflow d'approbation multi-niveaux, prévisualisation en temps réel et génération PDF automatique.",
+        "details": "1. Créer un contrôleur `BonsSortieController.php` avec:\n   - Création/édition de bons\n   - Prévisualisation temps réel\n   - Soumission pour approbation\n   - Suivi du workflow\n\n2. Implémenter le workflow d'approbation:\n   ```php\n   // Exemple de machine à états pour le workflow\n   class WorkflowBonSortie {\n       const STATUT_BROUILLON = 'brouillon';\n       const STATUT_SOUMIS = 'soumis';\n       const STATUT_VALIDE_N1 = 'valide_niveau1';\n       const STATUT_VALIDE_FINAL = 'valide_final';\n       const STATUT_REJETE = 'rejete';\n       \n       public function peutTransitionner($bonId, $statutActuel, $nouveauStatut, $userId) {\n           // Logique de vérification des permissions\n       }\n       \n       public function transitionner($bonId, $nouveauStatut, $userId, $commentaire = null) {\n           // Logique de transition avec historique\n       }\n   }\n   ```\n\n3. Développer l'interface JavaScript pour la prévisualisation:\n   - Mise à jour en temps réel du PDF\n   - Validation côté client des champs\n   - Interface drag-and-drop pour signatures\n\n4. Intégrer la génération PDF:\n   - Template dynamique avec DomPDF\n   - Intégration QR code pour vérification\n   - Numérotation automatique des bons\n\n5. Créer le système de notifications:\n   - Alertes pour approbateurs\n   - Notifications de changement de statut\n   - Rappels automatiques",
+        "testStrategy": "1. Tests unitaires pour la machine à états du workflow\n2. Tests d'intégration pour les transitions de statut\n3. Tests JavaScript pour la prévisualisation\n4. Tests de génération PDF avec différents contenus\n5. Tests de permissions pour différents rôles utilisateurs\n6. Tests de bout en bout pour le workflow complet",
+        "priority": "high",
+        "dependencies": [
+          1,
+          2,
+          3
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Système de reporting et analytics avancés",
+        "description": "Développer le générateur de rapports personnalisables avec interface drag-and-drop, exports multi-formats et analyses prédictives basées sur l'historique.",
+        "details": "1. Créer un contrôleur `ReportingController.php` avec:\n   - Interface de construction de rapports\n   - Prévisualisation des rapports\n   - Gestion des rapports sauvegardés\n   - Programmation d'envois automatiques\n\n2. Développer l'interface de construction:\n   - Composants drag-and-drop pour les champs\n   - Filtres dynamiques\n   - Options de groupement et agrégation\n   - Prévisualisation instantanée\n\n3. Implémenter les exports multi-formats:\n   ```php\n   // Exemple de factory pour les exports\n   class ExportFactory {\n       public function createExporter($format, $data, $options = []) {\n           switch($format) {\n               case 'pdf':\n                   return new PDFExporter($data, $options);\n               case 'excel':\n                   return new ExcelExporter($data, $options);\n               case 'csv':\n                   return new CSVExporter($data, $options);\n               default:\n                   throw new InvalidArgumentException(\"Format non supporté\");\n           }\n       }\n   }\n   ```\n\n4. Développer les analyses prédictives:\n   - Projections de cash-flow basées sur l'historique\n   - Détection d'anomalies dans les paiements\n   - Tendances par filière et période\n\n5. Créer le système de rapports programmés:\n   - Interface de planification (quotidien, hebdomadaire, mensuel)\n   - Gestion des destinataires\n   - Historique des envois",
+        "testStrategy": "1. Tests unitaires pour les différents exporters\n2. Tests d'intégration pour la génération de rapports\n3. Tests de performance avec grands volumes de données\n4. Tests JavaScript pour l'interface drag-and-drop\n5. Tests de planification des rapports automatiques\n6. Validation des formats d'export (PDF, Excel, CSV)",
+        "priority": "medium",
+        "dependencies": [
+          1,
+          2,
+          3
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "Implémentation des jobs et queues asynchrones",
+        "description": "Développer les jobs Laravel pour les traitements lourds en arrière-plan comme les relances, calculs de KPIs, génération de rapports et sauvegardes.",
+        "details": "1. Configurer Laravel Horizon avec Redis:\n   - Installation des dépendances\n   - Configuration des files d'attente prioritaires\n   - Dashboard de monitoring\n\n2. Implémenter les jobs principaux:\n   ```php\n   // Exemple de job pour calcul KPIs\n   class CalculerKPIsJob implements ShouldQueue {\n       use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;\n       \n       protected $periode;\n       \n       public function __construct($periode = 'journalier') {\n           $this->periode = $periode;\n       }\n       \n       public function handle(ComptabiliteService $comptabiliteService) {\n           $kpis = $comptabiliteService->calculerKPIs($this->periode);\n           \n           // Sauvegarder les KPIs calculés\n           foreach($kpis as $nom => $valeur) {\n               KPI::create([\n                   'nom' => $nom,\n                   'valeur' => $valeur,\n                   'periode' => $this->periode,\n                   'date_calcul' => now()\n               ]);\n           }\n           \n           // Déclencher événement pour mise à jour dashboard\n           event(new KPIsCalcules($kpis));\n       }\n   }\n   ```\n\n3. Développer les autres jobs essentiels:\n   - `EnvoyerRelanceJob.php`\n   - `GenererRapportJob.php`\n   - `SauvegardeDataJob.php`\n\n4. Configurer les tâches planifiées:\n   ```php\n   // Dans App\\Console\\Kernel.php\n   protected function schedule(Schedule $schedule) {\n       $schedule->job(new CalculerKPIsJob('journalier'))->dailyAt('23:00');\n       $schedule->job(new CalculerKPIsJob('hebdomadaire'))->weekly()->mondays()->at('01:00');\n       $schedule->job(new CalculerKPIsJob('mensuel'))->monthlyOn(1, '02:00');\n       \n       $schedule->job(new SauvegardeDataJob())->dailyAt('03:00');\n       \n       // Vérifier les paiements en retard et planifier les relances\n       $schedule->job(new PlanifierRelancesJob())->dailyAt('08:00');\n   }\n   ```\n\n5. Implémenter la gestion des échecs et retries:\n   - Logging des erreurs\n   - Politique de retry\n   - Notifications d'échec critique",
+        "testStrategy": "1. Tests unitaires pour chaque job\n2. Tests d'intégration avec Redis\n3. Tests de performance sous charge\n4. Tests de récupération après échec\n5. Tests de planification avec Clock mock\n6. Monitoring des files d'attente en environnement de test",
+        "priority": "high",
+        "dependencies": [
+          2,
+          4,
+          6
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Système d'événements et notifications temps réel",
+        "description": "Implémenter le système d'événements Laravel pour les notifications temps réel et la mise à jour du dashboard lors d'actions importantes.",
+        "details": "1. Créer les événements principaux:\n   ```php\n   // Exemple d'événement pour paiement reçu\n   class PaiementRecu implements ShouldBroadcast {\n       use Dispatchable, InteractsWithSockets, SerializesModels;\n       \n       public $paiement;\n       \n       public function __construct(Paiement $paiement) {\n           $this->paiement = $paiement;\n       }\n       \n       public function broadcastOn() {\n           return new PrivateChannel('comptabilite');\n       }\n       \n       public function broadcastWith() {\n           return [\n               'id' => $this->paiement->id,\n               'montant' => $this->paiement->montant,\n               'etudiant' => $this->paiement->etudiant->nom_complet,\n               'timestamp' => now()->toIso8601String()\n           ];\n       }\n   }\n   ```\n\n2. Implémenter les autres événements clés:\n   - `BonApprouve.php`\n   - `SeuilAtteint.php`\n   - `RelanceEnvoyee.php`\n   - `KPIsCalcules.php`\n\n3. Développer les listeners correspondants:\n   - Mise à jour des KPIs\n   - Envoi de notifications\n   - Déclenchement d'actions automatiques\n\n4. Configurer le broadcasting (optionnel):\n   - Configuration Pusher ou Redis pour WebSockets\n   - Canaux privés pour sécurité\n\n5. Implémenter les notifications Laravel:\n   ```php\n   class PaiementNotification extends Notification {\n       use Queueable;\n       \n       protected $paiement;\n       \n       public function __construct(Paiement $paiement) {\n           $this->paiement = $paiement;\n       }\n       \n       public function via($notifiable) {\n           return ['mail', 'database'];\n       }\n       \n       public function toMail($notifiable) {\n           return (new MailMessage)\n               ->subject('Nouveau paiement reçu')\n               ->line('Un paiement de ' . $this->paiement->montant . ' a été reçu.')\n               ->action('Voir détails', url('/esbtp/comptabilite/paiements/' . $this->paiement->id))\n               ->line('Merci d\\'utiliser notre application!');\n       }\n       \n       public function toDatabase($notifiable) {\n           return [\n               'paiement_id' => $this->paiement->id,\n               'montant' => $this->paiement->montant,\n               'etudiant' => $this->paiement->etudiant->nom_complet\n           ];\n       }\n   }\n   ```",
+        "testStrategy": "1. Tests unitaires pour chaque événement et listener\n2. Tests d'intégration pour vérifier le déclenchement correct\n3. Tests de broadcasting avec mock de Pusher\n4. Tests de notifications avec mail fake\n5. Tests de performance pour évaluer l'impact des événements\n6. Tests de bout en bout pour les workflows complets",
+        "priority": "medium",
+        "dependencies": [
+          2,
+          3,
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Optimisation des performances et mise en cache",
+        "description": "Implémenter une stratégie de cache Redis pour optimiser les performances du dashboard, des rapports et des calculs fréquents.",
+        "details": "1. Configurer Redis pour Laravel:\n   - Installation et configuration\n   - Définition des stores de cache\n\n2. Implémenter le cache pour les KPIs:\n   ```php\n   // Exemple de méthode avec cache dans ComptabiliteService\n   public function getKPIsDashboard() {\n       return Cache::remember('kpis_dashboard', now()->addMinutes(15), function () {\n           return [\n               'total_recettes' => $this->calculerTotalRecettes(),\n               'total_depenses' => $this->calculerTotalDepenses(),\n               'taux_recouvrement' => $this->calculerTauxRecouvrement(),\n               'projections_mois' => $this->calculerProjectionsMois()\n           ];\n       });\n   }\n   ```\n\n3. Développer l'invalidation intelligente du cache:\n   - Tags pour grouper les caches liés\n   - Invalidation sélective lors des mises à jour\n\n4. Optimiser les requêtes database:\n   - Eager loading des relations\n   - Index composites sur les colonnes de filtrage fréquent\n   - Query caching pour requêtes lourdes\n\n5. Implémenter le lazy loading des assets frontend:\n   - Chargement différé des graphiques\n   - Pagination côté client pour grandes listes\n\n6. Mettre en place le monitoring de performance:\n   - Logging des temps de réponse\n   - Alertes pour requêtes lentes\n   - Dashboard de métriques",
+        "testStrategy": "1. Tests de benchmark avant/après optimisation\n2. Tests de charge avec simulation d'utilisateurs multiples\n3. Tests d'invalidation de cache\n4. Profiling des requêtes SQL\n5. Tests de performance frontend (Lighthouse)\n6. Monitoring en environnement de test avec données volumineuses",
+        "priority": "medium",
+        "dependencies": [
+          3,
+          6,
+          7
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Sécurité et audit trail",
+        "description": "Implémenter les fonctionnalités de sécurité avancées et l'audit trail complet pour toutes les actions sensibles du module comptabilité.",
+        "details": "1. Étendre le système de permissions Spatie:\n   - Définir les permissions granulaires pour le module comptabilité\n   - Configurer les rôles (Comptable, Directeur Financier, etc.)\n   - Middleware pour protection des routes\n\n2. Implémenter l'audit trail avec Laravel Auditing:\n   - Installation et configuration du package\n   - Définir les modèles auditables\n   ```php\n   // Exemple de modèle auditable\n   class Paiement extends Model implements Auditable {\n       use \\OwenIt\\Auditing\\Auditable;\n       \n       protected $auditInclude = [\n           'montant', 'date_paiement', 'mode_paiement', 'statut'\n       ];\n       \n       protected $auditTimestamps = true;\n   }\n   ```\n\n3. Développer l'interface d'audit:\n   - Historique des modifications\n   - Filtres par utilisateur, action, date\n   - Export des logs d'audit\n\n4. Implémenter le chiffrement des données sensibles:\n   - Utilisation des cast encrypted de Laravel\n   - Protection des montants et coordonnées bancaires\n\n5. Configurer la protection contre les attaques:\n   - CSRF protection\n   - Rate limiting sur les API\n   - Validation stricte des entrées\n\n6. Mettre en place les backups sécurisés:\n   - Sauvegarde chiffrée des données\n   - Rotation des backups\n   - Vérification d'intégrité",
+        "testStrategy": "1. Tests de pénétration basiques\n2. Tests des permissions pour différents rôles\n3. Vérification de l'audit trail pour toutes les actions\n4. Tests de chiffrement/déchiffrement\n5. Tests de rate limiting\n6. Validation de la restauration des backups",
+        "priority": "high",
+        "dependencies": [
+          1,
+          2
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 11,
+        "title": "Intégration des analytics prédictifs",
+        "description": "Développer les fonctionnalités d'analytics prédictifs pour les projections de cash-flow, la détection d'anomalies et les recommandations basées sur l'historique.",
+        "details": "1. Implémenter les algorithmes de projection:\n   ```php\n   // Exemple de méthode de projection dans ComptabiliteService\n   public function projeterCashFlow($mois = 3) {\n       // Récupérer l'historique des 12 derniers mois\n       $historique = Paiement::selectRaw('YEAR(date_paiement) as annee, MONTH(date_paiement) as mois, SUM(montant) as total')\n           ->where('date_paiement', '>=', now()->subMonths(12))\n           ->groupBy('annee', 'mois')\n           ->orderBy('annee')\n           ->orderBy('mois')\n           ->get()\n           ->toArray();\n       \n       // Calculer les tendances saisonnières\n       $tendances = $this->calculerTendancesSaisonnieres($historique);\n       \n       // Projeter pour les prochains mois\n       $projections = [];\n       $dateActuelle = now();\n       \n       for ($i = 1; $i <= $mois; $i++) {\n           $dateFuture = $dateActuelle->copy()->addMonths($i);\n           $moisFutur = $dateFuture->month;\n           \n           // Appliquer tendance saisonnière + croissance moyenne\n           $projection = $tendances[$moisFutur] * (1 + $this->tauxCroissanceMoyen());\n           \n           $projections[] = [\n               'date' => $dateFuture->format('Y-m'),\n               'montant_projete' => round($projection, 2),\n               'intervalle_confiance' => $this->calculerIntervalleConfiance($projection)\n           ];\n       }\n       \n       return $projections;\n   }\n   ```\n\n2. Développer la détection d'anomalies:\n   - Algorithme de détection des valeurs aberrantes\n   - Alertes automatiques pour écarts significatifs\n   - Tableau de bord des anomalies\n\n3. Implémenter les recommandations:\n   - Suggestions d'optimisation basées sur l'historique\n   - Identification des périodes critiques\n   - Recommandations de relance ciblées\n\n4. Créer les visualisations avancées:\n   - Graphiques de projection avec intervalles de confiance\n   - Heatmaps de performance par période/filière\n   - Indicateurs de tendance\n\n5. Développer le benchmarking:\n   - Comparaisons inter-périodes\n   - Suivi des objectifs vs réalité\n   - Analyse des écarts",
+        "testStrategy": "1. Tests unitaires des algorithmes de projection\n2. Validation avec données historiques connues\n3. Tests de précision des projections\n4. Tests de détection d'anomalies avec cas simulés\n5. Évaluation des recommandations par experts métier\n6. Tests de performance avec grands volumes de données",
+        "priority": "low",
+        "dependencies": [
+          3,
+          6,
+          9
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 12,
+        "title": "Documentation et formation utilisateurs",
+        "description": "Créer la documentation complète du système et les supports de formation pour les différents profils d'utilisateurs.",
+        "details": "1. Développer la documentation technique:\n   - Architecture du système\n   - Diagrammes de classes et de séquence\n   - Guide d'installation et configuration\n   - Documentation API pour intégrations futures\n\n2. Créer les guides utilisateurs:\n   - Guide administrateur (4h formation)\n   - Guide comptable (2h formation)\n   - Guide utilisateur standard (1h présentation)\n   - FAQ illustrée\n\n3. Produire les supports de formation:\n   - Présentations PowerPoint\n   - Vidéos tutoriels pour fonctionnalités clés\n   - Exercices pratiques guidés\n\n4. Développer l'aide contextuelle dans l'application:\n   - Tooltips pour fonctionnalités complexes\n   - Guides interactifs pour nouveaux utilisateurs\n   - Base de connaissances intégrée\n\n5. Mettre en place le système de support:\n   - Procédure de remontée des problèmes\n   - Documentation des cas d'usage courants\n   - Procédures de dépannage\n\n6. Créer le plan de déploiement et migration:\n   - Checklist de déploiement\n   - Procédure de migration des données\n   - Plan de rollback en cas de problème",
+        "testStrategy": "1. Revue par pairs de la documentation\n2. Tests utilisateurs avec différents profils\n3. Validation des guides par experts métier\n4. Tests d'accessibilité de la documentation\n5. Évaluation de la clarté par échantillon d'utilisateurs\n6. Simulation de déploiement suivant la documentation",
+        "priority": "medium",
+        "dependencies": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "status": "pending",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-07-08T23:51:05.466Z",
+      "updated": "2025-07-09T08:54:07.356Z",
+      "description": "Tasks for master context"
+    }
+  }
+}

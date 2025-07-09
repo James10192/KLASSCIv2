@@ -6,10 +6,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\User;
+use OwenIt\Auditing\Contracts\Auditable;
+use OwenIt\Auditing\Auditable as AuditableTrait;
 
-class ESBTPDepense extends Model
+class ESBTPDepense extends Model implements Auditable
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, AuditableTrait;
 
     /**
      * The table associated with the model.
@@ -17,6 +19,57 @@ class ESBTPDepense extends Model
      * @var string
      */
     protected $table = 'esbtp_depenses';
+
+    /**
+     * Configuration de l'audit pour la sécurité financière
+     *
+     * @var array
+     */
+    protected $auditInclude = [
+        'montant',
+        'reference',
+        'libelle',
+        'statut',
+        'mode_paiement',
+        'numero_transaction',
+        'validateur_id',
+        'date_validation',
+        // Nouvelles colonnes workflow de Task #1
+        'numero_bon',
+        'statut_workflow',
+        'workflow_data',
+        'approved_by',
+        'date_approbation'
+    ];
+
+    /**
+     * Exclure les champs sensibles de l'audit
+     *
+     * @var array
+     */
+    protected $auditExclude = [
+        'path_justificatif', // Exclure les chemins de fichiers
+    ];
+
+    /**
+     * Activer les timestamps dans l'audit
+     *
+     * @var bool
+     */
+    protected $auditTimestamps = true;
+
+    /**
+     * Events à auditer pour la sécurité
+     *
+     * @var array
+     */
+    protected $auditEvents = [
+        'created',
+        'updated',
+        'deleted',
+        'restored',
+        'retrieved', // Important pour tracer l'accès aux données financières
+    ];
 
     /**
      * The attributes that are mass assignable.
@@ -39,6 +92,12 @@ class ESBTPDepense extends Model
         'date_validation',
         'path_justificatif',
         'notes_internes',
+        // Nouvelles colonnes workflow ajoutées en Task #1
+        'numero_bon',
+        'statut_workflow',
+        'workflow_data',
+        'approved_by',
+        'date_approbation'
     ];
 
     /**
@@ -50,6 +109,19 @@ class ESBTPDepense extends Model
         'montant' => 'decimal:2',
         'date_depense' => 'date',
         'date_validation' => 'datetime',
+        'workflow_data' => 'json', // Nouvelle colonne JSON
+        'date_approbation' => 'datetime', // Nouvelle colonne
+    ];
+
+    /**
+     * Les attributs qui doivent être chiffrés pour la sécurité
+     *
+     * @var array
+     */
+    protected $encrypted = [
+        // Ces champs peuvent être chiffrés si nécessaire
+        // 'numero_transaction',
+        // 'notes_internes', // Notes sensibles
     ];
 
     /**
@@ -121,7 +193,7 @@ class ESBTPDepense extends Model
         } elseif ($dateFin) {
             return $query->where('date_depense', '<=', $dateFin);
         }
-        
+
         return $query;
     }
 
@@ -137,7 +209,7 @@ class ESBTPDepense extends Model
         if ($categorieId) {
             return $query->where('categorie_id', $categorieId);
         }
-        
+
         return $query;
     }
 

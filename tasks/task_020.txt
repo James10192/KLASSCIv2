@@ -1,0 +1,37 @@
+# Task ID: 20
+# Title: Verify Complete Database Migrations for All Models
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Ensure that all database models have complete and properly implemented migrations to maintain data integrity and schema consistency.
+# Details:
+This task involves a comprehensive audit of all database models and their corresponding migration files to ensure proper database schema management. The developer should:
+
+1. Create an inventory of all models in the application
+2. For each model, verify that migration files exist for all fields and relationships
+3. Check for any missing migrations by comparing model definitions with the current database schema
+4. Ensure that migrations handle data type changes, new fields, removed fields, and relationship modifications
+5. Verify that migrations include appropriate default values or data transformation logic for existing records
+6. Check that migration files are in the correct chronological order
+7. Look for any potential migration conflicts or dependencies that might cause issues
+8. Document any models with incomplete or missing migrations
+9. Create any missing migration files using the appropriate migration generation commands
+10. Test migrations in a development environment before applying to production
+
+Special attention should be given to models that have been recently modified or that contain complex relationships. The developer should also ensure that any custom migration logic is properly implemented and tested.
+
+# Test Strategy:
+Testing should follow these steps to ensure complete verification:
+
+1. Create a fresh database instance from scratch and run all migrations to verify they execute without errors
+2. Compare the resulting database schema with the expected schema based on model definitions using schema inspection tools
+3. Create a test that programmatically compares each model's fields with the corresponding database table columns
+4. Perform a reverse migration (rollback) test to ensure migrations can be reversed without data loss
+5. Test migration on a copy of production data to ensure data integrity is maintained
+6. Verify foreign key constraints and indexes are properly created
+7. Create automated tests that validate the schema matches the expected state after migrations
+8. Test edge cases such as nullable fields, default values, and unique constraints
+9. Document any discrepancies found between models and their database representations
+10. Prepare a migration status report showing the state of each model's migrations
+
+The task is considered complete when all models have corresponding migrations that correctly represent their structure in the database schema, and all tests pass successfully.

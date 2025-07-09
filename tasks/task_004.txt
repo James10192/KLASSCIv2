@@ -1,0 +1,31 @@
+# Task ID: 4
+# Title: Implement Teacher Attendance Marking
+# Status: done
+# Dependencies: 2
+# Priority: high
+# Description: Create the interface and logic for teachers to mark attendance using codes
+# Details:
+Develop the /esbtp/attendance/mark route and view with form for code entry. Implement validation logic with clear error messages. Capture IP address and device info for security validation. Limit attempts to 3 per code as specified. Record successful attendance in esbtp_enseignant_presence table.
+
+# Test Strategy:
+Test code validation logic, attempt limiting, and proper error messages. Verify attendance records are created correctly. Test with various devices and network conditions.
+
+# Subtasks:
+## 1. Create attendance marking form and route [done]
+### Dependencies: None
+### Description: Implement the basic form interface and route for teachers to enter attendance codes
+### Details:
+Create the /esbtp/attendance/mark route and corresponding controller method. Design a simple form with a field for code entry, submit button, and basic layout. Include CSRF protection and form validation. The view should be responsive and follow the application's design patterns. Add appropriate route middleware for authentication to ensure only teachers can access this page.
+
+## 2. Implement code validation logic with security features [done]
+### Dependencies: 4.1
+### Description: Add server-side validation for attendance codes with security tracking
+### Details:
+Enhance the controller to validate submitted codes against the database. Capture and store the user's IP address and device information (user agent) with each submission attempt. Implement the 3-attempt limit per code as specified, with a lockout mechanism after 3 failed attempts. Create clear, user-friendly error messages for invalid codes, exceeded attempts, and other error conditions. Log all validation attempts for security auditing.
+
+## 3. Complete attendance recording functionality [done]
+### Dependencies: 4.2
+### Description: Finalize the attendance marking process with database recording
+### Details:
+Implement the final step of recording successful attendance in the esbtp_enseignant_presence table. Create the necessary database operations to mark attendance with timestamps. Include the captured security information (IP, device) in the attendance record. Add success feedback to the user interface after successful attendance marking. Implement any necessary cleanup of temporary data or session information after successful recording. Add comprehensive error handling for database operations.
+

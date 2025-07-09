@@ -5,10 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use OwenIt\Auditing\Contracts\Auditable;
+use OwenIt\Auditing\Auditable as AuditableTrait;
 
-class ESBTPPaiement extends Model
+class ESBTPPaiement extends Model implements Auditable
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, AuditableTrait;
 
     /**
      * La table associée au modèle.
@@ -16,6 +18,53 @@ class ESBTPPaiement extends Model
      * @var string
      */
     protected $table = 'esbtp_paiements';
+
+    /**
+     * Configuration de l'audit pour la sécurité financière
+     *
+     * @var array
+     */
+    protected $auditInclude = [
+        'montant',
+        'reference_paiement',
+        'mode_paiement',
+        'numero_transaction',
+        'date_paiement',
+        'statut',
+        'validateur_id',
+        'date_validation',
+        'numero_recu',
+        'reference_externe',
+        'metadata',
+        'relance_id'
+    ];
+
+    /**
+     * Exclure les champs sensibles de l'audit (seront chiffrés séparément)
+     *
+     * @var array
+     */
+    protected $auditExclude = [];
+
+    /**
+     * Activer les timestamps dans l'audit
+     *
+     * @var bool
+     */
+    protected $auditTimestamps = true;
+
+    /**
+     * Events à auditer pour la sécurité
+     *
+     * @var array
+     */
+    protected $auditEvents = [
+        'created',
+        'updated',
+        'deleted',
+        'restored',
+        'retrieved', // Important pour tracer l'accès aux données financières
+    ];
 
     /**
      * Les attributs qui sont assignables en masse.
@@ -44,7 +93,11 @@ class ESBTPPaiement extends Model
         'commentaire',
         'status', // En attente, validé, rejeté, etc.
         'created_by',
-        'updated_by'
+        'updated_by',
+        // Nouvelles colonnes ajoutées en Task #1
+        'reference_externe',
+        'metadata',
+        'relance_id'
     ];
 
     /**
@@ -57,6 +110,18 @@ class ESBTPPaiement extends Model
         'date_paiement' => 'date',
         'date_echeance' => 'date',
         'date_validation' => 'datetime',
+        'metadata' => 'json', // Ajouté pour la nouvelle colonne JSON
+    ];
+
+    /**
+     * Les attributs qui doivent être chiffrés pour la sécurité
+     *
+     * @var array
+     */
+    protected $encrypted = [
+        // Ces champs seront chiffrés pour la sécurité des données financières
+        // 'numero_transaction', // Peut être activé si nécessaire
+        // 'reference_paiement', // Peut être activé si nécessaire
     ];
 
     /**
@@ -184,11 +249,11 @@ class ESBTPPaiement extends Model
     public function scopeAnneeEnCours($query)
     {
         $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
-        
+
         if (!$anneeEnCours) {
             return $query->whereRaw('1=0'); // Retourne une requête vide si aucune année en cours
         }
-        
+
         return $query->whereHas('inscription', function ($q) use ($anneeEnCours) {
             $q->where('annee_universitaire_id', $anneeEnCours->id);
         });
@@ -196,7 +261,7 @@ class ESBTPPaiement extends Model
 
     /**
      * Accesseur pour obtenir le statut formaté pour l'affichage.
-     * 
+     *
      * @return string
      */
     public function getStatusFormatteAttribute()
@@ -215,7 +280,7 @@ class ESBTPPaiement extends Model
 
     /**
      * Accesseur pour obtenir la classe CSS selon le statut.
-     * 
+     *
      * @return string
      */
     public function getStatusClassAttribute()
@@ -243,22 +308,22 @@ class ESBTPPaiement extends Model
         // Récupérer l'année universitaire en cours
         $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
         $anneeCode = $anneeEnCours ? substr($anneeEnCours->code, 2, 2) : date('y');
-        
+
         // Récupérer le dernier numéro de reçu pour ce préfixe et cette année
         $lastRecu = self::where('numero_recu', 'like', "{$prefix}{$anneeCode}-%")
                         ->orderByRaw('CAST(SUBSTRING_INDEX(numero_recu, "-", -1) AS UNSIGNED) DESC')
                         ->first();
-        
+
         $seq = 1;
         if ($lastRecu) {
             $parts = explode('-', $lastRecu->numero_recu);
             $lastSeq = intval(end($parts));
             $seq = $lastSeq + 1;
         }
-        
+
         // Formater le numéro séquentiel sur 5 chiffres
         $seqFormatted = str_pad($seq, 5, '0', STR_PAD_LEFT);
-        
+
         return "{$prefix}{$anneeCode}-{$seqFormatted}";
     }
-} 
+}

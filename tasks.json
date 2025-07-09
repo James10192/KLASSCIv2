@@ -1,0 +1,74 @@
+{
+    "version": "1.0.0",
+    "tasks": {
+        "done": [
+            {
+                "id": "1",
+                "title": "Correction du namespace ESBTPEmploiTempsController",
+                "description": "Correction du namespace du contrôleur pour résoudre l'erreur de route",
+                "completed_at": "2024-03-20"
+            },
+            {
+                "id": "2",
+                "title": "Intégration des enseignants dans les séances de cours",
+                "description": "Ajout de la sélection d'enseignants lors de la création de séances de cours",
+                "completed_at": "2024-03-20"
+            },
+            {
+                "id": "3",
+                "title": "Correction de l'affichage des noms d'enseignants",
+                "description": "Modification du modèle ESBTPTeacher pour utiliser les noms des utilisateurs",
+                "completed_at": "2024-03-20"
+            }
+        ],
+        "in_progress": [
+            {
+                "id": "4",
+                "title": "Amélioration de l'interface des séances de cours",
+                "description": "Ajout de fonctionnalités d'interface utilisateur pour la gestion des séances",
+                "started_at": "2024-03-20"
+            }
+        ],
+        "pending": [
+            {
+                "id": "5",
+                "title": "Validation des conflits d'horaires",
+                "description": "Implémentation de la validation pour éviter les conflits d'horaires entre séances"
+            },
+            {
+                "id": "6",
+                "title": "Gestion des remplacements d'enseignants",
+                "description": "Ajout de la fonctionnalité de remplacement d'enseignants pour les séances"
+            }
+        ]
+    },
+    "completed": [
+        {
+            "id": "teacher_management_system",
+            "title": "Teacher Management System Implementation",
+            "description": "Implemented comprehensive teacher management system with proper database structure, relationships, and features",
+            "completed_at": "2024-03-26",
+            "details": {
+                "database_changes": [
+                    "Updated teachers table structure",
+                    "Added proper relationships with users table",
+                    "Implemented JSON fields for flexible data storage"
+                ],
+                "features_added": [
+                    "Teacher profile management",
+                    "Academic information tracking",
+                    "Research interests and specialties",
+                    "Teaching load management"
+                ],
+                "files_modified": [
+                    "app/Models/ESBTPTeacher.php",
+                    "app/Http/Controllers/ESBTPEnseignantController.php",
+                    "resources/views/esbtp/enseignants/create.blade.php",
+                    "PROJECT_MEMORY.md"
+                ]
+            }
+        }
+    ],
+    "in_progress": [],
+    "pending": []
+}

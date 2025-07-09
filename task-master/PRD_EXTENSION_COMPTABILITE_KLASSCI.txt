@@ -1,0 +1,332 @@
+<context>
+# Overview
+L'ESBTP-yAKROv2Pascal est un système de gestion scolaire Laravel fonctionnel avec un module comptabilité de base existant comprenant :
+- **ESBTPComptabiliteController** centralisé avec fonctionnalités paiements, frais-scolarité, bourses, salaires, fournisseurs, factures et rapports
+- **Routes protégées** sous préfixe `esbtp/comptabilite` avec permission `access_comptabilite_module`
+- **Interface utilisateur** intégrée dans la sidebar "Gestion financière" avec design NextAdmin
+- **Permissions granulaires** déjà configurées pour superAdmin et secrétaire
+
+Ce PRD définit l'**extension et la modernisation** de ce module selon les standards KLASSCI pour créer un système comptable avancé avec dashboard temps réel, workflow d'approbation, relances automatisées et reporting avancé. Le système résoudra les problèmes de gestion manuelle, de manque de visibilité financière et d'efficacité opérationnelle tout en préservant l'architecture Laravel existante.
+
+# Core Features
+## 1. Dashboard Performance Temps Réel
+- KPIs financiers dynamiques (recettes, dépenses, taux de recouvrement, projections)
+- Graphiques interactifs avec Chart.js (évolution mensuelle, répartition par filière)
+- Alertes automatiques pour seuils critiques et échéances
+- Actualisation temps réel via WebSocket (optionnel) ou AJAX
+
+## 2. Système de Relances Automatisées
+- Relances multi-canal (Email/SMS/Courrier) avec templates personnalisables
+- Workflow de relance à plusieurs niveaux (1er rappel, 2ème rappel, relance urgente)
+- Planification et envoi automatiques via Jobs/Queues Laravel
+- Suivi des réponses et efficacité des campagnes
+
+## 3. Workflow Bons de Sortie Numérisés
+- Création de bons de sortie avec prévisualisation temps réel
+- Workflow d'approbation multi-niveaux (demandeur → validateur → approbateur)
+- Génération PDF automatique avec QR codes de traçabilité
+- Historique complet des actions et commentaires
+
+## 4. Reporting et Analytics Avancés
+- Générateur de rapports personnalisables avec interface drag-and-drop
+- Exports multi-formats (PDF/Excel/CSV) avec mise en forme automatique
+- Analyses prédictives basées sur l'historique (projections de cash-flow)
+- Rapports programmés et distribution automatique par email
+
+# User Experience
+## User Personas
+**Comptable Principal**: Gestion quotidienne, validation paiements, rapports de base
+**Directeur Financier**: Vue d'ensemble, approbations, analyses stratégiques
+**Secrétaire Administrative**: Saisie paiements, relances, suivi échéanciers
+**Directeur Général**: Dashboard exécutif, KPIs, rapports de performance
+
+## Key User Flows
+### Processus Paiement Étudiant
+1. Étudiant effectue paiement → 2. Notification automatique → 3. Validation comptable → 4. Mise à jour KPIs → 5. Génération reçu PDF
+
+### Workflow Bon de Sortie
+1. Demande création bon → 2. Prévisualisation → 3. Soumission approbation → 4. Validation hiérarchique → 5. Génération PDF final → 6. Archivage numérique
+
+### Campagne Relances
+1. Identification créances → 2. Segmentation automatique → 3. Génération messages personnalisés → 4. Envoi planifié → 5. Suivi retours → 6. Escalade niveau supérieur
+
+## UI/UX Considerations
+- Interface responsive Bootstrap 5 cohérente avec l'existant
+- Composants Blade réutilisables pour KPIs et graphiques
+- Validation côté client avec feedback instantané
+- Mode sombre/clair selon préférences utilisateur
+- Navigation intuitive avec breadcrumbs et raccourcis clavier
+</context>
+<PRD>
+# Technical Architecture
+## System Components
+### Backend Laravel Extensions
+```
+app/Services/
+├── ComptabiliteService.php     // Calculs KPIs + règles métier
+├── NotificationService.php     // Relances multi-canal
+├── PDFService.php             // Génération documents
+├── ReportingService.php       // Rapports personnalisés
+└── WorkflowService.php        // Gestion approbations
+
+app/Jobs/
+├── EnvoyerRelanceJob.php      // Relances asynchrones
+├── CalculerKPIsJob.php        // Calculs périodiques
+├── GenererRapportJob.php      // Rapports lourds
+└── SauvegardeDataJob.php      // Backup automatique
+
+app/Events/
+├── PaiementRecu.php           // Déclencheur KPIs
+├── BonApprouve.php            // Notification workflow
+└── SeuilAtteint.php           // Alertes automatiques
+```
+
+### Frontend Assets
+```
+public/js/
+├── comptabilite-dashboard.js   // Dashboard interactif
+├── bon-sortie-preview.js      // Prévisualisation temps réel
+├── rapport-builder.js         // Générateur rapports
+└── notifications-manager.js   // Gestion alertes
+
+public/css/
+├── comptabilite-components.css // Styles spécifiques
+└── dashboard-charts.css       // Graphiques Chart.js
+```
+
+## Data Models Extensions
+### Nouvelles Tables
+```sql
+-- Configuration flexible types de frais
+esbtp_types_frais (nom, periodicite, conditions_json, montant_fixe, est_obligatoire)
+
+-- Système relances multi-niveau
+esbtp_relances (etudiant_id, niveau, type, template_id, statut, response_data_json)
+
+-- KPIs historiques pour tendances
+esbtp_kpis (nom, valeur, periode, date_calcul, metadata_json)
+
+-- Workflow bons de sortie
+esbtp_workflow_steps (bon_id, etape, statut, user_id, commentaires, timestamp)
+```
+
+### Extensions Tables Existantes
+```sql
+-- esbtp_depenses: workflow + traçabilité
++ numero_bon UNIQUE, statut_workflow, workflow_data_json, approved_by, date_approbation
+
+-- esbtp_paiements: relances + métadonnées
++ reference_externe, metadata_json, relance_id, canal_paiement
+
+-- esbtp_configurations: paramètres avancés
++ seuils_alertes_json, templates_relances_json, config_workflow_json
+```
+
+## APIs and Integrations
+### Internal APIs
+- `/api/kpis-temps-reel` - Dashboard data streaming
+- `/api/workflow/{bon_id}/approve` - Approbations asynchrones
+- `/api/relances/planifier` - Déclenchement campagnes
+- `/api/rapports/generer` - Génération rapports on-demand
+
+### External Integrations
+- **Email Service**: Laravel Mail + Mailtrap/SendGrid pour relances
+- **SMS Gateway**: Nexmo/Twilio pour notifications urgentes
+- **Payment Gateways**: Stripe/PayPal pour paiements en ligne (futur)
+- **Backup Storage**: AWS S3/Google Cloud pour archivage documents
+
+## Infrastructure Requirements
+### Performance
+- **Redis Cache**: Mise en cache KPIs et rapports fréquents
+- **Queue System**: Laravel Horizon pour jobs asynchrones
+- **Database Indexing**: Index composites sur colonnes de filtrage
+- **File Storage**: Stockage optimisé PDFs avec compression
+
+### Security
+- **Permissions Granulaires**: Spatie Laravel-Permission étendues
+- **Audit Trail**: Laravel Auditing pour traçabilité complète
+- **Data Encryption**: Chiffrement données sensibles (montants, coordonnées)
+- **Rate Limiting**: Protection API contre spam/abus
+
+# Development Roadmap
+## Phase 1: Infrastructure Foundation (Semaines 1-2)
+### MVP Backend Services
+- **ComptabiliteService**: Calculs KPIs de base + méthodes statistiques
+- **NotificationService**: Infrastructure email + templates de base
+- **Migrations**: Nouvelles tables + extensions existantes
+- **Models Extensions**: Relations + validations + scopes
+
+### MVP Frontend Components
+- **Dashboard basique**: 4 KPIs principaux + 2 graphiques Chart.js
+- **Interface relances**: Liste + formulaire envoi manuel
+- **Composants Blade**: Card KPI + graphique évolution réutilisables
+
+### Configuration & Tests
+- **Seeders**: Données de test + utilisateurs types
+- **Tests Feature**: CRUD operations + calculs de base
+- **Documentation**: Installation + configuration de base
+
+## Phase 2: Dashboard & Analytics (Semaines 3-4)
+### Dashboard Temps Réel
+- **KPIs Avancés**: 12 indicateurs + calculs prédictifs
+- **Graphiques Interactifs**: 6 types de charts + drill-down
+- **Alertes Système**: Notifications push + email automatiques
+- **Actualisation Auto**: AJAX polling + optimisation performance
+
+### Système Reporting
+- **Builder Interface**: Sélection champs + filtres + groupement
+- **Templates Prédéfinis**: 8 rapports standards configés
+- **Exports Multi-formats**: PDF mise en forme + Excel avec formules
+- **Programmation**: Envoi automatique + distribution lists
+
+## Phase 3: Workflow & Automation (Semaines 5-6)
+### Bons de Sortie Numériques
+- **Interface Création**: Formulaire dynamique + prévisualisation live
+- **Workflow Engine**: Multi-niveaux + notifications + historique
+- **PDF Generation**: Templates personnalisables + QR codes + signatures
+- **Approbations Mobiles**: Interface responsive + notifications push
+
+### Relances Automatisées
+- **Intelligence Segmentation**: Critères multiples + scoring automatique
+- **Templates Dynamiques**: Variables personnalisées + logique conditionnelle
+- **Multi-canal Orchestration**: Email + SMS + courrier coordonnés
+- **Suivi Performance**: Taux ouverture + conversion + ROI campagnes
+
+## Phase 4: Advanced Features & Optimization (Semaines 7-8)
+### Analytics Prédictifs
+- **Projections Cash-flow**: Algorithmes basés historique + saisonnalité
+- **Détection Anomalies**: Alertes automatiques écarts + tendances
+- **Recommandations**: IA suggestions optimisation + actions correctives
+- **Benchmarking**: Comparaisons inter-périodes + objectifs
+
+### Optimisation Performance
+- **Caching Strategy**: Redis multi-layers + invalidation intelligente
+- **Database Tuning**: Index optimaux + requêtes optimisées
+- **Frontend Optimization**: Lazy loading + compression assets
+- **Monitoring**: Logs structurés + métriques performance + alertes
+
+# Logical Dependency Chain
+## Foundation First (Weeks 1-2)
+**Database & Models** → **Basic Services** → **Core Controllers** → **Essential Views**
+- Les migrations et models doivent être créés en premier car tout le reste en dépend
+- Les services de base (ComptabiliteService) avant les controllers pour la logique métier
+- Controllers étendus ensuite pour exposer les nouvelles fonctionnalités
+- Vues de base pour valider le fonctionnement end-to-end
+
+## Visible Progress Quick (Weeks 3-4)
+**Dashboard MVP** → **KPIs Basic** → **Charts Integration** → **Real-time Updates**
+- Dashboard visible dès la semaine 3 pour feedback utilisateurs précoce
+- KPIs de base d'abord, puis enrichissement progressif
+- Charts.js intégration pour visualisation immédiate
+- Temps réel en dernier car nécessite infrastructure stable
+
+## Building on Success (Weeks 5-6)
+**Workflow Foundation** → **PDF Generation** → **Approval System** → **Notifications**
+- Workflow de base avant les bons de sortie spécifiques
+- PDF generation réutilisable pour tous les documents
+- Système d'approbation générique extensible
+- Notifications intégrées après validation du workflow
+
+## Advanced Features (Weeks 7-8)
+**Reporting Builder** → **Advanced Analytics** → **Automation** → **Performance Optimization**
+- Builder de rapports après stabilisation des données
+- Analytics avancés quand les données de base sont fiables
+- Automation en fin pour capitaliser sur toutes les fonctionnalités
+- Optimisation performance quand le scope fonctionnel est figé
+
+# Risks and Mitigations
+## Technical Challenges
+### Performance avec Large Dataset
+**Risque**: Lenteur dashboard avec historique important (>100k transactions)
+**Mitigation**:
+- Pagination intelligente + cache Redis pour KPIs fréquents
+- Index database optimisés + requêtes SQL optimisées
+- Calculs asynchrones avec mise à jour différée acceptable
+
+### Complexité Workflow Multi-niveaux
+**Risque**: Logique approbation complexe difficile à maintenir
+**Mitigation**:
+- Pattern State Machine avec transitions claires documentées
+- Tests automatisés exhaustifs pour tous les cas d'usage
+- Interface admin pour configuration workflow sans code
+
+## MVP Definition & Scope
+### Fonctionnalités Critiques MVP
+**Must-Have**: Dashboard KPIs + Relances email + Bons PDF basiques + Rapports standards
+**Should-Have**: Workflow approbation + Notifications + Exports Excel + Cache Redis
+**Could-Have**: SMS relances + Analytics prédictifs + API externes + Mobile responsive
+**Won't-Have V1**: Intelligence artificielle + Intégrations comptabilité externe + Multi-langues
+
+### Critères Succès MVP
+- **Performance**: Dashboard < 2s, Génération PDF < 5s, Exports < 10s
+- **Usabilité**: 90% tâches réalisables sans formation, interface intuitive
+- **Fiabilité**: 99.9% uptime, 0 perte de données, backups quotidiens
+- **Adoption**: 80% utilisateurs actifs après 1 mois, satisfaction >4/5
+
+## Resource Constraints
+### Équipe & Expertise
+**Contrainte**: Développeur unique full-stack
+**Mitigation**:
+- Priorisation features critiques + itérations courtes validées
+- Réutilisation maximum frameworks existants (Laravel + Bootstrap)
+- Documentation exhaustive + tests automatisés pour maintenance
+
+### Infrastructure & Budget
+**Contrainte**: Serveur unique, budget hosting limité
+**Mitigation**:
+- Architecture optimisée ressources + monitoring consommation
+- Cache intelligent + optimisation requêtes pour réduire charge
+- Solution backup externe économique (Google Drive API)
+
+# Appendix
+## Research Findings
+### Analyse Systèmes Concurrents
+**School Management Systems analysés**: LAVSMS, Fedena, MySchool, OpenSIS
+**Points communs**: Dashboard KPIs, gestion paiements, rapports PDF, notifications email
+**Différenciateurs KLASSCI**: Workflow approbation numérique, relances multi-canal intelligentes, analytics prédictifs
+
+### Technologies Retenues
+**Backend**: Laravel 10 + PHP 8.1 + MySQL 8.0 + Redis 7.0
+**Frontend**: Blade + Bootstrap 5 + Chart.js 4.0 + jQuery 3.6
+**Queue System**: Laravel Horizon + Redis
+**PDF**: DomPDF + Template personnalisables
+**Email**: Laravel Mail + Mailtrap dev / SendGrid prod
+
+## Technical Specifications
+### Performance Targets
+- **Page Load**: Dashboard < 2s, Reports < 5s, PDF generation < 10s
+- **Concurrent Users**: Support 50 utilisateurs simultanés
+- **Database**: Optimisation pour 1M+ transactions, backup quotidien
+- **Storage**: 10GB documents PDF, compression automatique
+
+### Security Requirements
+- **Authentication**: Laravel Sanctum + 2FA optionnel
+- **Authorization**: Spatie Permissions + rôles granulaires
+- **Data Protection**: Chiffrement AES-256 données sensibles
+- **Audit Trail**: Log toutes actions CRUD + export compliance
+
+### Integration Standards
+- **API REST**: JSON responses + pagination + rate limiting
+- **Webhooks**: Notifications événements critiques externe
+- **File Formats**: PDF/A conformité archivage + Excel XLSX natif
+- **Email Templates**: HTML responsive + text fallback + tracking
+
+## Migration Strategy
+### Data Migration Plan
+1. **Backup complet** base existante + test restauration
+2. **Migration incrémentale** nouvelles tables + extensions
+3. **Script conversion** données existantes vers nouveau format
+4. **Validation données** intégrité + cohérence + performance
+5. **Rollback plan** procédure retour arrière si problème
+
+### User Training Requirements
+- **Administrateurs**: 4h formation complète + documentation
+- **Comptables**: 2h formation workflow + relances + rapports
+- **Utilisateurs**: 1h présentation + guide utilisateur illustré
+- **Support**: Hotline + FAQ + vidéos tutoriel + assistance remote
+
+### Deployment Strategy
+- **Staging Environment**: Tests complets + validation utilisateurs
+- **Blue-Green Deployment**: Zéro downtime + rollback immédiat
+- **Feature Flags**: Activation progressive fonctionnalités
+- **Monitoring**: Logs + métriques + alertes + dashboard santé système

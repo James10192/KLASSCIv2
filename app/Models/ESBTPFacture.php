@@ -5,10 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use OwenIt\Auditing\Contracts\Auditable;
+use OwenIt\Auditing\Auditable as AuditableTrait;
 
-class ESBTPFacture extends Model
+class ESBTPFacture extends Model implements Auditable
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, AuditableTrait;
 
     /**
      * La table associée au modèle.
@@ -16,6 +18,57 @@ class ESBTPFacture extends Model
      * @var string
      */
     protected $table = 'esbtp_factures';
+
+    /**
+     * Configuration de l'audit pour la sécurité financière
+     *
+     * @var array
+     */
+    protected $auditInclude = [
+        'numero',
+        'montant_ht',
+        'montant_tva',
+        'montant_total',
+        'montant_paye',
+        'statut',
+        'validateur_id',
+        'date_validation',
+        'date_emission',
+        'date_echeance',
+        // Nouvelles colonnes workflow si ajoutées
+        'workflow_status',
+        'approved_by',
+        'approval_date'
+    ];
+
+    /**
+     * Exclure les champs sensibles de l'audit
+     *
+     * @var array
+     */
+    protected $auditExclude = [
+        'path_fichier', // Exclure les chemins de fichiers
+    ];
+
+    /**
+     * Activer les timestamps dans l'audit
+     *
+     * @var bool
+     */
+    protected $auditTimestamps = true;
+
+    /**
+     * Events à auditer pour la sécurité
+     *
+     * @var array
+     */
+    protected $auditEvents = [
+        'created',
+        'updated',
+        'deleted',
+        'restored',
+        'retrieved', // Important pour tracer l'accès aux données financières
+    ];
 
     /**
      * Les attributs qui sont assignables en masse.
@@ -37,6 +90,10 @@ class ESBTPFacture extends Model
         'validateur_id',
         'date_validation',
         'path_fichier',
+        // Nouvelles colonnes workflow potentielles
+        'workflow_status',
+        'approved_by',
+        'approval_date'
     ];
 
     /**
@@ -52,6 +109,17 @@ class ESBTPFacture extends Model
         'montant_tva' => 'decimal:2',
         'montant_total' => 'decimal:2',
         'montant_paye' => 'decimal:2',
+        'approval_date' => 'datetime', // Nouvelle colonne workflow
+    ];
+
+    /**
+     * Les attributs qui doivent être chiffrés pour la sécurité
+     *
+     * @var array
+     */
+    protected $encrypted = [
+        // Ces champs peuvent être chiffrés si nécessaire
+        // 'numero', // Numéro de facture sensible
     ];
 
     /**
