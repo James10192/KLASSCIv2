@@ -372,16 +372,16 @@
                         <i class="fas fa-exclamation-circle me-2"></i>
                         <strong>Erreur :</strong> Veuillez corriger les erreurs ci-dessous.
                         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                @endif
+                        </div>
+                    @endif
 
                 <!-- Form -->
                 <form action="{{ route('esbtp.niveaux-etudes.store') }}" method="POST" id="niveauForm" novalidate>
-                    @csrf
+                        @csrf
 
                     <div class="row">
                         <!-- Nom -->
-                        <div class="col-md-6">
+                            <div class="col-md-6">
                             <div class="form-group form-group-icon">
                                 <label for="name" class="form-label required">
                                     <i class="fas fa-graduation-cap me-1"></i>
@@ -395,15 +395,15 @@
                                        placeholder="Ex: BTS Première Année"
                                        required>
                                 <i class="fas fa-signature field-icon"></i>
-                                @error('name')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
+                                    @error('name')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 <div class="form-text">Le nom complet du niveau d'étude</div>
                             </div>
-                        </div>
+                            </div>
 
                         <!-- Code -->
-                        <div class="col-md-6">
+                            <div class="col-md-6">
                             <div class="form-group form-group-icon">
                                 <label for="code" class="form-label required">
                                     <i class="fas fa-code me-1"></i>
@@ -417,16 +417,16 @@
                                        placeholder="Ex: BTS1"
                                        required>
                                 <i class="fas fa-hashtag field-icon"></i>
-                                @error('code')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
+                                    @error('code')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 <div class="form-text">Code court pour identifier le niveau</div>
                             </div>
                         </div>
 
                         <!-- Type -->
-                        <div class="col-md-6">
-                            <div class="form-group">
+                            <div class="col-md-6">
+                                <div class="form-group">
                                 <label for="type" class="form-label">
                                     <i class="fas fa-tag me-1"></i>
                                     Type de formation
@@ -441,17 +441,17 @@
                                     <option value="Doctorat" {{ old('type') == 'Doctorat' ? 'selected' : '' }}>Doctorat</option>
                                     <option value="Diplôme" {{ old('type') == 'Diplôme' ? 'selected' : '' }}>Diplôme</option>
                                     <option value="Certificat" {{ old('type') == 'Certificat' ? 'selected' : '' }}>Certificat</option>
-                                </select>
+                                    </select>
                                 @error('type')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 <div class="form-text">Type de formation ou de diplôme</div>
                             </div>
-                        </div>
+                            </div>
 
                         <!-- Année -->
-                        <div class="col-md-6">
-                            <div class="form-group">
+                            <div class="col-md-6">
+                                <div class="form-group">
                                 <label for="year" class="form-label">
                                     <i class="fas fa-calendar-alt me-1"></i>
                                     Année d'étude
@@ -467,8 +467,8 @@
                                     <option value="5" {{ old('year') == '5' ? 'selected' : '' }}>5ème année</option>
                                 </select>
                                 @error('year')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 <div class="form-text">Année du cursus d'étude</div>
                             </div>
                         </div>
@@ -488,15 +488,15 @@
                                        placeholder="Ex: Brevet de Technicien Supérieur - Première Année">
                                 <i class="fas fa-text-width field-icon"></i>
                                 @error('libelle')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 <div class="form-text">Libellé détaillé du niveau d'étude (optionnel)</div>
                             </div>
                         </div>
 
                         <!-- Description -->
                         <div class="col-12">
-                            <div class="form-group">
+                                <div class="form-group">
                                 <label for="description" class="form-label">
                                     <i class="fas fa-file-alt me-1"></i>
                                     Description
@@ -507,15 +507,15 @@
                                           rows="4"
                                           placeholder="Description détaillée du niveau d'étude...">{{ old('description') }}</textarea>
                                 @error('description')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 <div class="form-text">Description détaillée du niveau d'étude (optionnel)</div>
                             </div>
-                        </div>
+                            </div>
 
                         <!-- Statut -->
                         <div class="col-12">
-                            <div class="form-group">
+                                <div class="form-group">
                                 <div class="form-check">
                                     <input class="form-check-input"
                                            type="checkbox"
@@ -529,9 +529,9 @@
                                     </label>
                                 </div>
                                 <div class="form-text">Décochez pour désactiver temporairement ce niveau</div>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
                     <!-- Preview Card -->
                     <div class="card-preview" id="previewCard" style="display: none;">
@@ -565,8 +565,8 @@
                             <i class="fas fa-save me-2"></i>
                             Créer le niveau
                         </button>
-                    </div>
-                </form>
+                        </div>
+                    </form>
             </div>
         </div>
     </div>
@@ -580,7 +580,7 @@
 
 @section('scripts')
 <script>
-$(document).ready(function() {
+    $(document).ready(function() {
     // Animation d'entrée pour le formulaire
     $('.form-container').css('opacity', '0').css('transform', 'translateY(30px)');
     setTimeout(() => {
@@ -679,7 +679,7 @@ $(document).ready(function() {
 
     // Auto-focus sur le premier champ
     $('#name').focus();
-});
+    });
 </script>
 
 <!-- SweetAlert2 pour les notifications -->

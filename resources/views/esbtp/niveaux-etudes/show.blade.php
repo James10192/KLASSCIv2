@@ -342,15 +342,15 @@
                     <div class="mt-3">
                         <strong class="text-muted">Libellé</strong>
                         <div class="h6">{{ $niveauxEtude->libelle }}</div>
-                    </div>
-                @endif
+                        </div>
+                    @endif
 
                 @if($niveauxEtude->description)
                     <div class="mt-3">
                         <strong class="text-muted">Description</strong>
                         <p class="text-muted mb-0">{{ $niveauxEtude->description }}</p>
-                    </div>
-                @endif
+                                </div>
+                                                    @endif
             </div>
         </div>
 
@@ -362,7 +362,7 @@
                         <i class="fas fa-chart-pie me-2"></i>
                         Statistiques Détaillées
                     </h5>
-                </div>
+                                </div>
 
                 <div class="row text-center">
                     <div class="col-4 mb-3">
@@ -372,16 +372,16 @@
                             </div>
                         </div>
                         <small class="text-muted">Filières</small>
-                    </div>
+                        </div>
 
                     <div class="col-4 mb-3">
                         <div class="progress-circle mx-auto mb-2" style="background: conic-gradient(from 0deg, #43e97b 0deg, #38f9d7 {{ ($niveauxEtude->matieres->count() / max($niveauxEtude->matieres->count(), 1)) * 360 }}deg, #f8f9fa {{ ($niveauxEtude->matieres->count() / max($niveauxEtude->matieres->count(), 1)) * 360 }}deg);">
                             <div class="bg-white rounded-circle d-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
                                 <span class="text-dark fw-bold">{{ $niveauxEtude->matieres->count() }}</span>
-                            </div>
-                        </div>
+                                </div>
+                                        </div>
                         <small class="text-muted">Matières</small>
-                    </div>
+                                </div>
 
                     <div class="col-4 mb-3">
                         <div class="progress-circle mx-auto mb-2" style="background: conic-gradient(from 0deg, #fa709a 0deg, #fee140 {{ ($niveauxEtude->classes->count() / max($niveauxEtude->classes->count(), 1)) * 360 }}deg, #f8f9fa {{ ($niveauxEtude->classes->count() / max($niveauxEtude->classes->count(), 1)) * 360 }}deg);">
@@ -390,8 +390,8 @@
                             </div>
                         </div>
                         <small class="text-muted">Classes</small>
+                        </div>
                     </div>
-                </div>
 
                 <div class="text-center mt-3">
                     <div class="row">
@@ -400,8 +400,8 @@
                                 <i class="fas fa-calendar-alt fa-2x mb-2"></i>
                                 <div class="h6 mb-0">Créé le</div>
                                 <small class="text-muted">{{ $niveauxEtude->created_at->format('d/m/Y') }}</small>
-                            </div>
-                        </div>
+                                </div>
+                                        </div>
                         <div class="col-6">
                             <div class="text-success">
                                 <i class="fas fa-edit fa-2x mb-2"></i>
@@ -426,7 +426,7 @@
                             <i class="fas fa-stream me-2"></i>
                             Filières Associées
                         </h5>
-                    </div>
+                            </div>
 
                     <div class="list-group list-group-flush">
                         @foreach($niveauxEtude->filieres->take(5) as $filiere)
@@ -437,16 +437,16 @@
                                 </div>
                                 <span class="badge bg-primary rounded-pill">{{ $filiere->id }}</span>
                             </div>
-                        @endforeach
+                                                    @endforeach
 
                         @if($niveauxEtude->filieres->count() > 5)
                             <div class="text-center mt-2">
                                 <small class="text-muted">et {{ $niveauxEtude->filieres->count() - 5 }} autres...</small>
+                                        </div>
+                                    @endif
+                                </div>
                             </div>
-                        @endif
-                    </div>
-                </div>
-            </div>
+                        </div>
         @endif
 
         <!-- Matières enseignées -->
@@ -458,7 +458,7 @@
                             <i class="fas fa-book me-2"></i>
                             Matières Enseignées
                         </h5>
-                    </div>
+                                </div>
 
                     <div class="list-group list-group-flush">
                         @foreach($niveauxEtude->matieres->take(5) as $matiere)
@@ -469,16 +469,16 @@
                                 </div>
                                 <span class="badge bg-success rounded-pill">{{ $matiere->coefficient ?? 1 }}</span>
                             </div>
-                        @endforeach
+                                                    @endforeach
 
                         @if($niveauxEtude->matieres->count() > 5)
                             <div class="text-center mt-2">
                                 <small class="text-muted">et {{ $niveauxEtude->matieres->count() - 5 }} autres...</small>
+                                        </div>
+                                    @endif
+                                </div>
                             </div>
-                        @endif
-                    </div>
-                </div>
-            </div>
+                        </div>
         @endif
 
         <!-- Classes ouvertes -->
@@ -500,7 +500,7 @@
                                     <br><small class="text-muted">{{ $classe->code ?? 'Code non défini' }}</small>
                                 </div>
                                 <span class="badge bg-warning rounded-pill">{{ $classe->etudiants->count() ?? 0 }}</span>
-                            </div>
+                </div>
                         @endforeach
 
                         @if($niveauxEtude->classes->count() > 5)
@@ -522,7 +522,7 @@
             <p class="text-muted">Ce niveau d'étude n'a pas encore de filières, matières ou classes associées.</p>
         </div>
     @endif
-</div>
+    </div>
 
 <!-- Floating Action Buttons -->
 <div class="action-buttons">
