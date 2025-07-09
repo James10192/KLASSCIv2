@@ -2,25 +2,28 @@
 
 namespace App\Events;
 
-use App\Models\ESBTPPaiement;
+use App\Models\ESBTPBonSortie;
+use App\Models\User;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 
-class PaiementRecu implements ShouldBroadcast
+class BonApprouve implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public $paiement;
+    public $bonSortie;
+    public $approbateur;
 
     /**
      * Create a new event instance.
      */
-    public function __construct(ESBTPPaiement $paiement)
+    public function __construct(ESBTPBonSortie $bonSortie, User $approbateur)
     {
-        $this->paiement = $paiement;
+        $this->bonSortie = $bonSortie;
+        $this->approbateur = $approbateur;
     }
 
     /**
@@ -36,7 +39,7 @@ class PaiementRecu implements ShouldBroadcast
      */
     public function broadcastAs()
     {
-        return 'paiement.recu';
+        return 'bon.approuve';
     }
 
     /**
@@ -45,11 +48,11 @@ class PaiementRecu implements ShouldBroadcast
     public function broadcastWith()
     {
         return [
-            'id' => $this->paiement->id,
-            'montant' => $this->paiement->montant,
-            'etudiant' => $this->paiement->etudiant->nom_complet ?? 'Inconnu',
-            'type_paiement' => $this->paiement->type_paiement,
-            'date_paiement' => $this->paiement->date_paiement?->toIso8601String(),
+            'bon_id' => $this->bonSortie->id,
+            'numero_bon' => $this->bonSortie->numero_bon,
+            'montant_total' => $this->bonSortie->montant_total,
+            'demandeur' => $this->bonSortie->demandeur->name ?? 'Inconnu',
+            'approbateur' => $this->approbateur->name,
             'timestamp' => now()->toIso8601String()
         ];
     }

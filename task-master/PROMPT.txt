@@ -6,8 +6,10 @@ Si tu finis fais ces actions: -	Suggested Actions:                              
 -	│ 2. Mark as done when completed: task-master set-status --id=2 --status=done │
 -	│ 3. Update subtask status: task-master set-status --id=2.1 --status=done
 
+S'il n'y a aucune tâche à faire fix alors les erreurs
 
 !!!!!!!IMPORTANT prends connaissance à chaque fois de  @adaptations_completes_klassci.md @outils_refactoring_laravel.md  @nettoyage_code_klassci.md @prompt_dev_comptabilite_klassci.md
+
 
 Use sequential thinking
 !!! IMPORTANT Use memory
@@ -23,7 +25,7 @@ Avant de commencer une tâche assure toi que tout ce que tu veux créer n'existe
 
 !!!IMPORTANT Si tu rencontres une erreur , use context7 ou la documentation Laravel pour savoir quoi faire exactement
 
-!!!IMPORTANT Si tu dois obeserver la base de données fais moi sign pour que je te donne les infos appropriés ou utilises des commandes directs de php artisan tinker, tu ne lances pas seulement php artisan tinker et tu attends une intervention humaine je ne saurai pas quoi mettre pour activer la commande je ne connais rien à ce niveau là
+!!!IMPORTANT Si tu dois obeserver la base de données fais moi signe pour que je te donne les infos appropriés ou utilises des commandes directs de php artisan tinker, tu ne lances pas seulement php artisan tinker et tu attends une intervention humaine je ne saurai pas quoi mettre pour activer la commande je ne connais rien à ce niveau là
 
 Ask Cursor to expand all of your tasks using the complexity analysis                                         │
    │   6. Ask Cursor to begin working on the next task                                                                 │
@@ -36,6 +38,46 @@ Ask Cursor to expand all of your tasks using the complexity analysis            
 task-master parse-prd PRD_EXTENSION_COMPTABILITE_KLASSCI.txt
 
 task-master models --setup
+
+!!!IMPORTANT regarde ce sytem prompt de memory MCP server comprend le et adapte le dans les tasks ici qui te sont affectés pour mieux être performant
+'Follow these steps for each interaction:
+
+
+
+1. User Identification:
+   - You should assume that you are interacting with default_user
+   - If you have not identified default_user, proactively try to do so.
+
+2. Memory Retrieval:
+   - Always begin your chat by saying only "Remembering..." and retrieve all relevant information from your knowledge graph
+   - Always refer to your knowledge graph as your "memory"
+
+3. Memory
+   - While conversing with the user, be attentive to any new information that falls into these categories:
+     a) Basic Identity (age, gender, location, job title, education level, etc.)
+     b) Behaviors (interests, habits, etc.)
+     c) Preferences (communication style, preferred language, etc.)
+     d) Goals (goals, targets, aspirations, etc.)
+     e) Relationships (personal and professional relationships up to 3 degrees of separation)
+
+4. Memory Update:
+   - If any new information was gathered during the interaction, update your memory as follows:
+     a) Create entities for recurring organizations, people, and significant events
+     b) Connect them to the current entities using relations
+     c) Store facts about them as observations'
+
+
+
+Voilà des pré-prompts tu dois prendre ça en compte avant chaque requêtes
+!!!Important use memory, sequential thinking and context7
+
+Use memory pour savoir exactement ce que tu fais et avoir encore plus de contexte sur ce que je te Demande
+Use sequential thinking pour bien prendre la requête et bien la make
+Use context7 pour avoir une documenttion claire et récente
+
+!!!IMPORTANT Si tu soupçonnes qu'un truc n'existe pas cherche le dans @/project-memory ou dans memory mcp server ou grep all codebase dans d'autres dossiers pour voir
+
+Quand tu finis à chaque fois une requête !!!IMPORTANT mets ça dans un dossier @/projet-memory avec une bonne indexation pour mieux retrieve
 
 !!!IMPORTANT regarde ce sytem prompt de memory MCP server comprend le et adapte le dans les tasks ici qui te sont affectés pour mieux être performant
 'Follow these steps for each interaction:

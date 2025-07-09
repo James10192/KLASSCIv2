@@ -12,61 +12,117 @@ use App\Models\ESBTPCategorieDepense;
 use App\Models\ESBTPKPI;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class ComptabiliteService
 {
+    // Cache tags pour l'invalidation intelligente
+    private const CACHE_TAG_KPI = 'comptabilite_kpi';
+    private const CACHE_TAG_STATS = 'comptabilite_stats';
+    private const CACHE_TAG_DASHBOARD = 'comptabilite_dashboard';
+
+    // Durées de cache en minutes
+    private const CACHE_TTL_KPI = 15; // 15 minutes
+    private const CACHE_TTL_STATS = 30; // 30 minutes
+    private const CACHE_TTL_HEAVY = 60; // 1 heure pour calculs lourds
+
     /**
-     * Calcule les KPIs financiers avancés
+     * Calcule les KPIs financiers avancés avec cache intelligent
      */
     public function calculerKPIsAvances($anneeId = null)
     {
-        $annee = $anneeId ? 
-            ESBTPAnneeUniversitaire::find($anneeId) : 
+        $annee = $anneeId ?
+            ESBTPAnneeUniversitaire::find($anneeId) :
             ESBTPAnneeUniversitaire::where('est_actif', true)->first();
 
         if (!$annee) {
             return $this->getDefaultKPIs();
         }
 
-        return [
-            'recettes' => $this->calculerStatsRecettes($annee),
-            'depenses' => $this->calculerStatsDepenses($annee),
-            'paiements' => $this->calculerStatsPaiements($annee),
-            'performance' => $this->calculerIndicateursPerformance($annee),
-            'previsions' => $this->calculerPrevisions($annee),
-            'alertes' => $this->detecterAlertes($annee)
-        ];
+        $cacheKey = "kpis_avances_{$annee->id}_" . Carbon::now()->format('Y-m-d-H');
+
+        return Cache::store('comptabilite_kpis')->remember($cacheKey, self::CACHE_TTL_KPI, function () use ($annee) {
+            Log::info("Calcul KPIs avancés pour l'année {$annee->id}");
+
+            return [
+                'recettes' => $this->calculerStatsRecettes($annee),
+                'depenses' => $this->calculerStatsDepenses($annee),
+                'paiements' => $this->calculerStatsPaiements($annee),
+                'performance' => $this->calculerIndicateursPerformance($annee),
+                'previsions' => $this->calculerPrevisions($annee),
+                'alertes' => $this->detecterAlertes($annee),
+                'cache_generated_at' => now()->toISOString()
+            ];
+        });
     }
 
     /**
-     * Calcule les statistiques des recettes
+     * Méthode rapide pour récupérer les KPIs du dashboard avec cache optimisé
+     */
+    public function getKPIsDashboard($anneeId = null)
+    {
+        $annee = $anneeId ?
+            ESBTPAnneeUniversitaire::find($anneeId) :
+            ESBTPAnneeUniversitaire::where('est_actif', true)->first();
+
+        if (!$annee) {
+            return $this->getDefaultKPIs();
+        }
+
+        $cacheKey = "dashboard_kpis_{$annee->id}";
+
+        return Cache::store('dashboard_queries')->remember($cacheKey, self::CACHE_TTL_KPI, function () use ($annee) {
+            $recettes = $this->calculerStatsRecettes($annee);
+            $depenses = $this->calculerStatsDepenses($annee);
+            $performance = $this->calculerIndicateursPerformance($annee);
+
+            return [
+                'total_recettes' => $recettes['total'],
+                'total_depenses' => $depenses['total'],
+                'resultat_net' => $performance['resultat_net'],
+                'taux_recouvrement' => $recettes['taux_recouvrement'],
+                'marge_nette' => $performance['marge_nette'],
+                'objectif_atteint' => $recettes['objectif_atteint'],
+                'last_updated' => now()->toISOString()
+            ];
+        });
+    }
+
+    /**
+     * Calcule les statistiques des recettes avec cache
      */
     private function calculerStatsRecettes($annee)
     {
-        $totalPaiements = ESBTPPaiement::where('annee_universitaire_id', $annee->id)
-            ->where('statut', 'completé')
-            ->sum('montant');
+        $cacheKey = "stats_recettes_{$annee->id}_" . Carbon::now()->format('Y-m-d');
 
-        $paiementsMensuels = ESBTPPaiement::where('annee_universitaire_id', $annee->id)
-            ->where('statut', 'completé')
-            ->whereMonth('date_paiement', Carbon::now()->month)
-            ->whereYear('date_paiement', Carbon::now()->year)
-            ->sum('montant');
+        return Cache::store('comptabilite_kpis')->remember($cacheKey, self::CACHE_TTL_STATS, function () use ($annee) {
+            // Optimisation avec eager loading
+            $totalPaiements = ESBTPPaiement::where('annee_universitaire_id', $annee->id)
+                ->where('statut', 'completé')
+                ->sum('montant');
 
-        $totalPrevisionnel = ESBTPFraisScolarite::where('annee_universitaire_id', $annee->id)
-            ->where('est_actif', true)
-            ->sum('montant_total');
+            $paiementsMensuels = ESBTPPaiement::where('annee_universitaire_id', $annee->id)
+                ->where('statut', 'completé')
+                ->whereMonth('date_paiement', Carbon::now()->month)
+                ->whereYear('date_paiement', Carbon::now()->year)
+                ->sum('montant');
 
-        $tauxRecouvrement = $totalPrevisionnel > 0 ? 
-            round(($totalPaiements / $totalPrevisionnel) * 100, 2) : 0;
+            $totalPrevisionnel = ESBTPFraisScolarite::where('annee_universitaire_id', $annee->id)
+                ->where('est_actif', true)
+                ->sum('montant_total');
 
-        return [
-            'total' => $totalPaiements,
-            'mensuel' => $paiementsMensuels,
-            'previsionnel' => $totalPrevisionnel,
-            'taux_recouvrement' => $tauxRecouvrement,
-            'objectif_atteint' => $tauxRecouvrement >= 85
-        ];
+            $tauxRecouvrement = $totalPrevisionnel > 0 ?
+                round(($totalPaiements / $totalPrevisionnel) * 100, 2) : 0;
+
+            return [
+                'total' => $totalPaiements,
+                'mensuel' => $paiementsMensuels,
+                'previsionnel' => $totalPrevisionnel,
+                'taux_recouvrement' => $tauxRecouvrement,
+                'objectif_atteint' => $tauxRecouvrement >= 85
+            ];
+        });
     }
 
     /**
@@ -74,81 +130,94 @@ class ComptabiliteService
      */
     private function calculerStatsDepenses($annee)
     {
-        $dateDebut = Carbon::parse($annee->date_debut);
-        $dateFin = Carbon::parse($annee->date_fin);
+        $cacheKey = "stats_depenses_{$annee->id}_" . Carbon::now()->format('Y-m-d');
 
-        $totalDepenses = ESBTPDepense::whereBetween('date_depense', [$dateDebut, $dateFin])
-            ->whereIn('statut', ['validée', 'approuve'])
-            ->sum('montant');
+        return Cache::store('comptabilite_kpis')->remember($cacheKey, self::CACHE_TTL_STATS, function () use ($annee) {
+            $dateDebut = Carbon::parse($annee->date_debut);
+            $dateFin = Carbon::parse($annee->date_fin);
 
-        $depensesMensuelles = ESBTPDepense::whereMonth('date_depense', Carbon::now()->month)
-            ->whereYear('date_depense', Carbon::now()->year)
-            ->whereIn('statut', ['validée', 'approuve'])
-            ->sum('montant');
+            // Optimisation: index composites sur date_depense + statut
+            $totalDepenses = ESBTPDepense::whereBetween('date_depense', [$dateDebut, $dateFin])
+                ->whereIn('statut', ['validée', 'approuve'])
+                ->sum('montant');
 
-        // Dépenses par catégorie
-        $depensesParCategorie = ESBTPDepense::with('categorie')
-            ->whereBetween('date_depense', [$dateDebut, $dateFin])
-            ->whereIn('statut', ['validée', 'approuve'])
-            ->get()
-            ->groupBy('categorie.nom')
-            ->map(function ($group) {
-                return $group->sum('montant');
-            });
+            $depensesMensuelles = ESBTPDepense::whereMonth('date_depense', Carbon::now()->month)
+                ->whereYear('date_depense', Carbon::now()->year)
+                ->whereIn('statut', ['validée', 'approuve'])
+                ->sum('montant');
 
-        return [
-            'total' => $totalDepenses,
-            'mensuel' => $depensesMensuelles,
-            'par_categorie' => $depensesParCategorie,
-            'budget_restant' => $this->calculerBudgetRestant($annee, $totalDepenses)
-        ];
+            // Dépenses par catégorie avec eager loading
+            $depensesParCategorie = ESBTPDepense::with('categorie')
+                ->whereBetween('date_depense', [$dateDebut, $dateFin])
+                ->whereIn('statut', ['validée', 'approuve'])
+                ->get()
+                ->groupBy('categorie.nom')
+                ->map(function ($group) {
+                    return $group->sum('montant');
+                });
+
+            return [
+                'total' => $totalDepenses,
+                'mensuel' => $depensesMensuelles,
+                'par_categorie' => $depensesParCategorie,
+                'budget_restant' => $this->calculerBudgetRestant($annee, $totalDepenses)
+            ];
+        });
     }
 
     /**
-     * Calcule les statistiques des paiements
+     * Calcule les statistiques des paiements avec cache optimisé
      */
     private function calculerStatsPaiements($annee)
     {
-        $totalInscriptions = ESBTPInscription::where('annee_universitaire_id', $annee->id)->count();
+        $cacheKey = "stats_paiements_{$annee->id}_" . Carbon::now()->format('Y-m-d');
 
-        $etudiantsPayeComplet = DB::table('esbtp_inscriptions')
-            ->join('esbtp_etudiants', 'esbtp_inscriptions.etudiant_id', '=', 'esbtp_etudiants.id')
-            ->join('esbtp_paiements', 'esbtp_inscriptions.etudiant_id', '=', 'esbtp_paiements.etudiant_id')
-            ->where('esbtp_inscriptions.annee_universitaire_id', $annee->id)
-            ->groupBy('esbtp_etudiants.id')
-            ->havingRaw('SUM(esbtp_paiements.montant) >= (
-                SELECT esbtp_frais_scolarite.montant_total
-                FROM esbtp_frais_scolarite
-                WHERE esbtp_frais_scolarite.filiere_id = esbtp_inscriptions.filiere_id
-                AND esbtp_frais_scolarite.niveau_id = esbtp_inscriptions.niveau_id
-                AND esbtp_frais_scolarite.annee_universitaire_id = esbtp_inscriptions.annee_universitaire_id
-            )')
-            ->count();
+        return Cache::store('heavy_calculations')->remember($cacheKey, self::CACHE_TTL_HEAVY, function () use ($annee) {
+            $totalInscriptions = ESBTPInscription::where('annee_universitaire_id', $annee->id)->count();
 
-        $etudiantsPayePartiel = DB::table('esbtp_inscriptions')
-            ->join('esbtp_etudiants', 'esbtp_inscriptions.etudiant_id', '=', 'esbtp_etudiants.id')
-            ->join('esbtp_paiements', 'esbtp_inscriptions.etudiant_id', '=', 'esbtp_paiements.etudiant_id')
-            ->where('esbtp_inscriptions.annee_universitaire_id', $annee->id)
-            ->groupBy('esbtp_etudiants.id')
-            ->havingRaw('SUM(esbtp_paiements.montant) > 0 AND SUM(esbtp_paiements.montant) < (
-                SELECT esbtp_frais_scolarite.montant_total
-                FROM esbtp_frais_scolarite
-                WHERE esbtp_frais_scolarite.filiere_id = esbtp_inscriptions.filiere_id
-                AND esbtp_frais_scolarite.niveau_id = esbtp_inscriptions.niveau_id
-                AND esbtp_frais_scolarite.annee_universitaire_id = esbtp_inscriptions.annee_universitaire_id
-            )')
-            ->count();
+            // Optimisation avec requête unique pour éviter les N+1
+            $paymentStats = DB::table('esbtp_inscriptions')
+                ->select([
+                    'esbtp_etudiants.id as etudiant_id',
+                    DB::raw('COALESCE(SUM(esbtp_paiements.montant), 0) as total_paye'),
+                    'esbtp_frais_scolarite.montant_total as montant_requis'
+                ])
+                ->join('esbtp_etudiants', 'esbtp_inscriptions.etudiant_id', '=', 'esbtp_etudiants.id')
+                ->leftJoin('esbtp_paiements', function($join) {
+                    $join->on('esbtp_inscriptions.etudiant_id', '=', 'esbtp_paiements.etudiant_id')
+                         ->where('esbtp_paiements.statut', '=', 'completé');
+                })
+                ->join('esbtp_frais_scolarite', function($join) {
+                    $join->on('esbtp_frais_scolarite.filiere_id', '=', 'esbtp_inscriptions.filiere_id')
+                         ->on('esbtp_frais_scolarite.niveau_id', '=', 'esbtp_inscriptions.niveau_id')
+                         ->on('esbtp_frais_scolarite.annee_universitaire_id', '=', 'esbtp_inscriptions.annee_universitaire_id');
+                })
+                ->where('esbtp_inscriptions.annee_universitaire_id', $annee->id)
+                ->groupBy(['esbtp_etudiants.id', 'esbtp_frais_scolarite.montant_total'])
+                ->get();
 
-        $etudiantsImpaye = $totalInscriptions - $etudiantsPayeComplet - $etudiantsPayePartiel;
+            $etudiantsPayeComplet = 0;
+            $etudiantsPayePartiel = 0;
 
-        return [
-            'total' => $totalInscriptions,
-            'complets' => $etudiantsPayeComplet,
-            'partiels' => $etudiantsPayePartiel,
-            'impayés' => $etudiantsImpaye,
-            'taux_recouvrement' => $totalInscriptions > 0 ? 
-                round(($etudiantsPayeComplet / $totalInscriptions) * 100, 2) : 0
-        ];
+            foreach ($paymentStats as $stat) {
+                if ($stat->total_paye >= $stat->montant_requis) {
+                    $etudiantsPayeComplet++;
+                } elseif ($stat->total_paye > 0) {
+                    $etudiantsPayePartiel++;
+                }
+            }
+
+            $etudiantsImpaye = $totalInscriptions - $etudiantsPayeComplet - $etudiantsPayePartiel;
+
+            return [
+                'total' => $totalInscriptions,
+                'complets' => $etudiantsPayeComplet,
+                'partiels' => $etudiantsPayePartiel,
+                'impayés' => $etudiantsImpaye,
+                'taux_recouvrement' => $totalInscriptions > 0 ?
+                    round(($etudiantsPayeComplet / $totalInscriptions) * 100, 2) : 0
+            ];
+        });
     }
 
     /**
@@ -160,7 +229,7 @@ class ComptabiliteService
         $depenses = $this->calculerStatsDepenses($annee);
 
         $resultatNet = $recettes['total'] - $depenses['total'];
-        $margeNette = $recettes['total'] > 0 ? 
+        $margeNette = $recettes['total'] > 0 ?
             round(($resultatNet / $recettes['total']) * 100, 2) : 0;
 
         return [
@@ -172,31 +241,37 @@ class ComptabiliteService
     }
 
     /**
-     * Génère les prévisions financières
+     * Génère les prévisions financières avec cache
      */
     public function calculerPrevisions($annee, $nombreMois = 3)
     {
-        // Moyenne des 6 derniers mois
-        $moyenneRecettes = ESBTPPaiement::where('annee_universitaire_id', $annee->id)
-            ->where('date_paiement', '>=', Carbon::now()->subMonths(6))
-            ->where('statut', 'completé')
-            ->avg(DB::raw('MONTH(date_paiement)'));
+        $cacheKey = "previsions_{$annee->id}_{$nombreMois}_" . Carbon::now()->format('Y-m-d');
 
-        $moyenneDepenses = ESBTPDepense::where('date_depense', '>=', Carbon::now()->subMonths(6))
-            ->whereIn('statut', ['validée', 'approuve'])
-            ->avg(DB::raw('MONTH(date_depense)'));
+        return Cache::store('comptabilite_reports')->remember($cacheKey, self::CACHE_TTL_HEAVY, function () use ($annee, $nombreMois) {
+            // Moyenne des 6 derniers mois avec optimisation SQL
+            $moyenneRecettes = ESBTPPaiement::where('annee_universitaire_id', $annee->id)
+                ->where('date_paiement', '>=', Carbon::now()->subMonths(6))
+                ->where('statut', 'completé')
+                ->selectRaw('AVG(montant) as moyenne')
+                ->value('moyenne') ?? 0;
 
-        $previsions = [];
-        for ($i = 1; $i <= $nombreMois; $i++) {
-            $moisFutur = Carbon::now()->addMonths($i);
-            $previsions[$moisFutur->format('Y-m')] = [
-                'recettes_prevues' => $moyenneRecettes * 1.05, // Légère croissance
-                'depenses_prevues' => $moyenneDepenses * 1.02, // Légère inflation
-                'resultat_prevu' => ($moyenneRecettes * 1.05) - ($moyenneDepenses * 1.02)
-            ];
-        }
+            $moyenneDepenses = ESBTPDepense::where('date_depense', '>=', Carbon::now()->subMonths(6))
+                ->whereIn('statut', ['validée', 'approuve'])
+                ->selectRaw('AVG(montant) as moyenne')
+                ->value('moyenne') ?? 0;
 
-        return $previsions;
+            $previsions = [];
+            for ($i = 1; $i <= $nombreMois; $i++) {
+                $moisFutur = Carbon::now()->addMonths($i);
+                $previsions[$moisFutur->format('Y-m')] = [
+                    'recettes_prevues' => $moyenneRecettes * 1.05, // Légère croissance
+                    'depenses_prevues' => $moyenneDepenses * 1.02, // Légère inflation
+                    'resultat_prevu' => ($moyenneRecettes * 1.05) - ($moyenneDepenses * 1.02)
+                ];
+            }
+
+            return $previsions;
+        });
     }
 
     /**
@@ -299,5 +374,180 @@ class ComptabiliteService
         if (strpos($nom, 'depense') !== false) return 'depense';
         if (strpos($nom, 'performance') !== false) return 'performance';
         return 'ratio';
+    }
+
+    /**
+     * Invalide intelligemment le cache lors de modifications
+     */
+    public function invalidateCache($type = 'all', $anneeId = null)
+    {
+        try {
+            switch ($type) {
+                case 'kpis':
+                    $this->invalidateKPICache($anneeId);
+                    break;
+                case 'dashboard':
+                    $this->invalidateDashboardCache($anneeId);
+                    break;
+                case 'reports':
+                    $this->invalidateReportsCache($anneeId);
+                    break;
+                case 'all':
+                default:
+                    $this->invalidateAllCache($anneeId);
+                    break;
+            }
+
+            Log::info("Cache invalidé", ['type' => $type, 'annee_id' => $anneeId]);
+        } catch (\Exception $e) {
+            Log::error("Erreur invalidation cache", ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Invalide le cache des KPIs
+     */
+    private function invalidateKPICache($anneeId = null)
+    {
+        $stores = ['comptabilite_kpis', 'dashboard_queries'];
+
+        foreach ($stores as $store) {
+            if ($anneeId) {
+                // Invalider spécifiquement pour une année
+                $patterns = [
+                    "kpis_avances_{$anneeId}_*",
+                    "dashboard_kpis_{$anneeId}",
+                    "stats_recettes_{$anneeId}_*",
+                    "stats_depenses_{$anneeId}_*",
+                    "stats_paiements_{$anneeId}_*"
+                ];
+
+                foreach ($patterns as $pattern) {
+                    $this->forgetCachePattern($store, $pattern);
+                }
+            } else {
+                // Vider complètement le store
+                Cache::store($store)->flush();
+            }
+        }
+    }
+
+    /**
+     * Invalide le cache du dashboard
+     */
+    private function invalidateDashboardCache($anneeId = null)
+    {
+        if ($anneeId) {
+            Cache::store('dashboard_queries')->forget("dashboard_kpis_{$anneeId}");
+        } else {
+            Cache::store('dashboard_queries')->flush();
+        }
+    }
+
+    /**
+     * Invalide le cache des rapports
+     */
+    private function invalidateReportsCache($anneeId = null)
+    {
+        if ($anneeId) {
+            $this->forgetCachePattern('comptabilite_reports', "previsions_{$anneeId}_*");
+        } else {
+            Cache::store('comptabilite_reports')->flush();
+        }
+    }
+
+    /**
+     * Invalide tout le cache comptabilité
+     */
+    private function invalidateAllCache($anneeId = null)
+    {
+        $stores = ['comptabilite_kpis', 'dashboard_queries', 'comptabilite_reports', 'heavy_calculations'];
+
+        foreach ($stores as $store) {
+            if ($anneeId) {
+                // Patterns spécifiques à l'année
+                $patterns = [
+                    "kpis_avances_{$anneeId}_*",
+                    "dashboard_kpis_{$anneeId}",
+                    "stats_*_{$anneeId}_*",
+                    "previsions_{$anneeId}_*"
+                ];
+
+                foreach ($patterns as $pattern) {
+                    $this->forgetCachePattern($store, $pattern);
+                }
+            } else {
+                try {
+                    Cache::store($store)->flush();
+                } catch (\Exception $e) {
+                    Log::warning("Impossible de vider le store {$store}", ['error' => $e->getMessage()]);
+                }
+            }
+        }
+    }
+
+    /**
+     * Oublie les clés de cache selon un pattern
+     */
+    private function forgetCachePattern($store, $pattern)
+    {
+        try {
+            // Pour Redis, on peut utiliser les patterns
+            if (Cache::store($store)->getStore() instanceof \Illuminate\Cache\RedisStore) {
+                $redis = Cache::store($store)->getRedis();
+                $prefix = Cache::store($store)->getPrefix();
+                $keys = $redis->keys($prefix . $pattern);
+
+                foreach ($keys as $key) {
+                    $cacheKey = str_replace($prefix, '', $key);
+                    Cache::store($store)->forget($cacheKey);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::warning("Erreur lors de la suppression pattern {$pattern}", ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Surveille les performances des requêtes
+     */
+    public function monitorPerformance($operation, callable $callback)
+    {
+        $startTime = microtime(true);
+        $startMemory = memory_get_usage(true);
+
+        try {
+            $result = $callback();
+
+            $endTime = microtime(true);
+            $endMemory = memory_get_usage(true);
+
+            $executionTime = round(($endTime - $startTime) * 1000, 2); // en ms
+            $memoryUsage = round(($endMemory - $startMemory) / 1024 / 1024, 2); // en MB
+
+            // Logger les performances si c'est lent
+            if ($executionTime > 1000) { // > 1 seconde
+                Log::warning("Opération lente détectée", [
+                    'operation' => $operation,
+                    'execution_time_ms' => $executionTime,
+                    'memory_usage_mb' => $memoryUsage
+                ]);
+            } else {
+                Log::debug("Performance monitoring", [
+                    'operation' => $operation,
+                    'execution_time_ms' => $executionTime,
+                    'memory_usage_mb' => $memoryUsage
+                ]);
+            }
+
+            return $result;
+
+        } catch (\Exception $e) {
+            Log::error("Erreur dans l'opération {$operation}", [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
+        }
     }
 }

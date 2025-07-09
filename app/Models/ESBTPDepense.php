@@ -5,13 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\CacheInvalidationTrait;
 use App\Models\User;
 use OwenIt\Auditing\Contracts\Auditable;
 use OwenIt\Auditing\Auditable as AuditableTrait;
 
 class ESBTPDepense extends Model implements Auditable
 {
-    use HasFactory, SoftDeletes, AuditableTrait;
+    use HasFactory, SoftDeletes, AuditableTrait, CacheInvalidationTrait;
 
     /**
      * The table associated with the model.

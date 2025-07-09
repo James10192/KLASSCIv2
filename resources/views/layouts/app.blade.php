@@ -728,72 +728,35 @@
                     @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire'))
                         <div class="menu-category">Gestion financière</div>
                         <div class="menu-accordion">
-                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.fee-categories.*') || Request::routeIs('esbtp.payment-categories.*') || Request::routeIs('esbtp.fees.*') || Request::routeIs('esbtp.payments.*') || Request::routeIs('esbtp.comptabilite.dashboard') ? 'active' : '' }}">
+                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.comptabilite.*') || Request::routeIs('esbtp.fee-categories.*') || Request::routeIs('esbtp.payment-categories.*') || Request::routeIs('esbtp.fees.*') || Request::routeIs('esbtp.payments.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-coins"></i></div>
                                 <div class="menu-text">Comptabilité</div>
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
-                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.fee-categories.*') || Request::routeIs('esbtp.payment-categories.*') || Request::routeIs('esbtp.fees.*') || Request::routeIs('esbtp.payments.*') || Request::routeIs('esbtp.comptabilite.dashboard') ? 'show' : '' }}">
-                                <a href="{{ route('esbtp.comptabilite.dashboard') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.dashboard') ? 'active' : '' }}">
+                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.comptabilite.*') || Request::routeIs('esbtp.fee-categories.*') || Request::routeIs('esbtp.payment-categories.*') || Request::routeIs('esbtp.fees.*') || Request::routeIs('esbtp.payments.*') ? 'show' : '' }}">
+                                <a href="{{ route('esbtp.comptabilite.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.index') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
-                                    <i class="fas fa-chart-bar me-1"></i>
-                                    <span>Dashboard Comptable</span>
+                                    <span>Dashboard Principal</span>
                                 </a>
-                                <a href="{{ route('esbtp.fee-categories.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.fee-categories.*') ? 'active' : '' }}">
+                                <a href="{{ route('esbtp.comptabilite.dashboard-avance') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.dashboard-avance') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
-                                    <span>Catégories de frais</span>
-                                </a>
-                                <a href="{{ route('esbtp.payment-categories.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.payment-categories.*') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Catégories de paiements</span>
-                                </a>
-                                <a href="{{ route('esbtp.fees.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.fees.*') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Frais</span>
-                                </a>
-                                <a href="{{ route('esbtp.payments.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.payments.*') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Paiements</span>
-                                </a>
-                                <a href="{{ route('esbtp.comptabilite.factures') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.factures') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <i class="fas fa-file-invoice me-1"></i>
-                                    <span>Factures</span>
-                                </a>
-                                <a href="{{ route('esbtp.comptabilite.depenses') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.depenses') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <i class="fas fa-money-bill me-1"></i>
-                                    <span>Dépenses</span>
-                                </a>
-                                <a href="{{ route('esbtp.comptabilite.bourses') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.bourses') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <i class="fas fa-piggy-bank me-1"></i>
-                                    <span>Bourses</span>
-                                </a>
-                                <a href="{{ route('esbtp.comptabilite.salaires') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.salaires') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <i class="fas fa-user-tie me-1"></i>
-                                    <span>Salaires</span>
+                                    <span>Dashboard Avancé</span>
                                 </a>
                                 <a href="{{ route('esbtp.comptabilite.bons-sortie.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.bons-sortie.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
-                                    <i class="fas fa-file-export me-1"></i>
                                     <span>Bons de Sortie</span>
                                 </a>
                                 <a href="{{ route('esbtp.comptabilite.relances.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.relances.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
-                                    <i class="fas fa-bell me-1"></i>
-                                    <span>Relances</span>
+                                    <span>Gestion des Relances</span>
                                 </a>
-                                <a href="{{ route('esbtp.comptabilite.fournisseurs') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.fournisseurs') ? 'active' : '' }}">
+                                <a href="{{ route('esbtp.comptabilite.rapports') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.rapports.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
-                                    <i class="fas fa-truck me-1"></i>
-                                    <span>Fournisseurs</span>
+                                    <span>Rapports & Analytics</span>
                                 </a>
-                                <a href="{{ route('esbtp.comptabilite.rapports') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.rapports') ? 'active' : '' }}">
+                                <a href="{{ route('esbtp.comptabilite.configuration') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.configuration.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
-                                    <i class="fas fa-chart-line me-1"></i>
-                                    <span>Rapports</span>
+                                    <span>Configuration</span>
                                 </a>
                             </div>
                         </div>
@@ -835,15 +798,6 @@
                             </div>
                         </div>
                     @endif
-
-                    @canany(['superAdmin', 'secretaire'])
-                    <li class="nav-item">
-                        <a href="{{ route('esbtp.comptabilite.dashboard') }}" class="nav-link {{ request()->routeIs('esbtp.comptabilite.dashboard') ? 'active' : '' }}">
-                            <i class="fas fa-chart-bar me-2"></i>
-                            <span>Comptabilité</span>
-                        </a>
-                    </li>
-                    @endcanany
 
                     @role('etudiant')
                     <div class="menu-category">Mon espace étudiant</div>

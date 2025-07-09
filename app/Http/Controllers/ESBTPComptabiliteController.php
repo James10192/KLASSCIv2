@@ -19,45 +19,108 @@ use App\Models\ESBTPFiliere;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\User;
+use App\Services\ComptabiliteService;
+use App\Services\PerformanceMonitoringService;
+use App\Services\AnalyticsPredictifService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 
 class ESBTPComptabiliteController extends Controller
 {
+    protected $comptabiliteService;
+    protected $performanceMonitor;
+    protected $analyticsPredictifService;
+
     /**
-     * Constructeur
+     * Constructeur avec injection des services optimisés
      */
-    public function __construct()
-    {
+    public function __construct(
+        ComptabiliteService $comptabiliteService,
+        PerformanceMonitoringService $performanceMonitor,
+        AnalyticsPredictifService $analyticsPredictifService
+    ) {
         $this->middleware('auth');
         $this->middleware('permission:access_comptabilite_module');
+        $this->comptabiliteService = $comptabiliteService;
+        $this->performanceMonitor = $performanceMonitor;
+        $this->analyticsPredictifService = $analyticsPredictifService;
     }
 
     /**
-     * Affiche le tableau de bord de la comptabilité
+     * Affiche le tableau de bord de la comptabilité avec cache optimisé
      */
     public function index()
     {
-        // Récupérer les statistiques pour le tableau de bord
-        $statsRecettes = $this->getStatsRecettes();
-        $statsDepenses = $this->getStatsDepenses();
-        $statsPaiements = $this->getStatsPaiements();
-        $topEtudiants = $this->getTopEtudiants();
-        $topDettes = $this->getTopDettes();
-        $recettesParMois = $this->getRecettesParMois();
-        $depensesParMois = $this->getDepensesParMois();
+        return $this->performanceMonitor->monitor('dashboard_index', function () {
+            // Utiliser le cache pour les données du dashboard
+            $dashboardData = Cache::store('dashboard_queries')->remember('dashboard_main', 15, function () {
+                return [
+                    'statsRecettes' => $this->getStatsRecettes(),
+                    'statsDepenses' => $this->getStatsDepenses(),
+                    'statsPaiements' => $this->getStatsPaiements(),
+                    'topEtudiants' => $this->getTopEtudiants(),
+                    'topDettes' => $this->getTopDettes(),
+                    'recettesParMois' => $this->getRecettesParMois(),
+                    'depensesParMois' => $this->getDepensesParMois()
+                ];
+            });
 
-        return view('esbtp.comptabilite.index', compact(
-            'statsRecettes',
-            'statsDepenses',
-            'statsPaiements',
-            'topEtudiants',
-            'topDettes',
-            'recettesParMois',
-            'depensesParMois'
-        ));
+            return view('esbtp.comptabilite.index', $dashboardData);
+        }, ['user_id' => Auth::id()]);
+    }
+
+    /**
+     * Dashboard avancé avec KPIs en temps réel
+     */
+    public function dashboardAvance()
+    {
+        return $this->performanceMonitor->monitor('dashboard_avance', function () {
+            try {
+                // Utiliser le service optimisé avec cache
+                $kpis = $this->comptabiliteService->getKPIsDashboard();
+                $previsions = $this->comptabiliteService->calculerPrevisions(
+                    ESBTPAnneeUniversitaire::where('est_actif', true)->first(),
+                    3
+                );
+
+                return view('esbtp.comptabilite.dashboard-avance', compact('kpis', 'previsions'));
+            } catch (\Exception $e) {
+                Log::error('Erreur dashboard avancé', ['error' => $e->getMessage()]);
+                return back()->with('error', 'Erreur lors du chargement du dashboard avancé.');
+            }
+        }, ['type' => 'dashboard_avance']);
+    }
+
+    /**
+     * API pour les KPIs en temps réel avec cache optimisé
+     */
+    public function kpisTempsReel(Request $request)
+    {
+        return $this->performanceMonitor->monitor('kpis_temps_reel', function () use ($request) {
+            try {
+                $anneeId = $request->get('annee_id');
+                $kpis = $this->comptabiliteService->getKPIsDashboard($anneeId);
+
+                return response()->json([
+                    'success' => true,
+                    'kpis' => $kpis,
+                    'cache_info' => [
+                        'cached' => isset($kpis['cache_generated_at']),
+                        'last_updated' => $kpis['last_updated'] ?? now()->toISOString()
+                    ]
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Erreur KPIs temps réel', ['error' => $e->getMessage()]);
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Erreur lors de la récupération des KPIs'
+                ], 500);
+            }
+        }, ['annee_id' => $request->get('annee_id')]);
     }
 
     /**
@@ -1675,48 +1738,6 @@ class ESBTPComptabiliteController extends Controller
     // ===== NOUVELLES MÉTHODES AVANCÉES SELON LE GUIDE =====
 
     /**
-     * Dashboard avancé avec KPIs temps réel
-     */
-    public function dashboardAvance()
-    {
-        $comptabiliteService = app(\App\Services\ComptabiliteService::class);
-
-        // Récupération des KPIs avancés
-        $kpis = $comptabiliteService->calculerKPIsAvances();
-
-        // Graphiques d'évolution
-        $evolutionRecettes = \App\Models\ESBTPKPI::getEvolutionKPI('recettes.total', 'mois', 12);
-        $evolutionDepenses = \App\Models\ESBTPKPI::getEvolutionKPI('depenses.total', 'mois', 12);
-
-        // Alertes financières
-        $alertes = $kpis['alertes'] ?? [];
-
-        return view('esbtp.comptabilite.dashboard-avance', compact(
-            'kpis',
-            'evolutionRecettes',
-            'evolutionDepenses',
-            'alertes'
-        ));
-    }
-
-    /**
-     * API pour récupérer les KPIs en temps réel
-     */
-    public function kpisTempsReel(Request $request)
-    {
-        $comptabiliteService = app(\App\Services\ComptabiliteService::class);
-
-        $anneeId = $request->get('annee_id');
-        $kpis = $comptabiliteService->calculerKPIsAvances($anneeId);
-
-        return response()->json([
-            'success' => true,
-            'data' => $kpis,
-            'timestamp' => now()->toISOString()
-        ]);
-    }
-
-    /**
      * Gestion des bons de sortie avec workflow
      */
     public function bonsSortie()
@@ -1809,17 +1830,6 @@ class ESBTPComptabiliteController extends Controller
         $categories = \App\Models\ESBTPCategorieDepense::orderBy('nom')->get();
 
         return view('esbtp.comptabilite.rapports.builder', compact('annees', 'filieres', 'categories'));
-    }
-
-    /**
-     * Configuration de la comptabilité
-     */
-    public function configurationComptabilite()
-    {
-        $configurations = \App\Models\ESBTPComptabiliteConfiguration::orderBy('cle')->get();
-        $typesFrais = \App\Models\ESBTPTypeFrais::orderBy('nom')->get();
-
-        return view('esbtp.comptabilite.configuration.index', compact('configurations', 'typesFrais'));
     }
 
     /**
@@ -2735,19 +2745,21 @@ class ESBTPComptabiliteController extends Controller
 
             switch ($type) {
                 case 'cashflow':
-                    $resultats = $this->projectionCashFlowDetailed($periode, $parametres);
+                    $resultats = $this->analyticsPredictifService->projeterCashFlowAvance($periode);
                     break;
 
                 case 'anomalies':
-                    $resultats = $this->detectionAnomaliesDetailed($parametres);
+                    $periodeAnalyse = $parametres['periode_analyse'] ?? 12;
+                    $resultats = $this->analyticsPredictifService->detecterAnomalies($periodeAnalyse);
                     break;
 
                 case 'trends':
-                    $resultats = $this->analyseTendancesDetailed($periode, $parametres);
+                    $periodesComparaison = $parametres['periodes'] ?? ['mensuel', 'trimestriel'];
+                    $resultats = $this->analyticsPredictifService->genererBenchmarkingAvance($periodesComparaison);
                     break;
 
                 case 'forecast':
-                    $resultats = $this->previsionIA($periode, $parametres);
+                    $resultats = $this->analyticsPredictifService->genererRecommandationsIntelligentes();
                     break;
             }
 
@@ -2774,46 +2786,41 @@ class ESBTPComptabiliteController extends Controller
     }
 
     /**
-     * Projection cash-flow détaillée - Task #6
+     * Projection cash-flow détaillée - Task #11
      */
     public function projectionCashFlow(Request $request)
     {
         $mois = $request->input('mois', 6);
-        $includeIA = $request->input('include_ia', true);
+        $anneeId = $request->input('annee_id');
 
         try {
-            $projection = $this->projectionCashFlowDetailed($mois, [
-                'include_ia' => $includeIA,
-                'facteurs_saisonniers' => true,
-                'analyse_tendances' => true
-            ]);
+            $projection = $this->analyticsPredictifService->projeterCashFlowAvance($mois, $anneeId);
+            $visualisations = $this->analyticsPredictifService->preparerDonneesVisualisationsAvancees('projections');
 
-            return view('esbtp.comptabilite.rapports.cashflow', compact('projection', 'mois'));
+            return view('esbtp.comptabilite.analytics.cashflow', compact('projection', 'mois', 'visualisations'));
 
         } catch (\Exception $e) {
+            Log::error('Erreur projection cash-flow', ['error' => $e->getMessage(), 'user_id' => Auth::id()]);
             return redirect()->back()->with('error', 'Erreur lors de la projection: ' . $e->getMessage());
         }
     }
 
     /**
-     * Détection d'anomalies financières - Task #6
+     * Détection d'anomalies financières - Task #11
      */
     public function detectionAnomalies(Request $request)
     {
-        $periode = $request->input('periode', 30); // 30 jours par défaut
-        $seuils = $request->input('seuils', []);
+        $periode = $request->input('periode', 12); // 12 mois par défaut
+        $anneeId = $request->input('annee_id');
 
         try {
-            $anomalies = $this->detectionAnomaliesDetailed([
-                'periode_jours' => $periode,
-                'seuils_personnalises' => $seuils,
-                'analyse_patterns' => true,
-                'detection_fraude' => true
-            ]);
+            $anomalies = $this->analyticsPredictifService->detecterAnomalies($periode, $anneeId);
+            $visualisations = $this->analyticsPredictifService->preparerDonneesVisualisationsAvancees('anomalies');
 
-            return view('esbtp.comptabilite.rapports.anomalies', compact('anomalies', 'periode'));
+            return view('esbtp.comptabilite.analytics.anomalies', compact('anomalies', 'periode', 'visualisations'));
 
         } catch (\Exception $e) {
+            Log::error('Erreur détection anomalies', ['error' => $e->getMessage(), 'user_id' => Auth::id()]);
             return redirect()->back()->with('error', 'Erreur lors de la détection: ' . $e->getMessage());
         }
     }
@@ -3171,4 +3178,152 @@ class ESBTPComptabiliteController extends Controller
     private function identifierFacteursInfluence($donnees) { /* Implementation */ return []; }
     private function genererScenario($predictions, $type) { /* Implementation */ return []; }
     private function genererRecommandationsStrategiques($predictions) { /* Implementation */ return []; }
+
+    /**
+     * Analytics prédictifs - Dashboard principal - Task #11
+     */
+    public function analyticsPredictifs()
+    {
+        try {
+            return view('esbtp.comptabilite.analytics.index');
+        } catch (\Exception $e) {
+            Log::error('Erreur analytics prédictifs', ['error' => $e->getMessage(), 'user_id' => Auth::id()]);
+            return redirect()->back()->with('error', 'Erreur lors du chargement des analytics.');
+        }
+    }
+
+    /**
+     * Recommandations intelligentes - Task #11
+     */
+    public function recommandationsIntelligentes(Request $request)
+    {
+        $anneeId = $request->input('annee_id');
+
+        try {
+            $recommandations = $this->analyticsPredictifService->genererRecommandationsIntelligentes($anneeId);
+
+            return view('esbtp.comptabilite.analytics.recommandations', compact('recommandations'));
+
+        } catch (\Exception $e) {
+            Log::error('Erreur recommandations intelligentes', ['error' => $e->getMessage(), 'user_id' => Auth::id()]);
+            return redirect()->back()->with('error', 'Erreur lors de la génération des recommandations: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Benchmarking inter-périodes - Task #11
+     */
+    public function benchmarkingAvance(Request $request)
+    {
+        $periodesComparaison = $request->input('periodes', ['mensuel', 'trimestriel', 'annuel']);
+
+        try {
+            $benchmarks = $this->analyticsPredictifService->genererBenchmarkingAvance($periodesComparaison);
+            $visualisations = $this->analyticsPredictifService->preparerDonneesVisualisationsAvancees('tendances');
+
+            return view('esbtp.comptabilite.analytics.benchmarking', compact('benchmarks', 'visualisations'));
+
+        } catch (\Exception $e) {
+            Log::error('Erreur benchmarking avancé', ['error' => $e->getMessage(), 'user_id' => Auth::id()]);
+            return redirect()->back()->with('error', 'Erreur lors du benchmarking: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Visualisations avancées - Task #11
+     */
+    public function visualisationsAvancees(Request $request)
+    {
+        $typeViz = $request->input('type', 'all');
+
+        try {
+            $visualisations = $this->analyticsPredictifService->preparerDonneesVisualisationsAvancees($typeViz);
+
+            return response()->json([
+                'success' => true,
+                'visualisations' => $visualisations,
+                'type' => $typeViz,
+                'generated_at' => now()->toISOString()
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur visualisations avancées', ['error' => $e->getMessage(), 'user_id' => Auth::id()]);
+            return response()->json([
+                'success' => false,
+                'error' => 'Erreur lors de la génération des visualisations'
+            ], 500);
+        }
+    }
+
+    /**
+     * API pour récupérer les données prédictives en temps réel - Task #11
+     */
+    public function apiAnalyticsPredictifs(Request $request)
+    {
+        $request->validate([
+            'type' => 'required|in:projections,anomalies,recommandations,benchmarking',
+            'periode' => 'nullable|integer|min:1|max:24',
+            'annee_id' => 'nullable|integer'
+        ]);
+
+        return $this->performanceMonitor->monitor('api_analytics_predictifs', function () use ($request) {
+            try {
+                $type = $request->input('type');
+                $periode = $request->input('periode', 6);
+                $anneeId = $request->input('annee_id');
+
+                $resultats = [];
+
+                switch ($type) {
+                    case 'projections':
+                        $resultats = $this->analyticsPredictifService->projeterCashFlowAvance($periode, $anneeId);
+                        break;
+
+                    case 'anomalies':
+                        $resultats = $this->analyticsPredictifService->detecterAnomalies($periode, $anneeId);
+                        break;
+
+                    case 'recommandations':
+                        $resultats = $this->analyticsPredictifService->genererRecommandationsIntelligentes($anneeId);
+                        break;
+
+                    case 'benchmarking':
+                        $periodesComparaison = $request->input('periodes_comparaison', ['mensuel', 'trimestriel']);
+                        $resultats = $this->analyticsPredictifService->genererBenchmarkingAvance($periodesComparaison);
+                        break;
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'type' => $type,
+                    'periode' => $periode,
+                    'resultats' => $resultats,
+                    'cache_info' => [
+                        'cached' => isset($resultats['cache_generated_at']) || isset($resultats['derniere_mise_a_jour']),
+                        'last_updated' => $resultats['derniere_mise_a_jour'] ?? $resultats['cache_generated_at'] ?? now()->toISOString()
+                    ],
+                    'performance' => [
+                        'execution_time' => round((microtime(true) - LARAVEL_START) * 1000, 2) . 'ms'
+                    ]
+                ]);
+
+            } catch (\Exception $e) {
+                Log::error('Erreur API analytics prédictifs', [
+                    'error' => $e->getMessage(),
+                    'user_id' => Auth::id(),
+                    'params' => $request->all()
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Erreur lors de l\'analyse prédictive',
+                    'message' => $e->getMessage()
+                ], 500);
+            }
+        }, [
+            'type' => $request->input('type'),
+            'periode' => $request->input('periode'),
+            'user_id' => Auth::id()
+        ]);
+    }
 }

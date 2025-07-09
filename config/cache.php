@@ -79,6 +79,38 @@ return [
             'lock_connection' => 'default',
         ],
 
+        // Cache spécialisé pour les KPIs comptabilité
+        'comptabilite_kpis' => [
+            'driver' => 'redis',
+            'connection' => 'cache',
+            'lock_connection' => 'default',
+            'prefix' => env('CACHE_PREFIX', Str::slug(env('APP_NAME', 'laravel'), '_').'_cache') . '_kpis',
+        ],
+
+        // Cache pour les rapports et analytics
+        'comptabilite_reports' => [
+            'driver' => 'redis',
+            'connection' => 'cache',
+            'lock_connection' => 'default',
+            'prefix' => env('CACHE_PREFIX', Str::slug(env('APP_NAME', 'laravel'), '_').'_cache') . '_reports',
+        ],
+
+        // Cache pour les requêtes dashboard
+        'dashboard_queries' => [
+            'driver' => 'redis',
+            'connection' => 'cache',
+            'lock_connection' => 'default',
+            'prefix' => env('CACHE_PREFIX', Str::slug(env('APP_NAME', 'laravel'), '_').'_cache') . '_dashboard',
+        ],
+
+        // Cache temporaire pour les calculs lourds
+        'heavy_calculations' => [
+            'driver' => 'redis',
+            'connection' => 'cache',
+            'lock_connection' => 'default',
+            'prefix' => env('CACHE_PREFIX', Str::slug(env('APP_NAME', 'laravel'), '_').'_cache') . '_calc',
+        ],
+
         'dynamodb' => [
             'driver' => 'dynamodb',
             'key' => env('AWS_ACCESS_KEY_ID'),

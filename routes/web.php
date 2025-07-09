@@ -54,8 +54,8 @@ use App\Http\Controllers\ESBTPLogsController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\NavbarController;
 use App\Http\Controllers\TimetableController;
-use App\Http\Controllers\ESBTP\ESBTPAuditController;
-use App\Http\Controllers\ESBTP\ESBTPSecurityController;
+// use App\Http\Controllers\ESBTP\ESBTPAuditController; // COMMENTED - CONTROLLER NOT IMPLEMENTED
+// use App\Http\Controllers\ESBTP\ESBTPSecurityController; // COMMENTED - CONTROLLER NOT IMPLEMENTED
 
 /*
 |--------------------------------------------------------------------------
@@ -935,19 +935,19 @@ Route::middleware(['auth', 'permission:access_comptabilite_module'])->prefix('es
     Route::delete('/frais-scolarite/{id}', [ESBTPComptabiliteController::class, 'destroyFraisScolarite'])->name('frais-scolarite.destroy');
 
     // Gestion des dépenses
-    Route::get('/depenses', [DepensesController::class, 'index'])->name('depenses');
-    Route::get('/depenses/create', [DepensesController::class, 'create'])->name('depenses.create');
-    Route::post('/depenses', [DepensesController::class, 'store'])->name('depenses.store');
-    Route::get('/depenses/{id}', [DepensesController::class, 'show'])->name('depenses.show');
-    Route::get('/depenses/{id}/edit', [DepensesController::class, 'edit'])->name('depenses.edit');
-    Route::put('/depenses/{id}', [DepensesController::class, 'update'])->name('depenses.update');
-    Route::delete('/depenses/{id}', [DepensesController::class, 'destroy'])->name('depenses.destroy');
+    Route::get('/depenses', [ESBTPComptabiliteController::class, 'depenses'])->name('depenses');
+    Route::get('/depenses/create', [ESBTPComptabiliteController::class, 'createDepense'])->name('depenses.create');
+    Route::post('/depenses', [ESBTPComptabiliteController::class, 'storeDepense'])->name('depenses.store');
+    Route::get('/depenses/{id}', [ESBTPComptabiliteController::class, 'showDepense'])->name('depenses.show');
+    Route::get('/depenses/{id}/edit', [ESBTPComptabiliteController::class, 'editDepense'])->name('depenses.edit');
+    Route::put('/depenses/{id}', [ESBTPComptabiliteController::class, 'updateDepense'])->name('depenses.update');
+    Route::delete('/depenses/{id}', [ESBTPComptabiliteController::class, 'destroyDepense'])->name('depenses.destroy');
 
     // Gestion des catégories de dépenses
-    Route::get('/depenses/categories', [DepensesController::class, 'categories'])->name('depenses.categories');
-    Route::post('/depenses/categories', [DepensesController::class, 'storeCategory'])->name('depenses.categories.store');
-    Route::put('/depenses/categories/{id}', [DepensesController::class, 'updateCategory'])->name('depenses.categories.update');
-    Route::delete('/depenses/categories/{id}', [DepensesController::class, 'destroyCategory'])->name('depenses.categories.destroy');
+    Route::get('/depenses/categories', [ESBTPComptabiliteController::class, 'categoriesDepenses'])->name('depenses.categories');
+    Route::post('/depenses/categories', [ESBTPComptabiliteController::class, 'storeCategorieDepense'])->name('depenses.categories.store');
+    Route::put('/depenses/categories/{id}', [ESBTPComptabiliteController::class, 'updateCategorieDepense'])->name('depenses.categories.update');
+    Route::delete('/depenses/categories/{id}', [ESBTPComptabiliteController::class, 'destroyCategorieDepense'])->name('depenses.categories.destroy');
 
     // Gestion des bourses et aides
     Route::get('/bourses', [ESBTPComptabiliteController::class, 'bourses'])->name('bourses');
@@ -1020,6 +1020,25 @@ Route::middleware(['auth', 'permission:access_comptabilite_module'])->prefix('es
 
         Route::post('/templates', [ESBTPComptabiliteController::class, 'sauvegarderModele'])->name('templates.save')
             ->middleware(['permission:comptabilite.config.manage']);
+    });
+
+    // NOUVELLES ROUTES ANALYTICS PRÉDICTIFS - Tâche #11
+    Route::prefix('analytics-predictifs')->name('analytics-predictifs.')->group(function () {
+        Route::get('/', [ESBTPComptabiliteController::class, 'analyticsPredictifs'])->name('index')
+            ->middleware(['permission:comptabilite.dashboard.view']);
+
+        Route::get('/recommandations', [ESBTPComptabiliteController::class, 'recommandationsIntelligentes'])->name('recommandations')
+            ->middleware(['permission:comptabilite.dashboard.view']);
+
+        Route::get('/benchmarking', [ESBTPComptabiliteController::class, 'benchmarkingAvance'])->name('benchmarking')
+            ->middleware(['permission:comptabilite.dashboard.view']);
+
+        Route::get('/visualisations', [ESBTPComptabiliteController::class, 'visualisationsAvancees'])->name('visualisations')
+            ->middleware(['permission:comptabilite.dashboard.view']);
+
+        // API pour les données en temps réel
+        Route::get('/api/data', [ESBTPComptabiliteController::class, 'apiAnalyticsPredictifs'])->name('api.data')
+            ->middleware(['permission:comptabilite.dashboard.view', 'throttle:60,1']);
     });
 
     // Configuration du module comptabilité
@@ -1320,7 +1339,8 @@ Route::middleware(['auth'])->group(function () {
 
 // ... existing code ...
 
-// Routes ESBTP Audit et Sécurité (Task #10)
+// Routes ESBTP Audit et Sécurité (Task #10) - COMMENTED OUT TEMPORARILY - CONTROLLERS NOT IMPLEMENTED YET
+/*
 Route::middleware(['auth', 'throttle:audit'])->prefix('esbtp/audit')->name('esbtp.audit.')->group(function () {
     // Page principale d'audit
     Route::get('/', [ESBTPAuditController::class, 'index'])->name('index');
@@ -1380,3 +1400,4 @@ Route::middleware(['auth', 'throttle:security'])->prefix('esbtp/security')->name
             ->name('backups.restore');
     });
 });
+*/
