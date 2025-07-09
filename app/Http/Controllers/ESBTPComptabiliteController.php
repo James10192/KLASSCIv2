@@ -208,7 +208,8 @@ class ESBTPComptabiliteController extends Controller
     private function getEtudiantsEnAttente()
     {
         return DB::table('esbtp_inscriptions')
-            ->join('users', 'esbtp_inscriptions.user_id', '=', 'users.id')
+            ->join('esbtp_etudiants', 'esbtp_inscriptions.etudiant_id', '=', 'esbtp_etudiants.id')
+            ->join('users', 'esbtp_etudiants.user_id', '=', 'users.id')
             ->leftJoin('esbtp_paiements', function($join) {
                 $join->on('esbtp_inscriptions.id', '=', 'esbtp_paiements.inscription_id')
                      ->where('esbtp_paiements.status', 'validé');

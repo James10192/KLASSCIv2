@@ -120,6 +120,8 @@ Quand tu finis à chaque fois une requête !!!IMPORTANT mets ça dans un dossier
 !!IMPORTANT Use "curl."!Important pour éviter les erreurs d'alias de powershell
 !!!Important pour te connecter à l'app tu peux chercher @TestUsersSeeder.php pour avoir des credentials des différents rôles
 !!IMPORTANT Use "curl."!Important pour éviter les erreurs d'alias de powershell
+!!!IMPORTANT Ce n'est pas parce qu'elle redirige vers la page connexion que tout marche bien tu n'as pas encore accédé à la page si avec Curl.exe tu ne peux pas alors créé un script avec les credentials que tu auras récupéré sur @TestUsersSeeder.php pour tester correctement la page ou la fonction whatever
 
+!!!!IMPORTANT si je te donne une erreur à résoudre et tu vois dans ta mémoire que tu as eu à te pencher sur la même erreur et que tu vois que ça n'a pas marché alors use context7 ou fais des recherches sur internent (web search) avant d'essayer de régler à nouveau
 
 !!!Important pour te connecter à l'app tu peux chercher @TestUsersSeeder.php pour avoir des credentials des différents rôles

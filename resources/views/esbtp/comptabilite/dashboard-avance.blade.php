@@ -349,16 +349,10 @@ document.addEventListener('DOMContentLoaded', function() {
         new Chart(evolutionCtx, {
             type: 'line',
             data: {
-                labels: @json(isset($donneesFinancieres['recettes_mensuelles']) ?
-                    collect($donneesFinancieres['recettes_mensuelles'])->map(function($item) {
-                        return \Carbon\Carbon::createFromDate($item['annee'], $item['mois'], 1)->format('M Y');
-                    })->toArray() :
-                    ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc']),
+                labels: @json(isset($donneesFinancieres['recettes_mensuelles']) ? collect($donneesFinancieres['recettes_mensuelles'])->map(function($item) { return \Carbon\Carbon::createFromDate($item['annee'], $item['mois'], 1)->format('M Y'); })->toArray() : ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc']),
                 datasets: [{
                     label: 'Recettes',
-                    data: @json(isset($donneesFinancieres['recettes_mensuelles']) ?
-                        collect($donneesFinancieres['recettes_mensuelles'])->pluck('total')->toArray() :
-                        [2800000, 3200000, 2900000, 3500000, 3100000, 3400000, 3300000, 3600000, 3200000, 3800000, 3500000, 4000000]),
+                    data: @json(isset($donneesFinancieres['recettes_mensuelles']) ? collect($donneesFinancieres['recettes_mensuelles'])->pluck('total')->toArray() : [2800000, 3200000, 2900000, 3500000, 3100000, 3400000, 3300000, 3600000, 3200000, 3800000, 3500000, 4000000]),
                     borderColor: colors.accent,
                     backgroundColor: colors.accent + '20',
                     tension: 0.4,
@@ -369,9 +363,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     pointRadius: 4
                 }, {
                     label: 'Dépenses',
-                    data: @json(isset($donneesFinancieres['depenses_mensuelles']) ?
-                        collect($donneesFinancieres['depenses_mensuelles'])->pluck('total')->toArray() :
-                        [2200000, 2400000, 2300000, 2600000, 2500000, 2700000, 2600000, 2800000, 2500000, 2900000, 2700000, 3000000]),
+                    data: @json(isset($donneesFinancieres['depenses_mensuelles']) ? collect($donneesFinancieres['depenses_mensuelles'])->pluck('total')->toArray() : [2200000, 2400000, 2300000, 2600000, 2500000, 2700000, 2600000, 2800000, 2500000, 2900000, 2700000, 3000000]),
                     borderColor: colors.warning,
                     backgroundColor: colors.warning + '20',
                     tension: 0.4,
