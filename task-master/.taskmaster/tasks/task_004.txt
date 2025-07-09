@@ -1,0 +1,57 @@
+# Task ID: 4
+# Title: Système de relances automatisées multi-canal
+# Status: done
+# Dependencies: 1, 2
+# Priority: medium
+# Description: Développer le système de relances automatiques pour les paiements en retard avec support multi-canal (Email/SMS/Courrier) et workflows de relance à plusieurs niveaux.
+# Details:
+1. Créer un contrôleur `RelancesController.php` avec:
+   - CRUD complet pour les relances
+   - Interface de configuration des templates
+   - Tableau de bord de suivi des campagnes
+
+2. Implémenter les Jobs Laravel:
+   - `EnvoyerRelanceJob.php` pour traitement asynchrone
+   - `PlanifierRelancesJob.php` pour l'automatisation
+
+3. Développer les templates de relance:
+   - Templates email HTML responsive
+   - Templates SMS avec variables dynamiques
+   - Templates PDF pour courriers
+
+4. Créer la logique de segmentation:
+   ```php
+   // Exemple de segmentation par niveau de retard
+   public function segmenterEtudiants() {
+       $niveau1 = Etudiant::with('paiements')
+           ->whereHas('paiements', function($q) {
+               $q->where('date_echeance', '<', now()->subDays(15));
+               $q->where('date_echeance', '>', now()->subDays(30));
+           })->get();
+       
+       $niveau2 = Etudiant::with('paiements')
+           ->whereHas('paiements', function($q) {
+               $q->where('date_echeance', '<', now()->subDays(30));
+               $q->where('date_echeance', '>', now()->subDays(60));
+           })->get();
+       
+       // etc.
+   }
+   ```
+
+5. Intégrer avec services externes:
+   - Configuration SendGrid/Mailjet pour emails
+   - Configuration Nexmo/Twilio pour SMS
+
+6. Développer le tableau de bord de suivi:
+   - Taux d'ouverture/clic des emails
+   - Taux de réponse SMS
+   - Efficacité des campagnes
+
+# Test Strategy:
+1. Tests unitaires pour la logique de segmentation
+2. Tests d'intégration avec les services d'envoi
+3. Tests de file d'attente pour les jobs asynchrones
+4. Tests de templates avec différentes variables
+5. Tests de bout en bout pour le workflow complet
+6. Mocks pour simuler les réponses des services externes

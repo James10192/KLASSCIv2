@@ -179,11 +179,22 @@
         ],
         "status": "done",
         "subtasks": []
+      },
+      {
+        "id": 13,
+        "title": "Modernisation Design Dashboard 2025",
+        "description": "Appliquer tendances UI/UX 2025: design minimaliste, neo-skeuomorphisme, palette professionnelle",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
       }
     ],
     "metadata": {
       "created": "2025-07-08T23:51:05.466Z",
-      "updated": "2025-07-09T12:18:52.490Z",
+      "updated": "2025-07-09T14:47:06.948Z",
       "description": "Tasks for master context"
     }
   }

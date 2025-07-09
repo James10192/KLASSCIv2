@@ -1,0 +1,75 @@
+# Task ID: 7
+# Title: Implémentation des jobs et queues asynchrones
+# Status: done
+# Dependencies: 2, 4, 6
+# Priority: high
+# Description: Développer les jobs Laravel pour les traitements lourds en arrière-plan comme les relances, calculs de KPIs, génération de rapports et sauvegardes.
+# Details:
+1. Configurer Laravel Horizon avec Redis:
+   - Installation des dépendances
+   - Configuration des files d'attente prioritaires
+   - Dashboard de monitoring
+
+2. Implémenter les jobs principaux:
+   ```php
+   // Exemple de job pour calcul KPIs
+   class CalculerKPIsJob implements ShouldQueue {
+       use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+       
+       protected $periode;
+       
+       public function __construct($periode = 'journalier') {
+           $this->periode = $periode;
+       }
+       
+       public function handle(ComptabiliteService $comptabiliteService) {
+           $kpis = $comptabiliteService->calculerKPIs($this->periode);
+           
+           // Sauvegarder les KPIs calculés
+           foreach($kpis as $nom => $valeur) {
+               KPI::create([
+                   'nom' => $nom,
+                   'valeur' => $valeur,
+                   'periode' => $this->periode,
+                   'date_calcul' => now()
+               ]);
+           }
+           
+           // Déclencher événement pour mise à jour dashboard
+           event(new KPIsCalcules($kpis));
+       }
+   }
+   ```
+
+3. Développer les autres jobs essentiels:
+   - `EnvoyerRelanceJob.php`
+   - `GenererRapportJob.php`
+   - `SauvegardeDataJob.php`
+
+4. Configurer les tâches planifiées:
+   ```php
+   // Dans App\Console\Kernel.php
+   protected function schedule(Schedule $schedule) {
+       $schedule->job(new CalculerKPIsJob('journalier'))->dailyAt('23:00');
+       $schedule->job(new CalculerKPIsJob('hebdomadaire'))->weekly()->mondays()->at('01:00');
+       $schedule->job(new CalculerKPIsJob('mensuel'))->monthlyOn(1, '02:00');
+       
+       $schedule->job(new SauvegardeDataJob())->dailyAt('03:00');
+       
+       // Vérifier les paiements en retard et planifier les relances
+       $schedule->job(new PlanifierRelancesJob())->dailyAt('08:00');
+   }
+   ```
+
+5. Implémenter la gestion des échecs et retries:
+   - Logging des erreurs
+   - Politique de retry
+   - Notifications d'échec critique
+
+# Test Strategy:
+1. Tests unitaires pour chaque job
+2. Tests d'intégration avec Redis
+3. Tests de performance sous charge
+4. Tests de récupération après échec
+5. Tests de planification avec Clock mock
+6. Monitoring des files d'attente en environnement de test

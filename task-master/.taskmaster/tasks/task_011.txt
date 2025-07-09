@@ -1,0 +1,72 @@
+# Task ID: 11
+# Title: Intégration des analytics prédictifs
+# Status: done
+# Dependencies: 3, 6, 9
+# Priority: low
+# Description: Développer les fonctionnalités d'analytics prédictifs pour les projections de cash-flow, la détection d'anomalies et les recommandations basées sur l'historique.
+# Details:
+1. Implémenter les algorithmes de projection:
+   ```php
+   // Exemple de méthode de projection dans ComptabiliteService
+   public function projeterCashFlow($mois = 3) {
+       // Récupérer l'historique des 12 derniers mois
+       $historique = Paiement::selectRaw('YEAR(date_paiement) as annee, MONTH(date_paiement) as mois, SUM(montant) as total')
+           ->where('date_paiement', '>=', now()->subMonths(12))
+           ->groupBy('annee', 'mois')
+           ->orderBy('annee')
+           ->orderBy('mois')
+           ->get()
+           ->toArray();
+       
+       // Calculer les tendances saisonnières
+       $tendances = $this->calculerTendancesSaisonnieres($historique);
+       
+       // Projeter pour les prochains mois
+       $projections = [];
+       $dateActuelle = now();
+       
+       for ($i = 1; $i <= $mois; $i++) {
+           $dateFuture = $dateActuelle->copy()->addMonths($i);
+           $moisFutur = $dateFuture->month;
+           
+           // Appliquer tendance saisonnière + croissance moyenne
+           $projection = $tendances[$moisFutur] * (1 + $this->tauxCroissanceMoyen());
+           
+           $projections[] = [
+               'date' => $dateFuture->format('Y-m'),
+               'montant_projete' => round($projection, 2),
+               'intervalle_confiance' => $this->calculerIntervalleConfiance($projection)
+           ];
+       }
+       
+       return $projections;
+   }
+   ```
+
+2. Développer la détection d'anomalies:
+   - Algorithme de détection des valeurs aberrantes
+   - Alertes automatiques pour écarts significatifs
+   - Tableau de bord des anomalies
+
+3. Implémenter les recommandations:
+   - Suggestions d'optimisation basées sur l'historique
+   - Identification des périodes critiques
+   - Recommandations de relance ciblées
+
+4. Créer les visualisations avancées:
+   - Graphiques de projection avec intervalles de confiance
+   - Heatmaps de performance par période/filière
+   - Indicateurs de tendance
+
+5. Développer le benchmarking:
+   - Comparaisons inter-périodes
+   - Suivi des objectifs vs réalité
+   - Analyse des écarts
+
+# Test Strategy:
+1. Tests unitaires des algorithmes de projection
+2. Validation avec données historiques connues
+3. Tests de précision des projections
+4. Tests de détection d'anomalies avec cas simulés
+5. Évaluation des recommandations par experts métier
+6. Tests de performance avec grands volumes de données

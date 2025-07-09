@@ -1,55 +1,43 @@
-{{-- Alerte Financière Component --}}
-<div class="col-md-6 mb-2">
-    <div class="d-flex align-items-center p-3 rounded-3
-        @if(($alerte['niveau'] ?? 'info') === 'critique') bg-danger bg-opacity-10 border border-danger
-        @elseif(($alerte['niveau'] ?? 'info') === 'warning') bg-warning bg-opacity-10 border border-warning
-        @else bg-info bg-opacity-10 border border-info
-        @endif">
+@php
+    $niveauClasses = [
+        'critique' => 'bg-danger text-white',
+        'warning' => 'bg-warning text-dark',
+        'info' => 'bg-info text-white'
+    ];
+    $iconesNiveau = [
+        'critique' => 'fas fa-exclamation-triangle',
+        'warning' => 'fas fa-exclamation-circle',
+        'info' => 'fas fa-info-circle'
+    ];
+@endphp
 
+<div class="col-md-6 mb-3">
+    <div class="card border-0 h-100 shadow-sm {{ $niveauClasses[$alerte['niveau']] ?? 'bg-secondary text-white' }}">
+        <div class="card-body p-3">
+            <div class="d-flex align-items-start">
         <div class="me-3">
-            @if(($alerte['niveau'] ?? 'info') === 'critique')
-                <i class="fas fa-exclamation-circle fa-lg text-danger"></i>
-            @elseif(($alerte['niveau'] ?? 'info') === 'warning')
-                <i class="fas fa-exclamation-triangle fa-lg text-warning"></i>
-            @else
-                <i class="fas fa-info-circle fa-lg text-info"></i>
-            @endif
+                    <i class="{{ $iconesNiveau[$alerte['niveau']] ?? 'fas fa-bell' }} fa-lg"></i>
         </div>
-
         <div class="flex-grow-1">
-            <div class="fw-semibold mb-1
-                @if(($alerte['niveau'] ?? 'info') === 'critique') text-danger
-                @elseif(($alerte['niveau'] ?? 'info') === 'warning') text-warning
-                @else text-info
-                @endif">
-                {{ $alerte['titre'] ?? 'Alerte' }}
+                    <h6 class="card-title mb-1 fw-bold">{{ $alerte['titre'] ?? 'Alerte Financière' }}</h6>
+                    <p class="card-text small mb-2">{{ $alerte['message'] ?? 'Aucun message' }}</p>
+                    @if(isset($alerte['valeur']))
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="small">Valeur:</span>
+                            <span class="fw-bold">{{ number_format($alerte['valeur'], 0, ',', ' ') }} FCFA</span>
             </div>
-
-            <div class="small text-muted">
-                {{ $alerte['message'] ?? 'Message d\'alerte' }}
+                    @endif
+                    @if(isset($alerte['pourcentage']))
+                        <div class="progress mt-2" style="height: 4px;">
+                            <div class="progress-bar bg-white" role="progressbar"
+                                 style="width: {{ $alerte['pourcentage'] }}%"
+                                 aria-valuenow="{{ $alerte['pourcentage'] }}"
+                                 aria-valuemin="0" aria-valuemax="100">
             </div>
-
-            @if(isset($alerte['valeur']))
-            <div class="small mt-1">
-                <strong>Valeur:</strong> {{ $alerte['valeur'] }}
-                @if(isset($alerte['seuil']))
-                    | <strong>Seuil:</strong> {{ $alerte['seuil'] }}
-                @endif
             </div>
             @endif
         </div>
-
-        @if(isset($alerte['action']))
-        <div class="ms-2">
-            <button type="button" class="btn btn-sm
-                @if(($alerte['niveau'] ?? 'info') === 'critique') btn-outline-danger
-                @elseif(($alerte['niveau'] ?? 'info') === 'warning') btn-outline-warning
-                @else btn-outline-info
-                @endif"
-                onclick="handleAlerte('{{ $alerte['id'] ?? '' }}')">
-                <i class="fas fa-arrow-right"></i>
-            </button>
+            </div>
         </div>
-        @endif
     </div>
 </div>

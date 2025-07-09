@@ -1,0 +1,42 @@
+# Task ID: 2
+# Title: Développement des services de base
+# Status: done
+# Dependencies: 1
+# Priority: high
+# Description: Créer les services principaux qui encapsuleront la logique métier du module comptabilité étendu.
+# Details:
+Implémenter les services suivants dans le répertoire `app/Services/`:
+
+1. `ComptabiliteService.php`:
+   - Méthodes de calcul des KPIs financiers (recettes, dépenses, taux recouvrement)
+   - Logique de projection financière
+   - Méthodes d'agrégation pour les tableaux de bord
+
+2. `NotificationService.php`:
+   - Gestion des templates de notification (email, SMS)
+   - Logique d'envoi multi-canal
+   - Suivi des statuts d'envoi
+
+3. `PDFService.php`:
+   - Génération de documents PDF (reçus, bons de sortie, rapports)
+   - Gestion des templates PDF personnalisables
+   - Intégration QR codes pour traçabilité
+
+4. `ReportingService.php`:
+   - Génération de rapports personnalisés
+   - Exports multi-formats (PDF, Excel, CSV)
+   - Logique de programmation des rapports
+
+5. `WorkflowService.php`:
+   - Gestion des étapes d'approbation
+   - Transitions d'état pour les bons de sortie
+   - Historique des actions
+
+Utiliser l'injection de dépendances Laravel pour faciliter les tests et la maintenance.
+
+# Test Strategy:
+1. Tests unitaires pour chaque méthode de service avec PHPUnit
+2. Tests d'intégration pour vérifier l'interaction entre services
+3. Mocks pour simuler les dépendances externes (email, SMS)
+4. Tests de cas limites et d'exceptions
+5. Benchmarks pour les méthodes critiques en performance

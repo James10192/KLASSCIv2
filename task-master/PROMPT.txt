@@ -1,6 +1,8 @@
 Run task master next et vois la tâche à faire
 Le projet est déjà initialisé, juste run "task-master next" dans le terminal et ensuite task-master show 2(with ID de la tâche qui s'affiche lors du task-master next)
 
+!!!Important pour te connecter à l'app tu peux chercher @TestUsersSeeder.php pour avoir des credentials des différents rôles
+
 Si tu finis fais ces actions: -	Suggested Actions:                                                          │
 -	│ 1. Mark as in-progress: task-master set-status --id=2 --status=in-progress  │
 -	│ 2. Mark as done when completed: task-master set-status --id=2 --status=done │
@@ -103,3 +105,21 @@ Quand tu finis à chaque fois une requête !!!IMPORTANT mets ça dans un dossier
      a) Create entities for recurring organizations, people, and significant events
      b) Connect them to the current entities using relations
      c) Store facts about them as observations'
+
+
+!!IMPORTANT Use "curl."!Important pour éviter les erreurs d'alias de powershell
+
+!!!IMPORTANT Avant de commencer une tâche assure toi que tout ce que tu veux créer n'existe pas déjà
+!!!IMPORTANT mets ça dans un dossier @/projet-memory avec une bonne indexation pour mieux retrieve
+!!! mets ça dans un memory MCP SERVER avec une bonne indexation pour mieux retrouver l'avancée des fichiers voir ce qui a été fait, les bugs resolus, les fonctionnalités ajoutées, etc ...
+!!!IMPORTANT Grep codebase CHerche tout dossier et nom de fichier avec tous declinaisons de noms possible pour être sûr que ça n'exsite pas avant de créer pour éviter les doublons
+!!!IMPORTANT Ne fais pas un truc générique ou hardcodé ça ne m'intéresse pas
+
+!!IMPORTANT Use "curl."!Important pour éviter les erreurs d'alias de powershell
+!!!Important pour te connecter à l'app tu peux chercher @TestUsersSeeder.php pour avoir des credentials des différents rôles
+!!IMPORTANT Use "curl."!Important pour éviter les erreurs d'alias de powershell
+!!!Important pour te connecter à l'app tu peux chercher @TestUsersSeeder.php pour avoir des credentials des différents rôles
+!!IMPORTANT Use "curl."!Important pour éviter les erreurs d'alias de powershell
+
+
+!!!Important pour te connecter à l'app tu peux chercher @TestUsersSeeder.php pour avoir des credentials des différents rôles

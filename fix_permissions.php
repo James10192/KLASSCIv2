@@ -97,31 +97,82 @@ try {
         // Paiements - Ajout des permissions pour les paiements
         'view-paiements', 'create-paiements', 'edit-paiements', 'delete-paiements', 'validate-paiements',
 
-        //Comptabilité
+        //Comptabilité - Permissions de base
         'access_comptabilite_module',
         'view_paiements',
-    'create_paiements',
-    'edit_paiements',
-    'delete_paiements',
-    'view_frais_scolarite',
-    'create_frais_scolarite',
-    'edit_frais_scolarite',
-    'delete_frais_scolarite',
-    'view_depenses',
-    'create_depenses',
-    'edit_depenses',
-    'delete_depenses',
-    'view_salaires',
-    'create_salaires',
-    'edit_salaires',
-    'delete_salaires',
-    'view_bourses',
-    'create_bourses',
-    'edit_bourses',
-    'delete_bourses',
-    'view_reporting_financier',
-    'export_reporting_financier',
-    'view_teacher_dashboard',
+        'create_paiements',
+        'edit_paiements',
+        'delete_paiements',
+        'view_frais_scolarite',
+        'create_frais_scolarite',
+        'edit_frais_scolarite',
+        'delete_frais_scolarite',
+        'view_depenses',
+        'create_depenses',
+        'edit_depenses',
+        'delete_depenses',
+        'view_salaires',
+        'create_salaires',
+        'edit_salaires',
+        'delete_salaires',
+        'view_bourses',
+        'create_bourses',
+        'edit_bourses',
+        'delete_bourses',
+        'view_reporting_financier',
+        'export_reporting_financier',
+        'view_teacher_dashboard',
+
+        // Comptabilité - Permissions Tâche #1 KLASSCI
+        'comptabilite.dashboard.view',
+        'comptabilite.bons.approve',
+        'comptabilite.config.manage',
+        'comptabilite.reports.export',
+        'comptabilite.relances.send',
+
+        // Sécurité et Audit - Tâche #10 KLASSCI (8 permissions)
+        'security.audit.view',
+        'security.audit.export',
+        'security.audit.delete',
+        'security.users.monitor',
+        'security.events.view',
+        'security.backup.view',
+        'security.backup.create',
+        'security.backup.restore',
+
+        // Comptabilité Granulaire - Tâche #10 KLASSCI (8 permissions)
+        'comptabilite.audit.view',
+        'comptabilite.audit.export',
+        'comptabilite.security.manage',
+        'comptabilite.permissions.manage',
+        'comptabilite.data.encrypt',
+        'comptabilite.data.decrypt',
+        'comptabilite.sensitive.access',
+        'comptabilite.transactions.monitor',
+
+        // Workflow Avancé - Tâche #10 KLASSCI (6 permissions)
+        'workflow.approve.level1',
+        'workflow.approve.level2',
+        'workflow.approve.level3',
+        'workflow.reject.any',
+        'workflow.bypass.approval',
+        'workflow.audit.view',
+
+        // Validation et Reporting - Tâche #10 KLASSCI (9 permissions)
+        'validation.financial.basic',
+        'validation.financial.advanced',
+        'validation.bulk.operations',
+        'validation.emergency.override',
+        'reports.financial.confidential',
+        'reports.audit.complete',
+        'reports.security.incidents',
+        'reports.compliance.klassci',
+
+        // Permissions bons de sortie - Tâche #5 KLASSCI
+        'comptabilite.bons.create',
+        'comptabilite.bons.edit',
+        'comptabilite.bons.view',
+        'comptabilite.bons.pay',
     ];
 
     echo "Vérification et création des permissions...\n";
@@ -166,19 +217,50 @@ try {
         }
     }
 
-    echo "\nAssignation des permissions de paiement au rôle secretaire...\n";
-    $paiementPermissions = [
+    echo "\nAssignation des permissions KLASSCI comptabilité au rôle secretaire...\n";
+
+    // Permissions pour secrétaires selon Tâche #10 KLASSCI : Permissions limitées (lecture, approbation niveau 1)
+    $secretaireComptabilitePermissions = [
+        // Permissions de base comptabilité
+        'access_comptabilite_module',
+        'view_paiements', 'create_paiements', 'edit_paiements', 'validate_paiements',
+        'view_depenses', 'create_depenses', 'edit_depenses',
+        'view_frais_scolarite', 'create_frais_scolarite', 'edit_frais_scolarite',
+
+        // Permissions Tâche #1 - accès limité
+        'comptabilite.dashboard.view',
+        'comptabilite.relances.send',
+
+        // Permissions audit - lecture seule
+        'security.audit.view',
+        'comptabilite.audit.view',
+
+        // Workflow - niveau 1 seulement
+        'workflow.approve.level1',
+        'workflow.audit.view',
+
+        // Validation de base
+        'validation.financial.basic',
+
+        // Bons de sortie - création et édition
+        'comptabilite.bons.create',
+        'comptabilite.bons.edit',
+        'comptabilite.bons.view',
+
+        // Permissions anciennes format
         'view-paiements', 'create-paiements', 'edit-paiements', 'validate-paiements'
     ];
 
-    foreach ($paiementPermissions as $permissionName) {
+    foreach ($secretaireComptabilitePermissions as $permissionName) {
         try {
             $permission = Permission::where('name', $permissionName)->first();
             if ($permission && !$secretaire->hasPermissionTo($permission)) {
                 $secretaire->givePermissionTo($permission);
-                echo "✅ Permission '{$permission->name}' assignée au rôle 'secretaire'.\n";
+                echo "✅ Permission comptabilité '{$permission->name}' assignée au rôle 'secretaire'.\n";
             } else if ($permission) {
                 echo "ℹ️ Le rôle 'secretaire' a déjà la permission '{$permission->name}'.\n";
+            } else {
+                echo "⚠️ Permission '{$permissionName}' non trouvée.\n";
             }
         } catch (\Exception $e) {
             echo "❌ ERREUR lors de l'assignation de la permission '{$permissionName}': " . $e->getMessage() . "\n";

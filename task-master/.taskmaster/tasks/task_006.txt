@@ -1,0 +1,55 @@
+# Task ID: 6
+# Title: Système de reporting et analytics avancés
+# Status: done
+# Dependencies: 1, 2, 3
+# Priority: medium
+# Description: Développer le générateur de rapports personnalisables avec interface drag-and-drop, exports multi-formats et analyses prédictives basées sur l'historique.
+# Details:
+1. Créer un contrôleur `ReportingController.php` avec:
+   - Interface de construction de rapports
+   - Prévisualisation des rapports
+   - Gestion des rapports sauvegardés
+   - Programmation d'envois automatiques
+
+2. Développer l'interface de construction:
+   - Composants drag-and-drop pour les champs
+   - Filtres dynamiques
+   - Options de groupement et agrégation
+   - Prévisualisation instantanée
+
+3. Implémenter les exports multi-formats:
+   ```php
+   // Exemple de factory pour les exports
+   class ExportFactory {
+       public function createExporter($format, $data, $options = []) {
+           switch($format) {
+               case 'pdf':
+                   return new PDFExporter($data, $options);
+               case 'excel':
+                   return new ExcelExporter($data, $options);
+               case 'csv':
+                   return new CSVExporter($data, $options);
+               default:
+                   throw new InvalidArgumentException("Format non supporté");
+           }
+       }
+   }
+   ```
+
+4. Développer les analyses prédictives:
+   - Projections de cash-flow basées sur l'historique
+   - Détection d'anomalies dans les paiements
+   - Tendances par filière et période
+
+5. Créer le système de rapports programmés:
+   - Interface de planification (quotidien, hebdomadaire, mensuel)
+   - Gestion des destinataires
+   - Historique des envois
+
+# Test Strategy:
+1. Tests unitaires pour les différents exporters
+2. Tests d'intégration pour la génération de rapports
+3. Tests de performance avec grands volumes de données
+4. Tests JavaScript pour l'interface drag-and-drop
+5. Tests de planification des rapports automatiques
+6. Validation des formats d'export (PDF, Excel, CSV)

@@ -97,13 +97,13 @@ class ComptabiliteService
         $cacheKey = "stats_recettes_{$annee->id}_" . Carbon::now()->format('Y-m-d');
 
         return Cache::store('comptabilite_kpis')->remember($cacheKey, self::CACHE_TTL_STATS, function () use ($annee) {
-            // Optimisation avec eager loading
+            // Optimisation avec eager loading - Correction status/statut
             $totalPaiements = ESBTPPaiement::where('annee_universitaire_id', $annee->id)
-                ->where('statut', 'completé')
+                ->where('status', 'validé')
                 ->sum('montant');
 
             $paiementsMensuels = ESBTPPaiement::where('annee_universitaire_id', $annee->id)
-                ->where('statut', 'completé')
+                ->where('status', 'validé')
                 ->whereMonth('date_paiement', Carbon::now()->month)
                 ->whereYear('date_paiement', Carbon::now()->year)
                 ->sum('montant');
@@ -175,25 +175,20 @@ class ComptabiliteService
         return Cache::store('heavy_calculations')->remember($cacheKey, self::CACHE_TTL_HEAVY, function () use ($annee) {
             $totalInscriptions = ESBTPInscription::where('annee_universitaire_id', $annee->id)->count();
 
-            // Optimisation avec requête unique pour éviter les N+1
+            // Optimisation avec requête unique pour éviter les N+1 - Correction jointure et colonnes
             $paymentStats = DB::table('esbtp_inscriptions')
                 ->select([
                     'esbtp_etudiants.id as etudiant_id',
                     DB::raw('COALESCE(SUM(esbtp_paiements.montant), 0) as total_paye'),
-                    'esbtp_frais_scolarite.montant_total as montant_requis'
+                    DB::raw('(esbtp_inscriptions.montant_scolarite + esbtp_inscriptions.frais_inscription) as montant_requis')
                 ])
                 ->join('esbtp_etudiants', 'esbtp_inscriptions.etudiant_id', '=', 'esbtp_etudiants.id')
                 ->leftJoin('esbtp_paiements', function($join) {
-                    $join->on('esbtp_inscriptions.etudiant_id', '=', 'esbtp_paiements.etudiant_id')
-                         ->where('esbtp_paiements.statut', '=', 'completé');
-                })
-                ->join('esbtp_frais_scolarite', function($join) {
-                    $join->on('esbtp_frais_scolarite.filiere_id', '=', 'esbtp_inscriptions.filiere_id')
-                         ->on('esbtp_frais_scolarite.niveau_id', '=', 'esbtp_inscriptions.niveau_id')
-                         ->on('esbtp_frais_scolarite.annee_universitaire_id', '=', 'esbtp_inscriptions.annee_universitaire_id');
+                    $join->on('esbtp_inscriptions.id', '=', 'esbtp_paiements.inscription_id')
+                         ->where('esbtp_paiements.status', '=', 'validé');
                 })
                 ->where('esbtp_inscriptions.annee_universitaire_id', $annee->id)
-                ->groupBy(['esbtp_etudiants.id', 'esbtp_frais_scolarite.montant_total'])
+                ->groupBy(['esbtp_etudiants.id', 'esbtp_inscriptions.montant_scolarite', 'esbtp_inscriptions.frais_inscription'])
                 ->get();
 
             $etudiantsPayeComplet = 0;
@@ -251,7 +246,7 @@ class ComptabiliteService
             // Moyenne des 6 derniers mois avec optimisation SQL
             $moyenneRecettes = ESBTPPaiement::where('annee_universitaire_id', $annee->id)
                 ->where('date_paiement', '>=', Carbon::now()->subMonths(6))
-                ->where('statut', 'completé')
+                ->where('status', 'validé')
                 ->selectRaw('AVG(montant) as moyenne')
                 ->value('moyenne') ?? 0;
 

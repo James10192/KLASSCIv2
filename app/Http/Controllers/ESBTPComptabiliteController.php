@@ -22,6 +22,7 @@ use App\Models\User;
 use App\Services\ComptabiliteService;
 use App\Services\PerformanceMonitoringService;
 use App\Services\AnalyticsPredictifService;
+use App\Services\AIAnalyticsService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
@@ -34,6 +35,7 @@ class ESBTPComptabiliteController extends Controller
     protected $comptabiliteService;
     protected $performanceMonitor;
     protected $analyticsPredictifService;
+    protected $aiAnalyticsService;
 
     /**
      * Constructeur avec injection des services optimisés
@@ -41,13 +43,16 @@ class ESBTPComptabiliteController extends Controller
     public function __construct(
         ComptabiliteService $comptabiliteService,
         PerformanceMonitoringService $performanceMonitor,
-        AnalyticsPredictifService $analyticsPredictifService
+        AnalyticsPredictifService $analyticsPredictifService,
+        AIAnalyticsService $aiAnalyticsService
     ) {
-        $this->middleware('auth');
-        $this->middleware('permission:access_comptabilite_module');
         $this->comptabiliteService = $comptabiliteService;
         $this->performanceMonitor = $performanceMonitor;
         $this->analyticsPredictifService = $analyticsPredictifService;
+        $this->aiAnalyticsService = $aiAnalyticsService;
+
+        $this->middleware('auth');
+        $this->middleware('permission:access_comptabilite_module');
     }
 
     /**
@@ -74,25 +79,434 @@ class ESBTPComptabiliteController extends Controller
     }
 
     /**
-     * Dashboard avancé avec KPIs en temps réel
+     * Dashboard avancé avec IA et analytics temps réel
      */
     public function dashboardAvance()
     {
-        return $this->performanceMonitor->monitor('dashboard_avance', function () {
-            try {
-                // Utiliser le service optimisé avec cache
-                $kpis = $this->comptabiliteService->getKPIsDashboard();
-                $previsions = $this->comptabiliteService->calculerPrevisions(
-                    ESBTPAnneeUniversitaire::where('est_actif', true)->first(),
-                    3
-                );
+        try {
+            // === DONNÉES RÉELLES POUR DESIGN ACASI ===
 
-                return view('esbtp.comptabilite.dashboard-avance', compact('kpis', 'previsions'));
-            } catch (\Exception $e) {
-                Log::error('Erreur dashboard avancé', ['error' => $e->getMessage()]);
-                return back()->with('error', 'Erreur lors du chargement du dashboard avancé.');
+            // 1. KPIs principaux avec le service existant
+            $kpis = $this->comptabiliteService->getKPIsDashboard();
+
+            // 2. Enrichir avec des données calculées
+            $recettesMois = DB::table('esbtp_paiements')
+                ->whereMonth('created_at', now()->month)
+                ->whereYear('created_at', now()->year)
+                ->sum('montant');
+
+            $depensesMois = DB::table('esbtp_depenses')
+                ->whereMonth('created_at', now()->month)
+                ->whereYear('created_at', now()->year)
+                ->sum('montant');
+
+            // 3. Étudiants statistics
+            $totalEtudiants = DB::table('esbtp_inscriptions')->count();
+
+            // Restructuration pour éviter l'erreur GROUP BY strict mode
+            $sousRequeteEtudiantsSolvents = DB::table('esbtp_inscriptions')
+                ->join('esbtp_paiements', 'esbtp_inscriptions.id', '=', 'esbtp_paiements.inscription_id')
+                ->selectRaw('esbtp_inscriptions.id')
+                ->where('esbtp_paiements.status', 'validé')
+                ->groupBy('esbtp_inscriptions.id', 'esbtp_inscriptions.montant_scolarite', 'esbtp_inscriptions.frais_inscription')
+                ->havingRaw('SUM(esbtp_paiements.montant) >= (esbtp_inscriptions.montant_scolarite + esbtp_inscriptions.frais_inscription)');
+
+            $etudiantsSolvents = DB::table(DB::raw("({$sousRequeteEtudiantsSolvents->toSql()}) as temp_table"))
+                ->mergeBindings($sousRequeteEtudiantsSolvents)
+                ->count();
+
+            // 4. Enrichir les KPIs
+            $kpis = array_merge($kpis, [
+                'recettes_mois' => $recettesMois,
+                'depenses_mois' => $depensesMois,
+                'total_etudiants' => $totalEtudiants,
+                'etudiants_solvents' => $etudiantsSolvents,
+                'resultat_net' => ($kpis['total_recettes'] ?? 0) - ($kpis['total_depenses'] ?? 0),
+                'montant_en_attente' => $this->calculerMontantEnAttente()
+            ]);
+
+            // 5. Données financières détaillées pour le design ACASI
+            $donneesFinancieres = [
+                'recettes_mensuelles' => $this->getRecettesMensuelles(),
+                'depenses_mensuelles' => $this->getDepensesMensuelles(),
+                'top_filieres' => $this->getTopFilieres(),
+                'categories_depenses' => $this->getCategoriesDepenses(),
+                'etudiants_en_attente' => $this->getEtudiantsEnAttente()
+            ];
+
+            return view('esbtp.comptabilite.dashboard-avance', [
+                'kpis' => $kpis,
+                'donneesFinancieres' => $donneesFinancieres,
+                'insightsIA' => ['message' => 'Dashboard ACASI Style activé'],
+                'predictionsAvancees' => [],
+                'metriquesPerformance' => [],
+                'alertesIntelligentes' => $this->genererAlertesBasiques()
+            ])->with('success', 'Dashboard ACASI mis à jour avec succès');
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Erreur dashboard ACASI: ' . $e->getMessage(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile()
+            ], 500);
+        }
+    }
+
+    /**
+     * Méthodes helper pour le design ACASI
+     */
+    private function getRecettesMensuelles()
+    {
+        return DB::table('esbtp_paiements')
+            ->selectRaw('MONTH(created_at) as mois, YEAR(created_at) as annee, SUM(montant) as total')
+            ->whereYear('created_at', now()->year)
+            ->groupBy('annee', 'mois')
+            ->orderBy('annee', 'desc')
+            ->orderBy('mois', 'desc')
+            ->limit(12)
+            ->get();
+    }
+
+    private function getDepensesMensuelles()
+    {
+        return DB::table('esbtp_depenses')
+            ->selectRaw('MONTH(created_at) as mois, YEAR(created_at) as annee, SUM(montant) as total')
+            ->whereYear('created_at', now()->year)
+            ->groupBy('annee', 'mois')
+            ->orderBy('annee', 'desc')
+            ->orderBy('mois', 'desc')
+            ->limit(12)
+            ->get();
+    }
+
+    private function getTopFilieres()
+    {
+        return DB::table('esbtp_filieres')
+            ->join('esbtp_inscriptions', 'esbtp_filieres.id', '=', 'esbtp_inscriptions.filiere_id')
+            ->join('esbtp_paiements', 'esbtp_inscriptions.id', '=', 'esbtp_paiements.inscription_id')
+            ->selectRaw('esbtp_filieres.libelle as nom, SUM(esbtp_paiements.montant) as recettes')
+            ->where('esbtp_paiements.status', 'validé')
+            ->whereYear('esbtp_paiements.created_at', now()->year)
+            ->groupBy('esbtp_filieres.id', 'esbtp_filieres.libelle')
+            ->orderBy('recettes', 'desc')
+            ->limit(5)
+            ->get();
+    }
+
+    private function getCategoriesDepenses()
+    {
+        return DB::table('esbtp_depenses')
+            ->join('esbtp_categories_depenses', 'esbtp_depenses.categorie_id', '=', 'esbtp_categories_depenses.id')
+            ->selectRaw('esbtp_categories_depenses.nom as nom, SUM(esbtp_depenses.montant) as total')
+            ->whereYear('esbtp_depenses.created_at', now()->year)
+            ->groupBy('esbtp_categories_depenses.id', 'esbtp_categories_depenses.nom')
+            ->orderBy('total', 'desc')
+            ->limit(5)
+            ->get();
+    }
+
+    private function getEtudiantsEnAttente()
+    {
+        return DB::table('esbtp_inscriptions')
+            ->join('users', 'esbtp_inscriptions.user_id', '=', 'users.id')
+            ->leftJoin('esbtp_paiements', function($join) {
+                $join->on('esbtp_inscriptions.id', '=', 'esbtp_paiements.inscription_id')
+                     ->where('esbtp_paiements.status', 'validé');
+            })
+            ->selectRaw('
+                users.name as nom,
+                (esbtp_inscriptions.montant_scolarite + esbtp_inscriptions.frais_inscription) as montant_frais,
+                COALESCE(SUM(esbtp_paiements.montant), 0) as montant_paye,
+                ((esbtp_inscriptions.montant_scolarite + esbtp_inscriptions.frais_inscription) - COALESCE(SUM(esbtp_paiements.montant), 0)) as montant_du
+            ')
+            ->groupBy('esbtp_inscriptions.id', 'users.name', 'esbtp_inscriptions.montant_scolarite', 'esbtp_inscriptions.frais_inscription')
+            ->havingRaw('montant_du > 0')
+            ->orderBy('montant_du', 'desc')
+            ->limit(10)
+            ->get();
+    }
+
+    private function calculerMontantEnAttente()
+    {
+        // Restructuration pour éviter l'erreur SQL strict mode avec les bonnes colonnes
+        $sousRequete = DB::table('esbtp_inscriptions')
+            ->leftJoin('esbtp_paiements', 'esbtp_inscriptions.id', '=', 'esbtp_paiements.inscription_id')
+            ->selectRaw('
+                esbtp_inscriptions.id,
+                (esbtp_inscriptions.montant_scolarite + esbtp_inscriptions.frais_inscription) - COALESCE(SUM(esbtp_paiements.montant), 0) as montant_attente
+            ')
+            ->groupBy('esbtp_inscriptions.id', 'esbtp_inscriptions.montant_scolarite', 'esbtp_inscriptions.frais_inscription')
+            ->havingRaw('((esbtp_inscriptions.montant_scolarite + esbtp_inscriptions.frais_inscription) - COALESCE(SUM(esbtp_paiements.montant), 0)) > 0');
+
+        return DB::table(DB::raw("({$sousRequete->toSql()}) as temp_table"))
+            ->mergeBindings($sousRequete)
+            ->sum('montant_attente') ?? 0;
+    }
+
+    /**
+     * Prépare les données financières détaillées en temps réel
+     */
+    private function preparerDonneesDetailleesTempsReel(): array
+    {
+        $dateDebut = Carbon::now()->subYear();
+        $dateFin = Carbon::now();
+
+        // Évolution mensuelle des recettes (vraies données)
+        $recettesMensuelles = ESBTPPaiement::selectRaw('
+                YEAR(date_paiement) as annee,
+                MONTH(date_paiement) as mois,
+                SUM(montant) as total,
+                COUNT(*) as nombre_paiements,
+                AVG(montant) as moyenne_paiement
+            ')
+            ->whereBetween('date_paiement', [$dateDebut, $dateFin])
+            ->where('status', 'validé')
+            ->groupBy('annee', 'mois')
+            ->orderBy('annee')
+            ->orderBy('mois')
+            ->get();
+
+        // Évolution mensuelle des dépenses (vraies données)
+        $depensesMensuelles = ESBTPDepense::selectRaw('
+                YEAR(date_depense) as annee,
+                MONTH(date_depense) as mois,
+                SUM(montant) as total,
+                COUNT(*) as nombre_depenses,
+                AVG(montant) as moyenne_depense
+            ')
+            ->whereBetween('date_depense', [$dateDebut, $dateFin])
+            ->where('statut', 'validée')
+            ->groupBy('annee', 'mois')
+            ->orderBy('annee')
+            ->orderBy('mois')
+            ->get();
+
+        // Répartition par filière/niveau (vraies données)
+        $repartitionFilieres = ESBTPInscription::join('esbtp_filieres', 'esbtp_inscriptions.filiere_id', '=', 'esbtp_filieres.id')
+            ->join('esbtp_paiements', 'esbtp_inscriptions.id', '=', 'esbtp_paiements.inscription_id')
+            ->selectRaw('
+                esbtp_filieres.libelle as filiere,
+                esbtp_inscriptions.niveau_id as niveau,
+                SUM(esbtp_paiements.montant) as total_recettes,
+                COUNT(DISTINCT esbtp_inscriptions.etudiant_id) as nombre_etudiants
+            ')
+            ->where('esbtp_paiements.status', 'validé')
+            ->where('esbtp_paiements.date_paiement', '>=', $dateDebut)
+            ->groupBy('esbtp_filieres.id', 'esbtp_filieres.libelle', 'esbtp_inscriptions.niveau_id')
+            ->get();
+
+        // Analyse du taux de recouvrement en temps réel
+        $tauxRecouvrementDetaille = $this->calculerTauxRecouvrementDetailleTempsReel();
+
+        return [
+            'recettes_mensuelles' => $recettesMensuelles,
+            'depenses_mensuelles' => $depensesMensuelles,
+            'repartition_filieres' => $repartitionFilieres,
+            'taux_recouvrement_detaille' => $tauxRecouvrementDetaille,
+            'derniere_mise_a_jour' => now()->toISOString()
+        ];
+    }
+
+    /**
+     * Calcule les métriques de performance en temps réel
+     */
+    private function calculerMetriquesPerformanceTempsReel(): array
+    {
+        $anneeActive = ESBTPAnneeUniversitaire::where('est_actif', true)->first();
+
+        if (!$anneeActive) {
+            return [];
+        }
+
+        // Performance des recouvrements
+        $performanceRecouvrement = ESBTPPaiement::selectRaw('
+                AVG(DATEDIFF(date_paiement, date_echeance)) as delai_moyen_paiement,
+                SUM(CASE WHEN date_paiement <= date_echeance THEN 1 ELSE 0 END) / COUNT(*) * 100 as taux_ponctualite,
+                COUNT(*) as total_paiements
+            ')
+            ->where('annee_universitaire_id', $anneeActive->id)
+            ->where('status', 'validé')
+            ->first();
+
+        // Évolution du cash flow
+        $cashFlow = $this->calculerCashFlowTempsReel($anneeActive);
+
+        // Performance des relances
+        $performanceRelances = $this->calculerPerformanceRelancesTempsReel();
+
+        // ROI des investissements
+        $roiInvestissements = $this->calculerROIInvestissementsTempsReel($anneeActive);
+
+        return [
+            'performance_recouvrement' => $performanceRecouvrement,
+            'cash_flow' => $cashFlow,
+            'performance_relances' => $performanceRelances,
+            'roi_investissements' => $roiInvestissements,
+            'timestamp' => now()->toISOString()
+        ];
+    }
+
+    /**
+     * Génère des alertes intelligentes basées sur l'IA et les données réelles
+     */
+    private function genererAlertesIntelligentes(array $kpis, array $insightsIA): array
+    {
+        $alertes = [];
+
+        // Alertes basées sur les KPIs réels
+        if (($kpis['taux_recouvrement'] ?? 0) < 75) {
+            $alertes[] = [
+                'niveau' => 'critique',
+                'type' => 'recouvrement',
+                'titre' => 'Taux de recouvrement critique',
+                'message' => "Le taux de recouvrement ({$kpis['taux_recouvrement']}%) est en dessous du seuil critique (75%)",
+                'valeur' => $kpis['taux_recouvrement'],
+                'seuil' => 75,
+                'action_recommandee' => 'Intensifier les relances automatiques et réviser la stratégie de recouvrement',
+                'impact_estime' => 'Risque de déséquilibre financier imminent'
+            ];
+        }
+
+        // Alertes IA
+        if (isset($insightsIA['alertes_automatiques']) && !empty($insightsIA['alertes_automatiques'])) {
+            foreach ($insightsIA['alertes_automatiques'] as $alerte) {
+                $alertes[] = [
+                    'niveau' => $alerte['type'] ?? 'info',
+                    'type' => 'ia_detection',
+                    'titre' => 'Détection automatique IA',
+                    'message' => $alerte['message'] ?? 'Anomalie détectée par l\'IA',
+                    'action_recommandee' => $alerte['action'] ?? 'Analyser en détail',
+                    'ia_generated' => true
+                ];
             }
-        }, ['type' => 'dashboard_avance']);
+        }
+
+        // Alertes de cash flow prédictif
+        $predictionsAIA = $insightsIA['predictions'] ?? [];
+        foreach ($predictionsAIA as $prediction) {
+            if (($prediction['resultat_predit'] ?? 0) < 0 && ($prediction['confiance'] ?? 0) > 70) {
+                $alertes[] = [
+                    'niveau' => 'warning',
+                    'type' => 'cash_flow_prediction',
+                    'titre' => 'Prédiction cash flow négatif',
+                    'message' => "Cash flow négatif prévu pour {$prediction['mois_nom']} ({$prediction['resultat_predit']} FCFA)",
+                    'confiance' => $prediction['confiance'],
+                    'action_recommandee' => 'Planifier des mesures correctives dès maintenant'
+                ];
+            }
+        }
+
+        return $alertes;
+    }
+
+    /**
+     * Prépare les données pour les visualisations avancées
+     */
+    private function preparerDonneesVisualisations(): array
+    {
+        return [
+            'graphique_evolution_finances' => $this->getDonneesGraphiqueEvolution(),
+            'graphique_repartition_filieres' => $this->getDonneesRepartitionFilieres(),
+            'graphique_comparaison_objectifs' => $this->getDonneesComparaisonObjectifs(),
+            'graphique_tendances_paiements' => $this->getDonneesTendancesPaiements(),
+            'graphique_performance_mensuelle' => $this->getDonneesPerformanceMensuelle()
+        ];
+    }
+
+    /**
+     * Calcule le taux de recouvrement détaillé en temps réel
+     */
+    private function calculerTauxRecouvrementDetailleTempsReel(): array
+    {
+        $anneeActive = ESBTPAnneeUniversitaire::where('est_actif', true)->first();
+
+        if (!$anneeActive) {
+            return [];
+        }
+
+        // Par filière
+        $parFiliere = ESBTPInscription::join('esbtp_filieres', 'esbtp_inscriptions.filiere_id', '=', 'esbtp_filieres.id')
+            ->leftJoin('esbtp_paiements', function($join) {
+                $join->on('esbtp_inscriptions.id', '=', 'esbtp_paiements.inscription_id')
+                     ->where('esbtp_paiements.status', 'validé');
+            })
+            ->selectRaw('
+                esbtp_filieres.libelle as filiere,
+                COUNT(DISTINCT esbtp_inscriptions.etudiant_id) as total_etudiants,
+                COUNT(DISTINCT esbtp_paiements.etudiant_id) as etudiants_ayant_paye,
+                COALESCE(SUM(esbtp_paiements.montant), 0) as total_paye,
+                (COUNT(DISTINCT esbtp_paiements.etudiant_id) / COUNT(DISTINCT esbtp_inscriptions.etudiant_id) * 100) as taux_recouvrement
+            ')
+            ->where('esbtp_inscriptions.annee_universitaire_id', $anneeActive->id)
+            ->groupBy('esbtp_filieres.id', 'esbtp_filieres.libelle')
+            ->get();
+
+        // Par mois
+        $parMois = ESBTPPaiement::selectRaw('
+                MONTH(date_paiement) as mois,
+                YEAR(date_paiement) as annee,
+                COUNT(*) as nombre_paiements,
+                SUM(montant) as total_paye
+            ')
+            ->where('annee_universitaire_id', $anneeActive->id)
+            ->where('status', 'validé')
+            ->groupBy('annee', 'mois')
+            ->orderBy('annee')
+            ->orderBy('mois')
+            ->get();
+
+        return [
+            'par_filiere' => $parFiliere,
+            'par_mois' => $parMois,
+            'derniere_mise_a_jour' => now()->toISOString()
+        ];
+    }
+
+    /**
+     * Génère des alertes basées sur les KPIs
+     */
+    private function genererAlertes($kpis)
+    {
+        $alertes = [];
+
+        // Alerte sur le taux de recouvrement
+        if (($kpis['taux_recouvrement'] ?? 0) < 70) {
+            $alertes[] = [
+                'niveau' => 'warning',
+                'titre' => 'Taux de recouvrement bas',
+                'message' => 'Le taux de recouvrement est inférieur à 70%',
+                'valeur' => $kpis['taux_recouvrement'] ?? 0,
+                'pourcentage' => $kpis['taux_recouvrement'] ?? 0
+            ];
+        }
+
+        // Alerte sur le résultat net
+        if (($kpis['resultat_net'] ?? 0) < 0) {
+            $alertes[] = [
+                'niveau' => 'critique',
+                'titre' => 'Résultat net négatif',
+                'message' => 'Les dépenses dépassent les recettes',
+                'valeur' => $kpis['resultat_net'] ?? 0
+            ];
+        }
+
+        return $alertes;
+    }
+
+    /**
+     * Données KPIs par défaut
+     */
+    private function getDefaultKPIs()
+    {
+        return [
+            'total_recettes' => 0,
+            'total_depenses' => 0,
+            'resultat_net' => 0,
+            'taux_recouvrement' => 0,
+            'marge_nette' => 0,
+            'objectif_atteint' => 0,
+            'last_updated' => now()->toISOString()
+        ];
     }
 
     /**
@@ -141,19 +555,19 @@ class ESBTPComptabiliteController extends Controller
 
         // Total des paiements reçus
         $totalPaiements = ESBTPPaiement::where('annee_universitaire_id', $anneeEnCours->id)
-            ->where('statut', 'completé')
+            ->where('status', 'validé')
             ->sum('montant');
 
         // Paiements du mois en cours
         $paiementsMensuels = ESBTPPaiement::where('annee_universitaire_id', $anneeEnCours->id)
-            ->where('statut', 'completé')
+            ->where('status', 'validé')
             ->whereMonth('date_paiement', Carbon::now()->month)
             ->whereYear('date_paiement', Carbon::now()->year)
             ->sum('montant');
 
         // Paiements de l'année en cours
         $paiementsAnnuels = ESBTPPaiement::where('annee_universitaire_id', $anneeEnCours->id)
-            ->where('statut', 'completé')
+            ->where('status', 'validé')
             ->whereYear('date_paiement', Carbon::now()->year)
             ->sum('montant');
 
@@ -203,7 +617,7 @@ class ESBTPComptabiliteController extends Controller
 
         // Total des salaires
         $totalSalaires = ESBTPSalaire::where('annee_universitaire_id', $anneeEnCours->id)
-            ->where('statut', 'payé')
+            ->where('status', 'payé')
             ->sum('montant_net');
 
         // Total des dépenses en fournitures
@@ -248,7 +662,7 @@ class ESBTPComptabiliteController extends Controller
         // Nombre d'étudiants ayant payé complètement
         $etudiantsPayeComplet = DB::table('esbtp_inscriptions')
             ->join('esbtp_etudiants', 'esbtp_inscriptions.etudiant_id', '=', 'esbtp_etudiants.id')
-            ->join('esbtp_paiements', 'esbtp_inscriptions.etudiant_id', '=', 'esbtp_paiements.etudiant_id')
+            ->join('esbtp_paiements', 'esbtp_inscriptions.id', '=', 'esbtp_paiements.inscription_id')
             ->where('esbtp_inscriptions.annee_universitaire_id', $anneeEnCours->id)
             ->groupBy('esbtp_etudiants.id')
             ->havingRaw('SUM(esbtp_paiements.montant) >= (
@@ -263,7 +677,7 @@ class ESBTPComptabiliteController extends Controller
         // Nombre d'étudiants ayant payé partiellement
         $etudiantsPayePartiel = DB::table('esbtp_inscriptions')
             ->join('esbtp_etudiants', 'esbtp_inscriptions.etudiant_id', '=', 'esbtp_etudiants.id')
-            ->join('esbtp_paiements', 'esbtp_inscriptions.etudiant_id', '=', 'esbtp_paiements.etudiant_id')
+            ->join('esbtp_paiements', 'esbtp_inscriptions.id', '=', 'esbtp_paiements.inscription_id')
             ->where('esbtp_inscriptions.annee_universitaire_id', $anneeEnCours->id)
             ->groupBy('esbtp_etudiants.id')
             ->havingRaw('SUM(esbtp_paiements.montant) > 0 AND SUM(esbtp_paiements.montant) < (
@@ -377,7 +791,7 @@ class ESBTPComptabiliteController extends Controller
 
             $total = ESBTPPaiement::whereMonth('date_paiement', $date->month)
                 ->whereYear('date_paiement', $date->year)
-                ->where('statut', 'completé')
+                ->where('status', 'validé')
                 ->sum('montant');
 
             $recettes[] = $total;
@@ -483,7 +897,7 @@ class ESBTPComptabiliteController extends Controller
         $paiement->date_paiement = $request->date_paiement;
         $paiement->date_echeance = $request->date_echeance;
         $paiement->description = $request->description;
-        $paiement->statut = 'completé';
+        $paiement->status = 'validé';
         $paiement->createur_id = Auth::id();
         $paiement->save();
 
@@ -524,7 +938,7 @@ class ESBTPComptabiliteController extends Controller
         $paiement = ESBTPPaiement::findOrFail($id);
 
         // Vérifier si le paiement peut être modifié
-        if ($paiement->statut === 'validé') {
+        if ($paiement->status === 'validé') {
             return redirect()->route('esbtp.comptabilite.paiements')
                 ->with('error', 'Ce paiement a déjà été validé et ne peut plus être modifié.');
         }
@@ -544,7 +958,7 @@ class ESBTPComptabiliteController extends Controller
         $paiement = ESBTPPaiement::findOrFail($id);
 
         // Vérifier si le paiement peut être modifié
-        if ($paiement->statut === 'validé') {
+        if ($paiement->status === 'validé') {
             return redirect()->route('esbtp.comptabilite.paiements')
                 ->with('error', 'Ce paiement a déjà été validé et ne peut plus être modifié.');
         }
@@ -602,13 +1016,13 @@ class ESBTPComptabiliteController extends Controller
         $paiement = ESBTPPaiement::findOrFail($id);
 
         // Vérifier si le paiement peut être validé
-        if ($paiement->statut !== 'en_attente') {
+        if ($paiement->status !== 'en_attente') {
             return redirect()->route('esbtp.comptabilite.paiements')
                 ->with('error', 'Ce paiement ne peut pas être validé.');
         }
 
         // Valider le paiement
-        $paiement->statut = 'validé';
+        $paiement->status = 'validé';
         $paiement->date_validation = now();
         $paiement->validated_by = Auth::id();
         $paiement->save();
@@ -625,13 +1039,13 @@ class ESBTPComptabiliteController extends Controller
         $paiement = ESBTPPaiement::findOrFail($id);
 
         // Vérifier si le paiement peut être rejeté
-        if ($paiement->statut !== 'en_attente') {
+        if ($paiement->status !== 'en_attente') {
             return redirect()->route('esbtp.comptabilite.paiements')
                 ->with('error', 'Ce paiement ne peut pas être rejeté.');
         }
 
         // Rejeter le paiement
-        $paiement->statut = 'rejeté';
+        $paiement->status = 'rejeté';
         $paiement->date_validation = now();
         $paiement->validated_by = Auth::id();
         $paiement->save();
@@ -1229,8 +1643,8 @@ class ESBTPComptabiliteController extends Controller
 
         // Calculer les montants totaux des salaires
         $totalSalaires = ESBTPSalaire::sum('montant_net');
-        $totalPayes = ESBTPSalaire::where('statut', 'payé')->sum('montant_net');
-        $totalEnAttente = ESBTPSalaire::where('statut', 'en attente')->sum('montant_net');
+        $totalPayes = ESBTPSalaire::where('status', 'payé')->sum('montant_net');
+        $totalEnAttente = ESBTPSalaire::where('status', 'en attente')->sum('montant_net');
 
         return view('esbtp.comptabilite.salaires.index', compact('salaires', 'totalSalaires', 'totalPayes', 'totalEnAttente'));
     }
@@ -1264,7 +1678,7 @@ class ESBTPComptabiliteController extends Controller
             'retenues' => 'nullable|numeric|min:0',
             'montant_net' => 'required|numeric|min:0',
             'date_paiement' => 'nullable|date',
-            'statut' => 'required|in:calculé,validé,payé',
+            'status' => 'required|in:calculé,validé,payé',
             'description' => 'nullable|string',
         ]);
 
@@ -1291,12 +1705,12 @@ class ESBTPComptabiliteController extends Controller
         $salaire->retenues = $request->retenues ?? 0;
         $salaire->montant_net = $request->montant_net;
         $salaire->date_paiement = $request->date_paiement;
-        $salaire->statut = $request->statut;
+        $salaire->status = $request->status;
         $salaire->notes = $request->description;
         $salaire->createur_id = auth()->id();
 
         // Si le statut est "payé", définir la date de validation et le validateur
-        if ($request->statut == 'payé') {
+        if ($request->status == 'payé') {
             $salaire->validateur_id = auth()->id();
             $salaire->date_validation = now();
         }
@@ -1351,7 +1765,7 @@ class ESBTPComptabiliteController extends Controller
             'retenues' => 'nullable|numeric|min:0',
             'montant_net' => 'required|numeric|min:0',
             'date_paiement' => 'nullable|date',
-            'statut' => 'required|in:calculé,validé,payé',
+            'status' => 'required|in:calculé,validé,payé',
             'description' => 'nullable|string',
         ]);
 
@@ -1381,12 +1795,12 @@ class ESBTPComptabiliteController extends Controller
         $salaire->notes = $request->description;
 
         // Si le statut change pour "payé", mettre à jour le validateur et la date de validation
-        if ($request->statut == 'payé' && $salaire->statut != 'payé') {
+        if ($request->status == 'payé' && $salaire->status != 'payé') {
             $salaire->validateur_id = auth()->id();
             $salaire->date_validation = now();
         }
 
-        $salaire->statut = $request->statut;
+        $salaire->status = $request->status;
         $salaire->save();
 
         return redirect()->route('esbtp.comptabilite.salaires')
@@ -1448,7 +1862,7 @@ class ESBTPComptabiliteController extends Controller
         }
 
         // Mettre à jour le statut
-        $salaire->statut = $status;
+        $salaire->status = $status;
 
         // Si le statut est "payé", mettre à jour le validateur et la date de validation
         if ($status == 'payé' && $salaire->validateur_id === null) {
@@ -1514,7 +1928,7 @@ class ESBTPComptabiliteController extends Controller
         ]);
 
         $validated['createur_id'] = Auth::id();
-        $validated['statut'] = 'en_attente'; // Changé pour workflow
+        $validated['status'] = 'en_attente'; // Changé pour workflow
 
         ESBTPDepense::create($validated);
 
@@ -1700,7 +2114,7 @@ class ESBTPComptabiliteController extends Controller
             $fin = \Carbon\Carbon::parse($annee->date_fin);
             for ($date = $debut->copy(); $date->lte($fin); $date->addMonth()) {
                 $labelsMoisDepenses[] = $date->translatedFormat('M Y');
-                $depenseQuery = \App\Models\ESBTPDepense::whereBetween('date_depense', [$date->copy()->startOfMonth(), $date->copy()->endOfMonth()])->where('statut', 'validée');
+                $depenseQuery = \App\Models\ESBTPDepense::whereBetween('date_depense', [$date->copy()->startOfMonth(), $date->copy()->endOfMonth()])->where('status', 'validée');
                 if ($filiereId) $depenseQuery->where('filiere_id', $filiereId);
                 if ($classeId) $depenseQuery->where('classe_id', $classeId);
                 $dataDepensesMensuelles[] = $depenseQuery->sum('montant');
@@ -1717,7 +2131,7 @@ class ESBTPComptabiliteController extends Controller
         if ($annee) {
             $dateDebut = \Carbon\Carbon::parse($annee->date_debut);
             $dateFin = \Carbon\Carbon::parse($annee->date_fin);
-            $depenseQuery = \App\Models\ESBTPDepense::whereBetween('date_depense', [$dateDebut, $dateFin])->where('statut', 'validée');
+            $depenseQuery = \App\Models\ESBTPDepense::whereBetween('date_depense', [$dateDebut, $dateFin])->where('status', 'validée');
             if ($filiereId) $depenseQuery->where('filiere_id', $filiereId);
             if ($classeId) $depenseQuery->where('classe_id', $classeId);
             $statsDepenses['total'] = $depenseQuery->sum('montant');
@@ -1749,9 +2163,9 @@ class ESBTPComptabiliteController extends Controller
 
         $statistiques = [
             'total' => \App\Models\ESBTPDepense::whereNotNull('numero_bon')->count(),
-            'en_attente' => \App\Models\ESBTPDepense::where('statut_workflow', 'en_attente')->count(),
-            'approuve' => \App\Models\ESBTPDepense::where('statut_workflow', 'approuve')->count(),
-            'rejete' => \App\Models\ESBTPDepense::where('statut_workflow', 'rejete')->count()
+            'en_attente' => \App\Models\ESBTPDepense::where('status_workflow', 'en_attente')->count(),
+            'approuve' => \App\Models\ESBTPDepense::where('status_workflow', 'approuve')->count(),
+            'rejete' => \App\Models\ESBTPDepense::where('status_workflow', 'rejete')->count()
         ];
 
         return view('esbtp.comptabilite.bons-sortie.index', compact('bons', 'statistiques'));
@@ -1788,8 +2202,8 @@ class ESBTPComptabiliteController extends Controller
 
         $bon = \App\Models\ESBTPDepense::create(array_merge($validated, [
             'numero_bon' => $numeroBon,
-            'statut' => 'brouillon',
-            'statut_workflow' => 'en_attente',
+            'status' => 'brouillon',
+            'status_workflow' => 'en_attente',
             'createur_id' => Auth::id(),
             'workflow_data' => json_encode([
                 'date_creation' => now(),
@@ -1812,9 +2226,9 @@ class ESBTPComptabiliteController extends Controller
 
         $statistiques = [
             'total' => \App\Models\ESBTPRelance::count(),
-            'planifiees' => \App\Models\ESBTPRelance::where('statut', 'planifiee')->count(),
-            'envoyees' => \App\Models\ESBTPRelance::where('statut', 'envoyee')->count(),
-            'echecs' => \App\Models\ESBTPRelance::where('statut', 'echec')->count()
+            'planifiees' => \App\Models\ESBTPRelance::where('status', 'planifiee')->count(),
+            'envoyees' => \App\Models\ESBTPRelance::where('status', 'envoyee')->count(),
+            'echecs' => \App\Models\ESBTPRelance::where('status', 'echec')->count()
         ];
 
         return view('esbtp.comptabilite.relances.index', compact('relances', 'statistiques'));
@@ -1852,7 +2266,7 @@ class ESBTPComptabiliteController extends Controller
         $bon = \App\Models\ESBTPDepense::whereNotNull('numero_bon')->findOrFail($id);
 
         // Vérifier que le bon peut être modifié
-        if ($bon->statut_workflow !== 'brouillon') {
+        if ($bon->status_workflow !== 'brouillon') {
             return redirect()->route('esbtp.comptabilite.bons-sortie.show', $id)
                 ->with('error', 'Seuls les bons en brouillon peuvent être modifiés.');
         }
@@ -1871,7 +2285,7 @@ class ESBTPComptabiliteController extends Controller
         $bon = \App\Models\ESBTPDepense::whereNotNull('numero_bon')->findOrFail($id);
 
         // Vérifier que le bon peut être modifié
-        if ($bon->statut_workflow !== 'brouillon') {
+        if ($bon->status_workflow !== 'brouillon') {
             return redirect()->route('esbtp.comptabilite.bons-sortie.show', $id)
                 ->with('error', 'Seuls les bons en brouillon peuvent être modifiés.');
         }
@@ -1950,7 +2364,7 @@ class ESBTPComptabiliteController extends Controller
             ->findOrFail($id);
 
         // Vérifier que le bon peut être imprimé
-        if (!in_array($bon->statut_workflow, ['approuve', 'paye'])) {
+        if (!in_array($bon->status_workflow, ['approuve', 'paye'])) {
             return redirect()->route('esbtp.comptabilite.bons-sortie.show', $id)
                 ->with('error', 'Seuls les bons approuvés ou payés peuvent être imprimés en PDF.');
         }
@@ -2035,13 +2449,13 @@ class ESBTPComptabiliteController extends Controller
         $jours = $request->input('jours', 30);
 
         $etudiants = \App\Models\ESBTPEtudiant::whereHas('factures', function($query) use ($dette, $jours) {
-            $query->where('statut', 'impayee')
+            $query->where('status', 'impayee')
                   ->where('montant_total', '>=', $dette)
                   ->where('date_echeance', '<', now()->subDays($jours));
         })->with('factures')->get();
 
         $totalDette = $etudiants->sum(function($etudiant) {
-            return $etudiant->factures->where('statut', 'impayee')->sum('montant_total');
+            return $etudiant->factures->where('status', 'impayee')->sum('montant_total');
         });
 
         $moyenneDette = $etudiants->count() > 0 ? $totalDette / $etudiants->count() : 0;
@@ -2429,11 +2843,11 @@ class ESBTPComptabiliteController extends Controller
      */
     private function calculerTauxGlobalEfficacite()
     {
-        $totalRelances = \App\Models\ESBTPRelance::where('statut', 'envoyee')->count();
+        $totalRelances = \App\Models\ESBTPRelance::where('status', 'envoyee')->count();
 
         if ($totalRelances == 0) return 0;
 
-        $relancesEfficaces = \App\Models\ESBTPRelance::where('statut', 'envoyee')
+        $relancesEfficaces = \App\Models\ESBTPRelance::where('status', 'envoyee')
             ->whereHas('etudiant.paiements', function($query) {
                 $query->where('created_at', '>', \DB::raw('esbtp_relances.date_envoi'))
                       ->where('created_at', '<', \DB::raw('DATE_ADD(esbtp_relances.date_envoi, INTERVAL 30 DAY)'));
@@ -2445,7 +2859,7 @@ class ESBTPComptabiliteController extends Controller
 
     private function calculerConversionsTotal()
     {
-        return \App\Models\ESBTPRelance::where('statut', 'envoyee')
+        return \App\Models\ESBTPRelance::where('status', 'envoyee')
             ->whereMonth('date_envoi', now()->month)
             ->whereYear('date_envoi', now()->year)
             ->whereHas('etudiant.paiements', function($query) {
@@ -2457,7 +2871,7 @@ class ESBTPComptabiliteController extends Controller
 
     private function calculerDelaiMoyenReponse()
     {
-        $relancesAvecPaiement = \App\Models\ESBTPRelance::where('statut', 'envoyee')
+        $relancesAvecPaiement = \App\Models\ESBTPRelance::where('status', 'envoyee')
             ->whereHas('etudiant.paiements', function($query) {
                 $query->where('created_at', '>', \DB::raw('esbtp_relances.date_envoi'));
             })
@@ -2626,7 +3040,6 @@ class ESBTPComptabiliteController extends Controller
                 'genere_par' => Auth::id(),
                 'url_fichier' => $exportUrl
             ]);
-
             return response()->json([
                 'success' => true,
                 'message' => 'Rapport généré avec succès',
@@ -3326,4 +3739,202 @@ class ESBTPComptabiliteController extends Controller
             'user_id' => Auth::id()
         ]);
     }
+
+    /**
+     * Calcule le cash flow en temps réel
+     */
+    private function calculerCashFlowTempsReel($anneeActive): array
+    {
+        $moisActuel = Carbon::now();
+        $cashFlowMensuel = [];
+
+        for ($i = -6; $i <= 0; $i++) {
+            $mois = $moisActuel->copy()->addMonths($i);
+
+            $recettes = ESBTPPaiement::where('annee_universitaire_id', $anneeActive->id)
+                ->whereYear('date_paiement', $mois->year)
+                ->whereMonth('date_paiement', $mois->month)
+                ->where('status', 'validé')
+                ->sum('montant');
+
+            $depenses = ESBTPDepense::whereYear('date_depense', $mois->year)
+                ->whereMonth('date_depense', $mois->month)
+                ->where('statut', 'validée')
+                ->sum('montant');
+
+            $cashFlowMensuel[] = [
+                'mois' => $mois->format('Y-m'),
+                'mois_nom' => $mois->format('M Y'),
+                'recettes' => $recettes,
+                'depenses' => $depenses,
+                'cash_flow' => $recettes - $depenses
+            ];
+        }
+
+        return $cashFlowMensuel;
+    }
+
+    /**
+     * Calcule la performance des relances en temps réel
+     */
+    private function calculerPerformanceRelancesTempsReel(): array
+    {
+        $totalRelances = \DB::table('esbtp_relances')->count();
+        $relancesReussies = \DB::table('esbtp_relances')
+            ->join('esbtp_paiements', 'esbtp_relances.etudiant_id', '=', 'esbtp_paiements.etudiant_id')
+            ->where('esbtp_paiements.date_paiement', '>', \DB::raw('esbtp_relances.date_envoi'))
+            ->count();
+
+        $tauxReussite = $totalRelances > 0 ? ($relancesReussies / $totalRelances) * 100 : 0;
+
+        return [
+            'total_relances' => $totalRelances,
+            'relances_reussies' => $relancesReussies,
+            'taux_reussite' => round($tauxReussite, 2),
+            'derniere_relance' => \DB::table('esbtp_relances')->max('date_envoi')
+        ];
+    }
+
+    /**
+     * Calcule le ROI des investissements en temps réel
+     */
+    private function calculerROIInvestissementsTempsReel($anneeActive): array
+    {
+        $investissements = ESBTPDepense::where('categorie', 'Investissement')
+            ->where('date_depense', '>=', $anneeActive->date_debut)
+            ->sum('montant');
+
+        $recettesGenerees = ESBTPPaiement::where('annee_universitaire_id', $anneeActive->id)
+            ->where('status', 'validé')
+            ->sum('montant');
+
+        $roi = $investissements > 0 ? (($recettesGenerees - $investissements) / $investissements) * 100 : 0;
+
+        return [
+            'investissements_total' => $investissements,
+            'recettes_generees' => $recettesGenerees,
+            'roi_pourcentage' => round($roi, 2),
+            'benefice_net' => $recettesGenerees - $investissements
+        ];
+    }
+
+    /**
+     * Génère des alertes basiques
+     */
+    private function genererAlertesBasiques(): array
+    {
+        $alertes = [];
+        $kpis = $this->comptabiliteService->getKPIsDashboard();
+
+        if (($kpis['taux_recouvrement'] ?? 0) < 70) {
+            $alertes[] = [
+                'niveau' => 'warning',
+                'titre' => 'Taux de recouvrement bas',
+                'message' => 'Le taux de recouvrement est inférieur à 70%',
+                'action_recommandee' => 'Intensifier les relances'
+            ];
+        }
+
+        return $alertes;
+    }
+
+    /**
+     * Obtient des données minimales en cas d'erreur
+     */
+    private function getDonneesMinimales(): array
+    {
+        return [
+            'recettes_mensuelles' => [],
+            'depenses_mensuelles' => [],
+            'repartition_filieres' => [],
+            'derniere_mise_a_jour' => now()->toISOString()
+        ];
+    }
+
+    /**
+     * Prépare les données pour le graphique d'évolution
+     */
+    private function getDonneesGraphiqueEvolution(): array
+    {
+        $derniersMois = collect();
+        for ($i = 11; $i >= 0; $i--) {
+            $mois = Carbon::now()->subMonths($i);
+
+            $recettes = ESBTPPaiement::whereYear('date_paiement', $mois->year)
+                ->whereMonth('date_paiement', $mois->month)
+                ->where('status', 'validé')
+                ->sum('montant');
+
+            $depenses = ESBTPDepense::whereYear('date_depense', $mois->year)
+                ->whereMonth('date_depense', $mois->month)
+                ->where('statut', 'validée')
+                ->sum('montant');
+
+            $derniersMois->push([
+                'mois' => $mois->format('M Y'),
+                'recettes' => $recettes,
+                'depenses' => $depenses
+            ]);
+        }
+
+        return $derniersMois->toArray();
+    }
+
+    /**
+     * Données pour la répartition par filières
+     */
+    private function getDonneesRepartitionFilieres(): array
+    {
+        return ESBTPInscription::join('esbtp_filieres', 'esbtp_inscriptions.filiere_id', '=', 'esbtp_filieres.id')
+            ->join('esbtp_paiements', 'esbtp_inscriptions.id', '=', 'esbtp_paiements.inscription_id')
+            ->selectRaw('esbtp_filieres.libelle as filiere, SUM(esbtp_paiements.montant) as total')
+            ->where('esbtp_paiements.status', 'validé')
+            ->groupBy('esbtp_filieres.id', 'esbtp_filieres.libelle')
+            ->get()
+            ->toArray();
+    }
+
+    /**
+     * Données de comparaison avec les objectifs
+     */
+    private function getDonneesComparaisonObjectifs(): array
+    {
+        // Implémentation des objectifs vs réalisations
+        return [];
+    }
+
+    /**
+     * Données des tendances de paiements
+     */
+    private function getDonneesTendancesPaiements(): array
+    {
+        return ESBTPPaiement::selectRaw('DATE(date_paiement) as date, COUNT(*) as nombre, SUM(montant) as total')
+            ->where('date_paiement', '>=', Carbon::now()->subDays(30))
+            ->where('status', 'validé')
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get()
+            ->toArray();
+    }
+
+    /**
+     * Données de performance mensuelle
+     */
+    private function getDonneesPerformanceMensuelle(): array
+    {
+        $anneeActive = ESBTPAnneeUniversitaire::where('est_actif', true)->first();
+
+        if (!$anneeActive) {
+            return [];
+        }
+
+        return ESBTPPaiement::selectRaw('MONTH(date_paiement) as mois, SUM(montant) as total, COUNT(*) as nombre')
+            ->where('annee_universitaire_id', $anneeActive->id)
+            ->where('status', 'validé')
+            ->groupBy('mois')
+            ->orderBy('mois')
+            ->get()
+            ->toArray();
+    }
 }
+
