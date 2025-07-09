@@ -580,10 +580,10 @@
                                     <span class="menu-dot"></span>
                                     <span>Liste des enseignants</span>
                                 </a>
-                                <a href="{{ route('esbtp.teacher-attendance.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.teacher-attendance.*') ? 'active' : '' }}">
+                                <!--<a href="{{ route('esbtp.teacher-attendance.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.teacher-attendance.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Présence enseignants</span>
-                                </a>
+                                </a>-->
                             </div>
                         </div>
                     @endif
@@ -691,7 +691,7 @@
                         <div class="menu-item">
                             <a href="{{ route('esbtp.attendance.mark') }}" class="menu-link {{ Request::routeIs('esbtp.attendance.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-clipboard-check"></i></div>
-                                <div class="menu-text">Émargement enseignant</div>
+                                <div class="menu-text">Faire les émargements</div>
                             </a>
                         </div>
                     @endif

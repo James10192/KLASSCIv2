@@ -15,9 +15,9 @@ class ESBTPAnneeUniversitaireController extends Controller
      */
     public function index()
     {
-        $annees = ESBTPAnneeUniversitaire::orderBy('start_date', 'desc')->get();
-        
-        return view('esbtp.annees.index', compact('annees'));
+        $anneesUniversitaires = ESBTPAnneeUniversitaire::orderBy('start_date', 'desc')->get();
+
+        return view('esbtp.annees-universitaires.index', compact('anneesUniversitaires'));
     }
 
     /**
@@ -27,7 +27,7 @@ class ESBTPAnneeUniversitaireController extends Controller
      */
     public function create()
     {
-        return view('esbtp.annees.create');
+        return view('esbtp.annees-universitaires.create');
     }
 
     /**
@@ -47,112 +47,112 @@ class ESBTPAnneeUniversitaireController extends Controller
             'is_active' => 'boolean',
             'description' => 'nullable|string',
         ]);
-        
+
         // Créer la nouvelle année universitaire
-        $annee = ESBTPAnneeUniversitaire::create($validatedData);
-        
+        $anneeUniversitaire = ESBTPAnneeUniversitaire::create($validatedData);
+
         // Si cette année est définie comme l'année en cours, mettre à jour les autres années
         if ($request->has('is_current') && $request->is_current) {
-            $annee->setAsCurrent();
+            $anneeUniversitaire->setAsCurrent();
         }
-        
+
         // Rediriger avec un message de succès
-        return redirect()->route('esbtp.annees.index')
+        return redirect()->route('esbtp.annees-universitaires.index')
             ->with('success', 'L\'année universitaire a été créée avec succès.');
     }
 
-    /**
+        /**
      * Affiche les détails d'une année universitaire spécifique.
      *
-     * @param  \App\Models\ESBTPAnneeUniversitaire  $annee
+     * @param  \App\Models\ESBTPAnneeUniversitaire  $anneesUniversitaire
      * @return \Illuminate\Http\Response
      */
-    public function show(ESBTPAnneeUniversitaire $annee)
+    public function show(ESBTPAnneeUniversitaire $anneesUniversitaire)
     {
         // Charger les étudiants inscrits pour cette année
-        $annee->load('inscriptions.student', 'inscriptions.filiere', 'inscriptions.niveauEtude');
-        
-        return view('esbtp.annees.show', compact('annee'));
+        $anneesUniversitaire->load('inscriptions.etudiant', 'inscriptions.filiere', 'inscriptions.niveauEtude');
+
+        return view('esbtp.annees-universitaires.show', compact('anneesUniversitaire'));
     }
 
     /**
      * Affiche le formulaire de modification d'une année universitaire.
      *
-     * @param  \App\Models\ESBTPAnneeUniversitaire  $annee
+     * @param  \App\Models\ESBTPAnneeUniversitaire  $anneesUniversitaire
      * @return \Illuminate\Http\Response
      */
-    public function edit(ESBTPAnneeUniversitaire $annee)
+    public function edit(ESBTPAnneeUniversitaire $anneesUniversitaire)
     {
-        return view('esbtp.annees.edit', compact('annee'));
+        return view('esbtp.annees-universitaires.edit', compact('anneesUniversitaire'));
     }
 
     /**
      * Met à jour l'année universitaire spécifiée dans la base de données.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\ESBTPAnneeUniversitaire  $annee
+     * @param  \App\Models\ESBTPAnneeUniversitaire  $anneesUniversitaire
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, ESBTPAnneeUniversitaire $annee)
+    public function update(Request $request, ESBTPAnneeUniversitaire $anneesUniversitaire)
     {
         // Valider les données du formulaire
         $validatedData = $request->validate([
-            'name' => 'required|string|max:255|unique:esbtp_annee_universitaires,name,' . $annee->id,
+            'name' => 'required|string|max:255|unique:esbtp_annee_universitaires,name,' . $anneesUniversitaire->id,
             'start_date' => 'required|date',
             'end_date' => 'required|date|after:start_date',
             'is_current' => 'boolean',
             'is_active' => 'boolean',
             'description' => 'nullable|string',
         ]);
-        
+
         // Mettre à jour l'année universitaire
-        $annee->update($validatedData);
-        
+        $anneesUniversitaire->update($validatedData);
+
         // Si cette année est définie comme l'année en cours, mettre à jour les autres années
         if ($request->has('is_current') && $request->is_current) {
-            $annee->setAsCurrent();
+            $anneesUniversitaire->setAsCurrent();
         }
-        
+
         // Rediriger avec un message de succès
-        return redirect()->route('esbtp.annees.index')
+        return redirect()->route('esbtp.annees-universitaires.index')
             ->with('success', 'L\'année universitaire a été mise à jour avec succès.');
     }
 
     /**
      * Supprime l'année universitaire spécifiée de la base de données.
      *
-     * @param  \App\Models\ESBTPAnneeUniversitaire  $annee
+     * @param  \App\Models\ESBTPAnneeUniversitaire  $anneesUniversitaire
      * @return \Illuminate\Http\Response
      */
-    public function destroy(ESBTPAnneeUniversitaire $annee)
+    public function destroy(ESBTPAnneeUniversitaire $anneesUniversitaire)
     {
         // Vérifier si l'année universitaire a des étudiants inscrits
-        if ($annee->inscriptions()->count() > 0) {
+        if ($anneesUniversitaire->inscriptions()->count() > 0) {
             return redirect()->back()
                 ->with('error', 'Impossible de supprimer cette année universitaire car des étudiants y sont inscrits.');
         }
-        
+
         // Supprimer l'année universitaire
-        $annee->delete();
-        
+        $anneesUniversitaire->delete();
+
         // Rediriger avec un message de succès
-        return redirect()->route('esbtp.annees.index')
+        return redirect()->route('esbtp.annees-universitaires.index')
             ->with('success', 'L\'année universitaire a été supprimée avec succès.');
     }
-    
+
     /**
      * Définit l'année universitaire spécifiée comme l'année en cours.
      *
-     * @param  \App\Models\ESBTPAnneeUniversitaire  $annee
+     * @param  \App\Models\ESBTPAnneeUniversitaire  $anneesUniversitaire
      * @return \Illuminate\Http\Response
      */
-    public function setCurrent(ESBTPAnneeUniversitaire $annee)
+    public function setCurrent(ESBTPAnneeUniversitaire $anneesUniversitaire)
     {
         // Définir cette année comme l'année en cours
-        $annee->setAsCurrent();
-        
+        $anneesUniversitaire->setAsCurrent();
+
         // Rediriger avec un message de succès
-        return redirect()->route('esbtp.annees.index')
+        return redirect()->route('esbtp.annees-universitaires.index')
             ->with('success', 'L\'année universitaire a été définie comme l\'année en cours.');
     }
-} 
+}
