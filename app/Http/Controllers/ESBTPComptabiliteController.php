@@ -927,6 +927,9 @@ class ESBTPComptabiliteController extends Controller
 
         // Générer une référence unique pour le paiement
         $reference = 'PAY-' . date('YmdHis') . '-' . rand(1000, 9999);
+        
+        // Générer un numéro de reçu
+        $numeroRecu = ESBTPPaiement::genererNumeroRecu();
 
         // Créer le paiement
         $paiement = new ESBTPPaiement();
@@ -934,10 +937,12 @@ class ESBTPComptabiliteController extends Controller
         $paiement->etudiant_id = $request->etudiant_id;
         $paiement->annee_universitaire_id = $request->annee_universitaire_id;
         $paiement->type_paiement = $request->type_paiement;
+        $paiement->motif = $request->type_paiement; // Le motif correspond au type de paiement
         $paiement->montant = $request->montant;
         $paiement->reference_paiement = $reference;
         $paiement->mode_paiement = $request->mode_paiement;
         $paiement->numero_transaction = $request->numero_transaction;
+        $paiement->numero_recu = $numeroRecu;
         $paiement->date_paiement = $request->date_paiement;
         $paiement->date_echeance = $request->date_echeance;
         $paiement->commentaire = $request->commentaire;
