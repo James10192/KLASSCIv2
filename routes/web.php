@@ -949,6 +949,9 @@ Route::middleware(['auth', 'permission:access_comptabilite_module'])->prefix('es
     Route::put('/depenses/categories/{id}', [ESBTPComptabiliteController::class, 'updateCategorieDepense'])->name('depenses.categories.update');
     Route::delete('/depenses/categories/{id}', [ESBTPComptabiliteController::class, 'destroyCategorieDepense'])->name('depenses.categories.destroy');
 
+    // Route AJAX pour créer un fournisseur
+    Route::post('/fournisseurs/ajax', [ESBTPComptabiliteController::class, 'storeFournisseurAjax'])->name('fournisseurs.ajax.store');
+
     // Gestion des bourses et aides
     Route::get('/bourses', [ESBTPComptabiliteController::class, 'bourses'])->name('bourses');
     Route::get('/bourses/create', [ESBTPComptabiliteController::class, 'createBourse'])->name('bourses.create');

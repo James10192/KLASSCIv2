@@ -1965,7 +1965,9 @@ class ESBTPComptabiliteController extends Controller
     public function createDepense()
     {
         $categories = ESBTPCategorieDepense::where('est_actif', true)->orderBy('nom')->get();
-        return view('esbtp.comptabilite.depenses.create', compact('categories'));
+        $fournisseurs = ESBTPFournisseur::where('est_actif', true)->orderBy('nom')->get();
+        
+        return view('esbtp.comptabilite.depenses.create', compact('categories', 'fournisseurs'));
     }
 
     /**
@@ -1981,10 +1983,37 @@ class ESBTPComptabiliteController extends Controller
             'description' => 'nullable|string',
             'mode_paiement' => 'required|string',
             'reference' => 'nullable|string|unique:esbtp_depenses,reference',
+            'fournisseur_id' => 'nullable|exists:esbtp_fournisseurs,id',
+            'nouveau_fournisseur' => 'nullable|string|max:255',
+            'numero_transaction' => 'nullable|string',
+            'notes_internes' => 'nullable|string',
+            'path_justificatif' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120'
         ]);
+
+        // Gérer la création d'un nouveau fournisseur si nécessaire
+        if (!empty($validated['nouveau_fournisseur']) && empty($validated['fournisseur_id'])) {
+            $fournisseur = ESBTPFournisseur::create([
+                'nom' => $validated['nouveau_fournisseur'],
+                'code' => 'FOUR-' . strtoupper(substr($validated['nouveau_fournisseur'], 0, 3)) . '-' . time(),
+                'type' => 'standard',
+                'est_actif' => true
+            ]);
+            $validated['fournisseur_id'] = $fournisseur->id;
+        }
+
+        // Supprimer le champ nouveau_fournisseur des données validées
+        unset($validated['nouveau_fournisseur']);
 
         $validated['createur_id'] = Auth::id();
         $validated['status'] = 'en_attente'; // Changé pour workflow
+
+        // Gérer l'upload du justificatif
+        if ($request->hasFile('path_justificatif')) {
+            $file = $request->file('path_justificatif');
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $path = $file->storeAs('justificatifs/depenses', $filename, 'public');
+            $validated['path_justificatif'] = $path;
+        }
 
         ESBTPDepense::create($validated);
 
@@ -2045,6 +2074,40 @@ class ESBTPComptabiliteController extends Controller
 
         return redirect()->route('esbtp.comptabilite.depenses')
             ->with('success', 'Dépense supprimée avec succès.');
+    }
+
+    /**
+     * Crée un nouveau fournisseur via AJAX
+     */
+    public function storeFournisseurAjax(Request $request)
+    {
+        $validated = $request->validate([
+            'nom' => 'required|string|max:255',
+            'email' => 'nullable|email|max:255',
+            'telephone' => 'nullable|string|max:20',
+            'adresse' => 'nullable|string|max:500',
+            'personne_contact' => 'nullable|string|max:255',
+            'telephone_contact' => 'nullable|string|max:20',
+            'email_contact' => 'nullable|email|max:255'
+        ]);
+
+        // Générer un code automatique
+        $validated['code'] = 'FOUR-' . strtoupper(substr($validated['nom'], 0, 3)) . '-' . time();
+        $validated['type'] = 'standard';
+        $validated['est_actif'] = true;
+
+        $fournisseur = ESBTPFournisseur::create($validated);
+
+        return response()->json([
+            'success' => true,
+            'fournisseur' => [
+                'id' => $fournisseur->id,
+                'nom' => $fournisseur->nom,
+                'email' => $fournisseur->email,
+                'telephone' => $fournisseur->telephone
+            ],
+            'message' => 'Fournisseur créé avec succès'
+        ]);
     }
 
     /**

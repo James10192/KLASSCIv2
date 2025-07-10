@@ -409,3 +409,307 @@ Dans l'interface de détail du paiement, les utilisateurs voient maintenant :
 - **Créé par :** "Super Admin" (au lieu de "N/A")
 
 Le système affiche désormais toutes les informations pertinentes pour une meilleure traçabilité et une expérience utilisateur optimale.
+
+# Amélioration Fournisseurs - Formulaire Dépenses
+
+## Problème Identifié
+
+**Date:** 10 juillet 2025
+**Problème:** Le formulaire de création de dépenses (`create.blade.php`) ne permettait pas d'ajouter de nouveaux fournisseurs si aucun n'était prédéfini. L'utilisateur ne pouvait pas :
+- Saisir directement un nouveau fournisseur
+- Créer un fournisseur via un modal
+- Enregistrer automatiquement un nouveau fournisseur lors de la soumission
+
+**Fichier concerné:** `resources/views/esbtp/comptabilite/depenses/create.blade.php`
+
+## Solutions Appliquées
+
+### 1. Amélioration du Contrôleur
+
+**Fichier :** `app/Http/Controllers/ESBTPComptabiliteController.php`
+
+#### Modification 1 : Chargement des fournisseurs
+**Méthode :** `createDepense()`
+```php
+// AVANT
+$categories = ESBTPCategorieDepense::where('est_actif', true)->orderBy('nom')->get();
+return view('esbtp.comptabilite.depenses.create', compact('categories'));
+
+// APRÈS  
+$categories = ESBTPCategorieDepense::where('est_actif', true)->orderBy('nom')->get();
+$fournisseurs = ESBTPFournisseur::where('est_actif', true)->orderBy('nom')->get();
+return view('esbtp.comptabilite.depenses.create', compact('categories', 'fournisseurs'));
+```
+
+#### Modification 2 : Gestion création automatique fournisseur
+**Méthode :** `storeDepense()`
+```php
+// Validation étendue
+'fournisseur_id' => 'nullable|exists:esbtp_fournisseurs,id',
+'nouveau_fournisseur' => 'nullable|string|max:255',
+
+// Logique de création automatique
+if (!empty($validated['nouveau_fournisseur']) && empty($validated['fournisseur_id'])) {
+    $fournisseur = ESBTPFournisseur::create([
+        'nom' => $validated['nouveau_fournisseur'],
+        'code' => 'FOUR-' . strtoupper(substr($validated['nouveau_fournisseur'], 0, 3)) . '-' . time(),
+        'type' => 'standard',
+        'est_actif' => true
+    ]);
+    $validated['fournisseur_id'] = $fournisseur->id;
+}
+```
+
+#### Modification 3 : Méthode AJAX pour modal
+**Nouvelle méthode :** `storeFournisseurAjax()`
+```php
+public function storeFournisseurAjax(Request $request)
+{
+    $validated = $request->validate([
+        'nom' => 'required|string|max:255',
+        'email' => 'nullable|email|max:255',
+        'telephone' => 'nullable|string|max:20',
+        'adresse' => 'nullable|string|max:500',
+        // ... autres champs
+    ]);
+
+    // Génération automatique du code
+    $validated['code'] = 'FOUR-' . strtoupper(substr($validated['nom'], 0, 3)) . '-' . time();
+    $validated['type'] = 'standard';
+    $validated['est_actif'] = true;
+
+    $fournisseur = ESBTPFournisseur::create($validated);
+
+    return response()->json([
+        'success' => true,
+        'fournisseur' => [
+            'id' => $fournisseur->id,
+            'nom' => $fournisseur->nom,
+            'email' => $fournisseur->email,
+            'telephone' => $fournisseur->telephone
+        ],
+        'message' => 'Fournisseur créé avec succès'
+    ]);
+}
+```
+
+### 2. Nouvelle Route AJAX
+
+**Fichier :** `routes/web.php`
+```php
+// Route AJAX pour créer un fournisseur
+Route::post('/fournisseurs/ajax', [ESBTPComptabiliteController::class, 'storeFournisseurAjax'])
+     ->name('fournisseurs.ajax.store');
+```
+
+### 3. Interface Utilisateur Améliorée
+
+**Fichier :** `resources/views/esbtp/comptabilite/depenses/create.blade.php`
+
+#### Nouveau champ fournisseur intelligent
+```html
+<div class="col-md-6">
+    <label for="fournisseur_selection" class="form-label fw-medium">Fournisseur</label>
+    <div class="d-flex gap-2">
+        <select class="form-select" id="fournisseur_selection" name="fournisseur_id" style="flex: 1;">
+            <option value="">-- Sélectionnez un fournisseur --</option>
+            @foreach($fournisseurs ?? [] as $fournisseur)
+            <option value="{{ $fournisseur->id }}">{{ $fournisseur->nom }}</option>
+            @endforeach
+            <option value="nouveau">➕ Nouveau fournisseur</option>
+        </select>
+        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" 
+                data-bs-target="#modalNouveauFournisseur">
+            <i class="fas fa-plus"></i>
+        </button>
+    </div>
+    
+    <!-- Champ pour nouveau fournisseur (masqué par défaut) -->
+    <div id="nouveau-fournisseur-div" style="display: none;" class="mt-2">
+        <input type="text" class="form-control" id="nouveau_fournisseur" 
+               name="nouveau_fournisseur" placeholder="Nom du nouveau fournisseur">
+        <small class="form-text text-muted">
+            Saisissez le nom du fournisseur. Il sera créé automatiquement.
+        </small>
+    </div>
+</div>
+```
+
+#### Modal Bootstrap complet
+```html
+<div class="modal fade" id="modalNouveauFournisseur">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus-circle me-2"></i>Nouveau fournisseur
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formNouveauFournisseur">
+                <div class="modal-body">
+                    <!-- Champs : nom, email, téléphone, adresse, etc. -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        Annuler
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        Créer le fournisseur
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+```
+
+### 4. JavaScript Sophistiqué
+
+**Fonctionnalités ajoutées :**
+- **Gestion intelligente du select :** Affichage/masquage du champ texte selon la sélection
+- **Soumission AJAX du modal :** Création de fournisseur sans rechargement de page
+- **Intégration automatique :** Ajout du nouveau fournisseur au select principal
+- **Gestion d'erreurs :** Affichage des erreurs de validation en temps réel
+- **Feedback utilisateur :** Messages de succès/erreur avec auto-suppression
+
+```javascript
+// Gestion du select fournisseur
+function toggleNouveauFournisseur() {
+    if (fournisseurSelect.value === 'nouveau') {
+        nouveauFournisseurDiv.style.display = 'block';
+        nouveauFournisseurInput.setAttribute('required', 'required');
+        fournisseurSelect.name = '';
+    } else {
+        nouveauFournisseurDiv.style.display = 'none';
+        nouveauFournisseurInput.removeAttribute('required');
+        fournisseurSelect.name = 'fournisseur_id';
+    }
+}
+
+// Soumission AJAX du modal
+formModal.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    fetch('/esbtp/comptabilite/fournisseurs/ajax', {
+        method: 'POST',
+        body: new FormData(formModal),
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Ajouter au select et fermer le modal
+            const newOption = new Option(data.fournisseur.nom, data.fournisseur.id, true, true);
+            fournisseurSelect.appendChild(newOption);
+            modal.hide();
+        }
+    });
+});
+```
+
+### 5. Modèle ESBTPFournisseur Corrigé
+
+**Problème :** Champs `code` et `type` manquants dans les fillable
+**Solution :** Fillable complet mis à jour
+
+```php
+protected $fillable = [
+    'code',        // ✅ Ajouté
+    'nom',
+    'type',        // ✅ Ajouté  
+    'adresse',
+    'ville',       // ✅ Ajouté
+    'pays',        // ✅ Ajouté
+    'telephone',
+    'email',
+    'site_web',
+    'numero_fiscal',      // ✅ Ajouté
+    'compte_bancaire',    // ✅ Ajouté
+    'personne_contact',
+    'telephone_contact',
+    'email_contact',
+    'notes',
+    'est_actif',
+];
+```
+
+## Tests de Validation
+
+### Test Complet Réussi
+```bash
+=== TEST AMÉLIORATION FORMULAIRE DÉPENSES ===
+
+1. Test du modèle ESBTPFournisseur:
+   ✅ Champ fillable nom
+   ✅ Champ fillable email  
+   ✅ Champ fillable telephone
+   ✅ Champ fillable adresse
+   ✅ Champ fillable est_actif
+   ✅ Nombre de fournisseurs: 0
+
+2. Test de la méthode storeFournisseurAjax:
+   ✅ Méthode storeFournisseurAjax existe
+
+3. Test des routes:
+   ✅ Route esbtp.comptabilite.depenses.create
+   ✅ Route esbtp.comptabilite.depenses.store  
+   ✅ Route esbtp.comptabilite.fournisseurs.ajax.store
+
+4. Test création fournisseur:
+   ✅ Fournisseur créé: ID 3, Nom: Fournisseur Test 1752166476
+   ✅ Fournisseur de test supprimé
+```
+
+## Impact et Fonctionnalités
+
+### ✅ **Nouvelles Capacités**
+1. **Saisie directe :** Sélectionner "Nouveau fournisseur" et taper le nom
+2. **Modal rapide :** Clic sur le bouton + pour ouvrir un formulaire complet  
+3. **Création automatique :** Soumission du formulaire avec auto-création du fournisseur
+4. **Codes automatiques :** Génération de codes FOUR-XXX-timestamp
+5. **Intégration seamless :** Nouveau fournisseur apparaît immédiatement dans le select
+
+### ✅ **Expérience Utilisateur Améliorée**
+- **Workflow fluide :** Plus besoin de naviguer vers une autre page
+- **Feedback en temps réel :** Validation et messages d'erreur instantanés
+- **Interface intuitive :** Boutons et options clairs
+- **Gestion d'erreurs :** Messages explicites en cas de problème
+
+### ✅ **Robustesse Technique**
+- **Validation côté serveur :** Sécurité des données
+- **Gestion CSRF :** Protection contre les attaques
+- **Codes uniques :** Évite les doublons
+- **Relations BDD :** Intégrité des données maintenue
+
+## Fichiers Modifiés
+
+1. **`app/Http/Controllers/ESBTPComptabiliteController.php`**
+   - Méthode `createDepense()` : Chargement fournisseurs
+   - Méthode `storeDepense()` : Gestion création automatique  
+   - Méthode `storeFournisseurAjax()` : Nouvelle méthode AJAX
+
+2. **`routes/web.php`**
+   - Route AJAX : `esbtp.comptabilite.fournisseurs.ajax.store`
+
+3. **`resources/views/esbtp/comptabilite/depenses/create.blade.php`**
+   - Interface fournisseur complètement remaniée
+   - Modal Bootstrap ajouté
+   - JavaScript sophistiqué (150+ lignes)
+
+4. **`app/Models/ESBTPFournisseur.php`**
+   - Fillable étendu avec tous les champs de la table
+
+## Résultat Final
+
+🎯 **AMÉLIORATION MAJEURE RÉUSSIE**
+
+Le formulaire de création de dépenses offre maintenant **3 moyens** d'ajouter un fournisseur :
+
+1. **📋 Sélection classique** : Choisir dans la liste existante
+2. **✏️ Saisie directe** : Sélectionner "Nouveau fournisseur" et taper le nom  
+3. **🚀 Modal complet** : Cliquer sur + pour un formulaire détaillé avec tous les champs
+
+**L'expérience utilisateur est maintenant fluide et professionnelle, permettant une gestion efficace des fournisseurs directement depuis le formulaire de dépenses !** 🎉

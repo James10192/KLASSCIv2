@@ -142,18 +142,33 @@
                 <small class="form-text text-muted">Numéro de chèque, référence de virement, etc.</small>
             </div>
             <div class="col-md-6">
-                <label for="fournisseur_id" class="form-label fw-medium">Fournisseur</label>
-                <select class="form-select select2 @error('fournisseur_id') is-invalid @enderror" id="fournisseur_id" name="fournisseur_id">
-                    <option value="">-- Sélectionnez un fournisseur (facultatif) --</option>
-                    @foreach($fournisseurs ?? [] as $fournisseur)
-                    <option value="{{ $fournisseur->id }}" {{ old('fournisseur_id') == $fournisseur->id ? 'selected' : '' }}>
-                        {{ $fournisseur->nom }}
-                    </option>
-                    @endforeach
-                </select>
+                <label for="fournisseur_selection" class="form-label fw-medium">Fournisseur</label>
+                <div class="d-flex gap-2">
+                    <select class="form-select @error('fournisseur_id') is-invalid @enderror" id="fournisseur_selection" name="fournisseur_id" style="flex: 1;">
+                        <option value="">-- Sélectionnez un fournisseur --</option>
+                        @foreach($fournisseurs ?? [] as $fournisseur)
+                        <option value="{{ $fournisseur->id }}" {{ old('fournisseur_id') == $fournisseur->id ? 'selected' : '' }}>
+                            {{ $fournisseur->nom }}
+                        </option>
+                        @endforeach
+                        <option value="nouveau">➕ Nouveau fournisseur</option>
+                    </select>
+                    <button type="button" class="btn btn-outline-primary" id="btn-nouveau-fournisseur" data-bs-toggle="modal" data-bs-target="#modalNouveauFournisseur">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
                 @error('fournisseur_id')
                 <div class="invalid-feedback">{{ $message }}</div>
                 @enderror
+                
+                <!-- Champ pour nouveau fournisseur (masqué par défaut) -->
+                <div id="nouveau-fournisseur-div" style="display: none;" class="mt-2">
+                    <input type="text" class="form-control @error('nouveau_fournisseur') is-invalid @enderror" id="nouveau_fournisseur" name="nouveau_fournisseur" value="{{ old('nouveau_fournisseur') }}" placeholder="Nom du nouveau fournisseur">
+                    @error('nouveau_fournisseur')
+                    <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                    <small class="form-text text-muted">Saisissez le nom du fournisseur. Il sera créé automatiquement.</small>
+                </div>
             </div>
         </div>
         <div class="row g-4 mb-4">
@@ -195,6 +210,70 @@
         </div>
     </form>
 </div>
+
+<!-- Modal pour créer un nouveau fournisseur -->
+<div class="modal fade" id="modalNouveauFournisseur" tabindex="-1" aria-labelledby="modalNouveauFournisseurLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalNouveauFournisseurLabel">
+                    <i class="fas fa-plus-circle me-2"></i>Nouveau fournisseur
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formNouveauFournisseur">
+                @csrf
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="modal_nom" class="form-label fw-medium">Nom <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="modal_nom" name="nom" required>
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="modal_email" class="form-label fw-medium">Email</label>
+                            <input type="email" class="form-control" id="modal_email" name="email">
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="modal_telephone" class="form-label fw-medium">Téléphone</label>
+                            <input type="text" class="form-control" id="modal_telephone" name="telephone">
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="modal_personne_contact" class="form-label fw-medium">Personne de contact</label>
+                            <input type="text" class="form-control" id="modal_personne_contact" name="personne_contact">
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="modal_telephone_contact" class="form-label fw-medium">Téléphone contact</label>
+                            <input type="text" class="form-control" id="modal_telephone_contact" name="telephone_contact">
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="modal_email_contact" class="form-label fw-medium">Email contact</label>
+                            <input type="email" class="form-control" id="modal_email_contact" name="email_contact">
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        <div class="col-12">
+                            <label for="modal_adresse" class="form-label fw-medium">Adresse</label>
+                            <textarea class="form-control" id="modal_adresse" name="adresse" rows="3"></textarea>
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i> Annuler
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i> Créer le fournisseur
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -207,9 +286,11 @@
                 allowClear: true
             });
         }
+
         // Gérer l'affichage du champ numéro de transaction en fonction du mode de paiement
         const modePaiementSelect = document.getElementById('mode_paiement');
         const numeroTransactionDiv = document.getElementById('numero_transaction').closest('.col-md-6');
+        
         function toggleNumeroTransaction() {
             const selectedMode = modePaiementSelect.value;
             if (selectedMode === 'espèces') {
@@ -218,10 +299,131 @@
                 numeroTransactionDiv.style.display = 'block';
             }
         }
+        
         if (modePaiementSelect) {
             modePaiementSelect.addEventListener('change', toggleNumeroTransaction);
             // Exécuter au chargement de la page
             toggleNumeroTransaction();
+        }
+
+        // Gérer le select fournisseur et l'affichage du champ nouveau fournisseur
+        const fournisseurSelect = document.getElementById('fournisseur_selection');
+        const nouveauFournisseurDiv = document.getElementById('nouveau-fournisseur-div');
+        const nouveauFournisseurInput = document.getElementById('nouveau_fournisseur');
+
+        function toggleNouveauFournisseur() {
+            if (fournisseurSelect.value === 'nouveau') {
+                nouveauFournisseurDiv.style.display = 'block';
+                nouveauFournisseurInput.setAttribute('required', 'required');
+                // Réinitialiser la valeur du select pour ne pas envoyer "nouveau"
+                fournisseurSelect.name = '';
+            } else {
+                nouveauFournisseurDiv.style.display = 'none';
+                nouveauFournisseurInput.removeAttribute('required');
+                nouveauFournisseurInput.value = '';
+                fournisseurSelect.name = 'fournisseur_id';
+            }
+        }
+
+        if (fournisseurSelect) {
+            fournisseurSelect.addEventListener('change', toggleNouveauFournisseur);
+            // Exécuter au chargement de la page
+            toggleNouveauFournisseur();
+        }
+
+        // Gérer le formulaire modal de création de fournisseur
+        const formModal = document.getElementById('formNouveauFournisseur');
+        const modal = document.getElementById('modalNouveauFournisseur');
+
+        if (formModal) {
+            formModal.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(formModal);
+                const submitBtn = formModal.querySelector('button[type="submit"]');
+                const originalText = submitBtn.innerHTML;
+                
+                // Désactiver le bouton et afficher le loading
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Création...';
+                
+                // Nettoyer les erreurs précédentes
+                const errorElements = formModal.querySelectorAll('.invalid-feedback');
+                errorElements.forEach(el => el.textContent = '');
+                const invalidInputs = formModal.querySelectorAll('.is-invalid');
+                invalidInputs.forEach(el => el.classList.remove('is-invalid'));
+
+                fetch('{{ route("esbtp.comptabilite.fournisseurs.ajax.store") }}', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Ajouter le nouveau fournisseur au select
+                        const newOption = new Option(data.fournisseur.nom, data.fournisseur.id, true, true);
+                        fournisseurSelect.appendChild(newOption);
+                        
+                        // Réinitialiser le nom du select et cacher le champ nouveau fournisseur
+                        fournisseurSelect.name = 'fournisseur_id';
+                        nouveauFournisseurDiv.style.display = 'none';
+                        nouveauFournisseurInput.removeAttribute('required');
+                        nouveauFournisseurInput.value = '';
+                        
+                        // Fermer le modal
+                        const bsModal = bootstrap.Modal.getInstance(modal);
+                        bsModal.hide();
+                        
+                        // Réinitialiser le formulaire
+                        formModal.reset();
+                        
+                        // Afficher un message de succès
+                        showAlert('success', data.message);
+                    } else {
+                        // Afficher les erreurs de validation
+                        if (data.errors) {
+                            Object.keys(data.errors).forEach(field => {
+                                const input = formModal.querySelector(`[name="${field}"]`);
+                                const feedback = input.nextElementSibling;
+                                if (input && feedback) {
+                                    input.classList.add('is-invalid');
+                                    feedback.textContent = data.errors[field][0];
+                                }
+                            });
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    showAlert('danger', 'Une erreur est survenue lors de la création du fournisseur.');
+                })
+                .finally(() => {
+                    // Réactiver le bouton
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                });
+            });
+        }
+
+        // Fonction pour afficher les alertes
+        function showAlert(type, message) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show mt-3`;
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            
+            const form = document.querySelector('form[action*="depenses.store"]');
+            form.parentNode.insertBefore(alertDiv, form);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
         }
     });
 </script>

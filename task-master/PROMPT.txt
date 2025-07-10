@@ -1,3 +1,5 @@
+La racine du projet ("C:\xampp\htdocs\ESBTP-yAKROv2Pascal\")
+
 Run task master next et vois la tâche à faire
 Le projet est déjà initialisé, juste run "task-master next" dans le terminal et ensuite task-master show 2(with ID de la tâche qui s'affiche lors du task-master next)
 

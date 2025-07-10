@@ -23,11 +23,17 @@ class ESBTPFournisseur extends Model
      * @var array
      */
     protected $fillable = [
+        'code',
         'nom',
+        'type',
         'adresse',
+        'ville',
+        'pays',
         'telephone',
         'email',
         'site_web',
+        'numero_fiscal',
+        'compte_bancaire',
         'personne_contact',
         'telephone_contact',
         'email_contact',
