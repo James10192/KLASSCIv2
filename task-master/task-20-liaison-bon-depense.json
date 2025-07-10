@@ -1,0 +1,53 @@
+{
+  "title": "Liaison Obligatoire Bon de Sortie - Dépense",
+  "description": "Implémentation liaison obligatoire bon de sortie approuvé pour création dépenses avec traçabilité complète",
+  "type": "Backend Development",
+  "priority": "high", 
+  "status": "pending",
+  "version": "v2.0",
+  "dependencies": ["task-19-bon-sortie-approbation"],
+  "technical_details": {
+    "bon_depense_integration": [
+      "Extension esbtp_depenses : bon_sortie_id NOT NULL obligatoire",
+      "BonDepenseService : getBonsApprouves(), linkBonToDepense()",
+      "ESBTPDepenseController : validation bon approuvé avant création",
+      "Modal création bon rapide depuis interface dépenses",
+      "Traçabilité complète : bon → approbation → dépense"
+    ],
+    "deliverables": [
+      "Migration bon_sortie_id obligatoire",
+      "BonDepenseService complet",
+      "ESBTPDepenseController étendu",
+      "Interface dépenses rénovée",
+      "Tests intégration bon-dépense"
+    ],
+    "estimation": "3-4 jours"
+  },
+  "subtasks": [
+    {
+      "title": "Migration bon_sortie_id obligatoire",
+      "description": "Extension esbtp_depenses avec bon_sortie_id NOT NULL et contraintes",
+      "status": "pending"
+    },
+    {
+      "title": "BonDepenseService création",
+      "description": "Service liaison bons-dépenses avec validation statut approuvé",
+      "status": "pending"
+    },
+    {
+      "title": "ESBTPDepenseController extension",
+      "description": "Méthodes getBonsApprouves(), createBonRapide(), validation workflow",
+      "status": "pending"
+    },
+    {
+      "title": "Interface dépenses rénovée",
+      "description": "Sélecteur bons approuvés, modal bon express, validation temps réel",
+      "status": "pending"
+    },
+    {
+      "title": "Tests workflow complet",
+      "description": "Tests intégration inscription→étudiant→bon→dépense end-to-end",
+      "status": "pending"
+    }
+  ]
+}

@@ -34,9 +34,6 @@ class ESBTPFournisseur extends Model
         'site_web',
         'numero_fiscal',
         'compte_bancaire',
-        'personne_contact',
-        'telephone_contact',
-        'email_contact',
         'notes',
         'est_actif',
     ];

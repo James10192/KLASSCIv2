@@ -1,0 +1,53 @@
+{
+  "title": "Nettoyage Séparation Logique Comptabilité-Inscription", 
+  "description": "Refactoring complet pour séparer logique comptabilité des pages inscription et découpler modèles/contrôleurs",
+  "type": "Code Refactoring",
+  "priority": "medium",
+  "status": "pending",
+  "version": "v2.0", 
+  "dependencies": ["task-17-interface-validation"],
+  "technical_details": {
+    "refactoring_scope": [
+      "Suppression logique comptabilité des vues inscription",
+      "Découplage relations ESBTPInscription, ESBTPEtudiant, ESBTPPaiement",
+      "Séparation contrôleurs : inscription vs comptabilité",
+      "Services spécialisés : InscriptionService vs ComptabiliteService",
+      "Permissions granulaires : inscription.validate vs comptabilite.manage"
+    ],
+    "deliverables": [
+      "Contrôleurs inscription nettoyés",
+      "Vues inscription purifiées", 
+      "Relations modèles clarifiées",
+      "Tests régression fonctionnalités existantes",
+      "Documentation architecture découplée"
+    ],
+    "estimation": "2-3 jours"
+  },
+  "subtasks": [
+    {
+      "title": "Nettoyage ESBTPInscriptionController",
+      "description": "Suppression méthodes comptabilité inappropriées du contrôleur inscription",
+      "status": "pending"
+    },
+    {
+      "title": "Purification vues inscription",
+      "description": "Suppression références comptabilité des templates Blade inscription",
+      "status": "pending"
+    },
+    {
+      "title": "Découplage modèles relations",
+      "description": "Relations claires ESBTPInscription, ESBTPEtudiant avec méthodes spécialisées",
+      "status": "pending"
+    },
+    {
+      "title": "Permissions granulaires",
+      "description": "Nouveaux droits inscription.validate, separation comptabilite.manage",
+      "status": "pending"
+    },
+    {
+      "title": "Tests régression complets",
+      "description": "Validation fonctionnalités existantes intactes après refactoring",
+      "status": "pending"
+    }
+  ]
+}

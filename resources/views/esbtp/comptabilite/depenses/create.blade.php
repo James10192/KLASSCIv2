@@ -240,21 +240,6 @@
                             <input type="text" class="form-control" id="modal_telephone" name="telephone">
                             <div class="invalid-feedback"></div>
                         </div>
-                        <div class="col-md-6">
-                            <label for="modal_personne_contact" class="form-label fw-medium">Personne de contact</label>
-                            <input type="text" class="form-control" id="modal_personne_contact" name="personne_contact">
-                            <div class="invalid-feedback"></div>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="modal_telephone_contact" class="form-label fw-medium">Téléphone contact</label>
-                            <input type="text" class="form-control" id="modal_telephone_contact" name="telephone_contact">
-                            <div class="invalid-feedback"></div>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="modal_email_contact" class="form-label fw-medium">Email contact</label>
-                            <input type="email" class="form-control" id="modal_email_contact" name="email_contact">
-                            <div class="invalid-feedback"></div>
-                        </div>
                         <div class="col-12">
                             <label for="modal_adresse" class="form-label fw-medium">Adresse</label>
                             <textarea class="form-control" id="modal_adresse" name="adresse" rows="3"></textarea>

@@ -2086,10 +2086,7 @@ class ESBTPComptabiliteController extends Controller
                 'nom' => 'required|string|max:255',
                 'email' => 'nullable|email|max:255',
                 'telephone' => 'nullable|string|max:20',
-                'adresse' => 'nullable|string|max:500',
-                'personne_contact' => 'nullable|string|max:255',
-                'telephone_contact' => 'nullable|string|max:20',
-                'email_contact' => 'nullable|email|max:255'
+                'adresse' => 'nullable|string|max:500'
             ]);
 
             // Générer un code automatique

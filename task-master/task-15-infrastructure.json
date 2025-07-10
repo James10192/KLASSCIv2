@@ -1,0 +1,51 @@
+{
+  "title": "Infrastructure Liaison Comptabilité-Inscription",
+  "description": "Mise en place infrastructure base pour liaison comptabilité-inscription avec workflow inscription → étudiant sécurisé",
+  "type": "Backend Development",
+  "priority": "high",
+  "status": "pending",
+  "version": "v2.0",
+  "dependencies": [],
+  "technical_details": {
+    "extensions_tables": [
+      "workflow_step ENUM dans esbtp_inscriptions",
+      "paiement_validation_id, classe_alternative_id, comptabilite_activee",
+      "esbtp_inscription_workflow_history pour traçabilité",
+      "places_totales, places_occupees dans esbtp_classes"
+    ],
+    "deliverables": [
+      "4 migrations Laravel sécurisées",
+      "Seeders données test workflow",
+      "Modèles ESBTPInscription, ESBTPClasse mis à jour",
+      "Tests unitaires migrations et relations"
+    ],
+    "estimation": "2-3 jours"
+  },
+  "subtasks": [
+    {
+      "title": "Migration extension esbtp_inscriptions",
+      "description": "Ajouter workflow_step, paiement_validation_id, classe_alternative_id, comptabilite_activee",
+      "status": "pending"
+    },
+    {
+      "title": "Migration esbtp_inscription_workflow_history",
+      "description": "Créer table traçabilité workflow avec historique actions",
+      "status": "pending"
+    },
+    {
+      "title": "Migration extension esbtp_classes",
+      "description": "Ajouter gestion places : places_totales, places_occupees, places_disponibles",
+      "status": "pending"
+    },
+    {
+      "title": "Mise à jour modèles Laravel",
+      "description": "Relations et méthodes ESBTPInscription, ESBTPClasse, validations",
+      "status": "pending"
+    },
+    {
+      "title": "Seeders et tests",
+      "description": "Données test workflow inscription et tests unitaires complets",
+      "status": "pending"
+    }
+  ]
+}

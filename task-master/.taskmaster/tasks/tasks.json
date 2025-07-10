@@ -190,12 +190,274 @@
         "dependencies": [],
         "priority": "high",
         "subtasks": []
+      },
+      {
+        "id": 14,
+        "title": "Infrastructure Liaison Comptabilité-Inscription",
+        "description": "Mise en place infrastructure base pour liaison comptabilité-inscription avec workflow inscription → étudiant sécurisé",
+        "details": "1. Extensions tables existantes:\n   - `esbtp_inscriptions`: ajouter workflow_step ENUM('prospect', 'documents_complets', 'en_validation', 'valide', 'etudiant_cree')\n   - Ajouter paiement_validation_id, classe_alternative_id, comptabilite_activee\n   - `esbtp_classes`: ajouter places_totales, places_occupees, places_disponibles (colonne calculée)\n\n2. Nouvelles tables:\n   - `esbtp_inscription_workflow_history` pour audit trail complet\n   - Traçabilité étapes validation avec utilisateur/timestamp/commentaires\n\n3. Modèles Laravel mis à jour:\n   - Relations ESBTPInscription → ESBTPEtudiant → ESBTPPaiement clarifiées\n   - Scopes pour workflow states (prospect, validé, etc.)\n   - Validations business rules (places disponibles, paiement requis)\n\n4. Seeders données test:\n   - Inscriptions différents états workflow\n   - Classes avec places limitées\n   - Historique workflow pour tests",
+        "testStrategy": "1. Tests migrations sécurisées sans perte données\n2. Tests relations modèles avec eager loading\n3. Tests contraintes business (places classes, workflow states)\n4. Tests rollback migrations\n5. Validation seeders avec données cohérentes",
+        "priority": "high",
+        "dependencies": [],
+        "status": "in-progress",
+        "subtasks": [
+          {
+            "id": "14.1",
+            "title": "Migration extension esbtp_inscriptions",
+            "description": "Ajouter workflow_step, paiement_validation_id, classe_alternative_id, comptabilite_activee",
+            "status": "pending"
+          },
+          {
+            "id": "14.2",
+            "title": "Migration esbtp_inscription_workflow_history",
+            "description": "Créer table traçabilité workflow avec historique actions",
+            "status": "pending"
+          },
+          {
+            "id": "14.3",
+            "title": "Migration extension esbtp_classes",
+            "description": "Ajouter gestion places : places_totales, places_occupees, places_disponibles",
+            "status": "pending"
+          },
+          {
+            "id": "14.4",
+            "title": "Mise à jour modèles Laravel",
+            "description": "Relations et méthodes ESBTPInscription, ESBTPClasse, validations",
+            "status": "pending"
+          },
+          {
+            "id": "14.5",
+            "title": "Seeders et tests",
+            "description": "Données test workflow inscription et tests unitaires complets",
+            "status": "pending"
+          }
+        ]
+      },
+      {
+        "id": 15,
+        "title": "Service Workflow Inscription vers Étudiant",
+        "description": "Développement service complet workflow inscription → étudiant avec validation paiement et gestion places classes",
+        "details": "1. Services principaux:\n   - `InscriptionWorkflowService.php`: validateInscription(), checkClassAvailability(), createStudent()\n   - `ClasseManagementService.php`: gestion places et attribution automatique avec alternatives\n   - Logic business rules: inscription complète → paiement → places → création étudiant\n\n2. Extensions contrôleurs:\n   - ESBTPEtudiantController: createFromInscription(), assignClasse()\n   - ESBTPInscriptionController: validateInscription() avec modal paiement\n   - API endpoints pour vérification places temps réel\n\n3. Events Laravel:\n   ```php\n   // Workflow events\n   event(new InscriptionValidated($inscription, $paiement));\n   event(new EtudiantCreated($etudiant, $inscription));\n   ```\n\n4. États workflow:\n   - prospect → documents_complets → en_validation → valide → etudiant_cree\n   - Transition rules avec permissions et validations\n   - Historique complet dans esbtp_inscription_workflow_history",
+        "testStrategy": "1. Tests unitaires services avec mocks\n2. Tests intégration workflow complet inscription→étudiant\n3. Tests gestion places classes (disponibles/alternatives)\n4. Tests events et listeners\n5. Tests API endpoints validation temps réel\n6. Tests cas limites (classe pleine, paiement échoué)",
+        "priority": "high",
+        "dependencies": [
+          14
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": "15.1",
+            "title": "InscriptionWorkflowService création",
+            "description": "Service principal gestion workflow avec validateInscription(), checkClassAvailability()",
+            "status": "pending"
+          },
+          {
+            "id": "15.2",
+            "title": "ClasseManagementService création",
+            "description": "Service gestion places classes avec attribution automatique et alternatives",
+            "status": "pending"
+          },
+          {
+            "id": "15.3",
+            "title": "Extension ESBTPEtudiantController",
+            "description": "Méthodes createFromInscription(), assignClasse() pour création automatique",
+            "status": "pending"
+          },
+          {
+            "id": "15.4",
+            "title": "Events et Listeners Laravel",
+            "description": "InscriptionValidated, EtudiantCreated avec listeners activation comptabilité",
+            "status": "pending"
+          },
+          {
+            "id": "15.5",
+            "title": "Tests intégration workflow",
+            "description": "Tests complets workflow inscription → étudiant avec tous scénarios",
+            "status": "pending"
+          }
+        ]
+      },
+      {
+        "id": 16,
+        "title": "Interface Validation Inscription avec Modal Paiement",
+        "description": "Interface validation inscription avec modal paiement rapide intégrée et vérification places classes temps réel",
+        "details": "1. Modal paiement Bootstrap 5:\n   - Saisie rapide frais inscription sans changer de page\n   - Sélecteur types paiements: scolarité, cantine, autres frais\n   - Validation côté client avec feedback instantané\n   - CSRF protection et gestion erreurs AJAX\n\n2. Vérification places temps réel:\n   - API call vérification places disponibles classe sélectionnée\n   - Suggestions alternatives si classe pleine\n   - Interface sélection classe alternative avec modal\n   - Mise à jour dynamique places après sélection\n\n3. Interface workflow states:\n   - Indicateurs visuels progression: prospect → validation → étudiant\n   - Badges colorés selon statut avec tooltips explicatifs\n   - Timeline workflow avec actions utilisateur tracées\n   - Boutons contextuels selon étape (valider, rejeter, modifier)\n\n4. JavaScript avancé:\n   - Prévisualisation temps réel formulaire paiement\n   - Validation client avec regex et business rules\n   - Auto-completion classe/filière avec search\n   - Notifications toast pour actions importantes",
+        "testStrategy": "1. Tests navigation modal responsive\n2. Tests validation AJAX avec différents scénarios\n3. Tests vérification places API\n4. Tests JavaScript cross-browser\n5. Tests workflow complet via interface\n6. Tests accessibilité WCAG modal",
+        "priority": "medium",
+        "dependencies": [
+          15
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": "16.1",
+            "title": "Modal paiement Bootstrap 5",
+            "description": "Modal responsive saisie rapide paiement avec types et montants",
+            "status": "pending"
+          },
+          {
+            "id": "16.2",
+            "title": "Vérification places temps réel",
+            "description": "AJAX check places disponibles avec suggestions classes alternatives",
+            "status": "pending"
+          },
+          {
+            "id": "16.3",
+            "title": "Interface états workflow",
+            "description": "Indicateurs visuels progression workflow avec couleurs et icônes",
+            "status": "pending"
+          },
+          {
+            "id": "16.4",
+            "title": "Validation AJAX inscription",
+            "description": "Submit validation inscription avec feedback et gestion erreurs",
+            "status": "pending"
+          },
+          {
+            "id": "16.5",
+            "title": "Tests interface utilisateur",
+            "description": "Tests navigation modal, validation, workflow complet",
+            "status": "pending"
+          }
+        ]
+      },
+      {
+        "id": 17,
+        "title": "Nettoyage Séparation Logique Comptabilité-Inscription",
+        "description": "Refactoring complet pour séparer logique comptabilité des pages inscription et découpler modèles/contrôleurs",
+        "details": "1. Nettoyage contrôleurs:\n   - ESBTPInscriptionController: suppression méthodes comptabilité inappropriées\n   - Déplacer logique paiements vers ESBTPComptabiliteController\n   - Séparation claire: inscription = workflow étudiant, comptabilité = gestion financière\n\n2. Purification vues Blade:\n   - Suppression références comptabilité des templates inscription\n   - Composants séparés: inscription-card vs paiement-card\n   - Navigation menu clarifiée: Inscriptions vs Comptabilité\n\n3. Découplage modèles:\n   - Relations ESBTPInscription ↔ ESBTPPaiement clarifiées\n   - Méthodes spécialisées par contexte métier\n   - Scopes séparés: inscriptionEnCours() vs paiementsComptabilite()\n\n4. Permissions granulaires:\n   - inscription.validate (validation workflow)\n   - comptabilite.manage (gestion financière)\n   - Middleware séparés par fonctionnalité\n\n5. Services découplés:\n   - InscriptionService: workflow et gestion étudiant\n   - ComptabiliteService: calculs et reporting financier\n   - Interfaces claires entre services",
+        "testStrategy": "1. Tests régression fonctionnalités existantes\n2. Tests séparation permissions par rôle\n3. Tests navigation interface après refactoring\n4. Tests performance après découplage\n5. Code review architecture découplée\n6. Tests intégration services séparés",
+        "priority": "medium",
+        "dependencies": [
+          16
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": "17.1",
+            "title": "Nettoyage ESBTPInscriptionController",
+            "description": "Suppression méthodes comptabilité inappropriées du contrôleur inscription",
+            "status": "pending"
+          },
+          {
+            "id": "17.2",
+            "title": "Purification vues inscription",
+            "description": "Suppression références comptabilité des templates Blade inscription",
+            "status": "pending"
+          },
+          {
+            "id": "17.3",
+            "title": "Découplage modèles relations",
+            "description": "Relations claires ESBTPInscription, ESBTPEtudiant avec méthodes spécialisées",
+            "status": "pending"
+          },
+          {
+            "id": "17.4",
+            "title": "Permissions granulaires",
+            "description": "Nouveaux droits inscription.validate, separation comptabilite.manage",
+            "status": "pending"
+          },
+          {
+            "id": "17.5",
+            "title": "Tests régression complets",
+            "description": "Validation fonctionnalités existantes intactes après refactoring",
+            "status": "pending"
+          }
+        ]
+      },
+      {
+        "id": 18,
+        "title": "Infrastructure Bon de Sortie - Approbation Simplifiée",
+        "description": "Infrastructure approbation bon de sortie avec sélection approbateur et notifications automatiques (4 rôles existants)",
+        "details": "1. Extensions base de données:\n   - `esbtp_bons_sortie`: ajouter approbateur_id, notification_sent_at, approved_at\n   - Table `esbtp_bon_sortie_notifications` pour traçabilité envois/lectures\n   - Contraintes: approbateur parmi 4 rôles (superadmin, secretaire, enseignant, etudiant)\n\n2. Workflow approbation simplifié:\n   - Créateur sélectionne approbateur lors création bon\n   - Notification automatique email + app à l'approbateur\n   - Interface approbation avec commentaires et historique\n   - États: brouillon → en_attente → approuve/rejete\n\n3. NotificationService étendu:\n   ```php\n   public function notifyBonApproval($bonId, $approbateurId) {\n       // Email + notification app\n       // Template avec détails bon\n       // Tracking envoi/lecture\n   }\n   ```\n\n4. Templates notifications:\n   - Email HTML responsive pour approbation\n   - Notification in-app avec actions (Approuver/Rejeter/Voir)\n   - SMS optionnel pour cas urgents\n\n5. Interface sélection approbateur:\n   - Dropdown filtré par rôle actif\n   - Suggestions basées historique\n   - Validation business rules (pas auto-approbation)",
+        "testStrategy": "1. Tests workflow approbation complet\n2. Tests notifications multi-canal\n3. Tests permissions approbation par rôle\n4. Tests templates email/app\n5. Tests interface sélection approbateur\n6. Tests cas limites (approbateur inactif, auto-approbation)",
+        "priority": "high",
+        "dependencies": [
+          14
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": "18.1",
+            "title": "Migration extension esbtp_bons_sortie",
+            "description": "Ajouter approbateur_id, notification_sent_at, approved_at pour workflow",
+            "status": "pending"
+          },
+          {
+            "id": "18.2",
+            "title": "Table notifications bon sortie",
+            "description": "esbtp_bon_sortie_notifications pour traçabilité envois/lectures",
+            "status": "pending"
+          },
+          {
+            "id": "18.3",
+            "title": "Extension NotificationService",
+            "description": "Méthodes notifyBonApproval(), getUsersByRole() pour workflow",
+            "status": "pending"
+          },
+          {
+            "id": "18.4",
+            "title": "ESBTPBonSortieController workflow",
+            "description": "Méthodes selectApprobateur(), sendNotification(), approve()",
+            "status": "pending"
+          },
+          {
+            "id": "18.5",
+            "title": "Templates notifications",
+            "description": "Templates email et app pour demandes approbation bon sortie",
+            "status": "pending"
+          }
+        ]
+      },
+      {
+        "id": 19,
+        "title": "Liaison Obligatoire Bon de Sortie - Dépense",
+        "description": "Implémentation liaison obligatoire bon de sortie approuvé pour création dépenses avec traçabilité complète",
+        "details": "1. Migration contrainte obligatoire:\n   - `esbtp_depenses`: bon_sortie_id NOT NULL\n   - Contrainte FK vers esbtp_bons_sortie avec statut 'approuve'\n   - Index composite (bon_sortie_id, statut) pour performance\n\n2. BonDepenseService nouveau:\n   ```php\n   public function getBonsApprouves() {\n       return BonSortie::where('statut', 'approuve')\n           ->whereDoesntHave('depenses')\n           ->with('approbateur')\n           ->get();\n   }\n   \n   public function linkBonToDepense($bonId, $depenseData) {\n       // Validation bon approuvé\n       // Vérification montant cohérent\n       // Création dépense avec traçabilité\n   }\n   ```\n\n3. Interface dépenses rénovée:\n   - Sélecteur bons approuvés avec montants disponibles\n   - Modal création bon rapide si aucun disponible\n   - Workflow: sélection approbateur → notification → attente → création dépense\n   - Alertes visuelles si aucun bon disponible\n\n4. ESBTPDepenseController étendu:\n   - Validation prérequis bon avant création\n   - createBonRapide() pour workflow express\n   - Interface traçabilité bon → dépense\n\n5. Tests intégration end-to-end:\n   - Workflow complet: inscription → étudiant → bon → dépense\n   - Performance avec volumes importants\n   - Cohérence données après toutes opérations",
+        "testStrategy": "1. Tests contraintes base données\n2. Tests BonDepenseService avec mocks\n3. Tests interface dépenses rénovée\n4. Tests workflow création bon rapide\n5. Tests end-to-end inscription→dépense\n6. Tests performance et cohérence données",
+        "priority": "high",
+        "dependencies": [
+          18
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": "19.1",
+            "title": "Migration bon_sortie_id obligatoire",
+            "description": "Extension esbtp_depenses avec bon_sortie_id NOT NULL et contraintes",
+            "status": "pending"
+          },
+          {
+            "id": "19.2",
+            "title": "BonDepenseService création",
+            "description": "Service liaison bons-dépenses avec validation statut approuvé",
+            "status": "pending"
+          },
+          {
+            "id": "19.3",
+            "title": "ESBTPDepenseController extension",
+            "description": "Méthodes getBonsApprouves(), createBonRapide(), validation workflow",
+            "status": "pending"
+          },
+          {
+            "id": "19.4",
+            "title": "Interface dépenses rénovée",
+            "description": "Sélecteur bons approuvés, modal bon express, validation temps réel",
+            "status": "pending"
+          },
+          {
+            "id": "19.5",
+            "title": "Tests workflow complet",
+            "description": "Tests intégration inscription→étudiant→bon→dépense end-to-end",
+            "status": "pending"
+          }
+        ]
       }
     ],
     "metadata": {
       "created": "2025-07-08T23:51:05.466Z",
-      "updated": "2025-07-09T14:47:06.948Z",
-      "description": "Tasks for master context"
+      "updated": "2025-07-10T23:47:51.296Z",
+      "description": "Tasks for master context - Extended with V2.0 Liaison Comptabilité-Inscription-Dépenses (6 nouvelles tâches)"
     }
   }
 }

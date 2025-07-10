@@ -1,0 +1,369 @@
+<context>
+# Overview
+L'ESBTP-yAKROv2Pascal nécessite une refonte des liaisons entre les modules Comptabilité, Inscription et Gestion des Dépenses pour créer un workflow cohérent et sécurisé. Cette extension permettra une traçabilité complète des flux financiers depuis l'inscription jusqu'aux dépenses opérationnelles.
+
+Les problèmes actuels incluent :
+- Logique comptabilité mélangée dans les inscriptions sans workflow clair
+- Activation immédiate des relances sans validation préalable
+- Création de dépenses sans contrôle des bons de sortie 
+- Manque de traçabilité entre validation inscription et création étudiant
+
+Cette PRD définit l'architecture pour créer un système intégré respectant le principe "inscription → validation avec paiement → étudiant → relances activées" et "bon de sortie approuvé → dépense traçable".
+
+# Core Features
+
+## 1. Workflow Inscription vers Étudiant Sécurisé
+- **Étape Prospect** : Inscription reste en statut "prospect" après soumission formulaire
+- **Validation Administrative** : Admin valide inscription en l'associant à un paiement (frais inscription obligatoire)
+- **Gestion Places Classes** : Vérification automatique places disponibles dans classe présélectionnée
+- **Création Étudiant** : Génération automatique compte étudiant après validation avec assignment classe
+- **Activation Comptabilité** : Relances et fonctionnalités comptabilité activées uniquement après validation
+
+## 2. Interface de Validation Inscription Intégrée
+- **Modal Paiement Rapide** : Saisie rapide frais inscription sans changer de page
+- **Sélecteur Types Paiements** : Choix type (scolarité, cantine, autres frais)
+- **Vérification Places** : Alerte si classe sélectionnée pleine avec suggestion alternatives
+- **Workflow States** : Prospect → En attente validation → Validé → Étudiant actif
+- **Historique Actions** : Traçabilité complète des actions de validation
+
+## 3. Nettoyage Séparation Logique Métier
+- **Pages Inscription Purifiées** : Suppression logique comptabilité des vues inscription
+- **Modèles Découplés** : Relations claires entre ESBTPInscription, ESBTPEtudiant, ESBTPPaiement
+- **Contrôleurs Séparés** : Logique inscription dans InscriptionController, comptabilité dans ComptabiliteController
+- **Services Spécialisés** : InscriptionService pour workflow, ComptabiliteService pour calculs
+- **Permissions Granulaires** : Droits séparés inscription.validate et comptabilite.manage
+
+## 4. Liaison Obligatoire Bon de Sortie - Dépense
+- **Contrôle Pré-création** : Sélection bon de sortie obligatoire avant création dépense
+- **Filtre Statut Approuvé** : Seuls bons statut "approuvé" disponibles pour sélection
+- **Création Rapide Bon** : Modal création bon de sortie si aucun disponible
+- **Workflow Approbation Simplifié** : Sélection personne approuvatrice lors création bon (parmi 4 rôles existants : superadmin, secretaire, enseignant, etudiant)
+- **Notifications Automatiques** : Email/notification app à l'approbateur sélectionné
+- **Attente Approbation** : Blocage création dépense jusqu'à approbation bon
+- **Traçabilité Complète** : Historique bon → dépense avec références croisées
+
+## 5. Interface Dépenses Rénovée
+- **Sélecteur Bons Approuvés** : Liste déroulante bons disponibles avec montants
+- **Statut Temps Réel** : Affichage statut bon sélectionné avec workflow
+- **Alerte Disponibilité** : Notification si aucun bon approuvé disponible
+- **Création Bon Express** : Workflow rapide bon de sortie depuis interface dépenses avec sélection approbateur
+- **Validation Montants** : Contrôle cohérence montant dépense vs bon de sortie
+
+# User Experience
+
+## User Personas
+**Secrétaire Inscription** : Gestion inscriptions, validation documents, première saisie
+**Comptable Gestionnaire** : Validation inscriptions avec paiements, création dépenses tracées
+**Approbateur (tous rôles)** : Réception notifications, approbation bons de sortie depuis interface
+**Administrateur Système** : Configuration workflow, gestion permissions, monitoring
+
+## Key User Flows
+
+### Workflow Inscription Complète
+1. **Prospect soumet inscription** → Statut "prospect", données en attente
+2. **Secrétaire vérifie documents** → Marque inscription "complète"
+3. **Comptable valide avec paiement** → Création paiement frais inscription via modal
+4. **Système vérifie places classe** → Attribution classe ou suggestion alternative
+5. **Création automatique étudiant** → Génération compte utilisateur et matricule
+6. **Activation fonctionnalités** → Relances, KPIs, reporting comptabilité activés
+
+### Workflow Dépense Sécurisée
+1. **Comptable initie dépense** → Accès formulaire création
+2. **Sélection bon de sortie** → Liste bons approuvés disponibles
+3. **Si aucun bon disponible** → Modal création bon rapide avec sélection approbateur
+4. **Notification approbateur** → Email/notification app à la personne sélectionnée
+5. **Approbation/Rejet bon** → Approbateur consulte détails et décide
+6. **Si approuvé** → Retour interface dépenses, création autorisée
+7. **Finalisation dépense** → Traçabilité complète bon → dépense établie
+
+## UI/UX Considerations
+- **Interface Responsive** : Bootstrap 5 compatible mobile et desktop
+- **Modals Non-bloquantes** : Saisie rapide sans perte contexte
+- **Sélecteur Approbateur** : Dropdown avec filtrage par rôle et statut actif
+- **Indicateurs Visuels** : États workflow avec couleurs et icônes
+- **Validation Temps Réel** : Feedback immédiat sur disponibilité places/bons
+- **Navigation Contextuelle** : Retour page origine après actions modales
+- **Notifications Toast** : Confirmations actions et alertes importantes
+</context>
+
+<PRD>
+# Technical Architecture
+
+## System Components Extensions
+
+### Controllers Modifications
+```
+app/Http/Controllers/
+├── ESBTPInscriptionController.php    // + validateInscription(), checkClassAvailability()
+├── ESBTPComptabiliteController.php   // + createPaiementRapide(), linkBonToDepense()
+├── ESBTPDepenseController.php        // + getBonsApprouves(), createBonRapide()
+├── ESBTPBonSortieController.php      // + selectApprobateur(), sendNotification(), approve()
+└── ESBTPEtudiantController.php       // + createFromInscription(), assignClasse()
+```
+
+### Services Enhancements
+```
+app/Services/
+├── InscriptionWorkflowService.php    // Nouveau: gestion workflow complet inscription
+├── ComptabiliteService.php          // + canActivateRelances(), getEtudiantActif()
+├── ClasseManagementService.php      // Nouveau: gestion places et attribution classes
+├── BonDepenseService.php            // Nouveau: liaison bons-dépenses
+└── NotificationService.php          // + notifyBonApproval(), getUsersByRole()
+```
+
+### Models Relations
+```
+app/Models/
+├── ESBTPInscription.php             // + etudiant(), paiementValidation(), scopeValidated()
+├── ESBTPEtudiant.php                // + inscriptionOrigine(), comptabiliteActive()
+├── ESBTPPaiement.php                // + inscriptionValidee(), activationRelances()
+├── ESBTPDepense.php                 // + bonSortie(), required bonSortieId()
+└── ESBTPBonSortie.php               // + approbateur(), depenses(), notifications()
+```
+
+## Database Schema Adjustments
+
+### Extensions Tables Existantes
+```sql
+-- esbtp_inscriptions: statut workflow
++ workflow_step ENUM('prospect', 'documents_complets', 'en_validation', 'valide', 'etudiant_cree')
++ paiement_validation_id INT NULL REFERENCES esbtp_paiements(id)
++ classe_alternative_id INT NULL REFERENCES esbtp_classes(id)
++ comptabilite_activee BOOLEAN DEFAULT FALSE
+
+-- esbtp_depenses: liaison bons obligatoire
++ bon_sortie_id INT NOT NULL REFERENCES esbtp_bons_sortie(id)
+
+-- esbtp_bons_sortie: approbation simplifiée
++ approbateur_id BIGINT NULL REFERENCES users(id)
++ notification_sent_at TIMESTAMP NULL
++ approved_at TIMESTAMP NULL
+
+-- esbtp_classes: gestion places
++ places_totales INT DEFAULT 30
++ places_occupees INT DEFAULT 0
++ places_disponibles GENERATED ALWAYS AS (places_totales - places_occupees) VIRTUAL
+```
+
+### Nouvelles Tables
+```sql
+-- Historique validation inscriptions
+CREATE TABLE esbtp_inscription_workflow_history (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    inscription_id BIGINT NOT NULL,
+    etape_precedente VARCHAR(50),
+    etape_nouvelle VARCHAR(50),
+    action_utilisateur_id BIGINT,
+    commentaire TEXT,
+    metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Notifications approbation bons
+CREATE TABLE esbtp_bon_sortie_notifications (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    bon_sortie_id BIGINT NOT NULL,
+    approbateur_id BIGINT NOT NULL,
+    type_notification ENUM('email', 'app', 'both') DEFAULT 'both',
+    sent_at TIMESTAMP NULL,
+    read_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+## APIs and Integrations
+
+### Internal APIs
+- `/api/inscriptions/{id}/validate` - Validation inscription avec paiement
+- `/api/classes/{id}/availability` - Vérification places disponibles
+- `/api/bons-sortie/approuves` - Liste bons approuvés pour dépenses
+- `/api/bons-sortie/{id}/approve` - Approbation bon de sortie
+- `/api/users/by-role/{role}` - Liste utilisateurs par rôle pour sélection approbateur
+
+### Workflow Events
+- **InscriptionValidated** : Déclenche création étudiant et activation comptabilité
+- **EtudiantCreated** : Active relances et met à jour KPIs
+- **BonSortieCreated** : Envoie notification à l'approbateur sélectionné
+- **BonSortieApproved** : Notifie disponibilité pour création dépenses
+- **DepenseLinkedToBon** : Met à jour traçabilité et soldes
+
+## Infrastructure Requirements
+
+### Notification System
+- **Email Notifications** : Laravel Mail pour notifications approbation
+- **In-App Notifications** : Laravel Notifications pour interface web
+- **User Role Filtering** : Sélection approbateurs parmi 4 rôles existants
+- **Notification Templates** : Templates email/app personnalisables
+
+### Business Rules Engine
+- **Validation Rules** : Inscription complète avant validation
+- **Class Management** : Attribution automatique avec alternatives
+- **Financial Controls** : Bon approuvé obligatoire pour dépenses
+- **Approval Workflow** : Sélection flexible approbateur sans nouveaux rôles
+
+# Development Roadmap
+
+## Phase 1: Infrastructure et Modèles (Semaine 1)
+### Backend Foundation
+- **Migrations** : Extensions tables + nouvelles tables traçabilité et notifications
+- **Models Relations** : Mise à jour relations avec approbateur et notifications
+- **Services Foundation** : InscriptionWorkflowService, NotificationService étendu
+- **Permissions** : Nouveaux droits inscription.validate, bon.approve
+
+### Database & Validation
+- **Schema Updates** : Workflow steps, approbateur_id, notification tables
+- **Constraints** : Validation bon approuvé pour dépenses
+- **Seeders** : Données test workflow et utilisateurs par rôle
+- **Migrations Safe** : Pas de perte données existantes
+
+## Phase 2: Workflow Inscription → Étudiant (Semaine 2)
+### Inscription Workflow Core
+- **validateInscription()** : Méthode validation avec paiement obligatoire
+- **checkClassAvailability()** : Vérification et suggestion alternatives
+- **createFromInscription()** : Génération automatique étudiant depuis inscription
+- **Workflow History** : Traçabilité complète étapes validation
+
+### Interface Validation
+- **Modal Paiement Rapide** : Saisie express frais inscription
+- **Sélecteur Types** : Scolarité, cantine, autres frais
+- **Vérification Places** : Alerte temps réel disponibilité classes
+- **États Visuels** : Indicateurs workflow avec progression
+
+## Phase 3: Système Approbation Bon de Sortie (Semaine 3)
+### Approbation Workflow
+- **selectApprobateur()** : Interface sélection utilisateur par rôle
+- **sendNotification()** : Envoi email/notification app automatique
+- **approve()** : Interface approbation avec commentaires
+- **Notification Management** : Suivi statut envoi/lecture notifications
+
+### Interface Approbation
+- **Sélecteur Approbateur** : Dropdown filtré par rôle actif
+- **Notifications Templates** : Email et app avec détails bon
+- **Interface Approbation** : Page dédiée consultation et décision
+- **Statut Temps Réel** : Suivi workflow pour créateur bon
+
+## Phase 4: Liaison Bon-Dépense Complète (Semaine 4)
+### Integration Finale
+- **getBonsApprouves()** : Liste bons disponibles pour dépenses
+- **linkBonToDepense()** : Association obligatoire avec validation
+- **createBonRapide()** : Workflow express avec sélection approbateur
+- **Traçabilité Complète** : Historique bon → approbation → dépense
+
+### Interface Dépenses Finale
+- **Sélecteur Bons** : Dropdown bons approuvés avec approbateurs
+- **Modal Bon Express** : Création avec sélection approbateur intégrée
+- **Validation Workflow** : Contrôle statut approbation avant dépense
+- **Historique Complet** : Traçabilité complète flux financier
+
+# Logical Dependency Chain
+
+## Foundation (Week 1)
+**Database Schema** → **Models Relations** → **Notification System** → **Basic Services**
+- Extensions tables approbation avant modifications modèles
+- Relations approbateur critiques pour workflow notifications
+- Système notification fonctionnel avant workflow approbation
+- Services de base avec gestion rôles existants
+
+## Inscription Workflow (Week 2)
+**Inscription Core** → **Class Management** → **Student Creation** → **Interface**
+- Logique validation inscription prioritaire
+- Gestion places classes avant création étudiants
+- Workflow inscription→étudiant stable avant interface
+- Interface validation après backend solide
+
+## Approval System (Week 3)
+**Role Management** → **Notification Core** → **Approval Interface** → **Testing**
+- Gestion rôles existants avant sélection approbateurs
+- Système notification avant interface approbation
+- Interface approbation avant intégration dépenses
+- Tests workflow approbation complet
+
+## Complete Integration (Week 4)
+**Bon-Depense Logic** → **Interface Complete** → **End-to-End Testing** → **Production**
+- Logique bon-dépense avec approbation intégrée
+- Interface complète tous workflows
+- Tests end-to-end inscription→étudiant→bon→dépense
+- Validation production avec utilisateurs réels
+
+# Risks and Mitigations
+
+## Technical Challenges
+### Notification Delivery Reliability
+**Risque** : Emails/notifications approbation non reçus ou perdus
+**Mitigation** :
+- Queue system avec retry automatique pour envois échoués
+- Log complet envois avec statut delivery pour debug
+- Interface admin monitoring notifications avec resend manuel
+- Fallback notifications multiples (email + app) pour approbations critiques
+
+### User Role Management Complexity
+**Risque** : Confusion sélection approbateurs parmi 4 rôles différents
+**Mitigation** :
+- Interface claire avec filtres rôle et description responsabilités
+- Suggestions automatiques approbateurs recommandés par contexte
+- Historique approbations par utilisateur pour patterns récurrents
+- Formation utilisateurs avec guide sélection appropriée
+
+## Business Process Changes
+### Resistance to New Approval Workflow
+**Risque** : Utilisateurs contournent nouveau workflow approbation
+**Mitigation** :
+- Formation ciblée avec démonstration bénéfices traçabilité
+- Interface progressive avec assistants pour première utilisation
+- Rapports management montrant amélioration contrôle financier
+- Support utilisateur dédié période transition
+
+### Performance Impact Notifications
+**Risque** : Ralentissement système avec nombreuses notifications simultanées
+**Mitigation** :
+- Queue jobs asynchrones pour toutes notifications
+- Batch processing notifications multiples avec optimisation
+- Cache utilisateurs actifs pour éviter requêtes répétées
+- Monitoring performance avec alertes seuils critiques
+
+# Appendix
+
+## Notification Templates
+### Email Approbation Bon de Sortie
+```html
+Objet: [ESBTP] Demande d'approbation bon de sortie #{numero_bon}
+
+Bonjour {nom_approbateur},
+
+Une demande d'approbation de bon de sortie nécessite votre validation :
+- Numéro: {numero_bon}
+- Montant: {montant} FCFA
+- Demandeur: {nom_demandeur}
+- Motif: {motif}
+
+[Bouton: Approuver] [Bouton: Consulter Détails]
+
+Cordialement,
+Système ESBTP KLASSCI
+```
+
+### In-App Notification
+```json
+{
+  "title": "Bon de sortie en attente",
+  "message": "#{numero_bon} - {montant} FCFA",
+  "type": "approval_request",
+  "actions": ["approve", "view", "reject"],
+  "priority": "high"
+}
+```
+
+## User Role Definitions
+### Approbation Permissions par Rôle
+- **SuperAdmin** : Peut approuver tous bons toutes catégories/montants
+- **Secrétaire** : Peut approuver bons < 50 000 FCFA catégories administrative
+- **Enseignant** : Peut approuver bons < 25 000 FCFA catégories pédagogique
+- **Étudiant** : Aucune permission approbation (sélectionnable pour cas spéciaux)
+
+## Migration Strategy
+### Existing Bon de Sortie Data
+1. **Audit Current State** : Identification bons existants sans approbateur
+2. **Default Assignments** : Attribution approbateur par défaut basé créateur
+3. **Notification Backfill** : Création notifications historiques pour traçabilité
+4. **Status Reconciliation** : Mise à jour statuts cohérents avec nouveau workflow
+5. **User Training** : Formation sur nouveau processus avant activation
