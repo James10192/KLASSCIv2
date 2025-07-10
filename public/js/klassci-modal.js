@@ -157,6 +157,8 @@ class KlassciModal {
     
     handleFormSubmit(form) {
         const formData = new FormData(form);
+        // Ajouter le token CSRF au FormData
+        formData.append('_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
         const submitBtn = form.querySelector('button[type="submit"]');
         const originalText = submitBtn.innerHTML;
         
@@ -171,7 +173,7 @@ class KlassciModal {
         invalidInputs.forEach(el => el.classList.remove('is-invalid'));
 
         // URL du formulaire depuis l'action ou data attribute
-        const url = form.action || form.dataset.action || '/esbtp/comptabilite/fournisseurs/ajax/store';
+        const url = form.action || form.dataset.action || '/esbtp/comptabilite/fournisseurs/ajax';
 
         fetch(url, {
             method: 'POST',

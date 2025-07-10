@@ -2081,33 +2081,46 @@ class ESBTPComptabiliteController extends Controller
      */
     public function storeFournisseurAjax(Request $request)
     {
-        $validated = $request->validate([
-            'nom' => 'required|string|max:255',
-            'email' => 'nullable|email|max:255',
-            'telephone' => 'nullable|string|max:20',
-            'adresse' => 'nullable|string|max:500',
-            'personne_contact' => 'nullable|string|max:255',
-            'telephone_contact' => 'nullable|string|max:20',
-            'email_contact' => 'nullable|email|max:255'
-        ]);
+        try {
+            $validated = $request->validate([
+                'nom' => 'required|string|max:255',
+                'email' => 'nullable|email|max:255',
+                'telephone' => 'nullable|string|max:20',
+                'adresse' => 'nullable|string|max:500',
+                'personne_contact' => 'nullable|string|max:255',
+                'telephone_contact' => 'nullable|string|max:20',
+                'email_contact' => 'nullable|email|max:255'
+            ]);
 
-        // Générer un code automatique
-        $validated['code'] = 'FOUR-' . strtoupper(substr($validated['nom'], 0, 3)) . '-' . time();
-        $validated['type'] = 'standard';
-        $validated['est_actif'] = true;
+            // Générer un code automatique
+            $validated['code'] = 'FOUR-' . strtoupper(substr($validated['nom'], 0, 3)) . '-' . time();
+            $validated['type'] = 'standard';
+            $validated['est_actif'] = true;
 
-        $fournisseur = ESBTPFournisseur::create($validated);
+            $fournisseur = ESBTPFournisseur::create($validated);
 
-        return response()->json([
-            'success' => true,
-            'fournisseur' => [
-                'id' => $fournisseur->id,
-                'nom' => $fournisseur->nom,
-                'email' => $fournisseur->email,
-                'telephone' => $fournisseur->telephone
-            ],
-            'message' => 'Fournisseur créé avec succès'
-        ]);
+            return response()->json([
+                'success' => true,
+                'fournisseur' => [
+                    'id' => $fournisseur->id,
+                    'nom' => $fournisseur->nom,
+                    'email' => $fournisseur->email,
+                    'telephone' => $fournisseur->telephone
+                ],
+                'message' => 'Fournisseur créé avec succès'
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'errors' => $e->errors(),
+                'message' => 'Erreur de validation'
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur serveur: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
