@@ -13,16 +13,20 @@ return new class extends Migration
     {
         // Vérifier si la table existe déjà
         $tableExists = Schema::hasTable('esbtp_paiements');
-        
+
         // Si la table n'existe pas, la créer
         if (!$tableExists) {
             Schema::create('esbtp_paiements', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('inscription_id')->constrained('esbtp_inscriptions')->onDelete('cascade');
                 $table->foreignId('etudiant_id')->constrained('esbtp_etudiants')->onDelete('cascade');
+                $table->foreignId('annee_universitaire_id')->constrained('esbtp_annee_universitaires')->onDelete('restrict');
+                $table->string('type_paiement', 100);
                 $table->decimal('montant', 10, 2);
                 $table->date('date_paiement');
+                $table->date('date_echeance')->nullable()->after('date_paiement');
                 $table->string('mode_paiement')->comment('Espèces, chèque, virement, etc.');
+                $table->string('numero_transaction')->nullable()->comment('Numéro de chèque, de transaction, etc.');
                 $table->string('reference_paiement')->nullable()->comment('Numéro de chèque, de transaction, etc.');
                 $table->string('tranche')->nullable()->comment('Première tranche, deuxième tranche, etc.');
                 $table->string('motif')->comment('Scolarité, frais d\'inscription, frais divers, etc.');
@@ -42,7 +46,7 @@ return new class extends Migration
                 $table->index(['date_paiement']);
                 $table->index(['status']);
             });
-            
+
             // Journalisation de la création de la table
             \Log::info('Table esbtp_paiements créée avec succès.');
         } else {
@@ -58,4 +62,4 @@ return new class extends Migration
     {
         Schema::dropIfExists('esbtp_paiements');
     }
-}; 
+};

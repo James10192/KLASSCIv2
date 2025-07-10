@@ -1,13 +1,12 @@
 @extends('layouts.app')
 
 @section('title', 'Dashboard Financier ESBTP KLASSCI')
-@endsection
 
 @section('content')
 <div class="dashboard-acasi">
     {{-- Sidebar Gauche --}}
     <aside class="sidebar-left">
-        <div class="logo">ESBTP</div>
+        <div class="logo">Comptabilité</div>
 
         <nav class="navigation">
             <ul class="navigation-menu">
@@ -18,13 +17,13 @@
                     </a>
                 </li>
                 <li class="navigation-item">
-                    <a href="{{ route('esbtp.comptabilite.paiements.index') }}" class="navigation-link">
+                    <a href="{{ route('esbtp.comptabilite.paiements') }}" class="navigation-link">
                         <i class="fas fa-credit-card"></i>
                         Paiements
                     </a>
                 </li>
                 <li class="navigation-item">
-                    <a href="{{ route('esbtp.comptabilite.depenses.index') }}" class="navigation-link">
+                    <a href="{{ route('esbtp.comptabilite.depenses') }}" class="navigation-link">
                         <i class="fas fa-shopping-cart"></i>
                         Dépenses
                     </a>
@@ -36,7 +35,7 @@
                     </a>
                 </li>
                 <li class="navigation-item">
-                    <a href="{{ route('esbtp.comptabilite.factures.index') }}" class="navigation-link">
+                    <a href="{{ route('esbtp.comptabilite.factures') }}" class="navigation-link">
                         <i class="fas fa-file-invoice"></i>
                         Factures
                     </a>
@@ -347,10 +346,28 @@ document.addEventListener('DOMContentLoaded', function() {
     // Graphique d\'évolution principale
     const evolutionCtx = document.getElementById('evolutionChart');
     if (evolutionCtx) {
-        // Préparation des données pour éviter les erreurs ParseError avec @json
-        const chartLabelsData = {!! json_encode($chartLabels ?? ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc']) !!};
-        const recettesDataChart = {!! json_encode($recettesData ?? [2800000, 3200000, 2900000, 3500000, 3100000, 3400000, 3300000, 3600000, 3200000, 3800000, 3500000, 4000000]) !!};
-        const depensesDataChart = {!! json_encode($depensesData ?? [2200000, 2400000, 2300000, 2600000, 2500000, 2700000, 2600000, 2800000, 2500000, 2900000, 2700000, 3000000]) !!};
+        // Préparation des données pour éviter les erreurs ParseError - APPROCHE SÉCURISÉE
+        let chartLabelsData, recettesDataChart, depensesDataChart;
+
+        // Valeurs par défaut
+        const defaultLabels = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+        const defaultRecettes = [2800000, 3200000, 2900000, 3500000, 3100000, 3400000, 3300000, 3600000, 3200000, 3800000, 3500000, 4000000];
+        const defaultDepenses = [2200000, 2400000, 2300000, 2600000, 2500000, 2700000, 2600000, 2800000, 2500000, 2900000, 2700000, 3000000];
+
+        try {
+            // Récupération des données du contrôleur avec syntaxe Blade sécurisée
+            chartLabelsData = @json($chartLabels);
+            recettesDataChart = @json($recettesData);
+            depensesDataChart = @json($depensesData);
+
+            // Variables chargées avec succès
+        } catch (error) {
+            console.error('Error loading data from controller, using defaults:', error);
+            // Utiliser les valeurs par défaut en cas d'erreur
+            chartLabelsData = defaultLabels;
+            recettesDataChart = defaultRecettes;
+            depensesDataChart = defaultDepenses;
+        }
 
         new Chart(evolutionCtx, {
             type: 'line',

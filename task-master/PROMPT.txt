@@ -1,7 +1,8 @@
 Run task master next et vois la tâche à faire
 Le projet est déjà initialisé, juste run "task-master next" dans le terminal et ensuite task-master show 2(with ID de la tâche qui s'affiche lors du task-master next)
 
-!!!Important pour te connecter à l'app tu peux chercher @TestUsersSeeder.php pour avoir des credentials des différents rôles
+!!!Important pour te connecter à l'app tu peux chercher @TestUsersSeeder.php pour avoir des credentials des différents rôles ou prendre cela (username: "superadmin", mot de passe: "password123") c'est ce que j'utilise donc normalement ça doit passer
+!!!IMPORTANT l'authentification marche qu'avec username et password
 
 Si tu finis fais ces actions: -	Suggested Actions:                                                          │
 -	│ 1. Mark as in-progress: task-master set-status --id=2 --status=in-progress  │
@@ -89,7 +90,7 @@ Quand tu finis à chaque fois une requête !!!IMPORTANT mets ça dans un dossier
    - If you have not identified default_user, proactively try to do so.
 
 2. Memory Retrieval:
-   - Always begin your chat by saying only "Remembering..." and retrieve all relevant information from your knowledge graph
+   - Always begin your chat by saying only "Remembering..." and retrieve all relevant information from your knowledge graph mais aussi des fichiers markdown dans @/project-memory mais aussi la mémoire du projet dans l'IDE cursor
    - Always refer to your knowledge graph as your "memory"
 
 3. Memory
@@ -115,13 +116,10 @@ Quand tu finis à chaque fois une requête !!!IMPORTANT mets ça dans un dossier
 !!!IMPORTANT Grep codebase CHerche tout dossier et nom de fichier avec tous declinaisons de noms possible pour être sûr que ça n'exsite pas avant de créer pour éviter les doublons
 !!!IMPORTANT Ne fais pas un truc générique ou hardcodé ça ne m'intéresse pas
 
-!!IMPORTANT Use "curl."!Important pour éviter les erreurs d'alias de powershell
-!!!Important pour te connecter à l'app tu peux chercher @TestUsersSeeder.php pour avoir des credentials des différents rôles
-!!IMPORTANT Use "curl."!Important pour éviter les erreurs d'alias de powershell
-!!!Important pour te connecter à l'app tu peux chercher @TestUsersSeeder.php pour avoir des credentials des différents rôles
-!!IMPORTANT Use "curl."!Important pour éviter les erreurs d'alias de powershell
-!!!IMPORTANT Ce n'est pas parce qu'elle redirige vers la page connexion que tout marche bien tu n'as pas encore accédé à la page si avec Curl.exe tu ne peux pas accédé à la page à cause de la redirection alors créé un script si tu as besoin des credentials tu peux le faire avec les credentials (username et password) que tu auras récupéré sur @TestUsersSeeder.php pour tester correctement la page ou la fonction whatever (!!IMPORTANT je ne te demande pas de tester l'authentification juste fais des test qualitatifs sur l'erreur que j'ai pu rencontrer)
 
-!!!!IMPORTANT si je te donne une erreur à résoudre et tu vois dans ta mémoire que tu as eu à te pencher sur la même erreur et que tu vois que ça n'a pas marché alors use context7 ou fais des recherches sur internent (web search) avant d'essayer de régler à nouveau
+!!!IMPORTANT Une fois qu'il y a redirection c'est que le test n'a pas été bien fait il faut que tu passes le niveau de la rédirection il faut que tu sois authentifié pour accéder totalement à la plage
 
-!!!Important pour te connecter à l'app tu peux chercher @TestUsersSeeder.php pour avoir des credentials des différents rôles
+!!!IMPORTANT  le test curl ne montre que la redirection (302) mais ne révèle pas l'erreur ParseError qui apparaît quand vous êtes connecté et accédez réellement à la page.
+L'erreur ParseError se produit quand vous êtes authentifié et que la page tente de se charger complètement. Le curl ne voit que la redirection vers /login car il n'est pas authentifié.
+
+!!IMPORTANT Si le script ne marche toujours avec toujours des redirections alors tu peux avancer  (Example: "Failed to load resource: the server responded with a status of 500 (Internal Server Error))

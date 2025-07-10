@@ -446,6 +446,11 @@ body {
     box-shadow: var(--shadow-card);
     padding: var(--space-lg);
     margin-bottom: var(--space-lg);
+    /* Correction anti-débordement chart */
+    max-width: 100%;
+    overflow-x: auto;
+    min-width: 0;
+    height: 35rem; /* Hauteur fixe recommandée pour éviter l'expansion infinie */
 }
 
 .chart-title {

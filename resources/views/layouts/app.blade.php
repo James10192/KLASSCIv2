@@ -454,6 +454,7 @@
         }
     </style>
     @yield('styles')
+    @stack('styles')
 </head>
 <body>
     <div class="nextadmin-wrapper">

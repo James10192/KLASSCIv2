@@ -1,237 +1,129 @@
-@extends('layouts.app')
+@extends('esbtp.comptabilite.components.dashboard-layout')
 
-@section('title', 'Générateur de Rapports Avancé')
+@section('title', 'Rapports personnalisés')
 
-@section('styles')
-<link href="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.css" rel="stylesheet">
-<style>
-    .report-builder {
-        min-height: calc(100vh - 200px);
-    }
-
-    .component-library {
-        background: #f8f9fa;
-        border: 2px dashed #dee2e6;
-        border-radius: 8px;
-        min-height: 400px;
-        padding: 20px;
-    }
-
-    .drag-component {
-        background: white;
-        border: 1px solid #e9ecef;
-        border-radius: 6px;
-        padding: 10px 15px;
-        margin: 5px 0;
-        cursor: move;
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .drag-component:hover {
-        border-color: #0d6efd;
-        box-shadow: 0 2px 8px rgba(13, 110, 253, 0.15);
-        transform: translateY(-1px);
-    }
-
-    .drop-zone {
-        background: #f8f9fa;
-        border: 2px dashed #adb5bd;
-        border-radius: 8px;
-        min-height: 300px;
-        padding: 20px;
-        transition: all 0.3s ease;
-    }
-
-    .drop-zone.drag-over {
-        border-color: #0d6efd;
-        background: #e7f1ff;
-    }
-
-    .dropped-component {
-        background: white;
-        border: 1px solid #dee2e6;
-        border-radius: 6px;
-        padding: 15px;
-        margin: 10px 0;
-        position: relative;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-
-    .component-controls {
-        position: absolute;
-        top: 5px;
-        right: 5px;
-        display: flex;
-        gap: 5px;
-    }
-
-    .preview-panel {
-        background: white;
-        border: 1px solid #dee2e6;
-        border-radius: 8px;
-        min-height: 400px;
-        padding: 20px;
-    }
-
-    .filter-panel {
-        background: #f8f9fa;
-        border-radius: 8px;
-        padding: 15px;
-        margin-bottom: 20px;
-    }
-
-    .analytics-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 10px;
-        padding: 20px;
-        margin-bottom: 15px;
-    }
-
-    .predictive-chart {
-        background: white;
-        border-radius: 8px;
-        padding: 15px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        margin-bottom: 15px;
-    }
-
-    .schedule-item {
-        background: white;
-        border: 1px solid #e9ecef;
-        border-radius: 6px;
-        padding: 15px;
-        margin-bottom: 10px;
-        display: flex;
-        justify-content: between;
-        align-items: center;
-    }
-
-    .component-icon {
-        width: 24px;
-        height: 24px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 4px;
-        color: white;
-        font-size: 12px;
-    }
-
-    .icon-table { background: #28a745; }
-    .icon-chart { background: #007bff; }
-    .icon-kpi { background: #ffc107; color: #000; }
-    .icon-filter { background: #6f42c1; }
-    .icon-export { background: #dc3545; }
-
-    .sortable-ghost {
-        opacity: 0.5;
-    }
-
-    .report-tabs .nav-link {
-        border-radius: 8px 8px 0 0;
-        border: none;
-        background: #f8f9fa;
-        color: #6c757d;
-        font-weight: 500;
-        padding: 12px 20px;
-        margin-right: 5px;
-    }
-
-    .report-tabs .nav-link.active {
-        background: #0d6efd;
-        color: white;
-    }
-</style>
+@section('sidebar')
+    <li class="navigation-item">
+        <a href="{{ route('esbtp.comptabilite.dashboard-avance') }}" class="navigation-link">
+            <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+        </a>
+    </li>
+    <li class="navigation-item">
+        <a href="{{ route('esbtp.comptabilite.paiements.index') }}" class="navigation-link">
+            <i class="fas fa-credit-card me-2"></i>Paiements
+        </a>
+    </li>
+    <li class="navigation-item">
+        <a href="{{ route('esbtp.comptabilite.depenses.index') }}" class="navigation-link">
+            <i class="fas fa-wallet me-2"></i>Dépenses
+        </a>
+    </li>
+    <li class="navigation-item">
+        <a href="{{ route('esbtp.comptabilite.factures.index') }}" class="navigation-link">
+            <i class="fas fa-file-invoice me-2"></i>Factures
+        </a>
+    </li>
+    <li class="navigation-item active">
+        <a href="{{ route('esbtp.comptabilite.rapports.builder') }}" class="navigation-link active">
+            <i class="fas fa-chart-pie me-2"></i>Rapports
+        </a>
+    </li>
 @endsection
 
-@section('content')
-<div class="container-fluid">
-    <!-- Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="bg-gradient-primary rounded-4 p-4 d-flex align-items-center justify-content-between"
-                 style="background: linear-gradient(135deg, #0d6efd 0%, #6610f2 100%);">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="bg-white bg-opacity-25 rounded-circle d-flex align-items-center justify-content-center"
-                         style="width:50px;height:50px;">
-                        <i class="fas fa-chart-pie fa-xl text-white"></i>
+@section('header')
+    <div class="d-flex align-items-center justify-content-between">
+        <div>
+            <h4 class="mb-0 fw-bold">
+                <i class="fas fa-chart-pie me-2"></i>Rapports personnalisés
+            </h4>
+            <div class="text-muted small">Créez, analysez et exportez vos rapports comptables</div>
                     </div>
                     <div>
-                        <h1 class="h3 fw-bold text-white mb-1">Générateur de Rapports Avancé</h1>
-                        <div class="text-white-50">Créez des rapports personnalisés avec interface drag-and-drop</div>
+            <a href="#" class="btn btn-primary" onclick="clearReport()">
+                <i class="fas fa-plus me-1"></i>Nouveau rapport
+            </a>
                     </div>
                 </div>
-                <div class="d-flex gap-2">
-                    <button id="save-report" class="btn btn-light btn-lg fw-bold">
-                        <i class="fas fa-save me-2"></i>Sauvegarder
+@endsection
+
+@section('sidebarRight')
+    <div class="card mb-3">
+        <div class="card-header py-2 px-3">
+            <span class="fw-bold"><i class="fas fa-bolt me-2"></i>Actions Rapides</span>
+        </div>
+        <div class="card-body py-2 px-3">
+            <div class="d-grid gap-2">
+                <button class="btn btn-outline-primary btn-sm" onclick="generateReport()">
+                    <i class="fas fa-magic me-1"></i>Génération Auto
+                </button>
+                <button class="btn btn-outline-success btn-sm" onclick="exportReport()">
+                    <i class="fas fa-download me-1"></i>Exporter
+                </button>
+                <button class="btn btn-outline-info btn-sm" onclick="shareReport()">
+                    <i class="fas fa-share me-1"></i>Partager
+                </button>
+                <button class="btn btn-outline-warning btn-sm" onclick="scheduleReport()">
+                    <i class="fas fa-calendar me-1"></i>Programmer
                     </button>
-                    <button id="preview-report" class="btn btn-outline-light btn-lg fw-bold">
-                        <i class="fas fa-eye me-2"></i>Aperçu
+                <button class="btn btn-outline-secondary btn-sm" onclick="loadTemplate()">
+                    <i class="fas fa-folder-open me-1"></i>Modèles
                     </button>
                 </div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-header py-2 px-3">
+            <span class="fw-bold"><i class="fas fa-robot me-2"></i>Analytics IA</span>
+        </div>
+        <div class="card-body py-2 px-3">
+            <button class="btn btn-outline-light btn-sm w-100 mb-2" onclick="addPredictiveAnalysis('cashflow')">
+                <i class="fas fa-money-bill-trend-up me-2"></i>Prévision Cash-Flow
+            </button>
+            <button class="btn btn-outline-light btn-sm w-100 mb-2" onclick="addPredictiveAnalysis('anomaly')">
+                <i class="fas fa-exclamation-triangle me-2"></i>Détection Anomalies
+            </button>
+            <button class="btn btn-outline-light btn-sm w-100 mb-2" onclick="addPredictiveAnalysis('trends')">
+                <i class="fas fa-chart-line me-2"></i>Analyse Tendances
+            </button>
+            <button class="btn btn-outline-light btn-sm w-100 mb-2" onclick="addPredictiveAnalysis('forecast')">
+                <i class="fas fa-crystal-ball me-2"></i>Prévisions IA
+            </button>
+            <div class="mt-3">
+                <h6 class="fw-bold">Projections 6 mois</h6>
+                <canvas id="prediction-chart" width="100" height="60"></canvas>
             </div>
         </div>
     </div>
+@endsection
 
-    <!-- Report Builder Interface -->
-    <div class="row report-builder">
-        <!-- Left Panel: Components & Filters -->
+@section('content-block')
+<div class="container-fluid px-0">
+    <div class="row g-3">
+        <!-- Left Panel: Component Library & Schedule -->
         <div class="col-xl-3 col-lg-4 mb-4">
-            <!-- Tabs for Components -->
-            <ul class="nav nav-tabs report-tabs mb-3" role="tablist">
-                <li class="nav-item">
-                    <a class="nav-link active" data-bs-toggle="tab" href="#components-tab">
-                        <i class="fas fa-puzzle-piece me-1"></i>Composants
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" data-bs-toggle="tab" href="#analytics-tab">
-                        <i class="fas fa-brain me-1"></i>Analytics IA
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" data-bs-toggle="tab" href="#schedule-tab">
-                        <i class="fas fa-clock me-1"></i>Planning
-                    </a>
-                </li>
-            </ul>
-
-            <div class="tab-content">
-                <!-- Components Tab -->
-                <div class="tab-pane fade show active" id="components-tab">
-                    <div class="card">
-                        <div class="card-header">
-                            <h6 class="card-title mb-0">
-                                <i class="fas fa-cube me-2"></i>Bibliothèque de Composants
-                            </h6>
+            <div class="card mb-3">
+                <div class="card-header py-2 px-3">
+                    <span class="fw-bold"><i class="fas fa-cubes me-2"></i>Bibliothèque de composants</span>
                         </div>
-                        <div class="card-body p-2">
-                            <div class="component-library" id="component-library">
-                                <!-- Draggable Components -->
+                <div class="card-body py-2 px-3" id="component-library">
                                 <div class="drag-component" data-type="kpi">
                                     <div class="component-icon icon-kpi">
                                         <i class="fas fa-tachometer-alt"></i>
                                     </div>
                                     <div>
-                                        <strong>Indicateur KPI</strong>
-                                        <div class="small text-muted">Métriques financières</div>
+                            <strong>KPI</strong>
+                            <div class="small text-muted">Indicateurs financiers</div>
                                     </div>
                                 </div>
-
                                 <div class="drag-component" data-type="chart">
                                     <div class="component-icon icon-chart">
                                         <i class="fas fa-chart-line"></i>
                                     </div>
                                     <div>
                                         <strong>Graphique</strong>
-                                        <div class="small text-muted">Évolution temporelle</div>
+                            <div class="small text-muted">Évolution</div>
                                     </div>
                                 </div>
-
                                 <div class="drag-component" data-type="table">
                                     <div class="component-icon icon-table">
                                         <i class="fas fa-table"></i>
@@ -241,17 +133,15 @@
                                         <div class="small text-muted">Données détaillées</div>
                                     </div>
                                 </div>
-
                                 <div class="drag-component" data-type="filter">
                                     <div class="component-icon icon-filter">
                                         <i class="fas fa-filter"></i>
                                     </div>
                                     <div>
-                                        <strong>Filtre</strong>
+                            <strong>Filtres</strong>
                                         <div class="small text-muted">Critères de sélection</div>
                                     </div>
                                 </div>
-
                                 <div class="drag-component" data-type="export">
                                     <div class="component-icon icon-export">
                                         <i class="fas fa-download"></i>
@@ -263,50 +153,14 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
+            <div class="card">
+                <div class="card-header py-2 px-3">
+                    <span class="fw-bold"><i class="fas fa-calendar-alt me-2"></i>Rapports Programmés</span>
                 </div>
-
-                <!-- Analytics Tab -->
-                <div class="tab-pane fade" id="analytics-tab">
-                    <div class="analytics-card">
-                        <h6 class="fw-bold mb-3">
-                            <i class="fas fa-robot me-2"></i>Analytics Prédictives
-                        </h6>
-                        <div class="mb-3">
-                            <button class="btn btn-outline-light btn-sm w-100 mb-2" onclick="addPredictiveAnalysis('cashflow')">
-                                <i class="fas fa-money-bill-trend-up me-2"></i>Prévision Cash-Flow
-                            </button>
-                            <button class="btn btn-outline-light btn-sm w-100 mb-2" onclick="addPredictiveAnalysis('anomaly')">
-                                <i class="fas fa-exclamation-triangle me-2"></i>Détection Anomalies
-                            </button>
-                            <button class="btn btn-outline-light btn-sm w-100 mb-2" onclick="addPredictiveAnalysis('trends')">
-                                <i class="fas fa-chart-line me-2"></i>Analyse Tendances
-                            </button>
-                            <button class="btn btn-outline-light btn-sm w-100 mb-2" onclick="addPredictiveAnalysis('forecast')">
-                                <i class="fas fa-crystal-ball me-2"></i>Prévisions IA
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="predictive-chart">
-                        <h6 class="fw-bold">Projections 6 mois</h6>
-                        <canvas id="prediction-chart" width="100" height="60"></canvas>
-                    </div>
-                </div>
-
-                <!-- Schedule Tab -->
-                <div class="tab-pane fade" id="schedule-tab">
-                    <div class="card">
-                        <div class="card-header">
-                            <h6 class="card-title mb-0">
-                                <i class="fas fa-calendar-alt me-2"></i>Rapports Programmés
-                            </h6>
-                        </div>
-                        <div class="card-body">
+                <div class="card-body py-2 px-3">
                             <button class="btn btn-primary btn-sm w-100 mb-3" onclick="openScheduleModal()">
                                 <i class="fas fa-plus me-1"></i>Nouveau Planning
                             </button>
-
                             <div id="scheduled-reports">
                                 <div class="schedule-item">
                                     <div>
@@ -322,7 +176,6 @@
                                         </button>
                                     </div>
                                 </div>
-
                                 <div class="schedule-item">
                                     <div>
                                         <strong>KPIs Hebdomadaires</strong>
@@ -341,9 +194,6 @@
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-
         <!-- Center Panel: Report Builder -->
         <div class="col-xl-6 col-lg-8 mb-4">
             <div class="card">
@@ -387,7 +237,6 @@
                             </div>
                         </div>
                     </div>
-
                     <!-- Drop Zone for Components -->
                     <div class="drop-zone" id="report-canvas">
                         <div class="text-center text-muted">
@@ -399,7 +248,6 @@
                 </div>
             </div>
         </div>
-
         <!-- Right Panel: Live Preview -->
         <div class="col-xl-3 mb-4">
             <div class="card">
@@ -414,31 +262,6 @@
                             <i class="fas fa-file-alt fa-2x mb-2 opacity-50"></i>
                             <p class="small mb-0">L'aperçu apparaîtra ici</p>
                         </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Quick Actions -->
-            <div class="card mt-3">
-                <div class="card-header">
-                    <h6 class="card-title mb-0">
-                        <i class="fas fa-bolt me-2"></i>Actions Rapides
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="d-grid gap-2">
-                        <button class="btn btn-outline-primary btn-sm" onclick="generateReport()">
-                            <i class="fas fa-magic me-1"></i>Génération Auto
-                        </button>
-                        <button class="btn btn-outline-success btn-sm" onclick="exportReport()">
-                            <i class="fas fa-download me-1"></i>Exporter
-                        </button>
-                        <button class="btn btn-outline-info btn-sm" onclick="shareReport()">
-                            <i class="fas fa-share me-1"></i>Partager
-                        </button>
-                        <button class="btn btn-outline-warning btn-sm" onclick="scheduleReport()">
-                            <i class="fas fa-calendar me-1"></i>Programmer
-                        </button>
                     </div>
                 </div>
             </div>
