@@ -24,7 +24,7 @@
         </a>
     </li>
     <li class="navigation-item">
-        <a href="{{ route('esbtp.comptabilite.bons-sortie') }}" class="navigation-link">
+        <a href="{{ route('esbtp.comptabilite.bons-sortie.index') }}" class="navigation-link">
             <i class="fas fa-truck-loading"></i> Bons de sortie
         </a>
     </li>
@@ -134,7 +134,7 @@
                 </div>
                 <div class="col-md-6">
                     <span class="fw-medium">Classe :</span>
-                    <span class="ms-2">{{ $paiement->etudiant->classe->nom ?? 'N/A' }}</span>
+                    <span class="ms-2">{{ $paiement->etudiant->classe->libelle ?? $paiement->etudiant->classe->name ?? 'N/A' }}</span>
                 </div>
                 <div class="col-md-6">
                     <span class="fw-medium">Année universitaire :</span>
@@ -179,7 +179,7 @@
         <div class="acasi-card p-4 rounded-3 shadow mb-4">
             <h5 class="fw-bold mb-3"><i class="fas fa-info-circle me-2"></i>Informations système</h5>
             <div class="mb-2"><strong>ID :</strong> {{ $paiement->id }}</div>
-            <div class="mb-2"><strong>Créé par :</strong> {{ $paiement->createur->name ?? 'N/A' }}</div>
+            <div class="mb-2"><strong>Créé par :</strong> {{ $paiement->createdBy->name ?? 'N/A' }}</div>
             <div class="mb-2"><strong>Date de création :</strong> {{ $paiement->created_at->format('d/m/Y H:i') }}</div>
             @if($paiement->updated_at)
             <div class="mb-2"><strong>Dernière modification :</strong> {{ $paiement->updated_at->format('d/m/Y H:i') }}</div>

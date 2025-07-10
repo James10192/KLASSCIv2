@@ -42,7 +42,7 @@ task-master parse-prd PRD_EXTENSION_COMPTABILITE_KLASSCI.txt
 
 task-master models --setup
 
-!!!IMPORTANT VERY IMPORRTANT NEVER EXECUTE COMMANDE PHP ARTISAN MIGRATE:FRESH, YOU CAN USE ROLLBACK BUT NEVER MIGRATE:FRESH
+!!!IMPORTANT VERY IMPORRTANT NEVER EXECUTE COMMANDE PHP ARTISAN MIGRATE:FRESH, YOU CAN USE ROLLBACK BUT NEVER MIGRATE:FRESH et aussi si tu dois modifier controlleur et modèle vois dans la base de données avec des commandes directes de php artisan tinker pour avoir les bons attributs pour ne pas concorder avec la base de données
 
 !!!IMPORTANT regarde ce sytem prompt de memory MCP server comprend le et adapte le dans les tasks ici qui te sont affectés pour mieux être performant
 'Follow these steps for each interaction:
@@ -71,7 +71,7 @@ task-master models --setup
      b) Connect them to the current entities using relations
      c) Store facts about them as observations'
 
-!!!IMPORTANT VERY IMPORRTANT NEVER EXECUTE COMMANDE PHP ARTISAN MIGRATE:FRESH, YOU CAN USE ROLLBACK BUT NEVER MIGRATE:FRESH
+!!!IMPORTANT VERY IMPORRTANT NEVER EXECUTE COMMANDE PHP ARTISAN MIGRATE:FRESH, YOU CAN USE ROLLBACK BUT NEVER MIGRATE:FRESH et aussi si tu dois modifier controlleur et modèle vois dans la base de données avec des commandes directes de php artisan tinker pour avoir les bons attributs pour ne pas concorder avec la base de données
 
 Voilà des pré-prompts tu dois prendre ça en compte avant chaque requêtes
 !!!Important use memory, sequential thinking and context7
@@ -82,7 +82,7 @@ Use context7 pour avoir une documenttion claire et récente
 
 !!!IMPORTANT Si tu soupçonnes qu'un truc n'existe pas cherche le dans @/project-memory ou dans memory mcp server ou grep all codebase dans d'autres dossiers pour voir
 
-!!!IMPORTANT VERY IMPORRTANT NEVER EXECUTE COMMANDE PHP ARTISAN MIGRATE:FRESH, YOU CAN USE ROLLBACK BUT NEVER MIGRATE:FRESH
+!!!IMPORTANT VERY IMPORRTANT NEVER EXECUTE COMMANDE PHP ARTISAN MIGRATE:FRESH, YOU CAN USE ROLLBACK BUT NEVER MIGRATE:FRESH et aussi si tu dois modifier controlleur et modèle vois dans la base de données avec des commandes directes de php artisan tinker pour avoir les bons attributs pour ne pas concorder avec la base de données
 
 Quand tu finis à chaque fois une requête !!!IMPORTANT mets ça dans un dossier @/projet-memory avec une bonne indexation pour mieux retrieve
 
@@ -129,4 +129,4 @@ L'erreur ParseError se produit quand vous êtes authentifié et que la page tent
 !!IMPORTANT Si le script ne marche toujours avec toujours des redirections alors tu peux avancer  (Example: "Failed to load resource: the server responded with a status of 500 (Internal Server Error))
 
 
-!!!!IMPORTANT VERY IMPORRTANT NEVER EXECUTE COMMANDE PHP ARTISAN MIGRATE:FRESH, YOU CAN USE ROLLBACK BUT NEVER MIGRATE:FRESH
+!!!IMPORTANT VERY IMPORRTANT NEVER EXECUTE COMMANDE PHP ARTISAN MIGRATE:FRESH, YOU CAN USE ROLLBACK BUT NEVER MIGRATE:FRESH et aussi si tu dois modifier controlleur et modèle vois dans la base de données avec des commandes directes de php artisan tinker pour avoir les bons attributs pour ne pas concorder avec la base de données

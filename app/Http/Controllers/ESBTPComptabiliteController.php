@@ -973,8 +973,15 @@ class ESBTPComptabiliteController extends Controller
      */
     public function showPaiement($id)
     {
-        $paiement = ESBTPPaiement::with(['etudiant', 'anneeUniversitaire', 'createur', 'validateur'])
-            ->findOrFail($id);
+        $paiement = ESBTPPaiement::with([
+            'etudiant.classe', 
+            'etudiant.user', 
+            'inscription.filiere', 
+            'inscription.niveauEtude',
+            'anneeUniversitaire',
+            'createdBy', // Relation avec l'utilisateur qui a créé
+            'validateur' // Relation avec l'utilisateur qui a validé
+        ])->findOrFail($id);
 
         return view('esbtp.comptabilite.paiements.show', compact('paiement'));
     }
