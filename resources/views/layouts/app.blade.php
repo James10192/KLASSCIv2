@@ -39,6 +39,12 @@
     <link href="{{ asset('css/nextadmin.css') }}" rel="stylesheet">
     <link href="{{ asset('css/navbar-enhancements.css') }}" rel="stylesheet">
     <link href="{{ asset('css/sidebar-fixes.css') }}" rel="stylesheet">
+    <!-- Modal Z-Index Fix - Doit être chargé après les autres CSS -->
+    <link href="{{ asset('css/modal-z-index-fix.css') }}" rel="stylesheet">
+    <!-- Form Interaction Fix - Correction des problèmes d'interaction avec les formulaires -->
+    <link href="{{ asset('css/form-interaction-fix.css') }}" rel="stylesheet">
+    <!-- Modal Force Fix - DEBUG MODE -->
+    <link href="{{ asset('css/modal-force-fix.css') }}" rel="stylesheet">
 
     <!-- Styles supplémentaires -->
     <style>

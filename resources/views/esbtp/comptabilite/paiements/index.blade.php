@@ -173,4 +173,4 @@
     <div class="mt-3">
         {{ $paiements->links() }}
 </div>
-@endsection
+@endsection 

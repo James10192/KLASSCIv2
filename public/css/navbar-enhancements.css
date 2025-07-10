@@ -63,7 +63,7 @@
     border: 1px solid rgba(229, 231, 235, 0.8);
     max-height: 400px;
     overflow-y: auto;
-    z-index: 1050;
+    z-index: 1047;
     backdrop-filter: blur(20px);
     margin-top: 8px;
 }
@@ -323,7 +323,14 @@
 
 /* Remplacement des couleurs indigo/rose par la palette bleue */
 
-.border-color, .navbar-search input:focus, .navbar-search input, .navbar-search-icon, .dropdown-header, .dropdown-item, .navbar-icon i, .menu-icon i {
+.border-color,
+.navbar-search input:focus,
+.navbar-search input,
+.navbar-search-icon,
+.dropdown-header,
+.dropdown-item,
+.navbar-icon i,
+.menu-icon i {
     border-color: var(--primary) !important;
     color: var(--primary) !important;
 }
@@ -376,7 +383,7 @@
     margin: 8px 0 !important;
     color: #222 !important;
     font-size: 15px !important;
-    box-shadow: 0 2px 8px 0 rgba(27,100,212,0.07);
+    box-shadow: 0 2px 8px 0 rgba(27, 100, 212, 0.07);
     display: flex;
     align-items: flex-start;
 }
@@ -395,4 +402,19 @@
 }
 .message-content {
     flex: 1;
+}
+
+/* Correction KLASSCI : garantir que la navbar, la sidebar et les overlays ne passent jamais devant un modal Bootstrap (z-index 1055+) */
+
+.search-results {
+    /* z-index Bootstrap modal-backdrop: 1050, modal: 1055 */
+    z-index: 1047 !important;
+}
+
+.sidebar-overlay {
+    z-index: 1030 !important;
+}
+
+.navbar {
+    z-index: 1030 !important;
 }

@@ -1,0 +1,153 @@
+/*!
+ * KLASSCI Form Interaction Fix
+ * Correction du problème d'interaction avec les formulaires
+ * 
+ * Problème identifié :
+ * - Les règles CSS globales du modal-z-index-fix.css interfèrent 
+ *   avec l'interaction normale des éléments de formulaire
+ * - Curseur qui se transforme incorrectement
+ * - Impossible de sélectionner/cliquer sur les inputs
+ * 
+ * Solution :
+ * - Restaurer le comportement normal des pointer-events
+ * - Corriger l'interaction avec les éléments de formulaire
+ * - Maintenir la compatibilité avec les modals
+ */
+
+/* ===== CORRECTION INTERACTION FORMULAIRES ===== */
+
+/* Restaurer les pointer-events normaux pour les éléments de formulaire */
+.form-control,
+.form-select,
+.form-check-input,
+.form-range,
+.btn,
+input,
+select,
+textarea,
+button {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+}
+
+/* Curseur spécifique pour les inputs texte */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+input[type="search"],
+input[type="url"],
+input[type="tel"],
+textarea {
+    cursor: text !important;
+}
+
+/* Curseur pour les éléments cliquables */
+button,
+.btn,
+.form-check-input,
+select,
+.form-select,
+input[type="submit"],
+input[type="button"],
+input[type="reset"] {
+    cursor: pointer !important;
+}
+
+/* SUPPRIMÉ : toute règle de stacking/z-index sur .modal, .modal-backdrop, .modal-dialog, .modal-content. Ne garder que l'interaction. */
+
+/* ===== CORRECTIONS LAYOUT FORMULAIRES ===== */
+
+/* S'assurer qu'aucun overlay invisible n'interfère */
+.acasi-card form,
+.acasi-card .form-group,
+.acasi-card .col-md-6,
+.acasi-card .col-md-12 {
+    position: relative !important;
+    z-index: auto !important;
+    pointer-events: auto !important;
+}
+
+/* Correction pour les div conteneurs */
+.row,
+.col,
+.col-md-6,
+.col-md-12,
+.input-group,
+.form-floating {
+    pointer-events: auto !important;
+}
+
+/* ===== CORRECTIONS HOVER ET FOCUS ===== */
+
+/* Restaurer les états hover et focus normaux */
+.form-control:hover,
+.form-select:hover,
+.btn:hover {
+    pointer-events: auto !important;
+}
+
+.form-control:focus,
+.form-select:focus {
+    pointer-events: auto !important;
+    outline: 0 !important;
+    box-shadow: 0 0 0 0.2rem rgba(30, 58, 138, 0.25) !important;
+}
+
+/* ===== CORRECTIONS SPÉCIFIQUES DÉPENSES ===== */
+
+/* Page création dépenses */
+.acasi-card .form-control,
+.acasi-card .form-select,
+.acasi-card .btn {
+    position: relative !important;
+    z-index: 1 !important;
+    pointer-events: auto !important;
+}
+
+/* Select fournisseur avec bouton modal */
+#fournisseur_selection,
+#btn-nouveau-fournisseur {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+}
+
+/* ===== CORRECTIONS JAVASCRIPT EVENTS ===== */
+
+/* S'assurer que les événements JavaScript fonctionnent */
+[onclick],
+[onchange],
+[oninput] {
+    pointer-events: auto !important;
+}
+
+/* ===== DEBUG MODE (décommenter pour débugger) ===== */
+/*
+.form-control { border: 2px solid green !important; }
+.form-select { border: 2px solid blue !important; }
+.btn { border: 2px solid red !important; }
+*/
+
+/* ===== CORRECTIONS RESPONSIVE ===== */
+
+/* Mobile */
+@media (max-width: 575.98px) {
+    .form-control,
+    .form-select,
+    .btn {
+        touch-action: manipulation !important;
+        pointer-events: auto !important;
+    }
+}
+
+/* Tablet et Desktop */
+@media (min-width: 576px) {
+    .form-control,
+    .form-select,
+    .btn {
+        pointer-events: auto !important;
+    }
+}

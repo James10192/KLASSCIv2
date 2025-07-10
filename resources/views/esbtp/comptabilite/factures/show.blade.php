@@ -1,27 +1,66 @@
-@extends('layouts.app')
+@extends('esbtp.comptabilite.components.dashboard-layout')
 
 @section('title', 'Détail facture ' . $facture->numero)
 
-@section('content')
-<div class="container-fluid py-4">
-    <div class="row mb-4">
-        <div class="col-12 d-flex justify-content-between align-items-center">
-            <div>
-                <h2 class="fw-bold mb-0">Facture <span class="text-primary">#{{ $facture->numero }}</span></h2>
-                <span class="badge bg-{{ $facture->statut === 'émise' ? 'info' : ($facture->statut === 'payée' ? 'success' : ($facture->statut === 'partiellement payée' ? 'warning' : 'secondary')) }}">
-                    {{ ucfirst($facture->statut) }}
-                </span>
-            </div>
-            <div>
-                <a href="{{ route('esbtp.comptabilite.factures.pdf', $facture->id) }}" class="btn btn-outline-secondary me-2" target="_blank">
-                    <i class="fas fa-file-pdf"></i> PDF
-                </a>
-                <a href="{{ route('esbtp.comptabilite.factures') }}" class="btn btn-outline-dark">
-                    <i class="fas fa-arrow-left"></i> Retour
-                </a>
-            </div>
-        </div>
+@section('sidebar')
+    <li class="navigation-item">
+        <a href="{{ route('esbtp.comptabilite.dashboard-avance') }}" class="navigation-link">
+            <i class="fas fa-home"></i> Accueil
+        </a>
+    </li>
+    <li class="navigation-item">
+        <a href="{{ route('esbtp.comptabilite.paiements') }}" class="navigation-link">
+            <i class="fas fa-credit-card"></i> Paiements
+        </a>
+    </li>
+    <li class="navigation-item">
+        <a href="{{ route('esbtp.comptabilite.depenses') }}" class="navigation-link">
+            <i class="fas fa-shopping-cart"></i> Dépenses
+        </a>
+    </li>
+    <li class="navigation-item">
+        <a href="{{ route('esbtp.comptabilite.bons-sortie.index') }}" class="navigation-link">
+            <i class="fas fa-file-export"></i> Bons de Sortie
+        </a>
+    </li>
+    <li class="navigation-item">
+        <a href="{{ route('esbtp.comptabilite.factures') }}" class="navigation-link active">
+            <i class="fas fa-file-invoice"></i> Factures
+        </a>
+    </li>
+    <li class="navigation-item">
+        <a href="{{ route('esbtp.comptabilite.rapports') }}" class="navigation-link">
+            <i class="fas fa-chart-bar"></i> Rapports
+        </a>
+    </li>
+@endsection
+
+@section('header')
+    <div class="header-left">
+        <h1><i class="fas fa-file-invoice color-primary"></i> Détail de la facture <span class="text-primary">#{{ $facture->numero }}</span></h1>
+        <p class="header-subtitle">Informations détaillées de la facture</p>
     </div>
+    <div class="header-actions">
+        <a href="{{ route('esbtp.comptabilite.factures.pdf', $facture->id) }}" class="btn-acasi secondary" target="_blank">
+            <i class="fas fa-file-pdf"></i> PDF
+        </a>
+        <a href="{{ route('esbtp.comptabilite.factures') }}" class="btn-acasi secondary">
+            <i class="fas fa-arrow-left"></i> Retour
+        </a>
+    </div>
+@endsection
+
+@section('sidebarRight')
+    <h3 class="sidebar-title">Actions Rapides</h3>
+    <div style="display: flex; flex-direction: column; gap: var(--space-sm);">
+        <a href="{{ route('esbtp.comptabilite.factures.edit', $facture->id) }}" class="btn-acasi secondary">
+            <i class="fas fa-edit"></i> Éditer
+        </a>
+    </div>
+@endsection
+
+@section('content-block')
+<div class="container-fluid py-4">
     <div class="row g-4 mb-4">
         <div class="col-md-6">
             <div class="card h-100">
@@ -86,13 +125,13 @@
         </div>
     </div>
     <div class="d-flex justify-content-end gap-2">
-        <a href="{{ route('esbtp.comptabilite.factures.edit', $facture->id) }}" class="btn btn-info">
+        <a href="{{ route('esbtp.comptabilite.factures.edit', $facture->id) }}" class="btn-acasi primary">
             <i class="fas fa-edit"></i> Éditer
         </a>
         <form action="{{ route('esbtp.comptabilite.factures.destroy', $facture->id) }}" method="POST" onsubmit="return confirm('Supprimer cette facture ?');">
             @csrf
             @method('DELETE')
-            <button class="btn btn-danger"><i class="fas fa-trash"></i> Supprimer</button>
+            <button class="btn-acasi danger"><i class="fas fa-trash"></i> Supprimer</button>
         </form>
     </div>
 </div>

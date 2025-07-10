@@ -1,0 +1,112 @@
+/*!
+ * KLASSCI Modal Fix - VERSION FORCE TOTALE
+ * Solution de dernier recours avec !important et spécificité maximale
+ */
+
+/* ===== FORCE TOTALE Z-INDEX MODALS ===== */
+
+/* Forcer tous les modals au-dessus de TOUT */
+.modal-backdrop,
+div.modal-backdrop {
+    z-index: 500 !important; /* KLASSCI: Toujours sous le modal */
+    position: fixed !important;
+    background-color: rgba(0, 0, 0, 0.7) !important;
+    opacity: 0.7 !important;
+    display: none;
+}
+
+.modal,
+div.modal,
+#modalNouveauFournisseur,
+.modal[id*="modal"],
+.modal[class*="modal"] {
+    z-index: 1051 !important; /* KLASSCI: Toujours au-dessus du backdrop */
+    position: fixed !important;
+}
+
+/* RÉDUIRE DRASTIQUEMENT TOUS LES AUTRES ÉLÉMENTS */
+
+/* Navbar et sidebar en dessous des modals */
+.nextadmin-navbar,
+.navbar,
+nav.navbar,
+div.navbar {
+    z-index: 100 !important;
+}
+
+.nextadmin-sidebar,
+#sidebar,
+aside#sidebar,
+div#sidebar {
+    z-index: 200 !important;
+}
+
+/* Dropdowns et search très bas */
+.dropdown-menu,
+div.dropdown-menu,
+ul.dropdown-menu {
+    z-index: 300 !important;
+}
+
+.search-results,
+#search-results,
+div.search-results,
+div#search-results {
+    z-index: 400 !important;
+}
+
+/* Overlay sidebar */
+.sidebar-overlay,
+#sidebar-overlay,
+div.sidebar-overlay,
+div#sidebar-overlay {
+    z-index: 150 !important;
+}
+
+/* ===== CENTRAGE MODAL FORCE ===== */
+
+.modal {
+    display: none !important; /* Correction : invisible par défaut */
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 1rem !important;
+    /* border: 3px solid red !important;  // Debug désactivé */
+}
+
+.modal.show {
+    display: flex !important;
+}
+
+/* .modal-dialog {
+    margin: 0 !important;
+    max-width: 90vw !important;
+    width: auto !important;
+    position: relative !important;
+    z-index: 10000 !important;
+}
+
+.modal-content {
+    position: relative !important;
+    z-index: 10001 !important;
+    background: white !important;
+    border-radius: 8px !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
+} */
+
+/* ===== CORRECTIONS BOOTSTRAP CONFLICTS ===== */
+
+/* Désactiver tous les autres z-index élevés */
+.dropdown-menu[style*="z-index"] {
+    z-index: 300 !important;
+}
+
+/* Forcer la visibilité du modal */
+.modal.fade.show {
+    opacity: 1 !important;
+}
+
+/* ===== DEBUG MODE ===== */
+/* .modal { border: 3px solid red !important; } */
+/* .modal-backdrop { background-color: rgba(0, 255, 0, 0.5) !important; } */
+/* .dropdown-menu { border: 2px solid blue !important; } */
+/* #sidebar { border-right: 3px solid orange !important; } */

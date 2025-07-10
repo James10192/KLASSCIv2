@@ -323,7 +323,6 @@
     </div>
 </div>
 @endsection
-
 @push('scripts')
 <script>
 let previewTimeout;
@@ -457,3 +456,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 @endpush
+

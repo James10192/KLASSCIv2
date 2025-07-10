@@ -51,115 +51,115 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h4 class="mb-0 fw-bold"><i class="fas fa-plus-circle me-2"></i>Créer une nouvelle dépense</h4>
         <a href="{{ route('esbtp.comptabilite.depenses') }}" class="btn btn-outline-secondary">
-            <i class="fas fa-arrow-left me-1"></i> Retour à la liste
-        </a>
-    </div>
-    @if($errors->any())
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        <ul class="mb-0">
-            @foreach($errors->all() as $error)
-            <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-    @endif
-    <form action="{{ route('esbtp.comptabilite.depenses.store') }}" method="POST" enctype="multipart/form-data">
-        @csrf
-        <div class="row g-4 mb-4">
-            <div class="col-md-6">
-                <label for="libelle" class="form-label fw-medium">Libellé <span class="text-danger">*</span></label>
-                <input type="text" class="form-control @error('libelle') is-invalid @enderror" id="libelle" name="libelle" value="{{ old('libelle') }}" required>
-                @error('libelle')
-                <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
-            </div>
-            <div class="col-md-6">
-                <label for="categorie_id" class="form-label fw-medium">Catégorie <span class="text-danger">*</span></label>
-                <select class="form-select @error('categorie_id') is-invalid @enderror" id="categorie_id" name="categorie_id" required>
-                    <option value="">-- Sélectionnez une catégorie --</option>
-                    @foreach($categories ?? [] as $categorie)
-                    <option value="{{ $categorie->id }}" {{ old('categorie_id') == $categorie->id ? 'selected' : '' }}>
-                        {{ $categorie->nom }} {{ !empty($categorie->code) ? '('.$categorie->code.')' : '' }}
-                    </option>
+                <i class="fas fa-arrow-left me-1"></i> Retour à la liste
+            </a>
+        </div>
+            @if($errors->any())
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <ul class="mb-0">
+                    @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
                     @endforeach
-                </select>
-                @error('categorie_id')
-                <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
+                </ul>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
-        </div>
+            @endif
+            <form action="{{ route('esbtp.comptabilite.depenses.store') }}" method="POST" enctype="multipart/form-data">
+                @csrf
         <div class="row g-4 mb-4">
-            <div class="col-md-6">
-                <label for="montant" class="form-label fw-medium">Montant (FCFA) <span class="text-danger">*</span></label>
-                <div class="input-group">
-                    <input type="number" class="form-control @error('montant') is-invalid @enderror" id="montant" name="montant" value="{{ old('montant') }}" min="0" step="0.01" required>
-                    <span class="input-group-text">FCFA</span>
+                    <div class="col-md-6">
+                <label for="libelle" class="form-label fw-medium">Libellé <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control @error('libelle') is-invalid @enderror" id="libelle" name="libelle" value="{{ old('libelle') }}" required>
+                        @error('libelle')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="col-md-6">
+                <label for="categorie_id" class="form-label fw-medium">Catégorie <span class="text-danger">*</span></label>
+                        <select class="form-select @error('categorie_id') is-invalid @enderror" id="categorie_id" name="categorie_id" required>
+                            <option value="">-- Sélectionnez une catégorie --</option>
+                            @foreach($categories ?? [] as $categorie)
+                            <option value="{{ $categorie->id }}" {{ old('categorie_id') == $categorie->id ? 'selected' : '' }}>
+                                {{ $categorie->nom }} {{ !empty($categorie->code) ? '('.$categorie->code.')' : '' }}
+                            </option>
+                            @endforeach
+                        </select>
+                        @error('categorie_id')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
                 </div>
-                @error('montant')
-                <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
-            </div>
-            <div class="col-md-6">
+        <div class="row g-4 mb-4">
+                    <div class="col-md-6">
+                <label for="montant" class="form-label fw-medium">Montant (FCFA) <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <input type="number" class="form-control @error('montant') is-invalid @enderror" id="montant" name="montant" value="{{ old('montant') }}" min="0" step="0.01" required>
+                            <span class="input-group-text">FCFA</span>
+                        </div>
+                        @error('montant')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="col-md-6">
                 <label for="date_depense" class="form-label fw-medium">Date de dépense <span class="text-danger">*</span></label>
-                <input type="date" class="form-control @error('date_depense') is-invalid @enderror" id="date_depense" name="date_depense" value="{{ old('date_depense', date('Y-m-d')) }}" required>
-                @error('date_depense')
-                <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
-            </div>
-        </div>
+                        <input type="date" class="form-control @error('date_depense') is-invalid @enderror" id="date_depense" name="date_depense" value="{{ old('date_depense', date('Y-m-d')) }}" required>
+                        @error('date_depense')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                </div>
         <div class="row g-4 mb-4">
-            <div class="col-md-6">
+                    <div class="col-md-6">
                 <label for="mode_paiement" class="form-label fw-medium">Mode de paiement <span class="text-danger">*</span></label>
-                <select class="form-select @error('mode_paiement') is-invalid @enderror" id="mode_paiement" name="mode_paiement" required>
-                    <option value="">-- Sélectionnez un mode --</option>
-                    <option value="espèces" {{ old('mode_paiement') == 'espèces' ? 'selected' : '' }}>Espèces</option>
-                    <option value="chèque" {{ old('mode_paiement') == 'chèque' ? 'selected' : '' }}>Chèque</option>
-                    <option value="virement" {{ old('mode_paiement') == 'virement' ? 'selected' : '' }}>Virement</option>
-                    <option value="carte bancaire" {{ old('mode_paiement') == 'carte bancaire' ? 'selected' : '' }}>Carte bancaire</option>
-                    <option value="mobile money" {{ old('mode_paiement') == 'mobile money' ? 'selected' : '' }}>Mobile Money</option>
-                </select>
-                @error('mode_paiement')
-                <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
-            </div>
-            <div class="col-md-6">
+                        <select class="form-select @error('mode_paiement') is-invalid @enderror" id="mode_paiement" name="mode_paiement" required>
+                            <option value="">-- Sélectionnez un mode --</option>
+                            <option value="espèces" {{ old('mode_paiement') == 'espèces' ? 'selected' : '' }}>Espèces</option>
+                            <option value="chèque" {{ old('mode_paiement') == 'chèque' ? 'selected' : '' }}>Chèque</option>
+                            <option value="virement" {{ old('mode_paiement') == 'virement' ? 'selected' : '' }}>Virement</option>
+                            <option value="carte bancaire" {{ old('mode_paiement') == 'carte bancaire' ? 'selected' : '' }}>Carte bancaire</option>
+                            <option value="mobile money" {{ old('mode_paiement') == 'mobile money' ? 'selected' : '' }}>Mobile Money</option>
+                        </select>
+                        @error('mode_paiement')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="col-md-6">
                 <label for="reference" class="form-label fw-medium">Référence</label>
-                <input type="text" class="form-control @error('reference') is-invalid @enderror" id="reference" name="reference" value="{{ old('reference') }}">
-                @error('reference')
-                <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
-                <small class="form-text text-muted">Numéro de facture, référence de transaction, etc.</small>
-            </div>
-        </div>
+                        <input type="text" class="form-control @error('reference') is-invalid @enderror" id="reference" name="reference" value="{{ old('reference') }}">
+                        @error('reference')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                        <small class="form-text text-muted">Numéro de facture, référence de transaction, etc.</small>
+                    </div>
+                </div>
         <div class="row g-4 mb-4">
-            <div class="col-md-6">
+                    <div class="col-md-6">
                 <label for="numero_transaction" class="form-label fw-medium">Numéro de transaction</label>
-                <input type="text" class="form-control @error('numero_transaction') is-invalid @enderror" id="numero_transaction" name="numero_transaction" value="{{ old('numero_transaction') }}">
-                @error('numero_transaction')
-                <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
-                <small class="form-text text-muted">Numéro de chèque, référence de virement, etc.</small>
-            </div>
-            <div class="col-md-6">
+                        <input type="text" class="form-control @error('numero_transaction') is-invalid @enderror" id="numero_transaction" name="numero_transaction" value="{{ old('numero_transaction') }}">
+                        @error('numero_transaction')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                        <small class="form-text text-muted">Numéro de chèque, référence de virement, etc.</small>
+                    </div>
+                    <div class="col-md-6">
                 <label for="fournisseur_selection" class="form-label fw-medium">Fournisseur</label>
                 <div class="d-flex gap-2">
                     <select class="form-select @error('fournisseur_id') is-invalid @enderror" id="fournisseur_selection" name="fournisseur_id" style="flex: 1;">
                         <option value="">-- Sélectionnez un fournisseur --</option>
-                        @foreach($fournisseurs ?? [] as $fournisseur)
-                        <option value="{{ $fournisseur->id }}" {{ old('fournisseur_id') == $fournisseur->id ? 'selected' : '' }}>
-                            {{ $fournisseur->nom }}
-                        </option>
-                        @endforeach
+                            @foreach($fournisseurs ?? [] as $fournisseur)
+                            <option value="{{ $fournisseur->id }}" {{ old('fournisseur_id') == $fournisseur->id ? 'selected' : '' }}>
+                                {{ $fournisseur->nom }}
+                            </option>
+                            @endforeach
                         <option value="nouveau">➕ Nouveau fournisseur</option>
-                    </select>
+                        </select>
                     <button type="button" class="btn btn-outline-primary" id="btn-nouveau-fournisseur" data-bs-toggle="modal" data-bs-target="#modalNouveauFournisseur">
                         <i class="fas fa-plus"></i>
                     </button>
                 </div>
-                @error('fournisseur_id')
-                <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
+                        @error('fournisseur_id')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
                 
                 <!-- Champ pour nouveau fournisseur (masqué par défaut) -->
                 <div id="nouveau-fournisseur-div" style="display: none;" class="mt-2">
@@ -172,33 +172,33 @@
             </div>
         </div>
         <div class="row g-4 mb-4">
-            <div class="col-md-12">
+                    <div class="col-md-12">
                 <label for="description" class="form-label fw-medium">Description</label>
-                <textarea class="form-control @error('description') is-invalid @enderror" id="description" name="description" rows="3">{{ old('description') }}</textarea>
-                @error('description')
-                <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
-            </div>
-        </div>
+                        <textarea class="form-control @error('description') is-invalid @enderror" id="description" name="description" rows="3">{{ old('description') }}</textarea>
+                        @error('description')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                </div>
         <div class="row g-4 mb-4">
-            <div class="col-md-12">
+                    <div class="col-md-12">
                 <label for="path_justificatif" class="form-label fw-medium">Justificatif (image ou PDF)</label>
-                <input type="file" class="form-control @error('path_justificatif') is-invalid @enderror" id="path_justificatif" name="path_justificatif" accept=".jpg,.jpeg,.png,.pdf">
-                @error('path_justificatif')
-                <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
-                <small class="form-text text-muted">Formats acceptés: JPG, PNG, PDF (max 5 Mo)</small>
-            </div>
-        </div>
+                        <input type="file" class="form-control @error('path_justificatif') is-invalid @enderror" id="path_justificatif" name="path_justificatif" accept=".jpg,.jpeg,.png,.pdf">
+                        @error('path_justificatif')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                        <small class="form-text text-muted">Formats acceptés: JPG, PNG, PDF (max 5 Mo)</small>
+                    </div>
+                </div>
         <div class="row g-4 mb-4">
-            <div class="col-md-12">
+                    <div class="col-md-12">
                 <label for="notes_internes" class="form-label fw-medium">Notes internes</label>
-                <textarea class="form-control @error('notes_internes') is-invalid @enderror" id="notes_internes" name="notes_internes" rows="2">{{ old('notes_internes') }}</textarea>
-                @error('notes_internes')
-                <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
-                <small class="form-text text-muted">Notes visibles uniquement par les administrateurs</small>
-            </div>
+                        <textarea class="form-control @error('notes_internes') is-invalid @enderror" id="notes_internes" name="notes_internes" rows="2">{{ old('notes_internes') }}</textarea>
+                        @error('notes_internes')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                        <small class="form-text text-muted">Notes visibles uniquement par les administrateurs</small>
+                    </div>
         </div>
         <div class="d-flex justify-content-end gap-3">
             <button type="submit" class="btn btn-primary px-4 py-2">
@@ -209,10 +209,10 @@
             </a>
         </div>
     </form>
-</div>
-
-<!-- Modal pour créer un nouveau fournisseur -->
-<div class="modal fade" id="modalNouveauFournisseur" tabindex="-1" aria-labelledby="modalNouveauFournisseurLabel" aria-hidden="true">
+                </div>
+                
+<!-- KLASSCI: Modal fournisseur placé tout en haut pour garantir qu'il est toujours au-dessus de tout (avant sidebar/layout) -->
+<div class="modal fade" id="modalNouveauFournisseur" tabindex="-1" aria-labelledby="modalNouveauFournisseurLabel" aria-hidden="true" data-bs-backdrop="true" data-bs-keyboard="false">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
@@ -286,7 +286,7 @@
                 allowClear: true
             });
         }
-
+        
         // Gérer l'affichage du champ numéro de transaction en fonction du mode de paiement
         const modePaiementSelect = document.getElementById('mode_paiement');
         const numeroTransactionDiv = document.getElementById('numero_transaction').closest('.col-md-6');
@@ -331,10 +331,54 @@
             toggleNouveauFournisseur();
         }
 
-        // Gérer le formulaire modal de création de fournisseur
-        const formModal = document.getElementById('formNouveauFournisseur');
+        // Initialiser le modal Bootstrap
         const modal = document.getElementById('modalNouveauFournisseur');
+        const formModal = document.getElementById('formNouveauFournisseur');
+        let modalInstance = null;
+        if (modal) {
+            modalInstance = new bootstrap.Modal(modal, {
+                backdrop: 'static',
+                keyboard: false,
+                focus: true
+            });
+        }
 
+        // Ouvrir le modal uniquement via le bouton
+        const btnNouveauFournisseur = document.getElementById('btn-nouveau-fournisseur');
+        if (btnNouveauFournisseur) {
+            btnNouveauFournisseur.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (modalInstance) {
+                    modalInstance.show();
+                }
+            });
+        }
+
+        // Nettoyage : aucune ouverture automatique du modal, aucune manipulation de classe 'show' ou 'display' ailleurs !
+        // Suppression de tout fallback manuel (plus de modal.classList.add('show') ni modal.style.display = 'block')
+
+        // Gestionnaire d'ouverture du modal (nettoyage du formulaire)
+        if (modal) {
+            modal.addEventListener('show.bs.modal', function (e) {
+                if (formModal) {
+                    formModal.reset();
+                    const errorElements = formModal.querySelectorAll('.invalid-feedback');
+                    errorElements.forEach(el => el.textContent = '');
+                    const invalidInputs = formModal.querySelectorAll('.is-invalid');
+                    invalidInputs.forEach(el => el.classList.remove('is-invalid'));
+                }
+            });
+            modal.addEventListener('shown.bs.modal', function (e) {
+                const firstInput = modal.querySelector('input:not([type="hidden"])');
+                if (firstInput) {
+                    setTimeout(() => {
+                        firstInput.focus();
+                    }, 100);
+                }
+            });
+        }
+
+        // Gérer le formulaire modal de création de fournisseur
         if (formModal) {
             formModal.addEventListener('submit', function(e) {
                 e.preventDefault();
@@ -374,8 +418,9 @@
                         nouveauFournisseurInput.value = '';
                         
                         // Fermer le modal
-                        const bsModal = bootstrap.Modal.getInstance(modal);
-                        bsModal.hide();
+                        if (modalInstance) {
+                            modalInstance.hide();
+                        }
                         
                         // Réinitialiser le formulaire
                         formModal.reset();
@@ -408,6 +453,10 @@
             });
         }
 
+        // Fonction pour fermer le modal en cas de problème
+        // Suppression du forceCloseModal qui manipulait manuellement l'état du modal
+        // Suppression de tout code qui manipule modal.classList ou modal.style.display
+
         // Fonction pour afficher les alertes
         function showAlert(type, message) {
             const alertDiv = document.createElement('div');
@@ -425,6 +474,16 @@
                 alertDiv.remove();
             }, 5000);
         }
+
+        // Gestionnaire d'urgence pour les touches (Échap pour fermer)
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && modal && modal.classList.contains('show')) {
+                console.log('Emergency close via Escape key');
+                // Suppression de tout code qui manipule modal.classList ou modal.style.display
+            }
+        });
+
+        console.log('Modal management script initialized');
     });
 </script>
 @endpush 

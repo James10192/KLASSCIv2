@@ -352,20 +352,22 @@ button:focus,
     z-index: 1030 !important;
 }
 
+/* Correction KLASSCI : garantir que la sidebar, l'overlay, les dropdowns, etc. ne passent jamais devant un modal Bootstrap (z-index 1055+) */
+
 #sidebar {
     z-index: 1040 !important;
 }
 
 #sidebar-overlay {
-    z-index: 1035 !important;
+    z-index: 1030 !important;
 }
 
 .dropdown-menu {
-    z-index: 1060 !important;
+    z-index: 1045 !important;
 }
 
 #search-results {
-    z-index: 1065 !important;
+    z-index: 1047 !important;
 }
 
 :root {
@@ -375,7 +377,12 @@ button:focus,
 }
 
 /* Adapter toutes les couleurs indigo à la nouvelle palette */
-.menu-link.active, .menu-link:hover, .menu-accordion-btn.active, .menu-accordion-btn:hover, .menu-sublink:hover, .sidebar-menu .active {
+.menu-link.active,
+.menu-link:hover,
+.menu-accordion-btn.active,
+.menu-accordion-btn:hover,
+.menu-sublink:hover,
+.sidebar-menu .active {
     color: var(--primary) !important;
     border-color: var(--primary) !important;
 }

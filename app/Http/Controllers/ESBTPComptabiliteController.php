@@ -4055,5 +4055,45 @@ class ESBTPComptabiliteController extends Controller
             ->get()
             ->toArray();
     }
+
+    /**
+     * Affiche le formulaire de création d'une facture
+     */
+    public function createFacture()
+    {
+        // Récupérer les données nécessaires pour le formulaire (clients, fournisseurs, etc.)
+        $fournisseurs = \App\Models\ESBTPFournisseur::all();
+        // ... autres données si besoin
+        return view('esbtp.comptabilite.factures.create', compact('fournisseurs'));
+    }
+
+    /**
+     * Affiche le détail d'une facture
+     */
+    public function showFacture($id)
+    {
+        $facture = \App\Models\ESBTPFacture::with('details', 'fournisseur')->findOrFail($id);
+        return view('esbtp.comptabilite.factures.show', compact('facture'));
+    }
+
+    /**
+     * (Optionnel) Enregistre une nouvelle facture
+     */
+    public function storeFacture(Request $request)
+    {
+        // Validation et logique d'enregistrement ici
+        // ...
+        return redirect()->route('esbtp.comptabilite.factures')->with('success', 'Facture créée avec succès.');
+    }
+
+    /**
+     * Affiche le formulaire d'édition d'une facture
+     */
+    public function editFacture($id)
+    {
+        $facture = \App\Models\ESBTPFacture::with('details', 'fournisseur')->findOrFail($id);
+        $fournisseurs = \App\Models\ESBTPFournisseur::all();
+        return view('esbtp.comptabilite.factures.edit', compact('facture', 'fournisseurs'));
+    }
 }
 

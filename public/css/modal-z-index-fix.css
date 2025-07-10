@@ -1,0 +1,151 @@
+/*!
+ * KLASSCI Modal Z-Index Fix
+ * Résolution des conflits z-index entre navbar/sidebar et modals Bootstrap
+ * 
+ * Problème identifié :
+ * - Les modals Bootstrap utilisent z-index 1050-1055
+ * - Certains éléments de l'interface avaient des z-index supérieurs
+ * - Causait overlay au-dessus des modals et sélection impossible
+ * 
+ * Solution :
+ * - Ajuster tous les z-index pour respecter la hiérarchie Bootstrap
+ * - Assurer que les modals restent au-dessus de tous les autres éléments
+ */
+
+/* ===== HIÉRARCHIE Z-INDEX KLASSCI ===== */
+/*
+ * Ordre de priorité (du plus bas au plus haut) :
+ * 1. Navbar : 1030
+ * 2. Sidebar overlay : 1035  
+ * 3. Sidebar : 1038
+ * 4. Dropdown menus : 1045
+ * 5. Search results : 1047
+ * 6. Modal backdrop : 1050 (Bootstrap)
+ * 7. Modal : 1055 (Bootstrap)
+ * 8. Modal dropdown : 1060 (Bootstrap)
+ * 9. Tooltips : 1070 (Bootstrap)
+ * 10. Toasts : 1080 (Bootstrap)
+ */
+
+/* Correction Navbar */
+.nextadmin-navbar,
+.navbar {
+    z-index: 1030 !important;
+}
+
+/* Correction Sidebar Overlay */
+.sidebar-overlay,
+#sidebar-overlay {
+    z-index: 1035 !important;
+}
+
+/* Correction Sidebar */
+.nextadmin-sidebar,
+#sidebar {
+    z-index: 1038 !important;
+}
+
+/* Correction Dropdown Menus - RÉDUIRE pour passer sous les modals */
+.dropdown-menu {
+    z-index: 1045 !important;
+}
+
+/* Correction Search Results - RÉDUIRE pour passer sous les modals */
+.search-results,
+#search-results {
+    z-index: 1047 !important;
+}
+
+/* ===== CORRECTIONS SPÉCIFIQUES MODALS ===== */
+
+/* S'assurer que les modals Bootstrap conservent leur z-index par défaut */
+/* SUPPRIMÉ : .modal-backdrop { z-index: 1050 !important; } et .modal { z-index: 1055 !important; } et variantes spécifiques. Laisser modal-force-fix.css gérer le stacking. */
+
+/* IMPORTANT: Forcer le z-index pour tous les modals spécifiques */
+#modalNouveauFournisseur {
+    z-index: 1055 !important;
+}
+
+/* Correction pour les dropdowns dans les modals */
+.modal .dropdown-menu {
+    z-index: 1060 !important;
+}
+
+/* ===== CORRECTIONS CENTRAGE MODAL ===== */
+
+/* S'assurer que les modals sont bien centrés */
+.modal-dialog {
+    margin: 1.75rem auto !important;
+    max-width: none !important;
+    width: auto !important;
+    /* pointer-events: none !important;  // Correction : ne jamais désactiver les interactions sur le dialog */
+}
+
+.modal-dialog .modal-content {
+    pointer-events: auto !important;
+}
+
+/* Centrage vertical amélioré */
+.modal.fade .modal-dialog {
+    transition: transform 0.3s ease-out !important;
+    transform: translate(0, -50px) !important;
+}
+
+.modal.show .modal-dialog {
+    transform: none !important;
+}
+
+/* ===== CORRECTIONS RESPONSIVE MODALS ===== */
+
+/* Mobile */
+@media (max-width: 575.98px) {
+    .modal-dialog {
+        margin: 0.5rem !important;
+        max-width: calc(100% - 1rem) !important;
+    }
+}
+
+/* Tablet */
+@media (min-width: 576px) {
+    .modal-dialog {
+        max-width: 500px !important;
+        margin: 1.75rem auto !important;
+    }
+}
+
+/* Desktop */
+@media (min-width: 992px) {
+    .modal-dialog {
+        max-width: 800px !important;
+    }
+}
+
+/* Large Desktop */
+@media (min-width: 1200px) {
+    .modal-dialog {
+        max-width: 900px !important;
+    }
+}
+
+/* ===== CORRECTIONS OVERLAY MODAL ===== */
+
+/* S'assurer que l'overlay modal ne bloque pas les interactions */
+/* SUPPRIMÉ : toutes les règles .modal-backdrop, .modal-backdrop.show, etc. Le stacking est géré uniquement par modal-force-fix.css. */
+
+/* Transition douce pour l'ouverture/fermeture */
+.modal.fade {
+    transition: opacity 0.15s linear !important;
+}
+
+/* ===== CORRECTIONS SÉLECTION DANS MODALS ===== */
+
+/* S'assurer que les éléments spécifiques dans les modals sont cliquables */
+/* RÈGLE GLOBALE SUPPRIMÉE - causait des conflits avec les formulaires normaux */
+
+/* Correction spécifique pour les selects et dropdowns dans modals */
+.modal .form-select,
+.modal .dropdown-toggle,
+.modal .btn {
+    pointer-events: auto !important;
+    z-index: auto !important;
+}

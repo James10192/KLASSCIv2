@@ -304,7 +304,6 @@
 <!-- Modals pour les actions -->
 @include('esbtp.comptabilite.bons-sortie.partials.modals')
 @endsection
-
 @push('styles')
 <style>
 .timeline-marker {
@@ -399,3 +398,4 @@ function resoumettreApprobation(bonId) {
 }
 </script>
 @endpush
+
