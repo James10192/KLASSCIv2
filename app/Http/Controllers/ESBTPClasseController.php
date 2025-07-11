@@ -61,7 +61,7 @@ class ESBTPClasseController extends Controller
             'filiere_id' => 'required|exists:esbtp_filieres,id',
             'niveau_etude_id' => 'required|exists:esbtp_niveau_etudes,id',
             'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
-            'capacity' => 'required|integer|min:1',
+            'places_totales' => 'required|integer|min:1',
             'description' => 'nullable|string',
             'is_active' => 'boolean',
         ]);
@@ -145,7 +145,7 @@ class ESBTPClasseController extends Controller
             'filiere_id' => 'required|exists:esbtp_filieres,id',
             'niveau_etude_id' => 'required|exists:esbtp_niveau_etudes,id',
             'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
-            'capacity' => 'required|integer|min:1',
+            'places_totales' => 'required|integer|min:1',
             'description' => 'nullable|string',
             'is_active' => 'boolean',
         ]);
@@ -382,7 +382,49 @@ class ESBTPClasseController extends Controller
         $classes = ESBTPClasse::with(['filiere', 'niveau', 'annee'])
             ->where('is_active', true)
             ->get();
-        
         return response()->json($classes);
+    }
+
+    /**
+     * Récupère le nombre de places disponibles pour une classe.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getAvailablePlaces($id)
+    {
+        try {
+            \Log::info("Début de getAvailablePlaces pour la classe ID: {$id}");
+            $classe = ESBTPClasse::withCount('inscriptions')->find($id);
+
+            if (!$classe) {
+                \Log::error("Classe non trouvée pour l'ID: {$id}");
+                return response()->json(['error' => 'Classe non trouvée.'], 404);
+            }
+            
+            \Log::info("Classe trouvée: " . json_encode($classe->toArray()));
+
+            $capacity = $classe->places_totales ?? 0;
+            \Log::info("Capacité (places_totales) lue: {$capacity}");
+
+            $inscriptions_count = $classe->inscriptions_count ?? 0;
+            \Log::info("Nombre d'inscriptions: {$inscriptions_count}");
+
+            $availablePlaces = $capacity - $inscriptions_count;
+            \Log::info("Calcul des places disponibles: {$capacity} - {$inscriptions_count} = {$availablePlaces}");
+
+            $responseData = [
+                'available_places' => $availablePlaces,
+                'capacity' => $capacity,
+                'inscriptions_count' => $inscriptions_count,
+            ];
+
+            \Log::info("Réponse JSON envoyée: " . json_encode($responseData));
+
+            return response()->json($responseData);
+        } catch (\Exception $e) {
+            \Log::error("Erreur dans getAvailablePlaces pour la classe ID {$id}: " . $e->getMessage());
+            return response()->json(['error' => 'Une erreur est survenue lors de la récupération des données.'], 500);
+        }
     }
 }

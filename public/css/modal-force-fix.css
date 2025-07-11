@@ -42,11 +42,12 @@ div.modal,
     /* border: 3px solid red !important;  // Debug désactivé */
 }
 
+/*
 .modal.show {
-    display: flex !important;
+    display: flex !important; pour sélectionner une classe
 }
 
-/* .modal-dialog {
+.modal-dialog {
     margin: 0 !important;
     max-width: 90vw !important;
     width: auto !important;
@@ -79,3 +80,17 @@ div.modal,
 /* .modal-backdrop { background-color: rgba(0, 255, 0, 0.5) !important; } */
 /* .dropdown-menu { border: 2px solid blue !important; } */
 /* #sidebar { border-right: 3px solid orange !important; } */
+
+/* ===== Centrage et élargissement du modal de sélection de classe (Méthode Block) ===== */
+#classeSelectorModal.modal.show {
+    display: block !important;
+}
+
+#classeSelectorModal .modal-dialog {
+    top: 25% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+
+    /* Annuler les marges par défaut */
+    margin: 0 !important;
+}

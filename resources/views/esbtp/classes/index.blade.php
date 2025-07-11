@@ -63,7 +63,7 @@
                                         </td>
                                         <td>{{ $classe->niveau ? $classe->niveau->name : 'Non assigné' }}</td>
                                         <td>{{ $classe->annee ? $classe->annee->name : 'Non assignée' }}</td>
-                                        <td>{{ $classe->capacity }} places</td>
+                                        <td>{{ $classe->places_totales }} places</td>
                                         <td>{{ $classe->nombre_etudiants }} étudiants</td>
                                         <td>
                                             @if ($classe->places_disponibles > 0)

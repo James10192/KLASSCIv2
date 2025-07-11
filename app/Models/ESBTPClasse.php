@@ -170,7 +170,7 @@ class ESBTPClasse extends Model
      */
     public function getPlacesDisponiblesAttribute()
     {
-        return max(0, $this->places_totales - $this->places_occupees);
+        return max(0, $this->places_totales - $this->nombre_etudiants);
     }
 
     /**

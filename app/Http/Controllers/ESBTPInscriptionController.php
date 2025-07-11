@@ -587,12 +587,12 @@ class ESBTPInscriptionController extends Controller
             $montantPaye = $request->input('montant_paye', 0);
             if ($montantPaye > 0) {
                 $this->comptabiliteService->validerPaiementInscription($inscription, $montantPaye);
-            }
+                    }
 
             DB::commit();
 
             return redirect()->route('esbtp.inscriptions.show', $inscription->id)
-                ->with('success', 'Inscription validée avec succès.');
+                    ->with('success', 'Inscription validée avec succès.');
 
         } catch (\Exception $e) {
             DB::rollBack();

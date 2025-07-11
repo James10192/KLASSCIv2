@@ -885,10 +885,10 @@
                     headers: { 'Accept': 'application/json' }
                 })
                 .then(response => response.json())
-                .then(data => {
+        .then(data => {
                     if (data.errors) {
                         alert('Erreurs de validation');
-                    } else {
+            } else {
                         paiementModal.show();
                     }
                 });

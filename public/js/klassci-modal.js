@@ -323,7 +323,16 @@ document.addEventListener("DOMContentLoaded", function () {
     );
 });
 
+let justOpened = false;
+function openModal() {
+    modalElement.style.display = "block";
+    justOpened = true;
+    setTimeout(() => {
+        justOpened = false;
+    }, 100);
+}
 document.addEventListener("click", function (event) {
+    if (justOpened) return;
     if (
         !modalElement.contains(event.target) &&
         modalElement.style.display === "block"

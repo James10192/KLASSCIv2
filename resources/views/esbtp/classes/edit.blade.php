@@ -100,9 +100,9 @@
 
                         <div class="row mb-3">
                             <div class="col-md-4">
-                                <label for="capacity" class="form-label">Capacité maximale <span class="text-danger">*</span></label>
-                                <input type="number" min="1" class="form-control @error('capacity') is-invalid @enderror" id="capacity" name="capacity" value="{{ old('capacity', $classe->capacity) }}" required>
-                                @error('capacity')
+                                <label for="places_totales" class="form-label">Capacité maximale <span class="text-danger">*</span></label>
+                                <input type="number" min="1" class="form-control @error('places_totales') is-invalid @enderror" id="places_totales" name="places_totales" value="{{ old('places_totales', $classe->places_totales) }}" required>
+                                @error('places_totales')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>

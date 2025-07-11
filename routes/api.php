@@ -85,7 +85,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         ->name('api.attendance.sync');
 });
 
-Route::get('/classes/{id}/available-places', [ESBTPEtudiantController::class, 'getAvailablePlaces']);
+Route::get('/classes/{id}/available-places', [ESBTPClasseController::class, 'getAvailablePlaces']);
 
 Route::post('/inscriptions/validate', [ESBTPEtudiantController::class, 'validateInscription'])->name('api.inscriptions.validate');
 

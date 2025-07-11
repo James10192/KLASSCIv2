@@ -88,11 +88,11 @@
                                         <tr>
                                             <th>Capacité</th>
                                             <td>
-                                                {{ $classe->capacity }} places
+                                                {{ $classe->places_totales }} places
                                                 <br>
                                                 <div class="progress mt-2" style="height: 10px;">
                                                     @php
-                                                        $pourcentage = ($classe->nombre_etudiants / $classe->capacity) * 100;
+                                                        $pourcentage = $classe->places_totales > 0 ? ($classe->nombre_etudiants / $classe->places_totales) * 100 : 0;
                                                         $progressClass = $pourcentage < 70 ? 'bg-success' : ($pourcentage < 90 ? 'bg-warning' : 'bg-danger');
                                                     @endphp
                                                     <div class="progress-bar {{ $progressClass }}" role="progressbar" style="width: {{ $pourcentage }}%;" aria-valuenow="{{ $pourcentage }}" aria-valuemin="0" aria-valuemax="100"></div>

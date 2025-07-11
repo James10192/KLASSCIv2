@@ -294,6 +294,11 @@ Route::middleware(['auth', 'installed'])->group(function () {
                 ->name('classes.matieres')
                 ->middleware(['permission:view_classes|view classes']);
 
+            
+            // Route pour vérifier les places disponibles dans une classe
+            Route::get('classes/{id}/available-places', [ESBTPEtudiantController::class, 'getAvailablePlaces'])
+                ->name('classes.available-places')
+                ->middleware(['permission:view_classes|view classes']);
             // Routes pour les matières
             Route::name('matieres.')->prefix('matieres')->group(function () {
                 Route::get('/json', [ESBTPMatiereController::class, 'getMatieresJson'])

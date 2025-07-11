@@ -1,0 +1,4 @@
+            // Route pour vérifier les places disponibles dans une classe
+            Route::get('classes/{id}/available-places', [ESBTPEtudiantController::class, 'getAvailablePlaces'])
+                ->name('classes.available-places')
+                ->middleware(['permission:view_classes|view classes']);
