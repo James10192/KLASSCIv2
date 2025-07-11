@@ -28,7 +28,8 @@ class ESBTPClasse extends Model
         'filiere_id',
         'niveau_etude_id',
         'annee_universitaire_id',
-        'capacity',
+        'places_totales', // Renommé de capacity
+        'places_occupees',
         'description',
         'is_active',
         'created_by',
@@ -41,7 +42,8 @@ class ESBTPClasse extends Model
      * @var array
      */
     protected $casts = [
-        'capacity' => 'integer',
+        'places_totales' => 'integer',
+        'places_occupees' => 'integer',
         'is_active' => 'boolean',
     ];
 
@@ -168,8 +170,7 @@ class ESBTPClasse extends Model
      */
     public function getPlacesDisponiblesAttribute()
     {
-        $placesOccupees = $this->nombre_etudiants;
-        return max(0, $this->capacity - $placesOccupees);
+        return max(0, $this->places_totales - $this->places_occupees);
     }
 
     /**
@@ -214,5 +215,62 @@ class ESBTPClasse extends Model
     public function niveauEtude()
     {
         return $this->niveau();
+    }
+
+    /**
+     * Mettre à jour le nombre de places occupées basé sur les inscriptions actives.
+     *
+     * @return void
+     */
+    public function updatePlacesOccupees(): void
+    {
+        $placesOccupees = $this->inscriptions()->where('status', 'active')->count();
+        $this->update(['places_occupees' => $placesOccupees]);
+    }
+
+    /**
+     * Vérifier s'il y a encore des places disponibles.
+     *
+     * @return bool
+     */
+    public function hasPlacesDisponibles(): bool
+    {
+        return $this->places_disponibles > 0;
+    }
+
+    /**
+     * Obtenir le pourcentage d'occupation de la classe.
+     *
+     * @return float
+     */
+    public function getTauxOccupationAttribute(): float
+    {
+        if ($this->places_totales === 0) {
+            return 0;
+        }
+        
+        return round(($this->places_occupees / $this->places_totales) * 100, 2);
+    }
+
+    /**
+     * Scope pour les classes avec des places disponibles.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeAvecPlacesDisponibles($query)
+    {
+        return $query->whereRaw('places_occupees < places_totales');
+    }
+
+    /**
+     * Scope pour les classes pleines.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopePleines($query)
+    {
+        return $query->whereRaw('places_occupees >= places_totales');
     }
 }

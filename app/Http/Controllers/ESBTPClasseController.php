@@ -371,4 +371,18 @@ class ESBTPClasseController extends Controller
             return response()->json(['error' => 'Classe non trouvée'], 404);
         }
     }
+
+    /**
+     * Returns all active classes for API.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function indexApi()
+    {
+        $classes = ESBTPClasse::with(['filiere', 'niveau', 'annee'])
+            ->where('is_active', true)
+            ->get();
+        
+        return response()->json($classes);
+    }
 }

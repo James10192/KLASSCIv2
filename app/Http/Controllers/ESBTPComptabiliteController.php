@@ -25,12 +25,14 @@ use App\Services\ComptabiliteService;
 use App\Services\PerformanceMonitoringService;
 use App\Services\AnalyticsPredictifService;
 use App\Services\AIAnalyticsService;
+use App\Services\BonDepenseService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class ESBTPComptabiliteController extends Controller
 {
@@ -38,6 +40,7 @@ class ESBTPComptabiliteController extends Controller
     protected $performanceMonitor;
     protected $analyticsPredictifService;
     protected $aiAnalyticsService;
+    protected $bonDepenseService;
 
     /**
      * Constructeur avec injection des services optimisés
@@ -46,15 +49,17 @@ class ESBTPComptabiliteController extends Controller
         ComptabiliteService $comptabiliteService,
         PerformanceMonitoringService $performanceMonitor,
         AnalyticsPredictifService $analyticsPredictifService,
-        AIAnalyticsService $aiAnalyticsService
+        AIAnalyticsService $aiAnalyticsService,
+        BonDepenseService $bonDepenseService
     ) {
         $this->comptabiliteService = $comptabiliteService;
         $this->performanceMonitor = $performanceMonitor;
         $this->analyticsPredictifService = $analyticsPredictifService;
         $this->aiAnalyticsService = $aiAnalyticsService;
+        $this->bonDepenseService = $bonDepenseService;
 
         $this->middleware('auth');
-        $this->middleware('permission:access_comptabilite_module');
+        $this->middleware('comptabilite.access');
     }
 
     /**
@@ -1966,59 +1971,45 @@ class ESBTPComptabiliteController extends Controller
     {
         $categories = ESBTPCategorieDepense::where('est_actif', true)->orderBy('nom')->get();
         $fournisseurs = ESBTPFournisseur::where('est_actif', true)->orderBy('nom')->get();
+        $bonsDeSortieApprouves = $this->bonDepenseService->getBonsApprouves();
         
-        return view('esbtp.comptabilite.depenses.create', compact('categories', 'fournisseurs'));
+        return view('esbtp.comptabilite.depenses.create', compact('categories', 'fournisseurs', 'bonsDeSortieApprouves'));
     }
 
     /**
-     * Enregistre une nouvelle dépense
+     * Enregistre une nouvelle dépense.
      */
     public function storeDepense(Request $request)
     {
-        $validated = $request->validate([
-            'libelle' => 'required|string|max:255',
-            'montant' => 'required|numeric|min:0',
-            'date_depense' => 'required|date',
+        $validator = Validator::make($request->all(), [
             'categorie_id' => 'required|exists:esbtp_categories_depenses,id',
+            'montant' => 'required|numeric|min:0',
             'description' => 'nullable|string',
-            'mode_paiement' => 'required|string',
-            'reference' => 'nullable|string|unique:esbtp_depenses,reference',
             'fournisseur_id' => 'nullable|exists:esbtp_fournisseurs,id',
-            'nouveau_fournisseur' => 'nullable|string|max:255',
-            'numero_transaction' => 'nullable|string',
-            'notes_internes' => 'nullable|string',
-            'path_justificatif' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120'
+            'date_depense' => 'required|date',
+            'recepisse' => 'nullable|file|mimes:pdf,jpg,png|max:2048',
+            'tva_applicable' => 'boolean',
+            'taux_tva' => 'nullable|numeric|min:0',
+            'bon_sortie_id' => 'nullable|exists:esbtp_bons_sortie,id',
         ]);
 
-        // Gérer la création d'un nouveau fournisseur si nécessaire
-        if (!empty($validated['nouveau_fournisseur']) && empty($validated['fournisseur_id'])) {
-            $fournisseur = ESBTPFournisseur::create([
-                'nom' => $validated['nouveau_fournisseur'],
-                'code' => 'FOUR-' . strtoupper(substr($validated['nouveau_fournisseur'], 0, 3)) . '-' . time(),
-                'type' => 'standard',
-                'est_actif' => true
-            ]);
-            $validated['fournisseur_id'] = $fournisseur->id;
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
         }
 
-        // Supprimer le champ nouveau_fournisseur des données validées
-        unset($validated['nouveau_fournisseur']);
+        try {
 
-        $validated['createur_id'] = Auth::id();
-        $validated['status'] = 'en_attente'; // Changé pour workflow
+            $depense = $this->bonDepenseService->linkBonToDepense(
+                $request->bon_sortie_id,
+                $request->all()
+            );
 
-        // Gérer l'upload du justificatif
-        if ($request->hasFile('path_justificatif')) {
-            $file = $request->file('path_justificatif');
-            $filename = time() . '_' . $file->getClientOriginalName();
-            $path = $file->storeAs('justificatifs/depenses', $filename, 'public');
-            $validated['path_justificatif'] = $path;
+            return redirect()->route('esbtp.comptabilite.depenses.index')
+                             ->with('success', 'Dépense enregistrée avec succès. ID: ' . $depense->id);
+        } catch (\Exception $e) {
+            Log::error("Erreur lors de la création de la dépense: " . $e->getMessage());
+            return redirect()->back()->with('error', 'Une erreur est survenue: ' . $e->getMessage())->withInput();
         }
-
-        ESBTPDepense::create($validated);
-
-        return redirect()->route('esbtp.comptabilite.depenses')
-            ->with('success', 'Dépense enregistrée avec succès.');
     }
 
     /**
@@ -4104,6 +4095,56 @@ class ESBTPComptabiliteController extends Controller
         $facture = \App\Models\ESBTPFacture::with('details', 'fournisseur')->findOrFail($id);
         $fournisseurs = \App\Models\ESBTPFournisseur::all();
         return view('esbtp.comptabilite.factures.edit', compact('facture', 'fournisseurs'));
+    }
+
+    /**
+     * Create a new bon de sortie quickly.
+     */
+    public function createBonRapide(Request $request)
+    {
+        // This would be an AJAX method called from the depense creation form
+        $validator = Validator::make($request->all(), [
+            'titre' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'destinataire' => 'nullable|string',
+            'approbateur_id' => 'required|exists:users,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $bon = ESBTPBonSortie::create([
+            'titre' => $request->titre,
+            'description' => $request->description,
+            'destinataire' => $request->destinataire,
+            'date_sortie' => now(),
+            'statut' => 'en_attente',
+            'createur_id' => Auth::id(),
+            'approbateur_id' => $request->approbateur_id,
+        ]);
+
+        // Notify approver
+        // $this->notificationService->notifyBonApproval($bon->id, $request->approbateur_id);
+
+        return response()->json(['success' => true, 'bon' => $bon]);
+    }
+
+    /**
+     * Générer un reçu de paiement.
+     */
+    public function genererRecuPaiement($id)
+    {
+        $paiement = ESBTPPaiement::with([
+            'inscription.etudiant.user',
+            'inscription.filiere',
+            'inscription.niveau',
+            'inscription.anneeUniversitaire',
+            'createdBy'
+        ])->findOrFail($id);
+
+        $pdf = PDF::loadView('esbtp.comptabilite.paiements.recu', compact('paiement'));
+        return $pdf->stream('recu_paiement_' . $paiement->id . '.pdf');
     }
 }
 

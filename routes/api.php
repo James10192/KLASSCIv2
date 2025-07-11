@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ESBTPClasseController;
 use App\Models\ESBTPEmploiTemps;
 use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\ESBTPEtudiantController;
 
 /*
 |--------------------------------------------------------------------------
@@ -83,3 +84,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/attendance/sync', [App\Http\Controllers\ESBTP\Api\AttendanceSyncController::class, 'sync'])
         ->name('api.attendance.sync');
 });
+
+Route::get('/classes/{id}/available-places', [ESBTPEtudiantController::class, 'getAvailablePlaces']);
+
+Route::post('/inscriptions/validate', [ESBTPEtudiantController::class, 'validateInscription'])->name('api.inscriptions.validate');
+
+Route::get('/classes', [ESBTPClasseController::class, 'indexApi']);

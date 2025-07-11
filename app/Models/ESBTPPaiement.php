@@ -228,6 +228,30 @@ class ESBTPPaiement extends Model implements Auditable
     }
 
     /**
+     * Scope pour les paiements rejetés.
+     */
+    public function scopeRejetes($query)
+    {
+        return $query->where('status', 'rejeté');
+    }
+
+    /**
+     * Scope pour les paiements de scolarité.
+     */
+    public function scopeScolarite($query)
+    {
+        return $query->where('type_paiement', 'scolarite');
+    }
+
+    /**
+     * Scope pour les frais d'inscription.
+     */
+    public function scopeFraisInscription($query)
+    {
+        return $query->where('type_paiement', 'inscription');
+    }
+
+    /**
      * Scope pour filtrer les paiements par année universitaire.
      *
      * @param \Illuminate\Database\Eloquent\Builder $query

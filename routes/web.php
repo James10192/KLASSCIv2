@@ -1404,3 +1404,7 @@ Route::middleware(['auth', 'throttle:security'])->prefix('esbtp/security')->name
     });
 });
 */
+
+// ... existing code ...
+Route::get('/comptabilite/paiements/{id}/recu', [ESBTPComptabiliteController::class, 'genererRecuPaiement'])->name('esbtp.comptabilite.paiements.recu');
+// ... existing code ...

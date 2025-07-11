@@ -14,6 +14,8 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use App\Models\ESBTPTransactionFinanciere;
+use Illuminate\Support\Facades\Auth;
 
 class ComptabiliteService
 {
@@ -544,5 +546,49 @@ class ComptabiliteService
             ]);
             throw $e;
         }
+    }
+
+    public function createPaiementFromInscription(ESBTPInscription $inscription, float $montant, string $methodePaiement = 'espece', string $reference = null)
+    {
+        $paiement = ESBTPPaiement::create([
+            'inscription_id' => $inscription->id,
+            'etudiant_id' => $inscription->etudiant_id,
+            'annee_universitaire_id' => $inscription->annee_universitaire_id,
+            'montant' => $montant,
+            'date_paiement' => now(),
+            'methode_paiement' => $methodePaiement,
+            'reference_paiement' => $reference ?? 'INSCRIPTION-' . $inscription->id,
+            'status' => 'validé', // Les paiements à l'inscription sont validés d'office
+            'created_by' => Auth::id(),
+        ]);
+
+        // Mettre à jour le statut de l'inscription si le paiement couvre les frais
+        $inscription->updateTotalPaye();
+
+        // Enregistrer la transaction financière
+        ESBTPTransactionFinanciere::create([
+            'type' => 'credit',
+            'montant' => $montant,
+            'description' => 'Paiement frais inscription pour ' . $inscription->etudiant->nom_complet,
+            'reference_id' => $paiement->id,
+            'reference_type' => ESBTPPaiement::class,
+            'date_transaction' => now(),
+        ]);
+
+        // Invalider les caches pertinents
+        $this->invalidateCache('kpi', $inscription->annee_universitaire_id);
+        $this->invalidateCache('dashboard', $inscription->annee_universitaire_id);
+
+        return $paiement;
+    }
+
+    public function validerPaiementInscription(ESBTPInscription $inscription, float $montant, string $methodePaiement = 'espece', string $reference = null)
+    {
+        $paiement = $this->createPaiementFromInscription($inscription, $montant, $methodePaiement, $reference);
+
+        // Activer la comptabilité pour l'étudiant
+        $inscription->etudiant->update(['comptabilite_active' => true]);
+
+        return $paiement;
     }
 }

@@ -21,17 +21,20 @@ use Illuminate\Support\Facades\Log;
 use App\Models\User;
 use App\Models\ESBTP\FeeCategory;
 use App\Models\ESBTP\Fee;
+use App\Services\ComptabiliteService;
 
 class ESBTPInscriptionController extends Controller
 {
     protected $inscriptionService;
+    protected $comptabiliteService;
 
     /**
      * Constructeur avec injection du service d'inscription
      */
-    public function __construct(ESBTPInscriptionService $inscriptionService)
+    public function __construct(ESBTPInscriptionService $inscriptionService, ComptabiliteService $comptabiliteService)
     {
         $this->inscriptionService = $inscriptionService;
+        $this->comptabiliteService = $comptabiliteService;
         $this->middleware('auth');
         $this->middleware('permission:inscriptions.view', ['only' => ['index', 'show']]);
         $this->middleware('permission:inscriptions.create', ['only' => ['create', 'store']]);
@@ -143,11 +146,11 @@ class ESBTPInscriptionController extends Controller
     {
         $filieres = ESBTPFiliere::where('is_active', true)->get();
         $niveaux = ESBTPNiveauEtude::where('is_active', true)->get();
-        $annees = ESBTPAnneeUniversitaire::where('is_active', true)->get();
+        $academicYears = ESBTPAnneeUniversitaire::where('is_active', true)->get();
         $anneeEnCours = ESBTPAnneeUniversitaire::where('is_active', true)->first();
 
         // Renommer les variables pour les utiliser dans le modal
-        $anneeUniversitaires = $annees;
+        $anneeUniversitaires = $academicYears;
         $niveauEtudes = $niveaux;
 
         // Charger les catégories de frais optionnels
@@ -156,7 +159,7 @@ class ESBTPInscriptionController extends Controller
         $mandatoryFeeCategories = FeeCategory::where('is_active', true)->where('is_mandatory', true)->get();
 
         return view('esbtp.inscriptions.create', compact(
-            'filieres', 'niveaux', 'annees', 'anneeEnCours',
+            'filieres', 'niveaux', 'academicYears', 'anneeEnCours',
             'anneeUniversitaires', 'niveauEtudes',
             'optionalFeeCategories', 'mandatoryFeeCategories'
         ));
@@ -351,6 +354,11 @@ class ESBTPInscriptionController extends Controller
                 $selectedOptionals
             );
 
+            // Si un paiement initial est fourni, le créer via le service de comptabilité
+            if ($initialPayment > 0) {
+                $this->comptabiliteService->createPaiementFromInscription($inscription, $initialPayment);
+            }
+
             DB::commit();
 
             // Stocker les informations du compte dans la session
@@ -363,8 +371,8 @@ class ESBTPInscriptionController extends Controller
                 ]);
             }
 
-            return redirect()->route('esbtp.inscriptions.show', $inscription)
-                ->with('success', 'Inscription enregistrée avec succès !');
+            return redirect()->route('esbtp.inscriptions.show', $inscription->id)
+                ->with('success', 'Inscription et paiement initial enregistrés avec succès. Veuillez compléter les informations de l\'étudiant.');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -566,50 +574,29 @@ class ESBTPInscriptionController extends Controller
      */
     public function valider(Request $request, ESBTPInscription $inscription)
     {
+        $request->validate([
+            'montant_paye' => 'nullable|numeric|min:0',
+            'observations' => 'nullable|string',
+        ]);
+
         try {
-            $result = $this->inscriptionService->validerInscription($inscription->id, Auth::id());
+            DB::beginTransaction();
 
-            if ($result['success']) {
-                // Récupérer l'étudiant et son compte utilisateur
-                $etudiant = $inscription->etudiant;
-                if ($etudiant && $etudiant->user_id) {
-                    $user = User::find($etudiant->user_id);
-                    if ($user) {
-                        // Stocker les informations du compte dans la session
-                        session()->flash('account_info', [
-                            'username' => $user->username,
-                            'password' => session('generated_password'),
-                            'role' => 'Étudiant'
-                        ]);
-                    }
-                }
+            $this->inscriptionService->validerInscription($inscription, $request->input('observations'));
 
-                // Vérifier si c'est une redirection depuis une autre page (étudiants ou autre)
-                $referer = $request->headers->get('referer');
-                if ($referer) {
-                    // Extraire l'URL de base et le chemin
-                    $url = parse_url($referer);
-                    $path = $url['path'] ?? '';
-
-                    // Si la redirection vient d'une page d'étudiant, retourner à cette page
-                    if (str_contains($path, '/esbtp/etudiants')) {
-                        return redirect($referer)
-                            ->with('success', 'Inscription validée avec succès.');
-                    }
-                }
-
-                // Par défaut, rediriger vers la page de détails de l'inscription
-                return redirect()
-                    ->route('esbtp.inscriptions.show', $inscription->id)
-                    ->with('success', 'Inscription validée avec succès.');
-            } else {
-                throw new \Exception($result['message']);
+            $montantPaye = $request->input('montant_paye', 0);
+            if ($montantPaye > 0) {
+                $this->comptabiliteService->validerPaiementInscription($inscription, $montantPaye);
             }
 
+            DB::commit();
+
+            return redirect()->route('esbtp.inscriptions.show', $inscription->id)
+                ->with('success', 'Inscription validée avec succès.');
+
         } catch (\Exception $e) {
-            return redirect()
-                ->back()
-                ->with('error', 'Erreur lors de la validation: ' . $e->getMessage());
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Erreur lors de la validation: ' . $e->getMessage());
         }
     }
 
@@ -646,29 +633,6 @@ class ESBTPInscriptionController extends Controller
                 ->back()
                 ->with('error', 'Erreur lors de l\'annulation: ' . $e->getMessage());
         }
-    }
-
-    /**
-     * Générer un reçu d'inscription.
-     */
-    public function recu(ESBTPInscription $inscription)
-    {
-        // Charger les relations nécessaires
-        $inscription->load([
-            'etudiant.user',
-            'filiere',
-            'niveau',
-            'classe',
-            'anneeUniversitaire',
-            'paiements' => function($q) {
-                $q->where('status', 'validé')
-                  ->orderBy('date_paiement', 'desc');
-            },
-            'createdBy'
-        ]);
-
-        $pdf = PDF::loadView('esbtp.inscriptions.recu', compact('inscription'));
-        return $pdf->stream('recu_inscription_' . $inscription->numero_recu . '.pdf');
     }
 
     /**

@@ -28,14 +28,18 @@ class ESBTPInscription extends Model
         'filiere_id',
         'niveau_id',
         'classe_id',
+        'classe_alternative_id',
         'date_inscription',
         'type_inscription', // Première inscription, réinscription, etc.
         'status', // active, annulée, etc.
+        'workflow_step', // Nouveau: étape du workflow
         'montant_scolarite',
         'frais_inscription',
         'numero_recu',
         'date_paiement',
         'mode_paiement',
+        'paiement_validation_id', // Nouveau: référence paiement validation
+        'comptabilite_activee', // Nouveau: flag comptabilité
         'observations',
         'documents_fournis', // JSON avec liste des documents
         'date_validation',
@@ -56,6 +60,7 @@ class ESBTPInscription extends Model
         'documents_fournis' => 'array',
         'montant_scolarite' => 'float',
         'frais_inscription' => 'float',
+        'comptabilite_activee' => 'boolean',
     ];
 
     /**
@@ -116,6 +121,22 @@ class ESBTPInscription extends Model
     public function paiements()
     {
         return $this->hasMany(ESBTPPaiement::class, 'inscription_id');
+    }
+
+    /**
+     * Relation avec les paiements de scolarité (hors frais d'inscription).
+     */
+    public function paiementsScolarite()
+    {
+        return $this->hasMany(ESBTPPaiement::class, 'inscription_id')->where('type', 'scolarite');
+    }
+
+    /**
+     * Relation pour le paiement des frais d'inscription.
+     */
+    public function paiementInscription()
+    {
+        return $this->hasOne(ESBTPPaiement::class, 'inscription_id')->where('type', 'inscription');
     }
 
     /**
@@ -243,6 +264,14 @@ class ESBTPInscription extends Model
     }
 
     /**
+     * Scope pour filtrer les inscriptions avec au moins un paiement.
+     */
+    public function scopeAvecPaiements($query)
+    {
+        return $query->has('paiements');
+    }
+
+    /**
      * Vérifie si l'inscription est pour l'année en cours.
      *
      * @return bool
@@ -266,5 +295,161 @@ class ESBTPInscription extends Model
     public function niveauEtude()
     {
         return $this->niveau();
+    }
+
+    /**
+     * Relation avec la classe alternative.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function classeAlternative()
+    {
+        return $this->belongsTo(ESBTPClasse::class, 'classe_alternative_id');
+    }
+
+    /**
+     * Relation avec le paiement de validation.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function paiementValidation()
+    {
+        return $this->belongsTo(ESBTPPaiement::class, 'paiement_validation_id');
+    }
+
+    /**
+     * Relation avec l'historique du workflow.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function workflowHistory()
+    {
+        return $this->hasMany(ESBTPInscriptionWorkflowHistory::class, 'inscription_id')
+                    ->orderBy('action_timestamp', 'desc');
+    }
+
+    /**
+     * Scope pour filtrer par étape du workflow.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param string $step
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeWorkflowStep($query, $step)
+    {
+        return $query->where('workflow_step', $step);
+    }
+
+    /**
+     * Scope pour les inscriptions prospects.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeProspects($query)
+    {
+        return $query->where('workflow_step', 'prospect');
+    }
+
+    /**
+     * Scope pour les inscriptions validées.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeValidees($query)
+    {
+        return $query->where('workflow_step', 'valide');
+    }
+
+    /**
+     * Scope pour les inscriptions avec comptabilité activée.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeComptabiliteActivee($query)
+    {
+        return $query->where('comptabilite_activee', true);
+    }
+
+    /**
+     * Méthode pour faire avancer le workflow.
+     *
+     * @param string $nouvelleEtape
+     * @param int $userId
+     * @param string|null $commentaires
+     * @param array|null $metadata
+     * @return bool
+     */
+    public function avancerWorkflow(string $nouvelleEtape, int $userId, ?string $commentaires = null, ?array $metadata = null): bool
+    {
+        $ancienneEtape = $this->workflow_step;
+        
+        // Vérifier si la transition est valide
+        if (!$this->isValidWorkflowTransition($ancienneEtape, $nouvelleEtape)) {
+            return false;
+        }
+        
+        // Mettre à jour l'étape
+        $this->workflow_step = $nouvelleEtape;
+        $saved = $this->save();
+        
+        if ($saved) {
+            // Créer l'entrée d'historique
+            ESBTPInscriptionWorkflowHistory::createEntry(
+                $this->id,
+                $ancienneEtape,
+                $nouvelleEtape,
+                'avancement_workflow',
+                $userId,
+                $commentaires,
+                $metadata
+            );
+        }
+        
+        return $saved;
+    }
+
+    /**
+     * Vérifier si une transition workflow est valide.
+     *
+     * @param string|null $from
+     * @param string $to
+     * @return bool
+     */
+    protected function isValidWorkflowTransition(?string $from, string $to): bool
+    {
+        $validTransitions = [
+            'prospect' => ['documents_complets', 'en_validation'],
+            'documents_complets' => ['en_validation', 'prospect'],
+            'en_validation' => ['valide', 'prospect', 'documents_complets'],
+            'valide' => ['etudiant_cree'],
+            'etudiant_cree' => [], // État final, pas de transition possible
+        ];
+        
+        if ($from === null) {
+            return in_array($to, ['prospect', 'documents_complets']);
+        }
+        
+        return in_array($to, $validTransitions[$from] ?? []);
+    }
+
+    /**
+     * Obtenir le libellé de l'étape workflow.
+     *
+     * @return string
+     */
+    public function getWorkflowStepLabelAttribute(): string
+    {
+        $labels = [
+            'prospect' => 'Prospect',
+            'documents_complets' => 'Documents complets',
+            'en_validation' => 'En validation',
+            'valide' => 'Validé',
+            'etudiant_cree' => 'Compte étudiant créé',
+        ];
+        
+        return $labels[$this->workflow_step] ?? $this->workflow_step;
     }
 }

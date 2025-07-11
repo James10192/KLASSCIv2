@@ -24,49 +24,18 @@ div.modal,
     position: fixed !important;
 }
 
-/* RÉDUIRE DRASTIQUEMENT TOUS LES AUTRES ÉLÉMENTS */
-
-/* Navbar et sidebar en dessous des modals */
-.nextadmin-navbar,
-.navbar,
-nav.navbar,
-div.navbar {
-    z-index: 100 !important;
-}
-
-.nextadmin-sidebar,
-#sidebar,
-aside#sidebar,
-div#sidebar {
-    z-index: 200 !important;
-}
-
-/* Dropdowns et search très bas */
-.dropdown-menu,
-div.dropdown-menu,
-ul.dropdown-menu {
-    z-index: 300 !important;
-}
-
-.search-results,
-#search-results,
-div.search-results,
-div#search-results {
-    z-index: 400 !important;
-}
-
-/* Overlay sidebar */
-.sidebar-overlay,
-#sidebar-overlay,
-div.sidebar-overlay,
-div#sidebar-overlay {
-    z-index: 150 !important;
-}
+/* SUPPRIMER LES ANCIENNES RÈGLES QUI CAUSENT DES CONFLITS */
+/* 
+.nextadmin-navbar, .navbar, nav.navbar, div.navbar { z-index: 100 !important; }
+.nextadmin-sidebar, #sidebar, aside#sidebar, div#sidebar { z-index: 200 !important; }
+.dropdown-menu, div.dropdown-menu, ul.dropdown-menu { z-index: 300 !important; }
+.search-results, #search-results, div.search-results, div#search-results { z-index: 400 !important; }
+.sidebar-overlay, #sidebar-overlay, div.sidebar-overlay, div#sidebar-overlay { z-index: 150 !important; }
+*/
 
 /* ===== CENTRAGE MODAL FORCE ===== */
 
 .modal {
-    display: none !important; /* Correction : invisible par défaut */
     align-items: center !important;
     justify-content: center !important;
     padding: 1rem !important;

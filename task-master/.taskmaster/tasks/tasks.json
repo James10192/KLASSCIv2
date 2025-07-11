@@ -199,37 +199,37 @@
         "testStrategy": "1. Tests migrations sécurisées sans perte données\n2. Tests relations modèles avec eager loading\n3. Tests contraintes business (places classes, workflow states)\n4. Tests rollback migrations\n5. Validation seeders avec données cohérentes",
         "priority": "high",
         "dependencies": [],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [
           {
             "id": "14.1",
             "title": "Migration extension esbtp_inscriptions",
             "description": "Ajouter workflow_step, paiement_validation_id, classe_alternative_id, comptabilite_activee",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": "14.2",
             "title": "Migration esbtp_inscription_workflow_history",
             "description": "Créer table traçabilité workflow avec historique actions",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": "14.3",
             "title": "Migration extension esbtp_classes",
             "description": "Ajouter gestion places : places_totales, places_occupees, places_disponibles",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": "14.4",
             "title": "Mise à jour modèles Laravel",
             "description": "Relations et méthodes ESBTPInscription, ESBTPClasse, validations",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": "14.5",
             "title": "Seeders et tests",
             "description": "Données test workflow inscription et tests unitaires complets",
-            "status": "pending"
+            "status": "done"
           }
         ]
       },
@@ -243,37 +243,37 @@
         "dependencies": [
           14
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": "15.1",
             "title": "InscriptionWorkflowService création",
             "description": "Service principal gestion workflow avec validateInscription(), checkClassAvailability()",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": "15.2",
             "title": "ClasseManagementService création",
             "description": "Service gestion places classes avec attribution automatique et alternatives",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": "15.3",
             "title": "Extension ESBTPEtudiantController",
             "description": "Méthodes createFromInscription(), assignClasse() pour création automatique",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": "15.4",
             "title": "Events et Listeners Laravel",
             "description": "InscriptionValidated, EtudiantCreated avec listeners activation comptabilité",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": "15.5",
             "title": "Tests intégration workflow",
             "description": "Tests complets workflow inscription → étudiant avec tous scénarios",
-            "status": "pending"
+            "status": "done"
           }
         ]
       },
@@ -287,37 +287,37 @@
         "dependencies": [
           15
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": "16.1",
             "title": "Modal paiement Bootstrap 5",
             "description": "Modal responsive saisie rapide paiement avec types et montants",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": "16.2",
             "title": "Vérification places temps réel",
             "description": "AJAX check places disponibles avec suggestions classes alternatives",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": "16.3",
             "title": "Interface états workflow",
             "description": "Indicateurs visuels progression workflow avec couleurs et icônes",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": "16.4",
             "title": "Validation AJAX inscription",
             "description": "Submit validation inscription avec feedback et gestion erreurs",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": "16.5",
             "title": "Tests interface utilisateur",
             "description": "Tests navigation modal, validation, workflow complet",
-            "status": "pending"
+            "status": "done"
           }
         ]
       },
@@ -331,37 +331,37 @@
         "dependencies": [
           16
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": "17.1",
             "title": "Nettoyage ESBTPInscriptionController",
             "description": "Suppression méthodes comptabilité inappropriées du contrôleur inscription",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": "17.2",
             "title": "Purification vues inscription",
             "description": "Suppression références comptabilité des templates Blade inscription",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": "17.3",
             "title": "Découplage modèles relations",
             "description": "Relations claires ESBTPInscription, ESBTPEtudiant avec méthodes spécialisées",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": "17.4",
             "title": "Permissions granulaires",
             "description": "Nouveaux droits inscription.validate, separation comptabilite.manage",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": "17.5",
             "title": "Tests régression complets",
             "description": "Validation fonctionnalités existantes intactes après refactoring",
-            "status": "pending"
+            "status": "done"
           }
         ]
       },
@@ -375,37 +375,37 @@
         "dependencies": [
           14
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": "18.1",
             "title": "Migration extension esbtp_bons_sortie",
             "description": "Ajouter approbateur_id, notification_sent_at, approved_at pour workflow",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": "18.2",
             "title": "Table notifications bon sortie",
             "description": "esbtp_bon_sortie_notifications pour traçabilité envois/lectures",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": "18.3",
             "title": "Extension NotificationService",
             "description": "Méthodes notifyBonApproval(), getUsersByRole() pour workflow",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": "18.4",
             "title": "ESBTPBonSortieController workflow",
             "description": "Méthodes selectApprobateur(), sendNotification(), approve()",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": "18.5",
             "title": "Templates notifications",
             "description": "Templates email et app pour demandes approbation bon sortie",
-            "status": "pending"
+            "status": "done"
           }
         ]
       },
@@ -419,44 +419,44 @@
         "dependencies": [
           18
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": "19.1",
             "title": "Migration bon_sortie_id obligatoire",
             "description": "Extension esbtp_depenses avec bon_sortie_id NOT NULL et contraintes",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": "19.2",
             "title": "BonDepenseService création",
             "description": "Service liaison bons-dépenses avec validation statut approuvé",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": "19.3",
             "title": "ESBTPDepenseController extension",
             "description": "Méthodes getBonsApprouves(), createBonRapide(), validation workflow",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": "19.4",
             "title": "Interface dépenses rénovée",
             "description": "Sélecteur bons approuvés, modal bon express, validation temps réel",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": "19.5",
             "title": "Tests workflow complet",
             "description": "Tests intégration inscription→étudiant→bon→dépense end-to-end",
-            "status": "pending"
+            "status": "done"
           }
         ]
       }
     ],
     "metadata": {
       "created": "2025-07-08T23:51:05.466Z",
-      "updated": "2025-07-10T23:47:51.296Z",
+      "updated": "2025-07-11T01:19:38.061Z",
       "description": "Tasks for master context - Extended with V2.0 Liaison Comptabilité-Inscription-Dépenses (6 nouvelles tâches)"
     }
   }

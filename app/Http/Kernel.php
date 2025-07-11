@@ -75,6 +75,7 @@ class Kernel extends HttpKernel
         'role' => \App\Http\Middleware\CheckRole::class,
         'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
         'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
+        'comptabilite.access' => \App\Http\Middleware\CheckComptabiliteAccess::class,
         'validate.device' => \App\Http\Middleware\ValidateAttendanceDevice::class,
         'attendance.rate_limit' => \App\Http\Middleware\AttendanceRateLimiter::class,
     ];

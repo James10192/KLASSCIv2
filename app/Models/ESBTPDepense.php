@@ -98,7 +98,8 @@ class ESBTPDepense extends Model implements Auditable
         'statut_workflow',
         'workflow_data',
         'approved_by',
-        'date_approbation'
+        'date_approbation',
+        'bon_sortie_id',
     ];
 
     /**
@@ -281,5 +282,13 @@ class ESBTPDepense extends Model implements Auditable
             default:
                 return 'secondary';
         }
+    }
+
+    /**
+     * Get the bon de sortie associated with the expense.
+     */
+    public function bonSortie()
+    {
+        return $this->belongsTo(ESBTPBonSortie::class, 'bon_sortie_id');
     }
 }

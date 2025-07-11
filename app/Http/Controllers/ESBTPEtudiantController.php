@@ -19,17 +19,26 @@ use Spatie\Permission\Models\Role;
 use App\Models\ESBTPParent;
 use App\Models\ESBTPInscription;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Services\InscriptionWorkflowService;
+use App\Services\ClasseManagementService;
 
 class ESBTPEtudiantController extends Controller
 {
     protected $inscriptionService;
+    protected $inscriptionWorkflowService;
+    protected $classeManagementService;
 
     /**
      * Constructeur avec injection du service d'inscription
      */
-    public function __construct(ESBTPInscriptionService $inscriptionService)
-    {
+    public function __construct(
+        ESBTPInscriptionService $inscriptionService,
+        InscriptionWorkflowService $inscriptionWorkflowService,
+        ClasseManagementService $classeManagementService
+    ) {
         $this->inscriptionService = $inscriptionService;
+        $this->inscriptionWorkflowService = $inscriptionWorkflowService;
+        $this->classeManagementService = $classeManagementService;
         $this->middleware('auth');
         $this->middleware('permission:view_students', ['only' => ['index', 'show']]);
         $this->middleware('permission:create_students', ['only' => ['create', 'store']]);
@@ -1024,7 +1033,7 @@ class ESBTPEtudiantController extends Controller
         ];
 
         // Générer le PDF
-        $pdf = PDF::loadView('esbtp.etudiants.certificat', $data);
+        $pdf = Pdf::loadView('esbtp.etudiants.certificat', $data);
 
         // Définir le nom du fichier
         $filename = 'Certificat_Scolarite_' . $etudiant->matricule . '.pdf';
@@ -1151,5 +1160,97 @@ class ESBTPEtudiantController extends Controller
             'anneeInscriptions',
             'statusInscriptions'
         ));
+    }
+
+    /**
+     * Create a new student from a validated inscription.
+     * This method is intended to be called by the InscriptionWorkflowService.
+     *
+     * @param ESBTPInscription $inscription
+     * @return ESBTPEtudiant
+     */
+    public function createFromInscription(ESBTPInscription $inscription)
+    {
+        // TODO: Implement the logic to create a student from an inscription.
+        // This will involve mapping fields from the inscription to the student,
+        // creating a user account if necessary, and saving the new student.
+
+        $etudiant = new ESBTPEtudiant();
+        // Map fields from $inscription to $etudiant
+        // ...
+
+        $etudiant->save();
+
+        return $etudiant;
+    }
+
+    /**
+     * Assign a student to a class.
+     * This method is intended to be called by the ClasseManagementService.
+     *
+     * @param ESBTPEtudiant $etudiant
+     * @param ESBTPClasse $classe
+     * @return bool
+     */
+    public function assignClasse(ESBTPEtudiant $etudiant, ESBTPClasse $classe)
+    {
+        // Logique pour assigner un étudiant à une classe
+        $this->classeManagementService->assignToClass($etudiant, $classe);
+
+        return redirect()->route('esbtp.etudiants.show', $etudiant->id)
+            ->with('success', 'Étudiant assigné à la classe avec succès.');
+    }
+
+    /**
+     * Get available places for a given class.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getAvailablePlaces($id)
+    {
+        $availablePlaces = $this->classeManagementService->getAvailablePlaces($id);
+
+        return response()->json([
+            'available_places' => $availablePlaces
+        ]);
+    }
+
+    /**
+     * Validate inscription data via AJAX.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function validateInscription(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'nom' => 'required|string|max:255',
+            'prenoms' => 'required|string|max:255',
+            'genre' => 'required|in:M,F',
+            'date_naissance' => 'nullable|date',
+            'telephone' => 'required|string|max:20',
+            'email_personnel' => 'required|email|max:255',
+            'ville' => 'nullable|string|max:255',
+            'commune' => 'nullable|string|max:255',
+            'photo' => 'nullable|image|max:2048',
+            'filiere_id' => 'required|exists:esbtp_filieres,id',
+            'niveau_etude_id' => 'required|exists:esbtp_niveau_etudes,id',
+            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
+            'classe_id' => 'nullable|exists:esbtp_classes,id',
+            'date_admission' => 'required|date',
+            'statut' => 'required|in:actif,inactif',
+            'parents.*.nom' => 'required_without:parents.*.parent_id|string|max:255|nullable',
+            'parents.*.prenoms' => 'required_without:parents.*.parent_id|string|max:255|nullable',
+            'parents.*.relation' => 'required_without:parents.*.parent_id|string|max:50|nullable',
+            'parents.*.telephone' => 'required_without:parents.*.parent_id|string|max:20|nullable',
+            'parents.*.parent_id' => 'nullable|exists:esbtp_parents,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        return response()->json(['success' => true]);
     }
 }
