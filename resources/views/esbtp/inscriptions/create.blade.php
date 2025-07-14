@@ -871,43 +871,299 @@
 <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.js"></script>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const inscriptionForm = document.querySelector('form');
-        const paiementModal = new bootstrap.Modal(document.getElementById('paiementModal'));
+document.addEventListener('DOMContentLoaded', function() {
+    let parentIndex = 1; // Le premier parent a l'index 0
 
-        if(inscriptionForm) {
-            inscriptionForm.addEventListener('submit', function(event) {
-                event.preventDefault();
-                // Validation AJAX
-                fetch("{{ route('api.inscriptions.validate') }}", {
-                    method: 'POST',
-                    body: new FormData(inscriptionForm),
-                    headers: { 'Accept': 'application/json' }
-                })
-                .then(response => response.json())
-        .then(data => {
-                    if (data.errors) {
-                        alert('Erreurs de validation');
-            } else {
-                        paiementModal.show();
-                    }
-                });
+    // Initialisation au chargement de la page - s'assurer que les attributs required sont corrects
+    function initializeRequiredAttributes() {
+        // Traiter le template caché - retirer tous les attributs required
+        const template = document.getElementById('parent-template');
+        if (template) {
+            template.querySelectorAll('[data-required="true"]').forEach(input => {
+                input.removeAttribute('required');
             });
         }
         
-        document.getElementById('submitPaiement').addEventListener('click', function() {
-            const paiementForm = document.getElementById('paiementForm');
-            const paiementData = new FormData(paiementForm);
-            for (let [key, value] of paiementData.entries()) {
-                if(key !== '_token') {
-                    let hiddenInput = document.createElement('input');
-                    hiddenInput.type = 'hidden';
-                    hiddenInput.name = `paiement_${key}`;
-                    hiddenInput.value = value;
-                    inscriptionForm.appendChild(hiddenInput);
+        document.querySelectorAll('.parent-item, .card').forEach(parentItem => {
+            const existantSection = parentItem.querySelector('.parent-existant-section');
+            const nouveauSection = parentItem.querySelector('.parent-nouveau-section');
+            const checkbox = parentItem.querySelector('.parent-existant-checkbox');
+
+            if (existantSection && nouveauSection) {
+                // Retirer tous les attributs required au départ
+                existantSection.querySelectorAll('[data-required="true"]').forEach(input => {
+                    input.removeAttribute('required');
+                });
+                nouveauSection.querySelectorAll('[data-required="true"]').forEach(input => {
+                    input.removeAttribute('required');
+                });
+
+                // Appliquer les bons attributs selon l'état de la checkbox
+                if (checkbox && checkbox.checked) {
+                    // Parent existant sélectionné
+                    existantSection.querySelectorAll('[data-required="true"]').forEach(input => {
+                        input.setAttribute('required', 'required');
+                    });
+                } else {
+                    // Nouveau parent par défaut
+                    nouveauSection.querySelectorAll('[data-required="true"]').forEach(input => {
+                        input.setAttribute('required', 'required');
+                    });
                 }
             }
-            inscriptionForm.submit();
+        });
+    }
+
+    // Appeler l'initialisation au chargement
+    initializeRequiredAttributes();
+    
+    // Fonction pour désactiver tous les champs du template avant soumission
+    function disableTemplateFields() {
+        const template = document.getElementById('parent-template');
+        if (template) {
+            template.querySelectorAll('input, select, textarea').forEach(input => {
+                input.disabled = true;
+                input.removeAttribute('required');
+            });
+        }
+    }
+    
+    // Intercepter la soumission du formulaire
+    const form = document.querySelector('form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            disableTemplateFields();
+        });
+    }
+
+    // Gestion des checkboxes "parent existant"
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('parent-existant-checkbox')) {
+            const parentItem = e.target.closest('.parent-item, .card');
+            const existantSection = parentItem.querySelector('.parent-existant-section');
+            const nouveauSection = parentItem.querySelector('.parent-nouveau-section');
+            const typeInput = parentItem.querySelector('input[name*="[type]"]');
+
+            // TOUJOURS retirer 'required' de tous les champs des deux sections AVANT de faire le switch
+            existantSection.querySelectorAll('[data-required="true"]').forEach(input => {
+                input.removeAttribute('required');
+            });
+            nouveauSection.querySelectorAll('[data-required="true"]').forEach(input => {
+                input.removeAttribute('required');
+            });
+
+            if (e.target.checked) {
+                // Afficher section parent existant, masquer nouveau
+                existantSection.style.display = 'block';
+                nouveauSection.style.display = 'none';
+                if (typeInput) typeInput.value = 'existant';
+                // Ajouter 'required' uniquement aux champs visibles de la section existant
+                existantSection.querySelectorAll('[data-required="true"]').forEach(input => {
+                    input.setAttribute('required', 'required');
+                });
+            } else {
+                // Afficher section nouveau parent, masquer existant
+                existantSection.style.display = 'none';
+                nouveauSection.style.display = 'block';
+                if (typeInput) typeInput.value = 'nouveau';
+                // Ajouter 'required' uniquement aux champs visibles de la section nouveau
+                nouveauSection.querySelectorAll('[data-required="true"]').forEach(input => {
+                    input.setAttribute('required', 'required');
+                });
+            }
+        }
+    });
+
+    // Bouton ajouter parent
+    document.getElementById('add-parent-btn').addEventListener('click', function() {
+        const template = document.getElementById('parent-template');
+        const container = document.getElementById('parents-container');
+
+        // Cloner le template
+        const newParent = template.cloneNode(true);
+        newParent.id = 'parent-item-' + parentIndex;
+        newParent.style.display = 'block';
+        newParent.classList.add('parent-item');
+
+        // Remplacer les "template" par l'index du parent
+        const templateElements = newParent.querySelectorAll('[name*="template"], [id*="template"]');
+        templateElements.forEach(element => {
+            if (element.name) {
+                element.name = element.name.replace('template', parentIndex);
+            }
+            if (element.id) {
+                element.id = element.id.replace('template', parentIndex);
+            }
+            // Mise à jour des labels for
+            if (element.tagName === 'LABEL' && element.getAttribute('for')) {
+                element.setAttribute('for', element.getAttribute('for').replace('template', parentIndex));
+            }
+        });
+
+        // Ajouter l'animation d'apparition
+        newParent.style.opacity = '0';
+        newParent.style.transform = 'translateY(20px)';
+
+        // Ajouter au container
+        container.appendChild(newParent);
+
+        // Animation d'entrée
+        setTimeout(() => {
+            newParent.style.transition = 'all 0.3s ease-out';
+            newParent.style.opacity = '1';
+            newParent.style.transform = 'translateY(0)';
+        }, 10);
+
+        // Initialiser les select pour parents existants si nécessaire
+        initializeParentSelect(newParent.querySelector('.parent-select'));
+        
+        // Initialiser les attributs required selon la section affichée (par défaut, nouveau parent visible)
+        const existantSection = newParent.querySelector('.parent-existant-section');
+        const nouveauSection = newParent.querySelector('.parent-nouveau-section');
+        
+        // S'assurer que tous les champs n'ont pas d'attribut required au départ
+        existantSection.querySelectorAll('[data-required="true"]').forEach(input => {
+            input.removeAttribute('required');
+        });
+        nouveauSection.querySelectorAll('[data-required="true"]').forEach(input => {
+            input.removeAttribute('required');
+        });
+        
+        // Par défaut, c'est la section "nouveau parent" qui est visible, donc ajouter required à ces champs
+        nouveauSection.querySelectorAll('[data-required="true"]').forEach(input => {
+            input.setAttribute('required', 'required');
+        });
+
+        parentIndex++;
+
+        // Limiter à 3 parents maximum
+        if (parentIndex >= 3) {
+            this.style.display = 'none';
+        }
+    });
+
+    // Gestion des boutons de suppression de parent
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-parent') || e.target.closest('.remove-parent')) {
+            const button = e.target.classList.contains('remove-parent') ? e.target : e.target.closest('.remove-parent');
+            const parentItem = button.closest('.parent-item, .card');
+
+            // Animation de sortie
+            parentItem.style.transition = 'all 0.3s ease-out';
+            parentItem.style.opacity = '0';
+            parentItem.style.transform = 'translateY(-20px)';
+
+            setTimeout(() => {
+                parentItem.remove();
+                parentIndex--;
+
+                // Réafficher le bouton d'ajout si moins de 3 parents
+                if (parentIndex < 3) {
+                    document.getElementById('add-parent-btn').style.display = 'inline-block';
+                }
+            }, 300);
+        }
+    });
+
+    // Fonction pour initialiser les selects de parents existants
+    function initializeParentSelect(selectElement) {
+        if (!selectElement) return;
+
+        // Configuration pour les parents existants
+        if (typeof Choices !== 'undefined') {
+            new Choices(selectElement, {
+                searchEnabled: true,
+                placeholder: true,
+                placeholderValue: 'Rechercher un parent...',
+                noResultsText: 'Aucun parent trouvé',
+                noChoicesText: 'Aucun choix disponible',
+                loadingText: 'Chargement...',
+                searchPlaceholderValue: 'Taper pour rechercher',
+                removeItemButton: true
+            });
+        }
+
+        // Chargement AJAX des parents existants
+        fetch('{{ route("esbtp.api.parents.search") }}', {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+                })
+                .then(response => response.json())
+        .then(data => {
+            if (data.parents) {
+                // Vider le select
+                selectElement.innerHTML = '<option></option>';
+
+                // Ajouter les options
+                data.parents.forEach(parent => {
+                    const option = document.createElement('option');
+                    option.value = parent.id;
+                    option.textContent = `${parent.nom} ${parent.prenoms} - ${parent.telephone}`;
+                    selectElement.appendChild(option);
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Erreur lors du chargement des parents:', error);
+        });
+    }
+
+    // Initialiser le premier select de parent
+    initializeParentSelect(document.getElementById('parent_id_0'));
+    
+    // Correction critique : synchronisation des attributs required juste avant la soumission
+    document.getElementById('inscriptionForm').addEventListener('submit', function(e) {
+        // 1. Toujours retirer required sur les champs du template parent caché
+        const parentTemplate = document.getElementById('parent-template');
+        if (parentTemplate) {
+            parentTemplate.querySelectorAll('[data-required="true"]').forEach(input => {
+                input.removeAttribute('required');
+            });
+        }
+
+        // 2. Synchroniser les parents visibles comme avant
+        document.querySelectorAll('.parent-item, .card').forEach(parentItem => {
+            const existantSection = parentItem.querySelector('.parent-existant-section');
+            const nouveauSection = parentItem.querySelector('.parent-nouveau-section');
+            const checkbox = parentItem.querySelector('.parent-existant-checkbox');
+
+            if (existantSection) {
+                existantSection.querySelectorAll('[data-required="true"]').forEach(input => {
+                    input.removeAttribute('required');
+                });
+            }
+            if (nouveauSection) {
+                nouveauSection.querySelectorAll('[data-required="true"]').forEach(input => {
+                    input.removeAttribute('required');
+                });
+            }
+
+            if (checkbox && checkbox.checked) {
+                if (existantSection) {
+                    existantSection.querySelectorAll('[data-required="true"]').forEach(input => {
+                        input.setAttribute('required', 'required');
+                    });
+                }
+            } else {
+                if (nouveauSection) {
+                    nouveauSection.querySelectorAll('[data-required="true"]').forEach(input => {
+                        input.setAttribute('required', 'required');
+                    });
+                }
+            }
+        });
+
+        // 3. Validation manuelle HTML5
+        if (!this.checkValidity()) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.reportValidity();
+            return false;
+        }
+        // Sinon, laisser la soumission normale
         });
     });
 </script>
@@ -929,7 +1185,7 @@
             <h6 class="m-0 font-weight-bold text-primary">Formulaire d'inscription</h6>
         </div>
         <div class="card-body">
-            <form id="inscriptionForm" action="{{ route('esbtp.inscriptions.store') }}" method="POST" enctype="multipart/form-data">
+            <form id="inscriptionForm" action="{{ route('esbtp.inscriptions.store') }}" method="POST" enctype="multipart/form-data" novalidate>
                 @csrf
 
                 @if(session('info'))
@@ -998,80 +1254,7 @@
                     </div>
                 </div>
 
-                <!-- Frais obligatoires (lecture seule) -->
-                @if(isset($mandatoryFeeCategories) && $mandatoryFeeCategories->count())
-                <div class="row mb-4">
-                    <div class="col-md-12">
-                        <h5 class="card-title">Frais obligatoires</h5>
-                        <div class="alert alert-warning">
-                            <i class="fas fa-exclamation-triangle mr-1"></i> Le paiement du montant total des frais obligatoires est requis pour valider l'inscription.
-                        </div>
-                        <table class="table table-bordered table-sm">
-                            <thead>
-                                <tr>
-                                    <th>Libellé</th>
-                                    <th>Montant (FCFA)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @php $mandatoryTotal = 0; @endphp
-                                @foreach($mandatoryFeeCategories as $category)
-                                    <tr>
-                                        <td>{{ $category->name }}</td>
-                                        <td>{{ number_format($category->amount, 0, ',', ' ') }}</td>
-                                    </tr>
-                                    @php $mandatoryTotal += $category->amount; @endphp
-                                @endforeach
-                                <tr class="font-weight-bold">
-                                    <td>Total</td>
-                                    <td>{{ number_format($mandatoryTotal, 0, ',', ' ') }}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                @endif
-                <!-- Champ de paiement initial obligatoire -->
-                <div class="row mb-4">
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label for="paiement_montant">Montant du paiement initial <span class="text-danger">*</span></label>
-                            <input type="number" min="1" step="1" class="form-control @error('paiement_montant') is-invalid @enderror"
-                                   id="paiement_montant" name="paiement_montant"
-                                   value="{{ old('paiement_montant', isset($mandatoryTotal) ? $mandatoryTotal : '') }}" required>
-                            @error('paiement_montant')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                            <small class="text-muted">Le montant minimum doit couvrir les frais obligatoires</small>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- Services optionnels (frais) -->
-                @if(isset($optionalFeeCategories) && $optionalFeeCategories->count())
-                <div class="row mb-4">
-                    <div class="col-md-12">
-                        <h5 class="card-title">Services optionnels</h5>
-                        <div class="alert alert-info">
-                            <i class="fas fa-info-circle mr-1"></i> Sélectionnez les services optionnels auxquels l'étudiant souhaite souscrire (cantine, transport, internat, etc.).
-                        </div>
-                        <div class="form-group">
-                            @foreach($optionalFeeCategories as $category)
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" type="checkbox" name="fee_optionals[]" id="fee_optionals_{{ $category->id }}" value="{{ $category->id }}"
-                                        {{ is_array(old('fee_optionals')) && in_array($category->id, old('fee_optionals', [])) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="fee_optionals_{{ $category->id }}">
-                                        {{ $category->name }}
-                                        @if($category->default_amount)
-                                            <span class="badge bg-primary ms-2">{{ number_format($category->default_amount, 0, ',', ' ') }} FCFA</span>
-                                        @endif
-                                    </label>
-                                </div>
-                            @endforeach
-                        </div>
-                    </div>
-                </div>
-                @endif
 
                 <!-- Informations de l'étudiant -->
                 <div class="row mt-4">
@@ -1237,6 +1420,16 @@
                                         <option></option>
                                 </select>
                                 </div>
+                                <!-- Champ relation pour parent existant -->
+                                <div class="form-group mt-2">
+                                    <label class="form-label fw-bold">Relation avec l'étudiant</label>
+                                    <select class="form-control" name="parents[0][relation]" data-required="true">
+                                        <option value="Père">Père</option>
+                                        <option value="Mère">Mère</option>
+                                        <option value="Tuteur">Tuteur</option>
+                                        <option value="Autre">Autre</option>
+                                </select>
+                                </div>
                             </div>
 
                             <!-- Section pour nouveau parent -->
@@ -1340,6 +1533,16 @@
                                         <option></option>
                                 </select>
                                 </div>
+                                <!-- Champ relation pour parent existant (template) -->
+                                <div class="form-group mt-2">
+                                    <label class="form-label fw-bold">Relation avec l'étudiant</label>
+                                    <select class="form-control" name="parents[template][relation]" data-required="true">
+                                        <option value="Père">Père</option>
+                                        <option value="Mère">Mère</option>
+                                        <option value="Tuteur">Tuteur</option>
+                                        <option value="Autre">Autre</option>
+                                </select>
+                                </div>
                             </div>
 
                             <!-- Section pour nouveau parent -->
@@ -1348,7 +1551,7 @@
                                     <div class="col-md-6">
                                         <div class="form-group mb-3">
                                             <label class="form-label fw-bold">Nom</label>
-                                            <input type="text" class="form-control" name="parents[template][nom]" data-required="true">
+                                            <input type="text" class="form-control" name="parents[template][nom]">
                                         </div>
                                     </div>
                                     <div class="col-md-6">
@@ -1419,6 +1622,6 @@
     </div>
 </div>
 
-@include('components.modals.paiement')
+
 @endsection
 

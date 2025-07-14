@@ -79,7 +79,6 @@
                         <div class="col-md-4">
                             <p><strong>Téléphone:</strong> {{ $inscription->etudiant->telephone }}</p>
                             <p><strong>Email:</strong> {{ $inscription->etudiant->email_personnel }}</p>
-                            <p><strong>Adresse:</strong> {{ $inscription->etudiant->adresse }}</p>
                         </div>
                         <div class="col-md-4">
                             <p><strong>Ville de résidence:</strong> {{ $inscription->etudiant->ville ?? 'Non renseigné' }}</p>

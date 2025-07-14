@@ -519,6 +519,9 @@ Route::middleware(['auth', 'installed'])->group(function () {
             Route::delete('/inscriptions/{inscription}', [ESBTPInscriptionController::class, 'destroy'])->name('inscriptions.destroy');
             Route::put('/inscriptions/{inscription}/valider', [ESBTPInscriptionController::class, 'valider'])->name('inscriptions.valider');
             Route::put('/inscriptions/{inscription}/annuler', [ESBTPInscriptionController::class, 'annuler'])->name('inscriptions.annuler');
+            
+            // API pour les parents dans les inscriptions
+            Route::get('/api/parents/search', [ESBTPInscriptionController::class, 'searchParents'])->name('api.parents.search');
 
             // Routes API utilisées par les formulaires
             Route::get('classes/{classe}/matieres', [ESBTPClasseController::class, 'getMatieres'])

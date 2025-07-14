@@ -1,0 +1,64 @@
+# Task ID: 20
+# Title: Implémentation du workflow de validation comptabilité-inscription
+# Status: pending
+# Dependencies: 2, 7, 9, 11
+# Priority: high
+# Description: Développer l'interface de validation des inscriptions par l'administration avec liaison obligatoire à un paiement, incluant un système de saisie rapide et la conversion automatique du statut prospect vers étudiant.
+# Details:
+1. Développer l'interface d'administration pour la validation des inscriptions:
+   - Créer un tableau de bord des inscriptions en attente de validation
+   - Implémenter les filtres par statut, date, formation et méthode de paiement
+   - Ajouter des indicateurs visuels pour les dossiers complets/incomplets
+
+2. Implémenter le système de liaison comptabilité-inscription:
+   - Créer le modèle de relation entre Inscription et Paiement
+   - Développer les contraintes de validation empêchant la validation sans paiement associé
+   - Implémenter les règles métier pour la vérification des montants minimums requis
+
+3. Développer la modal de saisie rapide des paiements:
+   - Créer un formulaire modal accessible depuis la liste des inscriptions
+   - Implémenter la validation en temps réel des données de paiement
+   - Ajouter la fonctionnalité d'upload de justificatifs de paiement
+   - Intégrer avec le système de paiement existant
+
+4. Implémenter le workflow de conversion prospect vers étudiant:
+   - Créer le service de vérification de disponibilité des places
+   - Développer l'algorithme de changement de classe si nécessaire
+   - Implémenter la mise à jour automatique du statut après validation
+   - Gérer les notifications aux utilisateurs concernés
+
+5. Intégrer le système de relances comptabilité:
+   - Développer le déclencheur automatique de relances après validation
+   - Configurer les modèles de messages pour différents scénarios
+   - Implémenter la planification des relances selon les règles définies
+
+6. Nettoyer et optimiser la logique comptable dans les formulaires d'inscription:
+   - Refactoriser le code existant pour séparer la logique métier
+   - Simplifier l'interface utilisateur pour la saisie des informations comptables
+   - Ajouter des validations côté client et serveur
+
+# Test Strategy:
+1. Tests unitaires:
+   - Tester les modèles de relation Inscription-Paiement
+   - Valider les règles de conversion de statut
+   - Vérifier les contraintes de validation des paiements
+
+2. Tests d'intégration:
+   - Tester le workflow complet de validation d'une inscription
+   - Vérifier l'intégration avec le système de paiement
+   - Valider le déclenchement automatique des relances
+
+3. Tests fonctionnels:
+   - Scénarios de validation avec différents types de paiements
+   - Tests de conversion de statut avec/sans places disponibles
+   - Validation du changement automatique de classe
+
+4. Tests de l'interface utilisateur:
+   - Tester la modal de saisie rapide sur différents appareils
+   - Vérifier l'accessibilité et l'ergonomie de l'interface admin
+   - Valider les indicateurs visuels et les filtres
+
+5. Tests de régression:
+   - S'assurer que les modifications n'affectent pas les fonctionnalités existantes
+   - Vérifier la compatibilité avec les données existantes
+   - Tester les cas limites et les scénarios d'erreur

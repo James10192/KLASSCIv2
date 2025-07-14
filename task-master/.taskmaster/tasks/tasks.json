@@ -452,11 +452,27 @@
             "status": "done"
           }
         ]
+      },
+      {
+        "id": 20,
+        "title": "Implémentation du workflow de validation comptabilité-inscription",
+        "description": "Développer l'interface de validation des inscriptions par l'administration avec liaison obligatoire à un paiement, incluant un système de saisie rapide et la conversion automatique du statut prospect vers étudiant.",
+        "details": "1. Développer l'interface d'administration pour la validation des inscriptions:\n   - Créer un tableau de bord des inscriptions en attente de validation\n   - Implémenter les filtres par statut, date, formation et méthode de paiement\n   - Ajouter des indicateurs visuels pour les dossiers complets/incomplets\n\n2. Implémenter le système de liaison comptabilité-inscription:\n   - Créer le modèle de relation entre Inscription et Paiement\n   - Développer les contraintes de validation empêchant la validation sans paiement associé\n   - Implémenter les règles métier pour la vérification des montants minimums requis\n\n3. Développer la modal de saisie rapide des paiements:\n   - Créer un formulaire modal accessible depuis la liste des inscriptions\n   - Implémenter la validation en temps réel des données de paiement\n   - Ajouter la fonctionnalité d'upload de justificatifs de paiement\n   - Intégrer avec le système de paiement existant\n\n4. Implémenter le workflow de conversion prospect vers étudiant:\n   - Créer le service de vérification de disponibilité des places\n   - Développer l'algorithme de changement de classe si nécessaire\n   - Implémenter la mise à jour automatique du statut après validation\n   - Gérer les notifications aux utilisateurs concernés\n\n5. Intégrer le système de relances comptabilité:\n   - Développer le déclencheur automatique de relances après validation\n   - Configurer les modèles de messages pour différents scénarios\n   - Implémenter la planification des relances selon les règles définies\n\n6. Nettoyer et optimiser la logique comptable dans les formulaires d'inscription:\n   - Refactoriser le code existant pour séparer la logique métier\n   - Simplifier l'interface utilisateur pour la saisie des informations comptables\n   - Ajouter des validations côté client et serveur",
+        "testStrategy": "1. Tests unitaires:\n   - Tester les modèles de relation Inscription-Paiement\n   - Valider les règles de conversion de statut\n   - Vérifier les contraintes de validation des paiements\n\n2. Tests d'intégration:\n   - Tester le workflow complet de validation d'une inscription\n   - Vérifier l'intégration avec le système de paiement\n   - Valider le déclenchement automatique des relances\n\n3. Tests fonctionnels:\n   - Scénarios de validation avec différents types de paiements\n   - Tests de conversion de statut avec/sans places disponibles\n   - Validation du changement automatique de classe\n\n4. Tests de l'interface utilisateur:\n   - Tester la modal de saisie rapide sur différents appareils\n   - Vérifier l'accessibilité et l'ergonomie de l'interface admin\n   - Valider les indicateurs visuels et les filtres\n\n5. Tests de régression:\n   - S'assurer que les modifications n'affectent pas les fonctionnalités existantes\n   - Vérifier la compatibilité avec les données existantes\n   - Tester les cas limites et les scénarios d'erreur",
+        "status": "pending",
+        "dependencies": [
+          2,
+          7,
+          9,
+          11
+        ],
+        "priority": "high",
+        "subtasks": []
       }
     ],
     "metadata": {
       "created": "2025-07-08T23:51:05.466Z",
-      "updated": "2025-07-11T01:19:38.061Z",
+      "updated": "2025-07-11T14:49:57.199Z",
       "description": "Tasks for master context - Extended with V2.0 Liaison Comptabilité-Inscription-Dépenses (6 nouvelles tâches)"
     }
   }

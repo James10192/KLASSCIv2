@@ -1,6 +1,6 @@
 # Task ID: 13
 # Title: Modernisation Design Dashboard 2025
-# Status: pending
+# Status: done
 # Dependencies: None
 # Priority: high
 # Description: Appliquer tendances UI/UX 2025: design minimaliste, neo-skeuomorphisme, palette professionnelle

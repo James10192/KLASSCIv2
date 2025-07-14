@@ -153,15 +153,9 @@ class ESBTPInscriptionController extends Controller
         $anneeUniversitaires = $academicYears;
         $niveauEtudes = $niveaux;
 
-        // Charger les catégories de frais optionnels
-        $optionalFeeCategories = FeeCategory::where('is_active', true)->where('is_mandatory', false)->get();
-        // Charger les catégories de frais obligatoires
-        $mandatoryFeeCategories = FeeCategory::where('is_active', true)->where('is_mandatory', true)->get();
-
         return view('esbtp.inscriptions.create', compact(
             'filieres', 'niveaux', 'academicYears', 'anneeEnCours',
-            'anneeUniversitaires', 'niveauEtudes',
-            'optionalFeeCategories', 'mandatoryFeeCategories'
+            'anneeUniversitaires', 'niveauEtudes'
         ));
     }
 
@@ -170,8 +164,8 @@ class ESBTPInscriptionController extends Controller
      */
     public function store(Request $request)
     {
-        // Validation des données
-        $validator = Validator::make($request->all(), [
+        // Construction dynamique des règles de validation
+        $rules = [
             'classe_id' => 'required|exists:esbtp_classes,id',
             'nom' => 'required|string|max:100',
             'prenoms' => 'required|string|max:100',
@@ -184,12 +178,8 @@ class ESBTPInscriptionController extends Controller
             'commune' => 'nullable|string|max:100',
             'photo' => 'nullable|image|max:2048',
             'matricule' => 'required|string|max:20|unique:esbtp_etudiants,matricule',
-            'paiement_montant' => 'required|numeric|min:0',
-            'parents.0.nom' => 'required|string|max:100',
-            'parents.0.prenoms' => 'required|string|max:100',
-            'parents.0.telephone' => 'required|string|max:20',
-            'parents.0.relation' => 'required|string',
-        ], [
+        ];
+        $messages = [
             'classe_id.required' => 'Veuillez sélectionner une classe',
             'nom.required' => 'Le nom est obligatoire',
             'prenoms.required' => 'Le(s) prénom(s) est/sont obligatoire(s)',
@@ -198,32 +188,35 @@ class ESBTPInscriptionController extends Controller
             'telephone.required' => 'Le numéro de téléphone est obligatoire',
             'matricule.required' => 'Le matricule est obligatoire',
             'matricule.unique' => 'Ce matricule existe déjà',
-            'paiement_montant.required' => 'Le montant du paiement initial est obligatoire',
-            'parents.0.nom.required' => 'Le nom du parent/tuteur est obligatoire',
-            'parents.0.prenoms.required' => 'Le(s) prénom(s) du parent/tuteur est/sont obligatoire(s)',
-            'parents.0.telephone.required' => 'Le téléphone du parent/tuteur est obligatoire',
-            'parents.0.relation.required' => 'La relation avec le parent/tuteur est obligatoire',
-        ]);
-
+        ];
+        $parents = $request->input('parents', []);
+        foreach ($parents as $index => $parent) {
+            if (isset($parent['type']) && $parent['type'] === 'nouveau') {
+                $rules["parents.$index.nom"] = 'required|string|max:100';
+                $rules["parents.$index.prenoms"] = 'required|string|max:100';
+                $rules["parents.$index.telephone"] = 'required|string|max:20';
+                $rules["parents.$index.relation"] = 'required|string';
+                $messages["parents.$index.nom.required"] = 'Le nom du parent/tuteur est obligatoire';
+                $messages["parents.$index.prenoms.required"] = 'Le(s) prénom(s) du parent/tuteur est/sont obligatoire(s)';
+                $messages["parents.$index.telephone.required"] = 'Le téléphone du parent/tuteur est obligatoire';
+                $messages["parents.$index.relation.required"] = 'La relation avec le parent/tuteur est obligatoire';
+            } else if (isset($parent['type']) && $parent['type'] === 'existant') {
+                $rules["parents.$index.parent_id"] = 'required|exists:esbtp_parents,id';
+                $rules["parents.$index.relation"] = 'required|string';
+                $messages["parents.$index.parent_id.required"] = 'Veuillez sélectionner un parent existant';
+                $messages["parents.$index.parent_id.exists"] = 'Le parent sélectionné n’existe pas';
+                $messages["parents.$index.relation.required"] = 'La relation avec le parent/tuteur est obligatoire';
+                // NE PAS ajouter de règle sur nom/prenoms/telephone pour un parent existant
+            }
+        }
+        $validator = Validator::make($request->all(), $rules, $messages);
         if ($validator->fails()) {
             return redirect()->back()
                 ->withErrors($validator)
                 ->withInput();
         }
 
-        // Vérification des frais obligatoires
-        $mandatoryFeeCategories = FeeCategory::where('is_active', true)
-            ->where('is_mandatory', true)
-            ->get();
 
-        $mandatoryTotal = $mandatoryFeeCategories->sum('amount');
-        $initialPayment = $request->input('paiement_montant');
-
-        if ($mandatoryTotal > 0 && $initialPayment < $mandatoryTotal) {
-            return back()
-                ->withErrors(['paiement_montant' => 'Le paiement initial doit être au moins égal aux frais obligatoires (' . number_format($mandatoryTotal, 0, ',', ' ') . ' FCFA)'])
-                ->withInput();
-        }
 
         try {
             // Log des données soumises pour débogage
@@ -293,17 +286,7 @@ class ESBTPInscriptionController extends Controller
                 $etudiantData['niveau_etude_id'] = $classe->niveau_etude_id;
             }
 
-            // Préparer les données de paiement
-            $paiementData = null;
-            if ($request->filled('montant_verse') && $request->montant_verse > 0) {
-                $paiementData = [
-                    'montant' => $request->montant_verse,
-                    'methode' => $request->methode_paiement ?? 'Espèces',
-                    'reference' => $request->reference_paiement,
-                    'date' => $request->date_paiement ?? now(),
-                    'commentaire' => $request->commentaire,
-                ];
-            }
+            // Les paiements seront gérés lors de la validation de l'inscription
 
             // Préparer les données des parents
             $parentsData = [];
@@ -340,24 +323,18 @@ class ESBTPInscriptionController extends Controller
                 'etudiantData' => $etudiantData,
                 'inscriptionData' => $inscriptionData,
                 'parentsData' => $parentsData,
-                'paiementData' => $paiementData,
                 'selectedOptionals' => $selectedOptionals
             ]);
 
-            // Créer l'inscription
+            // Créer l'inscription (sans paiement - sera géré lors de la validation)
             $inscription = $this->inscriptionService->createInscription(
                 $etudiantData,
                 $inscriptionData,
                 $parentsData,
-                $paiementData,
+                null, // Pas de paiement pour l'instant
                 auth()->id(),
-                $selectedOptionals
+                [] // Pas de frais optionnels pour l'instant
             );
-
-            // Si un paiement initial est fourni, le créer via le service de comptabilité
-            if ($initialPayment > 0) {
-                $this->comptabiliteService->createPaiementFromInscription($inscription, $initialPayment);
-            }
 
             DB::commit();
 
@@ -372,7 +349,7 @@ class ESBTPInscriptionController extends Controller
             }
 
             return redirect()->route('esbtp.inscriptions.show', $inscription->id)
-                ->with('success', 'Inscription et paiement initial enregistrés avec succès. Veuillez compléter les informations de l\'étudiant.');
+                ->with('success', 'Inscription enregistrée avec succès. L\'administration pourra valider l\'inscription en associant un paiement.');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -729,5 +706,45 @@ class ESBTPInscriptionController extends Controller
         $filename = time() . '_' . Str::random(10) . '.' . $photo->getClientOriginalExtension();
         $photo->storeAs('public/photos/etudiants', $filename);
         return $filename;
+    }
+
+    /**
+     * API pour rechercher les parents existants
+     */
+    public function searchParents(Request $request)
+    {
+        try {
+            $search = $request->input('search', '');
+            
+            $query = ESBTPParent::query();
+            
+            if (!empty($search)) {
+                $query->where(function($q) use ($search) {
+                    $q->where('nom', 'like', "%{$search}%")
+                      ->orWhere('prenoms', 'like', "%{$search}%")
+                      ->orWhere('telephone', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%");
+                });
+            }
+            
+            $parents = $query->select('id', 'nom', 'prenoms', 'telephone', 'email', 'profession')
+                           ->orderBy('nom')
+                           ->limit(50)
+                           ->get();
+            
+            return response()->json([
+                'success' => true,
+                'parents' => $parents
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de la recherche de parents: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la recherche',
+                'parents' => []
+            ], 500);
+        }
     }
 }
