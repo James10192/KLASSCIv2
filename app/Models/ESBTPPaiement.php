@@ -78,6 +78,7 @@ class ESBTPPaiement extends Model implements Auditable
         'annee_universitaire_id',
         'type_paiement',
         'categorie_id',
+        'frais_category_id',
         'montant',
         'reference_paiement',
         'mode_paiement',
@@ -133,6 +134,16 @@ class ESBTPPaiement extends Model implements Auditable
     public function categorie()
     {
         return $this->belongsTo(ESBTPCategoriePaiement::class, 'categorie_id');
+    }
+
+    /**
+     * Relation avec la catégorie de frais (nouveau système).
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function fraisCategory()
+    {
+        return $this->belongsTo(ESBTPFraisCategory::class, 'frais_category_id');
     }
 
     /**

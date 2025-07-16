@@ -249,6 +249,7 @@
                                                         <th>Niveau</th>
                                                         <th>Classe</th>
                                                         <th>Date d'inscription</th>
+                                                        <th>Workflow</th>
                                                         <th>Statut</th>
                                                         <th>Actions</th>
                                                     </tr>
@@ -262,9 +263,40 @@
                                                             <td>{{ $inscription->classe ? $inscription->classe->name : 'Non assigné' }}</td>
                                                             <td>{{ $inscription->created_at->format('d/m/Y') }}</td>
                                                             <td>
+                                                                @switch($inscription->workflow_step ?? 'prospect')
+                                                                    @case('prospect')
+                                                                        <span class="badge bg-secondary">
+                                                                            <i class="fas fa-user-plus me-1"></i>Prospect
+                                                                        </span>
+                                                                        @break
+                                                                    @case('documents_complets')
+                                                                        <span class="badge bg-info">
+                                                                            <i class="fas fa-file-check me-1"></i>Documents OK
+                                                                        </span>
+                                                                        @break
+                                                                    @case('en_validation')
+                                                                        <span class="badge bg-warning">
+                                                                            <i class="fas fa-hourglass-half me-1"></i>En validation
+                                                                        </span>
+                                                                        @break
+                                                                    @case('valide')
+                                                                        <span class="badge bg-success">
+                                                                            <i class="fas fa-check me-1"></i>Validé
+                                                                        </span>
+                                                                        @break
+                                                                    @case('etudiant_cree')
+                                                                        <span class="badge bg-primary">
+                                                                            <i class="fas fa-graduation-cap me-1"></i>Étudiant créé
+                                                                        </span>
+                                                                        @break
+                                                                    @default
+                                                                        <span class="badge bg-light text-dark">{{ $inscription->workflow_step ?? 'N/A' }}</span>
+                                                                @endswitch
+                                                            </td>
+                                                            <td>
                                                                 @if($inscription->status == 'active')
                                                                     <span class="badge bg-success">Active</span>
-                                                                @elseif($inscription->status == 'pending')
+                                                                @elseif($inscription->status == 'pending' || $inscription->status == 'en_attente')
                                                                     <span class="badge bg-warning">En attente</span>
                                                                 @elseif($inscription->status == 'annulée')
                                                                     <span class="badge bg-danger">Annulée</span>
@@ -278,35 +310,11 @@
                                                                         <i class="fas fa-eye"></i>
                                                                     </a>
 
-                                                                    @if($inscription->status == 'pending')
+                                                                    @if($inscription->status == 'pending' || $inscription->status == 'en_attente')
                                                                         @can('inscriptions.validate')
-                                                                        <button type="button" class="btn btn-sm btn-success valider-btn" data-bs-toggle="modal" data-bs-target="#validationModal{{ $inscription->id }}" title="Valider l'inscription">
-                                                                            <i class="fas fa-check"></i>
-                                                                        </button>
-
-                                                                        <!-- Modal de validation -->
-                                                                        <div class="modal fade" id="validationModal{{ $inscription->id }}" tabindex="-1" aria-labelledby="validationModalLabel{{ $inscription->id }}" aria-hidden="true">
-                                                                            <div class="modal-dialog">
-                                                                                <div class="modal-content">
-                                                                                    <div class="modal-header">
-                                                                                        <h5 class="modal-title" id="validationModalLabel{{ $inscription->id }}">Valider l'inscription</h5>
-                                                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                                                    </div>
-                                                                                    <form action="{{ route('esbtp.inscriptions.valider', $inscription->id) }}" method="POST">
-                                                                                        @csrf
-                                                                                        @method('PUT')
-                                                                                        <div class="modal-body">
-                                                                                            <p>Êtes-vous sûr de vouloir valider cette inscription ?</p>
-                                                                                            <p>L'étudiant sera automatiquement activé et pourra accéder à son compte.</p>
-                                                                                        </div>
-                                                                                        <div class="modal-footer">
-                                                                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                                                                                            <button type="submit" class="btn btn-success">Valider l'inscription</button>
-                                                                                        </div>
-                                                                                    </form>
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
+                                                                        <a href="{{ route('esbtp.inscriptions.administration') }}" class="btn btn-sm btn-success" title="Aller à l'administration">
+                                                                            <i class="fas fa-cog"></i>
+                                                                        </a>
                                                                         @endcan
                                                                     @endif
                                                                 </div>

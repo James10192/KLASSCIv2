@@ -11,6 +11,7 @@ use App\Models\ESBTPClasse;
 use App\Models\ESBTPPaiement;
 use App\Models\ESBTPParent;
 use App\Services\ESBTPInscriptionService;
+use App\Services\InscriptionWorkflowService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -19,7 +20,8 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
 use App\Models\User;
-use App\Models\ESBTP\FeeCategory;
+use App\Models\ESBTPFraisCategory;
+use App\Models\ESBTPFraisSubscription;
 use App\Models\ESBTP\Fee;
 use App\Services\ComptabiliteService;
 
@@ -27,14 +29,20 @@ class ESBTPInscriptionController extends Controller
 {
     protected $inscriptionService;
     protected $comptabiliteService;
+    protected $workflowService;
 
     /**
      * Constructeur avec injection du service d'inscription
      */
-    public function __construct(ESBTPInscriptionService $inscriptionService, ComptabiliteService $comptabiliteService)
+    public function __construct(
+        ESBTPInscriptionService $inscriptionService, 
+        ComptabiliteService $comptabiliteService,
+        InscriptionWorkflowService $workflowService
+    )
     {
         $this->inscriptionService = $inscriptionService;
         $this->comptabiliteService = $comptabiliteService;
+        $this->workflowService = $workflowService;
         $this->middleware('auth');
         $this->middleware('permission:inscriptions.view', ['only' => ['index', 'show']]);
         $this->middleware('permission:inscriptions.create', ['only' => ['create', 'store']]);
@@ -456,26 +464,100 @@ class ESBTPInscriptionController extends Controller
             return $fee->amount - $fee->totalPaidAmount();
         });
 
-        // Charger toutes les catégories de frais obligatoires actives
-        $mandatoryFeeCategories = \App\Models\ESBTP\FeeCategory::where('is_active', true)->where('is_mandatory', true)->get();
-        $mandatoryFeeCategoriesWithRules = [];
-        foreach ($mandatoryFeeCategories as $category) {
-            $rule = \App\Models\ESBTP\FeeCategoryRule::where('fee_category_id', $category->id)
-                ->where('filiere_id', $inscription->filiere_id)
-                ->where('niveau_id', $inscription->niveau_id)
-                ->where(function($q) use ($inscription) {
-                    $q->where('annee_universitaire_id', $inscription->annee_universitaire_id)
-                      ->orWhereNull('annee_universitaire_id');
-                })
-                ->orderByRaw('annee_universitaire_id = ? desc', [$inscription->annee_universitaire_id]) // Priorité à la règle spécifique
-                ->first();
-            $mandatoryFeeCategoriesWithRules[] = [
+        // Récupérer les catégories de frais avec règles pour cette inscription
+        $mandatoryCategories = \App\Models\ESBTPFraisCategory::where('is_mandatory', true)->active()->ordered()->get();
+        $optionalCategories = \App\Models\ESBTPFraisCategory::where('is_mandatory', false)->active()->ordered()->get();
+        
+        // Récupérer les souscriptions actives pour cette inscription
+        $subscriptions = \App\Models\ESBTPFraisSubscription::getActiveSubscriptions($inscription->id);
+        $subscribedCategoryIds = $subscriptions->pluck('frais_category_id')->toArray();
+        
+        $feeCategoriesWithRules = [];
+        
+        // Traiter les frais obligatoires (tous affichés)
+        foreach ($mandatoryCategories as $category) {
+            $rule = $category->getApplicableRule($inscription->filiere_id, $inscription->niveau_id, $inscription->annee_universitaire_id);
+            
+            // Calculer les paiements pour cette catégorie
+            $paiements = $inscription->paiements()
+                ->where('frais_category_id', $category->id)
+                ->where('status', 'validated')
+                ->get();
+            
+            $totalPaye = $paiements->sum('montant');
+            $montantAttendu = $rule ? $rule->amount : $category->default_amount;
+            $solde = $montantAttendu - $totalPaye;
+            
+            $feeCategoriesWithRules[] = [
                 'category' => $category,
-                'rule' => $rule
+                'rule' => $rule,
+                'montant_attendu' => $montantAttendu,
+                'total_paye' => $totalPaye,
+                'solde' => $solde,
+                'paiements' => $paiements,
+                'is_configured' => $rule !== null,
+                'is_mandatory' => true,
+                'is_subscribed' => true, // Les frais obligatoires sont automatiquement "souscrits"
+                'subscription' => null,
+                'status' => $solde <= 0 ? 'paid' : ($totalPaye > 0 ? 'partial' : 'unpaid')
             ];
         }
+        
+        // Traiter les frais optionnels (seulement ceux souscrits)
+        foreach ($optionalCategories as $category) {
+            $subscription = $subscriptions->where('frais_category_id', $category->id)->first();
+            
+            if ($subscription) {
+                $rule = $category->getApplicableRule($inscription->filiere_id, $inscription->niveau_id, $inscription->annee_universitaire_id);
+                
+                // Calculer les paiements pour cette catégorie
+                $paiements = $inscription->paiements()
+                    ->where('frais_category_id', $category->id)
+                    ->where('status', 'validated')
+                    ->get();
+                
+                $totalPaye = $paiements->sum('montant');
+                $montantAttendu = $subscription->amount; // Utiliser le montant de la souscription
+                $solde = $montantAttendu - $totalPaye;
+                
+                $feeCategoriesWithRules[] = [
+                    'category' => $category,
+                    'rule' => $rule,
+                    'montant_attendu' => $montantAttendu,
+                    'total_paye' => $totalPaye,
+                    'solde' => $solde,
+                    'paiements' => $paiements,
+                    'is_configured' => $rule !== null,
+                    'is_mandatory' => false,
+                    'is_subscribed' => true,
+                    'subscription' => $subscription,
+                    'status' => $solde <= 0 ? 'paid' : ($totalPaye > 0 ? 'partial' : 'unpaid')
+                ];
+            }
+        }
+        
+        // Récupérer les frais optionnels non souscrits (pour permettre la souscription)
+        $availableOptionalCategories = $optionalCategories->filter(function($category) use ($subscribedCategoryIds) {
+            return !in_array($category->id, $subscribedCategoryIds);
+        });
 
-        return view('esbtp.inscriptions.show', compact('inscription', 'fees', 'soldeRestant', 'mandatoryFeeCategoriesWithRules'));
+        // Récupérer les catégories de frais pour la modal de paiement
+        $categoriesfrais = collect($feeCategoriesWithRules)->pluck('category');
+        
+        // Filtrer les catégories obligatoires pour le debug
+        $mandatoryFeeCategoriesWithRules = collect($feeCategoriesWithRules)->filter(function($item) {
+            return $item['is_mandatory'];
+        });
+        
+        return view('esbtp.inscriptions.show', compact(
+            'inscription', 
+            'fees', 
+            'soldeRestant', 
+            'feeCategoriesWithRules', 
+            'categoriesfrais', 
+            'mandatoryFeeCategoriesWithRules',
+            'availableOptionalCategories'
+        ));
     }
 
     /**
@@ -748,6 +830,212 @@ class ESBTPInscriptionController extends Controller
     }
 
     /**
+     * Interface d'administration pour la validation des inscriptions.
+     */
+    public function administration(Request $request)
+    {
+        // Récupérer les filtres
+        $search = $request->input('search');
+        $filiere = $request->input('filiere');
+        $niveau = $request->input('niveau');
+        $annee = $request->input('annee');
+        $workflow_step = $request->input('workflow_step', 'prospect');
+        $has_payment = $request->input('has_payment');
+
+        // Construire la requête pour les inscriptions en attente de validation
+        $query = ESBTPInscription::query()
+            ->with([
+                'etudiant', 
+                'filiere', 
+                'niveau', 
+                'classe', 
+                'anneeUniversitaire',
+                'paiements' => function($q) {
+                    $q->where('status', 'validated');
+                }
+            ])
+            ->where('status', 'en_attente');
+
+        // Appliquer les filtres
+        if ($search) {
+            $query->whereHas('etudiant', function($q) use ($search) {
+                $q->where('matricule', 'like', "%{$search}%")
+                  ->orWhere('nom', 'like', "%{$search}%")
+                  ->orWhere('prenoms', 'like', "%{$search}%");
+            });
+        }
+
+        if ($filiere) {
+            $query->where('filiere_id', $filiere);
+        }
+
+        if ($niveau) {
+            $query->where('niveau_id', $niveau);
+        }
+
+        if ($annee) {
+            $query->where('annee_universitaire_id', $annee);
+        } else {
+            // Par défaut, filtrer par année en cours
+            $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+            if ($anneeEnCours) {
+                $query->where('annee_universitaire_id', $anneeEnCours->id);
+            }
+        }
+
+        if ($workflow_step) {
+            $query->where('workflow_step', $workflow_step);
+        }
+
+        // Filtrer par statut de paiement
+        if ($has_payment === 'yes') {
+            $query->whereHas('paiements', function($q) {
+                $q->where('status', 'validated');
+            });
+        } elseif ($has_payment === 'no') {
+            $query->whereDoesntHave('paiements', function($q) {
+                $q->where('status', 'validated');
+            });
+        }
+
+        // Récupérer les inscriptions
+        $inscriptions = $query->latest()->paginate(20);
+
+        // Récupérer les listes pour les filtres
+        $filieres = ESBTPFiliere::where('is_active', true)->get();
+        $niveaux = ESBTPNiveauEtude::where('is_active', true)->get();
+        $annees = ESBTPAnneeUniversitaire::orderBy('start_date', 'desc')->get();
+        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        // Calculer les statistiques
+        $stats = [
+            'total_en_attente' => ESBTPInscription::where('status', 'en_attente')->count(),
+            'avec_paiement' => ESBTPInscription::where('status', 'en_attente')
+                ->whereHas('paiements', function($q) {
+                    $q->where('status', 'validated');
+                })->count(),
+            'sans_paiement' => ESBTPInscription::where('status', 'en_attente')
+                ->whereDoesntHave('paiements', function($q) {
+                    $q->where('status', 'validated');
+                })->count(),
+            'prospects' => ESBTPInscription::where('status', 'en_attente')
+                ->where('workflow_step', 'prospect')->count(),
+            'documents_complets' => ESBTPInscription::where('status', 'en_attente')
+                ->where('workflow_step', 'documents_complets')->count(),
+            'en_validation' => ESBTPInscription::where('status', 'en_attente')
+                ->where('workflow_step', 'en_validation')->count(),
+        ];
+
+        // Récupérer les catégories de frais pour la modal de paiement
+        $categoriesfrais = \App\Models\ESBTPFraisCategory::active()->ordered()->get();
+
+        return view('esbtp.inscriptions.administration', compact(
+            'inscriptions',
+            'filieres',
+            'niveaux',
+            'annees',
+            'search',
+            'filiere',
+            'niveau',
+            'annee',
+            'workflow_step',
+            'has_payment',
+            'stats',
+            'anneeEnCours',
+            'categoriesfrais'
+        ));
+    }
+
+    /**
+     * Valider une inscription avec paiement associé.
+     */
+    public function validerAvecPaiement(Request $request, ESBTPInscription $inscription)
+    {
+        $request->validate([
+            'montant' => 'required|numeric|min:0',
+            'fee_category_id' => 'required|exists:esbtp_fee_categories,id',
+            'mode_paiement' => 'required|in:especes,cheque,virement,mobile_money',
+            'reference_paiement' => 'nullable|string|max:100',
+            'date_paiement' => 'required|date',
+            'observations' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            $paiementData = [
+                'montant' => $request->montant,
+                'fee_category_id' => $request->fee_category_id,
+                'mode_paiement' => $request->mode_paiement,
+                'reference_paiement' => $request->reference_paiement,
+                'date_paiement' => $request->date_paiement,
+                'observations' => $request->observations,
+            ];
+
+            $result = $this->workflowService->associerPaiement($inscription, $paiementData);
+
+            if ($result['success']) {
+                return redirect()->route('esbtp.inscriptions.administration')
+                    ->with('success', $result['message']);
+            } else {
+                return redirect()->back()
+                    ->with('error', $result['message']);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de l\'association du paiement: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Erreur lors de l\'association du paiement: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Valider définitivement une inscription (conversion prospect -> étudiant).
+     */
+    public function validerDefinitivement(Request $request, ESBTPInscription $inscription)
+    {
+        $request->validate([
+            'observations' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            $result = $this->workflowService->convertProspectToStudent($inscription, $request->input('observations'));
+
+            if ($result['success']) {
+                return redirect()->route('esbtp.inscriptions.administration')
+                    ->with('success', $result['message']);
+            } else {
+                return redirect()->back()
+                    ->with('error', $result['message']);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la validation finale: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Erreur lors de la validation: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Générer un numéro de reçu unique.
+     */
+    private function genererNumeroRecu()
+    {
+        $year = date('Y');
+        $month = date('m');
+        $prefix = "REC-{$year}{$month}-";
+        
+        $lastPayment = ESBTPPaiement::where('numero_recu', 'like', $prefix . '%')
+            ->orderBy('numero_recu', 'desc')
+            ->first();
+        
+        if ($lastPayment) {
+            $lastNumber = intval(substr($lastPayment->numero_recu, -4));
+            $newNumber = $lastNumber + 1;
+        } else {
+            $newNumber = 1;
+        }
+        
+        return $prefix . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
      * Supprimer une inscription.
      */
     public function destroy(ESBTPInscription $inscription)
@@ -816,6 +1104,63 @@ class ESBTPInscriptionController extends Controller
                 'message' => 'Erreur lors de la recherche',
                 'parents' => []
             ], 500);
+        }
+    }
+
+    /**
+     * Souscrire à un frais optionnel
+     */
+    public function subscribeToOptionalFee(Request $request, ESBTPInscription $inscription)
+    {
+        $request->validate([
+            'frais_category_id' => 'required|exists:esbtp_frais_categories,id',
+            'amount' => 'required|numeric|min:0',
+            'notes' => 'nullable|string|max:500'
+        ]);
+
+        try {
+            // Vérifier que c'est bien un frais optionnel
+            $category = ESBTPFraisCategory::findOrFail($request->frais_category_id);
+            if ($category->is_mandatory) {
+                return redirect()->back()->with('error', 'Impossible de souscrire à un frais obligatoire.');
+            }
+
+            // Créer la souscription
+            ESBTPFraisSubscription::subscribe(
+                $inscription->id,
+                $request->frais_category_id,
+                $request->amount,
+                Auth::id(),
+                $request->notes
+            );
+
+            return redirect()->route('esbtp.inscriptions.show', $inscription->id)
+                ->with('success', 'Souscription au frais optionnel réussie !');
+
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la souscription au frais optionnel: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Erreur lors de la souscription au frais optionnel.');
+        }
+    }
+
+    /**
+     * Se désabonner d'un frais optionnel
+     */
+    public function unsubscribeFromOptionalFee(Request $request, ESBTPInscription $inscription)
+    {
+        $request->validate([
+            'frais_category_id' => 'required|exists:esbtp_frais_categories,id',
+        ]);
+
+        try {
+            ESBTPFraisSubscription::unsubscribe($inscription->id, $request->frais_category_id);
+
+            return redirect()->route('esbtp.inscriptions.show', $inscription->id)
+                ->with('success', 'Désabonnement du frais optionnel réussi !');
+
+        } catch (\Exception $e) {
+            Log::error('Erreur lors du désabonnement du frais optionnel: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Erreur lors du désabonnement du frais optionnel.');
         }
     }
 }

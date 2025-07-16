@@ -203,14 +203,16 @@ Route::middleware(['auth', 'installed'])->group(function () {
             // Routes pour les frais de scolarité
             Route::resource('fees', \App\Http\Controllers\ESBTP\FeeController::class);
 
-            // Catégories de frais
-            Route::resource('fee-categories', \App\Http\Controllers\ESBTP\FeeCategoryController::class);
-
-            // Règles de paramétrage pour une catégorie de frais
-            Route::post('fee-categories/{fee_category}/rules', [\App\Http\Controllers\ESBTP\FeeCategoryRuleController::class, 'store'])->name('fee-categories.rules.store');
-            Route::get('fee-categories/{fee_category}/rules/{rule}/edit', [\App\Http\Controllers\ESBTP\FeeCategoryRuleController::class, 'edit'])->name('fee-categories.rules.edit');
-            Route::put('fee-categories/{fee_category}/rules/{rule}', [\App\Http\Controllers\ESBTP\FeeCategoryRuleController::class, 'update'])->name('fee-categories.rules.update');
-            Route::delete('fee-categories/{fee_category}/rules/{rule}', [\App\Http\Controllers\ESBTP\FeeCategoryRuleController::class, 'destroy'])->name('fee-categories.rules.destroy');
+            // Nouveau système de catégories de frais ESBTP
+            Route::get('frais', [\App\Http\Controllers\ESBTPFraisController::class, 'index'])->name('frais.index');
+            Route::get('frais/configure', [\App\Http\Controllers\ESBTPFraisController::class, 'configure'])->name('frais.configure');
+            Route::post('frais/update-configuration', [\App\Http\Controllers\ESBTPFraisController::class, 'updateConfiguration'])->name('frais.update-configuration');
+            Route::post('frais/{category}/toggle', [\App\Http\Controllers\ESBTPFraisController::class, 'toggleCategory'])->name('frais.toggle');
+            Route::resource('frais', \App\Http\Controllers\ESBTPFraisController::class)->except(['index']);
+            
+            // Routes pour les souscriptions aux frais optionnels
+            Route::post('inscriptions/{inscription}/subscribe-optional-fee', [\App\Http\Controllers\ESBTPInscriptionController::class, 'subscribeToOptionalFee'])->name('inscriptions.subscribe-optional-fee');
+            Route::post('inscriptions/{inscription}/unsubscribe-optional-fee', [\App\Http\Controllers\ESBTPInscriptionController::class, 'unsubscribeFromOptionalFee'])->name('inscriptions.unsubscribe-optional-fee');
 
             Route::get('/etudiants/{etudiant}/certificat', [ESBTPStudentController::class, 'genererCertificat'])
                 ->name('etudiants.certificat')
@@ -519,6 +521,11 @@ Route::middleware(['auth', 'installed'])->group(function () {
             Route::delete('/inscriptions/{inscription}', [ESBTPInscriptionController::class, 'destroy'])->name('inscriptions.destroy');
             Route::put('/inscriptions/{inscription}/valider', [ESBTPInscriptionController::class, 'valider'])->name('inscriptions.valider');
             Route::put('/inscriptions/{inscription}/annuler', [ESBTPInscriptionController::class, 'annuler'])->name('inscriptions.annuler');
+            
+            // Routes pour l'administration des inscriptions
+            Route::get('/inscriptions-administration', [ESBTPInscriptionController::class, 'administration'])->name('inscriptions.administration');
+            Route::post('/inscriptions/{inscription}/valider-avec-paiement', [ESBTPInscriptionController::class, 'validerAvecPaiement'])->name('inscriptions.valider-avec-paiement');
+            Route::post('/inscriptions/{inscription}/valider-definitivement', [ESBTPInscriptionController::class, 'validerDefinitivement'])->name('inscriptions.valider-definitivement');
             
             // API pour les parents dans les inscriptions
             Route::get('/api/parents/search', [ESBTPInscriptionController::class, 'searchParents'])->name('api.parents.search');
@@ -1163,7 +1170,6 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth'])->group(function () 
     });
 
     // ... autres routes ...
-    Route::resource('fee-categories', \App\Http\Controllers\ESBTP\FeeCategoryController::class);
     Route::resource('payment-categories', \App\Http\Controllers\ESBTP\PaymentCategoryController::class);
 });
 
@@ -1235,12 +1241,6 @@ Route::middleware(['auth'])->group(function () {
     Route::post('esbtp/etudiants/{id}/restore', [ESBTPStudentController::class, 'restore'])->name('esbtp.etudiants.restore');
 });
 
-// ... existing code ...
-// Échéances paramétrables pour une règle de frais
-Route::post('fee-categories/rules/{rule}/installments', [\App\Http\Controllers\ESBTP\FeeCategoryRuleInstallmentController::class, 'store'])->name('esbtp.fee-categories.rules.installments.store');
-Route::get('fee-categories/rules/{rule}/installments/{installment}/edit', [\App\Http\Controllers\ESBTP\FeeCategoryRuleInstallmentController::class, 'edit'])->name('esbtp.fee-categories.rules.installments.edit');
-Route::put('fee-categories/rules/{rule}/installments/{installment}', [\App\Http\Controllers\ESBTP\FeeCategoryRuleInstallmentController::class, 'update'])->name('esbtp.fee-categories.rules.installments.update');
-Route::delete('fee-categories/rules/{rule}/installments/{installment}', [\App\Http\Controllers\ESBTP\FeeCategoryRuleInstallmentController::class, 'destroy'])->name('esbtp.fee-categories.rules.installments.destroy');
 // ... existing code ...
 
 // --- SUPPRESSION dans le groupe esbtp ---

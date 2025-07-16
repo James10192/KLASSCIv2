@@ -8,24 +8,72 @@
         <div class="col-12">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Détails de l'inscription</h5>
                     <div>
+                        <h5 class="mb-0">Détails de l'inscription</h5>
+                        <div class="mt-2">
+                            @switch($inscription->workflow_step)
+                                @case('prospect')
+                                    <span class="badge bg-secondary">
+                                        <i class="fas fa-user-plus me-1"></i>Prospect
+                                    </span>
+                                    @break
+                                @case('documents_complets')
+                                    <span class="badge bg-info">
+                                        <i class="fas fa-file-check me-1"></i>Documents complets
+                                    </span>
+                                    @break
+                                @case('en_validation')
+                                    <span class="badge bg-warning">
+                                        <i class="fas fa-hourglass-half me-1"></i>En validation
+                                    </span>
+                                    @break
+                                @case('valide')
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-check me-1"></i>Validé
+                                    </span>
+                                    @break
+                                @case('etudiant_cree')
+                                    <span class="badge bg-primary">
+                                        <i class="fas fa-graduation-cap me-1"></i>Étudiant créé
+                                    </span>
+                                    @break
+                                @default
+                                    <span class="badge bg-light text-dark">{{ $inscription->workflow_step }}</span>
+                            @endswitch
+                            
+                            <span class="badge bg-{{ $inscription->status === 'active' ? 'success' : ($inscription->status === 'en_attente' ? 'warning' : 'danger') }}">
+                                {{ ucfirst($inscription->status) }}
+                            </span>
+                        </div>
+                    </div>
+                    <div>
+                        @can('inscriptions.validate')
+                            <a href="{{ route('esbtp.inscriptions.administration') }}" class="btn btn-info me-2">
+                                <i class="fas fa-cog me-1"></i>Administration
+                            </a>
+                            
+                            @if($inscription->status === 'en_attente' && !$inscription->paiement_validation_id)
+                                <button class="btn btn-success me-2" onclick="openPaymentModal({{ $inscription->id }})">
+                                    <i class="fas fa-credit-card me-1"></i>Valider avec paiement
+                                </button>
+                            @endif
+                            
+                            @if($inscription->paiement_validation_id && $inscription->workflow_step === 'en_validation')
+                                <button class="btn btn-primary me-2" onclick="openValidationModal({{ $inscription->id }})">
+                                    <i class="fas fa-check me-1"></i>Valider définitivement
+                                </button>
+                            @endif
+                        @endcan
+                        
                         @if($inscription->status === 'en_attente')
-                            <button type="button" class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#validationModal">
-                                <i class="fas fa-check me-1"></i>Valider l'inscription
-                            </button>
-                            <button type="button" class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#paiementModal">
-                                <i class="fas fa-money-bill me-1"></i>Enregistrer un paiement
-                            </button>
-                        @endif
-                        <a href="{{ route('esbtp.inscriptions.edit', $inscription) }}" class="btn btn-primary me-2">
-                            <i class="fas fa-edit me-1"></i>Modifier
-                        </a>
-                        @if($inscription->status === 'en_attente')
-                            <a href="{{ route('esbtp.inscriptions.edit', $inscription) }}" class="btn btn-warning me-2">
+                            <a href="{{ route('esbtp.inscriptions.edit', $inscription) }}" class="btn btn-outline-primary me-2">
+                                <i class="fas fa-edit me-1"></i>Modifier
+                            </a>
+                            <a href="{{ route('esbtp.inscriptions.edit', $inscription) }}" class="btn btn-outline-warning me-2">
                                 <i class="fas fa-exchange-alt me-1"></i>Modifier la classe
                             </a>
                         @endif
+                        
                         <a href="{{ route('esbtp.inscriptions.index') }}" class="btn btn-secondary">
                             <i class="fas fa-arrow-left me-1"></i>Retour à la liste
                         </a>
@@ -86,6 +134,76 @@
                         </div>
                     </div>
 
+                    <!-- Workflow et Historique -->
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <h6 class="border-bottom pb-2">Workflow et Historique</h6>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6>Progression du workflow</h6>
+                                    <div class="progress mb-3" style="height: 25px;">
+                                        @php
+                                            $steps = ['prospect', 'documents_complets', 'en_validation', 'valide', 'etudiant_cree'];
+                                            $currentStepIndex = array_search($inscription->workflow_step, $steps);
+                                            $progress = $currentStepIndex !== false ? (($currentStepIndex + 1) / count($steps)) * 100 : 0;
+                                        @endphp
+                                        <div class="progress-bar progress-bar-striped" role="progressbar" style="width: {{ $progress }}%">
+                                            {{ round($progress) }}%
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="d-flex justify-content-between small">
+                                        <span class="text-{{ $inscription->workflow_step === 'prospect' ? 'primary' : 'muted' }}">
+                                            <i class="fas fa-user-plus"></i> Prospect
+                                        </span>
+                                        <span class="text-{{ $inscription->workflow_step === 'documents_complets' ? 'primary' : 'muted' }}">
+                                            <i class="fas fa-file-check"></i> Documents
+                                        </span>
+                                        <span class="text-{{ $inscription->workflow_step === 'en_validation' ? 'primary' : 'muted' }}">
+                                            <i class="fas fa-hourglass-half"></i> Validation
+                                        </span>
+                                        <span class="text-{{ $inscription->workflow_step === 'valide' ? 'primary' : 'muted' }}">
+                                            <i class="fas fa-check"></i> Validé
+                                        </span>
+                                        <span class="text-{{ $inscription->workflow_step === 'etudiant_cree' ? 'primary' : 'muted' }}">
+                                            <i class="fas fa-graduation-cap"></i> Étudiant
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6>Informations de validation</h6>
+                                    @if($inscription->paiement_validation_id)
+                                        <div class="alert alert-success">
+                                            <i class="fas fa-check-circle me-2"></i>
+                                            Paiement associé
+                                        </div>
+                                    @else
+                                        <div class="alert alert-warning">
+                                            <i class="fas fa-exclamation-triangle me-2"></i>
+                                            Aucun paiement associé
+                                        </div>
+                                    @endif
+                                    
+                                    @if($inscription->date_validation)
+                                        <p><strong>Date de validation:</strong><br>
+                                        {{ \Carbon\Carbon::parse($inscription->date_validation)->format('d/m/Y à H:i') }}</p>
+                                    @endif
+                                    
+                                    @if($inscription->validated_by)
+                                        <p><strong>Validé par:</strong><br>
+                                        {{ \App\Models\User::find($inscription->validated_by)->name ?? 'Utilisateur inconnu' }}</p>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Informations de l'inscription -->
                     <div class="row mb-4">
                         <div class="col-md-12">
@@ -112,162 +230,181 @@
                             </p>
                         </div>
                         <div class="col-md-4">
-                            <!-- Frais obligatoires (dynamique) -->
-                            <h5 class="card-title">Frais obligatoires</h5>
-                            <div class="table-responsive">
-                                <table class="table table-bordered align-middle">
-                                    <thead>
-                                        <tr>
-                                            <th>Libellé</th>
-                                            <th>Montant</th>
-                                            <th>Échéance</th>
-                                            <th>Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                    @forelse($mandatoryFeeCategoriesWithRules as $item)
-                                        <tr>
-                                            <td>{{ $item['category']->name }}</td>
-                                            <td>
-                                                @if($item['rule'])
-                                                    {{ number_format($item['rule']->amount, 0, ',', ' ') }} FCFA
-                                                @else
-                                                    <span class="badge bg-warning text-dark">À configurer</span>
-                                                @endif
-                                            </td>
-                                            <td>
-                                                @if($item['rule'] && $item['rule']->due_date)
-                                                    {{ \Carbon\Carbon::parse($item['rule']->due_date)->format('d/m/Y') }}
-                                                @elseif($item['rule'])
-                                                    <span class="text-muted">Non défini</span>
-                                                @else
-                                                    <span class="text-muted">-</span>
-                                                @endif
-                                            </td>
-                                            <td>
-                                                @if($item['rule'])
-                                                    <a href="{{ route('esbtp.fee-categories.rules.edit', ['fee_category' => $item['category']->id, 'rule' => $item['rule']->id]) }}" class="btn btn-sm btn-outline-primary">
-                                                        <i class="fas fa-edit"></i> Modifier
-                                                    </a>
-                                                @else
-                                                    <a href="{{ route('esbtp.fee-categories.edit', ['fee_category' => $item['category']->id, 'filiere_id' => $inscription->filiere_id, 'niveau_id' => $inscription->niveau_id, 'annee_universitaire_id' => $inscription->annee_universitaire_id]) }}" class="btn btn-sm btn-warning">
-                                                        <i class="fas fa-cogs"></i> Configurer
-                                                    </a>
-                                                    <span class="ms-2 badge bg-danger">Obligatoire sans règle</span>
-                                                @endif
-                                            </td>
-                                        </tr>
-                                    @empty
-                                        <tr>
-                                            <td colspan="4">
-                                                <div class="alert alert-danger mb-0">
-                                                    Aucun frais obligatoire n'est configuré pour cette classe. <br>
-                                                    <strong>Veuillez configurer les frais d'inscription et de scolarité dans les catégories de frais.</strong>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    @endforelse
-                                    </tbody>
-                                </table>
+                            @php
+                                $totalAttendu = collect($feeCategoriesWithRules)->where('is_configured', true)->sum('montant_attendu');
+                                $totalPaye = collect($feeCategoriesWithRules)->sum('total_paye');
+                                $soldeGlobal = $totalAttendu - $totalPaye;
+                                $obligatoiresConfigures = collect($feeCategoriesWithRules)->where('is_mandatory', true)->where('is_configured', true)->count();
+                                $obligatoiresTotal = collect($feeCategoriesWithRules)->where('is_mandatory', true)->count();
+                            @endphp
+                            <div class="card border-{{ $soldeGlobal <= 0 ? 'success' : 'warning' }}">
+                                <div class="card-body">
+                                    <h6 class="card-title text-{{ $soldeGlobal <= 0 ? 'success' : 'warning' }}">
+                                        <i class="fas fa-wallet me-1"></i>Résumé Financier
+                                    </h6>
+                                    <div class="row text-center">
+                                        <div class="col-4">
+                                            <div class="text-primary">
+                                                <strong>{{ number_format($totalAttendu, 0, ',', ' ') }}</strong>
+                                                <small class="d-block text-muted">Total attendu</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="text-success">
+                                                <strong>{{ number_format($totalPaye, 0, ',', ' ') }}</strong>
+                                                <small class="d-block text-muted">Total payé</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="text-{{ $soldeGlobal <= 0 ? 'success' : 'danger' }}">
+                                                <strong>{{ number_format($soldeGlobal, 0, ',', ' ') }}</strong>
+                                                <small class="d-block text-muted">Solde</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="progress mt-2" style="height: 8px;">
+                                        <div class="progress-bar bg-success" role="progressbar" style="width: {{ $totalAttendu > 0 ? ($totalPaye / $totalAttendu) * 100 : 0 }}%"></div>
+                                    </div>
+                                    <small class="text-muted">{{ $obligatoiresConfigures }}/{{ $obligatoiresTotal }} frais obligatoires configurés</small>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Situation financière -->
+                    <!-- Situation financière détaillée -->
                     <div class="row mb-4">
                         <div class="col-md-12">
-                            <h6 class="border-bottom pb-2">Situation financière</h6>
+                            <h6 class="border-bottom pb-2">Situation Financière Détaillée</h6>
                         </div>
                         <div class="col-12">
-                            <script>
-                                // Debug: log $fees and $payments from Blade to JS console
-                                console.log('DEBUG fees:', @json($fees));
-                                console.log('DEBUG payments:', @json(\App\Models\ESBTP\Payment::where('inscription_id', $inscription->id)->orderBy('payment_date')->get()));
-                            </script>
-                            @php
-                                $payments = \App\Models\ESBTP\Payment::where('inscription_id', $inscription->id)->orderBy('payment_date')->get();
-                                $totalPaid = $payments->where('status', 'completed')->sum('amount');
-                                $totalDue = $fees->sum('amount');
-                                $soldeRestant = $totalDue - $totalPaid;
-                            @endphp
-                            @if($fees->count())
-                                <div class="mb-3">
-                                    <strong>Total à payer :</strong> {{ number_format($totalDue, 0, ',', ' ') }} FCFA<br>
-                                    <strong>Total payé :</strong> {{ number_format($totalPaid, 0, ',', ' ') }} FCFA<br>
-                                    <strong>Solde restant :</strong> <span class="{{ $soldeRestant > 0 ? 'text-danger' : 'text-success' }}">{{ number_format($soldeRestant, 0, ',', ' ') }} FCFA</span>
-                                </div>
-                                <h6>Frais générés</h6>
-                                    <table class="table table-bordered align-middle">
-                                        <thead>
-                                            <tr>
-                                            <th>Libellé</th>
-                                                <th>Montant</th>
-                                                <th>Échéance</th>
-                                            <th>Payé</th>
-                                                <th>Statut</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach($fees as $fee)
-                                        @php
-                                            $paid = $fee->payments()->where('status', 'completed')->sum('amount');
-                                        @endphp
-                                                <tr>
-                                            <td>{{ $fee->label ?? $fee->description }}</td>
-                                                    <td>{{ number_format($fee->amount, 0, ',', ' ') }} FCFA</td>
-                                            <td>{{ $fee->due_date ? (is_a($fee->due_date, 'Carbon\\Carbon') ? $fee->due_date->format('d/m/Y') : \Carbon\Carbon::parse($fee->due_date)->format('d/m/Y')) : '-' }}</td>
-                                            <td>{{ number_format($paid, 0, ',', ' ') }} FCFA</td>
-                                            <td>
-                                                @if($fee->amount <= $paid)
-                                                    <span class="badge bg-success">Payé</span>
-                                                @elseif($fee->due_date && \Carbon\Carbon::parse($fee->due_date)->isPast())
-                                                            <span class="badge bg-danger">En retard</span>
-                                                        @else
-                                                    <span class="badge bg-warning text-dark">À payer</span>
-                                                @endif
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                    </tbody>
-                                </table>
-                                <h6>Paiements effectués</h6>
-                                <table class="table table-sm table-striped">
-                                    <thead>
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-dark">
                                         <tr>
-                                            <th>Date</th>
-                                            <th>Montant</th>
-                                            <th>Méthode</th>
-                                            <th>Référence</th>
+                                            <th>Catégorie</th>
+                                            <th>Type</th>
+                                            <th>Montant Attendu</th>
+                                            <th>Montant Payé</th>
+                                            <th>Solde</th>
                                             <th>Statut</th>
+                                            <th>Derniers Paiements</th>
+                                            <th>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                    @foreach($payments as $payment)
-                                        <tr>
-                                            <td>{{ $payment->payment_date ? (is_a($payment->payment_date, 'Carbon\\Carbon') ? $payment->payment_date->format('d/m/Y') : \Carbon\Carbon::parse($payment->payment_date)->format('d/m/Y')) : '-' }}</td>
-                                            <td>{{ number_format($payment->amount, 0, ',', ' ') }} FCFA</td>
-                                            <td>{{ $payment->payment_method ?? '-' }}</td>
-                                            <td>{{ $payment->reference_number ?? '-' }}</td>
-                                            <td>
-                                                @if($payment->status === 'completed')
-                                                    <span class="badge bg-success">Validé</span>
-                                                @elseif($payment->status === 'pending')
-                                                    <span class="badge bg-warning text-dark">En attente</span>
-                                                @else
-                                                    <span class="badge bg-danger">{{ ucfirst($payment->status) }}</span>
+                                        @forelse($feeCategoriesWithRules as $item)
+                                            <tr class="align-middle">
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        @if($item['category']->icon)
+                                                            <i class="{{ $item['category']->icon }} me-2 text-{{ $item['category']->color }}"></i>
                                                         @endif
-                                                    </td>
-                                                </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
-                            @else
-                                <div class="alert alert-danger">
-                                    <i class="fas fa-exclamation-triangle me-1"></i>
-                                    Aucun frais n'a été généré pour cette inscription.<br>
-                                    <strong>Veuillez configurer les frais d'inscription et de scolarité pour cette classe dans le module de gestion des catégories de frais.</strong>
-                                </div>
-                            @endif
+                                                        <div>
+                                                            <strong>{{ $item['category']->name }}</strong>
+                                                            @if($item['category']->description)
+                                                                <br><small class="text-muted">{{ $item['category']->description }}</small>
+                                                            @endif
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    @if($item['is_mandatory'])
+                                                        <span class="badge bg-danger">Obligatoire</span>
+                                                    @else
+                                                        <span class="badge bg-info">Optionnel</span>
+                                                    @endif
+                                                </td>
+                                                <td>
+                                                    @if($item['is_configured'])
+                                                        <strong class="text-primary">{{ number_format($item['montant_attendu'], 0, ',', ' ') }} FCFA</strong>
+                                                    @else
+                                                        <span class="badge bg-warning text-dark">Non configuré</span>
+                                                        <br><small class="text-muted">Défaut: {{ number_format($item['category']->default_amount, 0, ',', ' ') }} FCFA</small>
+                                                    @endif
+                                                </td>
+                                                <td>
+                                                    @if($item['total_paye'] > 0)
+                                                        <strong class="text-success">{{ number_format($item['total_paye'], 0, ',', ' ') }} FCFA</strong>
+                                                    @else
+                                                        <span class="text-muted">0 FCFA</span>
+                                                    @endif
+                                                </td>
+                                                <td>
+                                                    @if($item['solde'] > 0)
+                                                        <strong class="text-danger">{{ number_format($item['solde'], 0, ',', ' ') }} FCFA</strong>
+                                                    @elseif($item['solde'] < 0)
+                                                        <strong class="text-info">{{ number_format(abs($item['solde']), 0, ',', ' ') }} FCFA</strong>
+                                                        <br><small class="text-muted">Trop-perçu</small>
+                                                    @else
+                                                        <strong class="text-success">Soldé</strong>
+                                                    @endif
+                                                </td>
+                                                <td>
+                                                    @switch($item['status'])
+                                                        @case('paid')
+                                                            <span class="badge bg-success">
+                                                                <i class="fas fa-check me-1"></i>Payé
+                                                            </span>
+                                                            @break
+                                                        @case('partial')
+                                                            <span class="badge bg-warning">
+                                                                <i class="fas fa-clock me-1"></i>Partiel
+                                                            </span>
+                                                            @break
+                                                        @case('unpaid')
+                                                            <span class="badge bg-danger">
+                                                                <i class="fas fa-times me-1"></i>Impayé
+                                                            </span>
+                                                            @break
+                                                        @default
+                                                            <span class="badge bg-secondary">{{ $item['status'] }}</span>
+                                                    @endswitch
+                                                </td>
+                                                <td>
+                                                    @if($item['paiements']->count() > 0)
+                                                        <div class="small">
+                                                            @foreach($item['paiements']->take(2) as $paiement)
+                                                                <div class="mb-1">
+                                                                    <strong>{{ number_format($paiement->montant, 0, ',', ' ') }} FCFA</strong>
+                                                                    <br><small class="text-muted">{{ $paiement->date_paiement ? \Carbon\Carbon::parse($paiement->date_paiement)->format('d/m/Y') : '-' }}</small>
+                                                                </div>
+                                                            @endforeach
+                                                            @if($item['paiements']->count() > 2)
+                                                                <small class="text-muted">... et {{ $item['paiements']->count() - 2 }} autre(s)</small>
+                                                            @endif
+                                                        </div>
+                                                    @else
+                                                        <span class="text-muted">Aucun paiement</span>
+                                                    @endif
+                                                </td>
+                                                <td>
+                                                    <div class="btn-group" role="group">
+                                                        @if($item['is_configured'] && $item['solde'] > 0)
+                                                            <button class="btn btn-sm btn-success" onclick="openPaymentModalForCategory({{ $inscription->id }}, {{ $item['category']->id }})">
+                                                                <i class="fas fa-credit-card"></i>
+                                                            </button>
+                                                        @endif
+                                                        @if(!$item['is_configured'])
+                                                            <a href="{{ route('esbtp.frais.configure') }}?filiere_id={{ $inscription->filiere_id }}&niveau_id={{ $inscription->niveau_id }}" class="btn btn-sm btn-warning">
+                                                                <i class="fas fa-cogs"></i>
+                                                            </a>
+                                                        @endif
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        @empty
+                                            <tr>
+                                                <td colspan="8" class="text-center py-4">
+                                                    <div class="alert alert-info mb-0">
+                                                        <i class="fas fa-info-circle me-2"></i>
+                                                        Aucune catégorie de frais configurée pour cette inscription.
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
 
@@ -295,160 +432,237 @@
                         @endforelse
                     </div>
 
-                    <!-- Paiements -->
+                    <!-- Paiements liés à l'inscription -->
                     <div class="row">
                         <div class="col-md-12">
-                            <h6 class="border-bottom pb-2">Historique des paiements</h6>
+                            <h6 class="border-bottom pb-2">Paiements liés à cette inscription</h6>
                         </div>
                         <div class="col-12">
-                            @if($inscription->paiements->isNotEmpty())
+                            @php
+                                $allPayments = collect();
+                                if($inscription->paiements && $inscription->paiements->count()) {
+                                    $allPayments = $allPayments->merge($inscription->paiements);
+                                }
+                                if($inscription->payments && $inscription->payments->count()) {
+                                    $allPayments = $allPayments->merge($inscription->payments);
+                                }
+                            @endphp
+                            
+                            @if($allPayments->count() > 0)
                                 <div class="table-responsive">
                                     <table class="table table-striped">
                                         <thead>
                                             <tr>
                                                 <th>Date</th>
                                                 <th>Montant</th>
-                                                <th>Méthode</th>
+                                                <th>Mode</th>
                                                 <th>Référence</th>
+                                                <th>Statut</th>
                                                 <th>Commentaire</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            @foreach($inscription->paiements as $paiement)
+                                            @foreach($allPayments as $payment)
                                                 <tr>
-                                                    <td>{{ $paiement->date }}</td>
-                                                    <td>{{ number_format($paiement->montant, 0, ',', ' ') }} FCFA</td>
-                                                    <td>{{ $paiement->methode }}</td>
-                                                    <td>{{ $paiement->reference }}</td>
-                                                    <td>{{ $paiement->commentaire }}</td>
+                                                    <td>
+                                                        @if(isset($payment->date_paiement))
+                                                            {{ \Carbon\Carbon::parse($payment->date_paiement)->format('d/m/Y') }}
+                                                        @elseif(isset($payment->payment_date))
+                                                            {{ $payment->payment_date ? $payment->payment_date->format('d/m/Y') : '' }}
+                                                        @else
+                                                            {{ $payment->date ?? '-' }}
+                                                        @endif
+                                                    </td>
+                                                    <td>
+                                                        @if(isset($payment->montant))
+                                                            {{ number_format($payment->montant, 0, ',', ' ') }} FCFA
+                                                        @elseif(isset($payment->amount))
+                                                            {{ number_format($payment->amount, 0, ',', ' ') }} FCFA
+                                                        @endif
+                                                    </td>
+                                                    <td>
+                                                        @if(isset($payment->mode_paiement))
+                                                            {{ ucfirst($payment->mode_paiement) }}
+                                                        @elseif(isset($payment->payment_method))
+                                                            {{ ucfirst($payment->payment_method) }}
+                                                        @else
+                                                            {{ $payment->methode ?? '-' }}
+                                                        @endif
+                                                    </td>
+                                                    <td>
+                                                        @if(isset($payment->reference_paiement))
+                                                            {{ $payment->reference_paiement ?? '-' }}
+                                                        @elseif(isset($payment->reference_number))
+                                                            {{ $payment->reference_number ?? '-' }}
+                                                        @else
+                                                            {{ $payment->reference ?? '-' }}
+                                                        @endif
+                                                    </td>
+                                                    <td>
+                                                        @if(isset($payment->status))
+                                                            <span class="badge bg-{{ $payment->status === 'validated' ? 'success' : ($payment->status === 'pending' ? 'warning' : 'danger') }}">
+                                                                {{ ucfirst($payment->status) }}
+                                                            </span>
+                                                        @else
+                                                            <span class="badge bg-success">Validé</span>
+                                                        @endif
+                                                    </td>
+                                                    <td>
+                                                        @if(isset($payment->observations))
+                                                            {{ $payment->observations }}
+                                                        @else
+                                                            {{ $payment->commentaire ?? '-' }}
+                                                        @endif
+                                                    </td>
                                                 </tr>
                                             @endforeach
                                         </tbody>
                                         <tfoot>
                                             <tr>
                                                 <th>Total</th>
-                                                <th>{{ number_format($inscription->paiements->sum('montant'), 0, ',', ' ') }} FCFA</th>
-                                                <th colspan="3"></th>
+                                                <th>
+                                                    @php
+                                                        $total = 0;
+                                                        foreach($allPayments as $payment) {
+                                                            $total += $payment->montant ?? $payment->amount ?? 0;
+                                                        }
+                                                    @endphp
+                                                    {{ number_format($total, 0, ',', ' ') }} FCFA
+                                                </th>
+                                                <th colspan="4"></th>
                                             </tr>
                                         </tfoot>
                                     </table>
                                 </div>
                             @else
-                                <p class="text-muted">Aucun paiement enregistré</p>
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Aucun paiement enregistré pour cette inscription.
+                                </div>
                             @endif
                         </div>
                     </div>
-
-                    <h3>Paiements liés à cette inscription</h3>
-                    @if($inscription->payments && $inscription->payments->count())
-                        <table class="table table-bordered">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Montant</th>
-                                    <th>Méthode</th>
-                                    <th>Statut</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($inscription->payments as $payment)
-                                    <tr>
-                                        <td>{{ $payment->payment_date ? $payment->payment_date->format('d/m/Y') : '' }}</td>
-                                        <td>{{ number_format($payment->amount, 2) }} F CFA</td>
-                                        <td>{{ ucfirst($payment->payment_method) }}</td>
-                                        <td>{{ ucfirst($payment->status) }}</td>
-                                        <td>
-                                            <a href="{{ route('esbtp.payments.show', $payment) }}" class="btn btn-sm btn-info">Voir</a>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    @else
-                        <p>Aucun paiement enregistré pour cette inscription.</p>
-                    @endif
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal de Validation -->
-<div class="modal fade" id="validationModal" tabindex="-1">
-    <div class="modal-dialog">
+<!-- Workflow Actions -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="alert alert-info">
+            <h6><i class="fas fa-info-circle me-2"></i>Workflow de validation</h6>
+            <p class="mb-0">Vous pouvez valider cette inscription directement depuis cette page avec le bouton <strong>"Valider avec paiement"</strong> 
+            ou utiliser l'<strong>interface d'administration</strong> pour une gestion plus complète du workflow prospect → étudiant.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Modal pour associer un paiement -->
+<div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Valider l'inscription</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title" id="paymentModalLabel">Associer un paiement à l'inscription</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form action="{{ route('esbtp.inscriptions.valider', $inscription) }}" method="POST">
+            <form id="paymentForm" method="POST">
                 @csrf
-                @method('PUT')
                 <div class="modal-body">
-                    <p>Êtes-vous sûr de vouloir valider cette inscription ?</p>
-                    <p>L'étudiant sera automatiquement activé et pourra accéder à son compte.</p>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="montant" class="form-label">Montant payé <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" id="montant" name="montant" min="0" step="0.01" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="fee_category_id" class="form-label">Catégorie de frais <span class="text-danger">*</span></label>
+                                <select class="form-select" id="fee_category_id" name="fee_category_id" required>
+                                    <option value="">Sélectionnez une catégorie</option>
+                                    @if(isset($categoriesfrais))
+                                        @foreach($categoriesfrais as $categorie)
+                                            <option value="{{ $categorie->id }}" data-default-amount="{{ $categorie->default_amount }}">
+                                                <i class="{{ $categorie->icon }}"></i> {{ $categorie->name }}
+                                                @if($categorie->is_mandatory)
+                                                    <span class="text-danger">*</span>
+                                                @endif
+                                            </option>
+                                        @endforeach
+                                    @endif
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="mode_paiement" class="form-label">Mode de paiement <span class="text-danger">*</span></label>
+                                <select class="form-select" id="mode_paiement" name="mode_paiement" required>
+                                    <option value="">Sélectionnez un mode</option>
+                                    <option value="especes">Espèces</option>
+                                    <option value="cheque">Chèque</option>
+                                    <option value="virement">Virement</option>
+                                    <option value="mobile_money">Mobile Money</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="reference_paiement" class="form-label">Référence du paiement</label>
+                                <input type="text" class="form-control" id="reference_paiement" name="reference_paiement" placeholder="Numéro de chèque, référence virement...">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="date_paiement" class="form-label">Date du paiement <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control" id="date_paiement" name="date_paiement" value="{{ date('Y-m-d') }}" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="observations" class="form-label">Observations</label>
+                                <textarea class="form-control" id="observations" name="observations" rows="3" placeholder="Commentaires sur le paiement..."></textarea>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn btn-success">Valider l'inscription</button>
+                    <button type="submit" class="btn btn-primary">Associer le paiement</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<!-- Modal de Paiement -->
-<div class="modal fade" id="paiementModal" tabindex="-1">
+<!-- Modal pour validation définitive -->
+<div class="modal fade" id="validationModal" tabindex="-1" aria-labelledby="validationModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Enregistrer un paiement</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title" id="validationModalLabel">Validation définitive de l'inscription</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form action="{{ route('esbtp.paiements.store') }}" method="POST" id="paiementForm">
+            <form id="validationForm" method="POST">
                 @csrf
-                <input type="hidden" name="inscription_id" value="{{ $inscription->id }}">
-                <input type="hidden" name="etudiant_id" value="{{ $inscription->etudiant->id }}">
                 <div class="modal-body">
-                    <div class="form-group">
-                        <label for="montant">Montant</label>
-                        <input type="number" class="form-control" id="montant" name="montant" required>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        Cette action va convertir le prospect en étudiant et activer son compte utilisateur.
                     </div>
-                    <div class="form-group">
-                        <label for="date_paiement">Date de paiement</label>
-                        <input type="date" class="form-control" id="date_paiement" name="date_paiement" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="mode_paiement">Mode de paiement</label>
-                        <select class="form-control" id="mode_paiement" name="mode_paiement" required>
-                            <option value="especes">Espèces</option>
-                            <option value="cheque">Chèque</option>
-                            <option value="virement">Virement</option>
-                            <option value="carte">Carte bancaire</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="reference_paiement">Référence du paiement</label>
-                        <input type="text" class="form-control" id="reference_paiement" name="reference_paiement">
-                    </div>
-                    <div class="form-group">
-                        <label for="motif">Motif</label>
-                        <select class="form-control" id="motif" name="motif" required>
-                            <option value="inscription">Frais d'inscription</option>
-                            <option value="scolarite">Frais de scolarité</option>
-                            <option value="examen">Frais d'examen</option>
-                            <option value="autre">Autre</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="commentaire">Commentaire</label>
-                        <textarea class="form-control" id="commentaire" name="commentaire" rows="3"></textarea>
+                    <div class="mb-3">
+                        <label for="validation_observations" class="form-label">Observations</label>
+                        <textarea class="form-control" id="validation_observations" name="observations" rows="3" placeholder="Commentaires sur la validation..."></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn btn-primary">Enregistrer le paiement</button>
+                    <button type="submit" class="btn btn-success">Valider définitivement</button>
                 </div>
             </form>
         </div>
@@ -460,5 +674,39 @@
 <script>
     // Debug : afficher le tableau complet dans la console
     console.log('mandatoryFeeCategoriesWithRules:', @json($mandatoryFeeCategoriesWithRules));
+    
+    function openPaymentModal(inscriptionId) {
+        const form = document.getElementById('paymentForm');
+        form.action = `/esbtp/inscriptions/${inscriptionId}/valider-avec-paiement`;
+        
+        // Réinitialiser le formulaire
+        form.reset();
+        document.getElementById('date_paiement').value = new Date().toISOString().split('T')[0];
+        
+        // Gérer le changement de catégorie pour pré-remplir le montant
+        document.getElementById('fee_category_id').addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const defaultAmount = selectedOption.getAttribute('data-default-amount');
+            if (defaultAmount) {
+                document.getElementById('montant').value = defaultAmount;
+            }
+        });
+        
+        // Ouvrir le modal
+        const modal = new bootstrap.Modal(document.getElementById('paymentModal'));
+        modal.show();
+    }
+
+    function openValidationModal(inscriptionId) {
+        const form = document.getElementById('validationForm');
+        form.action = `/esbtp/inscriptions/${inscriptionId}/valider-definitivement`;
+        
+        // Réinitialiser le formulaire
+        form.reset();
+        
+        // Ouvrir le modal
+        const modal = new bootstrap.Modal(document.getElementById('validationModal'));
+        modal.show();
+    }
 </script>
 @endpush

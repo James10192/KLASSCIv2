@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(task-master:*)"
+      "Bash(task-master:*)",
+      "mcp__memory__search_nodes",
+      "mcp__memory__create_entities"
     ],
     "deny": []
   }
