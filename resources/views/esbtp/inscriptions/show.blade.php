@@ -380,14 +380,19 @@
                                                 <td>
                                                     <div class="btn-group" role="group">
                                                         @if($item['is_configured'] && $item['solde'] > 0)
-                                                            <button class="btn btn-sm btn-success" onclick="openPaymentModalForCategory({{ $inscription->id }}, {{ $item['category']->id }})">
+                                                            <button class="btn btn-sm btn-success" onclick="openPaymentModalForCategory({{ $inscription->id }}, {{ $item['category']->id }})" title="Effectuer un paiement">
                                                                 <i class="fas fa-credit-card"></i>
                                                             </button>
                                                         @endif
                                                         @if(!$item['is_configured'])
-                                                            <a href="{{ route('esbtp.frais.configure') }}?filiere_id={{ $inscription->filiere_id }}&niveau_id={{ $inscription->niveau_id }}" class="btn btn-sm btn-warning">
+                                                            <a href="{{ route('esbtp.frais.configure') }}?filiere_id={{ $inscription->filiere_id }}&niveau_id={{ $inscription->niveau_id }}" class="btn btn-sm btn-warning" title="Configurer ce frais">
                                                                 <i class="fas fa-cogs"></i>
                                                             </a>
+                                                        @endif
+                                                        @if(!$item['is_mandatory'] && $item['is_subscribed'])
+                                                            <button class="btn btn-sm btn-outline-danger" onclick="unsubscribeFromFee({{ $inscription->id }}, {{ $item['category']->id }}, '{{ $item['category']->name }}')" title="Se désabonner de ce frais optionnel">
+                                                                <i class="fas fa-times"></i>
+                                                            </button>
                                                         @endif
                                                     </div>
                                                 </td>
@@ -407,6 +412,48 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Frais optionnels disponibles -->
+                    @if(isset($availableOptionalCategories) && $availableOptionalCategories->count() > 0)
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="border-bottom pb-2 mb-0">Frais Optionnels Disponibles</h6>
+                                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#subscriptionModal">
+                                    <i class="fas fa-plus me-1"></i>Souscrire à un frais
+                                </button>
+                            </div>
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>{{ $availableOptionalCategories->count() }} frais optionnels</strong> sont disponibles pour cette filière/niveau.
+                                Vous pouvez souscrire aux services qui vous intéressent.
+                            </div>
+                            <div class="row">
+                                @foreach($availableOptionalCategories as $category)
+                                    <div class="col-md-4 mb-3">
+                                        <div class="card border-info h-100">
+                                            <div class="card-body">
+                                                <div class="d-flex align-items-center mb-2">
+                                                    @if($category->icon)
+                                                        <i class="{{ $category->icon }} me-2 text-{{ $category->color }}"></i>
+                                                    @endif
+                                                    <h6 class="card-title mb-0">{{ $category->name }}</h6>
+                                                </div>
+                                                @if($category->description)
+                                                    <p class="card-text text-muted small">{{ $category->description }}</p>
+                                                @endif
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <span class="badge bg-info">Optionnel</span>
+                                                    <span class="fw-bold text-primary">{{ number_format($category->default_amount, 0, ',', ' ') }} FCFA</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                    @endif
 
                     <!-- Parents -->
                     <div class="row mb-4">
@@ -668,6 +715,74 @@
         </div>
     </div>
 </div>
+
+<!-- Modal pour souscription aux frais optionnels -->
+<div class="modal fade" id="subscriptionModal" tabindex="-1" aria-labelledby="subscriptionModalLabel" aria-hidden="true" style="z-index: 1060;">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="subscriptionModalLabel">Souscrire à un frais optionnel</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="subscriptionForm" method="POST" action="{{ route('esbtp.inscriptions.subscribe-optional-fee', $inscription->id) }}">
+                @csrf
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Souscription aux frais optionnels</strong><br>
+                        Sélectionnez un frais optionnel et définissez le montant à payer pour cette inscription.
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="subscription_category_id" class="form-label">Frais optionnel <span class="text-danger">*</span></label>
+                                <select class="form-select" id="subscription_category_id" name="frais_category_id" required>
+                                    <option value="">Sélectionnez un frais</option>
+                                    @if(isset($availableOptionalCategories))
+                                        @foreach($availableOptionalCategories as $category)
+                                            <option value="{{ $category->id }}" 
+                                                    data-default-amount="{{ $category->default_amount }}"
+                                                    data-description="{{ $category->description }}">
+                                                {{ $category->name }} - {{ number_format($category->default_amount, 0, ',', ' ') }} FCFA
+                                            </option>
+                                        @endforeach
+                                    @endif
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="subscription_amount" class="form-label">Montant à payer (FCFA) <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" id="subscription_amount" name="amount" 
+                                       min="0" step="0.01" required placeholder="0">
+                                <small class="form-text text-muted">Le montant peut être différent du montant par défaut</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="subscription_notes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="subscription_notes" name="notes" rows="3" 
+                                  placeholder="Commentaires sur cette souscription..."></textarea>
+                    </div>
+                    
+                    <div id="category_description" class="alert alert-light d-none">
+                        <strong>Description du frais :</strong>
+                        <p class="mb-0" id="description_text"></p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-plus me-1"></i>Souscrire
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('scripts')
@@ -708,5 +823,106 @@
         const modal = new bootstrap.Modal(document.getElementById('validationModal'));
         modal.show();
     }
+
+    // Gestion du modal de souscription aux frais optionnels
+    document.addEventListener('DOMContentLoaded', function() {
+        const subscriptionCategorySelect = document.getElementById('subscription_category_id');
+        const subscriptionAmountInput = document.getElementById('subscription_amount');
+        const categoryDescription = document.getElementById('category_description');
+        const descriptionText = document.getElementById('description_text');
+
+        if (subscriptionCategorySelect) {
+            subscriptionCategorySelect.addEventListener('change', function() {
+                const selectedOption = this.options[this.selectedIndex];
+                
+                if (selectedOption.value) {
+                    // Pré-remplir le montant avec le montant par défaut
+                    const defaultAmount = selectedOption.getAttribute('data-default-amount');
+                    if (defaultAmount) {
+                        subscriptionAmountInput.value = defaultAmount;
+                    }
+                    
+                    // Afficher la description si disponible
+                    const description = selectedOption.getAttribute('data-description');
+                    if (description && description.trim()) {
+                        descriptionText.textContent = description;
+                        categoryDescription.classList.remove('d-none');
+                    } else {
+                        categoryDescription.classList.add('d-none');
+                    }
+                } else {
+                    // Réinitialiser si aucune sélection
+                    subscriptionAmountInput.value = '';
+                    categoryDescription.classList.add('d-none');
+                }
+            });
+        }
+    });
+
+    // Fonction pour se désabonner d'un frais optionnel
+    function unsubscribeFromFee(inscriptionId, categoryId, categoryName) {
+        if (confirm(`Êtes-vous sûr de vouloir vous désabonner du frais "${categoryName}" ?\n\nCette action supprimera ce frais de la liste mais conservera l'historique des paiements déjà effectués.`)) {
+            // Créer un formulaire temporaire pour envoyer la requête POST
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/esbtp/inscriptions/${inscriptionId}/unsubscribe-optional-fee`;
+            
+            // Ajouter le token CSRF
+            const csrfToken = document.querySelector('meta[name="csrf-token"]');
+            if (csrfToken) {
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = '_token';
+                csrfInput.value = csrfToken.getAttribute('content');
+                form.appendChild(csrfInput);
+            }
+            
+            // Ajouter l'ID de la catégorie
+            const categoryInput = document.createElement('input');
+            categoryInput.type = 'hidden';
+            categoryInput.name = 'frais_category_id';
+            categoryInput.value = categoryId;
+            form.appendChild(categoryInput);
+            
+            // Ajouter au DOM et soumettre
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
 </script>
+
+<style>
+/* Fix pour le modal de souscription */
+#subscriptionModal {
+    z-index: 1060 !important;
+}
+
+#subscriptionModal .modal-dialog {
+    margin: 1.75rem auto !important;
+    max-width: 800px !important;
+}
+
+#subscriptionModal .modal-content {
+    position: relative !important;
+    border: none !important;
+    border-radius: 10px !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* S'assurer que le backdrop est visible */
+#subscriptionModal.modal.fade.show {
+    display: block !important;
+}
+
+.modal-backdrop {
+    z-index: 1055 !important;
+}
+
+/* Fix pour le positionnement centré */
+#subscriptionModal .modal-dialog-centered {
+    display: flex !important;
+    align-items: center !important;
+    min-height: calc(100vh - 3.5rem) !important;
+}
+</style>
 @endpush
