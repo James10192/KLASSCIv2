@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Data Viewer</title>
+    <style>
+        body { font-family: monospace; margin: 20px; }
+        .data { background: #f5f5f5; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .timestamp { color: #666; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <h1>Inscription Debug Data</h1>
+    
+    <h2>Client-Side Data (localStorage)</h2>
+    <div id="clientData"></div>
+    
+    <h2>Actions</h2>
+    <button onclick="clearData()">Clear Debug Data</button>
+    <button onclick="location.reload()">Refresh</button>
+    
+    <script>
+        function displayClientData() {
+            const data = localStorage.getItem('inscription_debug_data');
+            const container = document.getElementById('clientData');
+            
+            if (data) {
+                container.innerHTML = '<div class="data"><pre>' + data + '</pre></div>';
+            } else {
+                container.innerHTML = '<p>Aucune donnée de debug trouvée dans localStorage</p>';
+            }
+        }
+        
+        function clearData() {
+            localStorage.removeItem('inscription_debug_data');
+            displayClientData();
+        }
+        
+        // Afficher les données au chargement
+        displayClientData();
+    </script>
+</body>
+</html>

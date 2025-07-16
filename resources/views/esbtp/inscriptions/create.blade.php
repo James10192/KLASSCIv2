@@ -876,14 +876,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initialisation au chargement de la page - s'assurer que les attributs required sont corrects
     function initializeRequiredAttributes() {
-        // Traiter le template caché - retirer tous les attributs required
-        const template = document.getElementById('parent-template');
-        if (template) {
-            template.querySelectorAll('[data-required="true"]').forEach(input => {
-                input.removeAttribute('required');
-            });
-        }
-        
         document.querySelectorAll('.parent-item, .card').forEach(parentItem => {
             const existantSection = parentItem.querySelector('.parent-existant-section');
             const nouveauSection = parentItem.querySelector('.parent-nouveau-section');
@@ -901,13 +893,37 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Appliquer les bons attributs selon l'état de la checkbox
                 if (checkbox && checkbox.checked) {
                     // Parent existant sélectionné
+                    // Réactiver les champs nécessaires dans la section parent existant
+                    existantSection.querySelectorAll('select').forEach(input => {
+                        input.disabled = false;
+                    });
                     existantSection.querySelectorAll('[data-required="true"]').forEach(input => {
                         input.setAttribute('required', 'required');
                     });
+                    // Désactiver les champs de la section nouveau parent
+                    nouveauSection.querySelectorAll('input, select, textarea').forEach(input => {
+                        input.disabled = true;
+                        // Sauvegarder le nom original et le supprimer pour éviter l'envoi au serveur
+                        if (input.name && input.type !== 'hidden') {
+                            input.setAttribute('data-original-name', input.name);
+                            input.removeAttribute('name');
+                        }
+                    });
                 } else {
                     // Nouveau parent par défaut
+                    // Restaurer les noms des champs de la section nouveau parent
+                    nouveauSection.querySelectorAll('input, select, textarea').forEach(input => {
+                        if (input.hasAttribute('data-original-name')) {
+                            input.name = input.getAttribute('data-original-name');
+                            input.removeAttribute('data-original-name');
+                        }
+                    });
                     nouveauSection.querySelectorAll('[data-required="true"]').forEach(input => {
                         input.setAttribute('required', 'required');
+                    });
+                    // Désactiver seulement les champs qui ne sont pas nécessaires dans la section parent existant
+                    existantSection.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"], textarea').forEach(input => {
+                        input.disabled = true;
                     });
                 }
             }
@@ -916,25 +932,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Appeler l'initialisation au chargement
     initializeRequiredAttributes();
-    
-    // Fonction pour désactiver tous les champs du template avant soumission
-    function disableTemplateFields() {
-        const template = document.getElementById('parent-template');
-        if (template) {
-            template.querySelectorAll('input, select, textarea').forEach(input => {
-                input.disabled = true;
-                input.removeAttribute('required');
-            });
-        }
-    }
-    
-    // Intercepter la soumission du formulaire
-    const form = document.querySelector('form');
-    if (form) {
-        form.addEventListener('submit', function(e) {
-            disableTemplateFields();
-        });
-    }
 
     // Gestion des checkboxes "parent existant"
     document.addEventListener('change', function(e) {
@@ -957,15 +954,41 @@ document.addEventListener('DOMContentLoaded', function() {
                 existantSection.style.display = 'block';
                 nouveauSection.style.display = 'none';
                 if (typeInput) typeInput.value = 'existant';
+                // Réactiver les champs nécessaires dans la section parent existant
+                existantSection.querySelectorAll('select').forEach(input => {
+                    input.disabled = false;
+                });
                 // Ajouter 'required' uniquement aux champs visibles de la section existant
                 existantSection.querySelectorAll('[data-required="true"]').forEach(input => {
                     input.setAttribute('required', 'required');
+                });
+                // Désactiver les champs de la section nouveau parent pour qu'ils ne soient pas envoyés
+                nouveauSection.querySelectorAll('input, select, textarea').forEach(input => {
+                    input.disabled = true;
+                    // Sauvegarder le nom original et le supprimer pour éviter l'envoi au serveur
+                    if (input.name && input.type !== 'hidden') {
+                        input.setAttribute('data-original-name', input.name);
+                        input.removeAttribute('name');
+                    }
                 });
             } else {
                 // Afficher section nouveau parent, masquer existant
                 existantSection.style.display = 'none';
                 nouveauSection.style.display = 'block';
                 if (typeInput) typeInput.value = 'nouveau';
+                // Réactiver les champs de la section nouveau parent
+                nouveauSection.querySelectorAll('input, select, textarea').forEach(input => {
+                    input.disabled = false;
+                    // Restaurer le nom original si il a été sauvegardé
+                    if (input.hasAttribute('data-original-name')) {
+                        input.name = input.getAttribute('data-original-name');
+                        input.removeAttribute('data-original-name');
+                    }
+                });
+                // Désactiver seulement les champs qui ne sont pas nécessaires dans la section parent existant
+                existantSection.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"], textarea').forEach(input => {
+                    input.disabled = true;
+                });
                 // Ajouter 'required' uniquement aux champs visibles de la section nouveau
                 nouveauSection.querySelectorAll('[data-required="true"]').forEach(input => {
                     input.setAttribute('required', 'required');
@@ -997,6 +1020,21 @@ document.addEventListener('DOMContentLoaded', function() {
             // Mise à jour des labels for
             if (element.tagName === 'LABEL' && element.getAttribute('for')) {
                 element.setAttribute('for', element.getAttribute('for').replace('template', parentIndex));
+            }
+        });
+        
+        // Ajouter les attributs data-required aux champs qui en ont besoin dans le nouveau parent
+        const requiredFields = [
+            'input[name*="[nom]"]',
+            'input[name*="[prenoms]"]',
+            'input[name*="[telephone]"]',
+            'select[name*="[relation]"]'
+        ];
+        
+        requiredFields.forEach(selector => {
+            const field = newParent.querySelector(selector);
+            if (field) {
+                field.setAttribute('data-required', 'true');
             }
         });
 
@@ -1032,6 +1070,11 @@ document.addEventListener('DOMContentLoaded', function() {
         // Par défaut, c'est la section "nouveau parent" qui est visible, donc ajouter required à ces champs
         nouveauSection.querySelectorAll('[data-required="true"]').forEach(input => {
             input.setAttribute('required', 'required');
+        });
+        
+        // Désactiver seulement les champs qui ne sont pas nécessaires dans la section parent existant par défaut
+        existantSection.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"], textarea').forEach(input => {
+            input.disabled = true;
         });
 
         parentIndex++;
@@ -1116,15 +1159,36 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Correction critique : synchronisation des attributs required juste avant la soumission
     document.getElementById('inscriptionForm').addEventListener('submit', function(e) {
-        // 1. Toujours retirer required sur les champs du template parent caché
-        const parentTemplate = document.getElementById('parent-template');
-        if (parentTemplate) {
-            parentTemplate.querySelectorAll('[data-required="true"]').forEach(input => {
-                input.removeAttribute('required');
+        // Créer un log persistant dans le localStorage pour déboguer
+        const debugData = {
+            timestamp: new Date().toISOString(),
+            parentInputs: []
+        };
+        
+        const allParentInputs = document.querySelectorAll('[name*="parents"]');
+        allParentInputs.forEach(input => {
+            debugData.parentInputs.push({
+                name: input.name,
+                value: input.value,
+                disabled: input.disabled,
+                type: input.type,
+                required: input.hasAttribute('required')
             });
+        });
+        
+        // Sauvegarder dans localStorage (persistant après refresh)
+        localStorage.setItem('inscription_debug_data', JSON.stringify(debugData, null, 2));
+        
+        // Aussi afficher dans un alert (visible avant refresh)
+        const summary = debugData.parentInputs
+            .filter(input => input.name && !input.disabled)
+            .map(input => `${input.name}: "${input.value}"`)
+            .join('\n');
+        
+        if (summary) {
+            alert('DONNÉES PARENT ENVOYÉES:\n\n' + summary);
         }
-
-        // 2. Synchroniser les parents visibles comme avant
+        // Synchroniser les parents visibles
         document.querySelectorAll('.parent-item, .card').forEach(parentItem => {
             const existantSection = parentItem.querySelector('.parent-existant-section');
             const nouveauSection = parentItem.querySelector('.parent-nouveau-section');
@@ -1143,14 +1207,38 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (checkbox && checkbox.checked) {
                 if (existantSection) {
+                    // Réactiver les champs nécessaires dans la section parent existant
+                    existantSection.querySelectorAll('select').forEach(input => {
+                        input.disabled = false;
+                    });
                     existantSection.querySelectorAll('[data-required="true"]').forEach(input => {
                         input.setAttribute('required', 'required');
+                    });
+                    // Désactiver les champs de la section nouveau parent
+                    nouveauSection.querySelectorAll('input, select, textarea').forEach(input => {
+                        input.disabled = true;
+                        // Sauvegarder le nom original et le supprimer pour éviter l'envoi au serveur
+                        if (input.name && input.type !== 'hidden') {
+                            input.setAttribute('data-original-name', input.name);
+                            input.removeAttribute('name');
+                        }
                     });
                 }
             } else {
                 if (nouveauSection) {
+                    // Restaurer les noms des champs de la section nouveau parent
+                    nouveauSection.querySelectorAll('input, select, textarea').forEach(input => {
+                        if (input.hasAttribute('data-original-name')) {
+                            input.name = input.getAttribute('data-original-name');
+                            input.removeAttribute('data-original-name');
+                        }
+                    });
                     nouveauSection.querySelectorAll('[data-required="true"]').forEach(input => {
                         input.setAttribute('required', 'required');
+                    });
+                    // Désactiver seulement les champs qui ne sont pas nécessaires dans la section parent existant
+                    existantSection.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"], textarea').forEach(input => {
+                        input.disabled = true;
                     });
                 }
             }
@@ -1536,7 +1624,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <!-- Champ relation pour parent existant (template) -->
                                 <div class="form-group mt-2">
                                     <label class="form-label fw-bold">Relation avec l'étudiant</label>
-                                    <select class="form-control" name="parents[template][relation]" data-required="true">
+                                    <select class="form-control" name="parents[template][relation]">
                                         <option value="Père">Père</option>
                                         <option value="Mère">Mère</option>
                                         <option value="Tuteur">Tuteur</option>
@@ -1557,7 +1645,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <div class="col-md-6">
                                         <div class="form-group mb-3">
                                             <label class="form-label fw-bold">Prénom(s)</label>
-                                            <input type="text" class="form-control" name="parents[template][prenoms]" data-required="true">
+                                            <input type="text" class="form-control" name="parents[template][prenoms]">
                                         </div>
                                     </div>
                                     </div>
@@ -1566,7 +1654,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <div class="col-md-6">
                                         <div class="form-group mb-3">
                                             <label class="form-label fw-bold">Téléphone</label>
-                                            <input type="tel" class="form-control" name="parents[template][telephone]" data-required="true" placeholder="+225 XX XX XXX XXX">
+                                            <input type="tel" class="form-control" name="parents[template][telephone]" placeholder="+225 XX XX XXX XXX">
                                         </div>
                                     </div>
                                     <div class="col-md-6">
@@ -1587,7 +1675,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <div class="col-md-6">
                                         <div class="form-group mb-3">
                                             <label class="form-label fw-bold">Relation</label>
-                                            <select class="form-control" name="parents[template][relation]" data-required="true">
+                                            <select class="form-control" name="parents[template][relation]">
                                             <option value="Père">Père</option>
                                             <option value="Mère">Mère</option>
                                             <option value="Tuteur">Tuteur</option>

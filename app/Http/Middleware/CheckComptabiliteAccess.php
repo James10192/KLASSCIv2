@@ -17,10 +17,16 @@ class CheckComptabiliteAccess
      */
     public function handle(Request $request, Closure $next)
     {
-        if (!Auth::user()->hasPermissionTo('comptabilite.manage')) {
-            abort(403, 'Accès non autorisé.');
-        }
+    $user = Auth::user();
 
-        return $next($request);
+    if (
+        !$user->hasRole('superAdmin') &&
+        !$user->hasPermissionTo('access_comptabilite_module') &&
+        !$user->hasPermissionTo('comptabilite.manage')
+    ) {
+        abort(403, 'Accès non autorisé.');
+    }
+
+    return $next($request);
     }
 }

@@ -164,6 +164,21 @@ class ESBTPInscriptionController extends Controller
      */
     public function store(Request $request)
     {
+        // Créer un fichier de log dédié pour le debug
+        $debugFile = storage_path('logs/inscription_debug.log');
+        $debugData = [
+            'timestamp' => now()->toISOString(),
+            'method' => $request->method(),
+            'url' => $request->fullUrl(),
+            'all_input' => $request->all(),
+            'parents_input' => $request->input('parents', [])
+        ];
+        
+        file_put_contents($debugFile, 
+            "=== INSCRIPTION DEBUG " . now() . " ===\n" .
+            json_encode($debugData, JSON_PRETTY_PRINT) . "\n\n", 
+            FILE_APPEND | LOCK_EX
+        );
         // Construction dynamique des règles de validation
         $rules = [
             'classe_id' => 'required|exists:esbtp_classes,id',
@@ -190,8 +205,48 @@ class ESBTPInscriptionController extends Controller
             'matricule.unique' => 'Ce matricule existe déjà',
         ];
         $parents = $request->input('parents', []);
+        
+        // Debug: Log des données parents reçues
+        Log::info('Debug Parents - Données reçues:', [
+            'parents' => $parents,
+            'request_all' => $request->all()
+        ]);
+        
+        // Nettoyer les données parents - supprimer le template et nettoyer les parents existants
         foreach ($parents as $index => $parent) {
+            // Supprimer complètement le template
+            if ($index === 'template') {
+                unset($parents[$index]);
+                file_put_contents($debugFile, "Template supprimé\n", FILE_APPEND | LOCK_EX);
+                continue;
+            }
+            
+            if (isset($parent['type']) && $parent['type'] === 'existant') {
+                // Pour un parent existant, ne garder que parent_id, relation et type
+                $parents[$index] = [
+                    'type' => 'existant',
+                    'parent_id' => $parent['parent_id'] ?? null,
+                    'relation' => $parent['relation'] ?? null
+                ];
+                file_put_contents($debugFile, "Parent $index nettoyé pour type existant: " . json_encode($parents[$index]) . "\n", FILE_APPEND | LOCK_EX);
+            }
+        }
+        
+        // Log des parents après nettoyage
+        file_put_contents($debugFile, "Parents après nettoyage: " . json_encode($parents, JSON_PRETTY_PRINT) . "\n", FILE_APPEND | LOCK_EX);
+        
+        foreach ($parents as $index => $parent) {
+            Log::info("Debug Parent $index:", [
+                'parent' => $parent,
+                'type' => $parent['type'] ?? 'non défini',
+                'has_nom' => isset($parent['nom']),
+                'has_prenoms' => isset($parent['prenoms']),
+                'has_telephone' => isset($parent['telephone']),
+                'has_parent_id' => isset($parent['parent_id'])
+            ]);
+            
             if (isset($parent['type']) && $parent['type'] === 'nouveau') {
+                Log::info("Parent $index: Type NOUVEAU détecté - Ajout des règles de validation");
                 $rules["parents.$index.nom"] = 'required|string|max:100';
                 $rules["parents.$index.prenoms"] = 'required|string|max:100';
                 $rules["parents.$index.telephone"] = 'required|string|max:20';
@@ -201,16 +256,32 @@ class ESBTPInscriptionController extends Controller
                 $messages["parents.$index.telephone.required"] = 'Le téléphone du parent/tuteur est obligatoire';
                 $messages["parents.$index.relation.required"] = 'La relation avec le parent/tuteur est obligatoire';
             } else if (isset($parent['type']) && $parent['type'] === 'existant') {
+                Log::info("Parent $index: Type EXISTANT détecté - Ajout des règles pour parent existant");
                 $rules["parents.$index.parent_id"] = 'required|exists:esbtp_parents,id';
                 $rules["parents.$index.relation"] = 'required|string';
                 $messages["parents.$index.parent_id.required"] = 'Veuillez sélectionner un parent existant';
-                $messages["parents.$index.parent_id.exists"] = 'Le parent sélectionné n’existe pas';
+                $messages["parents.$index.parent_id.exists"] = 'Le parent sélectionné n\'existe pas';
                 $messages["parents.$index.relation.required"] = 'La relation avec le parent/tuteur est obligatoire';
                 // NE PAS ajouter de règle sur nom/prenoms/telephone pour un parent existant
+            } else {
+                Log::warning("Parent $index: Type non reconnu ou manquant", [
+                    'parent' => $parent
+                ]);
             }
         }
+        
+        // Debug: Log des règles finales
+        Log::info('Debug Validation - Règles appliquées:', [
+            'rules' => $rules,
+            'messages' => $messages
+        ]);
+        
         $validator = Validator::make($request->all(), $rules, $messages);
         if ($validator->fails()) {
+            Log::error('Validation échouée:', [
+                'errors' => $validator->errors()->toArray(),
+                'input' => $request->all()
+            ]);
             return redirect()->back()
                 ->withErrors($validator)
                 ->withInput();
