@@ -24,6 +24,7 @@ class ESBTPNiveauEtude extends Model
      */
     protected $fillable = [
         'name',
+        'libelle',
         'code',
         'type',
         'year',
@@ -53,6 +54,37 @@ class ESBTPNiveauEtude extends Model
     public function students()
     {
         return $this->hasMany(Student::class, 'niveau_etude_id');
+    }
+
+    /**
+     * Relation avec les classes associées à ce niveau d'études.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function classes()
+    {
+        return $this->hasMany(ESBTPClasse::class, 'niveau_etude_id');
+    }
+
+    /**
+     * Accesseur pour le niveau (basé sur year).
+     *
+     * @return int
+     */
+    public function getNiveauAttribute()
+    {
+        return $this->year;
+    }
+
+    /**
+     * Mutateur pour le niveau (stocké dans year).
+     *
+     * @param int $value
+     * @return void
+     */
+    public function setNiveauAttribute($value)
+    {
+        $this->attributes['year'] = $value;
     }
 
     /**
