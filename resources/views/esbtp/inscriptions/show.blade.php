@@ -420,13 +420,13 @@
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <h6 class="border-bottom pb-2 mb-0">Frais Optionnels Disponibles</h6>
                                 <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#subscriptionModal">
-                                    <i class="fas fa-plus me-1"></i>Souscrire à un frais
+                                    <i class="fas fa-plus me-1"></i>Souscrire l'étudiant à un frais
                                 </button>
                             </div>
                             <div class="alert alert-info">
                                 <i class="fas fa-info-circle me-2"></i>
                                 <strong>{{ $availableOptionalCategories->count() }} frais optionnels</strong> sont disponibles pour cette filière/niveau.
-                                Vous pouvez souscrire aux services qui vous intéressent.
+                                L'administration peut souscrire l'étudiant aux services souhaités.
                             </div>
                             <div class="row">
                                 @foreach($availableOptionalCategories as $category)
@@ -721,7 +721,7 @@
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="subscriptionModalLabel">Souscrire à un frais optionnel</h5>
+                <h5 class="modal-title" id="subscriptionModalLabel">Souscrire l'étudiant à un frais optionnel</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="subscriptionForm" method="POST" action="{{ route('esbtp.inscriptions.subscribe-optional-fee', $inscription->id) }}">
@@ -730,7 +730,7 @@
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-2"></i>
                         <strong>Souscription aux frais optionnels</strong><br>
-                        Sélectionnez un frais optionnel et définissez le montant à payer pour cette inscription.
+                        Sélectionnez un frais optionnel et définissez le montant à payer pour cet étudiant.
                     </div>
                     
                     <div class="row">
@@ -861,7 +861,7 @@
 
     // Fonction pour se désabonner d'un frais optionnel
     function unsubscribeFromFee(inscriptionId, categoryId, categoryName) {
-        if (confirm(`Êtes-vous sûr de vouloir vous désabonner du frais "${categoryName}" ?\n\nCette action supprimera ce frais de la liste mais conservera l'historique des paiements déjà effectués.`)) {
+        if (confirm(`Êtes-vous sûr de vouloir désabonner cet étudiant du frais "${categoryName}" ?\n\nCette action supprimera ce frais de la liste mais conservera l'historique des paiements déjà effectués.`)) {
             // Créer un formulaire temporaire pour envoyer la requête POST
             const form = document.createElement('form');
             form.method = 'POST';

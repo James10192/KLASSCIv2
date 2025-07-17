@@ -19,7 +19,7 @@ class ESBTPFraisController extends Controller
         $this->middleware('auth');
         $this->middleware('permission:frais.view', ['only' => ['index', 'show']]);
         $this->middleware('permission:frais.create', ['only' => ['create', 'store']]);
-        $this->middleware('permission:frais.edit', ['only' => ['edit', 'update']]);
+        $this->middleware('permission:frais.edit', ['only' => ['edit', 'update', 'toggleActive']]);
         $this->middleware('permission:frais.delete', ['only' => ['destroy']]);
         $this->middleware('permission:frais.configure', ['only' => ['configure', 'updateConfiguration']]);
     }
@@ -243,6 +243,27 @@ class ESBTPFraisController extends Controller
             Log::error('Erreur lors de la suppression de la catégorie de frais: ' . $e->getMessage());
             return redirect()->back()
                 ->with('error', 'Erreur lors de la suppression de la catégorie de frais.');
+        }
+    }
+
+    /**
+     * Basculer le statut actif/inactif d'une catégorie de frais
+     */
+    public function toggleActive(ESBTPFraisCategory $fraisCategory)
+    {
+        try {
+            $fraisCategory->is_active = !$fraisCategory->is_active;
+            $fraisCategory->save();
+
+            $status = $fraisCategory->is_active ? 'activée' : 'désactivée';
+            
+            return redirect()->back()
+                ->with('success', "Catégorie de frais {$status} avec succès.");
+                
+        } catch (\Exception $e) {
+            Log::error('Erreur lors du basculement du statut de la catégorie de frais: ' . $e->getMessage());
+            return redirect()->back()
+                ->with('error', 'Erreur lors du changement de statut de la catégorie de frais.');
         }
     }
 

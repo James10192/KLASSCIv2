@@ -94,6 +94,9 @@ try {
         // Inscriptions
         'inscriptions.view', 'inscriptions.create', 'inscriptions.edit', 'inscriptions.delete', 'inscriptions.validate',
 
+        // Frais ESBTP
+        'frais.view', 'frais.create', 'frais.edit', 'frais.delete', 'frais.configure',
+
         // Paiements - Ajout des permissions pour les paiements
         'view-paiements', 'create-paiements', 'edit-paiements', 'delete-paiements', 'validate-paiements',
 
@@ -246,6 +249,9 @@ try {
         'comptabilite.bons.create',
         'comptabilite.bons.edit',
         'comptabilite.bons.view',
+
+        // Frais ESBTP pour secrétaire
+        'frais.view', 'frais.create', 'frais.edit', 'frais.configure',
 
         // Permissions anciennes format
         'view-paiements', 'create-paiements', 'edit-paiements', 'validate-paiements'
