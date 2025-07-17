@@ -5,7 +5,7 @@
 @section('content')
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h3 mb-0">Configuration des Frais par Filière/Niveau</h1>
+        <h1 class="h3 mb-0">Configuration des Frais par Classe</h1>
         <a href="{{ route('esbtp.frais.index') }}" class="btn btn-secondary">
             <i class="fas fa-arrow-left me-1"></i>Retour
         </a>
@@ -25,204 +25,241 @@
         </div>
     @endif
 
-    <!-- Filtres -->
-    <div class="card mb-4">
+    <!-- Instructions -->
+    <div class="alert alert-info mb-4">
+        <i class="fas fa-info-circle me-2"></i>
+        <strong>Comment ça marche :</strong>
+        <ul class="mb-0 mt-2">
+            <li><strong>Classe = Filière + Niveau d'étude</strong></li>
+            <li>Configurez les frais pour chaque classe en cliquant sur "Configurer"</li>
+            <li>Les frais <span class="badge bg-danger">obligatoires</span> doivent être configurés</li>
+            <li>Les frais <span class="badge bg-info">optionnels</span> sont facultatifs</li>
+        </ul>
+    </div>
+
+    <!-- Tableau des classes -->
+    <div class="card">
         <div class="card-header">
-            <h5 class="mb-0">Filtres</h5>
+            <h5 class="mb-0">
+                <i class="fas fa-table me-2"></i>
+                Classes et Configuration des Frais
+            </h5>
         </div>
         <div class="card-body">
-            <form method="GET" action="{{ route('esbtp.frais.configure') }}">
-                <div class="row">
-                    <div class="col-md-3">
-                        <div class="mb-3">
-                            <label for="filiere_id" class="form-label">Filière <span class="text-danger">*</span></label>
-                            <select class="form-select" name="filiere_id" id="filiere_id" required>
-                                <option value="">Sélectionnez une filière</option>
-                                @foreach($filieres as $filiere)
-                                    <option value="{{ $filiere->id }}" {{ $filiereId == $filiere->id ? 'selected' : '' }}>
-                                        {{ $filiere->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="mb-3">
-                            <label for="niveau_id" class="form-label">Niveau <span class="text-danger">*</span></label>
-                            <select class="form-select" name="niveau_id" id="niveau_id" required>
-                                <option value="">Sélectionnez un niveau</option>
-                                @foreach($niveaux as $niveau)
-                                    <option value="{{ $niveau->id }}" {{ $niveauId == $niveau->id ? 'selected' : '' }}>
-                                        {{ $niveau->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="mb-3">
-                            <label for="annee_id" class="form-label">Année universitaire</label>
-                            <select class="form-select" name="annee_id" id="annee_id">
-                                <option value="">Toutes les années</option>
-                                @foreach($annees as $annee)
-                                    <option value="{{ $annee->id }}" {{ $anneeId == $annee->id ? 'selected' : '' }}>
-                                        {{ $annee->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="mb-3">
-                            <label class="form-label">&nbsp;</label>
-                            <div class="d-grid">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-filter me-1"></i>Filtrer
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+            @if($classes->count() > 0)
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th width="30%">Classe</th>
+                                <th width="15%">Effectif</th>
+                                <th width="25%">Frais Configurés</th>
+                                <th width="20%">Statut</th>
+                                <th width="10%">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($classes as $classe)
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-sm bg-primary text-white rounded-circle me-3 d-flex align-items-center justify-content-center">
+                                                <i class="fas fa-graduation-cap"></i>
+                                            </div>
+                                            <div>
+                                                <strong>{{ $classe->name }}</strong>
+                                                <br>
+                                                <small class="text-muted">
+                                                    {{ $classe->filiere->name }} - {{ $classe->niveau->name }}
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info fs-6">
+                                            {{ $classe->effectif }} étudiants
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            @if($classe->obligatoires_configures > 0)
+                                                <span class="badge bg-danger">
+                                                    {{ $classe->obligatoires_configures }}/{{ $classe->total_obligatoires }} obligatoires
+                                                </span>
+                                            @endif
+                                            @if($classe->optionnels_configures > 0)
+                                                <span class="badge bg-success">
+                                                    {{ $classe->optionnels_configures }}/{{ $classe->total_optionnels }} optionnels
+                                                </span>
+                                            @endif
+                                            @if($classe->frais_configures->count() == 0)
+                                                <span class="badge bg-secondary">Aucun frais configuré</span>
+                                            @endif
+                                        </div>
+                                    </td>
+                                    <td>
+                                        @if($classe->obligatoires_configures == $classe->total_obligatoires)
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check-circle me-1"></i>Complet
+                                            </span>
+                                        @elseif($classe->obligatoires_configures > 0)
+                                            <span class="badge bg-warning">
+                                                <i class="fas fa-exclamation-triangle me-1"></i>Partiel
+                                            </span>
+                                        @else
+                                            <span class="badge bg-danger">
+                                                <i class="fas fa-times-circle me-1"></i>Non configuré
+                                            </span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <a href="{{ route('esbtp.frais.configure') }}?filiere_id={{ $classe->filiere->id }}&niveau_id={{ $classe->niveau->id }}" 
+                                           class="btn btn-sm btn-primary" 
+                                           title="Configurer les frais">
+                                            <i class="fas fa-cogs"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
                 </div>
-            </form>
+            @else
+                <div class="text-center py-4">
+                    <i class="fas fa-exclamation-triangle fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">Aucune classe trouvée</h5>
+                    <p class="text-muted">Vérifiez que vous avez des filières et niveaux d'étude actifs.</p>
+                </div>
+            @endif
         </div>
     </div>
 
-    @if($filiereId && $niveauId)
-        <!-- Configuration des règles -->
-        <div class="card">
+    <!-- Configuration pour une classe sélectionnée -->
+    @if(request('filiere_id') && request('niveau_id'))
+        @php
+            $selectedFiliere = $filieres->find(request('filiere_id'));
+            $selectedNiveau = $niveaux->find(request('niveau_id'));
+        @endphp
+        
+        <div class="card mt-4">
             <div class="card-header">
                 <h5 class="mb-0">
-                    Configuration pour 
-                    <span class="text-primary">{{ $filieres->find($filiereId)->name }}</span> - 
-                    <span class="text-info">{{ $niveaux->find($niveauId)->name }}</span>
-                    @if($anneeId)
-                        - <span class="text-success">{{ $annees->find($anneeId)->name }}</span>
-                    @endif
+                    <i class="fas fa-edit me-2"></i>
+                    Configuration des Frais
+                    <span class="badge bg-primary ms-2">
+                        {{ $selectedFiliere->name ?? 'Filière' }} - {{ $selectedNiveau->name ?? 'Niveau' }}
+                    </span>
                 </h5>
             </div>
             <div class="card-body">
                 <form method="POST" action="{{ route('esbtp.frais.update-configuration') }}">
                     @csrf
-                    <input type="hidden" name="filiere_id" value="{{ $filiereId }}">
-                    <input type="hidden" name="niveau_id" value="{{ $niveauId }}">
-                    <input type="hidden" name="annee_universitaire_id" value="{{ $anneeId }}">
+                    <input type="hidden" name="filiere_id" value="{{ request('filiere_id') }}">
+                    <input type="hidden" name="niveau_id" value="{{ request('niveau_id') }}">
 
-                    <div class="table-responsive">
-                        <table class="table table-striped">
-                            <thead>
-                                <tr>
-                                    <th>Catégorie</th>
-                                    <th>Type</th>
-                                    <th>Montant (FCFA)</th>
-                                    <th>Délai (jours)</th>
-                                    <th>Échéancier</th>
-                                    <th>Pénalités</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($categories as $category)
-                                    @php
-                                        $existingRule = $rules->where('frais_category_id', $category->id)->first();
-                                    @endphp
-                                    <tr>
-                                        <td>
-                                            <div class="d-flex align-items-center">
+                    <div class="row">
+                        @foreach($categories as $category)
+                            <div class="col-md-6 mb-3">
+                                <div class="card border-{{ $category->is_mandatory ? 'danger' : 'info' }}">
+                                    <div class="card-header">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0">
                                                 @if($category->icon)
-                                                    <i class="{{ $category->icon }} me-2 text-{{ $category->color }}"></i>
+                                                    <i class="{{ $category->icon }} me-2"></i>
                                                 @endif
-                                                <div>
-                                                    <strong>{{ $category->name }}</strong>
-                                                    @if($category->description)
-                                                        <br><small class="text-muted">{{ $category->description }}</small>
-                                                    @endif
-                                                </div>
+                                                {{ $category->name }}
+                                            </h6>
+                                            <span class="badge bg-{{ $category->is_mandatory ? 'danger' : 'info' }}">
+                                                {{ $category->is_mandatory ? 'Obligatoire' : 'Optionnel' }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        @php
+                                            $existingRule = $rules->where('frais_category_id', $category->id)->first();
+                                        @endphp
+                                        
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <label class="form-label">Montant (FCFA)</label>
+                                                <input type="number" 
+                                                       class="form-control" 
+                                                       name="categories[{{ $category->id }}][amount]" 
+                                                       value="{{ $existingRule->amount ?? $category->default_amount }}" 
+                                                       min="0" 
+                                                       step="0.01"
+                                                       {{ $category->is_mandatory ? 'required' : '' }}>
                                             </div>
-                                        </td>
-                                        <td>
-                                            @if($category->is_mandatory)
-                                                <span class="badge bg-danger">Obligatoire</span>
-                                            @else
-                                                <span class="badge bg-info">Optionnel</span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            <input type="hidden" name="rules[{{ $loop->index }}][frais_category_id]" value="{{ $category->id }}">
-                                            <input type="number" class="form-control" name="rules[{{ $loop->index }}][amount]" 
-                                                   value="{{ $existingRule ? $existingRule->amount : $category->default_amount }}" 
-                                                   min="0" step="0.01" required>
-                                        </td>
-                                        <td>
-                                            <input type="number" class="form-control" name="rules[{{ $loop->index }}][payment_deadline_days]" 
-                                                   value="{{ $existingRule ? $existingRule->payment_deadline_days : $category->payment_deadline_days }}" 
-                                                   min="1" max="365" required>
-                                        </td>
-                                        <td>
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" name="rules[{{ $loop->index }}][installments_allowed]" 
-                                                       value="1" {{ $existingRule && $existingRule->installments_allowed ? 'checked' : '' }}
-                                                       onchange="toggleInstallmentFields({{ $loop->index }})">
-                                                <label class="form-check-label">
-                                                    Autorisé
-                                                </label>
+                                            <div class="col-md-6">
+                                                <label class="form-label">Échéance (jours)</label>
+                                                <input type="number" 
+                                                       class="form-control" 
+                                                       name="categories[{{ $category->id }}][deadline_days]" 
+                                                       value="{{ $existingRule->payment_deadline_days ?? $category->payment_deadline_days }}" 
+                                                       min="1" 
+                                                       max="365"
+                                                       {{ $category->is_mandatory ? 'required' : '' }}>
                                             </div>
-                                            <div id="installment-fields-{{ $loop->index }}" style="display: {{ $existingRule && $existingRule->installments_allowed ? 'block' : 'none' }};">
-                                                <input type="number" class="form-control form-control-sm mt-2" 
-                                                       name="rules[{{ $loop->index }}][max_installments]" 
-                                                       value="{{ $existingRule ? $existingRule->max_installments : 1 }}" 
-                                                       min="1" max="12" placeholder="Max échéances">
-                                                <input type="number" class="form-control form-control-sm mt-2" 
-                                                       name="rules[{{ $loop->index }}][min_installment_amount]" 
-                                                       value="{{ $existingRule ? $existingRule->min_installment_amount : '' }}" 
-                                                       min="0" step="0.01" placeholder="Montant min">
+                                        </div>
+                                        
+                                        @if($category->description)
+                                            <div class="mt-2">
+                                                <small class="text-muted">{{ $category->description }}</small>
                                             </div>
-                                        </td>
-                                        <td>
-                                            <input type="number" class="form-control form-control-sm" 
-                                                   name="rules[{{ $loop->index }}][late_fee_percentage]" 
-                                                   value="{{ $existingRule ? $existingRule->late_fee_percentage : 0 }}" 
-                                                   min="0" max="100" step="0.01" placeholder="% retard">
-                                            <input type="number" class="form-control form-control-sm mt-2" 
-                                                   name="rules[{{ $loop->index }}][late_fee_amount]" 
-                                                   value="{{ $existingRule ? $existingRule->late_fee_amount : 0 }}" 
-                                                   min="0" step="0.01" placeholder="Montant fixe">
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
                     </div>
 
-                    <div class="d-flex justify-content-end mt-4">
-                        <button type="submit" class="btn btn-success">
-                            <i class="fas fa-save me-1"></i>Enregistrer la configuration
+                    <div class="text-center mt-4">
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="fas fa-save me-2"></i>Enregistrer la Configuration
                         </button>
+                        <a href="{{ route('esbtp.frais.configure') }}" class="btn btn-secondary btn-lg ms-2">
+                            <i class="fas fa-times me-2"></i>Annuler
+                        </a>
                     </div>
                 </form>
-            </div>
-        </div>
-    @else
-        <div class="card">
-            <div class="card-body text-center py-5">
-                <i class="fas fa-filter fa-4x text-muted mb-3"></i>
-                <h5 class="text-muted">Sélectionnez une filière et un niveau</h5>
-                <p class="text-muted">Choisissez une filière et un niveau pour configurer les frais.</p>
             </div>
         </div>
     @endif
 </div>
 @endsection
 
-@push('scripts')
-<script>
-    function toggleInstallmentFields(index) {
-        const checkbox = document.querySelector(`input[name="rules[${index}][installments_allowed]"]`);
-        const fields = document.getElementById(`installment-fields-${index}`);
-        
-        if (checkbox.checked) {
-            fields.style.display = 'block';
-        } else {
-            fields.style.display = 'none';
-        }
-    }
-</script>
+@push('styles')
+<style>
+.avatar-sm {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+}
+
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.badge {
+    font-size: 0.75em;
+}
+
+.fs-6 {
+    font-size: 0.875rem;
+}
+
+.btn-group .btn {
+    border-radius: 0.375rem;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.025);
+}
+</style>
 @endpush
