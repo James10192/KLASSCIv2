@@ -96,7 +96,7 @@
         placesInfo.innerHTML = '<div class="spinner-border spinner-border-sm" role="status"><span class="visually-hidden">Loading...</span></div> Vérification des places...';
 
         // Vérifier les places disponibles
-        fetch(`/esbtp/inscriptions/classes/${classeId}/available-places`)
+        fetch(`/esbtp/classes/${classeId}/available-places`)
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`Erreur HTTP ! Statut: ${response.status}`);
@@ -140,7 +140,7 @@
                 const classeId = this.value;
                 if (classeId && availablePlacesDiv) {
                     availablePlacesDiv.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Vérification...';
-                    fetch(`/esbtp/inscriptions/classes/${classeId}/available-places`)
+                    fetch(`/esbtp/classes/${classeId}/available-places`)
                         .then(response => response.json())
                         .then(data => {
                             if (data.available_places !== undefined) {

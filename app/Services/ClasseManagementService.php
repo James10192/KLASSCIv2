@@ -21,12 +21,8 @@ class ClasseManagementService
             return 0;
         }
 
-        // Compter les inscriptions avec workflow_step 'valide'
-        $inscriptionsValidees = $class->inscriptions()
-            ->where('workflow_step', 'valide')
-            ->count();
-
-        return max(0, $class->places_totales - $inscriptionsValidees);
+        // Utiliser la même logique que le modèle ESBTPClasse
+        return $class->places_disponibles;
     }
 
     /**
