@@ -209,6 +209,7 @@ Route::middleware(['auth', 'installed'])->group(function () {
             Route::post('frais/update-configuration', [\App\Http\Controllers\ESBTPFraisController::class, 'updateConfiguration'])->name('frais.update-configuration');
             Route::post('frais/{category}/toggle', [\App\Http\Controllers\ESBTPFraisController::class, 'toggleCategory'])->name('frais.toggle');
             Route::post('frais/{fraisCategory}/toggle-active', [\App\Http\Controllers\ESBTPFraisController::class, 'toggleActive'])->name('frais.toggle-active');
+            Route::post('frais/reset-defaults', [\App\Http\Controllers\ESBTPFraisController::class, 'resetDefaults'])->name('frais.reset-defaults');
             Route::resource('frais', \App\Http\Controllers\ESBTPFraisController::class)->except(['index']);
             
             // Routes pour les souscriptions aux frais optionnels

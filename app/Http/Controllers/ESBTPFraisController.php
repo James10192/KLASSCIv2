@@ -20,7 +20,7 @@ class ESBTPFraisController extends Controller
         $this->middleware('permission:frais.view', ['only' => ['index', 'show']]);
         $this->middleware('permission:frais.create', ['only' => ['create', 'store']]);
         $this->middleware('permission:frais.edit', ['only' => ['edit', 'update', 'toggleActive']]);
-        $this->middleware('permission:frais.delete', ['only' => ['destroy']]);
+        $this->middleware('permission:frais.delete', ['only' => ['destroy', 'resetDefaults']]);
         $this->middleware('permission:frais.configure', ['only' => ['configure', 'updateConfiguration']]);
     }
 
