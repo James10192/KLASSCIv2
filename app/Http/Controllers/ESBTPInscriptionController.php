@@ -397,12 +397,53 @@ class ESBTPInscriptionController extends Controller
 
             $selectedOptionals = $request->input('fee_optionals', []);
 
+            // Traitement des variants de frais sélectionnés
+            $fraisVariants = $request->input('frais', []);
+            $fraisSubscriptions = [];
+            
+            // Traiter chaque catégorie de frais avec ses variants
+            foreach ($fraisVariants as $categoryId => $fraisData) {
+                if (!empty($fraisData['variant_id'])) {
+                    $category = ESBTPFraisCategory::find($categoryId);
+                    if ($category) {
+                        $variantId = $fraisData['variant_id'];
+                        $amount = 0;
+                        
+                        if ($variantId === 'default') {
+                            // Option standard - utiliser la règle configurée ou le montant par défaut
+                            $rule = \App\Models\ESBTPFraisRule::where('frais_category_id', $categoryId)
+                                ->where('filiere_id', $classe->filiere_id)
+                                ->where('niveau_id', $classe->niveau_etude_id)
+                                ->first();
+                            $amount = $rule ? $rule->amount : $category->default_amount;
+                        } else {
+                            // Variant spécifique
+                            $variant = \App\Models\ESBTPFraisVariant::find($variantId);
+                            if ($variant && $variant->frais_category_id == $categoryId) {
+                                $amount = $variant->amount;
+                            }
+                        }
+                        
+                        // Préparer les données de souscription
+                        $fraisSubscriptions[] = [
+                            'frais_category_id' => $categoryId,
+                            'variant_id' => $variantId === 'default' ? null : $variantId,
+                            'amount' => $amount,
+                            'status' => 'active',
+                            'subscribed_at' => now(),
+                        ];
+                    }
+                }
+            }
+
             // Ajouter un log plus détaillé en cas d'erreur
-            \Log::info('Données de l\'étudiant', [
+            \Log::info('Données de l\'inscription avec variants', [
                 'etudiantData' => $etudiantData,
                 'inscriptionData' => $inscriptionData,
                 'parentsData' => $parentsData,
-                'selectedOptionals' => $selectedOptionals
+                'selectedOptionals' => $selectedOptionals,
+                'fraisVariants' => $fraisVariants,
+                'fraisSubscriptions' => $fraisSubscriptions
             ]);
 
             // Créer l'inscription (sans paiement - sera géré lors de la validation)
@@ -414,6 +455,14 @@ class ESBTPInscriptionController extends Controller
                 auth()->id(),
                 [] // Pas de frais optionnels pour l'instant
             );
+
+            // Créer les souscriptions aux frais avec variants
+            if ($inscription && !empty($fraisSubscriptions)) {
+                foreach ($fraisSubscriptions as $subscriptionData) {
+                    $subscriptionData['inscription_id'] = $inscription->id;
+                    ESBTPFraisSubscription::create($subscriptionData);
+                }
+            }
 
             DB::commit();
 

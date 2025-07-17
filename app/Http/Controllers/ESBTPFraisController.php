@@ -48,21 +48,52 @@ class ESBTPFraisController extends Controller
         $categories = ESBTPFraisCategory::active()->ordered()->get();
         $filieres = ESBTPFiliere::where('is_active', true)->get();
         $niveaux = ESBTPNiveauEtude::where('is_active', true)->get();
-        $annees = ESBTPAnneeUniversitaire::orderBy('start_date', 'desc')->get();
 
-        // Filtres
+        // Créer la liste des classes (combinaisons filière + niveau)
+        $classes = collect();
+        foreach ($filieres as $filiere) {
+            foreach ($niveaux as $niveau) {
+                // Compter les étudiants inscrits pour cette classe
+                $effectif = \DB::table('esbtp_inscriptions')
+                    ->join('esbtp_etudiants', 'esbtp_inscriptions.etudiant_id', '=', 'esbtp_etudiants.id')
+                    ->where('esbtp_inscriptions.filiere_id', $filiere->id)
+                    ->where('esbtp_inscriptions.niveau_id', $niveau->id)
+                    ->where('esbtp_inscriptions.status', 'active')
+                    ->count();
+
+                // Récupérer les frais configurés pour cette classe
+                $fraisConfigures = ESBTPFraisRule::with('fraisCategory')
+                    ->where('filiere_id', $filiere->id)
+                    ->where('niveau_id', $niveau->id)
+                    ->get();
+
+                $classes->push((object) [
+                    'filiere' => $filiere,
+                    'niveau' => $niveau,
+                    'name' => $filiere->name . ' - ' . $niveau->name,
+                    'effectif' => $effectif,
+                    'frais_configures' => $fraisConfigures,
+                    'obligatoires_configures' => $fraisConfigures->filter(function($rule) {
+                        return $rule->fraisCategory->is_mandatory;
+                    })->count(),
+                    'optionnels_configures' => $fraisConfigures->filter(function($rule) {
+                        return !$rule->fraisCategory->is_mandatory;
+                    })->count(),
+                    'total_obligatoires' => $categories->where('is_mandatory', true)->count(),
+                    'total_optionnels' => $categories->where('is_mandatory', false)->count(),
+                ]);
+            }
+        }
+
+        // Filtres pour la configuration sélectionnée
         $filiereId = $request->get('filiere_id');
         $niveauId = $request->get('niveau_id');
-        $anneeId = $request->get('annee_id');
-
-        $rules = [];
+        $rules = collect();
+        
         if ($filiereId && $niveauId) {
-            $rules = ESBTPFraisRule::with(['fraisCategory', 'filiere', 'niveau', 'anneeUniversitaire'])
+            $rules = ESBTPFraisRule::with(['fraisCategory'])
                 ->where('filiere_id', $filiereId)
                 ->where('niveau_id', $niveauId)
-                ->when($anneeId, function ($query, $anneeId) {
-                    return $query->where('annee_universitaire_id', $anneeId);
-                })
                 ->get();
         }
 
@@ -70,11 +101,10 @@ class ESBTPFraisController extends Controller
             'categories',
             'filieres',
             'niveaux',
-            'annees',
+            'classes',
             'rules',
             'filiereId',
-            'niveauId',
-            'anneeId'
+            'niveauId'
         ));
     }
 
@@ -254,16 +284,9 @@ class ESBTPFraisController extends Controller
         $validator = Validator::make($request->all(), [
             'filiere_id' => 'required|exists:esbtp_filieres,id',
             'niveau_id' => 'required|exists:esbtp_niveau_etudes,id',
-            'annee_universitaire_id' => 'nullable|exists:esbtp_annee_universitaires,id',
-            'rules' => 'required|array',
-            'rules.*.frais_category_id' => 'required|exists:esbtp_frais_categories,id',
-            'rules.*.amount' => 'required|numeric|min:0',
-            'rules.*.payment_deadline_days' => 'required|integer|min:1|max:365',
-            'rules.*.installments_allowed' => 'required|boolean',
-            'rules.*.max_installments' => 'nullable|integer|min:1|max:12',
-            'rules.*.min_installment_amount' => 'nullable|numeric|min:0',
-            'rules.*.late_fee_percentage' => 'nullable|numeric|min:0|max:100',
-            'rules.*.late_fee_amount' => 'nullable|numeric|min:0',
+            'categories' => 'required|array',
+            'categories.*.amount' => 'required|numeric|min:0',
+            'categories.*.deadline_days' => 'required|integer|min:1|max:365',
         ]);
 
         if ($validator->fails()) {
@@ -277,24 +300,30 @@ class ESBTPFraisController extends Controller
 
             $filiereId = $request->filiere_id;
             $niveauId = $request->niveau_id;
-            $anneeId = $request->annee_universitaire_id;
 
-            foreach ($request->rules as $ruleData) {
+            foreach ($request->categories as $categoryId => $categoryData) {
+                // Vérifier si la catégorie existe
+                $category = ESBTPFraisCategory::find($categoryId);
+                if (!$category) {
+                    continue;
+                }
+
+                // Créer ou mettre à jour la règle
                 ESBTPFraisRule::updateOrCreate(
                     [
-                        'frais_category_id' => $ruleData['frais_category_id'],
+                        'frais_category_id' => $categoryId,
                         'filiere_id' => $filiereId,
                         'niveau_id' => $niveauId,
-                        'annee_universitaire_id' => $anneeId,
+                        'annee_universitaire_id' => null, // Plus de dépendance à l'année
                     ],
                     [
-                        'amount' => $ruleData['amount'],
-                        'payment_deadline_days' => $ruleData['payment_deadline_days'],
-                        'installments_allowed' => $ruleData['installments_allowed'],
-                        'max_installments' => $ruleData['max_installments'] ?? 1,
-                        'min_installment_amount' => $ruleData['min_installment_amount'],
-                        'late_fee_percentage' => $ruleData['late_fee_percentage'] ?? 0,
-                        'late_fee_amount' => $ruleData['late_fee_amount'] ?? 0,
+                        'amount' => $categoryData['amount'],
+                        'payment_deadline_days' => $categoryData['deadline_days'],
+                        'installments_allowed' => false, // Par défaut
+                        'max_installments' => 1,
+                        'min_installment_amount' => null,
+                        'late_fee_percentage' => 0,
+                        'late_fee_amount' => 0,
                         'is_active' => true,
                         'effective_date' => now(),
                     ]
@@ -303,7 +332,7 @@ class ESBTPFraisController extends Controller
 
             DB::commit();
 
-            return redirect()->back()
+            return redirect()->route('esbtp.frais.configure')
                 ->with('success', 'Configuration des frais mise à jour avec succès.');
 
         } catch (\Exception $e) {
@@ -360,5 +389,310 @@ class ESBTPFraisController extends Controller
             return redirect()->back()
                 ->with('error', 'Erreur lors de la réinitialisation des catégories.');
         }
+    }
+
+    /**
+     * API: Détails des frais pour une classe
+     */
+    public function getClassDetails($filiereId, $niveauId)
+    {
+        try {
+            $categories = ESBTPFraisCategory::active()->ordered()->get();
+            $rules = ESBTPFraisRule::with(['fraisCategory'])
+                ->where('filiere_id', $filiereId)
+                ->where('niveau_id', $niveauId)
+                ->get();
+
+            $result = [];
+            foreach ($categories as $category) {
+                $rule = $rules->where('frais_category_id', $category->id)->first();
+                $variants = $category->activeVariants()->get();
+                
+                $result[] = [
+                    'id' => $category->id,
+                    'name' => $category->name,
+                    'code' => $category->code,
+                    'description' => $category->description,
+                    'is_mandatory' => $category->is_mandatory,
+                    'icon' => $category->icon,
+                    'amount' => $rule ? $rule->amount : $category->default_amount,
+                    'variants' => $variants->map(function ($variant) {
+                        return [
+                            'id' => $variant->id,
+                            'name' => $variant->name,
+                            'description' => $variant->description,
+                            'amount' => $variant->amount,
+                            'is_default' => $variant->is_default,
+                        ];
+                    })
+                ];
+            }
+
+            return response()->json(['categories' => $result]);
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la récupération des détails de classe: ' . $e->getMessage());
+            return response()->json(['error' => 'Erreur lors du chargement des détails'], 500);
+        }
+    }
+
+    /**
+     * API: Variants d'une catégorie
+     */
+    public function getCategoryVariants($categoryId)
+    {
+        try {
+            $category = ESBTPFraisCategory::findOrFail($categoryId);
+            $variants = $category->variants()->ordered()->get();
+
+            return response()->json([
+                'category' => [
+                    'id' => $category->id,
+                    'name' => $category->name,
+                ],
+                'variants' => $variants->map(function ($variant) {
+                    return [
+                        'id' => $variant->id,
+                        'name' => $variant->name,
+                        'description' => $variant->description,
+                        'amount' => $variant->amount,
+                        'is_default' => $variant->is_default,
+                        'is_active' => $variant->is_active,
+                    ];
+                })
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la récupération des variants: ' . $e->getMessage());
+            return response()->json(['error' => 'Erreur lors du chargement des variants'], 500);
+        }
+    }
+
+    /**
+     * API: Tous les variants
+     */
+    public function getAllVariants()
+    {
+        try {
+            $categories = ESBTPFraisCategory::active()->ordered()->with(['variants' => function ($query) {
+                $query->active()->ordered();
+            }])->get();
+
+            $result = $categories->map(function ($category) {
+                return [
+                    'id' => $category->id,
+                    'name' => $category->name,
+                    'code' => $category->code,
+                    'is_mandatory' => $category->is_mandatory,
+                    'icon' => $category->icon,
+                    'variants' => $category->variants->map(function ($variant) {
+                        return [
+                            'id' => $variant->id,
+                            'name' => $variant->name,
+                            'description' => $variant->description,
+                            'amount' => $variant->amount,
+                            'is_default' => $variant->is_default,
+                            'is_active' => $variant->is_active,
+                        ];
+                    })
+                ];
+            });
+
+            return response()->json(['categories' => $result]);
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la récupération de tous les variants: ' . $e->getMessage());
+            return response()->json(['error' => 'Erreur lors du chargement des variants'], 500);
+        }
+    }
+
+    /**
+     * API: Créer un variant
+     */
+    public function storeVariant(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'category_id' => 'required|exists:esbtp_frais_categories,id',
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'amount' => 'required|numeric|min:0',
+            'is_default' => 'boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => 'Données invalides', 'details' => $validator->errors()], 400);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Si ce variant est défini comme défaut, désactiver les autres variants par défaut
+            if ($request->is_default) {
+                ESBTPFraisVariant::where('frais_category_id', $request->category_id)
+                    ->update(['is_default' => false]);
+            }
+
+            $variant = ESBTPFraisVariant::create([
+                'frais_category_id' => $request->category_id,
+                'name' => $request->name,
+                'description' => $request->description,
+                'amount' => $request->amount,
+                'is_default' => $request->is_default ?? false,
+                'is_active' => true,
+                'sort_order' => ESBTPFraisVariant::where('frais_category_id', $request->category_id)->max('sort_order') + 1,
+            ]);
+
+            DB::commit();
+
+            return response()->json(['success' => true, 'variant' => $variant]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors de la création du variant: ' . $e->getMessage());
+            return response()->json(['error' => 'Erreur lors de la création du variant'], 500);
+        }
+    }
+
+    /**
+     * API: Supprimer un variant
+     */
+    public function destroyVariant($variantId)
+    {
+        try {
+            $variant = ESBTPFraisVariant::findOrFail($variantId);
+            
+            // Vérifier s'il y a des souscriptions liées
+            if ($variant->subscriptions()->exists()) {
+                return response()->json(['error' => 'Impossible de supprimer un variant qui a des souscriptions'], 400);
+            }
+
+            $variant->delete();
+
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la suppression du variant: ' . $e->getMessage());
+            return response()->json(['error' => 'Erreur lors de la suppression du variant'], 500);
+        }
+    }
+
+    /**
+     * API: Obtenir les étudiants en retard de paiement pour une catégorie
+     */
+    public function getStudentsWithOverduePayments($categoryId)
+    {
+        try {
+            $category = ESBTPFraisCategory::findOrFail($categoryId);
+            
+            // Récupérer les étudiants avec des frais impayés pour cette catégorie
+            $studentsWithOverdue = DB::table('esbtp_inscriptions')
+                ->join('esbtp_etudiants', 'esbtp_inscriptions.etudiant_id', '=', 'esbtp_etudiants.id')
+                ->leftJoin('esbtp_paiements', function($join) use ($categoryId) {
+                    $join->on('esbtp_paiements.inscription_id', '=', 'esbtp_inscriptions.id')
+                         ->where('esbtp_paiements.frais_category_id', '=', $categoryId)
+                         ->where('esbtp_paiements.status', '=', 'validé');
+                })
+                ->leftJoin('esbtp_frais_rules', function($join) use ($categoryId) {
+                    $join->on('esbtp_frais_rules.filiere_id', '=', 'esbtp_inscriptions.filiere_id')
+                         ->on('esbtp_frais_rules.niveau_id', '=', 'esbtp_inscriptions.niveau_id')
+                         ->where('esbtp_frais_rules.frais_category_id', '=', $categoryId);
+                })
+                ->where('esbtp_inscriptions.status', 'active')
+                ->whereNull('esbtp_paiements.id') // Pas de paiement validé
+                ->whereNotNull('esbtp_frais_rules.id') // Frais configuré pour cette classe
+                ->where('esbtp_frais_rules.payment_deadline_days', '<', 
+                    DB::raw('DATEDIFF(NOW(), esbtp_inscriptions.created_at)'))
+                ->select([
+                    'esbtp_etudiants.*',
+                    'esbtp_inscriptions.id as inscription_id',
+                    'esbtp_frais_rules.amount',
+                    'esbtp_frais_rules.payment_deadline_days',
+                    DB::raw('DATEDIFF(NOW(), esbtp_inscriptions.created_at) as jours_retard')
+                ])
+                ->get();
+
+            return response()->json([
+                'category' => [
+                    'id' => $category->id,
+                    'name' => $category->name,
+                ],
+                'students' => $studentsWithOverdue,
+                'count' => $studentsWithOverdue->count()
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la récupération des étudiants en retard: ' . $e->getMessage());
+            return response()->json(['error' => 'Erreur lors du chargement des données'], 500);
+        }
+    }
+
+    /**
+     * API: Planifier des relances automatiques pour une catégorie de frais
+     */
+    public function scheduleAutomaticReminders(Request $request, $categoryId)
+    {
+        $validator = Validator::make($request->all(), [
+            'niveau' => 'required|integer|min:1|max:3',
+            'type' => 'required|in:email,sms,courrier,appel',
+            'delai_jours' => 'required|integer|min:1|max:90',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => 'Données invalides', 'details' => $validator->errors()], 400);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $category = ESBTPFraisCategory::findOrFail($categoryId);
+            
+            // Récupérer les étudiants en retard
+            $studentsWithOverdue = $this->getStudentsWithOverduePayments($categoryId)->getData();
+            
+            if (empty($studentsWithOverdue->students)) {
+                return response()->json(['message' => 'Aucun étudiant en retard trouvé'], 200);
+            }
+
+            $relancesCreated = 0;
+            foreach ($studentsWithOverdue->students as $student) {
+                // Vérifier s'il n'y a pas déjà une relance récente
+                $existingRelance = \App\Models\ESBTPRelance::where('etudiant_id', $student->id)
+                    ->where('niveau', $request->niveau)
+                    ->where('created_at', '>=', now()->subDays(7))
+                    ->first();
+
+                if (!$existingRelance) {
+                    \App\Models\ESBTPRelance::create([
+                        'etudiant_id' => $student->id,
+                        'type' => $request->type,
+                        'niveau' => $request->niveau,
+                        'contenu_message' => $this->generateReminderMessage($category, $student, $request->niveau),
+                        'date_envoi' => now()->addDays($request->delai_jours),
+                        'statut' => 'planifiee',
+                    ]);
+                    $relancesCreated++;
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "{$relancesCreated} relance(s) planifiée(s) avec succès",
+                'relances_created' => $relancesCreated
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors de la planification des relances: ' . $e->getMessage());
+            return response()->json(['error' => 'Erreur lors de la planification des relances'], 500);
+        }
+    }
+
+    /**
+     * Générer le message de relance personnalisé
+     */
+    private function generateReminderMessage($category, $student, $niveau)
+    {
+        $messages = [
+            1 => "Cher(e) {$student->prenom} {$student->nom}, nous vous rappelons que les frais de {$category->name} sont en attente de paiement. Merci de régulariser votre situation dans les plus brefs délais.",
+            2 => "Cher(e) {$student->prenom} {$student->nom}, votre paiement des frais de {$category->name} est toujours en attente. Merci de contacter l'administration pour régulariser votre situation.",
+            3 => "Cher(e) {$student->prenom} {$student->nom}, ceci est un dernier rappel concernant le paiement des frais de {$category->name}. Votre inscription pourrait être suspendue en cas de non-paiement."
+        ];
+
+        return $messages[$niveau] ?? $messages[1];
     }
 }

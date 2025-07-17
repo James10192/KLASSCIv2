@@ -2346,9 +2346,9 @@ class ESBTPComptabiliteController extends Controller
 
         $statistiques = [
             'total' => \App\Models\ESBTPRelance::count(),
-            'planifiees' => \App\Models\ESBTPRelance::where('status', 'planifiee')->count(),
-            'envoyees' => \App\Models\ESBTPRelance::where('status', 'envoyee')->count(),
-            'echecs' => \App\Models\ESBTPRelance::where('status', 'echec')->count()
+            'planifiees' => \App\Models\ESBTPRelance::where('statut', 'planifiee')->count(),
+            'envoyees' => \App\Models\ESBTPRelance::where('statut', 'envoyee')->count(),
+            'echecs' => \App\Models\ESBTPRelance::where('statut', 'echec')->count()
         ];
 
         return view('esbtp.comptabilite.relances.index', compact('relances', 'statistiques'));

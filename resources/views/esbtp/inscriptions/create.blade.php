@@ -1254,6 +1254,287 @@ document.addEventListener('DOMContentLoaded', function() {
         // Sinon, laisser la soumission normale
         });
     });
+
+    // Gestion des frais et variants pour les inscriptions
+    let currentFraisData = [];
+    let selectedVariants = {};
+
+    // Fonction pour charger les frais d'une classe
+    function loadFraisForClass(filiereId, niveauId) {
+        if (!filiereId || !niveauId) {
+            showFraisPlaceholder();
+            return;
+        }
+
+        const container = document.getElementById('fraisContainer');
+        container.innerHTML = `
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Chargement des frais...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Chargement des frais pour cette classe...</p>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        fetch(`/esbtp/frais/class-details/${filiereId}/${niveauId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.categories && data.categories.length > 0) {
+                    currentFraisData = data.categories;
+                    renderFraisForm(data.categories);
+                    updateResumeFrais();
+                } else {
+                    showNoFraisMessage();
+                }
+            })
+            .catch(error => {
+                console.error('Erreur lors du chargement des frais:', error);
+                showFraisError();
+            });
+    }
+
+    function showFraisPlaceholder() {
+        const container = document.getElementById('fraisContainer');
+        container.innerHTML = `
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="text-center py-4">
+                        <i class="fas fa-graduation-cap fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">Veuillez d'abord sélectionner une classe pour voir les frais applicables</p>
+                    </div>
+                </div>
+            </div>
+        `;
+        updateResumeFrais();
+    }
+
+    function showNoFraisMessage() {
+        const container = document.getElementById('fraisContainer');
+        container.innerHTML = `
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Aucun frais configuré</strong> pour cette classe.
+                        Contactez l'administration pour la configuration des frais.
+                    </div>
+                </div>
+            </div>
+        `;
+        updateResumeFrais();
+    }
+
+    function showFraisError() {
+        const container = document.getElementById('fraisContainer');
+        container.innerHTML = `
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        <strong>Erreur de chargement</strong> des frais. Veuillez réessayer.
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderFraisForm(categories) {
+        const container = document.getElementById('fraisContainer');
+        let html = '<div class="row">';
+
+        categories.forEach(category => {
+            html += `
+                <div class="col-md-6 mb-4">
+                    <div class="card border-${category.is_mandatory ? 'danger' : 'info'}">
+                        <div class="card-header">
+                            <h6 class="mb-0">
+                                <i class="${category.icon || 'fas fa-money-bill'} me-2"></i>
+                                ${category.name}
+                                <span class="badge bg-${category.is_mandatory ? 'danger' : 'info'} ms-2">
+                                    ${category.is_mandatory ? 'Obligatoire' : 'Optionnel'}
+                                </span>
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            ${category.description ? `<p class="text-muted small mb-3">${category.description}</p>` : ''}
+                            
+                            <!-- Sélection du variant -->
+                            <div class="mb-3">
+                                <label class="form-label">Option sélectionnée</label>
+                                <select class="form-select" name="frais[${category.id}][variant_id]" 
+                                        onchange="updateVariantSelection(${category.id}, this.value)"
+                                        ${category.is_mandatory ? 'required' : ''}>
+                                    ${!category.is_mandatory ? '<option value="">Non souscrit</option>' : ''}
+                                    ${category.variants && category.variants.length > 0 ? 
+                                        category.variants.map(variant => `
+                                            <option value="${variant.id}" ${variant.is_default && category.is_mandatory ? 'selected' : ''}>
+                                                ${variant.name} - ${variant.amount.toLocaleString()} FCFA
+                                            </option>
+                                        `).join('') : `
+                                            <option value="default" ${category.is_mandatory ? 'selected' : ''}>
+                                                Option standard - ${category.amount.toLocaleString()} FCFA
+                                            </option>
+                                        `
+                                    }
+                                </select>
+                            </div>
+
+                            <!-- Montant affiché -->
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-muted">Montant:</span>
+                                <span class="fw-bold text-primary" id="amount-${category.id}">
+                                    ${category.is_mandatory ? 
+                                        (category.variants && category.variants.length > 0 ? 
+                                            category.variants.find(v => v.is_default)?.amount.toLocaleString() || category.amount.toLocaleString()
+                                            : category.amount.toLocaleString()
+                                        ) : '0'
+                                    } FCFA
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        html += '</div>';
+        container.innerHTML = html;
+
+        // Initialiser les sélections par défaut
+        categories.forEach(category => {
+            if (category.is_mandatory) {
+                if (category.variants && category.variants.length > 0) {
+                    const defaultVariant = category.variants.find(v => v.is_default);
+                    if (defaultVariant) {
+                        selectedVariants[category.id] = {
+                            variant_id: defaultVariant.id,
+                            amount: defaultVariant.amount
+                        };
+                    }
+                } else {
+                    selectedVariants[category.id] = {
+                        variant_id: 'default',
+                        amount: category.amount
+                    };
+                }
+            }
+        });
+
+        updateResumeFrais();
+    }
+
+    function updateVariantSelection(categoryId, variantId) {
+        const category = currentFraisData.find(c => c.id == categoryId);
+        if (!category) return;
+
+        const amountElement = document.getElementById(`amount-${categoryId}`);
+        
+        if (!variantId || variantId === '') {
+            // Non souscrit
+            delete selectedVariants[categoryId];
+            amountElement.textContent = '0 FCFA';
+        } else if (variantId === 'default') {
+            // Option standard
+            selectedVariants[categoryId] = {
+                variant_id: 'default',
+                amount: category.amount
+            };
+            amountElement.textContent = category.amount.toLocaleString() + ' FCFA';
+        } else {
+            // Variant spécifique
+            const variant = category.variants.find(v => v.id == variantId);
+            if (variant) {
+                selectedVariants[categoryId] = {
+                    variant_id: variant.id,
+                    amount: variant.amount
+                };
+                amountElement.textContent = variant.amount.toLocaleString() + ' FCFA';
+            }
+        }
+
+        updateResumeFrais();
+    }
+
+    function updateResumeFrais() {
+        const resumeContainer = document.getElementById('resumeFrais');
+        
+        if (Object.keys(selectedVariants).length === 0) {
+            resumeContainer.innerHTML = `
+                <div class="text-center text-muted py-3">
+                    Aucun frais sélectionné
+                </div>
+            `;
+            return;
+        }
+
+        let totalAmount = 0;
+        let html = '<div class="table-responsive"><table class="table table-sm mb-0">';
+        
+        Object.keys(selectedVariants).forEach(categoryId => {
+            const category = currentFraisData.find(c => c.id == categoryId);
+            const selection = selectedVariants[categoryId];
+            
+            if (category && selection) {
+                const variantName = selection.variant_id === 'default' ? 'Option standard' :
+                    category.variants?.find(v => v.id == selection.variant_id)?.name || 'Option inconnue';
+                
+                html += `
+                    <tr>
+                        <td><strong>${category.name}</strong></td>
+                        <td>${variantName}</td>
+                        <td class="text-end">${selection.amount.toLocaleString()} FCFA</td>
+                    </tr>
+                `;
+                totalAmount += selection.amount;
+            }
+        });
+
+        html += `
+            <tr class="table-primary">
+                <td colspan="2"><strong>Total</strong></td>
+                <td class="text-end"><strong>${totalAmount.toLocaleString()} FCFA</strong></td>
+            </tr>
+        `;
+        html += '</table></div>';
+
+        resumeContainer.innerHTML = html;
+    }
+
+    // Écouteur pour les changements de classe
+    function setupClassChangeListener() {
+        // Observer les sélecteurs de filière et niveau
+        const filiereSelect = document.querySelector('select[name*="filiere"]');
+        const niveauSelect = document.querySelector('select[name*="niveau"]');
+        
+        if (filiereSelect && niveauSelect) {
+            function handleClassChange() {
+                const filiereId = filiereSelect.value;
+                const niveauId = niveauSelect.value;
+                
+                if (filiereId && niveauId) {
+                    loadFraisForClass(filiereId, niveauId);
+                } else {
+                    showFraisPlaceholder();
+                }
+            }
+
+            filiereSelect.addEventListener('change', handleClassChange);
+            niveauSelect.addEventListener('change', handleClassChange);
+            
+            // Vérifier les valeurs initiales
+            handleClassChange();
+        }
+    }
+
+    // Initialiser quand le DOM est prêt
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(setupClassChangeListener, 1000); // Petit délai pour s'assurer que les sélecteurs sont initialisés
+        showFraisPlaceholder();
+    });
 </script>
 @endpush
 
@@ -1693,6 +1974,59 @@ document.addEventListener('DOMContentLoaded', function() {
                                     </div>
                                 </div>
                             </div>
+
+                <!-- Section des frais et variants -->
+                <div class="row mt-4">
+                    <div class="col-md-12 mb-4">
+                        <h5 class="font-weight-bold">Frais d'inscription et options</h5>
+                        <hr>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Configuration des frais :</strong> Sélectionnez les options pour chaque catégorie de frais. 
+                            Les frais obligatoires sont pré-sélectionnés selon votre filière et niveau d'études.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Conteneur dynamique pour les frais -->
+                <div id="fraisContainer">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="text-center py-4">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Chargement des frais...</span>
+                                </div>
+                                <p class="mt-2 text-muted">Veuillez d'abord sélectionner une classe pour voir les frais applicables</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Résumé des montants -->
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <div class="card bg-light">
+                            <div class="card-header">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-calculator me-2"></i>
+                                    Résumé des frais
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="resumeFrais">
+                                    <div class="text-center text-muted py-3">
+                                        Sélectionnez une classe et configurez les frais pour voir le résumé
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- Boutons de soumission -->
                 <div class="row mt-4">

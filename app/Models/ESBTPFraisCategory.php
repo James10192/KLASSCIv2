@@ -54,6 +54,22 @@ class ESBTPFraisCategory extends Model
     }
 
     /**
+     * Variants associés à cette catégorie
+     */
+    public function variants()
+    {
+        return $this->hasMany(ESBTPFraisVariant::class, 'frais_category_id');
+    }
+
+    /**
+     * Variants actifs associés à cette catégorie
+     */
+    public function activeVariants()
+    {
+        return $this->variants()->active()->ordered();
+    }
+
+    /**
      * Scope pour les catégories actives
      */
     public function scopeActive($query)
@@ -119,6 +135,37 @@ class ESBTPFraisCategory extends Model
     public function isConfiguredFor($filiereId, $niveauId, $anneeUniversitaireId = null)
     {
         return $this->getApplicableRule($filiereId, $niveauId, $anneeUniversitaireId) !== null;
+    }
+
+    /**
+     * Vérifie si cette catégorie a des variants
+     */
+    public function hasVariants()
+    {
+        return $this->variants()->exists();
+    }
+
+    /**
+     * Obtient le variant par défaut
+     */
+    public function getDefaultVariant()
+    {
+        return $this->variants()->default()->first();
+    }
+
+    /**
+     * Obtient le montant avec variant pour une filière/niveau/année donnée
+     */
+    public function getAmountWithVariant($filiereId, $niveauId, $variantId = null, $anneeUniversitaireId = null)
+    {
+        if ($variantId) {
+            $variant = $this->variants()->find($variantId);
+            if ($variant) {
+                return $variant->calculatePrice($this->getAmountForContext($filiereId, $niveauId, $anneeUniversitaireId));
+            }
+        }
+        
+        return $this->getAmountForContext($filiereId, $niveauId, $anneeUniversitaireId);
     }
 
     /**
