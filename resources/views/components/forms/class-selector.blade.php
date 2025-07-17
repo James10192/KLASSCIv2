@@ -170,20 +170,23 @@
         }
     });
 
-    // Add AJAX loading logic for classes when modal opens
-    document.getElementById('classeSelectorModal').addEventListener('show.bs.modal', function () {
+    // Function to load classes
+    function loadClasses() {
+        console.log('Loading classes...');
         const tableBody = document.getElementById('classes-table-body');
         tableBody.innerHTML = '<tr><td colspan="5">Chargement...</td></tr>';
         
         // Load classes using the existing API
         fetch('/esbtp/inscriptions/getClasses')
             .then(response => {
-                 if (!response.ok) {
+                console.log('Response status:', response.status);
+                if (!response.ok) {
                     throw new Error(`Erreur HTTP ! Statut: ${response.status}`);
                 }
                 return response.json();
             })
             .then(classes => {
+                console.log('Classes loaded:', classes);
                 tableBody.innerHTML = '';
                 classes.forEach(classe => {
                     const displayText = `${classe.name || ''} - ${classe.filiere_name || 'N/A'} - ${classe.niveau_name || 'N/A'} - ${classe.annee_name || 'N/A'}`;
@@ -200,6 +203,22 @@
                 console.error('Error loading classes:', error);
                 tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Erreur lors du chargement des classes.</td></tr>';
             });
+    }
+
+    // Add AJAX loading logic for classes when modal opens
+    document.getElementById('classeSelectorModal').addEventListener('show.bs.modal', function () {
+        console.log('Modal show event triggered');
+        loadClasses();
+    });
+
+    // Also trigger on modal shown (backup)
+    document.getElementById('classeSelectorModal').addEventListener('shown.bs.modal', function () {
+        console.log('Modal shown event triggered');
+        // If no classes loaded yet, try again
+        const tableBody = document.getElementById('classes-table-body');
+        if (tableBody.innerHTML.includes('Chargement...')) {
+            loadClasses();
+        }
     });
 
 </script> 
