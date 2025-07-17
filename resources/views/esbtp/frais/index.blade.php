@@ -204,8 +204,8 @@
                                 <th>Catégorie</th>
                                 <th>Code</th>
                                 <th>Type</th>
-                                <th>Montant par défaut</th>
-                                <th>Variants</th>
+                                <th>Variants configurés</th>
+                                <th>Gestion</th>
                                 <th>Statut</th>
                                 <th>Actions</th>
                             </tr>
@@ -237,7 +237,23 @@
                                         @endif
                                     </td>
                                     <td>
-                                        <strong>{{ number_format($category->default_amount, 0, ',', ' ') }} FCFA</strong>
+                                        @if($category->variants()->exists())
+                                            <div class="d-flex flex-wrap gap-1 mb-2">
+                                                @foreach($category->variants()->take(3) as $variant)
+                                                    <div class="badge bg-light border">
+                                                        <strong>{{ $variant->name }}</strong>: {{ number_format($variant->amount, 0, ',', ' ') }} FCFA
+                                                        @if($variant->is_default)
+                                                            <span class="text-success">★</span>
+                                                        @endif
+                                                    </div>
+                                                @endforeach
+                                                @if($category->variants()->count() > 3)
+                                                    <span class="badge bg-info">+{{ $category->variants()->count() - 3 }} autres</span>
+                                                @endif
+                                            </div>
+                                        @else
+                                            <div class="text-muted fst-italic">Aucun variant configuré</div>
+                                        @endif
                                     </td>
                                     <td>
                                         <div class="d-flex flex-wrap gap-1">
@@ -246,16 +262,16 @@
                                                     {{ $category->variants()->count() }} variant(s)
                                                 </span>
                                                 <button class="btn btn-sm btn-outline-info" 
-                                                        onclick="showCategoryVariants({{ $category->id }}, '{{ $category->name }}')">
+                                                        onclick="showCategoryVariants({{ $category->id }}, '{{ $category->name }}')"
+                                                        title="Voir tous les variants">
                                                     <i class="fas fa-eye"></i>
                                                 </button>
-                                            @else
-                                                <span class="badge bg-secondary">Aucun variant</span>
-                                                <button class="btn btn-sm btn-outline-primary" 
-                                                        onclick="addVariant({{ $category->id }}, '{{ $category->name }}')">
-                                                    <i class="fas fa-plus"></i>
-                                                </button>
                                             @endif
+                                            <button class="btn btn-sm btn-outline-primary" 
+                                                    onclick="addVariant({{ $category->id }}, '{{ $category->name }}')"
+                                                    title="Ajouter un variant">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
                                         </div>
                                         <div class="mt-1">
                                             <button class="btn btn-sm btn-outline-warning" 
@@ -332,14 +348,14 @@
 </div>
 
 <!-- Modal pour les détails d'une classe -->
-<div class="modal fade" id="classDetailsModal" tabindex="-1" aria-labelledby="classDetailsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content">
+<div class="modal fade" id="classDetailsModal" tabindex="-1" aria-labelledby="classDetailsModalLabel" aria-hidden="true" style="z-index: 1060;">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable" style="margin: 5vh auto; max-height: 90vh;">
+        <div class="modal-content" style="height: 100%;">
             <div class="modal-header">
                 <h5 class="modal-title" id="classDetailsModalLabel">Détails des Frais - <span id="classTitle"></span></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
             </div>
-            <div class="modal-body" id="classDetailsContent">
+            <div class="modal-body" id="classDetailsContent" style="overflow-y: auto; max-height: calc(90vh - 120px);">
                 <!-- Contenu chargé dynamiquement -->
             </div>
         </div>
@@ -347,14 +363,14 @@
 </div>
 
 <!-- Modal pour les variants d'une catégorie -->
-<div class="modal fade" id="categoryVariantsModal" tabindex="-1" aria-labelledby="categoryVariantsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content">
+<div class="modal fade" id="categoryVariantsModal" tabindex="-1" aria-labelledby="categoryVariantsModalLabel" aria-hidden="true" style="z-index: 1060;">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable" style="margin: 5vh auto; max-height: 90vh;">
+        <div class="modal-content" style="height: 100%;">
             <div class="modal-header">
                 <h5 class="modal-title" id="categoryVariantsModalLabel">Variants - <span id="categoryTitle"></span></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
             </div>
-            <div class="modal-body" id="categoryVariantsContent">
+            <div class="modal-body" id="categoryVariantsContent" style="overflow-y: auto; max-height: calc(90vh - 120px);">
                 <!-- Contenu chargé dynamiquement -->
             </div>
         </div>
@@ -362,15 +378,15 @@
 </div>
 
 <!-- Modal pour ajouter un variant -->
-<div class="modal fade" id="addVariantModal" tabindex="-1" aria-labelledby="addVariantModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+<div class="modal fade" id="addVariantModal" tabindex="-1" aria-labelledby="addVariantModalLabel" aria-hidden="true" style="z-index: 1070;">
+    <div class="modal-dialog" style="margin: 10vh auto; max-height: 80vh;">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="addVariantModalLabel">Ajouter un Variant</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
             </div>
             <form id="addVariantForm">
-                <div class="modal-body">
+                <div class="modal-body" style="overflow-y: auto; max-height: calc(80vh - 120px);">
                     <input type="hidden" id="variantCategoryId" name="category_id">
                     <div class="mb-3">
                         <label for="variantName" class="form-label">Nom du variant</label>
@@ -404,14 +420,14 @@
 </div>
 
 <!-- Modal pour tous les variants -->
-<div class="modal fade" id="allVariantsModal" tabindex="-1" aria-labelledby="allVariantsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content">
+<div class="modal fade" id="allVariantsModal" tabindex="-1" aria-labelledby="allVariantsModalLabel" aria-hidden="true" style="z-index: 1060;">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable" style="margin: 3vh auto; max-height: 94vh;">
+        <div class="modal-content" style="height: 100%;">
             <div class="modal-header">
                 <h5 class="modal-title" id="allVariantsModalLabel">Tous les Variants</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
             </div>
-            <div class="modal-body" id="allVariantsContent">
+            <div class="modal-body" id="allVariantsContent" style="overflow-y: auto; max-height: calc(94vh - 120px);">
                 <!-- Contenu chargé dynamiquement -->
             </div>
         </div>
@@ -419,14 +435,14 @@
 </div>
 
 <!-- Modal pour les étudiants en retard -->
-<div class="modal fade" id="overdueStudentsModal" tabindex="-1" aria-labelledby="overdueStudentsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content">
+<div class="modal fade" id="overdueStudentsModal" tabindex="-1" aria-labelledby="overdueStudentsModalLabel" aria-hidden="true" style="z-index: 1060;">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable" style="margin: 3vh auto; max-height: 94vh;">
+        <div class="modal-content" style="height: 100%;">
             <div class="modal-header">
                 <h5 class="modal-title" id="overdueStudentsModalLabel">Étudiants en Retard - <span id="overdueCategory"></span></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
             </div>
-            <div class="modal-body" id="overdueStudentsContent">
+            <div class="modal-body" id="overdueStudentsContent" style="overflow-y: auto; max-height: calc(94vh - 120px);">
                 <!-- Contenu chargé dynamiquement -->
             </div>
         </div>
@@ -434,15 +450,15 @@
 </div>
 
 <!-- Modal pour planifier les relances -->
-<div class="modal fade" id="scheduleRemindersModal" tabindex="-1" aria-labelledby="scheduleRemindersModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+<div class="modal fade" id="scheduleRemindersModal" tabindex="-1" aria-labelledby="scheduleRemindersModalLabel" aria-hidden="true" style="z-index: 1070;">
+    <div class="modal-dialog" style="margin: 10vh auto; max-height: 80vh;">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="scheduleRemindersModalLabel">Planifier des Relances</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
             </div>
             <form id="scheduleRemindersForm">
-                <div class="modal-body">
+                <div class="modal-body" style="overflow-y: auto; max-height: calc(80vh - 120px);">
                     <input type="hidden" id="reminderCategoryId" name="category_id">
                     <div class="mb-3">
                         <label for="reminderLevel" class="form-label">Niveau de relance</label>
@@ -496,7 +512,7 @@ function showClassDetails(filiereId, niveauId, filiereName, niveauName) {
     modal.show();
     
     // Charger les détails via AJAX
-    fetch(`/esbtp/frais/class-details/${filiereId}/${niveauId}`)
+    fetch(`{{ url('esbtp/frais/class-details') }}/${filiereId}/${niveauId}`)
         .then(response => response.json())
         .then(data => {
             let html = '<div class="row">';
@@ -541,7 +557,7 @@ function showClassDetails(filiereId, niveauId, filiereName, niveauName) {
             html += '</div>';
             html += `
                 <div class="text-center mt-3">
-                    <a href="/esbtp/frais/configure?filiere_id=${filiereId}&niveau_id=${niveauId}" class="btn btn-primary">
+                    <a href="{{ url('esbtp/frais/configure') }}?filiere_id=${filiereId}&niveau_id=${niveauId}" class="btn btn-primary">
                         <i class="fas fa-cogs me-1"></i>Configurer les frais
                     </a>
                 </div>
@@ -571,7 +587,7 @@ function showCategoryVariants(categoryId, categoryName) {
     modal.show();
     
     // Charger les variants via AJAX
-    fetch(`/esbtp/frais/category-variants/${categoryId}`)
+    fetch(`{{ url('esbtp/frais/category-variants') }}/${categoryId}`)
         .then(response => response.json())
         .then(data => {
             let html = '<div class="table-responsive">';
@@ -664,7 +680,7 @@ function showVariantsModal() {
     modal.show();
     
     // Charger tous les variants via AJAX
-    fetch('/esbtp/frais/all-variants')
+    fetch('{{ url('esbtp/frais/all-variants') }}')
         .then(response => response.json())
         .then(data => {
             let html = '';
@@ -752,7 +768,7 @@ document.getElementById('addVariantForm').addEventListener('submit', function(e)
     
     const formData = new FormData(this);
     
-    fetch('/esbtp/frais/variants', {
+    fetch('{{ route("esbtp.frais.variants.store") }}', {
         method: 'POST',
         body: formData,
         headers: {
@@ -783,7 +799,7 @@ function editVariant(variantId) {
 // Fonction pour supprimer un variant
 function deleteVariant(variantId) {
     if (confirm('Êtes-vous sûr de vouloir supprimer ce variant ?')) {
-        fetch(`/esbtp/frais/variants/${variantId}`, {
+        fetch(`{{ url('esbtp/frais/variants') }}/${variantId}`, {
             method: 'DELETE',
             headers: {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
@@ -820,7 +836,7 @@ function showOverdueStudents(categoryId, categoryName) {
     modal.show();
     
     // Charger les étudiants en retard via AJAX
-    fetch(`/esbtp/frais/${categoryId}/overdue-students`)
+    fetch(`{{ url('esbtp/frais') }}/${categoryId}/overdue-students`)
         .then(response => response.json())
         .then(data => {
             let html = '';
@@ -915,7 +931,7 @@ document.getElementById('scheduleRemindersForm').addEventListener('submit', func
     const formData = new FormData(this);
     const categoryId = document.getElementById('reminderCategoryId').value;
     
-    fetch(`/esbtp/frais/${categoryId}/schedule-reminders`, {
+    fetch(`{{ url('esbtp/frais') }}/${categoryId}/schedule-reminders`, {
         method: 'POST',
         body: formData,
         headers: {

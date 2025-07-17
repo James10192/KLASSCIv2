@@ -111,8 +111,9 @@ class ESBTPFraisController extends Controller
     /**
      * Afficher les détails d'une catégorie de frais
      */
-    public function show(ESBTPFraisCategory $fraisCategory)
+    public function show(ESBTPFraisCategory $frai)
     {
+        $fraisCategory = $frai;
         $fraisCategory->load(['rules.filiere', 'rules.niveau', 'rules.anneeUniversitaire']);
         
         $stats = [
@@ -171,6 +172,17 @@ class ESBTPFraisController extends Controller
                 'color' => $request->color,
             ]);
 
+            // Créer automatiquement un variant "Standard" pour cette catégorie
+            \App\Models\ESBTPFraisVariant::create([
+                'frais_category_id' => $fraisCategory->id,
+                'name' => 'Standard',
+                'description' => 'Option standard pour ' . $fraisCategory->name,
+                'amount' => $request->default_amount,
+                'is_default' => true,
+                'is_active' => true,
+                'sort_order' => 1,
+            ]);
+
             DB::commit();
 
             return redirect()->route('esbtp.frais.index')
@@ -188,19 +200,19 @@ class ESBTPFraisController extends Controller
     /**
      * Formulaire d'édition d'une catégorie de frais
      */
-    public function edit(ESBTPFraisCategory $fraisCategory)
+    public function edit(ESBTPFraisCategory $frai)
     {
-        return view('esbtp.frais.edit', compact('fraisCategory'));
+        return view('esbtp.frais.edit', ['fraisCategory' => $frai]);
     }
 
     /**
      * Mettre à jour une catégorie de frais
      */
-    public function update(Request $request, ESBTPFraisCategory $fraisCategory)
+    public function update(Request $request, ESBTPFraisCategory $frai)
     {
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-            'code' => 'required|string|max:50|unique:esbtp_frais_categories,code,' . $fraisCategory->id,
+            'code' => 'required|string|max:50|unique:esbtp_frais_categories,code,' . $frai->id,
             'description' => 'nullable|string',
             'is_mandatory' => 'required|boolean',
             'default_amount' => 'required|numeric|min:0',
@@ -218,7 +230,7 @@ class ESBTPFraisController extends Controller
         try {
             DB::beginTransaction();
 
-            $fraisCategory->update([
+            $frai->update([
                 'name' => $request->name,
                 'code' => strtoupper($request->code),
                 'description' => $request->description,
@@ -246,22 +258,22 @@ class ESBTPFraisController extends Controller
     /**
      * Supprimer une catégorie de frais
      */
-    public function destroy(ESBTPFraisCategory $fraisCategory)
+    public function destroy(ESBTPFraisCategory $frai)
     {
         try {
             DB::beginTransaction();
 
             // Vérifier s'il y a des paiements associés
-            if ($fraisCategory->paiements()->count() > 0) {
+            if ($frai->paiements()->count() > 0) {
                 return redirect()->back()
                     ->with('error', 'Impossible de supprimer cette catégorie car elle contient des paiements associés.');
             }
 
             // Supprimer les règles associées
-            $fraisCategory->rules()->delete();
+            $frai->rules()->delete();
 
             // Supprimer la catégorie
-            $fraisCategory->delete();
+            $frai->delete();
 
             DB::commit();
 
