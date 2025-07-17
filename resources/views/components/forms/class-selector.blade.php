@@ -85,10 +85,10 @@
         modal.hide();
         
         // Déclencher l'événement change pour charger les frais
-        const classeIdInput = document.getElementById('classe_id');
-        if (classeIdInput) {
+        const classeInput = document.getElementById('classe_id');
+        if (classeInput) {
             const changeEvent = new Event('change', { bubbles: true });
-            classeIdInput.dispatchEvent(changeEvent);
+            classeInput.dispatchEvent(changeEvent);
         }
 
         // Mettre à jour l'UI
@@ -124,19 +124,19 @@
             });
 
         // Déclencher l'événement de changement de classe pour charger les frais
-        const classeIdInput = document.getElementById('classe_id');
-        if (classeIdInput) {
+        const classeElement = document.getElementById('classe_id');
+        if (classeElement) {
             const changeEvent = new Event('change');
-            classeIdInput.dispatchEvent(changeEvent);
+            classeElement.dispatchEvent(changeEvent);
         }
     }
 
     document.addEventListener('DOMContentLoaded', function () {
-        const classeIdInput = document.getElementById('classe_id');
+        const classeField = document.getElementById('classe_id');
         const availablePlacesDiv = document.getElementById('available-places-info');
 
-        if(classeIdInput) {
-            classeIdInput.addEventListener('change', function() {
+        if(classeField) {
+            classeField.addEventListener('change', function() {
                 const classeId = this.value;
                 if (classeId && availablePlacesDiv) {
                     availablePlacesDiv.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Vérification...';
