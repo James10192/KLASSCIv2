@@ -5,7 +5,9 @@
     <div style="display: flex; gap: 10px;">
         <input type="hidden" id="classe_id" name="classe_id" value="{{ old('classe_id') }}">
         <input type="text" id="classe_display" name="classe_display" class="form-control @error('classe_id') is-invalid @enderror" value="{{ old('classe_display') }}" readonly placeholder="Aucune classe sélectionnée">
-        <button class="btn btn-primary" type="button" id="selectClasseBtn" style="min-width: 120px;">
+        <button class="btn btn-primary" type="button" id="selectClasseBtn" 
+                data-bs-toggle="modal" data-bs-target="#classeSelectorModal" 
+                style="min-width: 120px;">
             <i class="fas fa-search"></i> Sélectionner
         </button>
     </div>
@@ -200,45 +202,4 @@
             });
     });
 
-    document.getElementById('selectClasseBtn').addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        console.log('Button clicked, attempting to open modal');
-        const modalEl = document.getElementById('classeSelectorModal');
-        if (!modalEl) {
-            console.error('Modal element not found');
-        } else {
-            console.log('Modal element found, initializing');
-            const modal = new bootstrap.Modal(modalEl);
-            modal.show();
-            console.log('Modal show called');
-        }
-
-        // Add to modal shown event for confirmation
-        modalEl.addEventListener('shown.bs.modal', () => {
-            console.log('Modal successfully shown');
-        });
-
-        // Add global click log to detect arbitrary clicks
-        document.addEventListener('click', (e) => {
-            console.log('Global click detected at:', e.target);
-        }, true); // Capture phase
-
-        // Add modal event logs
-        modalEl.addEventListener('show.bs.modal', (e) => {
-            console.log('Modal about to show, triggered by:', e.relatedTarget);
-        });
-
-        modalEl.addEventListener('shown.bs.modal', () => {
-            console.log('Modal fully shown');
-        });
-
-        modalEl.addEventListener('hide.bs.modal', (e) => {
-            console.log('Modal about to hide, triggered by:', e.relatedTarget);
-        });
-
-        modalEl.addEventListener('hidden.bs.modal', () => {
-            console.log('Modal fully hidden');
-        });
-    });
 </script> 
