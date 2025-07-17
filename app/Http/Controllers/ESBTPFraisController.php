@@ -359,12 +359,12 @@ class ESBTPFraisController extends Controller
     /**
      * Activer/désactiver une catégorie de frais
      */
-    public function toggleActive(ESBTPFraisCategory $fraisCategory)
+    public function toggleActive(ESBTPFraisCategory $frai)
     {
         try {
-            $fraisCategory->update(['is_active' => !$fraisCategory->is_active]);
+            $frai->update(['is_active' => !$frai->is_active]);
             
-            $status = $fraisCategory->is_active ? 'activée' : 'désactivée';
+            $status = $frai->is_active ? 'activée' : 'désactivée';
             return redirect()->back()
                 ->with('success', "Catégorie de frais {$status} avec succès.");
 

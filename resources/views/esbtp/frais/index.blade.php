@@ -2,19 +2,28 @@
 
 @section('title', 'Gestion des Frais - ESBTP-yAKRO')
 
+@section('styles')
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+@endsection
+
 @section('content')
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h3 mb-0">Gestion des Frais</h1>
-        <div>
-            <a href="{{ route('esbtp.frais.configure') }}" class="btn btn-info me-2">
-                <i class="fas fa-cogs me-1"></i>Configuration
-            </a>
-            <a href="{{ route('esbtp.frais.create') }}" class="btn btn-primary">
-                <i class="fas fa-plus me-1"></i>Nouvelle Catégorie
-            </a>
+<div class="dashboard-acasi">
+    <div class="main-content">
+        <!-- Header moderne -->
+        <div class="dashboard-header">
+            <div class="header-left">
+                <h1>Gestion des Frais</h1>
+                <p class="header-subtitle">Configuration des frais scolaires par catégorie</p>
+            </div>
+            <div class="header-actions">
+                <a href="{{ route('esbtp.frais.configure') }}" class="btn-acasi secondary me-2">
+                    <i class="fas fa-cogs"></i>Configuration
+                </a>
+                <a href="{{ route('esbtp.frais.create') }}" class="btn-acasi primary">
+                    <i class="fas fa-plus"></i>Nouvelle Catégorie
+                </a>
+            </div>
         </div>
-    </div>
 
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -68,19 +77,119 @@
                 </div>
             </div>
         </div>
-    </div>
+        </div>
 
-    <!-- Vue d'ensemble matricielle -->
-    <div class="row mb-4">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-table me-2"></i>
-                        Vue Matricielle des Frais par Classe
-                    </h5>
+        <!-- Section Frais Obligatoires -->
+        <div class="card-moderne mb-lg">
+            <div class="p-lg">
+                <div class="section-title mb-md">
+                    <i class="fas fa-exclamation-triangle color-danger"></i>
+                    Frais Obligatoires (Inscription & Scolarité)
                 </div>
-                <div class="card-body">
+                <div class="row">
+                    @foreach($categories->where('is_mandatory', true) as $category)
+                        <div class="col-md-6 mb-4">
+                            <div class="card-moderne">
+                                <div class="p-md">
+                                    <div class="d-flex justify-content-between align-items-start mb-3">
+                                        <div>
+                                            <h6 class="mb-0 font-semibold">{{ $category->name }}</h6>
+                                            <p class="text-muted mb-0">{{ $category->description }}</p>
+                                        </div>
+                                        <div class="text-end">
+                                            <div class="badge bg-danger">Obligatoire</div>
+                                        </div>
+                                    </div>
+                                    <div class="row mb-3">
+                                        <div class="col-sm-6">
+                                            <strong>Montant par défaut:</strong><br>
+                                            <span class="text-primary font-semibold">{{ number_format($category->default_amount, 0, ',', ' ') }} FCFA</span>
+                                        </div>
+                                        <div class="col-sm-6">
+                                            <strong>Délai paiement:</strong><br>
+                                            <span class="text-secondary">{{ $category->payment_deadline_days }} jours</span>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="badge {{ $category->is_active ? 'bg-success' : 'bg-secondary' }}">
+                                            {{ $category->is_active ? 'Actif' : 'Inactif' }}
+                                        </span>
+                                        <div>
+                                            <a href="{{ route('esbtp.frais.show', $category) }}" class="btn btn-sm btn-info">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{{ route('esbtp.frais.edit', $category) }}" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+
+        <!-- Section Frais Optionnels -->
+        <div class="card-moderne mb-lg">
+            <div class="p-lg">
+                <div class="section-title mb-md">
+                    <i class="fas fa-star color-warning"></i>
+                    Frais Optionnels (Transport & Cantine)
+                </div>
+                <div class="row">
+                    @foreach($categories->where('is_mandatory', false) as $category)
+                        <div class="col-md-6 mb-4">
+                            <div class="card-moderne">
+                                <div class="p-md">
+                                    <div class="d-flex justify-content-between align-items-start mb-3">
+                                        <div>
+                                            <h6 class="mb-0 font-semibold">{{ $category->name }}</h6>
+                                            <p class="text-muted mb-0">{{ $category->description }}</p>
+                                        </div>
+                                        <div class="text-end">
+                                            <div class="badge bg-warning">Optionnel</div>
+                                        </div>
+                                    </div>
+                                    <div class="row mb-3">
+                                        <div class="col-sm-6">
+                                            <strong>Montant par défaut:</strong><br>
+                                            <span class="text-primary font-semibold">{{ number_format($category->default_amount, 0, ',', ' ') }} FCFA</span>
+                                        </div>
+                                        <div class="col-sm-6">
+                                            <strong>Délai paiement:</strong><br>
+                                            <span class="text-secondary">{{ $category->payment_deadline_days }} jours</span>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="badge {{ $category->is_active ? 'bg-success' : 'bg-secondary' }}">
+                                            {{ $category->is_active ? 'Actif' : 'Inactif' }}
+                                        </span>
+                                        <div>
+                                            <a href="{{ route('esbtp.frais.show', $category) }}" class="btn btn-sm btn-info">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{{ route('esbtp.frais.edit', $category) }}" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+
+        <!-- Vue d'ensemble matricielle -->
+        <div class="card-moderne">
+            <div class="p-lg">
+                <div class="section-title mb-md">
+                    <i class="fas fa-table"></i>
+                    Vue Matricielle des Frais par Classe
+                </div>
                     <div class="table-responsive">
                         <table class="table table-bordered table-hover">
                             <thead class="table-dark">

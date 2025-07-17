@@ -2,18 +2,28 @@
 
 @section('title', 'Gestion des étudiants - ESBTP-yAKRO')
 
+@section('styles')
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+@endsection
+
 @section('content')
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Liste des étudiants</h5>
-                    <a href="{{ route('esbtp.inscriptions.create') }}" class="btn btn-primary">
-                        <i class="fas fa-plus-circle me-1"></i>Ajouter un étudiant
-                    </a>
-                </div>
-                <div class="card-body">
+<div class="dashboard-acasi">
+    <div class="main-content">
+        <!-- Header moderne -->
+        <div class="dashboard-header">
+            <div class="header-left">
+                <h1>Étudiants</h1>
+                <p class="header-subtitle">Gestion des étudiants de l'établissement</p>
+            </div>
+            <div class="header-actions">
+                <a href="{{ route('esbtp.inscriptions.create') }}" class="btn-acasi primary">
+                    <i class="fas fa-plus-circle"></i>Ajouter un étudiant
+                </a>
+            </div>
+        </div>
+
+        <div class="card-moderne">
+            <div class="p-lg">
                     @if(session('success'))
                         <div class="alert alert-success alert-dismissible fade show" role="alert">
                             {{ session('success') }}
@@ -28,39 +38,20 @@
                         </div>
                     @endif
 
-                    <!-- HEADER PREMIUM -->
-                    <div class="bg-gradient-primary rounded-4 p-5 mb-4 d-flex align-items-center justify-content-between gap-4 animate-fade-in-up" style="background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); min-height: 120px;">
-                        <div class="d-flex align-items-center gap-3">
-                            <div class="bg-white bg-opacity-25 rounded-circle d-flex align-items-center justify-content-center" style="width:56px;height:56px;">
-                                <i class="fas fa-user-graduate fa-2x text-white"></i>
-                            </div>
-                            <div>
-                                <h1 class="h3 fw-bold text-white mb-1">Gestion des étudiants</h1>
-                                <div class="text-white-50">Liste et gestion des étudiants de l'établissement</div>
-                            </div>
-                        </div>
-                        <a href="{{ route('esbtp.inscriptions.create') }}" class="btn btn-lg btn-warning fw-bold shadow rounded-3 px-4 py-2 d-flex align-items-center gap-2 animate-fade-in-up">
-                            <i class="fas fa-plus-circle"></i> Ajouter un étudiant
-                        </a>
-                    </div>
 
-                    <!-- Filtres de recherche -->
-                    <div class="card border-0 shadow-sm rounded-4 mb-4 premium-glass">
-                        <div class="card-header bg-white border-0 rounded-top-4">
-                            <h6 class="mb-0 d-flex align-items-center">
-                                <i class="fas fa-filter me-2"></i>Filtres de recherche
-                            </h6>
-                        </div>
-                        <div class="card-body">
+                <!-- Filtres de recherche -->
+                <div class="section-title mb-md">
+                    <i class="fas fa-filter me-2"></i>Filtres de recherche
+                </div>
                             <form method="GET" action="{{ route('esbtp.etudiants.index') }}" id="search-form">
                                 <div class="row">
                                     <div class="col-md-4 mb-3">
                                         <label for="search" class="form-label">Recherche</label>
-                                        <input type="text" class="form-control" id="search" name="search" value="{{ $search ?? '' }}" placeholder="Matricule, nom, prénom, téléphone...">
+                                        <input type="text" class="form-control search-bar" id="search" name="search" value="{{ $search ?? '' }}" placeholder="Matricule, nom, prénom, téléphone...">
                                     </div>
                                     <div class="col-md-4 mb-3">
                                         <label for="filiere" class="form-label">Filière</label>
-                                        <select class="form-select" id="filiere" name="filiere">
+                                        <select class="form-select year-selector" id="filiere" name="filiere">
                                             <option value="">Toutes les filières</option>
                                             @foreach($filieres as $f)
                                                 <option value="{{ $f->id }}" {{ isset($filiere) && $filiere == $f->id ? 'selected' : '' }}>
@@ -71,7 +62,7 @@
                                     </div>
                                     <div class="col-md-4 mb-3">
                                         <label for="niveau" class="form-label">Niveau d'études</label>
-                                        <select class="form-select" id="niveau" name="niveau">
+                                        <select class="form-select year-selector" id="niveau" name="niveau">
                                             <option value="">Tous les niveaux</option>
                                             @foreach($niveaux as $n)
                                                 <option value="{{ $n->id }}" {{ isset($niveau) && $niveau == $n->id ? 'selected' : '' }}>
@@ -82,7 +73,7 @@
                                     </div>
                                     <div class="col-md-4 mb-3">
                                         <label for="annee" class="form-label">Année universitaire</label>
-                                        <select class="form-select" id="annee" name="annee">
+                                        <select class="form-select year-selector" id="annee" name="annee">
                                             <option value="">Toutes les années</option>
                                             @foreach($annees as $a)
                                                 <option value="{{ $a->id }}" {{ isset($annee) && $annee == $a->id ? 'selected' : '' }}>
@@ -93,29 +84,34 @@
                                     </div>
                                     <div class="col-md-4 mb-3">
                                         <label for="status" class="form-label">Statut</label>
-                                        <select class="form-select" id="status" name="status">
+                                        <select class="form-select year-selector" id="status" name="status">
                                             <option value="">Tous les statuts</option>
                                             <option value="actif" {{ isset($status) && $status == 'actif' ? 'selected' : '' }}>Actif</option>
                                             <option value="inactif" {{ isset($status) && $status == 'inactif' ? 'selected' : '' }}>Inactif</option>
                                         </select>
                                     </div>
                                     <div class="col-md-4 d-flex align-items-end mb-3">
-                                        <button type="submit" class="btn btn-primary me-2">
-                                            <i class="fas fa-search me-1"></i>Filtrer
+                                        <button type="submit" class="btn-acasi primary me-2">
+                                            <i class="fas fa-search"></i>Filtrer
                                         </button>
-                                        <a href="{{ route('esbtp.etudiants.index') }}" class="btn btn-secondary">
-                                            <i class="fas fa-redo-alt me-1"></i>Réinitialiser
+                                        <a href="{{ route('esbtp.etudiants.index') }}" class="btn-acasi secondary">
+                                            <i class="fas fa-redo-alt"></i>Réinitialiser
                                         </a>
                                     </div>
                                 </div>
                             </form>
-                        </div>
-                    </div>
+            </div>
+        </div>
 
-                    <!-- Tableau des étudiants -->
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle premium-table mb-0">
-                            <thead class="sticky-top bg-gradient-primary text-white rounded-top-4">
+        <!-- Tableau des étudiants -->
+        <div class="card-moderne">
+            <div class="p-lg">
+                <div class="section-title mb-md">
+                    <i class="fas fa-list"></i>Liste des étudiants
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-primary text-white">
                                 <tr>
                                     <th>Matricule</th>
                                     <th>Photo</th>
@@ -163,12 +159,25 @@
                                         <td>
                                             @if($etudiant->inscriptions->count() > 0)
                                                 <?php $derniere = $etudiant->inscriptions->sortByDesc('created_at')->first(); ?>
-                                                {{ $derniere->classe ? $derniere->classe->name : 'Non assigné' }}
-                                                <br>
-                                                <small>
-                                                    {{ $derniere->filiere ? $derniere->filiere->name : '' }}
-                                                    {{ $derniere->niveau ? ' - '.$derniere->niveau->name : '' }}
-                                                </small>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="flex-grow-1">
+                                                        {{ $derniere->classe ? $derniere->classe->name : 'Non assigné' }}
+                                                        <br>
+                                                        <small>
+                                                            {{ $derniere->filiere ? $derniere->filiere->name : '' }}
+                                                            {{ $derniere->niveau ? ' - '.$derniere->niveau->name : '' }}
+                                                        </small>
+                                                    </div>
+                                                    @if($derniere->status == 'pending' || $derniere->status == 'en_attente')
+                                                        <div class="ms-2" title="Inscription en attente de validation">
+                                                            <i class="fas fa-hourglass-half text-warning"></i>
+                                                        </div>
+                                                    @elseif($derniere->status == 'active')
+                                                        <div class="ms-2" title="Inscription validée">
+                                                            <i class="fas fa-check-circle text-success"></i>
+                                                        </div>
+                                                    @endif
+                                                </div>
                                             @else
                                                 <span class="text-muted">Non inscrit</span>
                                             @endif

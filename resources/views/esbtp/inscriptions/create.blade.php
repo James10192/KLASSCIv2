@@ -2,7 +2,8 @@
 
 @section('title', 'Nouvelle Inscription')
 
-@push('styles')
+@section('styles')
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <!-- Choices.js CSS -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
 <style>
@@ -864,9 +865,9 @@
       overflow: hidden !important;
     }
 </style>
-@endpush
+@endsection
 
-@push('scripts')
+@section('scripts')
 <!-- Choices.js (bibliothèque pour les selects modernes) -->
 <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.js"></script>
 
@@ -1536,24 +1537,27 @@ document.addEventListener('DOMContentLoaded', function() {
         showFraisPlaceholder();
     });
 </script>
-@endpush
+@endsection
 
 @section('content')
-<div class="container-fluid">
-    <!-- Page Heading -->
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Nouvelle Inscription</h1>
-        <a href="{{ route('esbtp.inscriptions.index') }}" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
-            <i class="fas fa-arrow-left fa-sm text-white-50"></i> Retour à la liste
-        </a>
-    </div>
-
-    <!-- Formulaire d'inscription -->
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Formulaire d'inscription</h6>
+<div class="dashboard-acasi">
+    <div class="main-content">
+        <!-- Header moderne -->
+        <div class="dashboard-header">
+            <div class="header-left">
+                <h1>Nouvelle Inscription</h1>
+                <p class="header-subtitle">Créer une nouvelle inscription d'étudiant</p>
+            </div>
+            <div class="header-actions">
+                <a href="{{ route('esbtp.inscriptions.index') }}" class="btn-acasi secondary">
+                    <i class="fas fa-arrow-left"></i>Retour à la liste
+                </a>
+            </div>
         </div>
-        <div class="card-body">
+
+        <!-- Formulaire d'inscription -->
+        <div class="card-moderne">
+            <div class="p-lg">
             <form id="inscriptionForm" action="{{ route('esbtp.inscriptions.store') }}" method="POST" enctype="multipart/form-data" novalidate>
                 @csrf
 
@@ -2040,10 +2044,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
             </form>
+            </div>
         </div>
     </div>
 </div>
-
 
 @endsection
 
