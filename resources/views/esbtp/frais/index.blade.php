@@ -274,20 +274,20 @@
                                     </td>
                                     <td>
                                         <div class="btn-group" role="group">
-                                            <a href="{{ route('esbtp.frais.show', $category) }}" class="btn btn-sm btn-info" title="Voir les détails">
+                                            <a href="{{ route('esbtp.frais.show', $category->id) }}" class="btn btn-sm btn-info" title="Voir les détails">
                                                 <i class="fas fa-eye"></i>
                                             </a>
-                                            <a href="{{ route('esbtp.frais.edit', $category) }}" class="btn btn-sm btn-primary" title="Modifier">
+                                            <a href="{{ route('esbtp.frais.edit', $category->id) }}" class="btn btn-sm btn-primary" title="Modifier">
                                                 <i class="fas fa-edit"></i>
                                             </a>
-                                            <form action="{{ route('esbtp.frais.toggle-active', $category) }}" method="POST" style="display: inline;">
+                                            <form action="{{ route('esbtp.frais.toggle-active', $category->id) }}" method="POST" style="display: inline;">
                                                 @csrf
                                                 <button type="submit" class="btn btn-sm btn-{{ $category->is_active ? 'warning' : 'success' }}" title="{{ $category->is_active ? 'Désactiver' : 'Activer' }}">
                                                     <i class="fas fa-{{ $category->is_active ? 'pause' : 'play' }}"></i>
                                                 </button>
                                             </form>
                                             @if(!$category->is_mandatory)
-                                                <form action="{{ route('esbtp.frais.destroy', $category) }}" method="POST" style="display: inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette catégorie ?');">
+                                                <form action="{{ route('esbtp.frais.destroy', $category->id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette catégorie ?');">
                                                     @csrf
                                                     @method('DELETE')
                                                     <button type="submit" class="btn btn-sm btn-danger" title="Supprimer">

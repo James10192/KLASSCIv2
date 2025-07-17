@@ -12,7 +12,7 @@
             {{ $fraisCategory->name }}
         </h1>
         <div>
-            <a href="{{ route('esbtp.frais.edit', $fraisCategory) }}" class="btn btn-primary me-2">
+            <a href="{{ route('esbtp.frais.edit', $fraisCategory->id) }}" class="btn btn-primary me-2">
                 <i class="fas fa-edit me-1"></i>Modifier
             </a>
             <a href="{{ route('esbtp.frais.index') }}" class="btn btn-secondary">

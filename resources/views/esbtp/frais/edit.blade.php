@@ -35,7 +35,7 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="{{ route('esbtp.frais.update', $fraisCategory) }}">
+                    <form method="POST" action="{{ route('esbtp.frais.update', $fraisCategory->id) }}">
                         @csrf
                         @method('PUT')
 
@@ -192,7 +192,7 @@
                     </form>
 
                     @if(!$fraisCategory->is_mandatory)
-                        <form id="deleteForm" action="{{ route('esbtp.frais.destroy', $fraisCategory) }}" method="POST" style="display: none;">
+                        <form id="deleteForm" action="{{ route('esbtp.frais.destroy', $fraisCategory->id) }}" method="POST" style="display: none;">
                             @csrf
                             @method('DELETE')
                         </form>
