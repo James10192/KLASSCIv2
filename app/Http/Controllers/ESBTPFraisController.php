@@ -247,27 +247,6 @@ class ESBTPFraisController extends Controller
     }
 
     /**
-     * Basculer le statut actif/inactif d'une catégorie de frais
-     */
-    public function toggleActive(ESBTPFraisCategory $fraisCategory)
-    {
-        try {
-            $fraisCategory->is_active = !$fraisCategory->is_active;
-            $fraisCategory->save();
-
-            $status = $fraisCategory->is_active ? 'activée' : 'désactivée';
-            
-            return redirect()->back()
-                ->with('success', "Catégorie de frais {$status} avec succès.");
-                
-        } catch (\Exception $e) {
-            Log::error('Erreur lors du basculement du statut de la catégorie de frais: ' . $e->getMessage());
-            return redirect()->back()
-                ->with('error', 'Erreur lors du changement de statut de la catégorie de frais.');
-        }
-    }
-
-    /**
      * Configurer les règles pour une filière/niveau
      */
     public function updateConfiguration(Request $request)
