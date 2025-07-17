@@ -834,6 +834,8 @@
     </div>
 </div>
 
+    </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -977,6 +979,3 @@
 }
 </style>
 @endpush
-    </div>
-</div>
-@endsection

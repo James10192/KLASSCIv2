@@ -1224,21 +1224,29 @@ class ESBTPInscriptionController extends Controller
         try {
             $classe = ESBTPClasse::with(['filiere', 'niveau', 'annee'])->findOrFail($classeId);
             
-            // Récupérer les catégories de frais
-            $mandatoryCategories = ESBTPFraisCategory::where('is_mandatory', true)
-                ->where('is_active', true)
-                ->orderBy('display_order')
-                ->get();
-            
-            $optionalCategories = ESBTPFraisCategory::where('is_mandatory', false)
-                ->where('is_active', true)
+            // Récupérer seulement les catégories qui ont des règles pour cette filière/niveau/année
+            $applicableCategories = ESBTPFraisCategory::where('is_active', true)
+                ->whereHas('rules', function($query) use ($classe) {
+                    $query->where(function($q) use ($classe) {
+                        $q->where('filiere_id', $classe->filiere_id)
+                          ->orWhereNull('filiere_id');
+                    })
+                    ->where(function($q) use ($classe) {
+                        $q->where('niveau_etude_id', $classe->niveau_etude_id)
+                          ->orWhereNull('niveau_etude_id');
+                    })
+                    ->where(function($q) use ($classe) {
+                        $q->where('annee_universitaire_id', $classe->annee_universitaire_id)
+                          ->orWhereNull('annee_universitaire_id');
+                    });
+                })
                 ->orderBy('display_order')
                 ->get();
             
             $fraisData = [];
+            $hasUnconfiguredFees = false;
             
-            // Traiter les frais obligatoires
-            foreach ($mandatoryCategories as $category) {
+            foreach ($applicableCategories as $category) {
                 $rule = $category->getApplicableRule($classe->filiere_id, $classe->niveau_etude_id, $classe->annee_universitaire_id);
                 $defaultAmount = $rule ? $rule->amount : $category->default_amount;
                 
@@ -1248,31 +1256,18 @@ class ESBTPInscriptionController extends Controller
                     ->orderBy('display_order')
                     ->get();
                 
-                $fraisData[] = [
-                    'category' => $category,
-                    'default_amount' => $defaultAmount,
-                    'variants' => $variants,
-                    'is_mandatory' => true,
-                    'rule' => $rule
-                ];
-            }
-            
-            // Traiter les frais optionnels
-            foreach ($optionalCategories as $category) {
-                $rule = $category->getApplicableRule($classe->filiere_id, $classe->niveau_etude_id, $classe->annee_universitaire_id);
-                $defaultAmount = $rule ? $rule->amount : $category->default_amount;
-                
-                // Récupérer les variants pour cette catégorie
-                $variants = \App\Models\ESBTPFraisVariant::where('frais_category_id', $category->id)
-                    ->where('is_active', true)
-                    ->orderBy('display_order')
-                    ->get();
+                // Vérifier si cette catégorie a des variantes configurées
+                $isConfigured = $variants->count() > 0;
+                if (!$isConfigured) {
+                    $hasUnconfiguredFees = true;
+                }
                 
                 $fraisData[] = [
                     'category' => $category,
                     'default_amount' => $defaultAmount,
                     'variants' => $variants,
-                    'is_mandatory' => false,
+                    'is_mandatory' => $category->is_mandatory,
+                    'is_configured' => $isConfigured,
                     'rule' => $rule
                 ];
             }
@@ -1280,7 +1275,9 @@ class ESBTPInscriptionController extends Controller
             return response()->json([
                 'success' => true,
                 'classe' => $classe,
-                'frais' => $fraisData
+                'frais' => $fraisData,
+                'has_unconfigured_fees' => $hasUnconfiguredFees,
+                'configure_url' => route('esbtp.frais.configure')
             ]);
             
         } catch (\Exception $e) {

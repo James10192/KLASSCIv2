@@ -1221,7 +1221,7 @@ class ESBTPEtudiantController extends Controller
 
         return response()->json([
             'available_places' => $availablePlaces,
-            'capacity' => $classe->capacity ?? 0
+            'capacity' => $classe->places_totales ?? 0
         ]);
     }
 

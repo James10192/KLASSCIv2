@@ -81,6 +81,13 @@
         // Fermer le modal
         const modal = bootstrap.Modal.getInstance(document.getElementById('classeSelectorModal'));
         modal.hide();
+        
+        // Déclencher l'événement change pour charger les frais
+        const classeIdInput = document.getElementById('classe_id');
+        if (classeIdInput) {
+            const changeEvent = new Event('change', { bubbles: true });
+            classeIdInput.dispatchEvent(changeEvent);
+        }
 
         // Mettre à jour l'UI
         const placesInfo = document.getElementById('available-places-info');

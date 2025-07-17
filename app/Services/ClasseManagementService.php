@@ -8,6 +8,7 @@ class ClasseManagementService
 {
     /**
      * Get available places for a given class.
+     * Calcul basé sur les inscriptions réellement validées.
      *
      * @param  int  $classId
      * @return int
@@ -20,7 +21,12 @@ class ClasseManagementService
             return 0;
         }
 
-        return $class->places_disponibles;
+        // Compter les inscriptions avec workflow_step 'valide'
+        $inscriptionsValidees = $class->inscriptions()
+            ->where('workflow_step', 'valide')
+            ->count();
+
+        return max(0, $class->places_totales - $inscriptionsValidees);
     }
 
     /**

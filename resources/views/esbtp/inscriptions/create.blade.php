@@ -1250,7 +1250,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     })
                     .then(data => {
                         if (data.success) {
-                            updateFraisContainer(data.frais);
+                            updateFraisContainer(data.frais, data.has_unconfigured_fees, data.configure_url);
                             updateResumeFrais();
                         } else {
                             fraisContainer.innerHTML = `
@@ -1288,11 +1288,37 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    function updateFraisContainer(fraisData) {
+    function updateFraisContainer(fraisData, hasUnconfiguredFees, configureUrl) {
         const fraisContainer = document.getElementById('fraisContainer');
         if (!fraisContainer) return;
         
         let html = '';
+        
+        // Afficher message si des frais ne sont pas configurés
+        if (hasUnconfiguredFees) {
+            html += `
+                <div class="alert alert-warning border-start border-warning border-4 shadow-sm mb-4">
+                    <div class="d-flex align-items-start">
+                        <div class="flex-grow-1">
+                            <h6 class="alert-heading mb-2">
+                                <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                                Configuration incomplète
+                            </h6>
+                            <p class="mb-2">
+                                Certaines catégories de frais pour cette classe n'ont pas de variantes configurées. 
+                                Les montants par défaut seront utilisés.
+                            </p>
+                        </div>
+                        <div class="flex-shrink-0 ms-3">
+                            <a href="${configureUrl}" target="_blank" class="btn btn-outline-warning btn-sm">
+                                <i class="fas fa-cog me-1"></i>
+                                Configuration rapide
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
         
         // Séparer les frais obligatoires et optionnels
         const fraisObligatoires = fraisData.filter(f => f.is_mandatory);
@@ -1332,11 +1358,27 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
         
-        if (html === '') {
-            html = `
-                <div class="alert alert-warning">
-                    <i class="fas fa-info-circle"></i>
-                    Aucun frais configuré pour cette classe.
+        if (fraisData.length === 0) {
+            html += `
+                <div class="alert alert-info border-start border-info border-4">
+                    <div class="d-flex align-items-start">
+                        <div class="flex-grow-1">
+                            <h6 class="alert-heading mb-2">
+                                <i class="fas fa-info-circle text-info me-2"></i>
+                                Aucun frais configuré
+                            </h6>
+                            <p class="mb-0">
+                                Aucune catégorie de frais n'est configurée pour cette classe (filière/niveau).
+                                Veuillez d'abord configurer les frais avant de procéder à l'inscription.
+                            </p>
+                        </div>
+                        <div class="flex-shrink-0 ms-3">
+                            <a href="${configureUrl}" target="_blank" class="btn btn-outline-info btn-sm">
+                                <i class="fas fa-cog me-1"></i>
+                                Configurer les frais
+                            </a>
+                        </div>
+                    </div>
                 </div>
             `;
         }
@@ -1349,20 +1391,28 @@ document.addEventListener('DOMContentLoaded', function() {
         const variants = frais.variants;
         const defaultAmount = frais.default_amount;
         const isMandatory = frais.is_mandatory;
+        const isConfigured = frais.is_configured;
         
         let html = `
             <div class="row mb-4">
                 <div class="col-md-6">
-                    <div class="card">
+                    <div class="card ${!isConfigured ? 'border-warning' : ''}">
                         <div class="card-body">
                             <h6 class="card-title d-flex justify-content-between">
                                 <span>
                                     <i class="fas fa-${isMandatory ? 'star' : 'plus-circle'}"></i>
                                     ${category.name}
+                                    ${!isConfigured ? '<i class="fas fa-exclamation-triangle text-warning ms-1" title="Pas de variantes configurées"></i>' : ''}
                                 </span>
                                 ${isMandatory ? '<span class="badge bg-danger">Obligatoire</span>' : '<span class="badge bg-info">Optionnel</span>'}
                             </h6>
                             <p class="card-text text-muted">${category.description || ''}</p>
+                            
+                            ${!isConfigured ? `
+                                <div class="alert alert-warning alert-sm mb-3">
+                                    <small><i class="fas fa-info-circle me-1"></i>Aucune variante configurée. Montant par défaut utilisé.</small>
+                                </div>
+                            ` : ''}
                             
                             <div class="frais-options">
                                 <div class="form-check mb-2">
@@ -1372,26 +1422,28 @@ document.addEventListener('DOMContentLoaded', function() {
                                            id="frais_${category.id}_default"
                                            ${isMandatory ? 'checked' : ''}>
                                     <label class="form-check-label" for="frais_${category.id}_default">
-                                        Option standard - ${defaultAmount.toLocaleString()} FCFA
+                                        ${isConfigured ? 'Option standard' : 'Montant par défaut'} - ${defaultAmount.toLocaleString()} FCFA
                                     </label>
                                 </div>
         `;
         
-        // Ajouter les variants
-        variants.forEach(variant => {
-            html += `
-                <div class="form-check mb-2">
-                    <input class="form-check-input frais-option" type="radio" 
-                           name="frais[${category.id}][variant_id]" 
-                           value="${variant.id}" 
-                           id="frais_${category.id}_${variant.id}">
-                    <label class="form-check-label" for="frais_${category.id}_${variant.id}">
-                        ${variant.name} - ${variant.amount.toLocaleString()} FCFA
-                        ${variant.description ? `<small class="text-muted d-block">${variant.description}</small>` : ''}
-                    </label>
-                </div>
-            `;
-        });
+        // Ajouter les variants seulement s'ils existent
+        if (isConfigured && variants.length > 0) {
+            variants.forEach(variant => {
+                html += `
+                    <div class="form-check mb-2">
+                        <input class="form-check-input frais-option" type="radio" 
+                               name="frais[${category.id}][variant_id]" 
+                               value="${variant.id}" 
+                               id="frais_${category.id}_${variant.id}">
+                        <label class="form-check-label" for="frais_${category.id}_${variant.id}">
+                            ${variant.name} - ${variant.amount.toLocaleString()} FCFA
+                            ${variant.description ? `<small class="text-muted d-block">${variant.description}</small>` : ''}
+                        </label>
+                    </div>
+                `;
+            });
+        }
         
         // Si ce n'est pas obligatoire, ajouter une option "Ne pas souscrire"
         if (!isMandatory) {
