@@ -1233,7 +1233,7 @@ class ESBTPInscriptionController extends Controller
             
             // Récupérer TOUTES les catégories de frais actives
             $allCategories = ESBTPFraisCategory::where('is_active', true)
-                ->orderBy('display_order')
+                ->orderBy('sort_order')
                 ->get();
             
             // Filtrer les catégories qui sont applicables (ont des règles ou sont générales)
@@ -1246,8 +1246,8 @@ class ESBTPInscriptionController extends Controller
                               ->orWhereNull('filiere_id');
                         })
                         ->where(function($q) use ($classe) {
-                            $q->where('niveau_etude_id', $classe->niveau_etude_id)
-                              ->orWhereNull('niveau_etude_id');
+                            $q->where('niveau_id', $classe->niveau_etude_id)
+                              ->orWhereNull('niveau_id');
                         })
                         ->where(function($q) use ($classe) {
                             $q->where('annee_universitaire_id', $classe->annee_universitaire_id)
@@ -1277,7 +1277,7 @@ class ESBTPInscriptionController extends Controller
                 // Récupérer les variants pour cette catégorie
                 $variants = \App\Models\ESBTPFraisVariant::where('frais_category_id', $category->id)
                     ->where('is_active', true)
-                    ->orderBy('display_order')
+                    ->orderBy('sort_order')
                     ->get();
                 
                 // Vérifier si cette catégorie a des variantes configurées
