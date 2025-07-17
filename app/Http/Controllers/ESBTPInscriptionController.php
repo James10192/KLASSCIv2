@@ -1224,24 +1224,48 @@ class ESBTPInscriptionController extends Controller
         try {
             $classe = ESBTPClasse::with(['filiere', 'niveau', 'annee'])->findOrFail($classeId);
             
-            // Récupérer seulement les catégories qui ont des règles pour cette filière/niveau/année
-            $applicableCategories = ESBTPFraisCategory::where('is_active', true)
-                ->whereHas('rules', function($query) use ($classe) {
-                    $query->where(function($q) use ($classe) {
-                        $q->where('filiere_id', $classe->filiere_id)
-                          ->orWhereNull('filiere_id');
-                    })
-                    ->where(function($q) use ($classe) {
-                        $q->where('niveau_etude_id', $classe->niveau_etude_id)
-                          ->orWhereNull('niveau_etude_id');
-                    })
-                    ->where(function($q) use ($classe) {
-                        $q->where('annee_universitaire_id', $classe->annee_universitaire_id)
-                          ->orWhereNull('annee_universitaire_id');
-                    });
-                })
+            \Log::info('getFraisByClasse appelé', [
+                'classe_id' => $classeId,
+                'filiere_id' => $classe->filiere_id,
+                'niveau_etude_id' => $classe->niveau_etude_id,
+                'annee_universitaire_id' => $classe->annee_universitaire_id
+            ]);
+            
+            // Récupérer TOUTES les catégories de frais actives
+            $allCategories = ESBTPFraisCategory::where('is_active', true)
                 ->orderBy('display_order')
                 ->get();
+            
+            // Filtrer les catégories qui sont applicables (ont des règles ou sont générales)
+            $applicableCategories = $allCategories->filter(function($category) use ($classe) {
+                // Vérifier s'il y a une règle applicable pour cette filière/niveau/année
+                $hasApplicableRule = $category->rules()
+                    ->where(function($query) use ($classe) {
+                        $query->where(function($q) use ($classe) {
+                            $q->where('filiere_id', $classe->filiere_id)
+                              ->orWhereNull('filiere_id');
+                        })
+                        ->where(function($q) use ($classe) {
+                            $q->where('niveau_etude_id', $classe->niveau_etude_id)
+                              ->orWhereNull('niveau_etude_id');
+                        })
+                        ->where(function($q) use ($classe) {
+                            $q->where('annee_universitaire_id', $classe->annee_universitaire_id)
+                              ->orWhereNull('annee_universitaire_id');
+                        });
+                    })
+                    ->exists();
+                
+                // Ou si c'est une catégorie générale (pas de règles spécifiques)
+                $isGeneral = $category->rules()->count() === 0;
+                
+                return $hasApplicableRule || $isGeneral;
+            });
+            
+            \Log::info('Catégories trouvées', [
+                'total_categories' => $allCategories->count(),
+                'applicable_categories' => $applicableCategories->count()
+            ]);
             
             $fraisData = [];
             $hasUnconfiguredFees = false;
@@ -1271,6 +1295,11 @@ class ESBTPInscriptionController extends Controller
                     'rule' => $rule
                 ];
             }
+            
+            \Log::info('Frais processés', [
+                'frais_count' => count($fraisData),
+                'has_unconfigured_fees' => $hasUnconfiguredFees
+            ]);
             
             return response()->json([
                 'success' => true,
