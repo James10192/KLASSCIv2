@@ -5,7 +5,9 @@
       "mcp__memory__search_nodes",
       "mcp__memory__create_entities",
       "mcp__memory__create_relations",
-      "mcp__sequential-thinking__sequentialthinking"
+      "mcp__sequential-thinking__sequentialthinking",
+      "Bash(find:*)",
+      "Bash(/mnt/c/xampp/php/php.exe artisan tinker --execute=\"App\\Models\\ESBTPClasse::with([''filiere'', ''niveau'', ''annee''])->first()\")"
     ],
     "deny": []
   }

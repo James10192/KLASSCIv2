@@ -729,8 +729,9 @@
                         </div>
                         <div class="col-md-4">
                             <div class="form-group mb-3">
-                                <label class="form-label fw-bold">Photo</label>
-                                <input type="file" class="form-control @error('photo') is-invalid @enderror" name="photo" accept="image/*">
+                                <label class="form-label fw-bold">Photo <span class="text-danger">*</span></label>
+                                <input type="file" class="form-control @error('photo') is-invalid @enderror" name="photo" accept="image/jpeg,image/png,image/jpg,image/gif" required>
+                                <small class="form-text text-muted">Formats acceptés: JPEG, PNG, JPG, GIF. Taille max: 2MB</small>
                                 @error('photo')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -763,57 +764,16 @@
                     <div class="row mt-4">
                         <div class="col-md-12 mb-4">
                             <h5 class="section-title">Informations académiques</h5>
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                Sélectionnez une classe. La filière, le niveau d'études et l'année universitaire seront automatiquement associés.
+                            </div>
                         </div>
                     </div>
 
                     <div class="row">
-                        <div class="col-md-4">
-                            <div class="form-group mb-3">
-                                <label class="form-label fw-bold">Filière</label>
-                                <select class="form-control @error('filiere_id') is-invalid @enderror" name="filiere_id" id="filiere_id" required>
-                                    <option value="">Sélectionner une filière</option>
-                                    @foreach($filieres as $filiere)
-                                        <option value="{{ $filiere->id }}" {{ old('filiere_id') == $filiere->id ? 'selected' : '' }}>
-                                            {{ $filiere->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('filiere_id')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-group mb-3">
-                                <label class="form-label fw-bold">Niveau d'études</label>
-                                <select class="form-control @error('niveau_id') is-invalid @enderror" name="niveau_id" id="niveau_id" required>
-                                    <option value="">Sélectionner un niveau</option>
-                                    @foreach($niveaux as $niveau)
-                                        <option value="{{ $niveau->id }}" {{ old('niveau_id') == $niveau->id ? 'selected' : '' }}>
-                                            {{ $niveau->name }} ({{ $niveau->type }} - Année {{ $niveau->year }})
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('niveau_id')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-group mb-3">
-                                <label class="form-label fw-bold">Année universitaire</label>
-                                <select class="form-control @error('annee_universitaire_id') is-invalid @enderror" name="annee_universitaire_id" required>
-                                    <option value="">Sélectionner une année</option>
-                                    @foreach($annees as $annee)
-                                        <option value="{{ $annee->id }}" {{ old('annee_universitaire_id') == $annee->id ? 'selected' : '' }}>
-                                            {{ $annee->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('annee_universitaire_id')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
+                        <div class="col-md-12">
+                            @include('components.forms.class-selector')
                         </div>
                     </div>
 
@@ -1128,7 +1088,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function loadParentsExistants(selectElement) {
         if (!selectElement) return;
         
-        fetch('{{ route("api.parents.search") }}', {
+        fetch('/esbtp/api/parents/search', {
             method: 'GET',
             headers: {
                 'Accept': 'application/json',
@@ -1188,6 +1148,319 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 if (typeInput) typeInput.value = 'nouveau';
             }
+        }
+    });
+
+    // Gestion de l'ajout de parents supplémentaires
+    document.addEventListener('click', function(e) {
+        if (e.target.id === 'add-parent-btn' || e.target.closest('#add-parent-btn')) {
+            e.preventDefault();
+            addNewParent();
+        }
+        
+        // Gestion de la suppression de parents
+        if (e.target.classList.contains('remove-parent') || e.target.closest('.remove-parent')) {
+            e.preventDefault();
+            const parentCard = e.target.closest('.card');
+            if (parentCard) {
+                parentCard.remove();
+            }
+        }
+    });
+
+    function addNewParent() {
+        const template = document.getElementById('parent-template');
+        const parentsContainer = document.getElementById('parents-container');
+        
+        if (!template || !parentsContainer) {
+            console.error('Template ou container des parents introuvable');
+            return;
+        }
+
+        // Cloner le template
+        const newParent = template.cloneNode(true);
+        newParent.id = '';
+        newParent.style.display = 'block';
+        
+        // Mettre à jour les noms des champs avec l'index approprié
+        const inputs = newParent.querySelectorAll('input, select, textarea');
+        inputs.forEach(input => {
+            if (input.name) {
+                input.name = input.name.replace('[template]', `[${parentIndex}]`);
+            }
+            if (input.id) {
+                input.id = input.id.replace('_template', `_${parentIndex}`);
+            }
+        });
+        
+        // Mettre à jour les labels
+        const labels = newParent.querySelectorAll('label[for]');
+        labels.forEach(label => {
+            if (label.getAttribute('for')) {
+                label.setAttribute('for', label.getAttribute('for').replace('_template', `_${parentIndex}`));
+            }
+        });
+        
+        // Ajouter une classe pour l'animation
+        newParent.classList.add('parent-item');
+        
+        // Ajouter le nouvel élément avant le bouton d'ajout
+        const addButton = document.querySelector('.add-parent-container');
+        if (addButton) {
+            addButton.parentNode.insertBefore(newParent, addButton);
+        } else {
+            parentsContainer.appendChild(newParent);
+        }
+        
+        // Incrémenter l'index pour le prochain parent
+        parentIndex++;
+        
+        // Faire défiler vers le nouveau parent
+        newParent.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    // Gestion du chargement des frais quand une classe est sélectionnée
+    document.addEventListener('change', function(e) {
+        if (e.target.id === 'classe_id') {
+            const classeId = e.target.value;
+            const fraisContainer = document.getElementById('fraisContainer');
+            
+            if (classeId && fraisContainer) {
+                // Afficher le loader
+                fraisContainer.innerHTML = `
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="text-center py-4">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Chargement des frais...</span>
+                                </div>
+                                <p class="mt-2 text-muted">Chargement des frais pour cette classe...</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Charger les frais
+                fetch(`/esbtp/inscriptions/frais-by-classe/${classeId}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`Erreur HTTP ! Statut: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success) {
+                            updateFraisContainer(data.frais);
+                            updateResumeFrais();
+                        } else {
+                            fraisContainer.innerHTML = `
+                                <div class="alert alert-danger">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    Erreur lors du chargement des frais : ${data.message}
+                                </div>
+                            `;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erreur lors du chargement des frais:', error);
+                        fraisContainer.innerHTML = `
+                            <div class="alert alert-danger">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                Erreur lors du chargement des frais. Veuillez réessayer.
+                            </div>
+                        `;
+                    });
+            } else if (fraisContainer) {
+                // Réinitialiser le conteneur si aucune classe n'est sélectionnée
+                fraisContainer.innerHTML = `
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="text-center py-4">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Chargement des frais...</span>
+                                </div>
+                                <p class="mt-2 text-muted">Veuillez d'abord sélectionner une classe pour voir les frais applicables</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+    });
+
+    function updateFraisContainer(fraisData) {
+        const fraisContainer = document.getElementById('fraisContainer');
+        if (!fraisContainer) return;
+        
+        let html = '';
+        
+        // Séparer les frais obligatoires et optionnels
+        const fraisObligatoires = fraisData.filter(f => f.is_mandatory);
+        const fraisOptionnels = fraisData.filter(f => !f.is_mandatory);
+        
+        // Frais obligatoires
+        if (fraisObligatoires.length > 0) {
+            html += `
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <h6 class="fw-bold text-primary mb-3">
+                            <i class="fas fa-star"></i> Frais obligatoires
+                        </h6>
+                    </div>
+                </div>
+            `;
+            
+            fraisObligatoires.forEach(frais => {
+                html += generateFraisHTML(frais);
+            });
+        }
+        
+        // Frais optionnels
+        if (fraisOptionnels.length > 0) {
+            html += `
+                <div class="row mb-4 mt-4">
+                    <div class="col-md-12">
+                        <h6 class="fw-bold text-info mb-3">
+                            <i class="fas fa-plus-circle"></i> Frais optionnels
+                        </h6>
+                    </div>
+                </div>
+            `;
+            
+            fraisOptionnels.forEach(frais => {
+                html += generateFraisHTML(frais);
+            });
+        }
+        
+        if (html === '') {
+            html = `
+                <div class="alert alert-warning">
+                    <i class="fas fa-info-circle"></i>
+                    Aucun frais configuré pour cette classe.
+                </div>
+            `;
+        }
+        
+        fraisContainer.innerHTML = html;
+    }
+
+    function generateFraisHTML(frais) {
+        const category = frais.category;
+        const variants = frais.variants;
+        const defaultAmount = frais.default_amount;
+        const isMandatory = frais.is_mandatory;
+        
+        let html = `
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h6 class="card-title d-flex justify-content-between">
+                                <span>
+                                    <i class="fas fa-${isMandatory ? 'star' : 'plus-circle'}"></i>
+                                    ${category.name}
+                                </span>
+                                ${isMandatory ? '<span class="badge bg-danger">Obligatoire</span>' : '<span class="badge bg-info">Optionnel</span>'}
+                            </h6>
+                            <p class="card-text text-muted">${category.description || ''}</p>
+                            
+                            <div class="frais-options">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input frais-option" type="radio" 
+                                           name="frais[${category.id}][variant_id]" 
+                                           value="default" 
+                                           id="frais_${category.id}_default"
+                                           ${isMandatory ? 'checked' : ''}>
+                                    <label class="form-check-label" for="frais_${category.id}_default">
+                                        Option standard - ${defaultAmount.toLocaleString()} FCFA
+                                    </label>
+                                </div>
+        `;
+        
+        // Ajouter les variants
+        variants.forEach(variant => {
+            html += `
+                <div class="form-check mb-2">
+                    <input class="form-check-input frais-option" type="radio" 
+                           name="frais[${category.id}][variant_id]" 
+                           value="${variant.id}" 
+                           id="frais_${category.id}_${variant.id}">
+                    <label class="form-check-label" for="frais_${category.id}_${variant.id}">
+                        ${variant.name} - ${variant.amount.toLocaleString()} FCFA
+                        ${variant.description ? `<small class="text-muted d-block">${variant.description}</small>` : ''}
+                    </label>
+                </div>
+            `;
+        });
+        
+        // Si ce n'est pas obligatoire, ajouter une option "Ne pas souscrire"
+        if (!isMandatory) {
+            html += `
+                <div class="form-check mb-2">
+                    <input class="form-check-input frais-option" type="radio" 
+                           name="frais[${category.id}][variant_id]" 
+                           value="" 
+                           id="frais_${category.id}_none"
+                           checked>
+                    <label class="form-check-label" for="frais_${category.id}_none">
+                        <em>Ne pas souscrire à ce frais</em>
+                    </label>
+                </div>
+            `;
+        }
+        
+        html += `
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        return html;
+    }
+
+    function updateResumeFrais() {
+        const resumeContainer = document.getElementById('resumeFrais');
+        if (!resumeContainer) return;
+        
+        const selectedOptions = document.querySelectorAll('.frais-option:checked');
+        let totalAmount = 0;
+        let resumeHTML = '';
+        
+        selectedOptions.forEach(option => {
+            if (option.value && option.value !== '') {
+                const label = option.closest('.form-check').querySelector('label').textContent;
+                const match = label.match(/(\d+(?:\.\d{3})*)/);
+                if (match) {
+                    const amount = parseInt(match[1].replace(/\./g, ''));
+                    totalAmount += amount;
+                    resumeHTML += `<div class="d-flex justify-content-between">
+                        <span>${label.split(' - ')[0]}</span>
+                        <span>${amount.toLocaleString()} FCFA</span>
+                    </div>`;
+                }
+            }
+        });
+        
+        if (resumeHTML) {
+            resumeHTML += `
+                <hr>
+                <div class="d-flex justify-content-between fw-bold">
+                    <span>Total</span>
+                    <span>${totalAmount.toLocaleString()} FCFA</span>
+                </div>
+            `;
+            resumeContainer.innerHTML = resumeHTML;
+        } else {
+            resumeContainer.innerHTML = '<div class="text-center text-muted py-3">Aucun frais sélectionné</div>';
+        }
+    }
+
+    // Écouter les changements dans les options de frais
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('frais-option')) {
+            updateResumeFrais();
         }
     });
 });

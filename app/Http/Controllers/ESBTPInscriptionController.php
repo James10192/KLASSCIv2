@@ -202,7 +202,7 @@ class ESBTPInscriptionController extends Controller
             'email_personnel' => 'nullable|email|max:100',
             'ville' => 'nullable|string|max:100',
             'commune' => 'nullable|string|max:100',
-            'photo' => 'nullable|image|max:2048',
+            'photo' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
             'matricule' => 'required|string|max:20|unique:esbtp_etudiants,matricule',
         ];
         $messages = [
@@ -1213,6 +1213,82 @@ class ESBTPInscriptionController extends Controller
         } catch (\Exception $e) {
             Log::error('Erreur lors du désabonnement du frais optionnel: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Erreur lors du désabonnement du frais optionnel.');
+        }
+    }
+
+    /**
+     * Récupérer les frais applicables pour une classe donnée
+     */
+    public function getFraisByClasse($classeId)
+    {
+        try {
+            $classe = ESBTPClasse::with(['filiere', 'niveau', 'annee'])->findOrFail($classeId);
+            
+            // Récupérer les catégories de frais
+            $mandatoryCategories = ESBTPFraisCategory::where('is_mandatory', true)
+                ->where('is_active', true)
+                ->orderBy('display_order')
+                ->get();
+            
+            $optionalCategories = ESBTPFraisCategory::where('is_mandatory', false)
+                ->where('is_active', true)
+                ->orderBy('display_order')
+                ->get();
+            
+            $fraisData = [];
+            
+            // Traiter les frais obligatoires
+            foreach ($mandatoryCategories as $category) {
+                $rule = $category->getApplicableRule($classe->filiere_id, $classe->niveau_etude_id, $classe->annee_universitaire_id);
+                $defaultAmount = $rule ? $rule->amount : $category->default_amount;
+                
+                // Récupérer les variants pour cette catégorie
+                $variants = \App\Models\ESBTPFraisVariant::where('frais_category_id', $category->id)
+                    ->where('is_active', true)
+                    ->orderBy('display_order')
+                    ->get();
+                
+                $fraisData[] = [
+                    'category' => $category,
+                    'default_amount' => $defaultAmount,
+                    'variants' => $variants,
+                    'is_mandatory' => true,
+                    'rule' => $rule
+                ];
+            }
+            
+            // Traiter les frais optionnels
+            foreach ($optionalCategories as $category) {
+                $rule = $category->getApplicableRule($classe->filiere_id, $classe->niveau_etude_id, $classe->annee_universitaire_id);
+                $defaultAmount = $rule ? $rule->amount : $category->default_amount;
+                
+                // Récupérer les variants pour cette catégorie
+                $variants = \App\Models\ESBTPFraisVariant::where('frais_category_id', $category->id)
+                    ->where('is_active', true)
+                    ->orderBy('display_order')
+                    ->get();
+                
+                $fraisData[] = [
+                    'category' => $category,
+                    'default_amount' => $defaultAmount,
+                    'variants' => $variants,
+                    'is_mandatory' => false,
+                    'rule' => $rule
+                ];
+            }
+            
+            return response()->json([
+                'success' => true,
+                'classe' => $classe,
+                'frais' => $fraisData
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de la récupération des frais pour la classe: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la récupération des frais'
+            ], 500);
         }
     }
 }

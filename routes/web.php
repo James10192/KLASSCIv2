@@ -542,6 +542,9 @@ Route::middleware(['auth', 'installed'])->group(function () {
             
             // API pour les parents dans les inscriptions
             Route::get('/api/parents/search', [ESBTPInscriptionController::class, 'searchParents'])->name('api.parents.search');
+            
+            // Route pour récupérer les frais par classe
+            Route::get('/inscriptions/frais-by-classe/{classeId}', [ESBTPInscriptionController::class, 'getFraisByClasse'])->name('inscriptions.frais-by-classe');
 
             // Routes API utilisées par les formulaires
             Route::get('classes/{classe}/matieres', [ESBTPClasseController::class, 'getMatieres'])

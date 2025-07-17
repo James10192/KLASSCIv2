@@ -2,15 +2,51 @@
 
 @section('title', 'Détails de l\'inscription')
 
+@section('styles')
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+@endsection
+
 @section('content')
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5 class="mb-0">Détails de l'inscription</h5>
-                        <div class="mt-2">
+<div class="dashboard-acasi">
+    <div class="main-content">
+        <!-- Header moderne -->
+        <div class="dashboard-header">
+            <div class="header-left">
+                <h1>Inscription - {{ $inscription->etudiant->nom }} {{ $inscription->etudiant->prenoms }}</h1>
+                <p class="header-subtitle">Détails de l'inscription #{{ $inscription->id }} - {{ $inscription->classe->name ?? 'Classe non définie' }}</p>
+            </div>
+            <div class="header-actions">
+                <a href="{{ route('esbtp.inscriptions.edit', $inscription) }}" class="btn-acasi primary me-2">
+                    <i class="fas fa-edit"></i>Modifier
+                </a>
+                <a href="{{ route('esbtp.inscriptions.index') }}" class="btn-acasi secondary">
+                    <i class="fas fa-arrow-left"></i>Retour à la liste
+                </a>
+            </div>
+        </div>
+
+        <div class="p-lg">
+            <div class="card-moderne">
+                <div class="card-body">
+                        @if(session('success'))
+                            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                {{ session('success') }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        @endif
+
+                        @if(session('error'))
+                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                {{ session('error') }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        @endif
+
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <div class="d-flex align-items-center justify-content-between mb-3">
+                                <h6 class="section-title mb-0">Statut de l'inscription</h6>
+                                <div>
                             @switch($inscription->workflow_step)
                                 @case('prospect')
                                     <span class="badge bg-secondary">
@@ -114,21 +150,36 @@
                         <div class="col-md-12">
                             <h6 class="border-bottom pb-2">Informations de l'étudiant</h6>
                         </div>
+                        <div class="col-md-3">
+                            <!-- Photo de l'étudiant -->
+                            @if($inscription->etudiant->photo)
+                                <div class="text-center mb-3">
+                                    <img src="{{ asset('storage/' . $inscription->etudiant->photo) }}" 
+                                         alt="Photo de {{ $inscription->etudiant->prenoms }} {{ $inscription->etudiant->nom }}"
+                                         class="img-fluid rounded-circle border border-3 border-primary"
+                                         style="width: 150px; height: 150px; object-fit: cover;">
+                                </div>
+                            @else
+                                <div class="text-center mb-3">
+                                    <div class="d-inline-flex align-items-center justify-content-center rounded-circle border border-3 border-secondary bg-light"
+                                         style="width: 150px; height: 150px;">
+                                        <i class="fas fa-user fa-4x text-secondary"></i>
+                                    </div>
+                                    <small class="text-muted d-block mt-2">Aucune photo</small>
+                                </div>
+                            @endif
+                        </div>
                         <div class="col-md-4">
                             <p><strong>Nom:</strong> {{ $inscription->etudiant->nom }}</p>
                             <p><strong>Prénoms:</strong> {{ $inscription->etudiant->prenoms }}</p>
                             <p><strong>Matricule:</strong> {{ $inscription->etudiant->matricule }}</p>
+                            <p><strong>Email:</strong> {{ $inscription->etudiant->email ?? 'Non renseigné' }}</p>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-5">
                             <p><strong>Date de naissance:</strong> {{ $inscription->etudiant->date_naissance }}</p>
                             <p><strong>Lieu de naissance:</strong> {{ $inscription->etudiant->lieu_naissance ?? 'Non renseigné' }}</p>
                             <p><strong>Genre:</strong> {{ $inscription->etudiant->sexe === 'M' ? 'Homme' : 'Femme' }}</p>
-                        </div>
-                        <div class="col-md-4">
                             <p><strong>Téléphone:</strong> {{ $inscription->etudiant->telephone }}</p>
-                            <p><strong>Email:</strong> {{ $inscription->etudiant->email_personnel }}</p>
-                        </div>
-                        <div class="col-md-4">
                             <p><strong>Ville de résidence:</strong> {{ $inscription->etudiant->ville ?? 'Non renseigné' }}</p>
                             <p><strong>Commune de résidence:</strong> {{ $inscription->etudiant->commune ?? 'Non renseigné' }}</p>
                         </div>
@@ -926,3 +977,6 @@
 }
 </style>
 @endpush
+    </div>
+</div>
+@endsection

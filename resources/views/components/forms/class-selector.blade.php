@@ -86,9 +86,8 @@
         const placesInfo = document.getElementById('available-places-info');
         placesInfo.innerHTML = '<div class="spinner-border spinner-border-sm" role="status"><span class="visually-hidden">Loading...</span></div> Vérification des places...';
 
-
         // Vérifier les places disponibles
-        fetch(`/api/classes/${classeId}/available-places`)
+        fetch(`/esbtp/inscriptions/classes/${classeId}/available-places`)
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`Erreur HTTP ! Statut: ${response.status}`);
@@ -114,6 +113,13 @@
                 console.error('Erreur de vérification des places:', error);
                 placesInfo.innerHTML = `<div class="alert alert-danger p-2 mt-2">Erreur lors de la récupération des places.</div>`;
             });
+
+        // Déclencher l'événement de changement de classe pour charger les frais
+        const classeIdInput = document.getElementById('classe_id');
+        if (classeIdInput) {
+            const changeEvent = new Event('change');
+            classeIdInput.dispatchEvent(changeEvent);
+        }
     }
 
     document.addEventListener('DOMContentLoaded', function () {
@@ -125,7 +131,7 @@
                 const classeId = this.value;
                 if (classeId && availablePlacesDiv) {
                     availablePlacesDiv.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Vérification...';
-                    fetch(`/classes/${classeId}/available-places`)
+                    fetch(`/esbtp/inscriptions/classes/${classeId}/available-places`)
                         .then(response => response.json())
                         .then(data => {
                             if (data.available_places !== undefined) {
@@ -160,8 +166,8 @@
         const tableBody = document.getElementById('classes-table-body');
         tableBody.innerHTML = '<tr><td colspan="5">Chargement...</td></tr>';
         
-        // TODO: Implement actual AJAX call to fetch classes
-        fetch('/api/classes')
+        // Load classes using the existing API
+        fetch('/esbtp/inscriptions/getClasses')
             .then(response => {
                  if (!response.ok) {
                     throw new Error(`Erreur HTTP ! Statut: ${response.status}`);
@@ -171,12 +177,12 @@
             .then(classes => {
                 tableBody.innerHTML = '';
                 classes.forEach(classe => {
-                    const displayText = `${classe.name || ''} - ${classe.filiere?.name || 'N/A'} - ${classe.niveau?.name || 'N/A'} - ${classe.annee?.name || 'N/A'}`;
+                    const displayText = `${classe.name || ''} - ${classe.filiere_name || 'N/A'} - ${classe.niveau_name || 'N/A'} - ${classe.annee_name || 'N/A'}`;
                     tableBody.innerHTML += `<tr>
                         <td>${classe.name || ''}</td>
-                        <td>${classe.filiere?.name || 'N/A'}</td>
-                        <td>${classe.niveau?.name || 'N/A'}</td>
-                        <td>${classe.annee?.name || 'N/A'}</td>
+                        <td>${classe.filiere_name || 'N/A'}</td>
+                        <td>${classe.niveau_name || 'N/A'}</td>
+                        <td>${classe.annee_name || 'N/A'}</td>
                         <td><button class="btn btn-sm btn-primary" onclick="selectClasse(${classe.id}, '${displayText.replace(/'/g, "\\'")}\')">Sélectionner</button></td>
                     </tr>`;
                 });

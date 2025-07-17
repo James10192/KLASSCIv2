@@ -1209,10 +1209,19 @@ class ESBTPEtudiantController extends Controller
      */
     public function getAvailablePlaces($id)
     {
+        $classe = ESBTPClasse::find($id);
+        if (!$classe) {
+            return response()->json([
+                'available_places' => 0,
+                'capacity' => 0
+            ], 404);
+        }
+        
         $availablePlaces = $this->classeManagementService->getAvailablePlaces($id);
 
         return response()->json([
-            'available_places' => $availablePlaces
+            'available_places' => $availablePlaces,
+            'capacity' => $classe->capacity ?? 0
         ]);
     }
 
