@@ -161,9 +161,12 @@ class ESBTPInscriptionController extends Controller
         $anneeUniversitaires = $academicYears;
         $niveauEtudes = $niveaux;
 
+        // Ajouter $annees pour la compatibilité avec la vue
+        $annees = $academicYears;
+        
         return view('esbtp.inscriptions.create', compact(
             'filieres', 'niveaux', 'academicYears', 'anneeEnCours',
-            'anneeUniversitaires', 'niveauEtudes'
+            'anneeUniversitaires', 'niveauEtudes', 'annees'
         ));
     }
 
