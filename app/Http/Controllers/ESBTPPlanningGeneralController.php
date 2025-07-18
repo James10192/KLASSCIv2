@@ -245,15 +245,16 @@ class ESBTPPlanningGeneralController extends Controller
     {
         $anneeId = $request->input('annee_id');
         $classeId = $request->input('classe_id');
+        $periode = $request->input('periode', 'annee'); // semestre1, semestre2, ou annee
         
         $annees = ESBTPAnneeUniversitaire::orderBy('annee_debut', 'desc')->get();
         $classes = ESBTPClasse::with(['filiere', 'niveau'])->orderBy('name')->get();
         
-        // Répartition globale ou par classe
+        // Répartition globale ou par classe avec comparaison planifié vs réalisé
         if ($classeId) {
-            $repartition = $this->calculerRepartitionMatieresClasse($classeId, $anneeId);
+            $repartition = $this->calculerRepartitionMatieresClasse($classeId, $anneeId, $periode);
         } else {
-            $repartition = $this->calculerRepartitionMatieres($anneeId);
+            $repartition = $this->calculerRepartitionMatieres($anneeId, $periode);
         }
         
         // Debug: vérifier les données
@@ -261,6 +262,7 @@ class ESBTPPlanningGeneralController extends Controller
             'count' => $repartition->count(),
             'anneeId' => $anneeId,
             'classeId' => $classeId,
+            'periode' => $periode,
             'sample' => $repartition->take(2)->toArray()
         ]);
         
@@ -349,8 +351,9 @@ class ESBTPPlanningGeneralController extends Controller
     /**
      * Calcule la répartition des heures par matière
      */
-    private function calculerRepartitionMatieres($anneeId)
+    private function calculerRepartitionMatieres($anneeId, $periode = 'annee')
     {
+        // Récupérer les heures réalisées par matière
         $query = ESBTPSeanceCours::with('matiere')
             ->select('matiere_id', DB::raw('COUNT(*) as nb_seances'), 
                     DB::raw('SUM(TIME_TO_SEC(TIMEDIFF(heure_fin, heure_debut))/3600) as total_heures'))
@@ -364,15 +367,42 @@ class ESBTPPlanningGeneralController extends Controller
 
         $results = $query->get();
         
+        // Récupérer les heures planifiées par matière selon la période
+        $planificationsQuery = ESBTPPlanificationAcademique::with('matiere')
+            ->select('matiere_id', DB::raw('SUM(volume_horaire_total) as heures_planifiees'))
+            ->groupBy('matiere_id');
+            
+        if ($anneeId) {
+            $planificationsQuery->where('annee_universitaire_id', $anneeId);
+        }
+        
+        // Filtrer par semestre si spécifié
+        if ($periode === 'semestre1') {
+            $planificationsQuery->where('semestre', 1);
+        } elseif ($periode === 'semestre2') {
+            $planificationsQuery->where('semestre', 2);
+        }
+        
+        $planifications = $planificationsQuery->get()->keyBy('matiere_id');
+        
         // Calcul du total pour les pourcentages
         $totalHeures = $results->sum('total_heures');
         
-        return $results->map(function($item) use ($totalHeures) {
+        return $results->map(function($item) use ($totalHeures, $planifications, $periode) {
+            $planification = $planifications->get($item->matiere_id);
+            $heuresPlanifiees = $planification ? $planification->heures_planifiees : 0;
+            $heuresRestantes = max(0, $heuresPlanifiees - $item->total_heures);
+            
             return [
                 'matiere' => $item->matiere,
                 'nb_seances' => $item->nb_seances,
                 'total_heures' => round($item->total_heures, 2),
-                'pourcentage' => $totalHeures > 0 ? round(($item->total_heures / $totalHeures) * 100, 1) : 0
+                'heures_planifiees' => round($heuresPlanifiees, 2),
+                'heures_restantes' => round($heuresRestantes, 2),
+                'pourcentage_realise' => $heuresPlanifiees > 0 ? round(($item->total_heures / $heuresPlanifiees) * 100, 1) : 0,
+                'pourcentage' => $totalHeures > 0 ? round(($item->total_heures / $totalHeures) * 100, 1) : 0,
+                'est_configure' => $heuresPlanifiees > 0,
+                'periode' => $periode
             ];
         });
     }
@@ -486,7 +516,10 @@ class ESBTPPlanningGeneralController extends Controller
         return []; 
     }
     
-    private function calculerRepartitionMatieresClasse($classeId, $anneeId) { 
+    private function calculerRepartitionMatieresClasse($classeId, $anneeId, $periode = 'annee') { 
+        // Récupérer les informations de la classe pour filtrer les planifications
+        $classe = ESBTPClasse::find($classeId);
+        
         $query = ESBTPSeanceCours::with('matiere')
             ->whereHas('emploiTemps', function($q) use ($classeId, $anneeId) {
                 $q->where('classe_id', $classeId);
@@ -500,15 +533,48 @@ class ESBTPPlanningGeneralController extends Controller
 
         $results = $query->get();
         
+        // Récupérer les heures planifiées pour cette classe selon la période
+        $planificationsQuery = ESBTPPlanificationAcademique::with('matiere')
+            ->select('matiere_id', DB::raw('SUM(volume_horaire_total) as heures_planifiees'))
+            ->groupBy('matiere_id');
+            
+        if ($anneeId) {
+            $planificationsQuery->where('annee_universitaire_id', $anneeId);
+        }
+        
+        // Filtrer par classe (filière et niveau)
+        if ($classe) {
+            $planificationsQuery->where('filiere_id', $classe->filiere_id)
+                              ->where('niveau_etude_id', $classe->niveau_id);
+        }
+        
+        // Filtrer par semestre si spécifié
+        if ($periode === 'semestre1') {
+            $planificationsQuery->where('semestre', 1);
+        } elseif ($periode === 'semestre2') {
+            $planificationsQuery->where('semestre', 2);
+        }
+        
+        $planifications = $planificationsQuery->get()->keyBy('matiere_id');
+        
         // Calcul du total pour les pourcentages
         $totalHeures = $results->sum('total_heures');
         
-        return $results->map(function($item) use ($totalHeures) {
+        return $results->map(function($item) use ($totalHeures, $planifications, $periode) {
+            $planification = $planifications->get($item->matiere_id);
+            $heuresPlanifiees = $planification ? $planification->heures_planifiees : 0;
+            $heuresRestantes = max(0, $heuresPlanifiees - $item->total_heures);
+            
             return [
                 'matiere' => $item->matiere,
                 'nb_seances' => $item->nb_seances,
                 'total_heures' => round($item->total_heures, 2),
-                'pourcentage' => $totalHeures > 0 ? round(($item->total_heures / $totalHeures) * 100, 1) : 0
+                'heures_planifiees' => round($heuresPlanifiees, 2),
+                'heures_restantes' => round($heuresRestantes, 2),
+                'pourcentage_realise' => $heuresPlanifiees > 0 ? round(($item->total_heures / $heuresPlanifiees) * 100, 1) : 0,
+                'pourcentage' => $totalHeures > 0 ? round(($item->total_heures / $totalHeures) * 100, 1) : 0,
+                'est_configure' => $heuresPlanifiees > 0,
+                'periode' => $periode
             ];
         });
     }

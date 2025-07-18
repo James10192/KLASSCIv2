@@ -134,6 +134,73 @@
         transition: width 0.8s ease;
     }
     
+    .progress-bars-container {
+        margin-top: var(--space-md);
+    }
+    
+    .progress-bar-volume {
+        height: 8px;
+        background: #f1f3f4;
+        border-radius: var(--radius-full);
+        overflow: hidden;
+        margin-bottom: var(--space-xs);
+        position: relative;
+    }
+    
+    .progress-bar-volume.realise {
+        background: #e8f5e8;
+    }
+    
+    .progress-bar-volume.planifie {
+        background: #e3f2fd;
+    }
+    
+    .progress-fill-volume {
+        height: 100%;
+        transition: width 0.8s ease;
+        border-radius: var(--radius-full);
+    }
+    
+    .progress-fill-volume.realise {
+        background: linear-gradient(90deg, #4caf50, #66bb6a);
+    }
+    
+    .progress-fill-volume.planifie {
+        background: linear-gradient(90deg, #2196f3, #42a5f5);
+    }
+    
+    .progress-fill-volume.restant {
+        background: linear-gradient(90deg, #ff9800, #ffb74d);
+    }
+    
+    .volume-legend {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        margin-bottom: var(--space-xs);
+    }
+    
+    .non-configure-card {
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: var(--radius-medium);
+        padding: var(--space-md);
+        margin-top: var(--space-sm);
+        text-align: center;
+    }
+    
+    .non-configure-card .icon {
+        color: #856404;
+        font-size: 1.5rem;
+        margin-bottom: var(--space-sm);
+    }
+    
+    .configure-btn {
+        margin-top: var(--space-sm);
+    }
+    
     .filters-section {
         background: var(--surface);
         border-radius: var(--radius-medium);
@@ -398,16 +465,30 @@
                                 <h6 class="matiere-nom">{{ $item['matiere']->name ?? 'Matière inconnue' }}</h6>
                                 <small class="text-muted">{{ $item['matiere']->code ?? 'N/A' }}</small>
                             </div>
-                            <div class="objectif-badge atteint">
-                                {{ $item['pourcentage'] }}%
+                            <div class="objectif-badge {{ $item['est_configure'] ? ($item['pourcentage_realise'] >= 80 ? 'atteint' : ($item['pourcentage_realise'] >= 50 ? 'proche' : 'loin')) : 'loin' }}">
+                                @if($item['est_configure'])
+                                    {{ $item['pourcentage_realise'] }}%
+                                @else
+                                    Non configuré
+                                @endif
                             </div>
                         </div>
                         
                         <div class="matiere-stats">
                             <div class="stat-item">
                                 <div class="stat-value">{{ number_format($item['total_heures'], 1) }}h</div>
-                                <div class="stat-label">Total heures</div>
+                                <div class="stat-label">Heures réalisées</div>
                             </div>
+                            @if($item['est_configure'])
+                            <div class="stat-item">
+                                <div class="stat-value">{{ number_format($item['heures_planifiees'], 1) }}h</div>
+                                <div class="stat-label">Heures planifiées</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">{{ number_format($item['heures_restantes'], 1) }}h</div>
+                                <div class="stat-label">Heures restantes</div>
+                            </div>
+                            @else
                             <div class="stat-item">
                                 <div class="stat-value">{{ $item['nb_seances'] }}</div>
                                 <div class="stat-label">Séances</div>
@@ -416,10 +497,51 @@
                                 <div class="stat-value">{{ number_format($item['total_heures'] / max($item['nb_seances'], 1), 1) }}h</div>
                                 <div class="stat-label">Moy. par séance</div>
                             </div>
+                            @endif
                         </div>
                         
-                        <div class="progress-bar-matiere">
+                        @if($item['est_configure'])
+                        <!-- Barres de progression pour les volumes horaires -->
+                        <div class="progress-bars-container">
+                            <div class="volume-legend">
+                                <span>Réalisé vs Planifié ({{ ucfirst($item['periode']) }})</span>
+                                <span class="fw-bold">{{ $item['pourcentage_realise'] }}% complété</span>
+                            </div>
+                            
+                            <!-- Barre des heures réalisées -->
+                            <div class="progress-bar-volume realise">
+                                <div class="progress-fill-volume realise" style="width: {{ min($item['pourcentage_realise'], 100) }}%"></div>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between mt-1">
+                                <small class="text-success">✓ {{ number_format($item['total_heures'], 1) }}h réalisées</small>
+                                @if($item['heures_restantes'] > 0)
+                                <small class="text-warning">⏱ {{ number_format($item['heures_restantes'], 1) }}h restantes</small>
+                                @else
+                                <small class="text-success">✅ Objectif atteint</small>
+                                @endif
+                            </div>
+                        </div>
+                        @else
+                        <!-- Message de non configuration -->
+                        <div class="non-configure-card">
+                            <div class="icon">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </div>
+                            <div class="fw-bold mb-1">Planning non configuré</div>
+                            <div class="text-muted mb-2">Aucune planification horaire n'a été définie pour cette matière.</div>
+                            <a href="{{ route('esbtp.planning-general.index') }}" class="btn btn-sm btn-warning configure-btn">
+                                <i class="fas fa-cog me-1"></i>Configurer le planning
+                            </a>
+                        </div>
+                        @endif
+                        
+                        <!-- Barre de progression relative (pourcentage dans le total) -->
+                        <div class="progress-bar-matiere" style="margin-top: {{ $item['est_configure'] ? 'var(--space-md)' : 'var(--space-sm)' }}">
                             <div class="progress-fill-matiere" style="width: {{ min($item['pourcentage'], 100) }}%"></div>
+                        </div>
+                        <div class="text-center mt-1">
+                            <small class="text-muted">{{ $item['pourcentage'] }}% du total des heures</small>
                         </div>
                     </div>
                     @endforeach
