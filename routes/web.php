@@ -48,6 +48,7 @@ use App\Http\Controllers\ESBTPSpecialtyController;
 use App\Http\Controllers\ESBTPContinuingEducationController;
 use App\Http\Controllers\ESBTPStudentController;
 use App\Http\Controllers\ESBTPDepartmentController;
+use App\Http\Controllers\ESBTPPlanningGeneralController;
 use App\Http\Controllers\ESBTP\Admin\TeacherAdminController;
 use App\Http\Controllers\ESBTP\ESBTPSettingsController;
 use App\Http\Controllers\ESBTPLogsController;
@@ -206,6 +207,7 @@ Route::middleware(['auth', 'installed'])->group(function () {
             // Nouveau système de catégories de frais ESBTP
             Route::get('frais', [\App\Http\Controllers\ESBTPFraisController::class, 'index'])->name('frais.index');
             Route::get('frais/configure', [\App\Http\Controllers\ESBTPFraisController::class, 'configure'])->name('frais.configure');
+            Route::get('frais/get-categories', [\App\Http\Controllers\ESBTPFraisController::class, 'getCategories'])->name('frais.get-categories');
             Route::post('frais/update-configuration', [\App\Http\Controllers\ESBTPFraisController::class, 'updateConfiguration'])->name('frais.update-configuration');
             Route::post('frais/{category}/toggle', [\App\Http\Controllers\ESBTPFraisController::class, 'toggleCategory'])->name('frais.toggle');
             Route::post('frais/{fraisCategory}/toggle-active', [\App\Http\Controllers\ESBTPFraisController::class, 'toggleActive'])->name('frais.toggle-active');
@@ -453,8 +455,22 @@ Route::middleware(['auth', 'installed'])->group(function () {
                     ->middleware('permission:edit_attendances');
             });
 
+            // Routes pour le planning général
+            Route::prefix('planning-general')->name('planning-general.')->group(function () {
+                Route::get('/', [ESBTPPlanningGeneralController::class, 'index'])->name('index');
+                Route::get('/test', [ESBTPPlanningGeneralController::class, 'indexTest'])->name('test');
+                Route::post('/planification', [ESBTPPlanningGeneralController::class, 'storePlanification'])->name('store-planification');
+                Route::delete('/planification/{id}', [ESBTPPlanningGeneralController::class, 'destroyPlanification'])->name('destroy-planification');
+                Route::post('/planification/{id}/valider', [ESBTPPlanningGeneralController::class, 'validerPlanification'])->name('valider-planification');
+                Route::get('/annuel', [ESBTPPlanningGeneralController::class, 'annuel'])->name('annuel');
+                Route::get('/repartition-matieres', [ESBTPPlanningGeneralController::class, 'repartitionMatieres'])->name('repartition-matieres');
+                Route::get('/coordinateur', [ESBTPPlanningGeneralController::class, 'coordinateur'])->name('coordinateur')
+                    ->middleware('permission:manage-planning|view-all-timetables');
+            });
+
             // Paiements
             Route::get('/paiements', [App\Http\Controllers\ESBTPPaiementController::class, 'index'])->name('paiements.index');
+            Route::get('/paiements/suivi-categories', [App\Http\Controllers\ESBTPPaiementController::class, 'suiviCategories'])->name('paiements.suivi-categories');
             Route::get('/paiements/create', [App\Http\Controllers\ESBTPPaiementController::class, 'create'])->name('paiements.create');
             Route::post('/paiements', [App\Http\Controllers\ESBTPPaiementController::class, 'store'])->name('paiements.store');
             Route::get('/paiements/{paiement}', [App\Http\Controllers\ESBTPPaiementController::class, 'show'])->name('paiements.show');
@@ -835,6 +851,10 @@ Route::prefix('esbtp/api')->name('esbtp.api.')->middleware(['auth'])->group(func
     Route::get('classes/{id}', [ESBTPClasseController::class, 'getClasseById'])->name('classes.get');
     Route::get('get-classes', [ESBTPInscriptionController::class, 'getClasses'])->name('get-classes');
     Route::get('search-parents', [ESBTPEtudiantController::class, 'searchParents'])->name('search-parents');
+    Route::get('etudiants/search', [ESBTPEtudiantController::class, 'searchForApi'])->name('etudiants.search');
+    Route::get('etudiants/inscriptions', [ESBTPEtudiantController::class, 'getInscriptionsForApi'])->name('etudiants.inscriptions');
+    Route::get('etudiants/soldes', [ESBTPEtudiantController::class, 'getSoldesForApi'])->name('etudiants.soldes');
+    Route::get('frais/categories', [\App\Http\Controllers\ESBTPFraisController::class, 'getCategoriesForApi'])->name('frais.categories');
 });
 
 // Route for activating all timetables
