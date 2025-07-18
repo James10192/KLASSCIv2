@@ -2,306 +2,476 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\ESBTPTeacher;
 use App\Models\ESBTPMatiere;
+use App\Models\ESBTPClasse;
 use App\Models\Department;
 use App\Models\Laboratory;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
-use Spatie\Permission\Models\Role;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 class ESBTPEnseignantController extends Controller
 {
     /**
-     * Constructeur avec middleware d'authentification
+     * Display a listing of the teachers.
      */
-    public function __construct()
+    public function index(Request $request)
     {
-        $this->middleware('auth');
-        $this->middleware('role:superAdmin');
+        $query = ESBTPTeacher::with(['user', 'department', 'laboratory']);
+        
+        // Filtres
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+        
+        if ($request->filled('department_id')) {
+            $query->where('department_id', $request->department_id);
+        }
+        
+        if ($request->filled('specialization')) {
+            $query->where('specialization', 'like', '%' . $request->specialization . '%');
+        }
+        
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->whereHas('user', function($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                  ->orWhere('email', 'like', '%' . $search . '%');
+            });
+        }
+        
+        $teachers = $query->paginate(15);
+        
+        // Données pour les filtres
+        $departments = Department::all();
+        $specializations = ESBTPTeacher::distinct()->pluck('specialization')->filter();
+        
+        // Statistiques
+        $stats = [
+            'total' => ESBTPTeacher::count(),
+            'active' => ESBTPTeacher::where('status', 'active')->count(),
+            'inactive' => ESBTPTeacher::where('status', 'inactive')->count(),
+            'permanent' => ESBTPTeacher::where('type_contrat', 'permanent')->count(),
+            'temporary' => ESBTPTeacher::where('type_contrat', 'temporaire')->count(),
+        ];
+        
+        return view('esbtp.enseignants.index', compact('teachers', 'departments', 'specializations', 'stats'));
     }
 
     /**
-     * Affiche la liste des enseignants
-     */
-    public function index()
-    {
-        $enseignants = ESBTPTeacher::with(['user', 'department', 'laboratory'])
-            ->orderBy('created_at', 'desc')
-            ->paginate(10);
-        return view('esbtp.enseignants.index', compact('enseignants'));
-    }
-
-    /**
-     * Affiche le formulaire de création d'un enseignant
+     * Show the form for creating a new teacher.
      */
     public function create()
     {
-        $departments = Department::orderBy('name')->get();
-        $laboratories = Laboratory::orderBy('name')->get();
-        return view('esbtp.enseignants.create', compact('departments', 'laboratories'));
+        $departments = Department::all();
+        $laboratories = Laboratory::all();
+        $matieres = ESBTPMatiere::where('is_active', true)->get();
+        $classes = ESBTPClasse::where('is_active', true)->get();
+        
+        // Données pour les formulaires
+        $titres_academiques = [
+            'M.' => 'Monsieur',
+            'Mme' => 'Madame',
+            'Dr.' => 'Docteur',
+            'Pr.' => 'Professeur'
+        ];
+        
+        $grades_academiques = [
+            'assistant' => 'Assistant',
+            'maitre_assistant' => 'Maître Assistant',
+            'maitre_conferences' => 'Maître de Conférences',
+            'professeur' => 'Professeur'
+        ];
+        
+        $types_contrat = [
+            'permanent' => 'Permanent',
+            'temporaire' => 'Temporaire',
+            'vacataire' => 'Vacataire',
+            'consultant' => 'Consultant'
+        ];
+        
+        $statuts_emploi = [
+            'temps_plein' => 'Temps Plein',
+            'temps_partiel' => 'Temps Partiel',
+            'vacations' => 'Vacations'
+        ];
+        
+        $methodes_enseignement = [
+            'cours_magistral' => 'Cours Magistral',
+            'travaux_diriges' => 'Travaux Dirigés',
+            'travaux_pratiques' => 'Travaux Pratiques',
+            'projet' => 'Projet',
+            'stage' => 'Stage',
+            'apprentissage_actif' => 'Apprentissage Actif',
+            'classe_inversee' => 'Classe Inversée'
+        ];
+        
+        $outils_pedagogiques = [
+            'tableau_blanc' => 'Tableau Blanc',
+            'ordinateur' => 'Ordinateur',
+            'projecteur' => 'Projecteur',
+            'plateforme_lms' => 'Plateforme LMS',
+            'outils_collaboration' => 'Outils de Collaboration',
+            'simulation' => 'Simulation',
+            'realite_virtuelle' => 'Réalité Virtuelle'
+        ];
+        
+        return view('esbtp.enseignants.create', compact(
+            'departments', 'laboratories', 'matieres', 'classes',
+            'titres_academiques', 'grades_academiques', 'types_contrat', 
+            'statuts_emploi', 'methodes_enseignement', 'outils_pedagogiques'
+        ));
     }
 
     /**
-     * Enregistre un nouvel enseignant
+     * Store a newly created teacher in storage.
      */
     public function store(Request $request)
     {
-        dd($request->all());
         $validator = Validator::make($request->all(), [
-            'firstname' => 'required|string|max:255',
-            'lastname' => 'required|string|max:255',
+            // Informations utilisateur
+            'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'username' => 'required|string|max:255|unique:users',
-            'password' => 'required|string|min:8',
-            'employee_id' => 'nullable|string|unique:teachers,employee_id',
-            'department_id' => 'nullable|exists:departments,id',
+            'password' => 'required|string|min:8|confirmed',
+            'phone' => 'nullable|string|max:20',
+            
+            // Informations professionnelles
+            'titre_academique' => 'nullable|string|max:10',
+            'grade_academique' => 'nullable|string|max:50',
+            'specialization' => 'required|string|max:255',
+            'department_id' => 'required|exists:departments,id',
             'laboratory_id' => 'nullable|exists:laboratories,id',
-            'specialties' => 'nullable|array',
-            'grade' => 'nullable|string|max:255',
-            'status' => 'nullable|string|max:255',
-            'teaching_hours_due' => 'nullable|integer|min:0',
-            'office_location' => 'nullable|string|max:255',
-            'bio' => 'nullable|string',
-            'research_interests' => 'nullable|array',
-            'website' => 'nullable|url|max:255',
-            'availability' => 'nullable|array'
+            
+            // Informations contractuelles
+            'type_contrat' => 'required|in:permanent,temporaire,vacataire,consultant',
+            'statut_emploi' => 'required|in:temps_plein,temps_partiel,vacations',
+            'date_embauche' => 'required|date',
+            'fin_contrat' => 'nullable|date|after:date_embauche',
+            'taux_horaire' => 'nullable|numeric|min:0',
+            
+            // Expérience et qualifications
+            'diplome_principal' => 'nullable|string|max:255',
+            'universite_diplome' => 'nullable|string|max:255',
+            'annee_diplome' => 'nullable|integer|min:1950|max:' . date('Y'),
+            'annees_experience_enseignement' => 'nullable|integer|min:0',
+            'annees_experience_professionnelle' => 'nullable|integer|min:0',
+            
+            // Préférences
+            'charge_horaire_max_semaine' => 'nullable|integer|min:1|max:60',
+            'accepte_enseignement_distance' => 'boolean',
+            'accepte_cours_weekend' => 'boolean',
+            'accepte_cours_soir' => 'boolean',
+            
+            // Autres informations
+            'bio' => 'nullable|string|max:1000',
+            'website' => 'nullable|url',
+            'motivation' => 'nullable|string|max:1000',
+            'objectifs_pedagogiques' => 'nullable|string|max:1000',
+            
+            // Fichiers
+            'cv' => 'nullable|file|mimes:pdf,doc,docx|max:2048',
+            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
         if ($validator->fails()) {
-            return redirect()->back()
-                ->withErrors($validator)
-                ->withInput();
+            return redirect()->back()->withErrors($validator)->withInput();
         }
 
+        DB::beginTransaction();
+        
         try {
-            DB::beginTransaction();
-
             // Créer l'utilisateur
             $user = User::create([
-                'firstname' => $request->firstname,
-                'lastname' => $request->lastname,
+                'name' => $request->name,
                 'email' => $request->email,
-                'username' => $request->username,
                 'password' => Hash::make($request->password),
+                'phone' => $request->phone,
                 'is_active' => true,
             ]);
 
-            // Créer l'enseignant
+            // Assigner le rôle enseignant
+            $user->assignRole('enseignant');
+
+            // Gérer les uploads de fichiers
+            $cvPath = null;
+            $photoPath = null;
+            
+            if ($request->hasFile('cv')) {
+                $cvPath = $request->file('cv')->store('enseignants/cv', 'public');
+            }
+            
+            if ($request->hasFile('photo')) {
+                $photoPath = $request->file('photo')->store('enseignants/photos', 'public');
+            }
+
+            // Créer le profil enseignant
             $teacher = ESBTPTeacher::create([
                 'user_id' => $user->id,
-                'employee_id' => $request->employee_id,
+                'matricule' => $this->generateMatricule(),
+                'title' => $request->titre_academique,
+                'specialization' => $request->specialization,
                 'department_id' => $request->department_id,
                 'laboratory_id' => $request->laboratory_id,
-                'specialties' => $request->specialties,
-                'grade' => $request->grade,
-                'status' => $request->status,
-                'teaching_hours_due' => $request->teaching_hours_due ?? 0,
-                'teaching_hours_done' => 0,
-                'office_location' => $request->office_location,
+                'grade' => $request->grade_academique,
                 'bio' => $request->bio,
-                'research_interests' => $request->research_interests,
                 'website' => $request->website,
-                'availability' => $request->availability,
-                'created_by' => auth()->id()
+                'status' => 'active',
+                'teaching_hours_due' => $request->charge_horaire_max_semaine ?? 40,
+                'created_by' => auth()->id(),
             ]);
 
-            // Assigner le rôle enseignant
-            $role = Role::firstOrCreate(['name' => 'enseignant']);
-            $user->assignRole($role);
-
-            DB::commit();
-
-            return redirect()->route('esbtp.enseignants.index')
-                ->with('success', 'Enseignant créé avec succès');
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return redirect()->back()
-                ->withInput()
-                ->with('error', 'Une erreur est survenue lors de la création de l\'enseignant: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Affiche les détails d'un enseignant
-     */
-    public function show($id)
-    {
-        $enseignant = ESBTPTeacher::with(['user', 'department', 'laboratory', 'seancesCours'])
-            ->findOrFail($id);
-        return view('esbtp.enseignants.show', compact('enseignant'));
-    }
-
-    /**
-     * Affiche le formulaire d'édition d'un enseignant
-     */
-    public function edit($id)
-    {
-        $enseignant = ESBTPTeacher::with(['user', 'department', 'laboratory'])
-            ->findOrFail($id);
-        $departments = Department::orderBy('name')->get();
-        $laboratories = Laboratory::orderBy('name')->get();
-        return view('esbtp.enseignants.edit', compact('enseignant', 'departments', 'laboratories'));
-    }
-
-    /**
-     * Met à jour un enseignant
-     */
-    public function update(Request $request, $id)
-    {
-        $teacher = ESBTPTeacher::findOrFail($id);
-
-        $validator = Validator::make($request->all(), [
-            'firstname' => 'required|string|max:255',
-            'lastname' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $teacher->user_id,
-            'username' => 'required|string|max:255|unique:users,username,' . $teacher->user_id,
-            'employee_id' => 'nullable|string|unique:teachers,employee_id,' . $teacher->id,
-            'department_id' => 'nullable|exists:departments,id',
-            'laboratory_id' => 'nullable|exists:laboratories,id',
-            'specialties' => 'nullable|array',
-            'grade' => 'nullable|string|max:255',
-            'status' => 'nullable|string|max:255',
-            'teaching_hours_due' => 'nullable|integer|min:0',
-            'office_location' => 'nullable|string|max:255',
-            'bio' => 'nullable|string',
-            'research_interests' => 'nullable|array',
-            'website' => 'nullable|url|max:255',
-            'availability' => 'nullable|array'
-        ]);
-
-        if ($validator->fails()) {
-            return redirect()->back()
-                ->withErrors($validator)
-                ->withInput();
-        }
-
-        try {
-            DB::beginTransaction();
-
-            // Mettre à jour l'utilisateur
-            $teacher->user->update([
-                'firstname' => $request->firstname,
-                'lastname' => $request->lastname,
-                'email' => $request->email,
-                'username' => $request->username,
-            ]);
-
-            // Mettre à jour le mot de passe si fourni
-            if ($request->filled('password')) {
-                $teacher->user->update([
-                    'password' => Hash::make($request->password)
+            // Créer le profil avancé si les tables existent
+            if (Schema::hasTable('esbtp_enseignant_profiles')) {
+                DB::table('esbtp_enseignant_profiles')->insert([
+                    'user_id' => $user->id,
+                    'matricule_enseignant' => $teacher->matricule,
+                    'titre_academique' => $request->titre_academique,
+                    'grade_academique' => $request->grade_academique,
+                    'diplome_principal' => $request->diplome_principal,
+                    'universite_diplome' => $request->universite_diplome,
+                    'annee_diplome' => $request->annee_diplome,
+                    'annees_experience_enseignement' => $request->annees_experience_enseignement ?? 0,
+                    'annees_experience_professionnelle' => $request->annees_experience_professionnelle ?? 0,
+                    'charge_horaire_max_semaine' => $request->charge_horaire_max_semaine ?? 40,
+                    'type_contrat' => $request->type_contrat,
+                    'statut_emploi' => $request->statut_emploi,
+                    'date_embauche' => $request->date_embauche,
+                    'fin_contrat' => $request->fin_contrat,
+                    'taux_horaire' => $request->taux_horaire,
+                    'accepte_enseignement_distance' => $request->boolean('accepte_enseignement_distance'),
+                    'accepte_cours_weekend' => $request->boolean('accepte_cours_weekend'),
+                    'accepte_cours_soir' => $request->boolean('accepte_cours_soir'),
+                    'motivation' => $request->motivation,
+                    'objectifs_pedagogiques' => $request->objectifs_pedagogiques,
+                    'statut' => 'actif',
+                    'created_by' => auth()->id(),
+                    'created_at' => now(),
+                    'updated_at' => now(),
                 ]);
             }
 
-            // Mettre à jour le profil de l'enseignant
+            DB::commit();
+            
+            return redirect()->route('esbtp.personnel.unified.index')
+                ->with('success', 'Enseignant créé avec succès');
+                
+        } catch (\Exception $e) {
+            DB::rollback();
+            
+            // Supprimer les fichiers uploadés en cas d'erreur
+            if ($cvPath && Storage::disk('public')->exists($cvPath)) {
+                Storage::disk('public')->delete($cvPath);
+            }
+            if ($photoPath && Storage::disk('public')->exists($photoPath)) {
+                Storage::disk('public')->delete($photoPath);
+            }
+            
+            return redirect()->back()
+                ->with('error', 'Une erreur est survenue lors de la création de l\'enseignant: ' . $e->getMessage())
+                ->withInput();
+        }
+    }
+
+    /**
+     * Display the specified teacher.
+     */
+    public function show(ESBTPTeacher $teacher)
+    {
+        $teacher->load(['user', 'department', 'laboratory', 'createdBy', 'updatedBy']);
+        
+        // Récupérer les informations additionnelles si elles existent
+        $profileData = null;
+        if (Schema::hasTable('esbtp_enseignant_profiles')) {
+            $profileData = DB::table('esbtp_enseignant_profiles')
+                ->where('user_id', $teacher->user_id)
+                ->first();
+        }
+        
+        return view('esbtp.enseignants.show', compact('teacher', 'profileData'));
+    }
+
+    /**
+     * Show the form for editing the specified teacher.
+     */
+    public function edit(ESBTPTeacher $teacher)
+    {
+        $teacher->load(['user', 'department', 'laboratory']);
+        
+        $departments = Department::all();
+        $laboratories = Laboratory::all();
+        $matieres = ESBTPMatiere::where('is_active', true)->get();
+        $classes = ESBTPClasse::where('is_active', true)->get();
+        
+        // Récupérer les informations additionnelles si elles existent
+        $profileData = null;
+        if (Schema::hasTable('esbtp_enseignant_profiles')) {
+            $profileData = DB::table('esbtp_enseignant_profiles')
+                ->where('user_id', $teacher->user_id)
+                ->first();
+        }
+        
+        // Données pour les formulaires (même que dans create)
+        $titres_academiques = [
+            'M.' => 'Monsieur',
+            'Mme' => 'Madame',
+            'Dr.' => 'Docteur',
+            'Pr.' => 'Professeur'
+        ];
+        
+        $grades_academiques = [
+            'assistant' => 'Assistant',
+            'maitre_assistant' => 'Maître Assistant',
+            'maitre_conferences' => 'Maître de Conférences',
+            'professeur' => 'Professeur'
+        ];
+        
+        $types_contrat = [
+            'permanent' => 'Permanent',
+            'temporaire' => 'Temporaire',
+            'vacataire' => 'Vacataire',
+            'consultant' => 'Consultant'
+        ];
+        
+        $statuts_emploi = [
+            'temps_plein' => 'Temps Plein',
+            'temps_partiel' => 'Temps Partiel',
+            'vacations' => 'Vacations'
+        ];
+        
+        return view('esbtp.enseignants.edit', compact(
+            'teacher', 'profileData', 'departments', 'laboratories', 'matieres', 'classes',
+            'titres_academiques', 'grades_academiques', 'types_contrat', 'statuts_emploi'
+        ));
+    }
+
+    /**
+     * Update the specified teacher in storage.
+     */
+    public function update(Request $request, ESBTPTeacher $teacher)
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email,' . $teacher->user_id,
+            'phone' => 'nullable|string|max:20',
+            'specialization' => 'required|string|max:255',
+            'department_id' => 'required|exists:departments,id',
+            'laboratory_id' => 'nullable|exists:laboratories,id',
+            'bio' => 'nullable|string|max:1000',
+            'website' => 'nullable|url',
+            'status' => 'required|in:active,inactive',
+            'teaching_hours_due' => 'nullable|integer|min:0|max:80',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        DB::beginTransaction();
+        
+        try {
+            // Mettre à jour l'utilisateur
+            $teacher->user->update([
+                'name' => $request->name,
+                'email' => $request->email,
+                'phone' => $request->phone,
+            ]);
+
+            // Mettre à jour le profil enseignant
             $teacher->update([
-                'employee_id' => $request->employee_id,
+                'specialization' => $request->specialization,
                 'department_id' => $request->department_id,
                 'laboratory_id' => $request->laboratory_id,
-                'specialties' => $request->specialties,
-                'grade' => $request->grade,
+                'bio' => $request->bio,
+                'website' => $request->website,
                 'status' => $request->status,
                 'teaching_hours_due' => $request->teaching_hours_due,
-                'office_location' => $request->office_location,
-                'bio' => $request->bio,
-                'research_interests' => $request->research_interests,
-                'website' => $request->website,
-                'availability' => $request->availability,
-                'updated_by' => auth()->id()
+                'updated_by' => auth()->id(),
             ]);
 
             DB::commit();
-
-            return redirect()->route('esbtp.enseignants.index')
+            
+            return redirect()->route('esbtp.personnel.unified.index')
                 ->with('success', 'Enseignant mis à jour avec succès');
-
+                
         } catch (\Exception $e) {
-            DB::rollBack();
+            DB::rollback();
+            
             return redirect()->back()
-                ->withInput()
-                ->with('error', 'Une erreur est survenue lors de la mise à jour de l\'enseignant: ' . $e->getMessage());
+                ->with('error', 'Une erreur est survenue lors de la mise à jour: ' . $e->getMessage())
+                ->withInput();
         }
     }
 
     /**
-     * Supprime un enseignant
+     * Remove the specified teacher from storage.
      */
-    public function destroy($id)
+    public function destroy(ESBTPTeacher $teacher)
     {
         try {
             DB::beginTransaction();
-
-            $teacher = ESBTPTeacher::findOrFail($id);
-
-            // Store user_id before deleting teacher
-            $userId = $teacher->user_id;
-
-            // Delete teacher record
-            $teacher->delete();
-
-            // Find and update user
-            $user = User::find($userId);
-            if ($user) {
-                $user->removeRole('enseignant');
-
-                // If user has no other roles, deactivate instead of deleting
-                if ($user->roles->isEmpty()) {
-                    $user->update(['is_active' => false]);
-                }
+            
+            // Supprimer les fichiers associés
+            if ($teacher->cv_path && Storage::disk('public')->exists($teacher->cv_path)) {
+                Storage::disk('public')->delete($teacher->cv_path);
             }
-
+            if ($teacher->photo_path && Storage::disk('public')->exists($teacher->photo_path)) {
+                Storage::disk('public')->delete($teacher->photo_path);
+            }
+            
+            // Supprimer le profil étendu si il existe
+            if (Schema::hasTable('esbtp_enseignant_profiles')) {
+                DB::table('esbtp_enseignant_profiles')
+                    ->where('user_id', $teacher->user_id)
+                    ->delete();
+            }
+            
+            // Supprimer l'enseignant
+            $teacher->delete();
+            
             DB::commit();
-
-            return redirect()->route('esbtp.enseignants.index')
+            
+            return redirect()->route('esbtp.personnel.unified.index')
                 ->with('success', 'Enseignant supprimé avec succès');
-
+                
         } catch (\Exception $e) {
-            DB::rollBack();
+            DB::rollback();
+            
             return redirect()->back()
-                ->with('error', 'Une erreur est survenue lors de la suppression de l\'enseignant: ' . $e->getMessage());
+                ->with('error', 'Une erreur est survenue lors de la suppression: ' . $e->getMessage());
         }
     }
 
     /**
-     * Promouvoir un enseignant au rang de Super Admin
+     * Generate a unique matricule for the teacher.
      */
-    public function promoteToAdmin($id)
+    private function generateMatricule()
     {
-        $enseignant = User::role('enseignant')->findOrFail($id);
-
-        // Vérifier si l'enseignant a déjà le rôle de superAdmin
-        if ($enseignant->hasRole('superAdmin')) {
-            return redirect()->back()->with('warning', 'Cet enseignant est déjà un Super Admin.');
-        }
-
-        // Attribuer le rôle de superAdmin tout en conservant le rôle d'enseignant
-        $enseignant->assignRole('superAdmin');
-
-        return redirect()->route('esbtp.enseignants.index')
-            ->with('success', 'L\'enseignant a été promu au rang de Super Admin avec succès.');
+        $year = date('Y');
+        $lastTeacher = ESBTPTeacher::whereYear('created_at', $year)
+            ->orderBy('id', 'desc')
+            ->first();
+        
+        $sequence = $lastTeacher ? (int)substr($lastTeacher->matricule, -4) + 1 : 1;
+        
+        return sprintf('ENS-%s-%04d', $year, $sequence);
     }
 
     /**
-     * Rétrograder un Super Admin-Enseignant au rang d'enseignant simple
+     * Toggle teacher status.
      */
-    public function demoteFromAdmin($id)
+    public function toggleStatus(ESBTPTeacher $teacher)
     {
-        $enseignant = User::role('enseignant')->findOrFail($id);
-
-        // Vérifier si l'enseignant a le rôle de superAdmin
-        if (!$enseignant->hasRole('superAdmin')) {
-            return redirect()->back()->with('warning', 'Cet enseignant n\'est pas un Super Admin.');
-        }
-
-        // Retirer le rôle de superAdmin
-        $enseignant->removeRole('superAdmin');
-
-        return redirect()->route('esbtp.enseignants.index')
-            ->with('success', 'L\'enseignant a été rétrogradé avec succès.');
+        $teacher->update([
+            'status' => $teacher->status === 'active' ? 'inactive' : 'active',
+            'updated_by' => auth()->id(),
+        ]);
+        
+        return redirect()->back()->with('success', 'Statut mis à jour avec succès');
     }
 }
