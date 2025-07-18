@@ -256,6 +256,14 @@ class ESBTPPlanningGeneralController extends Controller
             $repartition = $this->calculerRepartitionMatieres($anneeId);
         }
         
+        // Debug: vérifier les données
+        \Log::info('Repartition data:', [
+            'count' => $repartition->count(),
+            'anneeId' => $anneeId,
+            'classeId' => $classeId,
+            'sample' => $repartition->take(2)->toArray()
+        ]);
+        
         // Comparaison avec les objectifs
         $objectifsComparaison = $this->comparerAvecObjectifs($repartition, $classeId, $anneeId);
 
@@ -354,12 +362,17 @@ class ESBTPPlanningGeneralController extends Controller
             });
         }
 
-        return $query->get()->map(function($item) {
+        $results = $query->get();
+        
+        // Calcul du total pour les pourcentages
+        $totalHeures = $results->sum('total_heures');
+        
+        return $results->map(function($item) use ($totalHeures) {
             return [
                 'matiere' => $item->matiere,
                 'nb_seances' => $item->nb_seances,
                 'total_heures' => round($item->total_heures, 2),
-                'pourcentage' => 0 // Calculé après
+                'pourcentage' => $totalHeures > 0 ? round(($item->total_heures / $totalHeures) * 100, 1) : 0
             ];
         });
     }
@@ -474,7 +487,30 @@ class ESBTPPlanningGeneralController extends Controller
     }
     
     private function calculerRepartitionMatieresClasse($classeId, $anneeId) { 
-        return collect(); 
+        $query = ESBTPSeanceCours::with('matiere')
+            ->whereHas('emploiTemps', function($q) use ($classeId, $anneeId) {
+                $q->where('classe_id', $classeId);
+                if ($anneeId) {
+                    $q->where('esbtp_emploi_temps.annee_universitaire_id', $anneeId);
+                }
+            })
+            ->select('matiere_id', DB::raw('COUNT(*) as nb_seances'), 
+                    DB::raw('SUM(TIME_TO_SEC(TIMEDIFF(heure_fin, heure_debut))/3600) as total_heures'))
+            ->groupBy('matiere_id');
+
+        $results = $query->get();
+        
+        // Calcul du total pour les pourcentages
+        $totalHeures = $results->sum('total_heures');
+        
+        return $results->map(function($item) use ($totalHeures) {
+            return [
+                'matiere' => $item->matiere,
+                'nb_seances' => $item->nb_seances,
+                'total_heures' => round($item->total_heures, 2),
+                'pourcentage' => $totalHeures > 0 ? round(($item->total_heures / $totalHeures) * 100, 1) : 0
+            ];
+        });
     }
     
     private function comparerAvecObjectifs($repartition, $classeId, $anneeId) { 

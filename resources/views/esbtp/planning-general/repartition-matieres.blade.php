@@ -14,6 +14,37 @@
         margin-bottom: var(--space-xl);
     }
     
+    .planning-nav {
+        background: var(--surface);
+        border-radius: var(--radius-medium);
+        padding: var(--space-md);
+        margin-bottom: var(--space-lg);
+        box-shadow: var(--shadow-card);
+    }
+    
+    .planning-nav .nav-tabs {
+        border: none;
+        background: rgba(var(--primary-rgb), 0.05);
+        border-radius: var(--radius-small);
+        padding: var(--space-xs);
+    }
+    
+    .planning-nav .nav-link {
+        border: none;
+        color: var(--text-secondary);
+        background: transparent;
+        border-radius: var(--radius-small);
+        padding: var(--space-sm) var(--space-md);
+        margin: 0 var(--space-xs);
+        transition: all 0.3s ease;
+    }
+    
+    .planning-nav .nav-link.active {
+        background: var(--primary);
+        color: white;
+        box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.3);
+    }
+    
     .chart-container {
         background: var(--surface);
         border-radius: var(--radius-medium);
@@ -218,6 +249,34 @@
             </div>
         </div>
 
+        <!-- Navigation du planning -->
+        <div class="planning-nav">
+            <ul class="nav nav-tabs" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ route('esbtp.planning-general.index', ['annee_id' => request('annee_id')]) }}">
+                        <i class="fas fa-home me-2"></i>Vue d'ensemble
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ route('esbtp.planning-general.annuel', ['annee_id' => request('annee_id')]) }}">
+                        <i class="fas fa-calendar me-2"></i>Planning Annuel
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="{{ route('esbtp.planning-general.repartition-matieres', ['annee_id' => request('annee_id')]) }}">
+                        <i class="fas fa-chart-pie me-2"></i>Répartition Matières
+                    </a>
+                </li>
+                @canany(['manage-planning', 'view-all-timetables'])
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ route('esbtp.planning-general.coordinateur', ['annee_id' => request('annee_id')]) }}">
+                        <i class="fas fa-user-tie me-2"></i>Coordinateur
+                    </a>
+                </li>
+                @endcanany
+            </ul>
+        </div>
+
         <!-- Filtres -->
         <div class="filters-section">
             <form method="GET" class="row align-items-end">
@@ -340,7 +399,7 @@
                                 <small class="text-muted">{{ $item['matiere']->code ?? 'N/A' }}</small>
                             </div>
                             <div class="objectif-badge atteint">
-                                {{ round($item['pourcentage'], 1) }}%
+                                {{ $item['pourcentage'] }}%
                             </div>
                         </div>
                         
@@ -384,10 +443,7 @@ $(document).ready(function() {
     const repartitionData = @json($repartition->toArray());
     const totalHeures = repartitionData.reduce((sum, item) => sum + parseFloat(item.total_heures), 0);
     
-    // Calcul des pourcentages
-    repartitionData.forEach(item => {
-        item.pourcentage = totalHeures > 0 ? (item.total_heures / totalHeures) * 100 : 0;
-    });
+    // Les pourcentages sont déjà calculés côté serveur, pas besoin de les recalculer
     
     // Couleurs pour les graphiques
     const colors = [
