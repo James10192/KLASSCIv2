@@ -202,6 +202,22 @@ class User extends Authenticatable
     {
         return $query->where('user_type', $type);
     }
+
+    /**
+     * Relation avec les séances de cours enseignées par l'utilisateur
+     */
+    public function seancesCours()
+    {
+        return $this->hasMany(ESBTPSeanceCours::class, 'teacher_id');
+    }
+
+    /**
+     * Relation avec le profil enseignant (nouveau système)
+     */
+    public function enseignantProfile()
+    {
+        return $this->hasOne(ESBTPEnseignantProfile::class, 'user_id');
+    }
 }
 
 
