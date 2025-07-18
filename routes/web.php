@@ -468,6 +468,20 @@ Route::middleware(['auth', 'installed'])->group(function () {
                     ->middleware('permission:manage-planning|view-all-timetables');
             });
 
+            // Routes pour les enseignants (nouveau système)
+            Route::prefix('enseignants')->name('enseignants.')->group(function () {
+                Route::get('/', [App\Http\Controllers\ESBTPEnseignantProfileController::class, 'index'])->name('index');
+                Route::get('/dashboard', [App\Http\Controllers\ESBTPEnseignantProfileController::class, 'dashboard'])->name('dashboard');
+                Route::get('/create', [App\Http\Controllers\ESBTPEnseignantProfileController::class, 'create'])->name('create');
+                Route::post('/', [App\Http\Controllers\ESBTPEnseignantProfileController::class, 'store'])->name('store');
+                Route::get('/{id}', [App\Http\Controllers\ESBTPEnseignantProfileController::class, 'show'])->name('show');
+                Route::get('/{id}/edit', [App\Http\Controllers\ESBTPEnseignantProfileController::class, 'edit'])->name('edit');
+                Route::put('/{id}', [App\Http\Controllers\ESBTPEnseignantProfileController::class, 'update'])->name('update');
+                Route::post('/{id}/valider', [App\Http\Controllers\ESBTPEnseignantProfileController::class, 'valider'])->name('valider');
+                Route::post('/{id}/affecter', [App\Http\Controllers\ESBTPEnseignantProfileController::class, 'affecter'])->name('affecter');
+                Route::get('/{id}/disponibilites', [App\Http\Controllers\ESBTPEnseignantProfileController::class, 'disponibilites'])->name('disponibilites');
+            });
+
             // Paiements
             Route::get('/paiements', [App\Http\Controllers\ESBTPPaiementController::class, 'index'])->name('paiements.index');
             Route::get('/paiements/suivi-categories', [App\Http\Controllers\ESBTPPaiementController::class, 'suiviCategories'])->name('paiements.suivi-categories');

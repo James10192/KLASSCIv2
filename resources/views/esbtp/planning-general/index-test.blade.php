@@ -7,9 +7,19 @@
     <div class="row">
         <div class="col-12">
             <div class="card">
-                <div class="card-header">
-                    <h3>🎯 Planning Général - Interface de Planification Académique</h3>
-                    <p class="text-muted">Outil de définition du planning annuel par filière/niveau</p>
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <h3>🎯 Planning Général - Interface de Planification Académique</h3>
+                        <p class="text-muted">Outil de définition du planning annuel par filière/niveau</p>
+                    </div>
+                    <div>
+                        <a href="{{ route('esbtp.enseignants.index') }}" class="btn btn-primary me-2">
+                            <i class="fas fa-users"></i> Gestion Enseignants
+                        </a>
+                        <a href="{{ route('esbtp.planning-general.index') }}" class="btn btn-secondary">
+                            <i class="fas fa-home"></i> Vue Principale
+                        </a>
+                    </div>
                 </div>
                 
                 <div class="card-body">

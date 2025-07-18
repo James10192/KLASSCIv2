@@ -167,8 +167,11 @@
                 </div>
                 
                 @canany(['manage-planning', 'view-all-timetables'])
-                <a href="{{ route('esbtp.planning-general.coordinateur', ['annee_id' => $anneeSelectionnee?->id]) }}" class="btn-acasi primary">
+                <a href="{{ route('esbtp.planning-general.coordinateur', ['annee_id' => $anneeSelectionnee?->id]) }}" class="btn-acasi secondary">
                     <i class="fas fa-cogs"></i>Gestion Planning
+                </a>
+                <a href="{{ route('esbtp.enseignants.index') }}" class="btn-acasi primary">
+                    <i class="fas fa-users"></i>Gestion Enseignants
                 </a>
                 @endcanany
             </div>
