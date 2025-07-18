@@ -97,8 +97,11 @@ try {
         // Frais ESBTP
         'frais.view', 'frais.create', 'frais.edit', 'frais.delete', 'frais.configure',
 
-        // Paiements - Ajout des permissions pour les paiements
+        // Paiements - Ajout des permissions pour les paiements (ancien format)
         'view-paiements', 'create-paiements', 'edit-paiements', 'delete-paiements', 'validate-paiements',
+        
+        // Paiements - Nouveau format utilisé par ESBTPPaiementController
+        'paiements.view', 'paiements.create', 'paiements.edit', 'paiements.delete', 'paiements.validate',
 
         //Comptabilité - Permissions de base
         'access_comptabilite_module',
@@ -254,7 +257,10 @@ try {
         'frais.view', 'frais.create', 'frais.edit', 'frais.configure',
 
         // Permissions anciennes format
-        'view-paiements', 'create-paiements', 'edit-paiements', 'validate-paiements'
+        'view-paiements', 'create-paiements', 'edit-paiements', 'validate-paiements',
+        
+        // Permissions nouveau format pour ESBTPPaiementController
+        'paiements.view', 'paiements.create', 'paiements.edit', 'paiements.delete', 'paiements.validate'
     ];
 
     foreach ($secretaireComptabilitePermissions as $permissionName) {

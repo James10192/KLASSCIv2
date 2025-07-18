@@ -1408,11 +1408,19 @@ document.addEventListener('DOMContentLoaded', function() {
                             </h6>
                             <p class="card-text text-muted">${category.description || ''}</p>
                             
-                            ${!isConfigured ? `
-                                <div class="alert alert-warning alert-sm mb-3">
-                                    <small><i class="fas fa-info-circle me-1"></i>Aucune variante configurée. Montant par défaut utilisé.</small>
+                            ${frais.configuration_type === 'variant' ? `
+                                <div class="alert alert-success alert-sm mb-3">
+                                    <small><i class="fas fa-check-circle me-1"></i>Tarif configuré pour cette classe.</small>
                                 </div>
-                            ` : ''}
+                            ` : frais.configuration_type === 'rule' ? `
+                                <div class="alert alert-info alert-sm mb-3">
+                                    <small><i class="fas fa-cog me-1"></i>Tarif configuré par règle de classe.</small>
+                                </div>
+                            ` : `
+                                <div class="alert alert-warning alert-sm mb-3">
+                                    <small><i class="fas fa-info-circle me-1"></i>Montant par défaut utilisé (non configuré pour cette classe).</small>
+                                </div>
+                            `}
                             
                             <div class="frais-options">
                                 <div class="form-check mb-2">
@@ -1422,7 +1430,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                            id="frais_${category.id}_default"
                                            ${isMandatory ? 'checked' : ''}>
                                     <label class="form-check-label" for="frais_${category.id}_default">
-                                        ${isConfigured ? 'Option standard' : 'Montant par défaut'} - ${defaultAmount.toLocaleString()} FCFA
+                                        ${frais.configuration_type === 'variant' ? 'Tarif configuré pour cette classe' : 
+                                          frais.configuration_type === 'rule' ? 'Tarif configuré' : 
+                                          'Montant par défaut'} - <strong>${defaultAmount.toLocaleString()} FCFA</strong>
                                     </label>
                                 </div>
         `;

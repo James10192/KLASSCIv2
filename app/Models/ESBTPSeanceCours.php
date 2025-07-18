@@ -106,6 +106,14 @@ class ESBTPSeanceCours extends Model
     }
 
     /**
+     * Alias pour la relation teacher (pour compatibilité)
+     */
+    public function enseignant()
+    {
+        return $this->teacher();
+    }
+
+    /**
      * Relation avec la classe associée à cette séance.
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
@@ -461,13 +469,6 @@ class ESBTPSeanceCours extends Model
         return $description;
     }
 
-    /**
-     * Alias pour la relation enseignant (pour compatibilité)
-     */
-    public function enseignant()
-    {
-        return $this->belongsTo(User::class, 'teacher_id');
-    }
 
     /**
      * Accesseur pour obtenir le nom de l'enseignant

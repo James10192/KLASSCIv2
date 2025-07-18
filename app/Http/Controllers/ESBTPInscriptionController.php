@@ -415,8 +415,8 @@ class ESBTPInscriptionController extends Controller
                         if ($variantId === 'default') {
                             // Option standard - utiliser la règle configurée ou le montant par défaut
                             $rule = \App\Models\ESBTPFraisRule::where('frais_category_id', $categoryId)
-                                ->where('filiere_id', $classe->filiere_id)
-                                ->where('niveau_id', $classe->niveau_etude_id)
+                                ->where('filiere_id', $inscriptionData['filiere_id'])
+                                ->where('niveau_id', $inscriptionData['niveau_id'])
                                 ->first();
                             $amount = $rule ? $rule->amount : $category->default_amount;
                         } else {
@@ -1271,8 +1271,24 @@ class ESBTPInscriptionController extends Controller
             $hasUnconfiguredFees = false;
             
             foreach ($applicableCategories as $category) {
-                $rule = $category->getApplicableRule($classe->filiere_id, $classe->niveau_etude_id, $classe->annee_universitaire_id);
+                // Récupérer la règle spécifique pour cette filière/niveau
+                $rule = \App\Models\ESBTPFraisRule::where('frais_category_id', $category->id)
+                    ->where('filiere_id', $classe->filiere_id)
+                    ->where('niveau_id', $classe->niveau_etude_id)
+                    ->first();
+                
                 $defaultAmount = $rule ? $rule->amount : $category->default_amount;
+                
+                \Log::info('Règle trouvée pour catégorie', [
+                    'category_id' => $category->id,
+                    'category_name' => $category->name,
+                    'filiere_id' => $classe->filiere_id,
+                    'niveau_id' => $classe->niveau_etude_id,
+                    'rule_found' => $rule ? 'Oui' : 'Non',
+                    'rule_amount' => $rule ? $rule->amount : null,
+                    'default_amount' => $category->default_amount,
+                    'final_amount' => $defaultAmount
+                ]);
                 
                 // Récupérer les variants pour cette catégorie
                 $variants = \App\Models\ESBTPFraisVariant::where('frais_category_id', $category->id)
@@ -1280,19 +1296,36 @@ class ESBTPInscriptionController extends Controller
                     ->orderBy('sort_order')
                     ->get();
                 
-                // Vérifier si cette catégorie a des variantes configurées
-                $isConfigured = $variants->count() > 0;
+                // Récupérer le nom de la classe pour rechercher la variante spécifique
+                $className = $classe->filiere->name . ' - ' . $classe->niveau->name;
+                $expectedVariantName = "Tarif " . $className;
+                
+                // Vérifier s'il y a une variante spécifique pour cette classe
+                $classSpecificVariant = $variants->where('name', $expectedVariantName)->first();
+                
+                // Déterminer si cette catégorie est configurée (règle OU variante spécifique)
+                $isConfigured = $rule !== null || $classSpecificVariant !== null || $variants->count() > 0;
                 if (!$isConfigured) {
                     $hasUnconfiguredFees = true;
                 }
                 
+                // Si il y a une variante spécifique pour cette classe, l'utiliser comme défaut
+                if ($classSpecificVariant) {
+                    $defaultAmount = $classSpecificVariant->amount;
+                }
+                
                 $fraisData[] = [
                     'category' => $category,
-                    'default_amount' => $defaultAmount,
+                    'default_amount' => $defaultAmount, // Montant configuré pour cette classe
+                    'configured_amount' => $defaultAmount, // Alias plus explicite
                     'variants' => $variants,
                     'is_mandatory' => $category->is_mandatory,
                     'is_configured' => $isConfigured,
-                    'rule' => $rule
+                    'rule' => $rule,
+                    'class_specific_variant' => $classSpecificVariant,
+                    'has_class_variant' => $classSpecificVariant !== null,
+                    'category_default_amount' => $category->default_amount, // Montant par défaut de la catégorie
+                    'configuration_type' => $classSpecificVariant ? 'variant' : ($rule ? 'rule' : 'default')
                 ];
             }
             

@@ -5,10 +5,27 @@
 @section('content')
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h3 mb-0">Modifier la Catégorie de Frais</h1>
-        <a href="{{ route('esbtp.frais.index') }}" class="btn btn-secondary">
-            <i class="fas fa-arrow-left me-1"></i>Retour
-        </a>
+        <div>
+            <h1 class="h3 mb-0">Modifier la Catégorie de Frais</h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ route('esbtp.frais.index') }}">Gestion Frais</a></li>
+                    <li class="breadcrumb-item"><a href="{{ route('esbtp.frais.show', $fraisCategory) }}">{{ $fraisCategory->name }}</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Modifier</li>
+                </ol>
+            </nav>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{{ route('esbtp.frais.show', $fraisCategory) }}" class="btn btn-outline-info">
+                <i class="fas fa-eye me-1"></i>Voir
+            </a>
+            <a href="{{ route('esbtp.frais.configure') }}" class="btn btn-outline-primary">
+                <i class="fas fa-cogs me-1"></i>Configuration
+            </a>
+            <a href="{{ route('esbtp.frais.index') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Retour
+            </a>
+        </div>
     </div>
 
     @if(session('success'))

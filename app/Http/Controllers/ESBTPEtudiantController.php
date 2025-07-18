@@ -1262,4 +1262,182 @@ class ESBTPEtudiantController extends Controller
 
         return response()->json(['success' => true]);
     }
+
+    /**
+     * API: Rechercher des étudiants pour Select2
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function searchForApi(Request $request)
+    {
+        $query = $request->get('q', '');
+        $page = $request->get('page', 1);
+        $perPage = 10;
+
+        if (strlen($query) < 3) {
+            return response()->json([
+                'results' => [],
+                'pagination' => ['more' => false]
+            ]);
+        }
+
+        $etudiants = ESBTPEtudiant::with('user')
+            ->whereHas('user', function($q) use ($query) {
+                $q->where('name', 'like', "%{$query}%");
+            })
+            ->orWhere('matricule', 'like', "%{$query}%")
+            ->orderBy('matricule')
+            ->skip(($page - 1) * $perPage)
+            ->take($perPage + 1) // +1 pour savoir s'il y a plus de résultats
+            ->get();
+
+        $hasMore = $etudiants->count() > $perPage;
+        if ($hasMore) {
+            $etudiants = $etudiants->take($perPage);
+        }
+
+        $results = $etudiants->map(function($etudiant) {
+            return [
+                'id' => $etudiant->id,
+                'text' => "{$etudiant->matricule} - {$etudiant->user->name}"
+            ];
+        });
+
+        return response()->json([
+            'results' => $results,
+            'pagination' => [
+                'more' => $hasMore
+            ]
+        ]);
+    }
+
+    /**
+     * API: Récupérer les inscriptions d'un étudiant
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getInscriptionsForApi(Request $request)
+    {
+        $etudiantId = $request->get('etudiant_id');
+        
+        if (!$etudiantId) {
+            return response()->json([]);
+        }
+
+        $inscriptions = ESBTPInscription::with(['filiere', 'niveauEtude', 'anneeUniversitaire'])
+            ->where('etudiant_id', $etudiantId)
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function($inscription) {
+                return [
+                    'id' => $inscription->id,
+                    'filiere' => $inscription->filiere->name ?? 'Non définie',
+                    'niveau' => $inscription->niveauEtude->name ?? 'Non défini',
+                    'annee' => $inscription->anneeUniversitaire->name ?? 'Non définie'
+                ];
+            });
+
+        return response()->json($inscriptions);
+    }
+
+    /**
+     * API: Récupérer les soldes d'un étudiant par catégorie de frais
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getSoldesForApi(Request $request)
+    {
+        try {
+            $etudiantId = $request->get('etudiant_id');
+            
+            if (!$etudiantId) {
+                return response()->json([
+                    'categories' => [],
+                    'total_paid' => 0,
+                    'total_due' => 0
+                ]);
+            }
+
+            $etudiant = ESBTPEtudiant::with(['inscriptions', 'paiements'])->find($etudiantId);
+        
+        if (!$etudiant) {
+            return response()->json([
+                'academic' => ['total' => 0, 'paid' => 0, 'remaining' => 0],
+                'service' => ['total' => 0, 'paid' => 0, 'remaining' => 0],
+                'administrative' => ['total' => 0, 'paid' => 0, 'remaining' => 0]
+            ]);
+        }
+
+        // Récupérer l'inscription active (année en cours)
+        $inscriptionActive = $etudiant->inscriptions()
+            ->whereHas('anneeUniversitaire', function($q) {
+                $q->where('is_current', true);
+            })
+            ->with(['classe.fraisClasseConfigurations.fraisCategory'])
+            ->first();
+
+        $soldes = [
+            'academic' => ['total' => 0, 'paid' => 0, 'remaining' => 0, 'categories' => []],
+            'service' => ['total' => 0, 'paid' => 0, 'remaining' => 0, 'categories' => []],
+            'administrative' => ['total' => 0, 'paid' => 0, 'remaining' => 0, 'categories' => []]
+        ];
+
+        if ($inscriptionActive && $inscriptionActive->classe) {
+            // Calculer les frais totaux par catégorie basés sur la configuration de la classe
+            foreach ($inscriptionActive->classe->fraisClasseConfigurations as $config) {
+                $category = $config->fraisCategory;
+                if ($category) {
+                    $categoryType = $category->category_type ?? 'academic';
+                    
+                    if (isset($soldes[$categoryType])) {
+                        $soldes[$categoryType]['total'] += $config->montant;
+                        $soldes[$categoryType]['categories'][] = [
+                            'id' => $category->id,
+                            'name' => $category->name,
+                            'amount' => $config->montant,
+                            'is_mandatory' => $category->is_mandatory
+                        ];
+                    }
+                }
+            }
+        }
+
+        // Calculer les paiements effectués par catégorie
+        $paiementsValides = $etudiant->paiements()
+            ->where('status', 'validé')
+            ->whereHas('inscription', function($q) {
+                $q->whereHas('anneeUniversitaire', function($subQ) {
+                    $subQ->where('is_current', true);
+                });
+            })
+            ->with('fraisCategory')
+            ->get();
+
+        foreach ($paiementsValides as $paiement) {
+            if ($paiement->fraisCategory) {
+                $categoryType = $paiement->fraisCategory->category_type ?? 'academic';
+                if (isset($soldes[$categoryType])) {
+                    $soldes[$categoryType]['paid'] += $paiement->montant;
+                }
+            }
+        }
+
+        // Calculer les montants restants
+        foreach ($soldes as $type => &$solde) {
+            $solde['remaining'] = max(0, $solde['total'] - $solde['paid']);
+            $solde['percentage'] = $solde['total'] > 0 ? round(($solde['paid'] / $solde['total']) * 100, 1) : 0;
+        }
+
+        return response()->json($soldes);
+        } catch (\Exception $e) {
+            \Log::error('Erreur dans getSoldesForApi: ' . $e->getMessage());
+            return response()->json([
+                'error' => 'Erreur lors de la récupération des soldes',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

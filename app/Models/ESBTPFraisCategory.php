@@ -22,6 +22,7 @@ class ESBTPFraisCategory extends Model
         'description',
         'is_mandatory',
         'is_active',
+        'category_type',
         'sort_order',
         'default_amount',
         'payment_deadline_days',
@@ -99,6 +100,30 @@ class ESBTPFraisCategory extends Model
     public function scopeOrdered($query)
     {
         return $query->orderBy('sort_order')->orderBy('name');
+    }
+
+    /**
+     * Scope pour les frais académiques (inscription, scolarité)
+     */
+    public function scopeAcademic($query)
+    {
+        return $query->where('category_type', 'academic');
+    }
+
+    /**
+     * Scope pour les frais de services (cantine, transport)
+     */
+    public function scopeService($query)
+    {
+        return $query->where('category_type', 'service');
+    }
+
+    /**
+     * Scope pour les frais administratifs (documentation, examens)
+     */
+    public function scopeAdministrative($query)
+    {
+        return $query->where('category_type', 'administrative');
     }
 
     /**
@@ -180,6 +205,7 @@ class ESBTPFraisCategory extends Model
                 'description' => 'Frais d\'inscription obligatoire pour tous les étudiants',
                 'is_mandatory' => true,
                 'is_active' => true,
+                'category_type' => 'academic',
                 'sort_order' => 1,
                 'default_amount' => 50000,
                 'payment_deadline_days' => 30,
@@ -192,6 +218,7 @@ class ESBTPFraisCategory extends Model
                 'description' => 'Frais de scolarité obligatoire pour tous les étudiants',
                 'is_mandatory' => true,
                 'is_active' => true,
+                'category_type' => 'academic',
                 'sort_order' => 2,
                 'default_amount' => 200000,
                 'payment_deadline_days' => 60,
@@ -213,6 +240,7 @@ class ESBTPFraisCategory extends Model
                 'description' => 'Frais de restauration scolaire',
                 'is_mandatory' => false,
                 'is_active' => true,
+                'category_type' => 'service',
                 'sort_order' => 3,
                 'default_amount' => 30000,
                 'payment_deadline_days' => 15,
@@ -225,6 +253,7 @@ class ESBTPFraisCategory extends Model
                 'description' => 'Frais de transport scolaire',
                 'is_mandatory' => false,
                 'is_active' => true,
+                'category_type' => 'service',
                 'sort_order' => 4,
                 'default_amount' => 25000,
                 'payment_deadline_days' => 15,
@@ -237,6 +266,7 @@ class ESBTPFraisCategory extends Model
                 'description' => 'Frais de documentation et supports pédagogiques',
                 'is_mandatory' => false,
                 'is_active' => true,
+                'category_type' => 'administrative',
                 'sort_order' => 5,
                 'default_amount' => 15000,
                 'payment_deadline_days' => 30,
@@ -249,6 +279,7 @@ class ESBTPFraisCategory extends Model
                 'description' => 'Frais d\'examen et de certification',
                 'is_mandatory' => false,
                 'is_active' => true,
+                'category_type' => 'administrative',
                 'sort_order' => 6,
                 'default_amount' => 20000,
                 'payment_deadline_days' => 45,

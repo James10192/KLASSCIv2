@@ -575,6 +575,14 @@
                             </a>
                         </div>
 
+                        <!-- Planning General -->
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.planning-general.index') }}" class="menu-link {{ Request::routeIs('esbtp.planning-general.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-calendar-check"></i></div>
+                                <div class="menu-text">Planning Général</div>
+                            </a>
+                        </div>
+
                         <!-- Teacher Management -->
                         <div class="menu-accordion">
                             <button class="menu-accordion-btn {{ Request::routeIs('esbtp.teachers.*') || Request::routeIs('esbtp.teacher-attendance.*') ? 'active' : '' }}">
@@ -769,6 +777,14 @@
                                     <span class="menu-dot"></span>
                                     <span>Configuration Frais</span>
                                 </a>
+                                <a href="{{ route('esbtp.paiements.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.paiements.index') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Liste des Paiements</span>
+                                </a>
+                                <a href="{{ route('esbtp.paiements.suivi-categories') }}" class="menu-sublink {{ Request::routeIs('esbtp.paiements.suivi-categories') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Suivi par Catégorie</span>
+                                </a>
                                 <a href="{{ route('esbtp.comptabilite.configuration') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.configuration.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Configuration</span>
@@ -885,12 +901,10 @@
             <nav class="nextadmin-navbar">
                 <div class="navbar-content">
                     <div class="navbar-left">
-                        <button class="navbar-toggle" id="sidebar-toggle">
+                        <button class="navbar-toggle d-lg-none" id="sidebar-toggle">
                             <i class="fas fa-bars"></i>
                         </button>
-                        <div class="navbar-title d-none d-md-block">
-                            <span class="ms-2 fw-bold">KLASSCI</span>
-                        </div>
+                        <!-- Le titre KLASSCI est déjà dans la sidebar, pas besoin de le dupliquer -->
                     </div>
 
                     <div class="navbar-center d-none d-lg-block">

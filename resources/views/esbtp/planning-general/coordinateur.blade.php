@@ -1,460 +1,352 @@
 @extends('layouts.app')
 
-@section('title', 'Gestion Planning - Coordinateur - ESBTP-yAKRO')
+@section('title', 'Gestion Coordinateur - ESBTP-yAKRO')
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
-    .coordinateur-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: var(--space-xl);
+    .coordinateur-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: var(--space-xl);
+        border-radius: var(--radius-large);
         margin-bottom: var(--space-xl);
     }
     
-    @media (max-width: 768px) {
-        .coordinateur-grid {
-            grid-template-columns: 1fr;
-        }
-    }
-    
-    .widget-coordinateur {
+    .allocation-card {
         background: var(--surface);
         border-radius: var(--radius-medium);
         padding: var(--space-lg);
-        box-shadow: var(--shadow-card);
+        margin-bottom: var(--space-md);
+        border: 1px solid var(--border);
         transition: all 0.3s ease;
     }
     
-    .widget-coordinateur:hover {
-        transform: translateY(-2px);
+    .allocation-card:hover {
         box-shadow: var(--shadow-hover);
+        transform: translateY(-2px);
     }
     
-    .widget-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: var(--space-lg);
-        padding-bottom: var(--space-md);
-        border-bottom: 2px solid var(--border-color);
-    }
-    
-    .widget-title {
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: var(--text-primary);
-        display: flex;
-        align-items: center;
-        gap: var(--space-sm);
-    }
-    
-    .widget-actions {
-        display: flex;
-        gap: var(--space-sm);
-    }
-    
-    .allocation-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: var(--space-md);
-        margin-bottom: var(--space-sm);
-        background: rgba(var(--primary-rgb), 0.05);
-        border-radius: var(--radius-small);
-        border-left: 4px solid var(--primary);
-    }
-    
-    .allocation-info {
-        flex: 1;
-    }
-    
-    .allocation-hours {
-        font-weight: 600;
-        color: var(--primary);
-    }
-    
-    .programmation-semaine {
+    .programmation-grid {
         display: grid;
-        grid-template-columns: repeat(7, 1fr);
-        gap: var(--space-xs);
-        margin-bottom: var(--space-lg);
-    }
-    
-    .jour-semaine {
-        text-align: center;
-        padding: var(--space-sm);
-        border-radius: var(--radius-small);
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: white;
-        background: var(--primary);
-    }
-    
-    .seance-programmee {
-        background: var(--surface);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-small);
-        padding: var(--space-sm);
-        margin-bottom: var(--space-xs);
-        font-size: 0.8rem;
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-    
-    .seance-programmee:hover {
-        background: rgba(var(--primary-rgb), 0.1);
-        border-color: var(--primary);
-    }
-    
-    .code-emargement {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: var(--space-md);
-        background: rgba(var(--success-rgb), 0.1);
-        border: 1px solid var(--success);
-        border-radius: var(--radius-small);
-        margin-bottom: var(--space-sm);
-    }
-    
-    .code-emargement.expire {
-        background: rgba(var(--danger-rgb), 0.1);
-        border-color: var(--danger);
-    }
-    
-    .code-value {
-        font-family: 'Courier New', monospace;
-        font-size: 1.2rem;
-        font-weight: 600;
-        color: var(--success);
-    }
-    
-    .code-emargement.expire .code-value {
-        color: var(--danger);
-    }
-    
-    .taux-presence {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: var(--space-md);
-        margin-bottom: var(--space-sm);
-    }
-    
-    .taux-cercle {
-        width: 50px;
-        height: 50px;
-        border-radius: var(--radius-circle);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 600;
-        color: white;
-        font-size: 0.9rem;
-    }
-    
-    .taux-excellent { background: var(--success); }
-    .taux-bon { background: var(--info); }
-    .taux-moyen { background: var(--warning); }
-    .taux-faible { background: var(--danger); }
-    
-    .actions-coordinateur {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
         gap: var(--space-lg);
         margin-bottom: var(--space-xl);
     }
     
-    .action-coordinateur {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: var(--space-lg);
+    .jour-programmation {
         background: var(--surface);
         border-radius: var(--radius-medium);
-        box-shadow: var(--shadow-card);
-        text-decoration: none;
-        color: var(--text-primary);
-        transition: all 0.3s ease;
-        cursor: pointer;
+        padding: var(--space-md);
+        border: 1px solid var(--border);
     }
     
-    .action-coordinateur:hover {
-        transform: translateY(-4px);
-        box-shadow: var(--shadow-hover);
-        color: var(--text-primary);
-        text-decoration: none;
-    }
-    
-    .action-icon {
-        width: 60px;
-        height: 60px;
-        border-radius: var(--radius-circle);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 24px;
-        color: white;
+    .jour-programmation h6 {
+        color: var(--primary);
         margin-bottom: var(--space-md);
+        font-weight: 600;
     }
     
-    .action-icon.planning { background: linear-gradient(135deg, #8b5cf6, #a78bfa); }
-    .action-icon.validation { background: linear-gradient(135deg, #10b981, #34d399); }
-    .action-icon.analytics { background: linear-gradient(135deg, #06b6d4, #67e8f9); }
-    .action-icon.settings { background: linear-gradient(135deg, #f59e0b, #fbbf24); }
-    .action-icon.reports { background: linear-gradient(135deg, #ef4444, #f87171); }
-    .action-icon.notifications { background: linear-gradient(135deg, #6366f1, #818cf8); }
+    .seance-item {
+        background: var(--background);
+        border-radius: var(--radius-small);
+        padding: var(--space-sm);
+        margin-bottom: var(--space-xs);
+        border-left: 4px solid var(--primary);
+    }
+    
+    .seance-item:last-child {
+        margin-bottom: 0;
+    }
+    
+    .code-emargement {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-medium);
+        padding: var(--space-md);
+        margin-bottom: var(--space-sm);
+        position: relative;
+    }
+    
+    .code-emargement.expire {
+        background: #fff5f5;
+        border-color: #fed7d7;
+    }
+    
+    .code-emargement.active {
+        background: #f0fff4;
+        border-color: #9ae6b4;
+    }
+    
+    .code-badge {
+        font-family: 'Courier New', monospace;
+        font-size: 1.2rem;
+        font-weight: bold;
+        color: var(--primary);
+        background: var(--background);
+        padding: var(--space-xs) var(--space-sm);
+        border-radius: var(--radius-small);
+        border: 1px solid var(--border);
+    }
+    
+    .progress-bar-custom {
+        height: 8px;
+        background: var(--border);
+        border-radius: var(--radius-full);
+        overflow: hidden;
+        margin-top: var(--space-xs);
+    }
+    
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--success), #48bb78);
+        transition: width 0.3s ease;
+    }
+    
+    .presence-card {
+        background: var(--surface);
+        border-radius: var(--radius-medium);
+        padding: var(--space-md);
+        margin-bottom: var(--space-sm);
+        border: 1px solid var(--border);
+    }
+    
+    .presence-card .taux {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: var(--primary);
+    }
 </style>
 @endsection
 
 @section('content')
 <div class="dashboard-acasi">
     <div class="main-content">
-        <!-- Header moderne -->
-        <div class="dashboard-header">
-            <div class="header-left">
-                <h1>Gestion du Planning</h1>
-                <p class="header-subtitle">Interface coordinateur pour la gestion avancée du planning académique</p>
-            </div>
-            <div class="header-actions">
-                <button type="button" class="btn-acasi warning" onclick="genererRapport()">
-                    <i class="fas fa-file-alt"></i>Rapport
-                </button>
-                <a href="{{ route('esbtp.planning-general.index', ['annee_id' => $anneeSelectionnee?->id]) }}" class="btn-acasi primary">
-                    <i class="fas fa-arrow-left"></i>Retour
-                </a>
+        <!-- Header Coordinateur -->
+        <div class="coordinateur-header">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1><i class="fas fa-user-tie me-2"></i>Interface Coordinateur</h1>
+                    <p class="mb-0">Gestion avancée du planning et supervision académique</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <a href="{{ route('esbtp.planning-general.index') }}" class="btn-acasi secondary">
+                        <i class="fas fa-arrow-left me-1"></i>Retour
+                    </a>
+                </div>
             </div>
         </div>
 
-        <!-- Navigation du planning -->
-        <div class="planning-nav">
-            <ul class="nav nav-tabs" role="tablist">
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ route('esbtp.planning-general.index', ['annee_id' => $anneeSelectionnee?->id]) }}">
-                        <i class="fas fa-home me-2"></i>Vue d'ensemble
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ route('esbtp.planning-general.annuel', ['annee_id' => $anneeSelectionnee?->id]) }}">
-                        <i class="fas fa-calendar me-2"></i>Planning Annuel
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ route('esbtp.planning-general.repartition-matieres', ['annee_id' => $anneeSelectionnee?->id]) }}">
-                        <i class="fas fa-chart-pie me-2"></i>Répartition Matières
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link active" href="{{ route('esbtp.planning-general.coordinateur', ['annee_id' => $anneeSelectionnee?->id]) }}">
-                        <i class="fas fa-user-tie me-2"></i>Coordinateur
-                    </a>
-                </li>
-            </ul>
-        </div>
-
-        <!-- Actions rapides coordinateur -->
-        <div class="actions-coordinateur">
-            <div class="action-coordinateur" onclick="ouvrirGestionPlanning()">
-                <div class="action-icon planning">
-                    <i class="fas fa-calendar-plus"></i>
-                </div>
-                <h6>Créer Planning</h6>
-                <p class="text-muted text-center mb-0">Nouvelle programmation de cours</p>
-            </div>
-            
-            <div class="action-coordinateur" onclick="ouvrirValidationSeances()">
-                <div class="action-icon validation">
-                    <i class="fas fa-check-circle"></i>
-                </div>
-                <h6>Valider Séances</h6>
-                <p class="text-muted text-center mb-0">Approuver les séances de cours</p>
-            </div>
-            
-            <div class="action-coordinateur" onclick="ouvrirAnalytics()">
-                <div class="action-icon analytics">
-                    <i class="fas fa-chart-line"></i>
-                </div>
-                <h6>Analytics</h6>
-                <p class="text-muted text-center mb-0">Statistiques et tableaux de bord</p>
-            </div>
-            
-            <div class="action-coordinateur" onclick="ouvrirParametres()">
-                <div class="action-icon settings">
-                    <i class="fas fa-cog"></i>
-                </div>
-                <h6>Paramètres</h6>
-                <p class="text-muted text-center mb-0">Configuration du planning</p>
-            </div>
-            
-            <div class="action-coordinateur" onclick="ouvrirRapports()">
-                <div class="action-icon reports">
-                    <i class="fas fa-file-chart"></i>
-                </div>
-                <h6>Rapports</h6>
-                <p class="text-muted text-center mb-0">Génération de rapports détaillés</p>
-            </div>
-            
-            <div class="action-coordinateur" onclick="ouvrirNotifications()">
-                <div class="action-icon notifications">
-                    <i class="fas fa-bell"></i>
-                </div>
-                <h6>Notifications</h6>
-                <p class="text-muted text-center mb-0">Alertes et communications</p>
-            </div>
-        </div>
-
-        <!-- Widgets coordinateur -->
-        <div class="coordinateur-grid">
-            <!-- Allocation horaire par module -->
-            <div class="widget-coordinateur">
-                <div class="widget-header">
-                    <div class="widget-title">
-                        <i class="fas fa-clock text-primary"></i>
-                        Allocation Horaire
-                    </div>
-                    <div class="widget-actions">
-                        <button class="btn btn-sm btn-outline-primary" onclick="editerAllocations()">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                    </div>
-                </div>
-                
-                @forelse($allocationHoraire as $allocation)
-                <div class="allocation-item">
-                    <div class="allocation-info">
-                        <strong>{{ $allocation['module'] ?? 'Module' }}</strong>
-                        <div class="text-muted small">{{ $allocation['description'] ?? 'Description' }}</div>
-                    </div>
-                    <div class="allocation-hours">
-                        {{ $allocation['heures'] ?? '0' }}h
-                    </div>
-                </div>
-                @empty
-                <div class="text-center text-muted py-4">
-                    <i class="fas fa-clock fa-2x mb-3"></i>
-                    <p>Aucune allocation horaire définie</p>
-                    <button class="btn btn-primary btn-sm" onclick="creerAllocation()">
-                        Créer une allocation
-                    </button>
-                </div>
-                @endforelse
-            </div>
-
-            <!-- Programmation hebdomadaire -->
-            <div class="widget-coordinateur">
-                <div class="widget-header">
-                    <div class="widget-title">
-                        <i class="fas fa-calendar-week text-info"></i>
-                        Programmation Semaine
-                    </div>
-                    <div class="widget-actions">
-                        <select class="form-select form-select-sm" onchange="changerSemaine(this.value)">
-                            <option value="current">Semaine actuelle</option>
-                            <option value="next">Semaine prochaine</option>
+        <!-- Sélection du mois -->
+        <div class="card-moderne mb-lg">
+            <div class="p-md">
+                <form method="GET" class="row align-items-center">
+                    <div class="col-md-3">
+                        <label for="annee_id" class="form-label">Année Universitaire</label>
+                        <select name="annee_id" id="annee_id" class="form-select" onchange="this.form.submit()">
+                            @foreach($annees as $annee)
+                                <option value="{{ $annee->id }}" {{ request('annee_id') == $annee->id ? 'selected' : '' }}>
+                                    {{ $annee->name }}
+                                </option>
+                            @endforeach
                         </select>
                     </div>
-                </div>
-                
-                <div class="programmation-semaine">
-                    <div class="jour-semaine">Lun</div>
-                    <div class="jour-semaine">Mar</div>
-                    <div class="jour-semaine">Mer</div>
-                    <div class="jour-semaine">Jeu</div>
-                    <div class="jour-semaine">Ven</div>
-                    <div class="jour-semaine">Sam</div>
-                    <div class="jour-semaine">Dim</div>
-                </div>
-                
-                @forelse($programmationHebdomadaire as $jour => $seances)
-                <div class="mb-3">
-                    @foreach($seances as $seance)
-                    <div class="seance-programmee" onclick="voirDetailSeance('{{ $seance['id'] ?? '' }}')">
-                        <strong>{{ $seance['matiere'] ?? 'Matière' }}</strong>
-                        <div class="text-muted">{{ $seance['horaire'] ?? 'Horaire' }} - {{ $seance['classe'] ?? 'Classe' }}</div>
+                    <div class="col-md-3">
+                        <label for="mois" class="form-label">Mois</label>
+                        <select name="mois" id="mois" class="form-select" onchange="this.form.submit()">
+                            @for($i = 1; $i <= 12; $i++)
+                                <option value="{{ $i }}" {{ $mois == $i ? 'selected' : '' }}>
+                                    {{ \Carbon\Carbon::create(null, $i)->translatedFormat('F') }}
+                                </option>
+                            @endfor
+                        </select>
                     </div>
-                    @endforeach
+                    <div class="col-md-6 text-end">
+                        <span class="text-muted">
+                            Période : {{ $anneeSelectionnee ? $anneeSelectionnee->name : 'Aucune année sélectionnée' }}
+                        </span>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Allocation Horaire par Module -->
+            <div class="col-md-4">
+                <div class="card-moderne">
+                    <div class="card-header">
+                        <h5><i class="fas fa-clock me-2"></i>Allocation Horaire par Module</h5>
+                    </div>
+                    <div class="card-body">
+                        @foreach($allocationHoraire as $allocation)
+                        <div class="allocation-card">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="mb-1">{{ $allocation['module'] }}</h6>
+                                    <p class="text-muted small mb-2">{{ $allocation['description'] }}</p>
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-clock text-primary me-2"></i>
+                                        <span class="fw-bold">{{ $allocation['heures'] }}h</span>
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    <button class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        @endforeach
+                        
+                        <div class="text-center mt-3">
+                            <button class="btn-acasi primary btn-sm">
+                                <i class="fas fa-plus me-1"></i>Ajouter Module
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                @empty
-                <div class="text-center text-muted py-4">
-                    <i class="fas fa-calendar-times fa-2x mb-3"></i>
-                    <p>Aucune séance programmée</p>
-                </div>
-                @endforelse
             </div>
 
-            <!-- Codes d'émargement actifs -->
-            <div class="widget-coordinateur">
-                <div class="widget-header">
-                    <div class="widget-title">
-                        <i class="fas fa-qrcode text-success"></i>
-                        Codes Émargement
+            <!-- Programmation Hebdomadaire -->
+            <div class="col-md-8">
+                <div class="card-moderne">
+                    <div class="card-header">
+                        <h5><i class="fas fa-calendar-week me-2"></i>Programmation Hebdomadaire</h5>
+                        <p class="text-muted mb-0">Mois de {{ \Carbon\Carbon::create(null, $mois)->translatedFormat('F') }}</p>
                     </div>
-                    <div class="widget-actions">
-                        <button class="btn btn-sm btn-success" onclick="genererNouveauCode()">
-                            <i class="fas fa-plus"></i>
-                        </button>
+                    <div class="card-body">
+                        <div class="programmation-grid">
+                            @foreach($programmationHebdomadaire as $jour => $seances)
+                            <div class="jour-programmation">
+                                <h6>{{ ucfirst($jour) }}</h6>
+                                @if(count($seances) > 0)
+                                    @foreach($seances as $seance)
+                                    <div class="seance-item">
+                                        <div class="d-flex justify-content-between">
+                                            <span class="fw-bold">{{ $seance['matiere'] }}</span>
+                                            <span class="text-muted">{{ $seance['horaire'] }}</span>
+                                        </div>
+                                        <small class="text-muted">{{ $seance['classe'] }}</small>
+                                    </div>
+                                    @endforeach
+                                @else
+                                    <p class="text-muted text-center py-3">
+                                        <i class="fas fa-calendar-times"></i><br>
+                                        Aucune séance programmée
+                                    </p>
+                                @endif
+                            </div>
+                            @endforeach
+                        </div>
                     </div>
                 </div>
-                
-                @forelse($codesEmargement as $code)
-                <div class="code-emargement {{ $code['expire'] ? 'expire' : '' }}">
-                    <div>
-                        <div class="code-value">{{ $code['code'] ?? 'XXXX' }}</div>
-                        <small class="text-muted">{{ $code['cours'] ?? 'Cours' }} - {{ $code['expire_dans'] ?? 'Expiré' }}</small>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <!-- Codes d'Émargement Actifs -->
+            <div class="col-md-6">
+                <div class="card-moderne">
+                    <div class="card-header">
+                        <h5><i class="fas fa-qrcode me-2"></i>Codes d'Émargement Actifs</h5>
+                        <p class="text-muted mb-0">Supervision des présences enseignants</p>
                     </div>
-                    <div>
-                        <button class="btn btn-sm btn-outline-danger" onclick="annulerCode('{{ $code['id'] ?? '' }}')">
-                            <i class="fas fa-times"></i>
-                        </button>
+                    <div class="card-body">
+                        @foreach($codesEmargement as $code)
+                        <div class="code-emargement {{ $code['expire'] ? 'expire' : 'active' }}">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="code-badge">{{ $code['code'] }}</div>
+                                    <div class="mt-2">
+                                        <small class="text-muted">{{ $code['cours'] }}</small>
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-{{ $code['expire'] ? 'danger' : 'success' }}">
+                                        {{ $code['expire_dans'] }}
+                                    </span>
+                                    <div class="mt-1">
+                                        <button class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-sync"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        @endforeach
+                        
+                        <div class="text-center mt-3">
+                            <button class="btn-acasi success btn-sm">
+                                <i class="fas fa-plus me-1"></i>Nouveau Code
+                            </button>
+                        </div>
                     </div>
                 </div>
-                @empty
-                <div class="text-center text-muted py-4">
-                    <i class="fas fa-qrcode fa-2x mb-3"></i>
-                    <p>Aucun code actif</p>
-                    <button class="btn btn-success btn-sm" onclick="genererNouveauCode()">
-                        Générer un code
-                    </button>
-                </div>
-                @endforelse
             </div>
 
-            <!-- Taux de présence par classe -->
-            <div class="widget-coordinateur">
-                <div class="widget-header">
-                    <div class="widget-title">
-                        <i class="fas fa-users text-warning"></i>
-                        Taux de Présence
+            <!-- Taux de Présence par Classe -->
+            <div class="col-md-6">
+                <div class="card-moderne">
+                    <div class="card-header">
+                        <h5><i class="fas fa-chart-line me-2"></i>Taux de Présence par Classe</h5>
+                        <p class="text-muted mb-0">Suivi de l'assiduité des étudiants</p>
                     </div>
-                    <div class="widget-actions">
-                        <button class="btn btn-sm btn-outline-warning" onclick="voirRapportPresence()">
-                            <i class="fas fa-chart-bar"></i>
-                        </button>
+                    <div class="card-body">
+                        @foreach($tauxPresenceClasses as $classe)
+                        <div class="presence-card">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">{{ $classe['nom'] }}</h6>
+                                    <small class="text-muted">{{ $classe['effectif'] }} étudiants</small>
+                                </div>
+                                <div class="text-end">
+                                    <div class="taux">{{ $classe['taux'] }}%</div>
+                                </div>
+                            </div>
+                            <div class="progress-bar-custom">
+                                <div class="progress-fill" style="width: {{ $classe['taux'] }}%"></div>
+                            </div>
+                        </div>
+                        @endforeach
+                        
+                        <div class="text-center mt-3">
+                            <button class="btn-acasi info btn-sm">
+                                <i class="fas fa-chart-bar me-1"></i>Rapport Détaillé
+                            </button>
+                        </div>
                     </div>
                 </div>
-                
-                @forelse($tauxPresenceClasses as $classe)
-                <div class="taux-presence">
-                    <div>
-                        <strong>{{ $classe['nom'] ?? 'Classe' }}</strong>
-                        <div class="text-muted small">{{ $classe['effectif'] ?? '0' }} étudiants</div>
+            </div>
+        </div>
+
+        <!-- Actions Rapides -->
+        <div class="card-moderne mt-4">
+            <div class="card-header">
+                <h5><i class="fas fa-bolt me-2"></i>Actions Rapides</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <a href="{{ route('esbtp.planning-general.annuel') }}" class="btn-acasi primary w-100">
+                            <i class="fas fa-calendar-alt me-2"></i>Planning Annuel
+                        </a>
                     </div>
-                    <div class="taux-cercle 
-                        @if(($classe['taux'] ?? 0) >= 90) taux-excellent
-                        @elseif(($classe['taux'] ?? 0) >= 75) taux-bon
-                        @elseif(($classe['taux'] ?? 0) >= 60) taux-moyen
-                        @else taux-faible
-                        @endif">
-                        {{ $classe['taux'] ?? '0' }}%
+                    <div class="col-md-3">
+                        <a href="{{ route('esbtp.planning-general.repartition-matieres') }}" class="btn-acasi info w-100">
+                            <i class="fas fa-chart-pie me-2"></i>Répartition Matières
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{{ route('esbtp.evenements-academiques.index') }}" class="btn-acasi success w-100">
+                            <i class="fas fa-calendar-check me-2"></i>Événements
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{{ route('esbtp.emploi-temps.index') }}" class="btn-acasi warning w-100">
+                            <i class="fas fa-table me-2"></i>Emplois du Temps
+                        </a>
                     </div>
                 </div>
-                @empty
-                <div class="text-center text-muted py-4">
-                    <i class="fas fa-users fa-2x mb-3"></i>
-                    <p>Aucune donnée de présence</p>
-                </div>
-                @endforelse
             </div>
         </div>
     </div>
@@ -463,92 +355,31 @@
 
 @push('scripts')
 <script>
-// Actions coordinateur
-function ouvrirGestionPlanning() {
-    alert('Redirection vers la gestion du planning');
-}
-
-function ouvrirValidationSeances() {
-    alert('Redirection vers la validation des séances');
-}
-
-function ouvrirAnalytics() {
-    alert('Redirection vers les analytics');
-}
-
-function ouvrirParametres() {
-    alert('Redirection vers les paramètres');
-}
-
-function ouvrirRapports() {
-    alert('Redirection vers les rapports');
-}
-
-function ouvrirNotifications() {
-    alert('Redirection vers les notifications');
-}
-
-// Gestion des allocations
-function editerAllocations() {
-    alert('Édition des allocations horaires');
-}
-
-function creerAllocation() {
-    alert('Création d\'une nouvelle allocation');
-}
-
-// Gestion de la programmation
-function changerSemaine(semaine) {
-    console.log('Changement vers la semaine:', semaine);
-}
-
-function voirDetailSeance(seanceId) {
-    alert('Détail de la séance: ' + seanceId);
-}
-
-// Gestion des codes d'émargement
-function genererNouveauCode() {
-    alert('Génération d\'un nouveau code');
-}
-
-function annulerCode(codeId) {
-    if (confirm('Êtes-vous sûr de vouloir annuler ce code ?')) {
-        alert('Code annulé: ' + codeId);
-    }
-}
-
-// Gestion des présences
-function voirRapportPresence() {
-    alert('Redirection vers le rapport de présence');
-}
-
-// Génération de rapport
-function genererRapport() {
-    alert('Génération du rapport coordinateur');
-}
-
-$(function() {
-    // Animation des widgets
-    $('.widget-coordinateur').each(function(index) {
-        $(this).css({
-            'opacity': '0',
-            'transform': 'translateY(20px)'
-        });
+$(document).ready(function() {
+    // Animation des cartes d'allocation
+    $('.allocation-card').each(function(index) {
+        $(this).css('transform', 'translateY(20px)');
+        $(this).css('opacity', '0');
         
         setTimeout(() => {
-            $(this).css({
-                'opacity': '1',
+            $(this).animate({
                 'transform': 'translateY(0)',
-                'transition': 'all 0.6s ease-out'
-            });
+                'opacity': '1'
+            }, 300);
         }, index * 100);
     });
     
-    // Actualisation automatique des codes d'émargement
-    setInterval(function() {
-        // Logique d'actualisation des codes
-        console.log('Actualisation des codes d\'émargement');
-    }, 30000); // Toutes les 30 secondes
+    // Animation des barres de progression
+    $('.progress-fill').each(function() {
+        const width = $(this).css('width');
+        $(this).css('width', '0');
+        
+        setTimeout(() => {
+            $(this).animate({
+                'width': width
+            }, 800);
+        }, 500);
+    });
 });
 </script>
 @endpush

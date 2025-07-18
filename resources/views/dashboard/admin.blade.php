@@ -206,6 +206,28 @@
                                 </div>
                             </a>
                         </div>
+                        <div class="col-md-6">
+                            <a href="{{ route('esbtp.paiements.index') }}" class="card action-card border-0 shadow-sm h-100 text-decoration-none">
+                                <div class="card-body text-center p-4">
+                                    <div class="action-icon bg-danger-light rounded-circle mx-auto mb-3">
+                                        <i class="fas fa-credit-card text-danger"></i>
+                                    </div>
+                                    <h6 class="fw-semibold">Suivi Paiements</h6>
+                                    <p class="text-muted small mb-0">Monitoring des paiements étudiants</p>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-md-6">
+                            <a href="{{ route('esbtp.frais.index') }}" class="card action-card border-0 shadow-sm h-100 text-decoration-none">
+                                <div class="card-body text-center p-4">
+                                    <div class="action-icon bg-purple-light rounded-circle mx-auto mb-3">
+                                        <i class="fas fa-money-bill text-purple"></i>
+                                    </div>
+                                    <h6 class="fw-semibold">Gestion Frais</h6>
+                                    <p class="text-muted small mb-0">Configuration des frais scolaires</p>
+                                </div>
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>

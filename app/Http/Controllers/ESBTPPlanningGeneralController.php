@@ -83,7 +83,7 @@ class ESBTPPlanningGeneralController extends Controller
             $matieres = ESBTPMatiere::whereHas('classes', function($query) use ($filiereId, $niveauId) {
                 $query->where('filiere_id', $filiereId)
                       ->where('niveau_etude_id', $niveauId);
-            })->orderBy('nom')->get();
+            })->orderBy('name')->get();
             
             // Enseignants disponibles
             $enseignants = User::role('enseignant')
@@ -407,8 +407,9 @@ class ESBTPPlanningGeneralController extends Controller
      */
     private function genererCalendrierAnnuel($annee)
     {
-        $debut = Carbon::parse($annee->annee_debut);
-        $fin = Carbon::parse($annee->annee_fin);
+        // Créer des dates complètes à partir des années
+        $debut = Carbon::create($annee->annee_debut, 9, 1); // 1er septembre de l'année de début
+        $fin = Carbon::create($annee->annee_fin, 6, 30); // 30 juin de l'année de fin
         
         $calendrier = [];
         $moisCourant = $debut->copy()->startOfMonth();
@@ -565,39 +566,155 @@ class ESBTPPlanningGeneralController extends Controller
     }
     
     private function getEvenementsAcademiques($annee) { 
-        // Données de démonstration
+        // Récupérer les événements réels depuis la base de données
+        if (class_exists('App\Models\ESBTPEvenementAcademique')) {
+            $evenements = \App\Models\ESBTPEvenementAcademique::where('annee_universitaire_id', $annee->id)
+                ->where('afficher_calendrier', true)
+                ->where('is_active', true)
+                ->orderBy('date_debut')
+                ->get();
+            
+            return $evenements->map(function($evenement) {
+                return [
+                    'titre' => $evenement->titre,
+                    'date' => $evenement->date_debut->format('d/m/Y'),
+                    'description' => $evenement->description,
+                    'icon' => $evenement->icone,
+                    'type' => $evenement->type,
+                    'couleur' => $evenement->couleur,
+                    'statut' => $evenement->statut,
+                    'lieu' => $evenement->lieu,
+                    'heure_debut' => $evenement->heure_debut ? $evenement->heure_debut->format('H:i') : null,
+                    'heure_fin' => $evenement->heure_fin ? $evenement->heure_fin->format('H:i') : null,
+                    'date_fin' => $evenement->date_fin ? $evenement->date_fin->format('d/m/Y') : null
+                ];
+            })->toArray();
+        }
+        
+        // Données de démonstration si le modèle n'existe pas
+        $debut = Carbon::create($annee->annee_debut, 9, 1); // 1er septembre
+        $fin = Carbon::create($annee->annee_fin, 6, 30); // 30 juin
+        
         return [
             [
-                'titre' => 'Début des cours',
-                'date' => '15 Septembre 2024',
-                'description' => 'Ouverture de l\'année académique',
-                'icon' => 'graduation-cap'
+                'titre' => 'Rentrée Académique',
+                'date' => $debut->copy()->format('d/m/Y'),
+                'description' => 'Ouverture officielle de l\'année académique - Toutes filières',
+                'icon' => 'graduation-cap',
+                'type' => 'rentree',
+                'couleur' => 'success'
             ],
             [
-                'titre' => 'Examens de mi-parcours',
-                'date' => '15 Décembre 2024',
-                'description' => 'Période d\'évaluations',
-                'icon' => 'file-alt'
+                'titre' => 'Période d\'Orientation',
+                'date' => $debut->copy()->addWeeks(2)->format('d/m/Y'),
+                'description' => 'Séances d\'information pour nouveaux étudiants',
+                'icon' => 'compass',
+                'type' => 'orientation',
+                'couleur' => 'info'
+            ],
+            [
+                'titre' => 'Examens de 1er Semestre',
+                'date' => Carbon::create($annee->annee_debut, 12, 15)->format('d/m/Y'),
+                'description' => 'Évaluations semestrielles - Toutes classes',
+                'icon' => 'file-alt',
+                'type' => 'examens',
+                'couleur' => 'warning'
+            ],
+            [
+                'titre' => 'Vacances Semestrielles',
+                'date' => Carbon::create($annee->annee_debut, 12, 22)->format('d/m/Y'),
+                'description' => 'Période de vacances inter-semestrielle',
+                'icon' => 'calendar-times',
+                'type' => 'vacances',
+                'couleur' => 'secondary'
+            ],
+            [
+                'titre' => 'Reprise 2e Semestre',
+                'date' => Carbon::create($annee->annee_fin, 1, 8)->format('d/m/Y'),
+                'description' => 'Début du second semestre académique',
+                'icon' => 'play-circle',
+                'type' => 'reprise',
+                'couleur' => 'success'
+            ],
+            [
+                'titre' => 'Soutenances de Stages',
+                'date' => Carbon::create($annee->annee_fin, 4, 15)->format('d/m/Y'),
+                'description' => 'Présentations des stages professionnels - BTS2',
+                'icon' => 'presentation',
+                'type' => 'soutenances',
+                'couleur' => 'primary'
+            ],
+            [
+                'titre' => 'Examens Finaux',
+                'date' => Carbon::create($annee->annee_fin, 5, 20)->format('d/m/Y'),
+                'description' => 'Examens de fin d\'année - Toutes filières',
+                'icon' => 'certificate',
+                'type' => 'examens',
+                'couleur' => 'danger'
+            ],
+            [
+                'titre' => 'Cérémonie de Remise des Diplômes',
+                'date' => Carbon::create($annee->annee_fin, 6, 20)->format('d/m/Y'),
+                'description' => 'Cérémonie officielle de graduation',
+                'icon' => 'trophy',
+                'type' => 'ceremonie',
+                'couleur' => 'primary'
+            ],
+            [
+                'titre' => 'Fermeture Année Académique',
+                'date' => $fin->copy()->format('d/m/Y'),
+                'description' => 'Clôture officielle de l\'année académique',
+                'icon' => 'flag-checkered',
+                'type' => 'fermeture',
+                'couleur' => 'dark'
             ]
         ];
     }
     
     private function calculerStatistiquesMensuelles($annee) { 
-        // Données de démonstration
-        return [
-            [
-                'mois' => 'Septembre',
-                'total_cours' => 45
-            ],
-            [
-                'mois' => 'Octobre',
-                'total_cours' => 52
-            ],
-            [
-                'mois' => 'Novembre',
-                'total_cours' => 48
-            ]
-        ];
+        // Calcul des statistiques mensuelles réelles
+        $debut = Carbon::create($annee->annee_debut, 9, 1); // 1er septembre
+        $fin = Carbon::create($annee->annee_fin, 6, 30); // 30 juin
+        
+        $statistiques = [];
+        $moisCourant = $debut->copy()->startOfMonth();
+        
+        while ($moisCourant->lte($fin)) {
+            // Compter les séances programmées pour ce mois
+            $totalSeances = ESBTPSeanceCours::whereHas('emploiTemps', function($query) use ($annee) {
+                $query->where('annee_universitaire_id', $annee->id);
+            })
+            ->whereMonth('created_at', $moisCourant->month)
+            ->whereYear('created_at', $moisCourant->year)
+            ->count();
+            
+            // Calculer les heures totales
+            $totalHeures = ESBTPSeanceCours::whereHas('emploiTemps', function($query) use ($annee) {
+                $query->where('annee_universitaire_id', $annee->id);
+            })
+            ->whereMonth('created_at', $moisCourant->month)
+            ->whereYear('created_at', $moisCourant->year)
+            ->sum(DB::raw('TIME_TO_SEC(TIMEDIFF(heure_fin, heure_debut))/3600'));
+            
+            // Compter les planifications pour ce mois
+            $totalPlanifications = ESBTPPlanificationAcademique::where('annee_universitaire_id', $annee->id)
+                ->whereMonth('created_at', $moisCourant->month)
+                ->whereYear('created_at', $moisCourant->year)
+                ->count();
+            
+            $statistiques[] = [
+                'mois' => $moisCourant->translatedFormat('F Y'),
+                'mois_court' => $moisCourant->translatedFormat('M'),
+                'total_seances' => $totalSeances,
+                'total_heures' => round($totalHeures, 1),
+                'total_planifications' => $totalPlanifications,
+                'date' => $moisCourant->copy()
+            ];
+            
+            $moisCourant->addMonth();
+        }
+        
+        return $statistiques;
     }
 
     /**
@@ -619,7 +736,8 @@ class ESBTPPlanningGeneralController extends Controller
         $planifications = ESBTPPlanificationAcademique::forAnnee($anneeId)
             ->forFiliere($filiereId)
             ->forNiveau($niveauId)
-            ->forSemestre($semestre);
+            ->forSemestre($semestre)
+            ->get();
 
         $totalMatieresDisponibles = ESBTPMatiere::whereHas('classes', function($query) use ($filiereId, $niveauId) {
             $query->where('filiere_id', $filiereId)
@@ -629,13 +747,15 @@ class ESBTPPlanningGeneralController extends Controller
         $stats = [
             'total_matieres_planifiees' => $planifications->count(),
             'total_heures_planifiees' => $planifications->sum('volume_horaire_total'),
-            'total_enseignants_assignes' => $planifications->whereNotNull('enseignant_principal_id')->distinct('enseignant_principal_id')->count(),
+            'total_enseignants_assignes' => $planifications->whereNotNull('enseignant_principal_id')->pluck('enseignant_principal_id')->unique()->count(),
             'repartition_types_cours' => [
                 'cm' => $planifications->sum('volume_horaire_cm'),
                 'td' => $planifications->sum('volume_horaire_td'),
                 'tp' => $planifications->sum('volume_horaire_tp')
             ],
-            'statuts_planification' => $planifications->groupBy('statut')->map->count(),
+            'statuts_planification' => $planifications->groupBy('statut')->map(function($items) {
+                return $items->count();
+            }),
             'taux_completion' => $totalMatieresDisponibles > 0 
                 ? round(($planifications->count() / $totalMatieresDisponibles) * 100, 1)
                 : 0

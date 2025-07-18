@@ -468,6 +468,20 @@ Route::middleware(['auth', 'installed'])->group(function () {
                     ->middleware('permission:manage-planning|view-all-timetables');
             });
 
+            // Routes pour les événements académiques
+            Route::prefix('evenements-academiques')->name('evenements-academiques.')->group(function () {
+                Route::get('/', [App\Http\Controllers\ESBTPEvenementAcademiqueController::class, 'index'])->name('index');
+                Route::get('/create', [App\Http\Controllers\ESBTPEvenementAcademiqueController::class, 'create'])->name('create');
+                Route::post('/', [App\Http\Controllers\ESBTPEvenementAcademiqueController::class, 'store'])->name('store');
+                Route::get('/{evenementAcademique}', [App\Http\Controllers\ESBTPEvenementAcademiqueController::class, 'show'])->name('show');
+                Route::get('/{evenementAcademique}/edit', [App\Http\Controllers\ESBTPEvenementAcademiqueController::class, 'edit'])->name('edit');
+                Route::put('/{evenementAcademique}', [App\Http\Controllers\ESBTPEvenementAcademiqueController::class, 'update'])->name('update');
+                Route::delete('/{evenementAcademique}', [App\Http\Controllers\ESBTPEvenementAcademiqueController::class, 'destroy'])->name('destroy');
+                Route::post('/{evenementAcademique}/duplicate', [App\Http\Controllers\ESBTPEvenementAcademiqueController::class, 'duplicate'])->name('duplicate');
+                Route::post('/{evenementAcademique}/status', [App\Http\Controllers\ESBTPEvenementAcademiqueController::class, 'changeStatus'])->name('change-status');
+                Route::get('/api/events', [App\Http\Controllers\ESBTPEvenementAcademiqueController::class, 'getEvents'])->name('api.events');
+            });
+
             // Routes pour les enseignants (nouveau système)
             Route::prefix('enseignants')->name('enseignants.')->group(function () {
                 Route::get('/', [App\Http\Controllers\ESBTPEnseignantProfileController::class, 'index'])->name('index');

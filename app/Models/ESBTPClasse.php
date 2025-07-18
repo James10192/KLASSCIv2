@@ -115,6 +115,16 @@ class ESBTPClasse extends Model
     }
 
     /**
+     * Alias pour la relation emploisDuTemps (au singulier)
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function emploiTemps()
+    {
+        return $this->emploisDuTemps();
+    }
+
+    /**
      * Relation avec les évaluations.
      *
      * @return \Illuminate\Database\Eloquent\Relations\HasMany

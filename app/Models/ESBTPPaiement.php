@@ -187,6 +187,16 @@ class ESBTPPaiement extends Model implements Auditable
     }
 
     /**
+     * Alias pour la relation validateur (compatibilité avec le contrôleur).
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function validatedBy()
+    {
+        return $this->validateur();
+    }
+
+    /**
      * Relation avec l'inscription.
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo

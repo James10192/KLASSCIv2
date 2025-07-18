@@ -30,14 +30,25 @@ class ESBTPFraisController extends Controller
     public function index()
     {
         $categories = ESBTPFraisCategory::active()->ordered()->get();
+        
+        // Grouper les catégories par type
+        $categoriesByType = [
+            'academic' => $categories->where('category_type', 'academic'),
+            'service' => $categories->where('category_type', 'service'),
+            'administrative' => $categories->where('category_type', 'administrative'),
+        ];
+        
         $stats = [
             'total_categories' => ESBTPFraisCategory::count(),
+            'academic_categories' => ESBTPFraisCategory::academic()->count(),
+            'service_categories' => ESBTPFraisCategory::service()->count(),
+            'administrative_categories' => ESBTPFraisCategory::administrative()->count(),
             'mandatory_categories' => ESBTPFraisCategory::mandatory()->count(),
             'optional_categories' => ESBTPFraisCategory::optional()->count(),
             'active_categories' => ESBTPFraisCategory::active()->count(),
         ];
 
-        return view('esbtp.frais.index', compact('categories', 'stats'));
+        return view('esbtp.frais.index', compact('categories', 'categoriesByType', 'stats'));
     }
 
     /**
@@ -302,6 +313,13 @@ class ESBTPFraisController extends Controller
         ]);
 
         if ($validator->fails()) {
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Données invalides',
+                    'errors' => $validator->errors()
+                ], 400);
+            }
             return redirect()->back()
                 ->withErrors($validator)
                 ->withInput();
@@ -320,18 +338,23 @@ class ESBTPFraisController extends Controller
                     continue;
                 }
 
-                // Créer ou mettre à jour la règle
+                // Récupérer les noms pour créer la variante
+                $filiere = ESBTPFiliere::find($filiereId);
+                $niveau = ESBTPNiveauEtude::find($niveauId);
+                $className = ($filiere ? $filiere->name : 'Filière') . ' - ' . ($niveau ? $niveau->name : 'Niveau');
+
+                // 1. Créer ou mettre à jour la règle (pour la logique interne)
                 ESBTPFraisRule::updateOrCreate(
                     [
                         'frais_category_id' => $categoryId,
                         'filiere_id' => $filiereId,
                         'niveau_id' => $niveauId,
-                        'annee_universitaire_id' => null, // Plus de dépendance à l'année
+                        'annee_universitaire_id' => null,
                     ],
                     [
                         'amount' => $categoryData['amount'],
                         'payment_deadline_days' => $categoryData['deadline_days'],
-                        'installments_allowed' => false, // Par défaut
+                        'installments_allowed' => false,
                         'max_installments' => 1,
                         'min_installment_amount' => null,
                         'late_fee_percentage' => 0,
@@ -340,9 +363,45 @@ class ESBTPFraisController extends Controller
                         'effective_date' => now(),
                     ]
                 );
+
+                // 2. Créer ou mettre à jour une variante correspondante pour l'UX
+                $variantName = "Tarif " . $className;
+                $variantDescription = "Tarif spécifique pour la classe " . $className;
+
+                // Vérifier si une variante existe déjà pour cette classe
+                $existingVariant = \App\Models\ESBTPFraisVariant::where('frais_category_id', $categoryId)
+                    ->where('name', $variantName)
+                    ->first();
+
+                if ($existingVariant) {
+                    // Mettre à jour la variante existante
+                    $existingVariant->update([
+                        'amount' => $categoryData['amount'],
+                        'description' => $variantDescription,
+                        'is_active' => true,
+                    ]);
+                } else {
+                    // Créer une nouvelle variante
+                    \App\Models\ESBTPFraisVariant::create([
+                        'frais_category_id' => $categoryId,
+                        'name' => $variantName,
+                        'description' => $variantDescription,
+                        'amount' => $categoryData['amount'],
+                        'is_default' => false, // Les variantes de classe ne sont pas par défaut
+                        'is_active' => true,
+                        'sort_order' => \App\Models\ESBTPFraisVariant::where('frais_category_id', $categoryId)->max('sort_order') + 1,
+                    ]);
+                }
             }
 
             DB::commit();
+
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Configuration des frais mise à jour avec succès.'
+                ]);
+            }
 
             return redirect()->route('esbtp.frais.configure')
                 ->with('success', 'Configuration des frais mise à jour avec succès.');
@@ -350,6 +409,14 @@ class ESBTPFraisController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Erreur lors de la configuration des frais: ' . $e->getMessage());
+            
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erreur lors de la configuration des frais.'
+                ], 500);
+            }
+            
             return redirect()->back()
                 ->with('error', 'Erreur lors de la configuration des frais.')
                 ->withInput();
@@ -400,6 +467,34 @@ class ESBTPFraisController extends Controller
             Log::error('Erreur lors de la réinitialisation des catégories: ' . $e->getMessage());
             return redirect()->back()
                 ->with('error', 'Erreur lors de la réinitialisation des catégories.');
+        }
+    }
+
+    /**
+     * API: Obtenir les catégories de frais pour une classe (pour le modal)
+     */
+    public function getCategories(Request $request)
+    {
+        try {
+            $filiereId = $request->get('filiere_id');
+            $niveauId = $request->get('niveau_id');
+
+            if (!$filiereId || !$niveauId) {
+                return response()->json(['error' => 'Paramètres manquants'], 400);
+            }
+
+            $categories = ESBTPFraisCategory::active()->ordered()->get();
+            $rules = ESBTPFraisRule::with(['fraisCategory'])
+                ->where('filiere_id', $filiereId)
+                ->where('niveau_id', $niveauId)
+                ->get();
+
+            $html = view('esbtp.frais.partials.categories-grid', compact('categories', 'rules'))->render();
+            
+            return response()->json(['html' => $html]);
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la récupération des catégories: ' . $e->getMessage());
+            return response()->json(['error' => 'Erreur lors du chargement des catégories'], 500);
         }
     }
 
@@ -706,5 +801,114 @@ class ESBTPFraisController extends Controller
         ];
 
         return $messages[$niveau] ?? $messages[1];
+    }
+
+    /**
+     * API: Récupérer les catégories de frais pour une inscription
+     */
+    public function getCategoriesForApi(Request $request)
+    {
+        try {
+            $inscriptionId = $request->get('inscription_id');
+            
+            if (!$inscriptionId) {
+                return response()->json(['error' => 'ID de l\'inscription requis'], 400);
+            }
+
+            // Récupérer l'inscription avec ses relations
+            $inscription = \App\Models\ESBTPInscription::with(['filiere', 'niveauEtude', 'anneeUniversitaire'])
+                ->find($inscriptionId);
+            
+            if (!$inscription) {
+                return response()->json(['error' => 'Inscription non trouvée'], 404);
+            }
+
+            Log::info('Inscription trouvée:', [
+                'id' => $inscription->id,
+                'filiere_id' => $inscription->filiere_id,
+                'niveau_id' => $inscription->niveau_id,
+                'annee_id' => $inscription->annee_universitaire_id
+            ]);
+
+            // Récupérer toutes les catégories actives
+            $categories = ESBTPFraisCategory::where('is_active', true)
+                ->get()
+                ->map(function ($category) use ($inscription) {
+                    // Chercher une règle configurée pour cette catégorie et cette inscription
+                    $rule = ESBTPFraisRule::where('frais_category_id', $category->id)
+                        ->where('filiere_id', $inscription->filiere_id)
+                        ->where('niveau_id', $inscription->niveau_id)
+                        ->where(function ($query) use ($inscription) {
+                            $query->where('annee_universitaire_id', $inscription->annee_universitaire_id)
+                                  ->orWhereNull('annee_universitaire_id');
+                        })
+                        ->where('is_active', true)
+                        ->orderBy('annee_universitaire_id', 'desc') // Priorité à l'année spécifique
+                        ->first();
+
+                    // Utiliser le montant configuré ou le montant par défaut
+                    $montant = $rule ? $rule->amount : $category->default_amount;
+                    
+                    Log::info('Catégorie ' . $category->name . ':', [
+                        'rule_found' => $rule ? true : false,
+                        'configured_amount' => $rule ? $rule->amount : null,
+                        'default_amount' => $category->default_amount,
+                        'final_amount' => $montant
+                    ]);
+
+                    return [
+                        'id' => $category->id,
+                        'name' => $category->name,
+                        'description' => $category->description ?? 'Description non définie',
+                        'type' => $category->category_type ?? 'academic',
+                        'montant' => $montant ?? 50000,
+                        'is_mandatory' => $category->is_mandatory ?? true,
+                        'due_date' => $category->due_date,
+                        'installments_allowed' => $rule ? $rule->installments_allowed : ($category->installments_allowed ?? true),
+                        'max_installments' => $rule ? $rule->max_installments : ($category->max_installments ?? 3),
+                        'payment_deadline_days' => $rule ? $rule->payment_deadline_days : $category->payment_deadline_days,
+                        'configured' => $rule ? true : false, // Indiquer si c'est configuré spécifiquement
+                    ];
+                });
+
+            return response()->json($categories);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la récupération des catégories de frais: ' . $e->getMessage());
+            return response()->json([
+                'error' => 'Erreur interne du serveur',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Calculer le montant d'une catégorie pour une inscription spécifique
+     */
+    private function calculateAmountForInscription($category, $inscription)
+    {
+        // Récupérer les règles de frais pour cette catégorie et cette inscription
+        $rule = ESBTPFraisRule::where('category_id', $category->id)
+            ->where(function ($query) use ($inscription) {
+                $query->where('filiere_id', $inscription->filiere_id)
+                      ->orWhereNull('filiere_id');
+            })
+            ->where(function ($query) use ($inscription) {
+                $query->where('niveau_etude_id', $inscription->niveau_etude_id)
+                      ->orWhereNull('niveau_etude_id');
+            })
+            ->where(function ($query) use ($inscription) {
+                $query->where('annee_universitaire_id', $inscription->annee_universitaire_id)
+                      ->orWhereNull('annee_universitaire_id');
+            })
+            ->orderByDesc('priority')
+            ->first();
+
+        if ($rule && $rule->amount) {
+            return $rule->amount;
+        }
+
+        // Si aucune règle spécifique, utiliser le montant par défaut de la catégorie
+        return $category->default_amount ?? 0;
     }
 }

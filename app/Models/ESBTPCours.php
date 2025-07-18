@@ -93,6 +93,23 @@ class ESBTPCours extends Model
     }
 
     /**
+     * Relation avec l'emploi du temps (via la classe)
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasManyThrough
+     */
+    public function emploiTemps()
+    {
+        return $this->hasManyThrough(
+            ESBTPEmploiTemps::class,
+            ESBTPClasse::class,
+            'id', // Clé étrangère de ESBTPClasse
+            'classe_id', // Clé étrangère de ESBTPEmploiTemps
+            'classe_id', // Clé locale de ESBTPCours
+            'id' // Clé locale de ESBTPClasse
+        );
+    }
+
+    /**
      * Relation avec les absences associées à ce cours.
      *
      * @return \Illuminate\Database\Eloquent\Relations\HasMany

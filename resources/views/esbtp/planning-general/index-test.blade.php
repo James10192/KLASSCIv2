@@ -148,7 +148,7 @@
                                             <select name="matiere_id" id="matiere_id" class="form-select" required>
                                                 <option value="">Choisir une matière</option>
                                                 @foreach($matieres as $matiere)
-                                                    <option value="{{ $matiere->id }}">{{ $matiere->nom }}</option>
+                                                    <option value="{{ $matiere->id }}">{{ $matiere->name }}</option>
                                                 @endforeach
                                             </select>
                                         </div>
@@ -235,7 +235,7 @@
                                             <tbody>
                                                 @foreach($planifications as $planification)
                                                 <tr>
-                                                    <td><strong>{{ $planification->matiere->nom ?? 'N/A' }}</strong></td>
+                                                    <td><strong>{{ $planification->matiere->name ?? 'N/A' }}</strong></td>
                                                     <td>{{ $planification->volume_horaire_total }}h</td>
                                                     <td>
                                                         <small>
