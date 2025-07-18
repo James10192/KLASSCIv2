@@ -552,8 +552,8 @@
                         </a>
                     </div>
                     <div class="col-md-3 mb-2">
-                        <a href="{{ route('esbtp.personnel.unified.index') }}" class="btn-acasi secondary w-100">
-                            <i class="fas fa-users-cog me-2"></i>Gestion Personnel
+                        <a href="{{ route('esbtp.teachers.index') }}" class="btn-acasi secondary w-100">
+                            <i class="fas fa-chalkboard-teacher me-2"></i>Gestion Enseignants
                         </a>
                     </div>
                     <div class="col-md-3 mb-2">

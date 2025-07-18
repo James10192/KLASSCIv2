@@ -646,8 +646,8 @@
                                 <div class="menu-text">Personnel</div>
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
-                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.staff.*') || Request::routeIs('esbtp.roles.*') ? 'show' : '' }}">
-                                <a href="{{ route('esbtp.secretaires.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.secretaires.*') ? 'active' : '' }}">
+                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.staff.*') || Request::routeIs('esbtp.roles.*') || Request::routeIs('esbtp.personnel.unified.*') ? 'show' : '' }}">
+                                <a href="{{ route('esbtp.personnel.unified.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.personnel.unified.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Gestion du personnel</span>
                                 </a>

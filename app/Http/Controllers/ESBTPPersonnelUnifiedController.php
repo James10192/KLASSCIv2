@@ -33,12 +33,23 @@ class ESBTPPersonnelUnifiedController extends Controller
             }
         }
         
-        // Récupérer tous les types de personnel
-        $coordinateurs = User::role('coordinateur')
-            ->with(['roles'])
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
+        // Récupérer tous les types de personnel avec vérification des rôles
+        $coordinateurs = collect();
+        $secretaires = collect();
+        
+        try {
+            // Vérifier si le rôle coordinateur existe
+            if (Role::where('name', 'coordinateur')->exists()) {
+                $coordinateurs = User::role('coordinateur')
+                    ->with(['roles'])
+                    ->where('is_active', true)
+                    ->orderBy('name')
+                    ->get();
+            }
+        } catch (\Exception $e) {
+            // Si le rôle n'existe pas, garder une collection vide
+            $coordinateurs = collect();
+        }
             
         $enseignants = ESBTPTeacher::with(['user'])
             ->whereHas('user', function($query) {
@@ -47,11 +58,19 @@ class ESBTPPersonnelUnifiedController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
             
-        $secretaires = User::role('secretaire')
-            ->with(['roles'])
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
+        try {
+            // Vérifier si le rôle secretaire existe
+            if (Role::where('name', 'secretaire')->exists()) {
+                $secretaires = User::role('secretaire')
+                    ->with(['roles'])
+                    ->where('is_active', true)
+                    ->orderBy('name')
+                    ->get();
+            }
+        } catch (\Exception $e) {
+            // Si le rôle n'existe pas, garder une collection vide
+            $secretaires = collect();
+        }
             
         // Calculer les statistiques
         $stats = [
@@ -91,31 +110,36 @@ class ESBTPPersonnelUnifiedController extends Controller
         
         switch($type) {
             case 'coordinateur':
-                $query = User::role('coordinateur')->with(['roles']);
-                
-                if ($status) {
-                    $query->where('is_active', $status === 'active');
+                $data = collect();
+                try {
+                    if (Role::where('name', 'coordinateur')->exists()) {
+                        $query = User::role('coordinateur')->with(['roles']);
+                        
+                        if ($status) {
+                            $query->where('is_active', $status === 'active');
+                        }
+                        
+                        if ($search) {
+                            $query->where(function($q) use ($search) {
+                                $q->where('name', 'like', "%{$search}%")
+                                  ->orWhere('email', 'like', "%{$search}%")
+                                  ->orWhere('telephone', 'like', "%{$search}%")
+                                  ->orWhere('specialite', 'like', "%{$search}%");
+                            });
+                        }
+                        
+                        $data = $query->orderBy('name')->get();
+                    }
+                } catch (\Exception $e) {
+                    $data = collect();
                 }
-                
-                if ($search) {
-                    $query->where(function($q) use ($search) {
-                        $q->where('name', 'like', "%{$search}%")
-                          ->orWhere('email', 'like', "%{$search}%")
-                          ->orWhere('telephone', 'like', "%{$search}%")
-                          ->orWhere('specialite', 'like', "%{$search}%");
-                    });
-                }
-                
-                $data = $query->orderBy('name')->get();
                 break;
                 
             case 'enseignant':
                 $query = ESBTPTeacher::with(['user']);
                 
                 if ($status) {
-                    $query->whereHas('user', function($q) use ($status) {
-                        $q->where('is_active', $status === 'active');
-                    });
+                    $query->where('status', $status);
                 }
                 
                 if ($search) {
@@ -129,21 +153,28 @@ class ESBTPPersonnelUnifiedController extends Controller
                 break;
                 
             case 'secretaire':
-                $query = User::role('secretaire')->with(['roles']);
-                
-                if ($status) {
-                    $query->where('is_active', $status === 'active');
+                $data = collect();
+                try {
+                    if (Role::where('name', 'secretaire')->exists()) {
+                        $query = User::role('secretaire')->with(['roles']);
+                        
+                        if ($status) {
+                            $query->where('is_active', $status === 'active');
+                        }
+                        
+                        if ($search) {
+                            $query->where(function($q) use ($search) {
+                                $q->where('name', 'like', "%{$search}%")
+                                  ->orWhere('email', 'like', "%{$search}%")
+                                  ->orWhere('telephone', 'like', "%{$search}%");
+                            });
+                        }
+                        
+                        $data = $query->orderBy('name')->get();
+                    }
+                } catch (\Exception $e) {
+                    $data = collect();
                 }
-                
-                if ($search) {
-                    $query->where(function($q) use ($search) {
-                        $q->where('name', 'like', "%{$search}%")
-                          ->orWhere('email', 'like', "%{$search}%")
-                          ->orWhere('telephone', 'like', "%{$search}%");
-                    });
-                }
-                
-                $data = $query->orderBy('name')->get();
                 break;
         }
         
