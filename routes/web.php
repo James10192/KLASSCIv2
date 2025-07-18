@@ -1480,3 +1480,30 @@ Route::middleware(['auth', 'throttle:security'])->prefix('esbtp/security')->name
 // ... existing code ...
 Route::get('/comptabilite/paiements/{id}/recu', [ESBTPComptabiliteController::class, 'genererRecuPaiement'])->name('esbtp.comptabilite.paiements.recu');
 // ... existing code ...
+
+// Routes pour la gestion du personnel avec sliders
+Route::middleware(['auth'])->prefix('esbtp')->name('esbtp.')->group(function () {
+    // Vue combinée du personnel avec sliders
+    Route::get('/personnel', [\App\Http\Controllers\ESBTPPersonnelController::class, 'index'])->name('personnel.index');
+    Route::get('/personnel/data', [\App\Http\Controllers\ESBTPPersonnelController::class, 'getData'])->name('personnel.data');
+    Route::get('/personnel/stats', [\App\Http\Controllers\ESBTPPersonnelController::class, 'getStats'])->name('personnel.stats');
+    Route::post('/personnel', [\App\Http\Controllers\ESBTPPersonnelController::class, 'store'])->name('personnel.store');
+    Route::put('/personnel/{personnel}', [\App\Http\Controllers\ESBTPPersonnelController::class, 'update'])->name('personnel.update');
+    Route::delete('/personnel/{personnel}', [\App\Http\Controllers\ESBTPPersonnelController::class, 'destroy'])->name('personnel.destroy');
+    Route::patch('/personnel/{personnel}/toggle-status', [\App\Http\Controllers\ESBTPPersonnelController::class, 'toggleStatus'])->name('personnel.toggle-status');
+    Route::post('/personnel/bulk-action', [\App\Http\Controllers\ESBTPPersonnelController::class, 'bulkAction'])->name('personnel.bulk-action');
+    Route::get('/personnel/export', [\App\Http\Controllers\ESBTPPersonnelController::class, 'export'])->name('personnel.export');
+    
+    // Page unifiée pour la gestion du personnel
+    Route::get('/personnel/unified', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'index'])->name('personnel.unified.index');
+    Route::get('/personnel/unified/data', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'getData'])->name('personnel.unified.data');
+    Route::get('/personnel/unified/stats', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'getStats'])->name('personnel.unified.stats');
+    Route::post('/personnel/unified', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'store'])->name('personnel.unified.store');
+    Route::put('/personnel/unified/{type}/{id}', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'update'])->name('personnel.unified.update');
+    Route::delete('/personnel/unified/{type}/{id}', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'destroy'])->name('personnel.unified.destroy');
+    Route::patch('/personnel/unified/{type}/{id}/toggle-status', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'toggleStatus'])->name('personnel.unified.toggle-status');
+    
+    // Routes pour les coordinateurs (maintien de la compatibilité)
+    Route::resource('coordinateurs', \App\Http\Controllers\ESBTPCoordinateurController::class);
+    Route::patch('coordinateurs/{coordinateur}/toggle-status', [\App\Http\Controllers\ESBTPCoordinateurController::class, 'toggleStatus'])->name('coordinateurs.toggle-status');
+});

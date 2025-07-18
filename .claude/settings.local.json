@@ -8,7 +8,8 @@
       "mcp__sequential-thinking__sequentialthinking",
       "Bash(find:*)",
       "Bash(/mnt/c/xampp/php/php.exe artisan tinker --execute=\"App\\Models\\ESBTPClasse::with([''filiere'', ''niveau'', ''annee''])->first()\")",
-      "mcp__memory__read_graph"
+      "mcp__memory__read_graph",
+      "mcp__memory__add_observations"
     ],
     "deny": []
   }

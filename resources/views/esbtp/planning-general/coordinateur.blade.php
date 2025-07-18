@@ -1,19 +1,33 @@
 @extends('layouts.app')
 
-@section('title', 'Gestion Coordinateur - ESBTP-yAKRO')
+@section('title', 'Dashboard Pédagogie - ESBTP-yAKRO')
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
-    .coordinateur-header {
+    .pedagogie-header {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
         padding: var(--space-xl);
         border-radius: var(--radius-large);
         margin-bottom: var(--space-xl);
+        position: relative;
+        overflow: hidden;
     }
     
-    .planning-nav {
+    .pedagogie-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 100px;
+        height: 100%;
+        background: rgba(255,255,255,0.1);
+        transform: skewX(-15deg);
+        transform-origin: top;
+    }
+    
+    .pedagogie-nav {
         background: var(--surface);
         border-radius: var(--radius-medium);
         padding: var(--space-md);
@@ -21,14 +35,14 @@
         box-shadow: var(--shadow-card);
     }
     
-    .planning-nav .nav-tabs {
+    .pedagogie-nav .nav-tabs {
         border: none;
         background: rgba(var(--primary-rgb), 0.05);
         border-radius: var(--radius-small);
         padding: var(--space-xs);
     }
     
-    .planning-nav .nav-link {
+    .pedagogie-nav .nav-link {
         border: none;
         color: var(--text-secondary);
         background: transparent;
@@ -36,12 +50,139 @@
         padding: var(--space-sm) var(--space-md);
         margin: 0 var(--space-xs);
         transition: all 0.3s ease;
+        position: relative;
     }
     
-    .planning-nav .nav-link.active {
+    .pedagogie-nav .nav-link.active {
         background: var(--primary);
         color: white;
         box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.3);
+    }
+    
+    .pedagogie-nav .nav-link:hover {
+        background: rgba(var(--primary-rgb), 0.1);
+        transform: translateY(-1px);
+    }
+    
+    .dashboard-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: var(--space-lg);
+        margin-bottom: var(--space-xl);
+    }
+    
+    .stat-card {
+        background: var(--surface);
+        border-radius: var(--radius-medium);
+        padding: var(--space-lg);
+        border: 1px solid var(--border);
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .stat-card:hover {
+        box-shadow: var(--shadow-hover);
+        transform: translateY(-2px);
+    }
+    
+    .stat-card .stat-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: var(--space-md);
+    }
+    
+    .stat-card .stat-number {
+        font-size: 2rem;
+        font-weight: bold;
+        color: var(--primary);
+    }
+    
+    .stat-card .stat-label {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+    
+    .slider-container {
+        position: relative;
+        overflow: hidden;
+        border-radius: var(--radius-medium);
+        background: var(--surface);
+        box-shadow: var(--shadow-card);
+    }
+    
+    .slider-content {
+        display: flex;
+        transition: transform 0.3s ease;
+    }
+    
+    .slider-panel {
+        min-width: 100%;
+        padding: var(--space-lg);
+    }
+    
+    .slider-controls {
+        display: flex;
+        justify-content: center;
+        gap: var(--space-sm);
+        margin-bottom: var(--space-md);
+    }
+    
+    .slider-btn {
+        padding: var(--space-sm) var(--space-md);
+        border: none;
+        background: rgba(var(--primary-rgb), 0.1);
+        color: var(--primary);
+        border-radius: var(--radius-small);
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .slider-btn.active {
+        background: var(--primary);
+        color: white;
+    }
+    
+    .quick-actions {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: var(--space-md);
+        margin-bottom: var(--space-xl);
+    }
+    
+    .quick-action {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-medium);
+        padding: var(--space-md);
+        text-align: center;
+        text-decoration: none;
+        color: var(--text-primary);
+        transition: all 0.3s ease;
+    }
+    
+    .quick-action:hover {
+        background: var(--primary);
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-hover);
+    }
+    
+    .quick-action .action-icon {
+        font-size: 2rem;
+        margin-bottom: var(--space-sm);
+    }
+    
+    .content-panel {
+        background: var(--surface);
+        border-radius: var(--radius-medium);
+        padding: var(--space-lg);
+        margin-bottom: var(--space-lg);
+        box-shadow: var(--shadow-card);
     }
     
     .allocation-card {
@@ -383,24 +524,63 @@
             </div>
             <div class="card-body">
                 <div class="row">
-                    <div class="col-md-3">
+                    <div class="col-md-3 mb-2">
                         <a href="{{ route('esbtp.planning-general.annuel') }}" class="btn-acasi primary w-100">
                             <i class="fas fa-calendar-alt me-2"></i>Planning Annuel
                         </a>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-3 mb-2">
                         <a href="{{ route('esbtp.planning-general.repartition-matieres') }}" class="btn-acasi info w-100">
                             <i class="fas fa-chart-pie me-2"></i>Répartition Matières
                         </a>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-3 mb-2">
                         <a href="{{ route('esbtp.evenements-academiques.index') }}" class="btn-acasi success w-100">
                             <i class="fas fa-calendar-check me-2"></i>Événements
                         </a>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-3 mb-2">
                         <a href="{{ route('esbtp.emploi-temps.index') }}" class="btn-acasi warning w-100">
                             <i class="fas fa-table me-2"></i>Emplois du Temps
+                        </a>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ route('esbtp.etudiants.index') }}" class="btn-acasi secondary w-100">
+                            <i class="fas fa-user-graduate me-2"></i>Gestion Étudiants
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ route('esbtp.personnel.unified.index') }}" class="btn-acasi secondary w-100">
+                            <i class="fas fa-users-cog me-2"></i>Gestion Personnel
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ route('attendances.index') }}" class="btn-acasi secondary w-100">
+                            <i class="fas fa-user-check me-2"></i>Présences/Absences
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ route('esbtp.annonces.index') }}" class="btn-acasi secondary w-100">
+                            <i class="fas fa-bullhorn me-2"></i>Annonces
+                        </a>
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-md-4 mb-2">
+                        <a href="{{ route('esbtp.evaluations.index') }}" class="btn-acasi secondary w-100">
+                            <i class="fas fa-clipboard-list me-2"></i>Évaluations
+                        </a>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <a href="{{ route('esbtp.notes.index') }}" class="btn-acasi secondary w-100">
+                            <i class="fas fa-edit me-2"></i>Notes
+                        </a>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <a href="{{ route('esbtp.bulletins.index') }}" class="btn-acasi secondary w-100">
+                            <i class="fas fa-trophy me-2"></i>Bulletins/Résultats
                         </a>
                     </div>
                 </div>

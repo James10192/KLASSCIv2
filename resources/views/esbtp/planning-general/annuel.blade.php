@@ -627,6 +627,11 @@
                     </a>
                 </li>
                 @endcanany
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ route('esbtp.evenements-academiques.index', ['annee_id' => $anneeSelectionnee->id]) }}">
+                        <i class="fas fa-calendar-plus me-2"></i>Événements Académiques
+                    </a>
+                </li>
             </ul>
         </div>
 
@@ -655,6 +660,12 @@
                 <div class="text-muted mt-1" style="font-size: 0.8rem;">
                     {{ collect($evenementsAcademiques)->where('type', 'examens')->count() }} examens • 
                     {{ collect($evenementsAcademiques)->whereIn('type', ['ceremonie', 'rentree'])->count() }} cérémonies
+                </div>
+                <div class="mt-2">
+                    <a href="{{ route('esbtp.evenements-academiques.index', ['annee_id' => $anneeSelectionnee->id]) }}" 
+                       class="btn btn-sm btn-primary">
+                        <i class="fas fa-cog me-1"></i>Gérer
+                    </a>
                 </div>
             </div>
         </div>
