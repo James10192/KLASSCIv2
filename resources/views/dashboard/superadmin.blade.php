@@ -3,33 +3,39 @@
 @section('title', 'Tableau de bord Super Admin')
 
 @section('content')
-<div class="nextadmin-content">
-    <!-- HEADER PREMIUM -->
-    <div class="bg-gradient-primary rounded-4 p-5 mb-4 d-flex align-items-center justify-content-between" style="background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); min-height: 160px;">
-        <div class="d-flex align-items-center gap-4">
-            <div class="bg-white bg-opacity-25 rounded-circle d-flex align-items-center justify-content-center" style="width:72px;height:72px;">
-                <i class="fas fa-crown fa-2x text-white"></i>
+<div class="main-content">
+    <!-- Header -->
+    <div class="dashboard-header mb-xl" style="background-color: var(--primary); color: white; border-radius: var(--radius-medium);">
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <div style="display: flex; align-items: center; gap: var(--space-lg);">
+                    <div style="width: 80px; height: 80px; border-radius: var(--radius-circle); background-color: var(--accent-blue); color: white; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 700; box-shadow: var(--shadow-elevated);">
+                        <i class="fas fa-crown"></i>
+                    </div>
+                    <div>
+                        <h1 style="color: white; margin: 0; font-size: var(--title-main); font-weight: 700;">Tableau de bord Super Admin</h1>
+                        <p style="color: rgba(255,255,255,0.8); margin: var(--space-xs) 0 0 0;">Gestion administrative ESBTP-yAKRO</p>
+                    </div>
+                </div>
             </div>
-            <div>
-                <h1 class="text-white fw-bold mb-1" style="font-size:2.2rem;">Tableau de bord Super Admin</h1>
-                <p class="text-white-50 mb-0">Gestion administrative KLASSCI</p>
-            </div>
-        </div>
-        <div class="d-flex gap-3">
-            <button class="btn btn-light btn-lg shadow-sm" data-bs-toggle="tooltip" title="Actualiser les données" onclick="location.reload()">
-                <i class="fas fa-sync-alt"></i>
-            </button>
-            <div class="dropdown">
-                <button class="btn btn-warning btn-lg dropdown-toggle text-white fw-bold" type="button" id="quickActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="fas fa-bolt me-2"></i> Actions rapides
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end">
-                    <li><a class="dropdown-item" href="{{ route('esbtp.inscriptions.create') }}"><i class="fas fa-user-plus text-primary me-2"></i> Nouvel étudiant</a></li>
-                    <li><a class="dropdown-item" href="{{ route('esbtp.evaluations.create') }}"><i class="fas fa-file-alt text-success me-2"></i> Créer examen</a></li>
-                    <li><a class="dropdown-item" href="{{ route('esbtp.annonces.create') }}"><i class="fas fa-bullhorn text-warning me-2"></i> Publier annonce</a></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <!-- <li><a class="dropdown-item" href="{{ route('esbtp.resultats.index') }}"><i class="fas fa-print text-info me-2"></i> Générer bulletins</a></li> -->
-                </ul>
+            <div class="col-lg-4 text-end">
+                <div class="header-actions">
+                    <button class="btn-acasi secondary" style="margin-right: var(--space-md);" onclick="location.reload()" title="Actualiser les données">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <div class="dropdown d-inline-block">
+                        <button class="btn-acasi" style="background-color: var(--warning); color: white;" type="button" id="quickActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-bolt"></i> Actions rapides
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="{{ route('esbtp.inscriptions.create') }}"><i class="fas fa-user-plus" style="color: var(--primary);"></i> Nouvel étudiant</a></li>
+                            <li><a class="dropdown-item" href="{{ route('esbtp.evaluations.create') }}"><i class="fas fa-file-alt" style="color: var(--success);"></i> Créer examen</a></li>
+                            <li><a class="dropdown-item" href="{{ route('esbtp.annonces.create') }}"><i class="fas fa-bullhorn" style="color: var(--warning);"></i> Publier annonce</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ route('esbtp.resultats.index') }}"><i class="fas fa-print" style="color: var(--accent-blue);"></i> Générer bulletins</a></li>
+                        </ul>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -38,125 +44,111 @@
         $pendingInscriptionsCount = \App\Models\ESBTPInscription::where('status', 'pending')->count();
     @endphp
 
-    <!-- ALERT GLASSMORPHISM -->
+    <!-- Alert for pending inscriptions -->
     @if($pendingInscriptionsCount > 0)
-    <div class="alert alert-warning d-flex align-items-center shadow-lg rounded-4 p-4 mb-5 animate-fade-in-up" style="backdrop-filter: blur(8px) saturate(1.2); background: rgba(255, 193, 7, 0.18); border: none;">
-        <div class="me-4 d-flex align-items-center justify-content-center" style="width: 64px; height: 64px; background: linear-gradient(135deg, #f59e0b, #fbbf24); border-radius: 18px;">
-            <i class="fas fa-exclamation-triangle fa-2x text-white"></i>
+    <div class="alert alert-warning alert-dismissible fade show mb-lg" style="background-color: rgba(245, 158, 11, 0.1); border: 1px solid var(--warning); border-radius: var(--radius-medium); padding: var(--space-lg);">
+        <div style="display: flex; align-items: center; gap: var(--space-md);">
+            <div style="width: 64px; height: 64px; background-color: var(--warning); color: white; border-radius: var(--radius-medium); display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-card);">
+                <i class="fas fa-exclamation-triangle fa-2x"></i>
+            </div>
+            <div style="flex: 1;">
+                <h5 style="color: var(--warning); font-weight: 600; margin: 0 0 var(--space-sm) 0;">
+                    <i class="fas fa-bell"></i>
+                    Attention! Inscriptions en attente
+                </h5>
+                <p style="margin: 0 0 var(--space-md) 0; color: var(--text-primary);">
+                    Il y a <strong>{{ $pendingInscriptionsCount }}</strong> inscription(s) en attente de validation.<br>
+                    Ces inscriptions nécessitent votre vérification pour finaliser le processus d'admission des étudiants.
+                </p>
+                <a href="{{ route('esbtp.inscriptions.index', ['status' => 'pending']) }}" class="btn-acasi" style="background-color: var(--warning); color: white;">
+                    <i class="fas fa-check-circle"></i> Consulter et valider
+                </a>
+            </div>
         </div>
-        <div class="flex-grow-1">
-            <h5 class="alert-heading mb-2 fw-bold text-dark">
-                <i class="fas fa-bell me-2 text-warning"></i>
-                Attention! Inscriptions en attente
-            </h5>
-            <p class="mb-3 text-dark">
-                Il y a <strong>{{ $pendingInscriptionsCount }}</strong> inscription(s) en attente de validation.<br>
-                Ces inscriptions nécessitent votre vérification pour finaliser le processus d'admission des étudiants.
-            </p>
-            <a href="{{ route('esbtp.inscriptions.index', ['status' => 'pending']) }}" class="btn btn-warning btn-lg rounded-pill px-4 shadow-sm fw-bold">
-                <i class="fas fa-check-circle me-1"></i> Consulter et valider
-            </a>
-        </div>
-        <button type="button" class="btn-close ms-3" data-bs-dismiss="alert" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
     @endif
 
-    <!-- CARDS STATISTIQUES PREMIUM -->
-    <div class="row g-4 mb-5 animate-fade-in-up">
-        <div class="col-xl-3 col-md-6">
-            <div class="card shadow-lg border-0 rounded-4 text-center p-4 h-100 hover-lift">
-                <div class="d-flex justify-content-center mb-3">
-                    <span class="d-inline-flex align-items-center justify-content-center bg-primary bg-gradient text-white rounded-circle" style="width:60px;height:60px;font-size:2rem;">
-                        <i class="fas fa-users"></i>
-                    </span>
-                </div>
-                <div class="display-5 fw-bold mb-1 text-primary">{{ $totalStudents }}</div>
-                <div class="text-muted mb-2">Étudiants inscrits</div>
-                <span class="badge bg-success bg-gradient rounded-pill px-3 py-2">Actifs <i class="fas fa-arrow-up ms-1"></i></span>
-            </div>
+    <!-- KPI Cards -->
+    <div class="kpi-grid mb-xl">
+        <div class="kpi-card card-moderne" style="background-color: var(--primary); color: white; text-align: center;">
+            <i class="fas fa-users fa-2x mb-md"></i>
+            <div class="kpi-title" style="color: white;">Étudiants</div>
+            <div class="kpi-value" style="color: white;">{{ $totalStudents }}</div>
+            <div style="color: rgba(255,255,255,0.8); font-size: var(--text-small);">Inscrits actifs</div>
         </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card shadow-lg border-0 rounded-4 text-center p-4 h-100 hover-lift">
-                <div class="d-flex justify-content-center mb-3">
-                    <span class="d-inline-flex align-items-center justify-content-center bg-success bg-gradient text-white rounded-circle" style="width:60px;height:60px;font-size:2rem;">
-                        <i class="fas fa-graduation-cap"></i>
-                    </span>
-                </div>
-                <div class="display-5 fw-bold mb-1 text-success">{{ $totalFilieres }}</div>
-                <div class="text-muted mb-2">Filières actives</div>
-                <span class="badge bg-primary bg-gradient rounded-pill px-3 py-2">Disponibles <i class="fas fa-check ms-1"></i></span>
-            </div>
+
+        <div class="kpi-card card-moderne" style="background-color: var(--success); color: white; text-align: center;">
+            <i class="fas fa-graduation-cap fa-2x mb-md"></i>
+            <div class="kpi-title" style="color: white;">Filières</div>
+            <div class="kpi-value" style="color: white;">{{ $totalFilieres }}</div>
+            <div style="color: rgba(255,255,255,0.8); font-size: var(--text-small);">Disponibles</div>
         </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card shadow-lg border-0 rounded-4 text-center p-4 h-100 hover-lift">
-                <div class="d-flex justify-content-center mb-3">
-                    <span class="d-inline-flex align-items-center justify-content-center bg-warning bg-gradient text-white rounded-circle" style="width:60px;height:60px;font-size:2rem;">
-                        <i class="fas fa-chalkboard-teacher"></i>
-                    </span>
-                </div>
-                <div class="display-5 fw-bold mb-1 text-warning">{{ $totalClasses }}</div>
-                <div class="text-muted mb-2">Classes ouvertes</div>
-                <span class="badge bg-info bg-gradient rounded-pill px-3 py-2">En cours <i class="fas fa-door-open ms-1"></i></span>
-            </div>
+
+        <div class="kpi-card card-moderne" style="background-color: var(--warning); color: white; text-align: center;">
+            <i class="fas fa-chalkboard-teacher fa-2x mb-md"></i>
+            <div class="kpi-title" style="color: white;">Classes</div>
+            <div class="kpi-value" style="color: white;">{{ $totalClasses }}</div>
+            <div style="color: rgba(255,255,255,0.8); font-size: var(--text-small);">Ouvertes</div>
         </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card shadow-lg border-0 rounded-4 text-center p-4 h-100 hover-lift">
-                <div class="d-flex justify-content-center mb-3">
-                    <span class="d-inline-flex align-items-center justify-content-center bg-info bg-gradient text-white rounded-circle" style="width:60px;height:60px;font-size:2rem;">
-                        <i class="fas fa-book-open"></i>
-                    </span>
-                </div>
-                <div class="display-5 fw-bold mb-1 text-info">{{ $totalMatieres }}</div>
-                <div class="text-muted mb-2">Matières enseignées</div>
-                <span class="badge bg-warning bg-gradient rounded-pill px-3 py-2">Actives <i class="fas fa-book ms-1"></i></span>
-            </div>
+
+        <div class="kpi-card card-moderne" style="background-color: var(--accent-blue); color: white; text-align: center;">
+            <i class="fas fa-book-open fa-2x mb-md"></i>
+            <div class="kpi-title" style="color: white;">Matières</div>
+            <div class="kpi-value" style="color: white;">{{ $totalMatieres }}</div>
+            <div style="color: rgba(255,255,255,0.8); font-size: var(--text-small);">Enseignées</div>
+        </div>
+
+        <div class="kpi-card card-moderne" style="background-color: var(--secondary); color: white; text-align: center;">
+            <i class="fas fa-user-tie fa-2x mb-md"></i>
+            <div class="kpi-title" style="color: white;">Enseignants</div>
+            <div class="kpi-value" style="color: white;">{{ $totalTeachers ?? 0 }}</div>
+            <div style="color: rgba(255,255,255,0.8); font-size: var(--text-small);">Actifs</div>
+        </div>
+
+        <div class="kpi-card card-moderne" style="background-color: var(--neutral); color: white; text-align: center;">
+            <i class="fas fa-chart-line fa-2x mb-md"></i>
+            <div class="kpi-title" style="color: white;">Présence</div>
+            <div class="kpi-value" style="color: white;">{{ $attendanceStats['attendance_rate'] }}%</div>
+            <div style="color: rgba(255,255,255,0.8); font-size: var(--text-small);">Taux moyen</div>
         </div>
     </div>
 
-    <!-- SECTION GRAPHIQUES PREMIUM -->
-    <div class="row g-4 mb-5 animate-fade-in-up">
-        <div class="col-xl-8">
-            <div class="card shadow-lg border-0 rounded-4 p-4 h-100">
-                <div class="d-flex align-items-center justify-content-between mb-3">
-                    <div>
-                        <h5 class="fw-bold mb-1 text-primary"><i class="fas fa-chart-area me-2"></i>Évolution des inscriptions</h5>
-                        <p class="text-muted mb-0">Nombre d'étudiants inscrits par mois</p>
-                    </div>
-                    <div class="dropdown">
-                        <button class="btn btn-light btn-sm dropdown-toggle" type="button" id="chartPeriod" data-bs-toggle="dropdown">
-                            <i class="fas fa-calendar me-1"></i> 12 derniers mois
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item active" href="#"><i class="fas fa-calendar-day me-2"></i>12 mois</a></li>
-                            <li><a class="dropdown-item" href="#"><i class="fas fa-calendar-week me-2"></i>6 mois</a></li>
-                            <li><a class="dropdown-item" href="#"><i class="fas fa-calendar-alt me-2"></i>3 mois</a></li>
-                        </ul>
-                    </div>
+    <!-- Charts Section -->
+    <div class="row mb-xl">
+        <div class="col-xl-8 mb-lg">
+            <div class="card-moderne p-lg">
+                <div class="section-title mb-lg" style="color: var(--primary); border-bottom: 2px solid var(--primary); padding-bottom: var(--space-sm);">
+                    <i class="fas fa-chart-area"></i>
+                    Évolution des inscriptions
                 </div>
-                <div style="position: relative; height: 350px;">
+                <p style="color: var(--text-secondary); margin-bottom: var(--space-lg);">Nombre d'étudiants inscrits par mois</p>
+                
+                <div class="chart-container">
                     <canvas id="inscriptionsChart"></canvas>
                 </div>
             </div>
         </div>
-        <div class="col-xl-4">
-            <div class="card shadow-lg border-0 rounded-4 p-4 h-100">
-                <div class="d-flex align-items-center justify-content-between mb-3">
-                    <div>
-                        <h5 class="fw-bold mb-1 text-success"><i class="fas fa-chart-pie me-2"></i>Répartition par filière</h5>
-                        <p class="text-muted mb-0">Distribution des étudiants</p>
-                    </div>
+        <div class="col-xl-4 mb-lg">
+            <div class="card-moderne p-lg">
+                <div class="section-title mb-lg" style="color: var(--success); border-bottom: 2px solid var(--success); padding-bottom: var(--space-sm);">
+                    <i class="fas fa-chart-pie"></i>
+                    Répartition par filière
                 </div>
-                <div style="position: relative; height: 250px;">
+                <p style="color: var(--text-secondary); margin-bottom: var(--space-lg);">Distribution des étudiants</p>
+                
+                <div style="position: relative; height: 250px; margin-bottom: var(--space-lg);">
                     <canvas id="filieresChart"></canvas>
                 </div>
-                <div class="mt-3">
+                
+                <div>
                     @foreach($filiereStats as $filiere)
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <div class="d-flex align-items-center">
-                            <div class="me-2" style="width: 14px; height: 14px; background: {{ $filiere['color'] }}; border-radius: 50%;"></div>
-                            <span class="fw-medium">{{ $filiere['name'] }}</span>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-sm); margin-bottom: var(--space-sm); background: var(--background); border-radius: var(--radius-small); border-left: 4px solid {{ $filiere['color'] }};">
+                        <div style="display: flex; align-items: center;">
+                            <div style="width: 14px; height: 14px; background: {{ $filiere['color'] }}; border-radius: 50%; margin-right: var(--space-sm);"></div>
+                            <span style="font-weight: 500; color: var(--text-primary);">{{ $filiere['name'] }}</span>
                         </div>
-                        <span class="badge bg-light text-dark px-3 py-2 rounded-pill">{{ $filiere['students'] }}</span>
+                        <span class="badge primary">{{ $filiere['students'] }}</span>
                     </div>
                     @endforeach
                 </div>
@@ -164,182 +156,159 @@
         </div>
     </div>
 
-    <!-- TABLEAU INSCRIPTIONS RÉCENTES PREMIUM -->
-    <div class="card shadow-lg border-0 rounded-4 p-4 mb-5 animate-fade-in-up">
-        <div class="d-flex align-items-center justify-content-between mb-3">
-            <div>
-                <h5 class="fw-bold mb-1 text-primary"><i class="fas fa-user-plus me-2"></i>Inscriptions récentes</h5>
-                <p class="text-muted mb-0">Dernières demandes d'inscription</p>
+    <!-- Recent Inscriptions Table -->
+    <div class="card-moderne mb-xl">
+        <div class="p-lg">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-lg);">
+                <div>
+                    <div class="section-title" style="color: var(--primary);">
+                        <i class="fas fa-user-plus"></i>
+                        Inscriptions récentes
+                    </div>
+                    <p style="color: var(--text-secondary); margin: 0;">Dernières demandes d'inscription</p>
+                </div>
+                <a href="{{ route('esbtp.inscriptions.index') }}" class="btn-acasi primary">
+                    <i class="fas fa-eye"></i> Voir tout
+                </a>
             </div>
-            <a href="{{ route('esbtp.inscriptions.index') }}" class="btn btn-primary btn-sm rounded-pill px-4 fw-bold">
-                <i class="fas fa-eye me-1"></i> Voir tout
-            </a>
-        </div>
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="bg-light sticky-top">
-                    <tr>
-                        <th><i class="fas fa-user me-1"></i> Étudiant</th>
-                        <th><i class="fas fa-graduation-cap me-1"></i> Filière</th>
-                        <th><i class="fas fa-school me-1"></i> Classe</th>
-                        <th><i class="fas fa-calendar me-1"></i> Date d'inscription</th>
-                        <th><i class="fas fa-flag me-1"></i> Statut</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($recentInscriptions as $inscription)
-                    <tr>
-                        <td>
-                            <div class="d-flex align-items-center">
-                                <div class="rounded-circle bg-primary bg-gradient text-white d-flex align-items-center justify-content-center me-3" style="width: 44px; height: 44px; font-size: 1.1rem;">
-                                    {{ strtoupper(substr($inscription->etudiant->prenoms ?? 'N', 0, 1) . substr($inscription->etudiant->nom ?? 'A', 0, 1)) }}
+            
+            <div class="table-responsive">
+                <table class="table table-hover" style="border-collapse: separate; border-spacing: 0; border-radius: var(--radius-medium); overflow: hidden; box-shadow: var(--shadow-card);">
+                    <thead style="background-color: var(--primary); color: white;">
+                        <tr>
+                            <th style="padding: var(--space-md); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; border: none;">
+                                <i class="fas fa-user"></i> Étudiant
+                            </th>
+                            <th style="padding: var(--space-md); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; border: none;">
+                                <i class="fas fa-graduation-cap"></i> Filière
+                            </th>
+                            <th style="padding: var(--space-md); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; border: none;">
+                                <i class="fas fa-school"></i> Classe
+                            </th>
+                            <th style="padding: var(--space-md); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; border: none;">
+                                <i class="fas fa-calendar"></i> Date
+                            </th>
+                            <th style="padding: var(--space-md); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; border: none;">
+                                <i class="fas fa-flag"></i> Statut
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody style="background-color: var(--surface);">
+                        @foreach($recentInscriptions as $inscription)
+                        <tr style="border-bottom: 1px solid #f3f4f6;">
+                            <td style="padding: var(--space-md);">
+                                <div style="display: flex; align-items: center;">
+                                    <div style="width: 44px; height: 44px; border-radius: var(--radius-circle); background-color: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; margin-right: var(--space-md);">
+                                        {{ strtoupper(substr($inscription->etudiant->prenoms ?? 'N', 0, 1) . substr($inscription->etudiant->nom ?? 'A', 0, 1)) }}
+                                    </div>
+                                    <div>
+                                        <div style="font-weight: 600; color: var(--text-primary);">{{ $inscription->etudiant->prenoms ?? 'N/A' }} {{ $inscription->etudiant->nom ?? 'N/A' }}</div>
+                                        <small style="color: var(--text-secondary);">{{ $inscription->etudiant->email ?? 'Email non disponible' }}</small>
+                                    </div>
                                 </div>
-                                <div>
-                                    <div class="fw-semibold">{{ $inscription->etudiant->prenoms ?? 'N/A' }} {{ $inscription->etudiant->nom ?? 'N/A' }}</div>
-                                    <small class="text-muted">{{ $inscription->etudiant->email ?? 'Email non disponible' }}</small>
-                                </div>
-                            </div>
-                        </td>
-                        <td>
-                            @if($inscription->classe && $inscription->classe->filiere)
-                                <span class="badge bg-success bg-gradient text-white px-3 py-2 rounded-pill">
-                                    <i class="fas fa-graduation-cap me-1"></i>
-                                    {{ $inscription->classe->filiere->name }}
-                                </span>
-                            @else
-                                <span class="badge bg-secondary px-3 py-2 rounded-pill">
-                                    <i class="fas fa-question me-1"></i> Non définie
-                                </span>
-                            @endif
-                        </td>
-                        <td>
-                            @if($inscription->classe)
-                                <span class="badge bg-info bg-gradient text-white px-3 py-2 rounded-pill">
-                                    <i class="fas fa-users me-1"></i>
-                                    {{ $inscription->classe->name }}
-                                </span>
-                            @else
-                                <span class="badge bg-secondary px-3 py-2 rounded-pill">
-                                    <i class="fas fa-question me-1"></i> Non assignée
-                                </span>
-                            @endif
-                        </td>
-                        <td>
-                            <div class="fw-semibold">{{ $inscription->created_at->format('d/m/Y') }}</div>
-                            <small class="text-muted">{{ $inscription->created_at->diffForHumans() }}</small>
-                        </td>
-                        <td>
-                            @if($inscription->status === 'active' || $inscription->status === 'actif')
-                                <span class="badge bg-success bg-gradient text-white px-3 py-2 rounded-pill">
-                                    <i class="fas fa-check-circle me-1"></i> Actif
-                                </span>
-                            @elseif($inscription->status === 'validated' || $inscription->status === 'validé' || $inscription->status === 'approved')
-                                <span class="badge bg-success bg-gradient text-white px-3 py-2 rounded-pill">
-                                    <i class="fas fa-check-circle me-1"></i> Validé
-                                </span>
-                            @elseif($inscription->status === 'pending' || $inscription->status === 'en_attente' || $inscription->status === 'waiting')
-                                <span class="badge bg-warning bg-gradient text-white px-3 py-2 rounded-pill">
-                                    <i class="fas fa-clock me-1"></i> En attente
-                                </span>
-                            @elseif($inscription->status === 'rejected' || $inscription->status === 'refusé' || $inscription->status === 'refused')
-                                <span class="badge bg-danger bg-gradient text-white px-3 py-2 rounded-pill">
-                                    <i class="fas fa-times-circle me-1"></i> Refusé
-                                </span>
-                            @elseif($inscription->status === 'inactive' || $inscription->status === 'inactif' || $inscription->status === 'disabled')
-                                <span class="badge bg-secondary px-3 py-2 rounded-pill">
-                                    <i class="fas fa-pause-circle me-1"></i> Inactif
-                                </span>
-                            @else
-                                <span class="badge bg-light text-dark px-3 py-2 rounded-pill border">
-                                    <i class="fas fa-info-circle me-1"></i> {{ ucfirst($inscription->status ?? 'Inconnu') }}
-                                </span>
-                            @endif
-                        </td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-        <div class="card-footer bg-transparent border-0 text-center mt-3">
-            <a href="{{ route('esbtp.inscriptions.index') }}" class="btn btn-light btn-lg rounded-pill px-4 fw-bold hover-lift">
-                <i class="fas fa-arrow-right me-1"></i> Voir toutes les inscriptions
-            </a>
+                            </td>
+                            <td style="padding: var(--space-md);">
+                                @if($inscription->classe && $inscription->classe->filiere)
+                                    <span class="badge success">
+                                        <i class="fas fa-graduation-cap"></i>
+                                        {{ $inscription->classe->filiere->name }}
+                                    </span>
+                                @else
+                                    <span class="badge" style="background-color: rgba(107, 114, 128, 0.1); color: var(--neutral);">
+                                        <i class="fas fa-question"></i> Non définie
+                                    </span>
+                                @endif
+                            </td>
+                            <td style="padding: var(--space-md);">
+                                @if($inscription->classe)
+                                    <span class="badge" style="background-color: rgba(6, 182, 212, 0.1); color: var(--accent-blue);">
+                                        <i class="fas fa-users"></i>
+                                        {{ $inscription->classe->name }}
+                                    </span>
+                                @else
+                                    <span class="badge" style="background-color: rgba(107, 114, 128, 0.1); color: var(--neutral);">
+                                        <i class="fas fa-question"></i> Non assignée
+                                    </span>
+                                @endif
+                            </td>
+                            <td style="padding: var(--space-md);">
+                                <div style="font-weight: 600; color: var(--text-primary);">{{ $inscription->created_at->format('d/m/Y') }}</div>
+                                <small style="color: var(--text-secondary);">{{ $inscription->created_at->diffForHumans() }}</small>
+                            </td>
+                            <td style="padding: var(--space-md);">
+                                @if($inscription->status === 'active' || $inscription->status === 'actif')
+                                    <span class="badge success">
+                                        <i class="fas fa-check-circle"></i> Actif
+                                    </span>
+                                @elseif($inscription->status === 'validated' || $inscription->status === 'validé' || $inscription->status === 'approved')
+                                    <span class="badge success">
+                                        <i class="fas fa-check-circle"></i> Validé
+                                    </span>
+                                @elseif($inscription->status === 'pending' || $inscription->status === 'en_attente' || $inscription->status === 'waiting')
+                                    <span class="badge warning">
+                                        <i class="fas fa-clock"></i> En attente
+                                    </span>
+                                @elseif($inscription->status === 'rejected' || $inscription->status === 'refusé' || $inscription->status === 'refused')
+                                    <span class="badge danger">
+                                        <i class="fas fa-times-circle"></i> Refusé
+                                    </span>
+                                @elseif($inscription->status === 'inactive' || $inscription->status === 'inactif' || $inscription->status === 'disabled')
+                                    <span class="badge" style="background-color: rgba(107, 114, 128, 0.1); color: var(--neutral);">
+                                        <i class="fas fa-pause-circle"></i> Inactif
+                                    </span>
+                                @else
+                                    <span class="badge" style="background-color: rgba(107, 114, 128, 0.1); color: var(--neutral);">
+                                        <i class="fas fa-info-circle"></i> {{ ucfirst($inscription->status ?? 'Inconnu') }}
+                                    </span>
+                                @endif
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="text-center mt-lg">
+                <a href="{{ route('esbtp.inscriptions.index') }}" class="btn-acasi secondary">
+                    <i class="fas fa-arrow-right"></i> Voir toutes les inscriptions
+                </a>
+            </div>
         </div>
     </div>
 
-    <!-- ACTIONS RAPIDES PREMIUM -->
-    <div class="row g-4 mb-5 animate-fade-in-up">
-        <div class="col-xl-3 col-md-6">
-            <a href="{{ route('esbtp.inscriptions.create') }}" class="btn btn-primary btn-lg w-100 d-flex flex-column align-items-center justify-content-center gap-2 py-4 rounded-4 shadow-sm hover-lift">
-                <i class="fas fa-user-plus fa-2x"></i>
-                <span class="fw-bold">Nouvel étudiant</span>
+    <!-- Quick Actions -->
+    <div class="row mb-xl">
+        <div class="col-xl-3 col-md-6 mb-lg">
+            <a href="{{ route('esbtp.inscriptions.create') }}" class="card-moderne" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: var(--space-xl); text-decoration: none; color: inherit; transition: all 0.3s ease;">
+                <div style="width: 80px; height: 80px; border-radius: var(--radius-circle); background-color: var(--primary); color: white; display: flex; align-items: center; justify-content: center; margin-bottom: var(--space-md); box-shadow: var(--shadow-card);">
+                    <i class="fas fa-user-plus fa-2x"></i>
+                </div>
+                <span style="font-weight: 600; color: var(--text-primary);">Nouvel étudiant</span>
             </a>
         </div>
-        <div class="col-xl-3 col-md-6">
-            <a href="{{ route('esbtp.evaluations.create') }}" class="btn btn-success btn-lg w-100 d-flex flex-column align-items-center justify-content-center gap-2 py-4 rounded-4 shadow-sm hover-lift">
-                <i class="fas fa-file-alt fa-2x"></i>
-                <span class="fw-bold">Créer examen</span>
+        <div class="col-xl-3 col-md-6 mb-lg">
+            <a href="{{ route('esbtp.evaluations.create') }}" class="card-moderne" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: var(--space-xl); text-decoration: none; color: inherit; transition: all 0.3s ease;">
+                <div style="width: 80px; height: 80px; border-radius: var(--radius-circle); background-color: var(--success); color: white; display: flex; align-items: center; justify-content: center; margin-bottom: var(--space-md); box-shadow: var(--shadow-card);">
+                    <i class="fas fa-file-alt fa-2x"></i>
+                </div>
+                <span style="font-weight: 600; color: var(--text-primary);">Créer examen</span>
             </a>
         </div>
-        <div class="col-xl-3 col-md-6">
-            <a href="{{ route('esbtp.annonces.create') }}" class="btn btn-warning btn-lg w-100 d-flex flex-column align-items-center justify-content-center gap-2 py-4 rounded-4 shadow-sm hover-lift text-white">
-                <i class="fas fa-bullhorn fa-2x"></i>
-                <span class="fw-bold">Publier annonce</span>
+        <div class="col-xl-3 col-md-6 mb-lg">
+            <a href="{{ route('esbtp.annonces.create') }}" class="card-moderne" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: var(--space-xl); text-decoration: none; color: inherit; transition: all 0.3s ease;">
+                <div style="width: 80px; height: 80px; border-radius: var(--radius-circle); background-color: var(--warning); color: white; display: flex; align-items: center; justify-content: center; margin-bottom: var(--space-md); box-shadow: var(--shadow-card);">
+                    <i class="fas fa-bullhorn fa-2x"></i>
+                </div>
+                <span style="font-weight: 600; color: var(--text-primary);">Publier annonce</span>
             </a>
         </div>
-        <div class="col-xl-3 col-md-6">
-            <a href="{{ route('esbtp.resultats.index') }}" class="btn btn-info btn-lg w-100 d-flex flex-column align-items-center justify-content-center gap-2 py-4 rounded-4 shadow-sm hover-lift text-white">
-                <i class="fas fa-print fa-2x"></i>
-                <span class="fw-bold">Générer bulletins</span>
+        <div class="col-xl-3 col-md-6 mb-lg">
+            <a href="{{ route('esbtp.resultats.index') }}" class="card-moderne" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: var(--space-xl); text-decoration: none; color: inherit; transition: all 0.3s ease;">
+                <div style="width: 80px; height: 80px; border-radius: var(--radius-circle); background-color: var(--accent-blue); color: white; display: flex; align-items: center; justify-content: center; margin-bottom: var(--space-md); box-shadow: var(--shadow-card);">
+                    <i class="fas fa-print fa-2x"></i>
+                </div>
+                <span style="font-weight: 600; color: var(--text-primary);">Générer bulletins</span>
             </a>
-        </div>
-    </div>
-
-    <!-- Quick Stats Row -->
-    <div class="row g-4 mt-4">
-        <div class="col-xl-3 col-md-6">
-            <div class="card text-center hover-lift">
-                <div class="card-body">
-                    <div class="mb-3">
-                        <i class="fas fa-user-tie fa-2x text-primary"></i>
-                    </div>
-                    <h4 class="fw-bold">{{ $totalTeachers ?? 0 }}</h4>
-                    <p class="text-muted mb-0">Enseignants</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card text-center hover-lift">
-                <div class="card-body">
-                    <div class="mb-3">
-                        <i class="fas fa-users fa-2x text-success"></i>
-                    </div>
-                    <h4 class="fw-bold">{{ $totalUsers ?? 0 }}</h4>
-                    <p class="text-muted mb-0">Utilisateurs</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card text-center hover-lift">
-                <div class="card-body">
-                    <div class="mb-3">
-                        <i class="fas fa-bullhorn fa-2x text-warning"></i>
-                    </div>
-                    <h4 class="fw-bold">{{ $recentAnnouncements->count() }}</h4>
-                    <p class="text-muted mb-0">Annonces récentes</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card text-center hover-lift">
-                <div class="card-body">
-                    <div class="mb-3">
-                        <i class="fas fa-chart-line fa-2x text-info"></i>
-                    </div>
-                    <h4 class="fw-bold">{{ $attendanceStats['attendance_rate'] }}%</h4>
-                    <p class="text-muted mb-0">Taux de présence</p>
-                </div>
-            </div>
         </div>
     </div>
 </div>

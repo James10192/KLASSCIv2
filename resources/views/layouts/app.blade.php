@@ -585,24 +585,6 @@
                             </a>
                         </div>
 
-                        <!-- Teacher Management -->
-                        <div class="menu-accordion">
-                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.teachers.*') || Request::routeIs('esbtp.teacher-attendance.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-chalkboard-teacher"></i></div>
-                                <div class="menu-text">Enseignants</div>
-                                <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
-                            </button>
-                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.teachers.*') || Request::routeIs('esbtp.teacher-attendance.*') ? 'show' : '' }}">
-                                <a href="{{ route('esbtp.teachers.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.teachers.*') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Liste des enseignants</span>
-                                </a>
-                                <!--<a href="{{ route('esbtp.teacher-attendance.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.teacher-attendance.*') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Présence enseignants</span>
-                                </a>-->
-                            </div>
-                        </div>
                     @endif
 
                     <!-- Grades & Reports Section -->
@@ -755,26 +737,6 @@
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
                             <div class="menu-accordion-content {{ Request::routeIs('esbtp.comptabilite.*') || Request::routeIs('esbtp.frais.*') || Request::routeIs('esbtp.fee-categories.*') || Request::routeIs('esbtp.payment-categories.*') || Request::routeIs('esbtp.fees.*') || Request::routeIs('esbtp.payments.*') ? 'show' : '' }}">
-                                <a href="{{ route('esbtp.comptabilite.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.index') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Dashboard Principal</span>
-                                </a>
-                                <a href="{{ route('esbtp.comptabilite.dashboard-avance') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.dashboard-avance') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Dashboard Avancé</span>
-                                </a>
-                                <a href="{{ route('esbtp.comptabilite.bons-sortie.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.bons-sortie.*') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Bons de Sortie</span>
-                                </a>
-                                <a href="{{ route('esbtp.comptabilite.relances.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.relances.*') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Gestion des Relances</span>
-                                </a>
-                                <a href="{{ route('esbtp.comptabilite.rapports') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.rapports.*') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Rapports & Analytics</span>
-                                </a>
                                 <a href="{{ route('esbtp.frais.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.frais.index') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Gestion des Frais</span>
