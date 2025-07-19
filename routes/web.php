@@ -489,8 +489,8 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::get('/api/events', [App\Http\Controllers\ESBTPEvenementAcademiqueController::class, 'getEvents'])->name('api.events');
             });
 
-            // Routes pour les enseignants (nouveau système)
-            Route::prefix('enseignants')->name('enseignants.')->group(function () {
+            // Routes pour les enseignants (ancien système - profile controller)
+            Route::prefix('enseignants-profiles')->name('enseignants.profiles.')->group(function () {
                 Route::get('/', [App\Http\Controllers\ESBTPEnseignantProfileController::class, 'index'])->name('index');
                 Route::get('/dashboard', [App\Http\Controllers\ESBTPEnseignantProfileController::class, 'dashboard'])->name('dashboard');
                 Route::get('/create', [App\Http\Controllers\ESBTPEnseignantProfileController::class, 'create'])->name('create');
