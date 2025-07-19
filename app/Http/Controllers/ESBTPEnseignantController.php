@@ -6,8 +6,10 @@ use App\Models\User;
 use App\Models\ESBTPTeacher;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPClasse;
+use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\Department;
 use App\Models\Laboratory;
+use App\Services\UserService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +20,12 @@ use Illuminate\Support\Str;
 
 class ESBTPEnseignantController extends Controller
 {
+    protected $userService;
+
+    public function __construct(UserService $userService)
+    {
+        $this->userService = $userService;
+    }
     /**
      * Display a listing of the teachers.
      */
@@ -135,10 +143,9 @@ class ESBTPEnseignantController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            // Informations utilisateur
+            // Informations utilisateur - username et password automatiques
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
             'phone' => 'nullable|string|max:20',
             
             // Informations professionnelles
@@ -186,14 +193,12 @@ class ESBTPEnseignantController extends Controller
         DB::beginTransaction();
         
         try {
-            // Créer l'utilisateur
-            $user = User::create([
+            // Créer l'utilisateur avec username et password automatiques
+            $user = $this->userService->createUserWithAutoCredentials([
                 'name' => $request->name,
                 'email' => $request->email,
-                'password' => Hash::make($request->password),
                 'phone' => $request->phone,
-                'is_active' => true,
-            ]);
+            ], 'enseignant');
 
             // Assigner le rôle enseignant
             $user->assignRole('enseignant');
@@ -258,8 +263,15 @@ class ESBTPEnseignantController extends Controller
 
             DB::commit();
             
+            // Obtenir les informations de connexion pour affichage
+            $credentials = $this->userService->getCredentialsInfo(
+                $user->username, 
+                $this->userService->generateDefaultPassword()
+            );
+            
             return redirect()->route('esbtp.personnel.unified.index')
-                ->with('success', 'Enseignant créé avec succès');
+                ->with('success', 'Enseignant créé avec succès')
+                ->with('credentials', $credentials);
                 
         } catch (\Exception $e) {
             DB::rollback();
@@ -473,5 +485,69 @@ class ESBTPEnseignantController extends Controller
         ]);
         
         return redirect()->back()->with('success', 'Statut mis à jour avec succès');
+    }
+
+    /**
+     * Afficher la page de gestion des matières d'un enseignant
+     */
+    public function matieres(ESBTPTeacher $teacher)
+    {
+        $this->authorize('edit_enseignants');
+        
+        // Récupérer toutes les matières disponibles
+        $matieres = ESBTPMatiere::with(['niveauEtude', 'filieres'])
+            ->orderBy('name')
+            ->get();
+        
+        // Récupérer les matières actuellement assignées à l'enseignant
+        $matieresAssignees = $teacher->user->matieres()->with(['niveauEtude', 'filieres'])->get();
+        
+        return view('esbtp.enseignants.matieres', compact('teacher', 'matieres', 'matieresAssignees'));
+    }
+
+    /**
+     * Assigner/Désassigner des matières à un enseignant
+     */
+    public function assignMatieres(Request $request, ESBTPTeacher $teacher)
+    {
+        $this->authorize('edit_enseignants');
+        
+        $request->validate([
+            'matieres' => 'array',
+            'matieres.*' => 'exists:esbtp_matieres,id',
+        ]);
+
+        DB::beginTransaction();
+        
+        try {
+            // Récupérer l'année universitaire actuelle
+            $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_active', true)->first();
+            
+            if (!$anneeUniversitaire) {
+                return redirect()->back()->with('error', 'Aucune année universitaire active trouvée.');
+            }
+
+            // Préparer les données pour la table pivot
+            $matieresData = [];
+            foreach ($request->matieres ?? [] as $matiereId) {
+                $matieresData[$matiereId] = [
+                    'annee_universitaire_id' => $anneeUniversitaire->id,
+                    'is_active' => true,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+
+            // Synchroniser les matières (supprime les anciennes et ajoute les nouvelles)
+            $teacher->user->matieres()->syncWithoutDetaching($matieresData);
+            
+            DB::commit();
+            
+            return redirect()->back()->with('success', 'Matières assignées avec succès.');
+            
+        } catch (\Exception $e) {
+            DB::rollback();
+            return redirect()->back()->with('error', 'Erreur lors de l\'assignation : ' . $e->getMessage());
+        }
     }
 }

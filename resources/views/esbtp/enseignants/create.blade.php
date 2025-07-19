@@ -498,27 +498,18 @@
                                 @enderror
                             </div>
 
-                            <div class="form-group-moderne">
-                                <label for="password" class="form-label-moderne">
-                                    Mot de passe <span class="text-danger">*</span>
-                                </label>
-                                <input type="password" name="password" id="password" 
-                                       class="form-input-moderne @error('password') is-invalid @enderror"
-                                       required>
-                                @error('password')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                                <div class="form-help-text">
-                                    Minimum 8 caractères
+                            {{-- Information sur la génération automatique des credentials --}}
+                            <div style="background-color: rgba(16, 185, 129, 0.1); border-radius: var(--radius-medium); padding: var(--space-md); margin-bottom: var(--space-lg); grid-column: 1 / -1;">
+                                <div style="display: flex; align-items: flex-start; gap: var(--space-sm);">
+                                    <i class="fas fa-info-circle" style="color: var(--success); margin-top: 2px;"></i>
+                                    <div>
+                                        <p style="margin: 0; font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-xs);">Génération automatique des identifiants</p>
+                                        <p style="margin: 0; font-size: var(--text-small); color: var(--text-secondary);">
+                                            Le nom d'utilisateur et le mot de passe seront générés automatiquement lors de la création du compte. 
+                                            L'enseignant devra changer son mot de passe lors de sa première connexion.
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
-
-                            <div class="form-group-moderne">
-                                <label for="password_confirmation" class="form-label-moderne">
-                                    Confirmer le mot de passe <span class="text-danger">*</span>
-                                </label>
-                                <input type="password" name="password_confirmation" id="password_confirmation" 
-                                       class="form-input-moderne" required>
                             </div>
                         </div>
                     </div>

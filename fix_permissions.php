@@ -179,6 +179,41 @@ try {
         'comptabilite.bons.edit',
         'comptabilite.bons.view',
         'comptabilite.bons.pay',
+
+        // Permissions pour les coordinateurs
+        'coordinateurs.view',
+        'coordinateurs.create',
+        'coordinateurs.edit',
+        'coordinateurs.delete',
+        'coordinateurs.show',
+        'coordinateurs.index',
+
+        // Permissions pour les enseignants
+        'enseignants.view',
+        'enseignants.create',
+        'enseignants.edit',
+        'enseignants.delete',
+        'enseignants.show',
+        'enseignants.index',
+        'enseignants.toggleStatus',
+
+        // Permissions pour le personnel unifié
+        'personnel.unified.view',
+        'personnel.unified.index',
+
+        // Permissions pour la gestion générale du personnel
+        'view_coordinateurs',
+        'create_coordinateurs',
+        'edit_coordinateurs',
+        'delete_coordinateurs',
+        'view_enseignants',
+        'create_enseignants',
+        'edit_enseignants',
+        'delete_enseignants',
+        'view_secretaires',
+        'create_secretaires',
+        'edit_secretaires',
+        'delete_secretaires',
     ];
 
     echo "Vérification et création des permissions...\n";
@@ -301,9 +336,59 @@ try {
         echo "- {$permission->name}\n";
     }
 
+    // Récupérer ou créer le rôle coordinateur
+    $coordinateur = Role::where('name', 'coordinateur')->first();
+    if (!$coordinateur) {
+        $coordinateur = Role::create(['name' => 'coordinateur', 'guard_name' => 'web']);
+        echo "✅ Rôle 'coordinateur' créé.\n";
+    } else {
+        echo "ℹ️ Rôle 'coordinateur' existe déjà.\n";
+    }
+
+    // Permissions spécifiques pour les coordinateurs
+    $coordinateurPermissions = [
+        'view_coordinateurs', 'create_coordinateurs', 'edit_coordinateurs', 'delete_coordinateurs',
+        'view_enseignants', 'create_enseignants', 'edit_enseignants', 'delete_enseignants',
+        'view_students', 'create_student', 'edit_students', 'delete_students',
+        'view_classes', 'create_classe', 'edit_classes', 'delete_classes',
+        'view_attendances', 'create_attendance', 'edit_attendances', 'delete_attendances',
+        'view_timetables', 'create_timetable', 'edit_timetables', 'delete_timetables',
+        'view_exams', 'create_exam', 'edit_exams', 'delete_exams',
+        'view_grades', 'create_grade', 'edit_grades', 'delete_grades',
+        'view_bulletins', 'generate_bulletin', 'edit_bulletins', 'delete_bulletins',
+        'view_matieres', 'create_matieres', 'edit_matieres', 'delete_matieres',
+        'send_messages', 'receive_messages',
+        'coordinateurs.view', 'coordinateurs.create', 'coordinateurs.edit', 'coordinateurs.delete', 'coordinateurs.show', 'coordinateurs.index',
+        'enseignants.view', 'enseignants.create', 'enseignants.edit', 'enseignants.delete', 'enseignants.show', 'enseignants.index', 'enseignants.toggleStatus',
+        'personnel.unified.view', 'personnel.unified.index',
+    ];
+
+    echo "\nAssignation des permissions au rôle coordinateur...\n";
+    foreach ($coordinateurPermissions as $permissionName) {
+        try {
+            $permission = Permission::where('name', $permissionName)->first();
+            if ($permission && !$coordinateur->hasPermissionTo($permission)) {
+                $coordinateur->givePermissionTo($permission);
+                echo "✅ Permission '{$permission->name}' assignée au rôle 'coordinateur'.\n";
+            } else if ($permission) {
+                echo "ℹ️ Le rôle 'coordinateur' a déjà la permission '{$permission->name}'.\n";
+            } else {
+                echo "⚠️ Permission '{$permissionName}' non trouvée.\n";
+            }
+        } catch (\Exception $e) {
+            echo "❌ ERREUR lors de l'assignation de la permission '{$permissionName}': " . $e->getMessage() . "\n";
+        }
+    }
+
     echo "\nVérification finale des permissions du rôle secretaire :\n";
     $permissions = $secretaire->permissions;
     foreach ($permissions as $permission) {
+        echo "- {$permission->name}\n";
+    }
+
+    echo "\nVérification finale des permissions du rôle coordinateur :\n";
+    $coordinateurPerms = $coordinateur->permissions;
+    foreach ($coordinateurPerms as $permission) {
         echo "- {$permission->name}\n";
     }
 

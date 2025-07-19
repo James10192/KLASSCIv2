@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\UserService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
@@ -11,13 +12,19 @@ use Spatie\Permission\Models\Role;
 
 class ESBTPCoordinateurController extends Controller
 {
+    protected $userService;
+
+    public function __construct(UserService $userService)
+    {
+        $this->userService = $userService;
+    }
     /**
      * Display a listing of the coordinators.
      */
     public function index()
     {
         // Vérifier les permissions
-        $this->authorize('manage-users');
+        $this->authorize('view_coordinateurs');
         
         $coordinateurs = User::role('coordinateur')
             ->with(['roles'])
@@ -32,7 +39,7 @@ class ESBTPCoordinateurController extends Controller
      */
     public function create()
     {
-        $this->authorize('manage-users');
+        $this->authorize('create_coordinateurs');
         
         return view('esbtp.coordinateurs.create');
     }
@@ -42,12 +49,11 @@ class ESBTPCoordinateurController extends Controller
      */
     public function store(Request $request)
     {
-        $this->authorize('manage-users');
+        $this->authorize('create_coordinateurs');
         
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
             'telephone' => 'nullable|string|max:20',
             'specialite' => 'nullable|string|max:255',
             'date_naissance' => 'nullable|date|before:today',
@@ -57,15 +63,19 @@ class ESBTPCoordinateurController extends Controller
         try {
             DB::beginTransaction();
 
-            $user = User::create([
+            // Créer l'utilisateur avec username et password automatiques
+            $user = $this->userService->createUserWithAutoCredentials([
                 'name' => $validated['name'],
                 'email' => $validated['email'],
-                'password' => Hash::make($validated['password']),
+                'phone' => $validated['telephone'] ?? null,
+            ], 'coordinateur');
+
+            // Mettre à jour les champs supplémentaires
+            $user->update([
                 'telephone' => $validated['telephone'] ?? null,
                 'specialite' => $validated['specialite'] ?? null,
                 'date_naissance' => $validated['date_naissance'] ?? null,
                 'adresse' => $validated['adresse'] ?? null,
-                'is_active' => true,
                 'email_verified_at' => now(),
             ]);
 
@@ -74,8 +84,15 @@ class ESBTPCoordinateurController extends Controller
 
             DB::commit();
 
+            // Obtenir les informations de connexion pour affichage
+            $credentials = $this->userService->getCredentialsInfo(
+                $user->username, 
+                $this->userService->generateDefaultPassword()
+            );
+
             return redirect()->route('esbtp.coordinateurs.index')
-                           ->with('success', 'Coordinateur créé avec succès.');
+                           ->with('success', 'Coordinateur créé avec succès.')
+                           ->with('credentials', $credentials);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -89,7 +106,7 @@ class ESBTPCoordinateurController extends Controller
      */
     public function show(User $coordinateur)
     {
-        $this->authorize('manage-users');
+        $this->authorize('view_coordinateurs');
         
         // Vérifier que l'utilisateur est bien un coordinateur
         if (!$coordinateur->hasRole('coordinateur')) {
@@ -107,7 +124,7 @@ class ESBTPCoordinateurController extends Controller
      */
     public function edit(User $coordinateur)
     {
-        $this->authorize('manage-users');
+        $this->authorize('edit_coordinateurs');
         
         // Vérifier que l'utilisateur est bien un coordinateur
         if (!$coordinateur->hasRole('coordinateur')) {
@@ -122,7 +139,7 @@ class ESBTPCoordinateurController extends Controller
      */
     public function update(Request $request, User $coordinateur)
     {
-        $this->authorize('manage-users');
+        $this->authorize('edit_coordinateurs');
         
         // Vérifier que l'utilisateur est bien un coordinateur
         if (!$coordinateur->hasRole('coordinateur')) {

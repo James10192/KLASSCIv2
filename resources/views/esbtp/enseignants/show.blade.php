@@ -603,6 +603,10 @@
                                     <i class="fas fa-edit me-2"></i>Modifier le profil
                                 </a>
                                 
+                                <a href="{{ route('esbtp.enseignants.matieres', $teacher) }}" class="btn-acasi secondary">
+                                    <i class="fas fa-book me-2"></i>Gérer les matières
+                                </a>
+                                
                                 @if($teacher->status === 'active')
                                 <form action="{{ route('esbtp.enseignants.toggleStatus', $teacher) }}" method="POST" 
                                       onsubmit="return confirm('Désactiver cet enseignant ?')">

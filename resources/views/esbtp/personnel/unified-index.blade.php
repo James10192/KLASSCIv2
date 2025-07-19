@@ -12,7 +12,8 @@
         border-radius: var(--radius-large);
         margin-bottom: var(--space-xl);
         position: relative;
-        overflow: hidden;
+        overflow: visible;
+        z-index: 1;
     }
     
     .personnel-header::before {
@@ -31,8 +32,38 @@
         background: var(--surface);
         border-radius: var(--radius-medium);
         box-shadow: var(--shadow-card);
-        overflow: hidden;
+        overflow: visible;
         margin-bottom: var(--space-xl);
+    }
+    
+    /* Styles pour le dropdown */
+    .dropdown {
+        position: relative;
+        z-index: 1050;
+    }
+    
+    .dropdown-menu {
+        z-index: 1051 !important;
+        position: absolute !important;
+        background: white !important;
+        border: 1px solid var(--border) !important;
+        border-radius: var(--radius-medium) !important;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15) !important;
+        margin-top: 2px !important;
+    }
+    
+    .dropdown-item {
+        padding: var(--space-sm) var(--space-md) !important;
+        color: var(--text-primary) !important;
+        text-decoration: none !important;
+        display: flex !important;
+        align-items: center !important;
+        transition: all 0.2s ease !important;
+    }
+    
+    .dropdown-item:hover {
+        background: rgba(var(--primary-rgb), 0.1) !important;
+        color: var(--primary) !important;
     }
     
     .slider-tabs {
@@ -321,6 +352,12 @@
         box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
     }
     
+    /* Conteneurs principaux */
+    .dashboard-acasi,
+    .main-content {
+        overflow: visible !important;
+    }
+    
     @media (max-width: 768px) {
         .personnel-actions {
             flex-direction: column;
@@ -351,6 +388,13 @@
         .slider-tab {
             text-align: left;
         }
+        
+        .dropdown-menu {
+            position: fixed !important;
+            top: auto !important;
+            left: auto !important;
+            right: 10px !important;
+        }
     }
 </style>
 @endsection
@@ -365,19 +409,19 @@
                     <h1><i class="fas fa-users-cog me-2"></i>Gestion du Personnel</h1>
                     <p class="mb-0">Administration unifiée du personnel : coordinateurs, enseignants et secrétaires</p>
                 </div>
-                <div class="col-md-4 text-end">
+                <div class="col-md-4 text-end" style="position: relative; z-index: 1050;">
                     <div class="dropdown">
-                        <button class="btn-acasi primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <button class="btn-acasi primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fas fa-plus me-1"></i>Nouveau Personnel
                         </button>
-                        <ul class="dropdown-menu">
+                        <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" href="{{ route('esbtp.coordinateurs.create') }}">
                                 <i class="fas fa-user-tie me-2"></i>Coordinateur
                             </a></li>
-                            <li><a class="dropdown-item" href="#" onclick="showCreateForm('enseignant')">
+                            <li><a class="dropdown-item" href="{{ route('esbtp.enseignants.create') }}">
                                 <i class="fas fa-chalkboard-teacher me-2"></i>Enseignant
                             </a></li>
-                            <li><a class="dropdown-item" href="#" onclick="showCreateForm('secretaire')">
+                            <li><a class="dropdown-item" href="#" onclick="alert('Fonctionnalité en développement')">
                                 <i class="fas fa-user-secretary me-2"></i>Secrétaire
                             </a></li>
                         </ul>
@@ -559,7 +603,7 @@
                             <input type="text" class="search-input" placeholder="Rechercher un enseignant..." 
                                    id="search-enseignants">
                         </div>
-                        <a href="#" onclick="showCreateForm('enseignant')" class="btn-acasi primary">
+                        <a href="{{ route('esbtp.enseignants.create') }}" class="btn-acasi primary">
                             <i class="fas fa-plus me-1"></i>Nouvel Enseignant
                         </a>
                     </div>
@@ -620,11 +664,11 @@
                                         </div>
                                     </div>
                                     <div class="personnel-actions-group">
-                                        <a href="#" onclick="showDetails('enseignant', {{ $teacher->id }})" 
+                                        <a href="{{ route('esbtp.enseignants.show', $teacher) }}" 
                                            class="btn-acasi secondary btn-sm" title="Voir détails">
                                             <i class="fas fa-eye"></i>
                                         </a>
-                                        <a href="#" onclick="showEditForm('enseignant', {{ $teacher->id }})" 
+                                        <a href="{{ route('esbtp.enseignants.edit', $teacher) }}" 
                                            class="btn-acasi primary btn-sm" title="Modifier">
                                             <i class="fas fa-edit"></i>
                                         </a>
@@ -647,7 +691,7 @@
                                 </div>
                                 <h5>Aucun enseignant</h5>
                                 <p>Commencez par créer votre premier enseignant.</p>
-                                <a href="#" onclick="showCreateForm('enseignant')" class="btn-acasi primary">
+                                <a href="{{ route('esbtp.enseignants.create') }}" class="btn-acasi primary">
                                     <i class="fas fa-plus me-1"></i>Créer un enseignant
                                 </a>
                             </div>
@@ -662,7 +706,7 @@
                             <input type="text" class="search-input" placeholder="Rechercher un secrétaire..." 
                                    id="search-secretaires">
                         </div>
-                        <a href="#" onclick="showCreateForm('secretaire')" class="btn-acasi primary">
+                        <a href="#" onclick="alert('Fonctionnalité en développement')" class="btn-acasi primary">
                             <i class="fas fa-plus me-1"></i>Nouveau Secrétaire
                         </a>
                     </div>
@@ -722,11 +766,11 @@
                                         </div>
                                     </div>
                                     <div class="personnel-actions-group">
-                                        <a href="#" onclick="showDetails('secretaire', {{ $secretaire->id }})" 
+                                        <a href="#" onclick="alert('Fonctionnalité en développement')" 
                                            class="btn-acasi secondary btn-sm" title="Voir détails">
                                             <i class="fas fa-eye"></i>
                                         </a>
-                                        <a href="#" onclick="showEditForm('secretaire', {{ $secretaire->id }})" 
+                                        <a href="#" onclick="alert('Fonctionnalité en développement')" 
                                            class="btn-acasi primary btn-sm" title="Modifier">
                                             <i class="fas fa-edit"></i>
                                         </a>
@@ -749,7 +793,7 @@
                                 </div>
                                 <h5>Aucun secrétaire</h5>
                                 <p>Commencez par créer votre premier secrétaire.</p>
-                                <a href="#" onclick="showCreateForm('secretaire')" class="btn-acasi primary">
+                                <a href="#" onclick="alert('Fonctionnalité en développement')" class="btn-acasi primary">
                                     <i class="fas fa-plus me-1"></i>Créer un secrétaire
                                 </a>
                             </div>
@@ -760,6 +804,10 @@
         </div>
     </div>
 </div>
+
+{{-- Modal pour afficher les credentials --}}
+@include('partials.credentials-modal')
+
 @endsection
 
 @push('scripts')
@@ -859,6 +907,7 @@ function toggleTeacherStatus(teacherId) {
         // Logique AJAX pour toggle le statut enseignant
         console.log('Toggle teacher status:', teacherId);
         // TODO: Implémenter l'appel AJAX
+        alert('Fonctionnalité en développement');
     }
 }
 
@@ -867,6 +916,7 @@ function toggleSecretaireStatus(secretaireId) {
         // Logique AJAX pour toggle le statut secrétaire
         console.log('Toggle secretaire status:', secretaireId);
         // TODO: Implémenter l'appel AJAX
+        alert('Fonctionnalité en développement');
     }
 }
 </script>

@@ -78,6 +78,7 @@ class Kernel extends HttpKernel
         'comptabilite.access' => \App\Http\Middleware\CheckComptabiliteAccess::class,
         'validate.device' => \App\Http\Middleware\ValidateAttendanceDevice::class,
         'attendance.rate_limit' => \App\Http\Middleware\AttendanceRateLimiter::class,
+        'force.password.change' => \App\Http\Middleware\ForcePasswordChange::class,
     ];
 
     /**

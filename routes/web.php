@@ -55,6 +55,7 @@ use App\Http\Controllers\ESBTPLogsController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\NavbarController;
 use App\Http\Controllers\TimetableController;
+use App\Http\Controllers\Auth\PasswordChangeController;
 // use App\Http\Controllers\ESBTP\ESBTPAuditController; // COMMENTED - CONTROLLER NOT IMPLEMENTED
 // use App\Http\Controllers\ESBTP\ESBTPSecurityController; // COMMENTED - CONTROLLER NOT IMPLEMENTED
 
@@ -129,6 +130,12 @@ Route::post('/password/email', [ForgotPasswordController::class, 'sendResetLinkE
 Route::get('/password/reset/{token}', [ResetPasswordController::class, 'showResetForm'])->name('password.reset');
 Route::post('/password/reset', [ResetPasswordController::class, 'reset'])->name('password.update');
 
+// Routes de changement de mot de passe forcé
+Route::middleware(['auth'])->group(function () {
+    Route::get('/password/change', [PasswordChangeController::class, 'showChangeForm'])->name('password.change.form');
+    Route::post('/password/change', [PasswordChangeController::class, 'updatePassword'])->name('password.change.update');
+});
+
 // Routes pour la navbar (recherche, notifications, messages, actions rapides)
 Route::middleware(['auth'])->group(function () {
     // Routes de recherche
@@ -160,7 +167,7 @@ Route::middleware(['auth'])->group(function () {
 });
 
 // Routes accessibles uniquement après authentification
-Route::middleware(['auth', 'installed'])->group(function () {
+Route::middleware(['auth', 'installed', 'force.password.change'])->group(function () {
     // Dashboard - Route principale qui redirige vers le tableau de bord approprié selon le rôle
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
@@ -946,6 +953,8 @@ Route::prefix('secretaires')->name('secretaires.')->group(function () {
 // Routes pour la gestion des enseignants
 Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'role:superAdmin'])->group(function () {
     Route::resource('enseignants', ESBTPEnseignantController::class);
+    Route::get('enseignants/{teacher}/matieres', [ESBTPEnseignantController::class, 'matieres'])->name('enseignants.matieres');
+    Route::post('enseignants/{teacher}/assign-matieres', [ESBTPEnseignantController::class, 'assignMatieres'])->name('enseignants.assign-matieres');
     Route::resource('specialties', ESBTPSpecialtyController::class);
     Route::put('specialties/{id}/restore', [ESBTPSpecialtyController::class, 'restore'])->name('specialties.restore');
     Route::resource('continuing-education', ESBTPContinuingEducationController::class);

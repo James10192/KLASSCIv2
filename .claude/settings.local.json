@@ -9,7 +9,11 @@
       "Bash(find:*)",
       "Bash(/mnt/c/xampp/php/php.exe artisan tinker --execute=\"App\\Models\\ESBTPClasse::with([''filiere'', ''niveau'', ''annee''])->first()\")",
       "mcp__memory__read_graph",
-      "mcp__memory__add_observations"
+      "mcp__memory__add_observations",
+      "Bash(/c/xampp/php/php.exe artisan migrate)",
+      "Bash(ls:*)",
+      "Bash(/mnt/c/xampp/php/php.exe artisan migrate)",
+      "Bash(/mnt/c/xampp/php/php.exe artisan tinker --execute=\"\n$service = new App\\Services\\UserService();\necho ''Test generation username enseignant: '' . $service->generateEnseignantUsername(''Jean-Pierre'', ''Dupont Martin'') . PHP_EOL;\necho ''Test generation username coordinateur: '' . $service->generateCoordinateurUsername(''Marie Claire'', ''Bernard-Dubois'') . PHP_EOL;\necho ''Test avec accents: '' . $service->generateEnseignantUsername(''François'', ''Müller Sánchez'') . PHP_EOL;\n\")"
     ],
     "deny": []
   }

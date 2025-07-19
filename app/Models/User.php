@@ -38,6 +38,9 @@ class User extends Authenticatable
         'employee_id',
         'appointment_date',
         'birth_date',
+        'must_change_password',
+        'password_changed_at',
+        'first_login_at',
     ];
 
     protected $hidden = [
@@ -51,6 +54,9 @@ class User extends Authenticatable
         'last_login_at' => 'datetime',
         'is_active' => 'boolean',
         'appointment_date' => 'date',
+        'must_change_password' => 'boolean',
+        'password_changed_at' => 'datetime',
+        'first_login_at' => 'datetime',
         // 'password' => 'hashed', // ❌ SUPPRIMÉ car non supporté
     ];
 

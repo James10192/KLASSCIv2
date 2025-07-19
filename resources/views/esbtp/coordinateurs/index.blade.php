@@ -338,6 +338,10 @@
         </div>
     </div>
 </div>
+
+{{-- Modal pour afficher les credentials --}}
+@include('partials.credentials-modal')
+
 @endsection
 
 @push('scripts')
