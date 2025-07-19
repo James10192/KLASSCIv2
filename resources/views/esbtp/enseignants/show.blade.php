@@ -366,10 +366,10 @@
             <div class="profile-header">
                 <div class="profile-hero">
                     <div class="profile-avatar">
-                        {{ substr($teacher->user->name, 0, 2) }}
+                        {{ $teacher->user ? substr($teacher->user->name, 0, 2) : 'NN' }}
                     </div>
                     <div class="profile-info">
-                        <h1>{{ $teacher->user->name }}</h1>
+                        <h1>{{ $teacher->user->name ?? 'Nom non disponible' }}</h1>
                         <p>{{ $teacher->specialization }}</p>
                         <div class="profile-meta">
                             <div class="meta-item">
@@ -436,11 +436,11 @@
                             
                             <div class="info-row">
                                 <span class="info-label">Nom complet</span>
-                                <span class="info-value">{{ $teacher->user->name }}</span>
+                                <span class="info-value">{{ $teacher->user->name ?? 'Non disponible' }}</span>
                             </div>
                             <div class="info-row">
                                 <span class="info-label">Email</span>
-                                <span class="info-value">{{ $teacher->user->email }}</span>
+                                <span class="info-value">{{ $teacher->user->email ?? 'Non disponible' }}</span>
                             </div>
                             <div class="info-row">
                                 <span class="info-label">Téléphone</span>
@@ -523,7 +523,7 @@
                             @if($teacher->laboratory)
                             <div class="info-row">
                                 <span class="info-label">Laboratoire</span>
-                                <span class="info-value">{{ $teacher->laboratory->name }}</span>
+                                <span class="info-value">{{ $teacher->laboratory->name ?? 'Non disponible' }}</span>
                             </div>
                             @endif
                             <div class="info-row">
@@ -649,12 +649,12 @@
                                 <div class="contact-icon">
                                     <i class="fas fa-envelope"></i>
                                 </div>
-                                <a href="mailto:{{ $teacher->user->email }}" class="info-value">
-                                    {{ $teacher->user->email }}
+                                <a href="mailto:{{ $teacher->user->email ?? '#' }}" class="info-value">
+                                    {{ $teacher->user->email ?? 'Non disponible' }}
                                 </a>
                             </div>
                             
-                            @if($teacher->user->phone)
+                            @if($teacher->user && $teacher->user->phone)
                             <div class="contact-item">
                                 <div class="contact-icon">
                                     <i class="fas fa-phone"></i>
@@ -730,7 +730,7 @@
                             @if($teacher->createdBy)
                             <div class="info-row">
                                 <span class="info-label">Créé par</span>
-                                <span class="info-value">{{ $teacher->createdBy->name }}</span>
+                                <span class="info-value">{{ $teacher->createdBy->name ?? 'Non disponible' }}</span>
                             </div>
                             @endif
                         </div>

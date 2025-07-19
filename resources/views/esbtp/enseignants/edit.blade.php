@@ -414,11 +414,11 @@
         <div class="teacher-info-card">
             <div class="teacher-info-header">
                 <div class="teacher-avatar">
-                    {{ substr($teacher->user->name, 0, 2) }}
+                    {{ $teacher->user ? substr($teacher->user->name, 0, 2) : 'NN' }}
                 </div>
                 <div class="teacher-details">
-                    <h3>{{ $teacher->user->name }}</h3>
-                    <p>{{ $teacher->user->email }}</p>
+                    <h3>{{ $teacher->user->name ?? 'Nom non disponible' }}</h3>
+                    <p>{{ $teacher->user->email ?? 'Email non disponible' }}</p>
                     <p>{{ $teacher->specialization }}</p>
                 </div>
             </div>
@@ -501,7 +501,7 @@
                                 </label>
                                 <input type="text" name="name" id="name" 
                                        class="form-input-moderne @error('name') is-invalid @enderror"
-                                       value="{{ old('name', $teacher->user->name) }}" required>
+                                       value="{{ old('name', $teacher->user->name ?? '') }}" required>
                                 @error('name')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -513,7 +513,7 @@
                                 </label>
                                 <input type="email" name="email" id="email" 
                                        class="form-input-moderne @error('email') is-invalid @enderror"
-                                       value="{{ old('email', $teacher->user->email) }}" required>
+                                       value="{{ old('email', $teacher->user->email ?? '') }}" required>
                                 @error('email')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -528,7 +528,7 @@
                                 </label>
                                 <input type="tel" name="phone" id="phone" 
                                        class="form-input-moderne @error('phone') is-invalid @enderror"
-                                       value="{{ old('phone', $teacher->user->phone) }}">
+                                       value="{{ old('phone', $teacher->user->phone ?? '') }}">
                                 @error('phone')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
