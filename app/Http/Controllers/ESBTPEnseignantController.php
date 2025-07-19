@@ -7,8 +7,8 @@ use App\Models\ESBTPTeacher;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPAnneeUniversitaire;
-use App\Models\Department;
-use App\Models\Laboratory;
+use App\Models\ESBTPDepartment;
+use App\Models\ESBTPLaboratory;
 use App\Services\UserService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -57,7 +57,7 @@ class ESBTPEnseignantController extends Controller
         $teachers = $query->paginate(15);
         
         // Données pour les filtres
-        $departments = Department::all();
+        $departments = ESBTPDepartment::where('is_active', true)->get();
         $specializations = ESBTPTeacher::distinct()->pluck('specialization')->filter();
         
         // Statistiques
@@ -77,8 +77,8 @@ class ESBTPEnseignantController extends Controller
      */
     public function create()
     {
-        $departments = Department::all();
-        $laboratories = Laboratory::all();
+        $departments = ESBTPDepartment::where('is_active', true)->get();
+        $laboratories = ESBTPLaboratory::where('is_active', true)->get();
         $matieres = ESBTPMatiere::where('is_active', true)->get();
         $classes = ESBTPClasse::where('is_active', true)->get();
         
@@ -315,8 +315,8 @@ class ESBTPEnseignantController extends Controller
     {
         $teacher->load(['user', 'department', 'laboratory']);
         
-        $departments = Department::all();
-        $laboratories = Laboratory::all();
+        $departments = ESBTPDepartment::where('is_active', true)->get();
+        $laboratories = ESBTPLaboratory::where('is_active', true)->get();
         $matieres = ESBTPMatiere::where('is_active', true)->get();
         $classes = ESBTPClasse::where('is_active', true)->get();
         

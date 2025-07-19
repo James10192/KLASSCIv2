@@ -464,7 +464,7 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                                 <div class="form-help-text">
-                                    Sera utilisé pour se connecter au système
+                                    Adresse email pour les notifications et communications
                                 </div>
                             </div>
 
