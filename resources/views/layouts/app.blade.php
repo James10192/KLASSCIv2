@@ -641,15 +641,19 @@
 
                         <!-- Staff Management -->
                         <div class="menu-accordion">
-                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.staff.*') || Request::routeIs('esbtp.roles.*') ? 'active' : '' }}">
+                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.staff.*') || Request::routeIs('esbtp.roles.*') || Request::routeIs('esbtp.departments.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-users-cog"></i></div>
                                 <div class="menu-text">Personnel</div>
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
-                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.staff.*') || Request::routeIs('esbtp.roles.*') || Request::routeIs('esbtp.personnel.unified.*') ? 'show' : '' }}">
+                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.staff.*') || Request::routeIs('esbtp.roles.*') || Request::routeIs('esbtp.personnel.unified.*') || Request::routeIs('esbtp.departments.*') ? 'show' : '' }}">
                                 <a href="{{ route('esbtp.personnel.unified.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.personnel.unified.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Gestion du personnel</span>
+                                </a>
+                                <a href="{{ route('esbtp.departments.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.departments.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Départements</span>
                                 </a>
                                 <!--<a href="{{ route('esbtp.roles.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.roles.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
