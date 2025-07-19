@@ -130,7 +130,7 @@
                             <div style="color: white;">
                                 <i class="fas fa-graduation-cap fa-2x" style="margin-bottom: var(--space-md);"></i>
                                 <div class="kpi-title" style="color: white;">Spécialités</div>
-                                <div class="kpi-value" style="color: white;">{{ $department->specialties->count() ?? 0 }}</div>
+                                <div class="kpi-value" style="color: white;">{{ $department->specialties ? $department->specialties->count() : 0 }}</div>
                             </div>
                         </div>
                         
@@ -138,7 +138,7 @@
                             <div style="color: white;">
                                 <i class="fas fa-chalkboard-teacher fa-2x" style="margin-bottom: var(--space-md);"></i>
                                 <div class="kpi-title" style="color: white;">Enseignants</div>
-                                <div class="kpi-value" style="color: white;">{{ $department->teachers->count() ?? 0 }}</div>
+                                <div class="kpi-value" style="color: white;">{{ $department->teachers ? $department->teachers->count() : 0 }}</div>
                             </div>
                         </div>
                         
@@ -146,7 +146,7 @@
                             <div style="color: white;">
                                 <i class="fas fa-user-graduate fa-2x" style="margin-bottom: var(--space-md);"></i>
                                 <div class="kpi-title" style="color: white;">Étudiants</div>
-                                <div class="kpi-value" style="color: white;">{{ $department->students->count() ?? 0 }}</div>
+                                <div class="kpi-value" style="color: white;">{{ $department->students ? $department->students->count() : 0 }}</div>
                             </div>
                         </div>
                         
@@ -154,7 +154,7 @@
                             <div style="color: white;">
                                 <i class="fas fa-book fa-2x" style="margin-bottom: var(--space-md);"></i>
                                 <div class="kpi-title" style="color: white;">Formations continues</div>
-                                <div class="kpi-value" style="color: white;">{{ $department->continuingEducationPrograms->count() ?? 0 }}</div>
+                                <div class="kpi-value" style="color: white;">{{ $department->continuingEducationPrograms ? $department->continuingEducationPrograms->count() : 0 }}</div>
                             </div>
                         </div>
                     </div>
