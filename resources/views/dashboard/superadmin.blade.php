@@ -114,48 +114,6 @@
         </div>
     </div>
 
-    <!-- Charts Section -->
-    <div class="row mb-xl">
-        <div class="col-xl-8 mb-lg">
-            <div class="card-moderne p-lg">
-                <div class="section-title mb-lg" style="color: var(--primary); border-bottom: 2px solid var(--primary); padding-bottom: var(--space-sm);">
-                    <i class="fas fa-chart-area"></i>
-                    Évolution des inscriptions
-                </div>
-                <p style="color: var(--text-secondary); margin-bottom: var(--space-lg);">Nombre d'étudiants inscrits par mois</p>
-                
-                <div class="chart-container">
-                    <canvas id="inscriptionsChart"></canvas>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-4 mb-lg">
-            <div class="card-moderne p-lg">
-                <div class="section-title mb-lg" style="color: var(--success); border-bottom: 2px solid var(--success); padding-bottom: var(--space-sm);">
-                    <i class="fas fa-chart-pie"></i>
-                    Répartition par filière
-                </div>
-                <p style="color: var(--text-secondary); margin-bottom: var(--space-lg);">Distribution des étudiants</p>
-                
-                <div style="position: relative; height: 250px; margin-bottom: var(--space-lg);">
-                    <canvas id="filieresChart"></canvas>
-                </div>
-                
-                <div>
-                    @foreach($filiereStats as $filiere)
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-sm); margin-bottom: var(--space-sm); background: var(--background); border-radius: var(--radius-small); border-left: 4px solid {{ $filiere['color'] }};">
-                        <div style="display: flex; align-items: center;">
-                            <div style="width: 14px; height: 14px; background: {{ $filiere['color'] }}; border-radius: 50%; margin-right: var(--space-sm);"></div>
-                            <span style="font-weight: 500; color: var(--text-primary);">{{ $filiere['name'] }}</span>
-                        </div>
-                        <span class="badge primary">{{ $filiere['students'] }}</span>
-                    </div>
-                    @endforeach
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Recent Inscriptions Table -->
     <div class="card-moderne mb-xl">
         <div class="p-lg">
@@ -272,6 +230,48 @@
                 <a href="{{ route('esbtp.inscriptions.index') }}" class="btn-acasi secondary">
                     <i class="fas fa-arrow-right"></i> Voir toutes les inscriptions
                 </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="row mb-xl">
+        <div class="col-xl-8 mb-lg">
+            <div class="card-moderne p-lg">
+                <div class="section-title mb-lg" style="color: var(--primary); border-bottom: 2px solid var(--primary); padding-bottom: var(--space-sm);">
+                    <i class="fas fa-chart-area"></i>
+                    Évolution des inscriptions
+                </div>
+                <p style="color: var(--text-secondary); margin-bottom: var(--space-lg);">Nombre d'étudiants inscrits par mois</p>
+                
+                <div class="chart-container">
+                    <canvas id="inscriptionsChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4 mb-lg">
+            <div class="card-moderne p-lg">
+                <div class="section-title mb-lg" style="color: var(--success); border-bottom: 2px solid var(--success); padding-bottom: var(--space-sm);">
+                    <i class="fas fa-chart-pie"></i>
+                    Répartition par filière
+                </div>
+                <p style="color: var(--text-secondary); margin-bottom: var(--space-lg);">Distribution des étudiants</p>
+                
+                <div style="position: relative; height: 250px; margin-bottom: var(--space-lg);">
+                    <canvas id="filieresChart"></canvas>
+                </div>
+                
+                <div>
+                    @foreach($filiereStats as $filiere)
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-sm); margin-bottom: var(--space-sm); background: var(--background); border-radius: var(--radius-small); border-left: 4px solid {{ $filiere['color'] }};">
+                        <div style="display: flex; align-items: center;">
+                            <div style="width: 14px; height: 14px; background: {{ $filiere['color'] }}; border-radius: 50%; margin-right: var(--space-sm);"></div>
+                            <span style="font-weight: 500; color: var(--text-primary);">{{ $filiere['name'] }}</span>
+                        </div>
+                        <span class="badge primary">{{ $filiere['students'] }}</span>
+                    </div>
+                    @endforeach
+                </div>
             </div>
         </div>
     </div>

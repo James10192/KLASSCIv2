@@ -60,19 +60,95 @@
 <script>
 function copyToClipboard(elementId) {
     const text = document.getElementById(elementId).textContent;
+    const button = event.target.closest('button');
+    const icon = button.querySelector('i');
+    
     navigator.clipboard.writeText(text).then(function() {
-        // Feedback visuel
-        const icon = event.target.closest('button').querySelector('i');
+        // Animation de succès plus visible
         const originalClass = icon.className;
+        const originalButtonStyle = button.style.cssText;
+        
+        // Changer l'icône et le style du bouton
         icon.className = 'fas fa-check';
-        icon.style.color = 'var(--success)';
+        icon.style.color = 'white';
+        button.style.backgroundColor = 'var(--success)';
+        button.style.transform = 'scale(1.1)';
+        button.style.transition = 'all 0.3s ease';
+        button.style.borderRadius = 'var(--radius-small)';
+        button.style.padding = '4px 8px';
+        
+        // Ajouter un effet de pulsation
+        button.style.animation = 'copySuccess 0.6s ease-in-out';
+        
+        // Créer une notification toast temporaire
+        showCopyToast('Copié dans le presse-papiers !');
         
         setTimeout(() => {
             icon.className = originalClass;
             icon.style.color = '';
-        }, 1500);
+            button.style.cssText = originalButtonStyle;
+            button.style.animation = '';
+        }, 2000);
+    }).catch(function() {
+        // En cas d'erreur
+        showCopyToast('Erreur lors de la copie', 'error');
     });
 }
+
+function showCopyToast(message, type = 'success') {
+    // Créer le toast
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background-color: ${type === 'success' ? 'var(--success)' : 'var(--danger)'};
+        color: white;
+        padding: 12px 20px;
+        border-radius: var(--radius-medium);
+        box-shadow: var(--shadow-elevated);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+    `;
+    
+    const icon = document.createElement('i');
+    icon.className = type === 'success' ? 'fas fa-check-circle' : 'fas fa-exclamation-triangle';
+    
+    toast.appendChild(icon);
+    toast.appendChild(document.createTextNode(message));
+    document.body.appendChild(toast);
+    
+    // Animation d'entrée
+    setTimeout(() => {
+        toast.style.transform = 'translateX(0)';
+    }, 100);
+    
+    // Animation de sortie et suppression
+    setTimeout(() => {
+        toast.style.transform = 'translateX(100%)';
+        setTimeout(() => {
+            if (toast.parentNode) {
+                document.body.removeChild(toast);
+            }
+        }, 300);
+    }, 2500);
+}
+
+// Ajouter les styles CSS pour l'animation
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes copySuccess {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.2); }
+        100% { transform: scale(1.1); }
+    }
+`;
+document.head.appendChild(style);
 
 function printCredentials() {
     const credentials = {

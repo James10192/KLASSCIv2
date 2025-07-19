@@ -74,14 +74,15 @@ class UserService
 
     /**
      * Extrait prénom et nom d'un nom complet
+     * Prend le premier prénom et le dernier nom de famille pour éviter des usernames trop longs
      */
     private function extractNameParts(string $fullName): array
     {
         $parts = explode(' ', trim($fullName));
         
         if (count($parts) >= 2) {
-            $prenom = $parts[0];
-            $nom = implode(' ', array_slice($parts, 1)); // Concatène avec des espaces
+            $prenom = $parts[0]; // Premier prénom
+            $nom = end($parts); // Dernier nom de famille
         } else {
             $prenom = $parts[0];
             $nom = $parts[0]; // Utilise le même nom si un seul mot
