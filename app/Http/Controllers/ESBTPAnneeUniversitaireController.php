@@ -15,9 +15,14 @@ class ESBTPAnneeUniversitaireController extends Controller
      */
     public function index()
     {
-        $anneesUniversitaires = ESBTPAnneeUniversitaire::orderBy('start_date', 'desc')->get();
-
-        return view('esbtp.annees-universitaires.index', compact('anneesUniversitaires'));
+        try {
+            $anneesUniversitaires = ESBTPAnneeUniversitaire::orderBy('start_date', 'desc')->get();
+            
+            return view('esbtp.annees-universitaires.index', compact('anneesUniversitaires'));
+        } catch (\Exception $e) {
+            \Log::error("Erreur dans index(): " . $e->getMessage());
+            return view('esbtp.annees-universitaires.index', ['anneesUniversitaires' => collect()]);
+        }
     }
 
     /**
@@ -148,11 +153,49 @@ class ESBTPAnneeUniversitaireController extends Controller
      */
     public function setCurrent(ESBTPAnneeUniversitaire $anneesUniversitaire)
     {
-        // Définir cette année comme l'année en cours
-        $anneesUniversitaire->setAsCurrent();
+        try {
+            $result = $anneesUniversitaire->setAsCurrent();
+            
+            if (!$result) {
+                return redirect()->route('esbtp.annees-universitaires.index')
+                    ->with('error', 'Erreur lors de la définition de l\'année en cours.');
+            }
+            
+            return redirect()->route('esbtp.annees-universitaires.index')
+                ->with('success', 'L\'année universitaire a été définie comme l\'année en cours.');
+                
+        } catch (\Exception $e) {
+            \Log::error("setCurrent: Exception = " . $e->getMessage());
+            
+            return redirect()->route('esbtp.annees-universitaires.index')
+                ->with('error', 'Erreur: ' . $e->getMessage());
+        }
+    }
 
-        // Rediriger avec un message de succès
-        return redirect()->route('esbtp.annees-universitaires.index')
-            ->with('success', 'L\'année universitaire a été définie comme l\'année en cours.');
+    /**
+     * Route de debug temporaire
+     */
+    public function debug()
+    {
+        \Log::info("=== DEBUG ROUTE CALLED ===");
+        
+        try {
+            \Cache::flush();
+            $anneesUniversitaires = ESBTPAnneeUniversitaire::orderBy('start_date', 'desc')->get();
+            
+            \Log::info("Debug: Récupéré " . $anneesUniversitaires->count() . " éléments");
+            \Log::info("Debug: Type de la collection: " . get_class($anneesUniversitaires));
+            
+            foreach ($anneesUniversitaires as $index => $item) {
+                \Log::info("Debug item {$index}: " . (is_null($item) ? 'NULL' : get_class($item) . " ID:" . ($item->id ?? 'N/A')));
+            }
+            
+            return view('debug_annees', compact('anneesUniversitaires'));
+            
+        } catch (\Exception $e) {
+            \Log::error("Debug route error: " . $e->getMessage());
+            \Log::error("Debug route stack: " . $e->getTraceAsString());
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
 }

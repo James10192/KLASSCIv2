@@ -60,17 +60,23 @@ class ESBTPAnneeUniversitaire extends Model
     /**
      * Définir cette année universitaire comme l'année en cours.
      * Cette méthode désactive également toutes les autres années universitaires.
-     *
+     * 
      * @return bool
      */
     public function setAsCurrent()
     {
-        // Désactiver toutes les autres années universitaires
-        self::where('id', '!=', $this->id)
-            ->update(['is_current' => false]);
+        return \DB::transaction(function () {
+            // Désactiver toutes les autres années universitaires
+            self::where('id', '!=', $this->id)
+                ->update(['is_current' => false]);
 
-        // Définir cette année comme l'année en cours
-        $this->is_current = true;
-        return $this->save();
+            // Définir cette année comme l'année en cours
+            $result = self::where('id', $this->id)->update(['is_current' => true]);
+            
+            // Effacer le cache si nécessaire
+            \Cache::flush();
+            
+            return $result > 0;
+        });
     }
 }

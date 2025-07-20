@@ -49,13 +49,13 @@
                                 </thead>
                                 <tbody>
                                     @foreach($annees as $annee)
-                                        <tr class="{{ $annee->is_current ? 'table-success' : '' }}">
+                                        <tr class="{{ optional($annee)->is_current ? 'table-success' : '' }}">
                                             <td>{{ $annee->name }}</td>
                                             <td>{{ $annee->start_date ? (is_a($annee->start_date, 'Carbon\Carbon') ? $annee->start_date->format('d/m/Y') : (\Carbon\Carbon::parse($annee->start_date)->format('d/m/Y'))) : '-' }}</td>
                                             <td>{{ $annee->end_date ? (is_a($annee->end_date, 'Carbon\Carbon') ? $annee->end_date->format('d/m/Y') : (\Carbon\Carbon::parse($annee->end_date)->format('d/m/Y'))) : '-' }}</td>
                                             <td>{{ Str::limit($annee->description, 100) }}</td>
                                             <td>
-                                                @if($annee->is_current)
+                                                @if(optional($annee)->is_current)
                                                     <span class="badge badge-success">Année en cours</span>
                                                 @endif
 
@@ -73,7 +73,7 @@
                                                     <a href="{{ route('esbtp.annees-universitaires.edit', $annee) }}" class="btn btn-primary btn-sm" title="Modifier">
                                                         <i class="fas fa-edit"></i>
                                                     </a>
-                                                    @if(!$annee->is_current)
+                                                    @if(!optional($annee)->is_current)
                                                         <form action="{{ route('esbtp.annees-universitaires.set-current', $annee) }}" method="POST" class="d-inline">
                                                             @csrf
                                                             <button type="submit" class="btn btn-warning btn-sm" title="Définir comme année en cours">

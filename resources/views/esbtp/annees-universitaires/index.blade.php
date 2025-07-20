@@ -48,21 +48,20 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach($anneesUniversitaires as $anneeUniversitaire)
-                                        <tr class="{{ $anneeUniversitaire->is_current ? 'table-success' : '' }}">
-                                            <td>{{ $anneeUniversitaire->name }}</td>
+                                    @foreach($anneesUniversitaires->whereNotNull() as $anneeUniversitaire)
+                                        @if($anneeUniversitaire)
+                                        <tr class="{{ optional($anneeUniversitaire)->is_current ? 'table-success' : '' }}" style="{{ optional($anneeUniversitaire)->is_current ? 'background-color: #d4edda !important;' : '' }}">
+                                            <td>{{ $anneeUniversitaire->name ?? 'N/A' }}</td>
                                             <td>{{ $anneeUniversitaire->start_date ? (is_a($anneeUniversitaire->start_date, 'Carbon\Carbon') ? $anneeUniversitaire->start_date->format('d/m/Y') : (\Carbon\Carbon::parse($anneeUniversitaire->start_date)->format('d/m/Y'))) : '-' }}</td>
                                             <td>{{ $anneeUniversitaire->end_date ? (is_a($anneeUniversitaire->end_date, 'Carbon\Carbon') ? $anneeUniversitaire->end_date->format('d/m/Y') : (\Carbon\Carbon::parse($anneeUniversitaire->end_date)->format('d/m/Y'))) : '-' }}</td>
                                             <td>{{ Str::limit($anneeUniversitaire->description, 100) }}</td>
                                             <td>
-                                                @if($anneeUniversitaire->is_current)
-                                                    <span class="badge badge-success">Année en cours</span>
-                                                @endif
-
-                                                @if($anneeUniversitaire->is_active)
+                                                @if(optional($anneeUniversitaire)->is_current)
+                                                    <span class="badge badge-success">ANNÉE EN COURS</span>
+                                                @elseif($anneeUniversitaire->is_active)
                                                     <span class="badge badge-info">Active</span>
                                                 @else
-                                                    <span class="badge badge-danger">Inactive</span>
+                                                    <span class="badge badge-secondary">Inactive</span>
                                                 @endif
                                             </td>
                                             <td>
@@ -73,11 +72,11 @@
                                                     <a href="{{ route('esbtp.annees-universitaires.edit', $anneeUniversitaire) }}" class="btn btn-primary btn-sm" title="Modifier">
                                                         <i class="fas fa-edit"></i>
                                                     </a>
-                                                    @if(!$anneeUniversitaire->is_current)
+                                                    @if(!optional($anneeUniversitaire)->is_current)
                                                         <form action="{{ route('esbtp.annees-universitaires.set-current', $anneeUniversitaire) }}" method="POST" class="d-inline">
                                                             @csrf
                                                             <button type="submit" class="btn btn-warning btn-sm" title="Définir comme année en cours">
-                                                                <i class="fas fa-check-circle"></i>
+                                                                <i class="fas fa-check-circle"></i> Activer
                                                             </button>
                                                         </form>
                                                     @endif
@@ -119,6 +118,7 @@
                                                 </div>
                                             </td>
                                         </tr>
+                                        @endif
                                     @endforeach
                                 </tbody>
                             </table>

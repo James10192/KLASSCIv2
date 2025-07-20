@@ -14,7 +14,9 @@
       "Bash(ls:*)",
       "Bash(/mnt/c/xampp/php/php.exe artisan migrate)",
       "Bash(/mnt/c/xampp/php/php.exe artisan tinker --execute=\"\n$service = new App\\Services\\UserService();\necho ''Test generation username enseignant: '' . $service->generateEnseignantUsername(''Jean-Pierre'', ''Dupont Martin'') . PHP_EOL;\necho ''Test generation username coordinateur: '' . $service->generateCoordinateurUsername(''Marie Claire'', ''Bernard-Dubois'') . PHP_EOL;\necho ''Test avec accents: '' . $service->generateEnseignantUsername(''François'', ''Müller Sánchez'') . PHP_EOL;\n\")",
-      "Bash(/mnt/c/xampp/php/php.exe artisan route:list)"
+      "Bash(/mnt/c/xampp/php/php.exe artisan route:list)",
+      "Bash(/mnt/c/xampp/php/php.exe test_set_current_method.php)",
+      "Bash(/mnt/c/xampp/php/php.exe artisan route:list --name=\"esbtp.evenements-academiques.index\" --columns=middleware)"
     ],
     "deny": []
   }

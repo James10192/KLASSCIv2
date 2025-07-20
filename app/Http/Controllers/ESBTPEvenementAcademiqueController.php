@@ -29,7 +29,7 @@ class ESBTPEvenementAcademiqueController extends Controller
         $search = $request->input('search');
 
         // Récupérer les années universitaires
-        $annees = ESBTPAnneeUniversitaire::orderBy('annee_debut', 'desc')->get();
+        $annees = ESBTPAnneeUniversitaire::orderBy('start_date', 'desc')->get();
         $anneeSelectionnee = $anneeId ? ESBTPAnneeUniversitaire::find($anneeId) : 
                            ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
@@ -74,7 +74,7 @@ class ESBTPEvenementAcademiqueController extends Controller
     public function create(Request $request)
     {
         $anneeId = $request->input('annee_id');
-        $annees = ESBTPAnneeUniversitaire::orderBy('annee_debut', 'desc')->get();
+        $annees = ESBTPAnneeUniversitaire::orderBy('start_date', 'desc')->get();
         $anneeSelectionnee = $anneeId ? ESBTPAnneeUniversitaire::find($anneeId) : 
                            ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
@@ -158,7 +158,7 @@ class ESBTPEvenementAcademiqueController extends Controller
                 ->with('error', 'Cet événement ne peut plus être modifié.');
         }
 
-        $annees = ESBTPAnneeUniversitaire::orderBy('annee_debut', 'desc')->get();
+        $annees = ESBTPAnneeUniversitaire::orderBy('start_date', 'desc')->get();
         $filieres = ESBTPFiliere::where('is_active', true)->orderBy('name')->get();
         $niveaux = ESBTPNiveauEtude::where('is_active', true)->orderBy('year')->get();
 
@@ -247,8 +247,8 @@ class ESBTPEvenementAcademiqueController extends Controller
     public function duplicate(ESBTPEvenementAcademique $evenementAcademique)
     {
         $anneeActuelle = $evenementAcademique->anneeUniversitaire;
-        $anneeSuivante = ESBTPAnneeUniversitaire::where('annee_debut', '>', $anneeActuelle->annee_debut)
-            ->orderBy('annee_debut', 'asc')
+        $anneeSuivante = ESBTPAnneeUniversitaire::where('start_date', '>', $anneeActuelle->start_date)
+            ->orderBy('start_date', 'asc')
             ->first();
 
         if (!$anneeSuivante) {
@@ -257,7 +257,7 @@ class ESBTPEvenementAcademiqueController extends Controller
         }
 
         // Calculer les nouvelles dates
-        $diffAnnees = $anneeSuivante->annee_debut - $anneeActuelle->annee_debut;
+        $diffAnnees = $anneeSuivante->start_date - $anneeActuelle->start_date;
         $nouvelleDateDebut = Carbon::parse($evenementAcademique->date_debut)->addYears($diffAnnees);
         $nouvelleDateFin = $evenementAcademique->date_fin ? 
             Carbon::parse($evenementAcademique->date_fin)->addYears($diffAnnees) : null;

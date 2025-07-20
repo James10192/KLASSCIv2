@@ -144,7 +144,7 @@
                                             @else
                                                 <span class="badge bg-secondary">Inactif</span>
                                             @endif
-                                            @if($emploiTemps->is_current)
+                                            @if(optional($emploiTemps)->is_current)
                                                 <span class="badge bg-info ms-1">Courant</span>
                                             @endif
                                         </td>

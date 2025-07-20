@@ -69,6 +69,9 @@ use App\Http\Controllers\Auth\PasswordChangeController;
 |
 */
 
+// Route de debug temporaire pour identifier l'erreur is_current
+Route::get('/debug-annees-simple', [ESBTPAnneeUniversitaireController::class, 'debug'])->name('debug-annees-simple');
+
 // Test route for debugging
 Route::get('/test-emploi-temps-show', function () {
     $controller = new ESBTPEmploiTempsController();
@@ -209,8 +212,8 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
     // Routes pour les fonctionnalités ESBTP
     Route::prefix('esbtp')->name('esbtp.')->group(function () {
-        // Routes protégées pour les super-administrateurs et secrétaires
-        Route::middleware(['auth', 'role:superAdmin|secretaire'])->group(function () {
+        // Routes protégées pour les super-administrateurs, secrétaires et coordinateurs
+        Route::middleware(['auth', 'role:superAdmin|secretaire|coordinateur'])->group(function () {
             // Routes pour les paiements
             Route::resource('payments', \App\Http\Controllers\ESBTP\PaymentController::class);
             Route::get('payments/{payment}/receipt', [\App\Http\Controllers\ESBTP\PaymentController::class, 'generateReceipt'])
@@ -264,21 +267,14 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::resource('niveaux-etudes', ESBTPNiveauEtudeController::class)
                 ->middleware(['permission:view_niveaux_etudes|create_niveaux_etudes|edit_niveaux_etudes|delete_niveaux_etudes']);
 
-            // Routes pour les années universitaires (en dehors du groupe esbtp pour éviter le double préfixe)
-            Route::middleware(['auth', 'role:superAdmin|secretaire'])->group(function () {
-                // Route personnalisée pour définir l'année universitaire en cours
-                Route::post('esbtp/annees-universitaires/{annee}/set-current', [ESBTPAnneeUniversitaireController::class, 'setCurrent'])
-                    ->name('esbtp.annees-universitaires.set-current');
-                Route::resource('esbtp/annees-universitaires', ESBTPAnneeUniversitaireController::class)->names([
-                    'index' => 'esbtp.annees-universitaires.index',
-                    'create' => 'esbtp.annees-universitaires.create',
-                    'store' => 'esbtp.annees-universitaires.store',
-                    'show' => 'esbtp.annees-universitaires.show',
-                    'edit' => 'esbtp.annees-universitaires.edit',
-                    'update' => 'esbtp.annees-universitaires.update',
-                    'destroy' => 'esbtp.annees-universitaires.destroy',
-                ]);
-            });
+            // Routes pour les années universitaires
+            Route::post('annees-universitaires/{anneesUniversitaire}/set-current', [ESBTPAnneeUniversitaireController::class, 'setCurrent'])
+                ->name('annees-universitaires.set-current');
+            Route::resource('annees-universitaires', ESBTPAnneeUniversitaireController::class);
+
+            // Debug route
+            Route::get('debug-annees', [ESBTPAnneeUniversitaireController::class, 'debug'])
+                ->name('debug-annees');
 
             // Routes pour les cycles de formation
             Route::resource('cycles', ESBTPCycleController::class);
@@ -793,7 +789,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     });
 
     // Student Progression Routes
-    Route::prefix('esbtp')->middleware(['auth', 'role:superAdmin|secretaire'])->group(function () {
+    Route::prefix('esbtp')->middleware(['auth', 'role:superAdmin|secretaire|coordinateur'])->group(function () {
         Route::get('/progression', [StudentProgressionController::class, 'index'])->name('esbtp.progression.index');
         Route::get('/api/progression/recommendations/{classe}/{annee}', [StudentProgressionController::class, 'getRecommendations'])->name('esbtp.progression.recommendations');
         Route::post('/api/progression/process', [StudentProgressionController::class, 'processProgression'])->name('esbtp.progression.process');
@@ -1312,6 +1308,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/esbtp/logs', [ESBTPLogsController::class, 'index'])->name('esbtp.logs.index');
         Route::get('/esbtp/logs/{filename}', [ESBTPLogsController::class, 'show'])->name('esbtp.logs.show');
         Route::get('/esbtp/logs/{filename}/download', [ESBTPLogsController::class, 'download'])->name('esbtp.logs.download');
+        Route::post('/esbtp/logs/{filename}/clear', [ESBTPLogsController::class, 'clear'])->name('esbtp.logs.clear');
         Route::delete('/esbtp/logs/{filename}', [ESBTPLogsController::class, 'destroy'])->name('esbtp.logs.destroy');
     });
 
@@ -1338,20 +1335,6 @@ Route::middleware(['auth'])->group(function () {
 //     ]);
 // });
 // ... existing code ...
-// --- AJOUT en dehors de tout groupe ---
-Route::middleware(['auth', 'role:superAdmin|secretaire'])->group(function () {
-    Route::post('esbtp/annees-universitaires/{annee}/set-current', [ESBTPAnneeUniversitaireController::class, 'setCurrent'])
-        ->name('esbtp.annees-universitaires.set-current');
-    Route::resource('esbtp/annees-universitaires', ESBTPAnneeUniversitaireController::class)->names([
-        'index' => 'esbtp.annees-universitaires.index',
-        'create' => 'esbtp.annees-universitaires.create',
-        'store' => 'esbtp.annees-universitaires.store',
-        'show' => 'esbtp.annees-universitaires.show',
-        'edit' => 'esbtp.annees-universitaires.edit',
-        'update' => 'esbtp.annees-universitaires.update',
-        'destroy' => 'esbtp.annees-universitaires.destroy',
-    ]);
-});
 // ... existing code ...
 
 // Route de diagnostic temporaire (à supprimer après résolution)
@@ -1580,4 +1563,24 @@ Route::middleware(['auth', 'role:coordinateur'])->prefix('esbtp')->name('esbtp.'
         ->middleware('permission:manage-planning|view-all-timetables');
     Route::get('/planning-general/coordinateur', [\App\Http\Controllers\ESBTPPlanningGeneralController::class, 'coordinateur'])->name('planning-general.coordinateur')
         ->middleware('permission:manage-planning|view-all-timetables');
+    Route::get('/planning-general/repartition-matieres', [\App\Http\Controllers\ESBTPPlanningGeneralController::class, 'repartitionMatieres'])->name('planning-general.repartition-matieres')
+        ->middleware('permission:manage-planning|view-all-timetables');
+    Route::get('/planning-general/annuel', [\App\Http\Controllers\ESBTPPlanningGeneralController::class, 'annuel'])->name('planning-general.annuel')
+        ->middleware('permission:manage-planning|view-all-timetables');
+});
+
+// Routes spécifiques pour les coordinateurs pour événements académiques
+Route::middleware(['auth', 'role:coordinateur'])->prefix('esbtp')->name('esbtp.')->group(function () {
+    Route::prefix('evenements-academiques')->name('evenements-academiques.')->group(function () {
+        Route::get('/', [App\Http\Controllers\ESBTPEvenementAcademiqueController::class, 'index'])->name('index');
+        Route::get('/create', [App\Http\Controllers\ESBTPEvenementAcademiqueController::class, 'create'])->name('create');
+        Route::post('/', [App\Http\Controllers\ESBTPEvenementAcademiqueController::class, 'store'])->name('store');
+        Route::get('/{evenementAcademique}', [App\Http\Controllers\ESBTPEvenementAcademiqueController::class, 'show'])->name('show');
+        Route::get('/{evenementAcademique}/edit', [App\Http\Controllers\ESBTPEvenementAcademiqueController::class, 'edit'])->name('edit');
+        Route::put('/{evenementAcademique}', [App\Http\Controllers\ESBTPEvenementAcademiqueController::class, 'update'])->name('update');
+        Route::delete('/{evenementAcademique}', [App\Http\Controllers\ESBTPEvenementAcademiqueController::class, 'destroy'])->name('destroy');
+        Route::post('/{evenementAcademique}/duplicate', [App\Http\Controllers\ESBTPEvenementAcademiqueController::class, 'duplicate'])->name('duplicate');
+        Route::post('/{evenementAcademique}/status', [App\Http\Controllers\ESBTPEvenementAcademiqueController::class, 'changeStatus'])->name('change-status');
+        Route::get('/api/events', [App\Http\Controllers\ESBTPEvenementAcademiqueController::class, 'getEvents'])->name('api.events');
+    });
 });

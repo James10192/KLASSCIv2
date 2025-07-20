@@ -33,7 +33,7 @@
                                     @foreach($annees as $annee)
                                         <option value="{{ $annee->id }}" {{ $anneeId == $annee->id ? 'selected' : '' }}>
                                             {{ $annee->name }}
-                                            @if($annee->is_current) (En cours) @endif
+                                            @if(optional($annee)->is_current) (En cours) @endif
                                         </option>
                                     @endforeach
                                 </select>

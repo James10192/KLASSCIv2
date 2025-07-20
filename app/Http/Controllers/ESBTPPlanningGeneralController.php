@@ -56,7 +56,7 @@ class ESBTPPlanningGeneralController extends Controller
         }
         
         // Données de base
-        $annees = ESBTPAnneeUniversitaire::orderBy('annee_debut', 'desc')->get();
+        $annees = ESBTPAnneeUniversitaire::orderBy('start_date', 'desc')->get();
         $anneeSelectionnee = ESBTPAnneeUniversitaire::find($anneeId);
         $filieres = ESBTPFiliere::where('is_active', true)->orderBy('name')->get();
         $niveaux = ESBTPNiveauEtude::where('is_active', true)->orderBy('year')->get();
@@ -247,7 +247,7 @@ class ESBTPPlanningGeneralController extends Controller
         $classeId = $request->input('classe_id');
         $periode = $request->input('periode', 'annee'); // semestre1, semestre2, ou annee
         
-        $annees = ESBTPAnneeUniversitaire::orderBy('annee_debut', 'desc')->get();
+        $annees = ESBTPAnneeUniversitaire::orderBy('start_date', 'desc')->get();
         $classes = ESBTPClasse::with(['filiere', 'niveau'])->orderBy('name')->get();
         
         // Répartition globale ou par classe avec comparaison planifié vs réalisé
@@ -286,7 +286,7 @@ class ESBTPPlanningGeneralController extends Controller
         $anneeId = $request->input('annee_id');
         $mois = $request->input('mois', now()->month);
         
-        $annees = ESBTPAnneeUniversitaire::orderBy('annee_debut', 'desc')->get();
+        $annees = ESBTPAnneeUniversitaire::orderBy('start_date', 'desc')->get();
         $anneeSelectionnee = ESBTPAnneeUniversitaire::find($anneeId) ?? 
                             ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
@@ -451,7 +451,7 @@ class ESBTPPlanningGeneralController extends Controller
     private function genererCalendrierAnnuel($annee)
     {
         // Créer des dates complètes à partir des années
-        $debut = Carbon::create($annee->annee_debut, 9, 1); // 1er septembre de l'année de début
+        $debut = Carbon::create($annee->start_date, 9, 1); // 1er septembre de l'année de début
         $fin = Carbon::create($annee->annee_fin, 6, 30); // 30 juin de l'année de fin
         
         $calendrier = [];
@@ -694,7 +694,7 @@ class ESBTPPlanningGeneralController extends Controller
         }
         
         // Données de démonstration si le modèle n'existe pas
-        $debut = Carbon::create($annee->annee_debut, 9, 1); // 1er septembre
+        $debut = Carbon::create($annee->start_date, 9, 1); // 1er septembre
         $fin = Carbon::create($annee->annee_fin, 6, 30); // 30 juin
         
         return [
@@ -716,7 +716,7 @@ class ESBTPPlanningGeneralController extends Controller
             ],
             [
                 'titre' => 'Examens de 1er Semestre',
-                'date' => Carbon::create($annee->annee_debut, 12, 15)->format('d/m/Y'),
+                'date' => Carbon::create($annee->start_date, 12, 15)->format('d/m/Y'),
                 'description' => 'Évaluations semestrielles - Toutes classes',
                 'icon' => 'file-alt',
                 'type' => 'examens',
@@ -724,7 +724,7 @@ class ESBTPPlanningGeneralController extends Controller
             ],
             [
                 'titre' => 'Vacances Semestrielles',
-                'date' => Carbon::create($annee->annee_debut, 12, 22)->format('d/m/Y'),
+                'date' => Carbon::create($annee->start_date, 12, 22)->format('d/m/Y'),
                 'description' => 'Période de vacances inter-semestrielle',
                 'icon' => 'calendar-times',
                 'type' => 'vacances',
@@ -775,7 +775,7 @@ class ESBTPPlanningGeneralController extends Controller
     
     private function calculerStatistiquesMensuelles($annee) { 
         // Calcul des statistiques mensuelles réelles
-        $debut = Carbon::create($annee->annee_debut, 9, 1); // 1er septembre
+        $debut = Carbon::create($annee->start_date, 9, 1); // 1er septembre
         $fin = Carbon::create($annee->annee_fin, 6, 30); // 30 juin
         
         $statistiques = [];

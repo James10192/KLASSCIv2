@@ -157,7 +157,7 @@
                             <li>
                                 <a class="dropdown-item" href="{{ route('esbtp.planning-general.index', ['annee_id' => $annee->id]) }}">
                                     {{ $annee->name }}
-                                    @if($annee->is_current)
+                                    @if(optional($annee)->is_current)
                                         <span class="badge bg-primary ms-2">En cours</span>
                                     @endif
                                 </a>
@@ -271,7 +271,7 @@
                             </div>
                             <div class="info-item mt-2">
                                 <strong>Statut :</strong>
-                                @if($anneeSelectionnee->is_current)
+                                @if(optional($anneeSelectionnee)->is_current)
                                     <span class="badge bg-success">Année en cours</span>
                                 @else
                                     <span class="badge bg-secondary">Année archivée</span>
@@ -309,7 +309,7 @@
                                     @foreach($annees as $annee)
                                         <option value="{{ $annee->id }}" {{ request('annee_id') == $annee->id ? 'selected' : '' }}>
                                             {{ $annee->name }}
-                                            @if($annee->is_current) (En cours) @endif
+                                            @if(optional($annee)->is_current) (En cours) @endif
                                         </option>
                                     @endforeach
                                 </select>

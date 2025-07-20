@@ -80,7 +80,7 @@
 
                         <div class="form-group">
                             <div class="custom-control custom-switch">
-                                <input type="checkbox" class="custom-control-input" id="is_current" name="is_current" value="1" {{ old('is_current', $annee->is_current) ? 'checked' : '' }}>
+                                <input type="checkbox" class="custom-control-input" id="is_current" name="is_current" value="1" {{ old('is_current', optional($annee)->is_current) ? 'checked' : '' }}>
                                 <label class="custom-control-label" for="is_current">Définir comme année universitaire en cours</label>
                             </div>
                             <small class="form-text text-muted">L'année universitaire en cours est celle qui sera sélectionnée par défaut pour les nouvelles inscriptions.</small>

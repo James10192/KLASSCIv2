@@ -35,7 +35,7 @@
                             <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#deleteModal">
                                 <i class="fas fa-trash"></i> Supprimer
                             </button>
-                            @if(!$annee->is_current)
+                            @if(!optional($annee)->is_current)
                                 <form action="{{ route('esbtp.annees-universitaires.set-current', $annee) }}" method="POST" class="d-inline">
                                     @csrf
                                     <button type="submit" class="btn btn-success">
@@ -57,11 +57,11 @@
                             </div>
                         </div>
                         <div class="col-md-4">
-                            <div class="info-box {{ $annee->is_current ? 'bg-success' : 'bg-secondary' }}">
+                            <div class="info-box {{ optional($annee)->is_current ? 'bg-success' : 'bg-secondary' }}">
                                 <span class="info-box-icon"><i class="fas fa-calendar-check"></i></span>
                                 <div class="info-box-content">
                                     <span class="info-box-text">Statut courant</span>
-                                    <span class="info-box-number">{{ $annee->is_current ? 'Année en cours' : 'Année non courante' }}</span>
+                                    <span class="info-box-number">{{ optional($annee)->is_current ? 'Année en cours' : 'Année non courante' }}</span>
                                 </div>
                             </div>
                         </div>
