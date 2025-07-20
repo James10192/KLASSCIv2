@@ -1574,4 +1574,8 @@ Route::middleware(['auth', 'role:coordinateur'])->prefix('esbtp')->name('esbtp.'
         ->middleware('permission:view_attendances');
     Route::get('/attendances/{attendance}', [\App\Http\Controllers\ESBTPAttendanceController::class, 'show'])->name('attendances.show')
         ->middleware('permission:view_attendances');
+        
+    // Route pour le planning général coordinateur
+    Route::get('/planning-general/coordinateur', [\App\Http\Controllers\ESBTPPlanningGeneralController::class, 'coordinateur'])->name('planning-general.coordinateur')
+        ->middleware('permission:manage-planning|view-all-timetables');
 });

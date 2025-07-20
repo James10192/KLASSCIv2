@@ -636,8 +636,8 @@
                         @if(isset($enseignants) && $enseignants->count() > 0)
                             @foreach($enseignants as $teacher)
                             <div class="personnel-card">
-                                <div class="status-badge {{ $teacher->status === 'active' ? 'active' : 'inactive' }}">
-                                    {{ $teacher->status === 'active' ? 'Actif' : 'Inactif' }}
+                                <div class="status-badge {{ $teacher->is_active ? 'active' : 'inactive' }}">
+                                    {{ $teacher->is_active ? 'Actif' : 'Inactif' }}
                                 </div>
                                 
                                 <div class="d-flex align-items-center">
