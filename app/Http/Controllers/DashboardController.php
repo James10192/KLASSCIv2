@@ -66,6 +66,11 @@ class DashboardController extends Controller
             return $this->secretaireDashboard();
         }
 
+        // Vérifier si l'utilisateur est un coordinateur
+        if ($user->hasRole('coordinateur')) {
+            return $this->coordinateurDashboard();
+        }
+
         // Vérifier si l'utilisateur est un enseignant
         if ($user->hasRole(['teacher', 'enseignant'])) {
             return redirect()->route('teacher.dashboard');
@@ -77,7 +82,7 @@ class DashboardController extends Controller
         }
 
         // Si aucun rôle spécifique n'est trouvé, afficher un tableau de bord générique
-        return view('dashboard.index');
+        return view('dashboard.index', compact('user'));
     }
 
     /**
@@ -394,6 +399,133 @@ class DashboardController extends Controller
         }
 
         return view('dashboard.secretaire', $data);
+    }
+
+    /**
+     * Tableau de bord pour les coordinateurs avec permissions de coordination.
+     */
+    private function coordinateurDashboard()
+    {
+        $user = Auth::user();
+        $data = [
+            'user' => $user
+        ];
+
+        // Statistiques accessibles aux coordinateurs
+        try {
+            // Étudiants - Coordinateurs peuvent voir et gérer les étudiants
+            $data['totalStudents'] = ESBTPEtudiant::count();
+            $data['recentStudents'] = ESBTPEtudiant::with(['classe.filiere'])
+                ->orderBy('created_at', 'desc')
+                ->take(5)
+                ->get();
+        } catch (\Exception $e) {
+            $data['totalStudents'] = 0;
+            $data['recentStudents'] = collect();
+        }
+
+        // Classes - Coordinateurs supervisent les classes
+        try {
+            $data['totalClasses'] = ESBTPClasse::count();
+        } catch (\Exception $e) {
+            $data['totalClasses'] = 0;
+        }
+
+        // Enseignants - Coordinateurs supervisent les enseignants
+        try {
+            $data['totalTeachers'] = ESBTPTeacher::count();
+        } catch (\Exception $e) {
+            $data['totalTeachers'] = 0;
+        }
+
+        // Évaluations - Coordinateurs peuvent voir les évaluations
+        try {
+            $data['totalExamens'] = ESBTPEvaluation::count();
+            $data['recentExamens'] = ESBTPEvaluation::with(['classe', 'matiere'])
+                ->orderBy('created_at', 'desc')
+                ->take(5)
+                ->get();
+        } catch (\Exception $e) {
+            $data['totalExamens'] = 0;
+            $data['recentExamens'] = collect();
+        }
+
+        // Emplois du temps - Coordinateurs gèrent la planification
+        try {
+            $data['totalEmploiTemps'] = ESBTPEmploiTemps::count();
+            $data['activeEmploiTemps'] = ESBTPEmploiTemps::where('is_active', true)->count();
+        } catch (\Exception $e) {
+            $data['totalEmploiTemps'] = 0;
+            $data['activeEmploiTemps'] = 0;
+        }
+
+        // Présences - Coordinateurs suivent les présences
+        try {
+            $data['todayAttendances'] = ESBTPAttendance::whereDate('date', today())->count();
+            $totalPresent = ESBTPAttendance::where('status', 'present')->whereDate('date', today())->count();
+            $totalAbsent = ESBTPAttendance::where('status', 'absent')->whereDate('date', today())->count();
+            $attendanceRate = $totalPresent + $totalAbsent > 0
+                ? round(($totalPresent / ($totalPresent + $totalAbsent)) * 100, 1)
+                : 0;
+
+            $data['attendanceStats'] = [
+                'total_present' => $totalPresent,
+                'total_absent' => $totalAbsent,
+                'attendance_rate' => $attendanceRate
+            ];
+        } catch (\Exception $e) {
+            $data['todayAttendances'] = 0;
+            $data['attendanceStats'] = [
+                'total_present' => 0,
+                'total_absent' => 0,
+                'attendance_rate' => 0
+            ];
+        }
+
+        // Messages pour coordinateurs
+        try {
+            $data['recentMessages'] = Message::where(function($query) {
+                    $query->where('recipient_type', 'coordinateurs')
+                        ->whereNull('recipient_group');
+                })
+                ->orWhere(function($query) {
+                    $query->where('recipient_type', 'all')
+                        ->whereNull('recipient_group');
+                })
+                ->orWhere('recipient_id', Auth::id())
+                ->whereNull('parent_id')
+                ->orderBy('created_at', 'desc')
+                ->take(5)
+                ->get();
+        } catch (\Exception $e) {
+            $data['recentMessages'] = collect();
+        }
+
+        // Inscriptions en attente
+        try {
+            $data['pendingInscriptionsCount'] = ESBTPInscription::where('status', 'pending')->count();
+            $data['recentInscriptions'] = ESBTPInscription::with([
+                'etudiant',
+                'classe.filiere'
+            ])
+                ->orderBy('created_at', 'desc')
+                ->limit(5)
+                ->get();
+        } catch (\Exception $e) {
+            $data['pendingInscriptionsCount'] = 0;
+            $data['recentInscriptions'] = collect();
+        }
+
+        // Annonces récentes
+        try {
+            $data['recentAnnouncements'] = ESBTPAnnonce::orderBy('created_at', 'desc')
+                ->limit(3)
+                ->get();
+        } catch (\Exception $e) {
+            $data['recentAnnouncements'] = collect();
+        }
+
+        return view('dashboard.coordinateur', $data);
     }
 
     /**

@@ -49,7 +49,13 @@ class ESBTPLogsController extends Controller
         // Analyser les logs pour extraire les erreurs récentes
         $recentErrors = $this->parseRecentErrors($logContent);
         
-        return view('esbtp.logs.index', compact('logFiles', 'selectedLog', 'logContent', 'recentErrors'));
+        return view('esbtp.logs.index', [
+            'logs' => $logFiles,
+            'logFiles' => $logFiles,
+            'selectedLog' => $selectedLog,
+            'logContent' => $logContent,
+            'recentErrors' => $recentErrors
+        ]);
     }
     
     /**

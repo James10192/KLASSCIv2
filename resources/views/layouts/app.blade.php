@@ -565,6 +565,95 @@
                         </div>
                     @endif
 
+                    <!-- Coordinateur Section -->
+                    @if(auth()->user()->hasRole('coordinateur'))
+                        <div class="menu-category">Coordination pédagogique</div>
+
+                        <!-- Planning & Scheduling -->
+                        <div class="menu-accordion">
+                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.emploi-temps.*') || Request::routeIs('esbtp.planning-general.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-calendar-alt"></i></div>
+                                <div class="menu-text">Planning & Emplois du temps</div>
+                                <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
+                            </button>
+                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.emploi-temps.*') || Request::routeIs('esbtp.planning-general.*') ? 'show' : '' }}">
+                                <a href="{{ route('esbtp.emploi-temps.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.emploi-temps.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Emplois du temps</span>
+                                </a>
+                                <a href="{{ route('esbtp.planning-general.coordinateur') }}" class="menu-sublink {{ Request::routeIs('esbtp.planning-general.coordinateur') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Planning général</span>
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Student Management -->
+                        <div class="menu-accordion">
+                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-user-graduate"></i></div>
+                                <div class="menu-text">Gestion étudiants</div>
+                                <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
+                            </button>
+                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') ? 'show' : '' }}">
+                                <a href="{{ route('esbtp.etudiants.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.etudiants.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Liste des étudiants</span>
+                                </a>
+                                <a href="{{ route('esbtp.inscriptions.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.inscriptions.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Inscriptions</span>
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Personnel Management -->
+                        <div class="menu-accordion">
+                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.personnel.unified.*') || Request::routeIs('esbtp.attendances.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-users-cog"></i></div>
+                                <div class="menu-text">Gestion du personnel</div>
+                                <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
+                            </button>
+                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.personnel.unified.*') || Request::routeIs('esbtp.attendances.*') ? 'show' : '' }}">
+                                <a href="{{ route('esbtp.personnel.unified.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.personnel.unified.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Gestion du personnel</span>
+                                </a>
+                                <a href="{{ route('esbtp.attendances.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.attendances.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Présences étudiants</span>
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Evaluations & Grades -->
+                        <div class="menu-accordion">
+                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.evaluations.*') || Request::routeIs('esbtp.notes.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-clipboard-list"></i></div>
+                                <div class="menu-text">Évaluations & Notes</div>
+                                <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
+                            </button>
+                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.evaluations.*') || Request::routeIs('esbtp.notes.*') ? 'show' : '' }}">
+                                <a href="{{ route('esbtp.evaluations.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.evaluations.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Évaluations</span>
+                                </a>
+                                <a href="{{ route('esbtp.notes.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.notes.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Notes</span>
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Announcements -->
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.annonces.index') }}" class="menu-link {{ Request::routeIs('esbtp.annonces.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-bullhorn"></i></div>
+                                <div class="menu-text">Annonces</div>
+                            </a>
+                        </div>
+                    @endif
+
                     <!-- Teaching Section -->
                     @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire'))
                         <div class="menu-category">Enseignement</div>
@@ -847,6 +936,13 @@
                             <div class="menu-text">Profil</div>
                         </a>
                     </div>
+                    @elserole('coordinateur')
+                    <div class="menu-item">
+                        <a href="{{ route('coordinateur.profile') }}" class="menu-link {{ request()->routeIs('coordinateur.profile') ? 'active' : '' }}">
+                            <div class="menu-icon"><i class="fas fa-user-tie"></i></div>
+                            <div class="menu-text">Mon profil</div>
+                        </a>
+                    </div>
                     @else
                     <div class="menu-item">
                         <a href="{{ route('admin.profile') }}" class="menu-link {{ request()->routeIs('admin.profile') ? 'active' : '' }}">
@@ -1008,6 +1104,10 @@
                                             <a class="dropdown-item" href="{{ route('esbtp.mon-profil.index') }}">
                                     <i class="fas fa-user-circle me-2"></i> Mon profil
                                 </a>
+                                        @elserole('coordinateur')
+                                            <a class="dropdown-item" href="{{ route('coordinateur.profile') }}">
+                                                <i class="fas fa-user-tie me-2"></i> Mon profil
+                                            </a>
                                         @else
                                             <a class="dropdown-item" href="{{ route('admin.profile') }}">
                                                 <i class="fas fa-user-circle me-2"></i> Mon profil

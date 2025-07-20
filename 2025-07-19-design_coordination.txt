@@ -1,0 +1,17 @@
+╭───────────────────────────────────────────────────╮
+│ ✻ Welcome to Claude Code!                         │
+│                                                   │
+│   /help for help, /status for your current setup  │
+│                                                   │
+│   cwd: /mnt/c/xampp/htdocs/ESBTP-yAKROv2Pascal    │
+╰───────────────────────────────────────────────────╯
+● Compact summary (ctrl+r to expand)
+  ⎿  Read resources/views/esbtp/niveaux-etudes/show.blade.php (378 lines)
+  ⎿  Read resources/views/esbtp/niveaux-etudes/index.blade.php (260 lines)
+  ⎿  Read resources/views/esbtp/niveaux-etudes/create.blade.php (331 lines)
+  ⎿  Read public/css/dashboard-moderne.css (659 lines)
+  ⎿  Todo list read (7 items)
+  ⎿  Claude usage limit reached. Your limit will reset at 6pm (Africa/Abidjan).
+
+      • /upgrade to increase your usage limit.
+

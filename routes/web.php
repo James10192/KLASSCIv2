@@ -199,6 +199,14 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         Route::put('/admin/profile/update-password', [AdminProfileController::class, 'updatePassword'])->name('admin.password.update');
     });
 
+    // Routes pour la gestion du profil coordinateur
+    Route::middleware(['role:coordinateur'])->group(function () {
+        Route::get('/coordinateur/profile', [AdminProfileController::class, 'index'])->name('coordinateur.profile');
+        Route::put('/coordinateur/profile/update', [AdminProfileController::class, 'update'])->name('coordinateur.profile.update');
+        Route::put('/coordinateur/profile/update-professional', [AdminProfileController::class, 'updateProfessionalInfo'])->name('coordinateur.profile.update.professional');
+        Route::put('/coordinateur/profile/update-password', [AdminProfileController::class, 'updatePassword'])->name('coordinateur.password.update');
+    });
+
     // Routes pour les fonctionnalités ESBTP
     Route::prefix('esbtp')->name('esbtp.')->group(function () {
         // Routes protégées pour les super-administrateurs et secrétaires
@@ -1515,4 +1523,55 @@ Route::middleware(['auth'])->prefix('esbtp')->name('esbtp.')->group(function () 
     // Routes pour les coordinateurs (maintien de la compatibilité)
     Route::resource('coordinateurs', \App\Http\Controllers\ESBTPCoordinateurController::class);
     Route::patch('coordinateurs/{coordinateur}/toggle-status', [\App\Http\Controllers\ESBTPCoordinateurController::class, 'toggleStatus'])->name('coordinateurs.toggle-status');
+});
+
+// Routes pour les coordinateurs avec permissions spécifiques
+Route::middleware(['auth', 'role:coordinateur'])->prefix('esbtp')->name('esbtp.')->group(function () {
+    // Routes pour les inscriptions (lecture seule pour coordinateurs)
+    Route::get('/inscriptions', [\App\Http\Controllers\ESBTPInscriptionController::class, 'index'])->name('inscriptions.index')
+        ->middleware('permission:view_inscriptions');
+    Route::get('/inscriptions/{inscription}', [\App\Http\Controllers\ESBTPInscriptionController::class, 'show'])->name('inscriptions.show')
+        ->middleware('permission:view_inscriptions');
+    Route::get('/etudiants-inscriptions', [\App\Http\Controllers\ESBTPEtudiantController::class, 'indexFusionne'])->name('etudiants-inscriptions.index')
+        ->middleware('permission:view_inscriptions');
+    
+    // Routes pour les notes
+    Route::prefix('notes')->name('notes.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\ESBTPNoteController::class, 'index'])->name('index')
+            ->middleware('permission:view_notes');
+        Route::get('/{note}', [\App\Http\Controllers\ESBTPNoteController::class, 'show'])->name('show')
+            ->middleware('permission:view_notes');
+        Route::get('/evaluations/{evaluation}/saisie-rapide', [\App\Http\Controllers\ESBTPNoteController::class, 'saisieRapide'])->name('saisie-rapide')
+            ->middleware('permission:view_notes');
+    });
+    
+    // Routes pour les annonces
+    Route::prefix('annonces')->name('annonces.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\ESBTPAnnonceController::class, 'index'])->name('index')
+            ->middleware('permission:view_annonces');
+        Route::get('/create', [\App\Http\Controllers\ESBTPAnnonceController::class, 'create'])->name('create')
+            ->middleware('permission:create_annonces');
+        Route::post('/', [\App\Http\Controllers\ESBTPAnnonceController::class, 'store'])->name('store')
+            ->middleware('permission:create_annonces');
+        Route::get('/{annonce}', [\App\Http\Controllers\ESBTPAnnonceController::class, 'show'])->name('show')
+            ->middleware('permission:view_annonces');
+        Route::get('/{annonce}/edit', [\App\Http\Controllers\ESBTPAnnonceController::class, 'edit'])->name('edit')
+            ->middleware('permission:edit_annonces');
+        Route::put('/{annonce}', [\App\Http\Controllers\ESBTPAnnonceController::class, 'update'])->name('update')
+            ->middleware('permission:edit_annonces');
+        Route::delete('/{annonce}', [\App\Http\Controllers\ESBTPAnnonceController::class, 'destroy'])->name('destroy')
+            ->middleware('permission:edit_annonces');
+    });
+    
+    // Routes pour l'emploi du temps (déjà accessible via permissions existantes)
+    Route::get('/emploi-temps', [\App\Http\Controllers\ESBTPEmploiTempsController::class, 'index'])->name('emploi-temps.index')
+        ->middleware('permission:view_timetables');
+    Route::get('/emploi-temps/{emploi_temp}', [\App\Http\Controllers\ESBTPEmploiTempsController::class, 'show'])->name('emploi-temps.show')
+        ->middleware('permission:view_timetables');
+        
+    // Routes pour les présences (attendances) 
+    Route::get('/attendances', [\App\Http\Controllers\ESBTPAttendanceController::class, 'index'])->name('attendances.index')
+        ->middleware('permission:view_attendances');
+    Route::get('/attendances/{attendance}', [\App\Http\Controllers\ESBTPAttendanceController::class, 'show'])->name('attendances.show')
+        ->middleware('permission:view_attendances');
 });
