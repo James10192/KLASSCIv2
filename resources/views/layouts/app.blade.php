@@ -590,12 +590,12 @@
 
                         <!-- Student Management -->
                         <div class="menu-accordion">
-                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') ? 'active' : '' }}">
+                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.attendances.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-user-graduate"></i></div>
                                 <div class="menu-text">Gestion étudiants</div>
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
-                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') ? 'show' : '' }}">
+                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.attendances.*') ? 'show' : '' }}">
                                 <a href="{{ route('esbtp.etudiants.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.etudiants.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Liste des étudiants</span>
@@ -604,26 +604,19 @@
                                     <span class="menu-dot"></span>
                                     <span>Inscriptions</span>
                                 </a>
-                            </div>
-                        </div>
-
-                        <!-- Personnel Management -->
-                        <div class="menu-accordion">
-                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.personnel.unified.*') || Request::routeIs('esbtp.attendances.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-users-cog"></i></div>
-                                <div class="menu-text">Gestion du personnel</div>
-                                <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
-                            </button>
-                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.personnel.unified.*') || Request::routeIs('esbtp.attendances.*') ? 'show' : '' }}">
-                                <a href="{{ route('esbtp.personnel.unified.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.personnel.unified.*') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Gestion du personnel</span>
-                                </a>
                                 <a href="{{ route('esbtp.attendances.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.attendances.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Présences étudiants</span>
                                 </a>
                             </div>
+                        </div>
+
+                        <!-- Personnel Management -->
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.personnel.unified.index') }}" class="menu-link {{ Request::routeIs('esbtp.personnel.unified.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-users-cog"></i></div>
+                                <div class="menu-text">Gestion du personnel</div>
+                            </a>
                         </div>
 
                         <!-- Evaluations & Grades -->

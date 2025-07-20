@@ -17,29 +17,21 @@ class ESBTPPersonnelUnifiedController extends Controller
      */
     public function index(Request $request)
     {
-        // Vérifier les permissions - utiliser une permission plus générale si manage-users n'existe pas
-        try {
-            try {
-            $this->authorize('manage-users');
-        } catch (\Exception $e) {
-            if (!auth()->user()->hasAnyRole(['superAdmin', 'admin'])) {
-                abort(403, 'Accès non autorisé');
-            }
+        // Vérifier les permissions - permettre aux coordinateurs, superAdmin et admin
+        if (!auth()->user()->hasAnyRole(['superAdmin', 'admin', 'coordinateur'])) {
+            abort(403, 'Accès non autorisé');
         }
-        } catch (\Exception $e) {
-            // Fallback pour les utilisateurs avec les rôles admin ou superAdmin
-            if (!auth()->user()->hasAnyRole(['superAdmin', 'admin'])) {
-                abort(403, 'Accès non autorisé');
-            }
-        }
+        
+        // Vérifier si l'utilisateur est coordinateur pour ajuster l'affichage
+        $isCoordinateur = auth()->user()->hasRole('coordinateur');
         
         // Récupérer tous les types de personnel avec vérification des rôles
         $coordinateurs = collect();
         $secretaires = collect();
         
         try {
-            // Vérifier si le rôle coordinateur existe
-            if (Role::where('name', 'coordinateur')->exists()) {
+            // Ne récupérer les coordinateurs que si l'utilisateur connecté n'est pas coordinateur
+            if (!$isCoordinateur && Role::where('name', 'coordinateur')->exists()) {
                 $coordinateurs = User::role('coordinateur')
                     ->with(['roles'])
                     ->where('is_active', true)
@@ -84,7 +76,8 @@ class ESBTPPersonnelUnifiedController extends Controller
             'coordinateurs',
             'enseignants', 
             'secretaires',
-            'stats'
+            'stats',
+            'isCoordinateur'
         ));
     }
 

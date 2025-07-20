@@ -415,9 +415,11 @@
                             <i class="fas fa-plus me-1"></i>Nouveau Personnel
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
+                            @if(!$isCoordinateur)
                             <li><a class="dropdown-item" href="{{ route('esbtp.coordinateurs.create') }}">
                                 <i class="fas fa-user-tie me-2"></i>Coordinateur
                             </a></li>
+                            @endif
                             <li><a class="dropdown-item" href="{{ route('esbtp.enseignants.create') }}">
                                 <i class="fas fa-chalkboard-teacher me-2"></i>Enseignant
                             </a></li>
@@ -432,6 +434,7 @@
 
         <!-- Statistiques générales -->
         <div class="personnel-stats">
+            @if(!$isCoordinateur)
             <div class="stat-card coordinateurs">
                 <div class="icon">
                     <i class="fas fa-user-tie"></i>
@@ -439,6 +442,7 @@
                 <div class="stat-value">{{ $stats['coordinateurs'] ?? 0 }}</div>
                 <div class="stat-label">Coordinateurs</div>
             </div>
+            @endif
             <div class="stat-card enseignants">
                 <div class="icon">
                     <i class="fas fa-chalkboard-teacher"></i>
@@ -465,6 +469,7 @@
         <!-- Slider avec onglets -->
         <div class="personnel-slider">
             <div class="slider-tabs">
+                @if(!$isCoordinateur)
                 <button class="slider-tab active" data-tab="coordinateurs">
                     <span class="tab-icon">
                         <i class="fas fa-user-tie"></i>
@@ -472,7 +477,8 @@
                     <span class="tab-label">Coordinateurs</span>
                     <span class="tab-count">{{ $stats['coordinateurs'] ?? 0 }} personnes</span>
                 </button>
-                <button class="slider-tab" data-tab="enseignants">
+                @endif
+                <button class="slider-tab {{ $isCoordinateur ? 'active' : '' }}" data-tab="enseignants">
                     <span class="tab-icon">
                         <i class="fas fa-chalkboard-teacher"></i>
                     </span>
@@ -489,6 +495,7 @@
             </div>
 
             <div class="slider-content">
+                @if(!$isCoordinateur)
                 <!-- Panel Coordinateurs -->
                 <div class="slider-panel active" id="coordinateurs-panel">
                     <div class="personnel-actions">
@@ -595,9 +602,10 @@
                         @endif
                     </div>
                 </div>
+                @endif
 
                 <!-- Panel Enseignants -->
-                <div class="slider-panel" id="enseignants-panel">
+                <div class="slider-panel {{ $isCoordinateur ? 'active' : '' }}" id="enseignants-panel">
                     <div class="personnel-actions">
                         <div class="personnel-search">
                             <input type="text" class="search-input" placeholder="Rechercher un enseignant..." 

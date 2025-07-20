@@ -33,7 +33,9 @@ try {
         'edit_notes',
         'view_annonces',
         'create_annonces',
-        'edit_annonces'
+        'edit_annonces',
+        'personnel.unified.view',
+        'personnel.unified.index'
     ];
 
     foreach ($missingPermissions as $permissionName) {
