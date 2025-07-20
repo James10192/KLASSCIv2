@@ -14,7 +14,7 @@
                     </div>
                     <div>
                         <h1 style="color: white; margin: 0; font-size: var(--title-main); font-weight: 700;">Tableau de bord Super Admin</h1>
-                        <p style="color: rgba(255,255,255,0.8); margin: var(--space-xs) 0 0 0;">Gestion administrative ESBTP-yAKRO</p>
+                        <p style="color: rgba(255,255,255,0.8); margin: var(--space-xs) 0 0 0;">Gestion administrative KLASSCI</p>
                     </div>
                 </div>
             </div>
