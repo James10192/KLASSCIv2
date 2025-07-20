@@ -557,7 +557,7 @@
                         </a>
                     </div>
                     <div class="col-md-3 mb-2">
-                        <a href="{{ route('attendances.index') }}" class="btn-acasi secondary w-100">
+                        <a href="{{ route('esbtp.attendances.index') }}" class="btn-acasi secondary w-100">
                             <i class="fas fa-user-check me-2"></i>Présences/Absences
                         </a>
                     </div>
