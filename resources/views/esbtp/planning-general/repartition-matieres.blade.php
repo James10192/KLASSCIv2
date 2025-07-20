@@ -301,48 +301,15 @@
 @section('content')
 <div class="dashboard-acasi">
     <div class="main-content">
-        <!-- Header -->
-        <div class="repartition-header">
-            <div class="row align-items-center">
-                <div class="col-md-8">
-                    <h1><i class="fas fa-chart-pie me-2"></i>Répartition des Matières</h1>
-                    <p class="mb-0">Analyse de la distribution des heures d'enseignement par matière</p>
-                </div>
-                <div class="col-md-4 text-end">
-                    <a href="{{ route('esbtp.planning-general.index') }}" class="btn-acasi secondary">
-                        <i class="fas fa-arrow-left me-1"></i>Retour
-                    </a>
-                </div>
-            </div>
-        </div>
+        <!-- Header et navigation du planning -->
+        <x-planning-header 
+            title="Répartition des Matières" 
+            subtitle="Analyse de la distribution des heures d'enseignement par matière"
+            active-tab="repartition"
+            :annee-selectionnee="$anneeSelectionnee"
+            :annees="$annees"
+        />
 
-        <!-- Navigation du planning -->
-        <div class="planning-nav">
-            <ul class="nav nav-tabs" role="tablist">
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ route('esbtp.planning-general.index', ['annee_id' => request('annee_id')]) }}">
-                        <i class="fas fa-home me-2"></i>Vue d'ensemble
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ route('esbtp.planning-general.annuel', ['annee_id' => request('annee_id')]) }}">
-                        <i class="fas fa-calendar me-2"></i>Planning Annuel
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link active" href="{{ route('esbtp.planning-general.repartition-matieres', ['annee_id' => request('annee_id')]) }}">
-                        <i class="fas fa-chart-pie me-2"></i>Répartition Matières
-                    </a>
-                </li>
-                @canany(['manage-planning', 'view-all-timetables'])
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ route('esbtp.planning-general.coordinateur', ['annee_id' => request('annee_id')]) }}">
-                        <i class="fas fa-user-tie me-2"></i>Coordinateur
-                    </a>
-                </li>
-                @endcanany
-            </ul>
-        </div>
 
         <!-- Filtres -->
         <div class="filters-section">

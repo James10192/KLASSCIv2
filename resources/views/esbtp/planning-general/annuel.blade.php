@@ -589,51 +589,23 @@
 @section('content')
 <div class="dashboard-acasi">
     <div class="main-content">
+        <!-- Header et navigation du planning -->
+        <x-planning-header 
+            title="Planning Annuel" 
+            subtitle="Calendrier académique et répartition annuelle des cours"
+            active-tab="annuel"
+            :annee-selectionnee="$anneeSelectionnee"
+            :annees="$annees"
+        />
+
         <!-- Header avec design modernisé -->
         <div class="calendrier-academique">
             <div class="calendrier-header">
                 <h1 class="calendrier-title">📅 Calendrier Académique</h1>
                 <p class="calendrier-subtitle">Année {{ $anneeSelectionnee->name }}</p>
-                <div class="mt-lg">
-                    <a href="{{ route('esbtp.planning-general.index', ['annee_id' => $anneeSelectionnee->id]) }}" class="btn btn-light btn-lg">
-                        <i class="fas fa-arrow-left me-2"></i>Retour au Planning
-                    </a>
-                </div>
             </div>
         </div>
 
-        <!-- Navigation du planning -->
-        <div class="planning-nav">
-            <ul class="nav nav-tabs" role="tablist">
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ route('esbtp.planning-general.index', ['annee_id' => $anneeSelectionnee->id]) }}">
-                        <i class="fas fa-home me-2"></i>Vue d'ensemble
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link active" href="{{ route('esbtp.planning-general.annuel', ['annee_id' => $anneeSelectionnee->id]) }}">
-                        <i class="fas fa-calendar me-2"></i>Calendrier Académique
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ route('esbtp.planning-general.repartition-matieres', ['annee_id' => $anneeSelectionnee->id]) }}">
-                        <i class="fas fa-chart-pie me-2"></i>Répartition Matières
-                    </a>
-                </li>
-                @canany(['manage-planning', 'view-all-timetables'])
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ route('esbtp.planning-general.coordinateur', ['annee_id' => $anneeSelectionnee->id]) }}">
-                        <i class="fas fa-user-tie me-2"></i>Coordinateur
-                    </a>
-                </li>
-                @endcanany
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ route('esbtp.evenements-academiques.index', ['annee_id' => $anneeSelectionnee->id]) }}">
-                        <i class="fas fa-calendar-plus me-2"></i>Événements Académiques
-                    </a>
-                </li>
-            </ul>
-        </div>
 
         <!-- Statistiques mensuelles avec vraies données -->
         @if(!empty($statistiquesMensuelles))

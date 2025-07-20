@@ -294,6 +294,15 @@
 @section('content')
 <div class="dashboard-acasi">
     <div class="main-content">
+        <!-- Header et navigation du planning -->
+        <x-planning-header 
+            title="Interface Coordinateur" 
+            subtitle="Gestion avancée du planning et supervision académique"
+            active-tab="coordinateur"
+            :annee-selectionnee="$anneeSelectionnee"
+            :annees="$annees"
+        />
+
         <!-- Header Coordinateur -->
         <div class="coordinateur-header">
             <div class="row align-items-center">

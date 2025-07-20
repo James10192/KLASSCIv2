@@ -263,12 +263,17 @@
 @section('content')
 <div class="dashboard-acasi">
     <div class="main-content">
+        <!-- Header et navigation du planning -->
+        <x-planning-header 
+            title="Événements Académiques" 
+            subtitle="Gestion des événements et dates importantes du calendrier académique"
+            active-tab="evenements"
+            :annee-selectionnee="$anneeSelectionnee"
+            :annees="$annees"
+        />
+
         <div class="card-moderne">
             <div class="card-header-moderne">
-                <h1 class="section-title">
-                    <i class="fas fa-calendar-alt me-2"></i>
-                    Événements Académiques
-                </h1>
                 <div class="actions-top">
                     <a href="{{ route('esbtp.evenements-academiques.create', ['annee_id' => $anneeSelectionnee?->id]) }}" class="btn-acasi primary">
                         <i class="fas fa-plus me-2"></i>

@@ -231,10 +231,13 @@ class ESBTPPlanningGeneralController extends Controller
         
         // Statistiques par mois
         $statistiquesMensuelles = $this->calculerStatistiquesMensuelles($anneeSelectionnee);
+        
+        // Toutes les années pour le sélecteur
+        $annees = ESBTPAnneeUniversitaire::orderBy('start_date', 'desc')->get();
 
         return view('esbtp.planning-general.annuel', compact(
             'anneeSelectionnee', 'calendrierMensuel', 'evenementsAcademiques', 
-            'statistiquesMensuelles'
+            'statistiquesMensuelles', 'annees'
         ));
     }
 
@@ -248,6 +251,8 @@ class ESBTPPlanningGeneralController extends Controller
         $periode = $request->input('periode', 'annee'); // semestre1, semestre2, ou annee
         
         $annees = ESBTPAnneeUniversitaire::orderBy('start_date', 'desc')->get();
+        $anneeSelectionnee = ESBTPAnneeUniversitaire::find($anneeId) ?? 
+                            ESBTPAnneeUniversitaire::where('is_current', true)->first();
         $classes = ESBTPClasse::with(['filiere', 'niveau'])->orderBy('name')->get();
         
         // Répartition globale ou par classe avec comparaison planifié vs réalisé
@@ -270,7 +275,7 @@ class ESBTPPlanningGeneralController extends Controller
         $objectifsComparaison = $this->comparerAvecObjectifs($repartition, $classeId, $anneeId);
 
         return view('esbtp.planning-general.repartition-matieres', compact(
-            'annees', 'classes', 'repartition', 'objectifsComparaison', 'anneeId', 'classeId'
+            'annees', 'anneeSelectionnee', 'classes', 'repartition', 'objectifsComparaison', 'anneeId', 'classeId'
         ));
     }
 
