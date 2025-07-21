@@ -177,6 +177,63 @@
         margin-top: var(--space-sm);
     }
     
+    /* Conteneur des cards */
+    .emplois-cards-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: var(--space-md);
+        margin-bottom: var(--space-lg);
+    }
+    
+    /* Header du toggle vue */
+    .emploi-view-toggle {
+        display: flex;
+        align-items: center;
+    }
+    
+    /* État empty pour les cards */
+    .empty-state-card {
+        grid-column: 1 / -1;
+        background: var(--surface);
+        border-radius: var(--radius-medium);
+        border: 2px dashed #e5e7eb;
+    }
+    
+    /* Badges dans les cards */
+    .emploi-status-badges {
+        display: flex;
+        gap: var(--space-xs);
+        flex-wrap: wrap;
+    }
+    
+    .emploi-status-badges .badge-moderne {
+        font-size: 11px;
+        padding: 3px 8px;
+    }
+    
+    /* Animation de transition */
+    .emploi-card, .table-container {
+        transition: all 0.3s ease;
+    }
+    
+    /* Responsive pour les cards */
+    @media (max-width: 768px) {
+        .emplois-cards-container {
+            grid-template-columns: 1fr;
+        }
+        
+        .emploi-view-toggle {
+            order: -1;
+            margin-bottom: var(--space-sm);
+        }
+        
+        .card-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: var(--space-sm);
+        }
+    }
+    
     .table-moderne {
         margin-bottom: 0;
     }
@@ -403,14 +460,113 @@
         <div class="row">
             <!-- Main content -->
             <div class="col-lg-8">
-                <div class="emploi-table-container">
+                <div class="card-moderne">
                     <div class="card-header">
                         <h5 class="mb-0">
-                            <i class="fas fa-table me-2"></i>Liste des emplois du temps
+                            <i class="fas fa-calendar-alt me-2"></i>Liste des emplois du temps
                         </h5>
+                        <div class="emploi-view-toggle">
+                            <div class="btn-group btn-group-sm" role="group">
+                                <input type="radio" class="btn-check" name="viewMode" id="cardView" checked>
+                                <label class="btn btn-outline-secondary" for="cardView">
+                                    <i class="fas fa-th-large"></i> Cards
+                                </label>
+                                
+                                <input type="radio" class="btn-check" name="viewMode" id="tableView">
+                                <label class="btn btn-outline-secondary" for="tableView">
+                                    <i class="fas fa-table"></i> Tableau
+                                </label>
+                            </div>
+                        </div>
                     </div>
                     <div class="card-body">
-                        <div class="table-responsive">
+                        <!-- Vue en cards (par défaut) -->
+                        <div id="cardsContainer" class="emplois-cards-container">
+                            @forelse($emploisTemps as $emploiTemps)
+                                <div class="emploi-card {{ $emploiTemps->is_active ? 'active' : '' }}">
+                                    <div class="emploi-card-header">
+                                        <h6 class="emploi-card-title">
+                                            <i class="fas fa-graduation-cap me-2"></i>
+                                            {{ $emploiTemps->classe->name ?? 'Classe non définie' }}
+                                        </h6>
+                                        <div class="emploi-status-badges">
+                                            @if($emploiTemps->is_active)
+                                                <span class="badge-moderne success">Actif</span>
+                                            @else
+                                                <span class="badge-moderne secondary">Inactif</span>
+                                            @endif
+                                            @if(optional($emploiTemps)->is_current)
+                                                <span class="badge-moderne info">Courant</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="emploi-card-body">
+                                        <div class="emploi-info-grid">
+                                            <div class="emploi-info-item">
+                                                <div class="emploi-info-label">Filière</div>
+                                                <div class="emploi-info-value">{{ $emploiTemps->classe->filiere->name ?? 'Non définie' }}</div>
+                                            </div>
+                                            <div class="emploi-info-item">
+                                                <div class="emploi-info-label">Niveau</div>
+                                                <div class="emploi-info-value">{{ $emploiTemps->classe->niveau->name ?? 'Non défini' }}</div>
+                                            </div>
+                                            <div class="emploi-info-item">
+                                                <div class="emploi-info-label">Année</div>
+                                                <div class="emploi-info-value">{{ Str::limit($emploiTemps->annee->name ?? 'Non définie', 15) }}</div>
+                                            </div>
+                                            <div class="emploi-info-item">
+                                                <div class="emploi-info-label">Période</div>
+                                                <div class="emploi-info-value">
+                                                    @if($emploiTemps->semestre == 'Semestre 1')
+                                                        S1
+                                                    @elseif($emploiTemps->semestre == 'Semestre 2')
+                                                        S2
+                                                    @else
+                                                        Année
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="emploi-actions">
+                                            <a href="{{ route('esbtp.emploi-temps.show', $emploiTemps->id) }}" 
+                                               class="btn btn-sm btn-outline-primary" title="Voir">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{{ route('esbtp.emploi-temps.edit', $emploiTemps->id) }}" 
+                                               class="btn btn-sm btn-outline-warning" title="Modifier">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <form action="{{ route('esbtp.emploi-temps.destroy', $emploiTemps->id) }}" 
+                                                  method="POST" style="display: inline;" 
+                                                  onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet emploi du temps ?')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            @empty
+                                <div class="empty-state-card">
+                                    <div class="text-center py-5">
+                                        <i class="fas fa-calendar-times fa-4x text-muted mb-4"></i>
+                                        <h5 class="text-muted mb-2">Aucun emploi du temps trouvé</h5>
+                                        <p class="text-muted mb-4">Créez votre premier emploi du temps pour commencer.</p>
+                                        <a href="{{ route('esbtp.emploi-temps.create') }}" class="btn btn-primary">
+                                            <i class="fas fa-plus me-2"></i>Créer un emploi du temps
+                                        </a>
+                                    </div>
+                                </div>
+                            @endforelse
+                        </div>
+
+                        <!-- Vue tableau (masquée par défaut) -->
+                        <div id="tableContainer" class="table-container" style="display: none;">
+                            <div class="table-responsive">
                             <table class="table table-moderne datatable" id="emploiTempsTable" width="100%" cellspacing="0">
                             <thead>
                                 <tr>
@@ -516,6 +672,7 @@
                                     @endforelse
                                 </tbody>
                             </table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -619,15 +776,55 @@
 @section('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Initialize DataTable
-        const table = $('#emploiTempsTable').DataTable({
-            language: {
-                url: '//cdn.datatables.net/plug-ins/1.10.24/i18n/French.json'
-            },
-            pageLength: 10,
-            responsive: true,
-            order: [[3, 'desc'], [1, 'asc']]
-        });
+        // Basculer entre les vues
+        const cardView = document.getElementById('cardView');
+        const tableView = document.getElementById('tableView');
+        const cardsContainer = document.getElementById('cardsContainer');
+        const tableContainer = document.getElementById('tableContainer');
+        
+        // Gérer le changement de vue
+        function toggleView() {
+            if (cardView.checked) {
+                cardsContainer.style.display = 'block';
+                tableContainer.style.display = 'none';
+                localStorage.setItem('emploiTempsViewMode', 'cards');
+            } else if (tableView.checked) {
+                cardsContainer.style.display = 'none';
+                tableContainer.style.display = 'block';
+                localStorage.setItem('emploiTempsViewMode', 'table');
+                
+                // Réinitialiser DataTable si pas encore initialisé
+                if (!$.fn.dataTable.isDataTable('#emploiTempsTable')) {
+                    initializeDataTable();
+                }
+            }
+        }
+        
+        cardView.addEventListener('change', toggleView);
+        tableView.addEventListener('change', toggleView);
+        
+        // Restaurer la vue préférée de l'utilisateur
+        const savedViewMode = localStorage.getItem('emploiTempsViewMode');
+        if (savedViewMode === 'table') {
+            tableView.checked = true;
+            toggleView();
+        } else {
+            cardView.checked = true;
+            toggleView();
+        }
+        
+        // Initialize DataTable (seulement quand nécessaire)
+        function initializeDataTable() {
+            const table = $('#emploiTempsTable').DataTable({
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.10.24/i18n/French.json'
+                },
+                pageLength: 10,
+                responsive: true,
+                order: [[3, 'desc'], [1, 'asc']]
+            });
+            return table;
+        }
 
         // Initialize Select2 for enhanced selects
         $('.select2').select2({
