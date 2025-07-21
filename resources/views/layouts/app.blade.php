@@ -402,17 +402,22 @@
         /* ===== AMÉLIORATION DES DROPDOWNS ===== */
         .custom-dropdown {
             border: none;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
-            border-radius: 15px;
-            backdrop-filter: blur(20px);
-            background: rgba(255, 255, 255, 0.95);
-            animation: dropdownSlideIn 0.3s ease-out;
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15), 0 5px 20px rgba(0, 0, 0, 0.1);
+            border-radius: 18px;
+            backdrop-filter: blur(25px);
+            background: rgba(255, 255, 255, 0.97);
+            animation: dropdownSlideIn 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            min-width: 320px;
+            max-width: 380px;
+            border: 1px solid rgba(99, 102, 241, 0.08);
+            overflow: hidden;
+            padding: 8px 0;
         }
 
         @keyframes dropdownSlideIn {
             from {
                 opacity: 0;
-                transform: translateY(-10px) scale(0.95);
+                transform: translateY(-15px) scale(0.92);
             }
             to {
                 opacity: 1;
@@ -421,44 +426,467 @@
         }
 
         .custom-dropdown .dropdown-item {
-            border-radius: 8px;
-            margin: 2px 8px;
-            transition: all 0.2s ease;
+            border-radius: 12px;
+            margin: 3px 12px;
+            padding: 12px 16px;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            border: 1px solid transparent;
+            font-size: 14px;
+            line-height: 1.4;
         }
 
         .custom-dropdown .dropdown-item:hover {
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
-            transform: translateX(5px);
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(139, 92, 246, 0.08));
+            transform: translateX(6px);
+            border-color: rgba(99, 102, 241, 0.15);
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.1);
+        }
+
+        .custom-dropdown .dropdown-item:active {
+            transform: translateX(3px) scale(0.98);
+        }
+
+        /* En-têtes des dropdowns */
+        .custom-dropdown .dropdown-header {
+            font-weight: 700;
+            font-size: 16px;
+            color: #1f2937;
+            padding: 16px 20px 12px;
+            border-bottom: 2px solid rgba(99, 102, 241, 0.1);
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.02), rgba(139, 92, 246, 0.02));
+        }
+
+        /* Séparateurs */
+        .custom-dropdown .dropdown-divider {
+            margin: 12px 16px;
+            border-color: rgba(99, 102, 241, 0.12);
+            opacity: 1;
+        }
+
+        /* Notifications dropdown spécifiques */
+        .notification-item {
+            padding: 16px !important;
+            margin: 4px 12px !important;
+            border-radius: 14px !important;
+            display: flex !important;
+            align-items: flex-start !important;
+            gap: 14px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .notification-item.unread {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.03));
+            border-left: 4px solid #6366f1;
+        }
+
+        .notification-item:hover {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.08)) !important;
+            transform: translateX(4px) !important;
+        }
+
+        .notification-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 16px;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .notification-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .notification-title {
+            font-weight: 600;
+            color: #1f2937;
+            font-size: 14px;
+            margin-bottom: 4px;
+            line-height: 1.3;
+        }
+
+        .notification-text {
+            color: #6b7280;
+            font-size: 13px;
+            line-height: 1.4;
+            margin-bottom: 6px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .notification-time {
+            color: #9ca3af;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        /* Messages dropdown spécifiques */
+        .message-item {
+            padding: 16px !important;
+            margin: 4px 12px !important;
+            border-radius: 14px !important;
+            display: flex !important;
+            align-items: flex-start !important;
+            gap: 14px;
+            position: relative;
+        }
+
+        .message-item.unread {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.05), rgba(16, 185, 129, 0.03));
+            border-left: 4px solid #22c55e;
+        }
+
+        .message-item:hover {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(16, 185, 129, 0.08)) !important;
+            transform: translateX(4px) !important;
+        }
+
+        .message-avatar {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            font-weight: 600;
+            font-size: 16px;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        .message-avatar img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .message-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .message-sender {
+            font-weight: 600;
+            color: #1f2937;
+            font-size: 14px;
+            margin-bottom: 3px;
+        }
+
+        .message-title {
+            font-weight: 500;
+            color: #374151;
+            font-size: 13px;
+            margin-bottom: 4px;
+            line-height: 1.3;
+        }
+
+        .message-text {
+            color: #6b7280;
+            font-size: 13px;
+            line-height: 1.4;
+            margin-bottom: 6px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .message-time {
+            color: #9ca3af;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        /* Profile dropdown spécifiques */
+        .dropdown-user-details {
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.03), rgba(139, 92, 246, 0.02));
+            border-radius: 16px;
+            margin: 8px 12px 12px;
+            border: 1px solid rgba(99, 102, 241, 0.08);
+        }
+
+        .dropdown-user-avatar {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 3px solid rgba(99, 102, 241, 0.2);
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.2);
+        }
+
+        .dropdown-user-avatar img,
+        .dropdown-user-avatar .user-avatar {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            font-size: 20px;
+        }
+
+        .dropdown-user-info {
+            flex: 1;
+        }
+
+        .dropdown-user-name {
+            font-weight: 700;
+            color: #1f2937;
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .dropdown-user-email {
+            color: #6b7280;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        /* Lien "Voir tout" */
+        .view-all {
+            font-weight: 600 !important;
+            color: #6366f1 !important;
+            text-align: center;
+            padding: 14px 20px !important;
+            margin: 8px 12px 4px !important;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.03)) !important;
+            border-radius: 12px !important;
+            border: 1px solid rgba(99, 102, 241, 0.1) !important;
+        }
+
+        .view-all:hover {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.08)) !important;
+            color: #4f46e5 !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.15) !important;
         }
 
         /* ===== BADGES ET NOTIFICATIONS ===== */
         .navbar-badge {
             position: absolute;
-            top: -5px;
-            right: -5px;
-            background: linear-gradient(135deg, #ef4444, #f87171);
+            top: -6px;
+            right: -6px;
+            background: linear-gradient(135deg, #ef4444, #dc2626);
             color: white;
             border-radius: 50%;
-            width: 18px;
-            height: 18px;
-            font-size: 10px;
+            width: 20px;
+            height: 20px;
+            font-size: 11px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: 600;
-            animation: pulse 2s infinite;
+            font-weight: 700;
+            animation: badgePulse 2s infinite;
+            border: 2px solid white;
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+            z-index: 10;
         }
 
-        @keyframes pulse {
+        @keyframes badgePulse {
             0% {
-                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+                transform: scale(1);
+                box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4), 0 0 0 0 rgba(239, 68, 68, 0.7);
             }
-            70% {
-                box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+            50% {
+                transform: scale(1.1);
+                box-shadow: 0 4px 12px rgba(239, 68, 68, 0.6), 0 0 0 8px rgba(239, 68, 68, 0.1);
             }
             100% {
-                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+                transform: scale(1);
+                box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4), 0 0 0 0 rgba(239, 68, 68, 0);
             }
+        }
+
+        /* Icônes navbar améliorées */
+        .navbar-icon {
+            position: relative;
+            background: none;
+            border: none;
+            padding: 12px;
+            border-radius: 14px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            color: #6b7280;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 48px;
+            height: 48px;
+            margin: 0 4px;
+        }
+
+        .navbar-icon:hover {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.08));
+            color: #6366f1;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.15);
+        }
+
+        .navbar-icon:active {
+            transform: translateY(-1px) scale(0.95);
+        }
+
+        /* User navbar amélioré */
+        .navbar-user {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 16px;
+            border-radius: 16px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: rgba(255, 255, 255, 0.5);
+            border: 1px solid rgba(99, 102, 241, 0.08);
+            backdrop-filter: blur(10px);
+            cursor: pointer;
+        }
+
+        .navbar-user:hover {
+            background: rgba(255, 255, 255, 0.8);
+            border-color: rgba(99, 102, 241, 0.15);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.1);
+        }
+
+        .navbar-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 2px solid rgba(99, 102, 241, 0.15);
+            transition: all 0.3s ease;
+        }
+
+        .navbar-user:hover .navbar-avatar {
+            border-color: rgba(99, 102, 241, 0.3);
+            transform: scale(1.05);
+        }
+
+        .navbar-avatar img,
+        .navbar-avatar .user-avatar {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .navbar-user-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .navbar-user-name {
+            font-weight: 600;
+            color: #1f2937;
+            font-size: 14px;
+            line-height: 1.2;
+        }
+
+        /* States pour les dropdowns */
+        .dropdown.show .navbar-icon {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.12));
+            color: #6366f1;
+            transform: translateY(-1px);
+        }
+
+        .dropdown.show .navbar-user {
+            background: rgba(255, 255, 255, 0.9);
+            border-color: rgba(99, 102, 241, 0.2);
+            transform: translateY(-1px);
+        }
+
+        /* Responsive des dropdowns */
+        @media (max-width: 767.98px) {
+            .custom-dropdown {
+                min-width: 280px;
+                max-width: 300px;
+            }
+
+            .notification-item,
+            .message-item {
+                padding: 12px !important;
+            }
+
+            .notification-icon,
+            .message-avatar {
+                width: 36px;
+                height: 36px;
+                font-size: 14px;
+            }
+
+            .dropdown-user-details {
+                padding: 16px;
+            }
+
+            .dropdown-user-avatar {
+                width: 44px;
+                height: 44px;
+            }
+        }
+
+        /* Loading states */
+        .dropdown-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: #6b7280;
+        }
+
+        .dropdown-loading .spinner-border {
+            width: 1.5rem;
+            height: 1.5rem;
+            border-width: 2px;
+            border-color: #6366f1;
+            border-right-color: transparent;
+        }
+
+        /* Empty states */
+        .dropdown-empty {
+            text-align: center;
+            padding: 24px 20px;
+            color: #9ca3af;
+        }
+
+        .dropdown-empty i {
+            font-size: 32px;
+            margin-bottom: 12px;
+            opacity: 0.5;
+        }
+
+        .dropdown-empty-title {
+            font-weight: 600;
+            color: #6b7280;
+            margin-bottom: 6px;
+        }
+
+        .dropdown-empty-text {
+            font-size: 13px;
+            line-height: 1.4;
         }
     </style>
     @yield('styles')
@@ -992,12 +1420,13 @@
                 </li>
                                 <li><hr class="dropdown-divider"></li>
                                 <div id="notifications-list">
-                                    <li class="text-center py-3">
+                                    <li class="dropdown-loading">
                                         <div class="spinner-border spinner-border-sm" role="status">
                                             <span class="visually-hidden">Chargement...</span>
                                         </div>
-                </li>
-                                        </div>
+                                        <span class="ms-2">Chargement des notifications...</span>
+                                    </li>
+                                </div>
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
                                     <a class="dropdown-item text-center view-all" href="{{ route('notifications.index') }}">
@@ -1019,12 +1448,13 @@
                 </li>
                                 <li><hr class="dropdown-divider"></li>
                                 <div id="messages-list">
-                                    <li class="text-center py-3">
+                                    <li class="dropdown-loading">
                                         <div class="spinner-border spinner-border-sm" role="status">
                                             <span class="visually-hidden">Chargement...</span>
-                                            </div>
-                </li>
-                                            </div>
+                                        </div>
+                                        <span class="ms-2">Chargement des messages...</span>
+                                    </li>
+                                </div>
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
                                     <a class="dropdown-item text-center view-all" href="{{ route('esbtp.mes-messages.index') }}">
@@ -1046,12 +1476,13 @@
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
                                     <div class="quick-actions-grid" id="quick-actions-list">
-                                        <div class="text-center py-3">
+                                        <div class="dropdown-loading">
                                             <div class="spinner-border spinner-border-sm" role="status">
                                                 <span class="visually-hidden">Chargement...</span>
-                            </div>
-                                </div>
-                        </div>
+                                            </div>
+                                            <span class="ms-2">Chargement...</span>
+                                        </div>
+                                    </div>
                                 </li>
                             </ul>
                 </div>
@@ -1312,7 +1743,13 @@
                 })
                 .catch(error => {
                     console.error('❌ Erreur chargement notifications:', error);
-                    document.getElementById('notifications-list').innerHTML = '<li class="text-center py-3 text-muted">Erreur de chargement</li>';
+                    document.getElementById('notifications-list').innerHTML = `
+                        <li class="dropdown-empty">
+                            <i class="fas fa-exclamation-triangle text-warning"></i>
+                            <div class="dropdown-empty-title">Erreur de chargement</div>
+                            <div class="dropdown-empty-text">Impossible de charger les notifications. Veuillez réessayer.</div>
+                        </li>
+                    `;
                 });
 
             // Load messages
@@ -1327,7 +1764,13 @@
                 })
                 .catch(error => {
                     console.error('❌ Erreur chargement messages:', error);
-                    document.getElementById('messages-list').innerHTML = '<li class="text-center py-3 text-muted">Erreur de chargement</li>';
+                    document.getElementById('messages-list').innerHTML = `
+                        <li class="dropdown-empty">
+                            <i class="fas fa-exclamation-triangle text-warning"></i>
+                            <div class="dropdown-empty-title">Erreur de chargement</div>
+                            <div class="dropdown-empty-text">Impossible de charger les messages. Veuillez réessayer.</div>
+                        </li>
+                    `;
                 });
 
             // Load quick actions
@@ -1342,7 +1785,13 @@
                 })
                 .catch(error => {
                     console.error('❌ Erreur chargement actions rapides:', error);
-                    document.getElementById('quick-actions-list').innerHTML = '<div class="text-center py-3 text-muted">Erreur de chargement</div>';
+                    document.getElementById('quick-actions-list').innerHTML = `
+                        <div class="dropdown-empty">
+                            <i class="fas fa-exclamation-triangle text-warning"></i>
+                            <div class="dropdown-empty-title">Erreur de chargement</div>
+                            <div class="dropdown-empty-text">Impossible de charger les actions rapides. Veuillez réessayer.</div>
+                        </div>
+                    `;
                 });
         }
 
@@ -1352,15 +1801,23 @@
             const notificationsList = document.getElementById('notifications-list');
             const notificationsCount = document.getElementById('notifications-count');
 
+            // Mettre à jour le badge
             if (unreadCount > 0) {
-                notificationsCount.textContent = unreadCount;
+                notificationsCount.textContent = unreadCount > 99 ? '99+' : unreadCount;
                 notificationsCount.style.display = 'inline';
             } else {
                 notificationsCount.style.display = 'none';
             }
 
+            // État vide avec design amélioré
             if (notifications.length === 0) {
-                notificationsList.innerHTML = '<li class="text-center py-3 text-muted">Aucune notification</li>';
+                notificationsList.innerHTML = `
+                    <li class="dropdown-empty">
+                        <i class="fas fa-bell-slash"></i>
+                        <div class="dropdown-empty-title">Aucune notification</div>
+                        <div class="dropdown-empty-text">Vous êtes à jour ! Aucune nouvelle notification.</div>
+                    </li>
+                `;
                 return;
             }
 
@@ -1373,8 +1830,8 @@
                                 <i class="${notification.icon || 'fas fa-bell'}"></i>
                             </div>
                             <div class="notification-content">
-                                <div class="notification-title">${notification.title}</div>
-                                <div class="notification-text">${notification.message}</div>
+                                <div class="notification-title">${escapeHtml(notification.title)}</div>
+                                <div class="notification-text">${escapeHtml(notification.message)}</div>
                                 <div class="notification-time">${notification.time}</div>
                             </div>
                         </a>
@@ -1390,15 +1847,23 @@
             const messagesList = document.getElementById('messages-list');
             const messagesCount = document.getElementById('messages-count');
 
+            // Mettre à jour le badge
             if (unreadCount > 0) {
-                messagesCount.textContent = unreadCount;
+                messagesCount.textContent = unreadCount > 99 ? '99+' : unreadCount;
                 messagesCount.style.display = 'inline';
             } else {
                 messagesCount.style.display = 'none';
             }
 
+            // État vide avec design amélioré
             if (messages.length === 0) {
-                messagesList.innerHTML = '<li class="text-center py-3 text-muted">Aucun message</li>';
+                messagesList.innerHTML = `
+                    <li class="dropdown-empty">
+                        <i class="fas fa-envelope-open"></i>
+                        <div class="dropdown-empty-title">Aucun message</div>
+                        <div class="dropdown-empty-text">Votre boîte de réception est vide.</div>
+                    </li>
+                `;
                 return;
             }
 
@@ -1408,12 +1873,12 @@
                     <li>
                         <a class="dropdown-item message-item ${message.read ? '' : 'unread'}" href="${message.url || '#'}">
                             <div class="message-avatar">
-                                ${message.avatar ? `<img src="${message.avatar}" alt="${message.sender}">` : message.sender.charAt(0).toUpperCase()}
+                                ${message.avatar ? `<img src="${message.avatar}" alt="${escapeHtml(message.sender)}">` : escapeHtml(message.sender).charAt(0).toUpperCase()}
                             </div>
                             <div class="message-content">
-                                <div class="message-sender">${message.sender}</div>
-                                <div class="message-title">${message.title}</div>
-                                <div class="message-text">${message.message}</div>
+                                <div class="message-sender">${escapeHtml(message.sender)}</div>
+                                <div class="message-title">${escapeHtml(message.title)}</div>
+                                <div class="message-text">${escapeHtml(message.message)}</div>
                                 <div class="message-time">${message.time}</div>
                             </div>
                         </a>
@@ -1428,8 +1893,15 @@
             console.log('⚡ Mise à jour actions rapides:', actions);
             const quickActionsList = document.getElementById('quick-actions-list');
 
+            // État vide avec design amélioré
             if (actions.length === 0) {
-                quickActionsList.innerHTML = '<div class="text-center py-3 text-muted">Aucune action disponible</div>';
+                quickActionsList.innerHTML = `
+                    <div class="dropdown-empty">
+                        <i class="fas fa-rocket"></i>
+                        <div class="dropdown-empty-title">Aucune action</div>
+                        <div class="dropdown-empty-text">Aucune action rapide n'est disponible pour le moment.</div>
+                    </div>
+                `;
                 return;
             }
 
@@ -1440,11 +1912,24 @@
                         <div class="quick-action-icon text-${action.color}">
                             <i class="${action.icon}"></i>
                         </div>
-                        <div class="quick-action-text">${action.title}</div>
+                        <div class="quick-action-text">${escapeHtml(action.title)}</div>
                     </a>
                 `;
             });
             quickActionsList.innerHTML = html;
+        }
+
+        // Fonction utilitaire pour échapper le HTML
+        function escapeHtml(text) {
+            if (!text) return '';
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, function(m) { return map[m]; });
         }
 
         // Setup search functionality
