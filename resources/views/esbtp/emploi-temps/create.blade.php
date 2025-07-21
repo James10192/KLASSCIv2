@@ -92,6 +92,22 @@
                         </div>
 
                         <!-- Section d'information sur la planification académique -->
+                        @if(request('classe_id'))
+                            <div class="alert alert-info">
+                                <strong>Debug:</strong> Classe ID reçu = {{ request('classe_id') }}
+                                @if(isset($classeSelectionnee))
+                                    | Classe trouvée = {{ $classeSelectionnee->name ?? 'NULL' }}
+                                @else
+                                    | Classe non trouvée en base
+                                @endif
+                                @if(isset($planificationData))
+                                    | Données planification = OUI
+                                @else
+                                    | Données planification = NON
+                                @endif
+                            </div>
+                        @endif
+                        
                         @if(isset($planificationData) && $classeSelectionnee)
                         <div class="row mb-4">
                             <div class="col-12">
@@ -268,8 +284,18 @@
             placeholder: 'Sélectionnez un élément'
         });
 
-        // Recharger la page avec les données de planification lors du changement de classe
-        $('#classe_id').on('change', function() {
+        // Attendre que Select2 soit chargé puis attacher l'événement
+        $(document).ready(function() {
+            // Vérifier si jQuery et Select2 sont disponibles
+            if (typeof $ === 'undefined') {
+                console.error('jQuery non disponible');
+                return;
+            }
+            
+            // Attendre un peu que Select2 soit initialisé
+            setTimeout(function() {
+                // Recharger la page avec les données de planification lors du changement de classe
+                $('#classe_id').on('change', function() {
             const classeId = $(this).val();
             if (classeId) {
                 // Construire l'URL avec le paramètre classe_id
@@ -291,9 +317,22 @@
                 if (semestre) currentUrl.searchParams.set('semestre', semestre);
                 if (isActive) currentUrl.searchParams.set('is_active', '1');
                 
-                // Rediriger vers l'URL mise à jour
-                window.location.href = currentUrl.toString();
-            }
+                    // Rediriger vers l'URL mise à jour
+                    window.location.href = currentUrl.toString();
+                }
+            });
+            }, 500); // Attendre 500ms
+            
+            // Alternative : événement direct sur le select (au cas où Select2 pose problème)
+            document.getElementById('classe_id').addEventListener('change', function() {
+                const classeId = this.value;
+                if (classeId) {
+                    const currentUrl = new URL(window.location.href);
+                    currentUrl.searchParams.set('classe_id', classeId);
+                    console.log('Redirection vers:', currentUrl.toString());
+                    window.location.href = currentUrl.toString();
+                }
+            });
         });
 
         // Restaurer les valeurs depuis les paramètres URL au chargement

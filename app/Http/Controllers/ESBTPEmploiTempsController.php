@@ -122,7 +122,7 @@ class ESBTPEmploiTempsController extends Controller
         // Récupérer les planifications académiques pour cette classe
         $planifications = \App\Models\ESBTPPlanificationAcademique::where('annee_universitaire_id', $annee->id)
             ->where('filiere_id', $classe->filiere_id)
-            ->where('niveau_etude_id', $classe->niveau_id)
+            ->where('niveau_etude_id', $classe->niveau_etude_id)
             ->when($semestre, function($query) use ($semestre) {
                 $query->where('semestre', $semestre);
             })
@@ -150,14 +150,24 @@ class ESBTPEmploiTempsController extends Controller
         
         foreach ($planifications as $planification) {
             // Calculer les heures déjà programmées pour cette matière
-            $heuresUtilisees = \App\Models\ESBTPSeanceCours::where('matiere_id', $planification->matiere_id)
+            $seances = \App\Models\ESBTPSeanceCours::where('matiere_id', $planification->matiere_id)
                 ->where('classe_id', $classe->id)
                 ->where('annee_universitaire_id', $annee->id)
                 ->when($semestre, function($query) use ($semestre) {
                     // Si on a un semestre spécifique, filtrer les séances par période
                     // Cette logique peut être adaptée selon votre implémentation des semestres
                 })
-                ->sum('duree_minutes') / 60; // Convertir en heures
+                ->select('heure_debut', 'heure_fin')
+                ->get();
+                
+            $heuresUtilisees = 0;
+            foreach ($seances as $seance) {
+                if ($seance->heure_debut && $seance->heure_fin) {
+                    $debut = \Carbon\Carbon::parse($seance->heure_debut);
+                    $fin = \Carbon\Carbon::parse($seance->heure_fin);
+                    $heuresUtilisees += $fin->diffInMinutes($debut) / 60; // Convertir en heures
+                }
+            }
 
             $heuresRestantes = $planification->volume_horaire_total - $heuresUtilisees;
             
