@@ -757,10 +757,10 @@
                                     <span class="menu-dot"></span>
                                     <span>Rapports de présence</span>
                                 </a>
-                                <a href="{{ route('esbtp.teacher-attendance.history') }}" class="menu-sublink {{ Request::routeIs('esbtp.teacher-attendance.history') ? 'active' : '' }}">
+                                <!--   <a href="{{ route('esbtp.teacher-attendance.history') }}" class="menu-sublink {{ Request::routeIs('esbtp.teacher-attendance.history') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Historique émargement enseignant</span>
-                                </a>
+                                </a>-->
                                 <a href="{{ route('esbtp.attendance-codes.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.attendance-codes.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Codes d'émargement</span>
