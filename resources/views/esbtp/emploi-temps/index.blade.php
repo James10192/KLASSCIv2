@@ -2,168 +2,469 @@
 
 @section('title', 'Emplois du temps - ESBTP-yAKRO')
 
+@section('styles')
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<style>
+    /* Styles spécifiques pour les emplois du temps */
+    .emploi-temps-header {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+        border-radius: var(--radius-medium);
+        padding: var(--space-xl);
+        margin-bottom: var(--space-xl);
+        color: white;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .emploi-temps-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 100px;
+        height: 100%;
+        background: rgba(255,255,255,0.1);
+        transform: skewX(-15deg);
+        transform-origin: top;
+    }
+    
+    .emploi-stat-card {
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .emploi-stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        border-radius: var(--radius-medium) var(--radius-medium) 0 0;
+    }
+    
+    .emploi-stat-card.primary::before { background: var(--primary); }
+    .emploi-stat-card.success::before { background: var(--success); }
+    .emploi-stat-card.info::before { background: var(--accent-blue); }
+    .emploi-stat-card.warning::before { background: var(--warning); }
+    
+    .emploi-stat-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: var(--radius-circle);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto var(--space-sm);
+        font-size: 20px;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    .emploi-stat-card.primary .emploi-stat-icon { color: var(--primary); }
+    .emploi-stat-card.success .emploi-stat-icon { color: var(--success); }
+    .emploi-stat-card.info .emploi-stat-icon { color: var(--accent-blue); }
+    .emploi-stat-card.warning .emploi-stat-icon { color: var(--warning); }
+    
+    .emploi-stat-value {
+        font-size: var(--amount-large);
+        font-weight: bold;
+        color: var(--primary);
+        margin-bottom: var(--space-xs);
+    }
+    
+    .emploi-stat-label {
+        color: var(--text-secondary);
+        font-size: var(--text-small);
+        font-weight: 500;
+    }
+    
+    .emploi-filter-card {
+        background: var(--surface);
+        border-radius: var(--radius-medium);
+        box-shadow: var(--shadow-card);
+        border: 1px solid #e5e7eb;
+    }
+    
+    .emploi-table-container {
+        background: var(--surface);
+        border-radius: var(--radius-medium);
+        box-shadow: var(--shadow-card);
+        border: none;
+    }
+    
+    .emploi-card {
+        background: var(--surface);
+        border-radius: var(--radius-medium);
+        box-shadow: var(--shadow-card);
+        border: 1px solid #e5e7eb;
+        margin-bottom: var(--space-md);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .emploi-card:hover {
+        box-shadow: var(--shadow-hover);
+        transform: translateY(-2px);
+    }
+    
+    .emploi-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: var(--primary);
+    }
+    
+    .emploi-card.active::before {
+        background: var(--success);
+    }
+    
+    .emploi-card-header {
+        padding: var(--space-md);
+        border-bottom: 1px solid #f3f4f6;
+        display: flex;
+        justify-content: between;
+        align-items: center;
+    }
+    
+    .emploi-card-title {
+        font-weight: 600;
+        font-size: var(--text-normal);
+        color: var(--primary);
+        margin: 0;
+    }
+    
+    .emploi-card-body {
+        padding: var(--space-md);
+    }
+    
+    .emploi-info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: var(--space-sm);
+        margin-bottom: var(--space-md);
+    }
+    
+    .emploi-info-item {
+        text-align: center;
+    }
+    
+    .emploi-info-label {
+        font-size: var(--text-small);
+        color: var(--text-secondary);
+        margin-bottom: 2px;
+        font-weight: 500;
+    }
+    
+    .emploi-info-value {
+        font-size: var(--text-normal);
+        color: var(--text-primary);
+        font-weight: 600;
+    }
+    
+    .emploi-actions {
+        display: flex;
+        gap: var(--space-xs);
+        justify-content: flex-end;
+        padding-top: var(--space-sm);
+        border-top: 1px solid #f3f4f6;
+        margin-top: var(--space-sm);
+    }
+    
+    .table-moderne {
+        margin-bottom: 0;
+    }
+    
+    .table-moderne th {
+        background-color: var(--background);
+        color: var(--text-primary);
+        font-weight: 600;
+        font-size: var(--text-small);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid #e5e7eb;
+        padding: var(--space-md);
+        white-space: nowrap;
+        min-width: fit-content;
+    }
+    
+    .table-moderne td {
+        padding: var(--space-md);
+        border-bottom: 1px solid #f3f4f6;
+        vertical-align: middle;
+        white-space: nowrap;
+        min-width: fit-content;
+    }
+    
+    /* Largeurs spécifiques pour les colonnes */
+    .table-moderne .col-classe {
+        min-width: 120px;
+        font-weight: 600;
+    }
+    
+    .table-moderne .col-filiere {
+        min-width: 140px;
+    }
+    
+    .table-moderne .col-niveau {
+        min-width: 100px;
+    }
+    
+    .table-moderne .col-annee {
+        min-width: 150px;
+    }
+    
+    .table-moderne .col-periode {
+        min-width: 120px;
+    }
+    
+    .table-moderne .col-statut {
+        min-width: 180px;
+        white-space: nowrap;
+    }
+    
+    .table-moderne .col-statut .badge-moderne {
+        display: inline-block;
+        margin-right: 4px;
+        margin-bottom: 2px;
+        font-size: 11px;
+        padding: 3px 6px;
+    }
+    
+    .table-moderne .col-actions {
+        min-width: 120px;
+        text-align: center;
+    }
+    
+    .table-moderne tbody tr:hover {
+        background-color: rgba(30, 58, 138, 0.02);
+    }
+    
+    .badge-moderne {
+        padding: var(--space-xs) var(--space-sm);
+        border-radius: var(--radius-small);
+        font-size: var(--text-small);
+        font-weight: 500;
+    }
+    
+    .badge-moderne.primary {
+        background-color: rgba(30, 58, 138, 0.1);
+        color: var(--primary);
+    }
+    
+    .badge-moderne.success {
+        background-color: rgba(16, 185, 129, 0.1);
+        color: var(--success);
+    }
+    
+    .badge-moderne.secondary {
+        background-color: rgba(107, 114, 128, 0.1);
+        color: var(--neutral);
+    }
+    
+    .badge-moderne.info {
+        background-color: rgba(6, 182, 212, 0.1);
+        color: var(--accent-blue);
+    }
+    
+    .btn-group-moderne {
+        display: flex;
+        gap: var(--space-xs);
+    }
+    
+    .btn-moderne {
+        padding: var(--space-xs) var(--space-sm);
+        border: none;
+        border-radius: var(--radius-small);
+        font-size: var(--text-small);
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+    }
+    
+    .btn-moderne.info {
+        background-color: var(--accent-blue);
+        color: white;
+    }
+    
+    .btn-moderne.warning {
+        background-color: var(--warning);
+        color: white;
+    }
+    
+    .btn-moderne.danger {
+        background-color: var(--danger);
+        color: white;
+    }
+    
+    .btn-moderne:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-elevated);
+    }
+</style>
+@endsection
+
 @section('content')
-<div class="container-fluid">
-    <!-- HEADER PREMIUM -->
-    <div class="bg-gradient-primary rounded-4 p-5 mb-4 d-flex align-items-center justify-content-between" style="background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); min-height: 140px;">
-        <div class="d-flex align-items-center gap-4">
-            <div class="bg-white bg-opacity-25 rounded-circle d-flex align-items-center justify-content-center" style="width:60px;height:60px;">
-                <i class="fas fa-calendar-alt fa-2x text-white"></i>
-            </div>
-            <div>
-                <h1 class="text-white fw-bold mb-1" style="font-size:2rem;">Gestion des emplois du temps</h1>
-                <p class="text-white-50 mb-0">Administration avancée des plannings scolaires</p>
+<div class="dashboard-acasi">
+    <div class="main-content">
+        <!-- Header moderne des emplois du temps -->
+        <div class="emploi-temps-header">
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center">
+                    <div class="emploi-stat-icon me-4">
+                        <i class="fas fa-calendar-alt"></i>
+                    </div>
+                    <div>
+                        <h1 class="mb-1">Gestion des emplois du temps</h1>
+                        <p class="mb-0 opacity-75">Administration avancée des plannings scolaires avec intégration planning</p>
+                    </div>
+                </div>
+                <div class="d-flex gap-2">
+                    @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->can('create_timetable'))
+                        <a href="{{ route('esbtp.emploi-temps.create') }}" class="btn-acasi primary">
+                            <i class="fas fa-plus-circle me-2"></i>Nouveau
+                        </a>
+                    @endif
+                    @if(auth()->user()->hasRole('superAdmin'))
+                    <form action="{{ url('esbtp/activate-all-timetables') }}" method="POST" class="d-inline">
+                        @csrf
+                        <button type="submit" class="btn-acasi success" title="Active uniquement l'emploi du temps le plus récent pour chaque classe">
+                            <i class="fas fa-check-circle me-2"></i>Activer récents
+                        </button>
+                    </form>
+                    @endif
+                </div>
             </div>
         </div>
-        <div class="d-flex gap-2">
-            @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->can('create_timetable'))
-                <a href="{{ route('esbtp.emploi-temps.create') }}" class="btn btn-warning btn-lg rounded-pill px-4 fw-bold shadow-sm d-flex align-items-center gap-2">
-                    <i class="fas fa-plus-circle"></i> Nouveau
-                </a>
-            @endif
-            @if(auth()->user()->hasRole('superAdmin'))
-            <form action="{{ url('esbtp/activate-all-timetables') }}" method="POST" class="d-inline">
-                @csrf
-                <button type="submit" class="btn btn-success btn-lg rounded-pill px-4 fw-bold shadow-sm d-flex align-items-center gap-2" title="Active uniquement l'emploi du temps le plus récent pour chaque classe">
-                    <i class="fas fa-check-circle"></i> Activer récents
-                </button>
-            </form>
-            @endif
-        </div>
-    </div>
 
-    <!-- CARDS STATS PREMIUM -->
-    <div class="row g-4 mb-5 animate-fade-in-up">
-        <div class="col-xl-3 col-md-6">
-            <div class="card shadow-lg border-0 rounded-4 text-center p-4 h-100 hover-lift">
-                <div class="d-flex justify-content-center mb-3">
-                    <span class="d-inline-flex align-items-center justify-content-center bg-primary bg-gradient text-white rounded-circle" style="width:48px;height:48px;font-size:1.5rem;">
+        <!-- Statistiques des emplois du temps -->
+        <div class="kpi-grid mb-xl">
+            <div class="card-moderne emploi-stat-card primary">
+                <div class="p-lg">
+                    <div class="emploi-stat-icon">
                         <i class="fas fa-calendar"></i>
-                    </span>
+                    </div>
+                    <div class="emploi-stat-value">{{ $totalEmploisTemps }}</div>
+                    <div class="emploi-stat-label">Total emplois du temps</div>
                 </div>
-                <div class="display-6 fw-bold mb-1 text-primary">{{ $totalEmploisTemps }}</div>
-                <div class="text-muted mb-2">Total emplois du temps</div>
-                <span class="badge bg-primary bg-gradient rounded-pill px-3 py-2">Plannings</span>
             </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card shadow-lg border-0 rounded-4 text-center p-4 h-100 hover-lift">
-                <div class="d-flex justify-content-center mb-3">
-                    <span class="d-inline-flex align-items-center justify-content-center bg-success bg-gradient text-white rounded-circle" style="width:48px;height:48px;font-size:1.5rem;">
+            <div class="card-moderne emploi-stat-card success">
+                <div class="p-lg">
+                    <div class="emploi-stat-icon">
                         <i class="fas fa-check-circle"></i>
-                    </span>
+                    </div>
+                    <div class="emploi-stat-value">{{ $emploisTempsActifs }}</div>
+                    <div class="emploi-stat-label">Emplois du temps actifs</div>
                 </div>
-                <div class="display-6 fw-bold mb-1 text-success">{{ $emploisTempsActifs }}</div>
-                <div class="text-muted mb-2">Emplois du temps actifs</div>
-                <span class="badge bg-success bg-gradient rounded-pill px-3 py-2">Actifs</span>
             </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card shadow-lg border-0 rounded-4 text-center p-4 h-100 hover-lift">
-                <div class="d-flex justify-content-center mb-3">
-                    <span class="d-inline-flex align-items-center justify-content-center bg-info bg-gradient text-white rounded-circle" style="width:48px;height:48px;font-size:1.5rem;">
+            <div class="card-moderne emploi-stat-card info">
+                <div class="p-lg">
+                    <div class="emploi-stat-icon">
                         <i class="fas fa-chalkboard-teacher"></i>
-                    </span>
+                    </div>
+                    <div class="emploi-stat-value">{{ $totalSeances }}</div>
+                    <div class="emploi-stat-label">Total séances de cours</div>
                 </div>
-                <div class="display-6 fw-bold mb-1 text-info">{{ $totalSeances }}</div>
-                <div class="text-muted mb-2">Total séances de cours</div>
-                <span class="badge bg-info bg-gradient rounded-pill px-3 py-2">Séances</span>
             </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card shadow-lg border-0 rounded-4 text-center p-4 h-100 hover-lift">
-                <div class="d-flex justify-content-center mb-3">
-                    <span class="d-inline-flex align-items-center justify-content-center bg-warning bg-gradient text-white rounded-circle" style="width:48px;height:48px;font-size:1.5rem;">
+            <div class="card-moderne emploi-stat-card warning">
+                <div class="p-lg">
+                    <div class="emploi-stat-icon">
                         <i class="fas fa-graduation-cap"></i>
-                    </span>
+                    </div>
+                    <div class="emploi-stat-value">{{ $emploisTempsAnneeEnCours }}</div>
+                    <div class="emploi-stat-label">Année en cours</div>
                 </div>
-                <div class="display-6 fw-bold mb-1 text-warning">{{ $emploisTempsAnneeEnCours }}</div>
-                <div class="text-muted mb-2">Année en cours</div>
-                <span class="badge bg-warning bg-gradient rounded-pill px-3 py-2">Année</span>
             </div>
         </div>
-    </div>
 
-    <!-- Alerts -->
-    @if (session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
+        <!-- Alerts -->
+        @if (session('success'))
+            <div class="alert alert-success alert-dismissible fade show mb-lg" role="alert">
+                <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+
+        @if (session('error'))
+            <div class="alert alert-danger alert-dismissible fade show mb-lg" role="alert">
+                <i class="fas fa-exclamation-circle me-2"></i>{{ session('error') }}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    @endif
+            </div>
+        @endif
 
-    @if (session('error'))
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="fas fa-exclamation-circle me-2"></i>{{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    @endif
-
-    <div class="row">
-        <!-- Main content -->
-        <div class="col-lg-8">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-table me-2"></i>Liste des emplois du temps
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-striped datatable" id="emploiTempsTable" width="100%" cellspacing="0">
+        <div class="row">
+            <!-- Main content -->
+            <div class="col-lg-8">
+                <div class="emploi-table-container">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-table me-2"></i>Liste des emplois du temps
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-moderne datatable" id="emploiTempsTable" width="100%" cellspacing="0">
                             <thead>
                                 <tr>
-                                    <th>Classe</th>
-                                    <th>Filière</th>
-                                    <th>Niveau</th>
-                                    <th>Année</th>
-                                    <th>Période</th>
-                                    <th>Statut</th>
-                                    <th>Actions</th>
+                                    <th class="col-classe">Classe</th>
+                                    <th class="col-filiere">Filière</th>
+                                    <th class="col-niveau">Niveau</th>
+                                    <th class="col-annee">Année universitaire</th>
+                                    <th class="col-periode">Période</th>
+                                    <th class="col-statut">Statut</th>
+                                    <th class="col-actions">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse($emploisTemps as $emploiTemps)
-                                    <tr>
-                                        <td>{{ $emploiTemps->classe->name ?? 'Non définie' }}</td>
-                                        <td>{{ $emploiTemps->classe->filiere->name ?? 'Non définie' }}</td>
-                                        <td>{{ $emploiTemps->classe->niveau->name ?? 'Non défini' }}</td>
-                                        <td>{{ $emploiTemps->annee->name ?? 'Non définie' }}</td>
-                                        <td>
-                                            @if($emploiTemps->semestre == 'Semestre 1')
-                                                <span class="badge bg-primary">Semestre 1</span>
-                                            @elseif($emploiTemps->semestre == 'Semestre 2')
-                                                <span class="badge bg-primary">Semestre 2</span>
-                                            @else
-                                                <span class="badge bg-primary">Année complète</span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            @if($emploiTemps->is_active)
-                                                <span class="badge bg-success">Actif</span>
-                                            @else
-                                                <span class="badge bg-secondary">Inactif</span>
-                                            @endif
-                                            @if(optional($emploiTemps)->is_current)
-                                                <span class="badge bg-info ms-1">Courant</span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            <div class="btn-group" role="group">
-                                                <a href="{{ route('esbtp.emploi-temps.show', ['emploi_temp' => $emploiTemps->id]) }}" class="btn btn-sm btn-info" title="Voir">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
-                                                @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->can('edit_timetables'))
-                                                <a href="{{ route('esbtp.emploi-temps.edit', ['emploi_temp' => $emploiTemps->id]) }}" class="btn btn-sm btn-warning" title="Modifier">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
+                                    @forelse($emploisTemps as $emploiTemps)
+                                        <tr>
+                                            <td class="col-classe">{{ $emploiTemps->classe->name ?? 'Non définie' }}</td>
+                                            <td class="col-filiere">{{ $emploiTemps->classe->filiere->name ?? 'Non définie' }}</td>
+                                            <td class="col-niveau">{{ $emploiTemps->classe->niveau->name ?? 'Non défini' }}</td>
+                                            <td class="col-annee">{{ $emploiTemps->annee->name ?? 'Non définie' }}</td>
+                                            <td class="col-periode">
+                                                @if($emploiTemps->semestre == 'Semestre 1')
+                                                    <span class="badge-moderne primary">Semestre 1</span>
+                                                @elseif($emploiTemps->semestre == 'Semestre 2')
+                                                    <span class="badge-moderne primary">Semestre 2</span>
+                                                @else
+                                                    <span class="badge-moderne primary">Année complète</span>
                                                 @endif
-                                                @if(auth()->user()->hasRole('superAdmin') && auth()->user()->can('delete_timetables'))
-                                                <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ $emploiTemps->id }}" title="Supprimer">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
+                                            </td>
+                                            <td class="col-statut">
+                                                @if($emploiTemps->is_active)
+                                                    <span class="badge-moderne success">Actif</span>
+                                                @else
+                                                    <span class="badge-moderne secondary">Inactif</span>
                                                 @endif
-                                            </div>
+                                                @if(optional($emploiTemps)->is_current)
+                                                    <span class="badge-moderne info">Courant</span>
+                                                @endif
+                                            </td>
+                                            <td class="col-actions">
+                                                <div class="btn-group-moderne">
+                                                    <a href="{{ route('esbtp.emploi-temps.show', ['emploi_temp' => $emploiTemps->id]) }}" class="btn-moderne info" title="Voir">
+                                                        <i class="fas fa-eye"></i>
+                                                    </a>
+                                                    @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->can('edit_timetables'))
+                                                    <a href="{{ route('esbtp.emploi-temps.edit', ['emploi_temp' => $emploiTemps->id]) }}" class="btn-moderne warning" title="Modifier">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    @endif
+                                                    @if(auth()->user()->hasRole('superAdmin') && auth()->user()->can('delete_timetables'))
+                                                    <button type="button" class="btn-moderne danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ $emploiTemps->id }}" title="Supprimer">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                    @endif
+                                                </div>
 
                                             @if(auth()->user()->hasRole('superAdmin') && auth()->user()->can('delete_timetables'))
                                             <!-- Modal de confirmation de suppression -->
@@ -200,35 +501,35 @@
                                             @endif
                                         </td>
                                     </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="7" class="text-center">
-                                            <div class="py-4">
-                                                <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
-                                                <p class="mb-0">Aucun emploi du temps n'a été créé.</p>
-                                                <a href="{{ route('esbtp.emploi-temps.create') }}" class="btn btn-primary mt-3">
-                                                    <i class="fas fa-plus-circle me-1"></i>Créer un emploi du temps
-                                                </a>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
+                                    @empty
+                                        <tr>
+                                            <td colspan="7" class="text-center">
+                                                <div class="py-5">
+                                                    <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                                                    <p class="mb-0">Aucun emploi du temps n'a été créé.</p>
+                                                    <a href="{{ route('esbtp.emploi-temps.create') }}" class="btn-acasi primary mt-3">
+                                                        <i class="fas fa-plus-circle me-1"></i>Créer un emploi du temps
+                                                    </a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Sidebar with filters -->
-        <div class="col-lg-4">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-filter me-2"></i>Filtrer les emplois du temps
-                    </h6>
-                </div>
-                <div class="card-body">
+            <!-- Sidebar avec filtres -->
+            <div class="col-lg-4">
+                <div class="emploi-filter-card mb-4">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="fas fa-filter me-2"></i>Filtrer les emplois du temps
+                        </h6>
+                    </div>
+                    <div class="card-body">
                     <form action="{{ route('esbtp.emploi-temps.index') }}" method="GET" id="filterForm">
                         <div class="mb-3">
                             <label for="filiere_id" class="form-label">Filière</label>
@@ -276,33 +577,37 @@
                             </select>
                         </div>
 
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-search me-2"></i>Appliquer les filtres
-                            </button>
-                            <a href="{{ route('esbtp.emploi-temps.index') }}" class="btn btn-outline-secondary">
-                                <i class="fas fa-redo-alt me-2"></i>Réinitialiser les filtres
-                            </a>
-                        </div>
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn-acasi primary">
+                                    <i class="fas fa-search me-2"></i>Appliquer les filtres
+                                </button>
+                                <a href="{{ route('esbtp.emploi-temps.index') }}" class="btn-acasi secondary">
+                                    <i class="fas fa-redo-alt me-2"></i>Réinitialiser
+                                </a>
+                            </div>
                     </form>
                 </div>
             </div>
 
-            <!-- Quick actions card -->
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-bolt me-2"></i>Actions rapides
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="d-grid gap-2">
-                        <a href="{{ route('esbtp.emploi-temps.create') }}" class="btn btn-success">
-                            <i class="fas fa-plus-circle me-2"></i>Créer un emploi du temps
-                        </a>
-                        <!-- <a href="{{ route('esbtp.timetables.today') }}" class="btn btn-info">
-                            <i class="fas fa-calendar-day me-2"></i>Voir l'emploi du temps du jour
-                        </a> -->
+                <!-- Actions rapides -->
+                <div class="emploi-filter-card">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="fas fa-bolt me-2"></i>Actions rapides
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <a href="{{ route('esbtp.emploi-temps.create') }}" class="btn-acasi success">
+                                <i class="fas fa-plus-circle me-2"></i>Créer emploi du temps
+                            </a>
+                            <a href="{{ route('esbtp.planning-general.repartition-matieres') }}" class="btn-acasi info">
+                                <i class="fas fa-chart-pie me-2"></i>Répartition matières
+                            </a>
+                            <a href="{{ route('esbtp.planning-general.annuel') }}" class="btn-acasi warning">
+                                <i class="fas fa-calendar-alt me-2"></i>Planning annuel
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>

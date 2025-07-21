@@ -214,6 +214,19 @@ try {
         'create_secretaires',
         'edit_secretaires',
         'delete_secretaires',
+        
+        // Permissions planning général
+        'manage-planning',
+        'view-all-timetables',
+        
+        // Permissions pour les notes et inscriptions (coordinateur)
+        'view_inscriptions',
+        'view_notes',
+        'create_notes',
+        'edit_notes',
+        'view_annonces',
+        'create_annonces',
+        'edit_annonces',
     ];
 
     echo "Vérification et création des permissions...\n";
@@ -361,6 +374,17 @@ try {
         'coordinateurs.view', 'coordinateurs.create', 'coordinateurs.edit', 'coordinateurs.delete', 'coordinateurs.show', 'coordinateurs.index',
         'enseignants.view', 'enseignants.create', 'enseignants.edit', 'enseignants.delete', 'enseignants.show', 'enseignants.index', 'enseignants.toggleStatus',
         'personnel.unified.view', 'personnel.unified.index',
+        // Permissions planning ajoutées pour coordinateur
+        'manage-planning',
+        'view-all-timetables',
+        // Permissions pour les notes et inscriptions
+        'view_inscriptions',
+        'view_notes',
+        'create_notes',
+        'edit_notes',
+        'view_annonces',
+        'create_annonces',
+        'edit_annonces',
     ];
 
     echo "\nAssignation des permissions au rôle coordinateur...\n";

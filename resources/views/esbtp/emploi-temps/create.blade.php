@@ -91,6 +91,116 @@
                             </div>
                         </div>
 
+                        <!-- Section d'information sur la planification académique -->
+                        @if(isset($planificationData) && $classeSelectionnee)
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="card border-info">
+                                    <div class="card-header bg-info text-white">
+                                        <h6 class="mb-0">
+                                            <i class="fas fa-calendar-alt me-2"></i>
+                                            Planification académique - {{ $classeSelectionnee->name }}
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        @if($planificationData['planifications_configurees'])
+                                            <div class="alert alert-success">
+                                                <i class="fas fa-check-circle me-2"></i>
+                                                <strong>Planification configurée</strong> - {{ $planificationData['matieres_planifiees']->count() }} matière(s) planifiée(s)
+                                            </div>
+                                            
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <h6 class="fw-bold text-primary">Matières disponibles</h6>
+                                                    <div class="table-responsive">
+                                                        <table class="table table-sm table-bordered">
+                                                            <thead class="table-light">
+                                                                <tr>
+                                                                    <th>Matière</th>
+                                                                    <th>Enseignant</th>
+                                                                    <th>Heures restantes</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                @foreach($planificationData['matieres_planifiees'] as $matiere)
+                                                                <tr class="{{ $matiere['heures_restantes'] <= 0 ? 'table-warning' : '' }}">
+                                                                    <td>
+                                                                        <strong>{{ $matiere['matiere']->name }}</strong>
+                                                                        <br>
+                                                                        <small class="text-muted">
+                                                                            Total: {{ $matiere['volume_horaire_total'] }}h
+                                                                        </small>
+                                                                    </td>
+                                                                    <td>
+                                                                        @if($matiere['enseignant_principal'])
+                                                                            <small>{{ $matiere['enseignant_principal']->name }}</small>
+                                                                        @else
+                                                                            <small class="text-muted">Non assigné</small>
+                                                                        @endif
+                                                                    </td>
+                                                                    <td>
+                                                                        <span class="badge {{ $matiere['heures_restantes'] > 0 ? 'bg-success' : 'bg-warning' }}">
+                                                                            {{ $matiere['heures_restantes'] }}h
+                                                                        </span>
+                                                                        <br>
+                                                                        <small class="text-muted">
+                                                                            {{ $matiere['pourcentage_utilise'] }}% utilisé
+                                                                        </small>
+                                                                    </td>
+                                                                </tr>
+                                                                @endforeach
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="col-md-6">
+                                                    <h6 class="fw-bold text-primary">Résumé des heures</h6>
+                                                    <div class="row">
+                                                        <div class="col-6">
+                                                            <div class="card text-center">
+                                                                <div class="card-body p-2">
+                                                                    <h4 class="text-primary mb-1">{{ $planificationData['heures_totales'] }}h</h4>
+                                                                    <small class="text-muted">Total planifié</small>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-6">
+                                                            <div class="card text-center">
+                                                                <div class="card-body p-2">
+                                                                    <h4 class="text-success mb-1">{{ $planificationData['heures_restantes'] }}h</h4>
+                                                                    <small class="text-muted">Restantes</small>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    @if($planificationData['heures_restantes'] <= 0)
+                                                        <div class="alert alert-warning mt-2">
+                                                            <i class="fas fa-exclamation-triangle me-2"></i>
+                                                            <small>Toutes les heures ont été programmées pour cette classe.</small>
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        @else
+                                            <div class="alert alert-warning">
+                                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                                <strong>Planification non configurée</strong>
+                                            </div>
+                                            <p class="mb-2">{{ $planificationData['message_configuration'] }}</p>
+                                            @if($planificationData['lien_configuration'])
+                                                <a href="{{ $planificationData['lien_configuration'] }}" class="btn btn-warning btn-sm" target="_blank">
+                                                    <i class="fas fa-cog me-1"></i>Configurer la planification
+                                                </a>
+                                            @endif
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        @endif
+
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <div class="form-group">
@@ -156,6 +266,59 @@
             theme: 'bootstrap-5',
             width: '100%',
             placeholder: 'Sélectionnez un élément'
+        });
+
+        // Recharger la page avec les données de planification lors du changement de classe
+        $('#classe_id').on('change', function() {
+            const classeId = $(this).val();
+            if (classeId) {
+                // Construire l'URL avec le paramètre classe_id
+                const currentUrl = new URL(window.location.href);
+                currentUrl.searchParams.set('classe_id', classeId);
+                
+                // Conserver les autres champs déjà remplis
+                const titre = document.getElementById('titre').value;
+                const dateDebut = document.getElementById('date_debut').value;
+                const dateFin = document.getElementById('date_fin').value;
+                const anneeId = document.getElementById('annee_universitaire_id').value;
+                const semestre = document.getElementById('semestre').value;
+                const isActive = document.getElementById('is_active').checked;
+                
+                if (titre) currentUrl.searchParams.set('titre', titre);
+                if (dateDebut) currentUrl.searchParams.set('date_debut', dateDebut);
+                if (dateFin) currentUrl.searchParams.set('date_fin', dateFin);
+                if (anneeId) currentUrl.searchParams.set('annee_universitaire_id', anneeId);
+                if (semestre) currentUrl.searchParams.set('semestre', semestre);
+                if (isActive) currentUrl.searchParams.set('is_active', '1');
+                
+                // Rediriger vers l'URL mise à jour
+                window.location.href = currentUrl.toString();
+            }
+        });
+
+        // Restaurer les valeurs depuis les paramètres URL au chargement
+        $(document).ready(function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            // Restaurer les valeurs des champs depuis l'URL
+            if (urlParams.get('titre')) {
+                document.getElementById('titre').value = urlParams.get('titre');
+            }
+            if (urlParams.get('date_debut')) {
+                document.getElementById('date_debut').value = urlParams.get('date_debut');
+            }
+            if (urlParams.get('date_fin')) {
+                document.getElementById('date_fin').value = urlParams.get('date_fin');
+            }
+            if (urlParams.get('annee_universitaire_id')) {
+                $('#annee_universitaire_id').val(urlParams.get('annee_universitaire_id')).trigger('change');
+            }
+            if (urlParams.get('semestre')) {
+                $('#semestre').val(urlParams.get('semestre')).trigger('change');
+            }
+            if (urlParams.get('is_active') === '1') {
+                document.getElementById('is_active').checked = true;
+            }
         });
 
         // Bouton pour définir la semaine courante
