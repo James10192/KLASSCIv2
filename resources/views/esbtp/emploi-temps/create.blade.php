@@ -64,8 +64,15 @@
                                     <select class="form-select @error('annee_universitaire_id') is-invalid @enderror" id="annee_universitaire_id" name="annee_universitaire_id" required>
                                         <option value="">Sélectionner une année universitaire</option>
                                         @foreach($annees as $annee)
-                                            <option value="{{ $annee->id }}" {{ old('annee_universitaire_id') == $annee->id ? 'selected' : '' }}>
+                                            <option value="{{ $annee->id }}" {{ 
+                                                old('annee_universitaire_id') == $annee->id || 
+                                                (empty(old('annee_universitaire_id')) && isset($anneeActive) && $anneeActive->id == $annee->id) ||
+                                                request('annee_universitaire_id') == $annee->id
+                                                ? 'selected' : '' }}>
                                                 {{ $annee->name }}
+                                                @if($anneeActive && $anneeActive->id == $annee->id)
+                                                    (Année en cours)
+                                                @endif
                                             </option>
                                         @endforeach
                                     </select>
@@ -294,45 +301,56 @@
             
             // Attendre un peu que Select2 soit initialisé
             setTimeout(function() {
-                // Recharger la page avec les données de planification lors du changement de classe
-                $('#classe_id').on('change', function() {
-            const classeId = $(this).val();
-            if (classeId) {
-                // Construire l'URL avec le paramètre classe_id
-                const currentUrl = new URL(window.location.href);
-                currentUrl.searchParams.set('classe_id', classeId);
-                
-                // Conserver les autres champs déjà remplis
-                const titre = document.getElementById('titre').value;
-                const dateDebut = document.getElementById('date_debut').value;
-                const dateFin = document.getElementById('date_fin').value;
-                const anneeId = document.getElementById('annee_universitaire_id').value;
-                const semestre = document.getElementById('semestre').value;
-                const isActive = document.getElementById('is_active').checked;
-                
-                if (titre) currentUrl.searchParams.set('titre', titre);
-                if (dateDebut) currentUrl.searchParams.set('date_debut', dateDebut);
-                if (dateFin) currentUrl.searchParams.set('date_fin', dateFin);
-                if (anneeId) currentUrl.searchParams.set('annee_universitaire_id', anneeId);
-                if (semestre) currentUrl.searchParams.set('semestre', semestre);
-                if (isActive) currentUrl.searchParams.set('is_active', '1');
-                
-                    // Rediriger vers l'URL mise à jour
-                    window.location.href = currentUrl.toString();
+                // Fonction pour recharger les données de planification
+                function rechargerPlanification() {
+                    const classeId = $('#classe_id').val();
+                    const anneeId = $('#annee_universitaire_id').val();
+                    
+                    if (classeId && anneeId) {
+                        // Construire l'URL avec les paramètres nécessaires
+                        const currentUrl = new URL(window.location.href);
+                        currentUrl.searchParams.set('classe_id', classeId);
+                        currentUrl.searchParams.set('annee_universitaire_id', anneeId);
+                        
+                        // Conserver les autres champs déjà remplis
+                        const titre = document.getElementById('titre').value;
+                        const dateDebut = document.getElementById('date_debut').value;
+                        const dateFin = document.getElementById('date_fin').value;
+                        const semestre = $('#semestre').val();
+                        const isActive = document.getElementById('is_active').checked;
+                        
+                        if (titre) currentUrl.searchParams.set('titre', titre);
+                        if (dateDebut) currentUrl.searchParams.set('date_debut', dateDebut);
+                        if (dateFin) currentUrl.searchParams.set('date_fin', dateFin);
+                        if (semestre) currentUrl.searchParams.set('semestre', semestre);
+                        if (isActive) currentUrl.searchParams.set('is_active', '1');
+                        
+                        // Rediriger vers l'URL mise à jour
+                        window.location.href = currentUrl.toString();
+                    }
                 }
-            });
+
+                // Événements sur classe et année universitaire
+                $('#classe_id').on('change', rechargerPlanification);
+                $('#annee_universitaire_id').on('change', rechargerPlanification);
             }, 500); // Attendre 500ms
             
-            // Alternative : événement direct sur le select (au cas où Select2 pose problème)
-            document.getElementById('classe_id').addEventListener('change', function() {
-                const classeId = this.value;
-                if (classeId) {
+            // Alternative : événement direct sur les selects (au cas où Select2 pose problème)
+            function fallbackRechargerPlanification() {
+                const classeId = document.getElementById('classe_id').value;
+                const anneeId = document.getElementById('annee_universitaire_id').value;
+                
+                if (classeId && anneeId) {
                     const currentUrl = new URL(window.location.href);
                     currentUrl.searchParams.set('classe_id', classeId);
+                    currentUrl.searchParams.set('annee_universitaire_id', anneeId);
                     console.log('Redirection vers:', currentUrl.toString());
                     window.location.href = currentUrl.toString();
                 }
-            });
+            }
+            
+            document.getElementById('classe_id').addEventListener('change', fallbackRechargerPlanification);
+            document.getElementById('annee_universitaire_id').addEventListener('change', fallbackRechargerPlanification);
         });
 
         // Restaurer les valeurs depuis les paramètres URL au chargement

@@ -93,12 +93,21 @@ class ESBTPEmploiTempsController extends Controller
         // Si on a une classe sélectionnée (via paramètres GET ou session)
         $classeSelectionnee = request('classe_id') ? ESBTPClasse::find(request('classe_id')) : null;
         
-        if ($classeSelectionnee && $anneeActive) {
-            $planificationData = $this->getPlanificationDataForClasse($classeSelectionnee, $anneeActive);
+        // Utiliser l'année sélectionnée dans le formulaire ou l'année active par défaut
+        $anneeSelectionnee = null;
+        if (request('annee_universitaire_id')) {
+            $anneeSelectionnee = ESBTPAnneeUniversitaire::find(request('annee_universitaire_id'));
+        } elseif ($anneeActive) {
+            $anneeSelectionnee = $anneeActive;
+        }
+        
+        if ($classeSelectionnee && $anneeSelectionnee) {
+            $semestre = request('semestre') ?: null;
+            $planificationData = $this->getPlanificationDataForClasse($classeSelectionnee, $anneeSelectionnee, $semestre);
         }
 
         return view('esbtp.emploi-temps.create', compact(
-            'classes', 'annees', 'semaineCourante', 'planificationData', 'classeSelectionnee', 'anneeActive'
+            'classes', 'annees', 'semaineCourante', 'planificationData', 'classeSelectionnee', 'anneeActive', 'anneeSelectionnee'
         ));
     }
 
