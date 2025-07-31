@@ -87,8 +87,8 @@ class ESBTPTeacherAttendance extends Model
         // Déclencher l'événement pour mettre à jour les heures de planification
         try {
             // Chercher la séance de cours correspondante
-            $seance = \App\Models\ESBTPSeanceCours::where('enseignant_id', $this->teacher_id)
-                ->whereDate('date', $this->date)
+            $seance = \App\Models\ESBTPSeanceCours::where('teacher_id', $this->teacher_id)
+                ->whereDate('date_seance', $this->date)
                 ->first();
 
             if ($seance) {
