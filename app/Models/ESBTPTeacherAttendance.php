@@ -83,6 +83,23 @@ class ESBTPTeacherAttendance extends Model
         $this->status = 'fait';
         $this->validated_at = now();
         $this->save();
+
+        // Déclencher l'événement pour mettre à jour les heures de planification
+        try {
+            // Chercher la séance de cours correspondante
+            $seance = \App\Models\ESBTPSeanceCours::where('enseignant_id', $this->teacher_id)
+                ->whereDate('date', $this->date)
+                ->first();
+
+            if ($seance) {
+                event(new \App\Events\TeacherAttendanceValidated($this, $seance));
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Erreur lors du déclenchement de l\'événement TeacherAttendanceValidated', [
+                'attendance_id' => $this->id,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 
     /**

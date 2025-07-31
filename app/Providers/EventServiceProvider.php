@@ -14,6 +14,7 @@ use App\Events\BonApprouve;
 use App\Events\SeuilAtteint;
 use App\Events\RelanceEnvoyee;
 use App\Events\KPIsCalcules;
+use App\Events\TeacherAttendanceValidated;
 
 // Import all the listeners
 use App\Listeners\EnvoyerNotificationPaiement;
@@ -22,6 +23,7 @@ use App\Listeners\NotifierBonApprouve;
 use App\Listeners\GererSeuilAtteint;
 use App\Listeners\TraiterRelanceEnvoyee;
 use App\Listeners\MettreAJourDashboard;
+use App\Listeners\UpdatePlanificationHours;
 
 class EventServiceProvider extends ServiceProvider
 {
@@ -59,6 +61,11 @@ class EventServiceProvider extends ServiceProvider
 
         KPIsCalcules::class => [
             MettreAJourDashboard::class,
+        ],
+
+        // Événements émargement enseignants
+        TeacherAttendanceValidated::class => [
+            UpdatePlanificationHours::class,
         ],
     ];
 

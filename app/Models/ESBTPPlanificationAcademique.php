@@ -43,7 +43,9 @@ class ESBTPPlanificationAcademique extends Model
         'observations',
         'is_active',
         'created_by',
-        'updated_by'
+        'updated_by',
+        'heures_effectuees',
+        'derniere_mise_a_jour_heures'
     ];
 
     /**

@@ -158,23 +158,28 @@ class ESBTPEmploiTempsController extends Controller
         $enseignantsIds = collect();
         
         foreach ($planifications as $planification) {
-            // Calculer les heures déjà programmées pour cette matière
-            $seances = \App\Models\ESBTPSeanceCours::where('matiere_id', $planification->matiere_id)
-                ->where('classe_id', $classe->id)
-                ->where('annee_universitaire_id', $annee->id)
-                ->when($semestre, function($query) use ($semestre) {
-                    // Si on a un semestre spécifique, filtrer les séances par période
-                    // Cette logique peut être adaptée selon votre implémentation des semestres
-                })
-                ->select('heure_debut', 'heure_fin')
-                ->get();
-                
-            $heuresUtilisees = 0;
-            foreach ($seances as $seance) {
-                if ($seance->heure_debut && $seance->heure_fin) {
-                    $debut = \Carbon\Carbon::parse($seance->heure_debut);
-                    $fin = \Carbon\Carbon::parse($seance->heure_fin);
-                    $heuresUtilisees += $fin->diffInMinutes($debut) / 60; // Convertir en heures
+            // Utiliser les heures effectuées basées sur les émargements validés
+            // Si le champ n'existe pas encore, utiliser l'ancienne méthode comme fallback
+            $heuresUtilisees = $planification->heures_effectuees ?? 0;
+            
+            // Fallback : si pas d'heures effectuées, calculer à partir des séances
+            if ($heuresUtilisees == 0) {
+                $seances = \App\Models\ESBTPSeanceCours::where('matiere_id', $planification->matiere_id)
+                    ->where('classe_id', $classe->id)
+                    ->where('annee_universitaire_id', $annee->id)
+                    ->when($semestre, function($query) use ($semestre) {
+                        // Si on a un semestre spécifique, filtrer les séances par période
+                        // Cette logique peut être adaptée selon votre implémentation des semestres
+                    })
+                    ->select('heure_debut', 'heure_fin')
+                    ->get();
+                    
+                foreach ($seances as $seance) {
+                    if ($seance->heure_debut && $seance->heure_fin) {
+                        $debut = \Carbon\Carbon::parse($seance->heure_debut);
+                        $fin = \Carbon\Carbon::parse($seance->heure_fin);
+                        $heuresUtilisees += $fin->diffInMinutes($debut) / 60; // Convertir en heures
+                    }
                 }
             }
 
