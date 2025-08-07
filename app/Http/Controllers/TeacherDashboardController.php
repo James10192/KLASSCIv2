@@ -70,7 +70,7 @@ class TeacherDashboardController extends Controller
         // 4. Jours de la semaine
         $joursSemaine = [
             0 => 'Lundi', 1 => 'Mardi', 2 => 'Mercredi', 3 => 'Jeudi',
-            4 => 'Vendredi', 5 => 'Samedi', 6 => 'Dimanche'
+            4 => 'Vendredi', 5 => 'Samedi'
         ];
 
         return view('dashboard.teacher', compact(
@@ -105,7 +105,7 @@ class TeacherDashboardController extends Controller
 
         // Organiser les séances par jour (1=Lundi, 2=Mardi, ...)
         $emploiTempsSemaine = [];
-        foreach ([1, 2, 3, 4, 5, 6, 7] as $jour) {
+        foreach ([1, 2, 3, 4, 5, 6] as $jour) {
             $emploiTempsSemaine[$jour] = $seances->where('jour', $jour)->sortBy('heure_debut');
         }
 
@@ -116,8 +116,7 @@ class TeacherDashboardController extends Controller
             3 => 'Mercredi',
             4 => 'Jeudi',
             5 => 'Vendredi',
-            6 => 'Samedi',
-            7 => 'Dimanche'
+            6 => 'Samedi'
         ];
 
         // Créneaux horaires d'1h de 08:00 à 18:00

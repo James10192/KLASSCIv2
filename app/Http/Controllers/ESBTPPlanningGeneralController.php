@@ -977,4 +977,301 @@ class ESBTPPlanningGeneralController extends Controller
 
         return redirect()->back()->with('success', 'Planification validée avec succès');
     }
+
+    /**
+     * Interface admin pour voir l'impact des émargements sur la progression des planifications
+     */
+    public function impactEmargements(Request $request)
+    {
+        // Vérifier les permissions
+        if (!Auth::user()->hasAnyRole(['superAdmin', 'coordinateur', 'directeurEtudes'])) {
+            abort(403, 'Accès réservé aux administrateurs et coordinateurs.');
+        }
+
+        $anneeId = $request->input('annee_id');
+        $filiereId = $request->input('filiere_id');
+        $niveauId = $request->input('niveau_id');
+        $periodeDebut = $request->input('periode_debut');
+        $periodeFin = $request->input('periode_fin');
+
+        // Données de base
+        $annees = ESBTPAnneeUniversitaire::orderBy('start_date', 'desc')->get();
+        $anneeSelectionnee = ESBTPAnneeUniversitaire::find($anneeId) ?? 
+                            ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $filieres = ESBTPFiliere::where('is_active', true)->orderBy('name')->get();
+        $niveaux = ESBTPNiveauEtude::where('is_active', true)->orderBy('year')->get();
+
+        if ($anneeSelectionnee) {
+            $anneeId = $anneeSelectionnee->id;
+        }
+
+        // Récupérer les données d'impact des émargements
+        $impactData = $this->calculerImpactEmargements($anneeId, $filiereId, $niveauId, $periodeDebut, $periodeFin);
+        
+        // Statistiques générales d'émargement
+        $statistiquesEmargement = $this->calculerStatistiquesEmargement($anneeId, $filiereId, $niveauId, $periodeDebut, $periodeFin);
+
+        // Progression par matière avec émargements
+        $progressionMatieres = $this->calculerProgressionAvecEmargements($anneeId, $filiereId, $niveauId);
+
+        // Enseignants avec taux d'émargement
+        $enseignantsEmargement = $this->calculerTauxEmargementEnseignants($anneeId, $filiereId, $niveauId);
+
+        return view('esbtp.planning-general.impact-emargements', compact(
+            'annees', 'anneeSelectionnee', 'filieres', 'niveaux', 
+            'impactData', 'statistiquesEmargement', 'progressionMatieres', 'enseignantsEmargement',
+            'anneeId', 'filiereId', 'niveauId', 'periodeDebut', 'periodeFin'
+        ));
+    }
+
+    /**
+     * Calculer l'impact des émargements sur les planifications
+     */
+    private function calculerImpactEmargements($anneeId, $filiereId = null, $niveauId = null, $periodeDebut = null, $periodeFin = null)
+    {
+        $query = ESBTPPlanificationAcademique::with(['matiere', 'enseignantPrincipal', 'filiere', 'niveauEtude'])
+            ->where('annee_universitaire_id', $anneeId);
+
+        if ($filiereId) {
+            $query->where('filiere_id', $filiereId);
+        }
+        if ($niveauId) {
+            $query->where('niveau_etude_id', $niveauId);
+        }
+
+        $planifications = $query->get();
+
+        return $planifications->map(function($planification) use ($periodeDebut, $periodeFin) {
+            // Récupérer les émargements validés pour cette planification
+            $emargements = $this->getEmargementsValidesParPlanification($planification, $periodeDebut, $periodeFin);
+            
+            // Calculer les heures effectuées via émargements
+            $heuresEmargement = $emargements->sum(function($emargement) {
+                if ($emargement->seance) {
+                    return Carbon::parse($emargement->seance->heure_fin)->diffInMinutes(
+                        Carbon::parse($emargement->seance->heure_debut)
+                    ) / 60;
+                }
+                return 0;
+            });
+
+            // Progression calculée
+            $tauxProgression = $planification->volume_horaire_total > 0 
+                ? round(($planification->heures_effectuees / $planification->volume_horaire_total) * 100, 1)
+                : 0;
+
+            $tauxProgressionEmargement = $planification->volume_horaire_total > 0 
+                ? round(($heuresEmargement / $planification->volume_horaire_total) * 100, 1)
+                : 0;
+
+            return [
+                'planification' => $planification,
+                'heures_planifiees' => $planification->volume_horaire_total,
+                'heures_effectuees_base' => $planification->heures_effectuees ?? 0,
+                'heures_emargement' => round($heuresEmargement, 2),
+                'nb_emargements_valides' => $emargements->count(),
+                'taux_progression_base' => $tauxProgression,
+                'taux_progression_emargement' => $tauxProgressionEmargement,
+                'ecart_heures' => round($heuresEmargement - ($planification->heures_effectuees ?? 0), 2),
+                'derniere_maj_heures' => $planification->derniere_mise_a_jour_heures,
+                'statut_synchronisation' => $this->evaluerStatutSynchronisation($planification, $heuresEmargement),
+                'emargements_recents' => $emargements->take(5)
+            ];
+        })->sortByDesc('nb_emargements_valides');
+    }
+
+    /**
+     * Récupérer les émargements validés pour une planification
+     */
+    private function getEmargementsValidesParPlanification($planification, $periodeDebut = null, $periodeFin = null)
+    {
+        $query = \App\Models\ESBTPTeacherAttendance::with('seance')
+            ->where('status', 'validated')
+            ->whereHas('seance', function($q) use ($planification) {
+                $q->where('matiere_id', $planification->matiere_id)
+                  ->where('teacher_id', $planification->enseignant_principal_id);
+            });
+
+        if ($periodeDebut) {
+            $query->where('date', '>=', $periodeDebut);
+        }
+        if ($periodeFin) {
+            $query->where('date', '<=', $periodeFin);
+        }
+
+        return $query->orderBy('date', 'desc')->get();
+    }
+
+    /**
+     * Calculer les statistiques générales d'émargement
+     */
+    private function calculerStatistiquesEmargement($anneeId, $filiereId = null, $niveauId = null, $periodeDebut = null, $periodeFin = null)
+    {
+        $queryBase = \App\Models\ESBTPTeacherAttendance::query();
+        
+        // Filtrer par année via les séances
+        $queryBase->whereHas('seance.emploiTemps', function($q) use ($anneeId) {
+            $q->where('annee_universitaire_id', $anneeId);
+        });
+
+        // Filtrer par filière/niveau si spécifié
+        if ($filiereId || $niveauId) {
+            $queryBase->whereHas('seance.classe', function($q) use ($filiereId, $niveauId) {
+                if ($filiereId) $q->where('filiere_id', $filiereId);
+                if ($niveauId) $q->where('niveau_etude_id', $niveauId);
+            });
+        }
+
+        // Filtrer par période
+        if ($periodeDebut) {
+            $queryBase->where('date', '>=', $periodeDebut);
+        }
+        if ($periodeFin) {
+            $queryBase->where('date', '<=', $periodeFin);
+        }
+
+        return [
+            'total_emargements' => $queryBase->count(),
+            'emargements_valides' => $queryBase->where('status', 'validated')->count(),
+            'emargements_pending' => $queryBase->where('status', 'pending')->count(),
+            'emargements_expires' => $queryBase->where('status', 'expired')->count(),
+            'taux_validation' => $queryBase->count() > 0 
+                ? round(($queryBase->where('status', 'validated')->count() / $queryBase->count()) * 100, 1)
+                : 0,
+            'heures_totales_emargees' => $this->calculerHeuresTotalesEmargees($queryBase),
+            'derniere_mise_a_jour' => $queryBase->where('status', 'validated')->max('validated_at')
+        ];
+    }
+
+    /**
+     * Calculer la progression par matière avec émargements
+     */
+    private function calculerProgressionAvecEmargements($anneeId, $filiereId = null, $niveauId = null)
+    {
+        $query = ESBTPPlanificationAcademique::with(['matiere', 'enseignantPrincipal'])
+            ->where('annee_universitaire_id', $anneeId);
+
+        if ($filiereId) {
+            $query->where('filiere_id', $filiereId);
+        }
+        if ($niveauId) {
+            $query->where('niveau_etude_id', $niveauId);
+        }
+
+        $planifications = $query->get();
+
+        return $planifications->groupBy('matiere_id')->map(function($planificationsByMatiere) {
+            $matiere = $planificationsByMatiere->first()->matiere;
+            $totalPlanifie = $planificationsByMatiere->sum('volume_horaire_total');
+            $totalEffectue = $planificationsByMatiere->sum('heures_effectuees');
+            
+            // Calculer heures via émargements
+            $totalEmargement = 0;
+            foreach ($planificationsByMatiere as $planif) {
+                $emargements = $this->getEmargementsValidesParPlanification($planif);
+                $totalEmargement += $emargements->sum(function($emargement) {
+                    if ($emargement->seance) {
+                        return Carbon::parse($emargement->seance->heure_fin)->diffInMinutes(
+                            Carbon::parse($emargement->seance->heure_debut)
+                        ) / 60;
+                    }
+                    return 0;
+                });
+            }
+
+            return [
+                'matiere' => $matiere,
+                'heures_planifiees' => $totalPlanifie,
+                'heures_effectuees' => $totalEffectue,
+                'heures_emargement' => round($totalEmargement, 2),
+                'taux_progression_base' => $totalPlanifie > 0 ? round(($totalEffectue / $totalPlanifie) * 100, 1) : 0,
+                'taux_progression_emargement' => $totalPlanifie > 0 ? round(($totalEmargement / $totalPlanifie) * 100, 1) : 0,
+                'nb_planifications' => $planificationsByMatiere->count()
+            ];
+        })->sortByDesc('heures_emargement');
+    }
+
+    /**
+     * Calculer le taux d'émargement des enseignants
+     */
+    private function calculerTauxEmargementEnseignants($anneeId, $filiereId = null, $niveauId = null)
+    {
+        $query = User::role('enseignant')
+            ->whereHas('seancesCours.emploiTemps', function($q) use ($anneeId) {
+                $q->where('annee_universitaire_id', $anneeId);
+            });
+
+        if ($filiereId || $niveauId) {
+            $query->whereHas('seancesCours.classe', function($q) use ($filiereId, $niveauId) {
+                if ($filiereId) $q->where('filiere_id', $filiereId);
+                if ($niveauId) $q->where('niveau_etude_id', $niveauId);
+            });
+        }
+
+        $enseignants = $query->with(['seancesCours', 'teacherAttendances'])->get();
+
+        return $enseignants->map(function($enseignant) use ($anneeId) {
+            $seancesTotales = $enseignant->seancesCours()
+                ->whereHas('emploiTemps', function($q) use ($anneeId) {
+                    $q->where('annee_universitaire_id', $anneeId);
+                })
+                ->count();
+
+            $emargementsValides = $enseignant->teacherAttendances()
+                ->where('status', 'validated')
+                ->whereHas('seance.emploiTemps', function($q) use ($anneeId) {
+                    $q->where('annee_universitaire_id', $anneeId);
+                })
+                ->count();
+
+            $tauxEmargement = $seancesTotales > 0 ? round(($emargementsValides / $seancesTotales) * 100, 1) : 0;
+
+            return [
+                'enseignant' => $enseignant,
+                'seances_totales' => $seancesTotales,
+                'emargements_valides' => $emargementsValides,
+                'taux_emargement' => $tauxEmargement,
+                'dernier_emargement' => $enseignant->teacherAttendances()
+                    ->where('status', 'validated')
+                    ->latest('validated_at')
+                    ->first()
+            ];
+        })->sortByDesc('taux_emargement');
+    }
+
+    /**
+     * Calculer les heures totales émargées
+     */
+    private function calculerHeuresTotalesEmargees($query)
+    {
+        $emargements = $query->where('status', 'validated')->with('seance')->get();
+        
+        return $emargements->sum(function($emargement) {
+            if ($emargement->seance) {
+                return Carbon::parse($emargement->seance->heure_fin)->diffInMinutes(
+                    Carbon::parse($emargement->seance->heure_debut)
+                ) / 60;
+            }
+            return 0;
+        });
+    }
+
+    /**
+     * Évaluer le statut de synchronisation entre planification et émargements
+     */
+    private function evaluerStatutSynchronisation($planification, $heuresEmargement)
+    {
+        $heuresEffectuees = $planification->heures_effectuees ?? 0;
+        $ecart = abs($heuresEmargement - $heuresEffectuees);
+
+        if ($ecart < 0.5) {
+            return ['statut' => 'synchronise', 'message' => 'Parfaitement synchronisé'];
+        } elseif ($ecart < 2) {
+            return ['statut' => 'leger_ecart', 'message' => 'Léger écart acceptable'];
+        } elseif ($heuresEmargement > $heuresEffectuees) {
+            return ['statut' => 'emargement_superieur', 'message' => 'Émargements en avance sur planification'];
+        } else {
+            return ['statut' => 'planification_superieure', 'message' => 'Planification en avance sur émargements'];
+        }
+    }
 }

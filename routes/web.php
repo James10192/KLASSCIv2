@@ -1567,6 +1567,8 @@ Route::middleware(['auth', 'role:coordinateur'])->prefix('esbtp')->name('esbtp.'
         ->middleware('permission:manage-planning|view-all-timetables');
     Route::get('/planning-general/annuel', [\App\Http\Controllers\ESBTPPlanningGeneralController::class, 'annuel'])->name('planning-general.annuel')
         ->middleware('permission:manage-planning|view-all-timetables');
+    Route::get('/planning-general/impact-emargements', [\App\Http\Controllers\ESBTPPlanningGeneralController::class, 'impactEmargements'])->name('planning-general.impact-emargements')
+        ->middleware('permission:manage-planning|view-all-timetables');
 });
 
 // Routes spécifiques pour les coordinateurs pour événements académiques

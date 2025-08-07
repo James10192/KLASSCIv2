@@ -102,7 +102,7 @@
                             </thead>
                             <tbody>
                                 @php
-                                    $jours = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+                                    $jours = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
                                 @endphp
 
                                 @forelse($seancesCours as $seance)

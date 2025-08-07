@@ -143,7 +143,6 @@ class ESBTPCours extends Model
             3 => 'Jeudi',
             4 => 'Vendredi',
             5 => 'Samedi',
-            6 => 'Dimanche',
         ];
 
         return $jours[$this->jour_semaine] ?? 'Inconnu';

@@ -212,8 +212,7 @@ class ESBTPSeanceCoursController extends Controller
             3 => 'Mercredi',
             4 => 'Jeudi',
             5 => 'Vendredi',
-            6 => 'Samedi',
-            7 => 'Dimanche'
+            6 => 'Samedi'
         ];
 
             // Get default colors
@@ -496,8 +495,7 @@ class ESBTPSeanceCoursController extends Controller
                 3 => 'Mercredi',
                 4 => 'Jeudi',
                 5 => 'Vendredi',
-                6 => 'Samedi',
-                7 => 'Dimanche'
+                6 => 'Samedi'
             ];
 
                 $defaultColors = ESBTPSeanceCours::DEFAULT_COLORS;

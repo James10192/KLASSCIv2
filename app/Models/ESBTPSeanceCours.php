@@ -242,7 +242,6 @@ class ESBTPSeanceCours extends Model
             3 => 'Jeudi',
             4 => 'Vendredi',
             5 => 'Samedi',
-            6 => 'Dimanche',
         ];
 
         return $jours[$this->jour] ?? 'Jour inconnu';
@@ -345,8 +344,7 @@ class ESBTPSeanceCours extends Model
             3 => 'Mercredi',
             4 => 'Jeudi',
             5 => 'Vendredi',
-            6 => 'Samedi',
-            7 => 'Dimanche'
+            6 => 'Samedi'
         ];
 
         return $jours[$this->jour] ?? 'Jour inconnu';
@@ -426,8 +424,7 @@ class ESBTPSeanceCours extends Model
                 3 => 'Mercredi',
                 4 => 'Jeudi',
                 5 => 'Vendredi',
-                6 => 'Samedi',
-                7 => 'Dimanche'
+                6 => 'Samedi'
             ];
             return $jours[$day] ?? '';
         })->filter()->join(', ');

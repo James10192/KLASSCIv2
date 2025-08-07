@@ -552,6 +552,16 @@
                                 <p class="text-muted mb-0">Gérez les emplois du temps par classe</p>
                             </div>
                         </a>
+
+                        <a href="{{ route('esbtp.planning-general.impact-emargements', ['annee_id' => $anneeSelectionnee->id]) }}" class="action-card card-moderne text-decoration-none">
+                            <div class="p-lg">
+                                <div class="action-icon settings" style="background: linear-gradient(135deg, #10b981, #34d399);">
+                                    <i class="fas fa-chart-line"></i>
+                                </div>
+                                <h6 class="font-semibold">Impact Émargements</h6>
+                                <p class="text-muted mb-0">Visualisez l'impact des émargements sur la progression</p>
+                            </div>
+                        </a>
                         
                         @canany(['manage-planning', 'view-all-timetables'])
                         <a href="{{ route('esbtp.planning-general.coordinateur', ['annee_id' => $anneeSelectionnee->id]) }}" class="action-card card-moderne text-decoration-none">

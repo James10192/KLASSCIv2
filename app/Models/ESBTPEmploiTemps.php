@@ -152,7 +152,6 @@ class ESBTPEmploiTemps extends Model
             3 => 'Jeudi',
             4 => 'Vendredi',
             5 => 'Samedi',
-            6 => 'Dimanche',
         ];
 
         $seancesParJour = [];
