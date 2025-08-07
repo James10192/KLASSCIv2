@@ -2,6 +2,79 @@
 
 @section('title', 'Créer un emploi du temps - ESBTP-yAKRO')
 
+@push('styles')
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+
+<style>
+    /* Animation pour la flèche */
+    @keyframes bounce {
+        0%, 20%, 50%, 80%, 100% {
+            transform: translateY(0);
+        }
+        40% {
+            transform: translateY(-10px);
+        }
+        60% {
+            transform: translateY(-5px);
+        }
+    }
+    
+    /* Amélioration des gradients */
+    .bg-gradient-primary {
+        background: linear-gradient(45deg, #007bff, #0056b3) !important;
+    }
+    
+    .bg-gradient-success {
+        background: linear-gradient(45deg, #28a745, #1e7e34) !important;
+    }
+    
+    /* Amélioration des cartes */
+    .card.border-primary {
+        box-shadow: 0 0 20px rgba(0, 123, 255, 0.15) !important;
+    }
+    
+    /* Amélioration des badges */
+    .badge.fs-6 {
+        font-size: 0.875rem !important;
+        padding: 0.5rem 1rem !important;
+    }
+    
+    /* Style des progress bars */
+    .progress {
+        border-radius: 10px;
+        background-color: #e9ecef;
+    }
+    
+    .progress-bar {
+        border-radius: 10px;
+        transition: width 0.6s ease;
+    }
+    
+    /* Amélioration des alertes */
+    .alert {
+        border-radius: 15px;
+    }
+    
+    /* Style pour les icônes circulaires */
+    .rounded-circle {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Amélioration des tableaux */
+    .table-hover tbody tr:hover {
+        background-color: rgba(0, 123, 255, 0.05);
+        transform: translateX(2px);
+        transition: all 0.2s ease;
+    }
+    
+    /* Style pour les cards avec shadow */
+    .shadow-lg {
+        box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.175) !important;
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="container-fluid">
     <div class="row mb-3">
@@ -398,7 +471,7 @@
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                     <small class="form-text text-muted">
-                                        <i class="fas fa-info-circle"></i> La période doit être de 5 jours maximum (du lundi au vendredi).
+                                        <i class="fas fa-info-circle"></i> La période doit être de 6 jours maximum (du lundi au samedi).
                                     </small>
                                 </div>
                             </div>

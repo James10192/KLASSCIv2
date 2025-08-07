@@ -270,13 +270,13 @@ class ESBTPEmploiTemps extends Model
         // Calculer la différence en jours
         $diffJours = $this->date_debut->diffInDays($this->date_fin);
 
-        // La différence doit être inférieure ou égale à 4 pour avoir 5 jours au maximum
-        // (jour de début + 4 jours = 5 jours au total)
-        return $diffJours <= 4;
+        // La différence doit être inférieure ou égale à 5 pour avoir 6 jours au maximum
+        // (jour de début + 5 jours = 6 jours au total : lundi au samedi)
+        return $diffJours <= 5;
     }
 
     /**
-     * Génère les dates de la semaine courante (lundi au vendredi).
+     * Génère les dates de la semaine courante (lundi au samedi).
      *
      * @return array Tableau associatif avec les dates de début et de fin
      */
@@ -287,12 +287,12 @@ class ESBTPEmploiTemps extends Model
         // Trouver le lundi de la semaine courante
         $lundi = $aujourdhui->copy()->startOfWeek();
 
-        // Trouver le vendredi de la semaine courante
-        $vendredi = $lundi->copy()->addDays(4);
+        // Trouver le samedi de la semaine courante
+        $samedi = $lundi->copy()->addDays(5);
 
         return [
             'date_debut' => $lundi->format('Y-m-d'),
-            'date_fin' => $vendredi->format('Y-m-d')
+            'date_fin' => $samedi->format('Y-m-d')
         ];
     }
 

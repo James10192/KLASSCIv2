@@ -274,9 +274,9 @@ class ESBTPEmploiTempsController extends Controller
         $dateFin = \Carbon\Carbon::parse($validated['date_fin']);
         $diffJours = $dateDebut->diffInDays($dateFin);
 
-        if ($diffJours > 4) {
+        if ($diffJours > 5) {
             return back()->withInput()->withErrors([
-                'date_fin' => 'La période de l\'emploi du temps ne doit pas dépasser 5 jours (du lundi au vendredi).'
+                'date_fin' => 'La période de l\'emploi du temps ne doit pas dépasser 6 jours (du lundi au samedi).'
             ]);
         }
 
