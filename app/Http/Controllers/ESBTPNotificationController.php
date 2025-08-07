@@ -92,6 +92,22 @@ class ESBTPNotificationController extends Controller
         return response()->json(['count' => $count]);
     }
 
+    public function delete($id)
+    {
+        $user = Auth::user();
+        $notification = Notification::where('user_id', $user->id)
+            ->where('id', $id)
+            ->first();
+
+        if (!$notification) {
+            return response()->json(['success' => false, 'message' => 'Notification non trouvée'], 404);
+        }
+
+        $notification->delete();
+
+        return response()->json(['success' => true, 'message' => 'Notification supprimée']);
+    }
+
     /**
      * Remove old read notifications after a certain time period
      */
