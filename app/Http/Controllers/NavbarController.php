@@ -20,8 +20,8 @@ class NavbarController extends Controller
         $user = auth()->user();
         $notifications = collect();
 
-        if ($user->hasRole('superAdmin') || $user->hasRole('secretaire')) {
-            // Notifications pour admin/secrétaire
+        if ($user->hasRole('superAdmin') || $user->hasRole('secretaire') || $user->hasRole('coordinateur')) {
+            // Notifications pour admin/secrétaire/coordinateur
             $notifications = Notification::where('user_id', $user->id)
                 ->orderBy('created_at', 'desc')
                 ->limit(5)
@@ -92,8 +92,8 @@ class NavbarController extends Controller
         $user = auth()->user();
         $messages = collect();
 
-        if ($user->hasRole('superAdmin') || $user->hasRole('secretaire')) {
-            // Messages pour admin/secrétaire - récupérer les dernières annonces
+        if ($user->hasRole('superAdmin') || $user->hasRole('secretaire') || $user->hasRole('coordinateur')) {
+            // Messages pour admin/secrétaire/coordinateur - récupérer les dernières annonces
             $messages = ESBTPAnnonce::orderBy('created_at', 'desc')
                 ->limit(5)
                 ->get()
@@ -104,7 +104,7 @@ class NavbarController extends Controller
                         'message' => \Str::limit($annonce->contenu, 50),
                         'sender' => 'Système',
                         'time' => $annonce->created_at->diffForHumans(),
-                        'read' => false, // À implémenter selon vos besoins
+                        'read' => $annonce->created_at->lt(now()->subDay()), // Marquer comme lu si plus de 24h
                         'url' => route('esbtp.annonces.show', $annonce->id),
                         'avatar' => null
                     ];
@@ -121,7 +121,7 @@ class NavbarController extends Controller
                         'message' => \Str::limit($annonce->contenu, 50),
                         'sender' => 'Administration',
                         'time' => $annonce->created_at->diffForHumans(),
-                        'read' => false, // À implémenter selon vos besoins
+                        'read' => $annonce->created_at->lt(now()->subDay()), // Marquer comme lu si plus de 24h
                         'url' => route('esbtp.mes-messages.index'),
                         'avatar' => null
                     ];
@@ -138,7 +138,7 @@ class NavbarController extends Controller
                         'message' => \Str::limit($annonce->contenu, 50),
                         'sender' => 'Administration',
                         'time' => $annonce->created_at->diffForHumans(),
-                        'read' => false,
+                        'read' => $annonce->created_at->lt(now()->subDay()), // Marquer comme lu si plus de 24h
                         'url' => route('esbtp.annonces.show', $annonce->id),
                         'avatar' => null
                     ];
