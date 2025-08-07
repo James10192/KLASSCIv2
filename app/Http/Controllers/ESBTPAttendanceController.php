@@ -9,6 +9,8 @@ use App\Models\ESBTPSeanceCours;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPAcademicYear;
+use App\Models\ESBTPTeacherAttendance;
+use App\Models\Notification;
 use App\Notifications\AbsenceNotification;
 use App\Services\MatiereService;
 use App\Services\NotificationService;
@@ -103,6 +105,9 @@ class ESBTPAttendanceController extends Controller
             'retard' => (clone $statsQuery)->where('statut', 'retard')->count(),
             'excuse' => (clone $statsQuery)->where('statut', 'excuse')->count()
         ];
+        
+        // Add total to stats array
+        $stats['total'] = $stats['present'] + $stats['absent'] + $stats['retard'] + $stats['excuse'];
 
         // Calculate total for filtered data
         $filteredTotal = $stats['present'] + $stats['absent'] + $stats['retard'] + $stats['excuse'];
@@ -185,6 +190,45 @@ class ESBTPAttendanceController extends Controller
             }
         }
 
+        // Calculate statistics by class
+        $classeStats = [];
+        $classesActive = ESBTPClasse::where('is_active', true)->with(['etudiants'])->get();
+        
+        foreach ($classesActive as $classe) {
+            // Compter les présences pour cette classe
+            $presentCount = ESBTPAttendance::whereHas('seanceCours.emploiTemps', function($q) use ($classe) {
+                $q->where('classe_id', $classe->id);
+            })->where('statut', 'present')->count();
+            
+            $absentCount = ESBTPAttendance::whereHas('seanceCours.emploiTemps', function($q) use ($classe) {
+                $q->where('classe_id', $classe->id);
+            })->where('statut', 'absent')->count();
+            
+            $retardCount = ESBTPAttendance::whereHas('seanceCours.emploiTemps', function($q) use ($classe) {
+                $q->where('classe_id', $classe->id);
+            })->where('statut', 'retard')->count();
+            
+            $excuseCount = ESBTPAttendance::whereHas('seanceCours.emploiTemps', function($q) use ($classe) {
+                $q->where('classe_id', $classe->id);
+            })->where('statut', 'excuse')->count();
+            
+            $totalAttendanceForClass = $presentCount + $absentCount + $retardCount + $excuseCount;
+            $totalStudents = $classe->etudiants->count();
+            
+            if ($totalAttendanceForClass > 0 || $totalStudents > 0) {
+                $classeStats[] = [
+                    'name' => $classe->name,
+                    'present' => $presentCount,
+                    'absent' => $absentCount,
+                    'retard' => $retardCount,
+                    'excuse' => $excuseCount,
+                    'total_attendance' => $totalAttendanceForClass,
+                    'total_students' => $totalStudents,
+                    'attendance_rate' => $totalAttendanceForClass > 0 ? round($presentCount / $totalAttendanceForClass * 100, 1) : 0
+                ];
+            }
+        }
+
         // Calculate statistics for each student
         foreach ($etudiants as $etudiant) {
             // Create a query specific to this student
@@ -237,6 +281,21 @@ class ESBTPAttendanceController extends Controller
             ->distinct('esbtp_emploi_temps.classe_id')
             ->count('esbtp_emploi_temps.classe_id');
 
+        // Add coordinator-specific statistics if user has coordinator role
+        $coordinatorStats = null;
+        $unreadNotifications = 0;
+        $recentActivities = [];
+        
+        if (Auth::user() && Auth::user()->hasRole('coordinateur')) {
+            $today = Carbon::today();
+            $coordinatorStats = $this->calculateCoordinatorStats($today);
+            
+            // Get unread notifications count
+            $unreadNotifications = Notification::where('user_id', Auth::id())
+                ->where('is_read', false)
+                ->count();
+        }
+
         return view('esbtp.attendances.index', compact(
             'attendances',
             'classes',
@@ -261,7 +320,10 @@ class ESBTPAttendanceController extends Controller
             'attendancesThisMonth',
             'averageAttendanceRate',
             'classesWithAttendance',
-            'teachers'
+            'teachers',
+            'classeStats',
+            'coordinatorStats',
+            'unreadNotifications'
         ));
     }
 
@@ -1112,5 +1174,92 @@ class ESBTPAttendanceController extends Controller
         };
 
         return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Calculate coordinator-specific statistics for today
+     */
+    private function calculateCoordinatorStats($date)
+    {
+        try {
+            $stats = [];
+
+            // 1. Émargements enseignants aujourd'hui
+            $stats['scheduled_courses_today'] = ESBTPSeanceCours::whereDate('date_seance', $date)
+                ->where('is_active', true)
+                ->count();
+
+            $stats['teacher_attendances_today'] = ESBTPTeacherAttendance::whereDate('validated_at', $date)
+                ->count();
+
+            $stats['teacher_attendance_rate'] = $stats['scheduled_courses_today'] > 0 
+                ? round(($stats['teacher_attendances_today'] / $stats['scheduled_courses_today']) * 100, 1) 
+                : 0;
+
+            // 2. Appels terminés et présences étudiants
+            $stats['roll_calls_completed_today'] = ESBTPSeanceCours::whereDate('date_seance', $date)
+                ->whereHas('attendances') // Séances avec des appels enregistrés
+                ->count();
+
+            $stats['students_present_today'] = ESBTPAttendance::whereDate('date', $date)
+                ->where('statut', 'present')
+                ->count();
+
+            $stats['roll_call_completion_rate'] = $stats['scheduled_courses_today'] > 0 
+                ? round(($stats['roll_calls_completed_today'] / $stats['scheduled_courses_today']) * 100, 1) 
+                : 0;
+
+            // 3. Retards détectés
+            $stats['delays_today'] = max(0, $stats['scheduled_courses_today'] - $stats['teacher_attendances_today']);
+
+            // 4. Cours clôturés
+            $stats['courses_closed_today'] = ESBTPSeanceCours::whereDate('date_seance', $date)
+                ->where('status', 'completed')
+                ->count();
+
+            // 5. Classes avec forte absentéisme (plus de 30% d'absences)
+            $stats['high_absence_classes'] = $this->getHighAbsenceClasses($date);
+
+            return $stats;
+
+        } catch (\Exception $e) {
+            \Log::error('Erreur calcul statistiques coordinateur: ' . $e->getMessage());
+            
+            // Retourner des statistiques par défaut en cas d'erreur
+            return [
+                'scheduled_courses_today' => 0,
+                'teacher_attendances_today' => 0,
+                'teacher_attendance_rate' => 0,
+                'roll_calls_completed_today' => 0,
+                'students_present_today' => 0,
+                'roll_call_completion_rate' => 0,
+                'delays_today' => 0,
+                'courses_closed_today' => 0,
+                'high_absence_classes' => 0
+            ];
+        }
+    }
+
+    /**
+     * Identify classes with high absence rate
+     */
+    private function getHighAbsenceClasses($date)
+    {
+        try {
+            $classesWithHighAbsence = DB::table('esbtp_attendances')
+                ->select('classe_id', DB::raw('COUNT(*) as total'), DB::raw('SUM(CASE WHEN statut = "absent" THEN 1 ELSE 0 END) as absents'))
+                ->join('esbtp_seance_cours', 'esbtp_attendances.seance_cours_id', '=', 'esbtp_seance_cours.id')
+                ->join('esbtp_emploi_temps', 'esbtp_seance_cours.emploi_temps_id', '=', 'esbtp_emploi_temps.id')
+                ->whereDate('esbtp_attendances.date', $date)
+                ->groupBy('esbtp_emploi_temps.classe_id')
+                ->havingRaw('(absents / total) > 0.3') // Plus de 30% d'absences
+                ->count();
+
+            return $classesWithHighAbsence;
+
+        } catch (\Exception $e) {
+            \Log::error('Erreur calcul classes forte absentéisme: ' . $e->getMessage());
+            return 0;
+        }
     }
 }

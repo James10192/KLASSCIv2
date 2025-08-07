@@ -294,15 +294,6 @@
 @section('content')
 <div class="dashboard-acasi">
     <div class="main-content">
-        <!-- Header et navigation du planning -->
-        <x-planning-header 
-            title="Interface Coordinateur" 
-            subtitle="Gestion avancée du planning et supervision académique"
-            active-tab="coordinateur"
-            :annee-selectionnee="$anneeSelectionnee"
-            :annees="$annees"
-        />
-
         <!-- Header Coordinateur -->
         <div class="coordinateur-header">
             <div class="row align-items-center">
@@ -311,9 +302,20 @@
                     <p class="mb-0">Gestion avancée du planning et supervision académique</p>
                 </div>
                 <div class="col-md-4 text-end">
-                    <a href="{{ route('esbtp.planning-general.index') }}" class="btn-acasi secondary">
-                        <i class="fas fa-arrow-left me-1"></i>Retour
-                    </a>
+                    <div class="d-flex align-items-center gap-2">
+                        <!-- Sélecteur d'année -->
+                        <select class="form-select form-select-sm" onchange="changeAnnee(this.value)" style="max-width: 150px;">
+                            @foreach($annees as $annee)
+                                <option value="{{ $annee->id }}" {{ $anneeSelectionnee->id == $annee->id ? 'selected' : '' }}>
+                                    {{ $annee->libelle }}
+                                </option>
+                            @endforeach
+                        </select>
+                        
+                        <a href="{{ route('esbtp.planning-general.index') }}" class="btn-acasi secondary">
+                            <i class="fas fa-arrow-left me-1"></i>Retour
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -334,6 +336,11 @@
                 <li class="nav-item">
                     <a class="nav-link" href="{{ route('esbtp.planning-general.repartition-matieres', ['annee_id' => request('annee_id')]) }}">
                         <i class="fas fa-chart-pie me-2"></i>Répartition Matières
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ route('esbtp.attendance-codes.index') }}">
+                        <i class="fas fa-qrcode me-2"></i>Codes d'Émargement
                     </a>
                 </li>
                 <li class="nav-item">
@@ -374,6 +381,42 @@
                         </span>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <!-- Actions rapides -->
+        <div class="card-moderne mb-lg">
+            <div class="p-md">
+                <h5 class="mb-md"><i class="fas fa-bolt me-2"></i>Actions Rapides</h5>
+                <div class="row">
+                    <div class="col-md-3">
+                        <a href="{{ route('esbtp.admin.attendance.index') }}" class="btn-acasi primary w-100 mb-sm">
+                            <i class="fas fa-qrcode me-2"></i>
+                            <div>
+                                <strong>Codes d'Émargement</strong>
+                                <small class="d-block">Générer et gérer les codes</small>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{{ route('esbtp.admin.attendance.report') }}" class="btn-acasi secondary w-100 mb-sm">
+                            <i class="fas fa-chalkboard-teacher me-2"></i>
+                            <div>
+                                <strong>Suivi Enseignants</strong>
+                                <small class="d-block">Voir les émargements</small>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{{ route('esbtp.attendances.index') }}" class="btn-acasi info w-100 mb-sm">
+                            <i class="fas fa-clipboard-list me-2"></i>
+                            <div>
+                                <strong>Appels Étudiants</strong>
+                                <small class="d-block">Consulter les présences</small>
+                            </div>
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -534,12 +577,12 @@
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-3 mb-2">
-                        <a href="{{ route('esbtp.planning-general.annuel') }}" class="btn-acasi primary w-100">
+                        <a href="{{ route('esbtp.planning-general.annuel', ['annee_id' => request('annee_id')]) }}" class="btn-acasi primary w-100">
                             <i class="fas fa-calendar-alt me-2"></i>Planning Annuel
                         </a>
                     </div>
                     <div class="col-md-3 mb-2">
-                        <a href="{{ route('esbtp.planning-general.repartition-matieres') }}" class="btn-acasi info w-100">
+                        <a href="{{ route('esbtp.planning-general.repartition-matieres', ['annee_id' => request('annee_id')]) }}" class="btn-acasi info w-100">
                             <i class="fas fa-chart-pie me-2"></i>Répartition Matières
                         </a>
                     </div>
@@ -561,8 +604,8 @@
                         </a>
                     </div>
                     <div class="col-md-3 mb-2">
-                        <a href="{{ route('esbtp.teachers.index') }}" class="btn-acasi secondary w-100">
-                            <i class="fas fa-chalkboard-teacher me-2"></i>Gestion Enseignants
+                        <a href="{{ route('esbtp.personnel.unified.index') }}" class="btn-acasi secondary w-100">
+                            <i class="fas fa-chalkboard-teacher me-2"></i>Gestion Personnel
                         </a>
                     </div>
                     <div class="col-md-3 mb-2">
@@ -601,6 +644,13 @@
 
 @push('scripts')
 <script>
+// Fonction pour changer d'année
+function changeAnnee(anneeId) {
+    const url = new URL(window.location);
+    url.searchParams.set('annee_id', anneeId);
+    window.location.href = url.toString();
+}
+
 $(document).ready(function() {
     // Animation des cartes d'allocation
     $('.allocation-card').each(function(index) {

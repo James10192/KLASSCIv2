@@ -140,6 +140,22 @@ class ESBTPSeanceCours extends Model
     }
 
     /**
+     * Relation avec les présences étudiants (appels) pour cette séance.
+     */
+    public function studentAttendances()
+    {
+        return $this->hasMany(ESBTPAttendance::class, 'seance_cours_id');
+    }
+
+    /**
+     * Relation pour obtenir toutes les présences (alias pour compatibilité).
+     */
+    public function attendances()
+    {
+        return $this->studentAttendances();
+    }
+
+    /**
      * Helper methods for session types
      */
     public function isCourse()

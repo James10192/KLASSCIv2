@@ -9,6 +9,9 @@ use App\Models\ESBTPEmploiTemps;
 use App\Models\ESBTPAttendance;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPEvaluation;
+use App\Models\ESBTPDailyCode;
+use App\Models\ESBTPTeacherAttendance;
+use App\Services\NotificationService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -64,10 +67,51 @@ class TeacherDashboardController extends Controller
             'attendanceRate' => $attendanceRate
         ];
 
-        // 3. Notifications (à implémenter)
-        $notifications = [];
+        // 3. Données d'émargement
+        $dailyCode = ESBTPDailyCode::where('is_active', true)
+            ->where('valid_until', '>', Carbon::now())
+            ->first();
+        
+        $todayAttendance = ESBTPTeacherAttendance::where('teacher_id', $user->id)
+            ->whereDate('validated_at', $today)
+            ->latest()
+            ->first();
 
-        // 4. Jours de la semaine
+        // 4. Séances du jour courantes et à venir
+        $todayClasses = ESBTPSeanceCours::where('teacher_id', $teacherId)
+            ->whereDate('date_seance', $today)
+            ->with(['matiere', 'classe', 'teacherAttendance'])
+            ->orderBy('heure_debut')
+            ->get();
+
+        // 5. Appels en cours ou nécessaires
+        $pendingRollCalls = ESBTPSeanceCours::where('teacher_id', $teacherId)
+            ->whereDate('date_seance', $today)
+            ->where('heure_debut', '<=', Carbon::now()->addMinutes(15))  // Cours en cours ou qui vient de commencer
+            ->whereDoesntHave('studentAttendances') // Pas d'appel fait encore
+            ->with(['matiere', 'classe'])
+            ->get();
+
+        // 6. Notifications
+        $notifications = [];
+        if ($dailyCode && !$todayAttendance) {
+            $notifications[] = [
+                'type' => 'warning',
+                'message' => 'Vous n\'avez pas encore fait votre émargement aujourd\'hui.',
+                'action' => route('esbtp.teacher.attendance.index'),
+                'action_text' => 'Émarger maintenant'
+            ];
+        }
+        if ($pendingRollCalls->count() > 0) {
+            $notifications[] = [
+                'type' => 'info',
+                'message' => 'Vous avez ' . $pendingRollCalls->count() . ' appel(s) à faire.',
+                'action' => '#pending-roll-calls',
+                'action_text' => 'Voir les appels'
+            ];
+        }
+
+        // 7. Jours de la semaine
         $joursSemaine = [
             0 => 'Lundi', 1 => 'Mardi', 2 => 'Mercredi', 3 => 'Jeudi',
             4 => 'Vendredi', 5 => 'Samedi'
@@ -77,8 +121,158 @@ class TeacherDashboardController extends Controller
             'upcomingClasses',
             'attendanceStats',
             'notifications',
-            'joursSemaine'
+            'joursSemaine',
+            'dailyCode',
+            'todayAttendance',
+            'todayClasses',
+            'pendingRollCalls'
         ));
+    }
+
+    /**
+     * Interface pour faire l'appel des étudiants
+     */
+    public function showRollCall($seanceId)
+    {
+        $user = Auth::user();
+        $teacher = \App\Models\ESBTPTeacher::where('user_id', $user->id)->first();
+        
+        $seance = ESBTPSeanceCours::with(['matiere', 'classe', 'classe.etudiants'])
+            ->where('id', $seanceId)
+            ->where('teacher_id', $teacher->id ?? null)
+            ->firstOrFail();
+
+        // Vérifier que l'enseignant est émargé aujourd'hui
+        $todayAttendance = ESBTPTeacherAttendance::where('teacher_id', $user->id)
+            ->whereDate('validated_at', Carbon::today())
+            ->first();
+
+        if (!$todayAttendance) {
+            return redirect()->route('teacher.dashboard')
+                ->with('error', 'Vous devez d\'abord faire votre émargement avant de pouvoir faire l\'appel.');
+        }
+
+        // Récupérer les étudiants de la classe
+        $etudiants = $seance->classe->etudiants()->with('user')->get();
+
+        // Vérifier si l'appel a déjà été fait
+        $existingAttendances = ESBTPAttendance::where('seance_cours_id', $seanceId)->get();
+        $hasRollCall = $existingAttendances->isNotEmpty();
+
+        return view('dashboard.teacher-roll-call', compact('seance', 'etudiants', 'existingAttendances', 'hasRollCall'));
+    }
+
+    /**
+     * Enregistrer l'appel des étudiants
+     */
+    public function storeRollCall(Request $request, $seanceId)
+    {
+        $user = Auth::user();
+        $teacher = \App\Models\ESBTPTeacher::where('user_id', $user->id)->first();
+        
+        $seance = ESBTPSeanceCours::where('id', $seanceId)
+            ->where('teacher_id', $teacher->id ?? null)
+            ->firstOrFail();
+
+        $request->validate([
+            'attendances' => 'required|array',
+            'attendances.*' => 'in:present,absent,late'
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // Supprimer les anciens appels pour cette séance
+            ESBTPAttendance::where('seance_cours_id', $seanceId)->delete();
+
+            // Enregistrer les nouveaux appels
+            foreach ($request->attendances as $etudiantId => $status) {
+                ESBTPAttendance::create([
+                    'etudiant_id' => $etudiantId,
+                    'seance_cours_id' => $seanceId,
+                    'classe_id' => $seance->classe_id,
+                    'matiere_id' => $seance->matiere_id,
+                    'teacher_id' => $user->id,
+                    'date' => Carbon::today(),
+                    'status' => $status,
+                    'is_justified' => false,
+                    'created_by' => $user->id
+                ]);
+            }
+
+            DB::commit();
+
+            // **NOTIFICATION** : Notifier le coordinateur et les étudiants absents
+            try {
+                $notificationService = app(NotificationService::class);
+                
+                // 1. Notifier le coordinateur de l'appel terminé
+                $notificationService->notifyCoordinateurStudentRollCallCompleted($user, $seance, $request->attendances);
+                
+                // 2. Notifier les étudiants absents
+                $absentStudentIds = collect($request->attendances)
+                    ->filter(fn($status) => $status === 'absent')
+                    ->keys()
+                    ->toArray();
+                
+                if (!empty($absentStudentIds)) {
+                    $absentStudents = \App\Models\ESBTPEtudiant::whereIn('id', $absentStudentIds)->get();
+                    $notificationService->notifyStudentsAbsence($absentStudents, $seance, $user);
+                }
+                
+            } catch (\Exception $e) {
+                \Log::error('Erreur lors de l\'envoi des notifications d\'appel: ' . $e->getMessage());
+                // Ne pas interrompre le processus principal
+            }
+
+            return redirect()->route('teacher.dashboard')
+                ->with('success', 'Appel enregistré avec succès pour le cours de ' . $seance->matiere->name . '.');
+                
+        } catch (\Exception $e) {
+            DB::rollback();
+            return redirect()->back()
+                ->with('error', 'Erreur lors de l\'enregistrement de l\'appel : ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Clôturer un cours
+     */
+    public function closeCourse($seanceId)
+    {
+        $user = Auth::user();
+        $teacher = \App\Models\ESBTPTeacher::where('user_id', $user->id)->first();
+        
+        $seance = ESBTPSeanceCours::where('id', $seanceId)
+            ->where('teacher_id', $teacher->id ?? null)
+            ->firstOrFail();
+
+        // Vérifier que l'appel a été fait
+        $hasAttendances = ESBTPAttendance::where('seance_cours_id', $seanceId)->exists();
+        
+        if (!$hasAttendances) {
+            return redirect()->back()
+                ->with('error', 'Vous devez d\'abord faire l\'appel avant de clôturer le cours.');
+        }
+
+        // Marquer le cours comme terminé
+        $seance->update([
+            'status' => 'completed',
+            'completed_at' => Carbon::now(),
+            'completed_by' => $user->id
+        ]);
+
+        // **NOTIFICATION** : Notifier le coordinateur de la clôture du cours
+        try {
+            $notificationService = app(NotificationService::class);
+            $notificationService->notifyCoordinateurCourseClosed($user, $seance, request('notes'));
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de l\'envoi de la notification de clôture: ' . $e->getMessage());
+            // Ne pas interrompre le processus principal
+        }
+
+        return redirect()->route('teacher.dashboard')
+            ->with('success', 'Cours clôturé avec succès.');
     }
 
     /**

@@ -36,22 +36,21 @@
                             <tbody>
                                 @forelse($todayCourses as $course)
                                     <tr>
-                                        <td>{{ $course->name }}</td>
-                                        <td>{{ $course->emploiTemps->first()->seances->where('matiere_id', $course->id)->first()->heure_debut }} -
-                                            {{ $course->emploiTemps->first()->seances->where('matiere_id', $course->id)->first()->heure_fin }}</td>
-                                        <td>{{ $course->emploiTemps->first()->classe->name }}</td>
+                                        <td>{{ $course->matiere->name ?? 'Matière non définie' }}</td>
                                         <td>
-                                            @php
-                                                $attendance = $attendances->where('course_id', $course->id)->first();
-                                            @endphp
-                                            @if($attendance)
+                                            {{ $course->heure_debut ? \Carbon\Carbon::parse($course->heure_debut)->format('H:i') : '--:--' }} - 
+                                            {{ $course->heure_fin ? \Carbon\Carbon::parse($course->heure_fin)->format('H:i') : '--:--' }}
+                                        </td>
+                                        <td>{{ $course->emploiTemps->classe->name ?? $course->classe->name ?? 'Classe non définie' }}</td>
+                                        <td>
+                                            @if($course->teacherAttendance)
                                                 <span class="badge bg-success">Émargé</span>
                                             @else
                                                 <span class="badge bg-warning">En attente</span>
                                             @endif
                                         </td>
                                         <td>
-                                            @if(!$attendance)
+                                            @if(!$course->teacherAttendance)
                                                 <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#signModal{{ $course->id }}">
                                                     Émarger
                                                 </button>
@@ -60,25 +59,25 @@
                                                 <div class="modal fade" id="signModal{{ $course->id }}" tabindex="-1" aria-labelledby="signModalLabel{{ $course->id }}" aria-hidden="true">
                                                     <div class="modal-dialog">
                                                         <div class="modal-content">
-                                                            <form action="{{ route('esbtp.teacher-attendance.sign') }}" method="POST">
+                                                            <form action="{{ route('esbtp.teacher.attendance.sign') }}" method="POST">
                                                                 @csrf
                                                                 <input type="hidden" name="course_id" value="{{ $course->id }}">
                                                                 <div class="modal-header">
-                                                                    <h5 class="modal-title" id="signModalLabel{{ $course->id }}">Émarger pour {{ $course->name }}</h5>
+                                                                    <h5 class="modal-title" id="signModalLabel{{ $course->id }}">Émarger pour {{ $course->matiere->name ?? 'ce cours' }}</h5>
                                                                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                                                 </div>
                                                                 <div class="modal-body">
                                                                     <div class="mb-3">
                                                                         <label for="code{{ $course->id }}" class="form-label">Code d'émargement</label>
-                                                                        <input type="text" class="form-control" id="code{{ $course->id }}" name="code" required maxlength="6">
+                                                                        <input type="text" class="form-control" id="code{{ $course->id }}" name="code" required maxlength="6" placeholder="Demandez le code au coordinateur">
+                                                                        <div class="form-text">
+                                                                            Saisissez le code fourni par le coordinateur académique.
+                                                                        </div>
                                                                     </div>
-                                                                    <input type="hidden" name="latitude" id="latitude{{ $course->id }}">
-                                                                    <input type="hidden" name="longitude" id="longitude{{ $course->id }}">
-                                                                    <input type="hidden" name="accuracy" id="accuracy{{ $course->id }}">
                                                                 </div>
                                                                 <div class="modal-footer">
                                                                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                                                                    <button type="submit" class="btn btn-primary">Confirmer</button>
+                                                                    <button type="submit" class="btn btn-primary">Confirmer ma présence</button>
                                                                 </div>
                                                             </form>
                                                         </div>
@@ -86,8 +85,13 @@
                                                 </div>
                                             @else
                                                 <span class="text-success">
-                                                    <i class="fas fa-check"></i> Émargé à {{ $attendance->validated_at->format('H:i') }}
+                                                    <i class="fas fa-check"></i> Émargé à {{ $course->teacherAttendance->validated_at->format('H:i') }}
                                                 </span>
+                                                <div class="mt-2">
+                                                    <a href="{{ route('teacher.roll-call', $course->id) }}" class="btn btn-info btn-sm">
+                                                        <i class="fas fa-list-check"></i> Faire l'appel
+                                                    </a>
+                                                </div>
                                             @endif
                                         </td>
                                     </tr>
@@ -108,30 +112,16 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Fonction pour obtenir la géolocalisation
-    function getLocation(courseId) {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                function(position) {
-                    document.getElementById('latitude' + courseId).value = position.coords.latitude;
-                    document.getElementById('longitude' + courseId).value = position.coords.longitude;
-                    document.getElementById('accuracy' + courseId).value = position.coords.accuracy;
-                },
-                function(error) {
-                    console.error("Erreur de géolocalisation:", error);
-                    alert("Impossible d'obtenir votre position. Veuillez activer la géolocalisation.");
-                }
-            );
-        } else {
-            alert("La géolocalisation n'est pas supportée par votre navigateur.");
-        }
-    }
-
-    // Ajouter des écouteurs d'événements pour chaque modal
+    // Focus automatique sur le champ code lors de l'ouverture du modal
     document.querySelectorAll('[data-bs-toggle="modal"]').forEach(function(button) {
         button.addEventListener('click', function() {
             const courseId = this.getAttribute('data-bs-target').replace('#signModal', '');
-            getLocation(courseId);
+            setTimeout(function() {
+                const codeInput = document.getElementById('code' + courseId);
+                if (codeInput) {
+                    codeInput.focus();
+                }
+            }, 500);
         });
     });
 });

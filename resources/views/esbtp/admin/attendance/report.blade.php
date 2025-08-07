@@ -2,15 +2,284 @@
 
 @section('title', 'Rapports d\'émargement')
 
+@section('styles')
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<style>
+    .attendance-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: var(--space-xl);
+        border-radius: var(--radius-large);
+        margin-bottom: var(--space-xl);
+        position: relative;
+        overflow: hidden;
+        box-shadow: var(--shadow-elevated);
+    }
+    
+    .attendance-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 120px;
+        height: 100%;
+        background: rgba(255,255,255,0.15);
+        transform: skewX(-15deg);
+        transform-origin: top;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: var(--space-lg);
+        margin-bottom: var(--space-xl);
+        max-width: 100%;
+    }
+
+    @media (max-width: 768px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .stat-card {
+        background: var(--surface);
+        border-radius: var(--radius-medium);
+        padding: var(--space-lg);
+        border: 1px solid rgba(0,0,0,0.05);
+        transition: all 0.3s ease;
+        cursor: pointer;
+        box-shadow: var(--shadow-card);
+    }
+
+    .stat-card:hover {
+        box-shadow: var(--shadow-hover);
+        transform: translateY(-2px);
+    }
+
+    .stat-card .stat-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: var(--space-md);
+        color: white;
+    }
+
+    .stat-card .stat-number {
+        font-size: 2rem;
+        font-weight: bold;
+        margin-bottom: var(--space-sm);
+    }
+
+    .stat-card .stat-label {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        margin: 0;
+    }
+
+    .stat-card .stat-description {
+        color: var(--text-muted);
+        font-size: 0.8rem;
+        margin-top: var(--space-xs);
+    }
+
+    .icon-primary { background: var(--primary); }
+    .icon-success { background: var(--success); }
+    .icon-warning { background: var(--warning); }
+    .icon-accent { background: var(--accent-blue); }
+
+    .filters-card {
+        background: var(--surface);
+        border-radius: var(--radius-medium);
+        padding: var(--space-lg);
+        border: 1px solid rgba(0,0,0,0.05);
+        box-shadow: var(--shadow-card);
+        margin-bottom: var(--space-xl);
+    }
+
+    .data-table-card {
+        background: var(--surface);
+        border-radius: var(--radius-medium);
+        padding: var(--space-lg);
+        border: 1px solid rgba(0,0,0,0.05);
+        box-shadow: var(--shadow-card);
+    }
+
+    .page-title {
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin: 0;
+        position: relative;
+        z-index: 1;
+        color: white;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .page-subtitle {
+        opacity: 0.95;
+        margin: var(--space-sm) 0 0;
+        position: relative;
+        z-index: 1;
+        color: rgba(255,255,255,0.9);
+        font-size: 1rem;
+    }
+
+    .stats-section {
+        /* Permettre au contenu de s'afficher naturellement */
+        overflow: visible;
+    }
+
+    .chart-container {
+        position: relative;
+        height: 350px !important;
+        max-height: 350px !important;
+        width: 100%;
+        overflow: visible;
+    }
+
+    #dailyStatsChart {
+        max-height: 320px !important;
+        height: 320px !important;
+        width: 100% !important;
+    }
+
+    .stat-mini-card {
+        background: white;
+        border-radius: var(--radius-medium);
+        padding: 1.2rem;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border: 1px solid rgba(0,0,0,0.05);
+        transition: transform 0.2s ease;
+        height: 100%;
+    }
+
+    .stat-mini-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .stat-mini-card .stat-value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+
+    .stat-mini-card .stat-label {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+
+    .stat-summary-card {
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        border-radius: var(--radius-medium);
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .rate-display {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.3rem;
+    }
+
+    /* Styles pour les badges de statut */
+    .status-badge {
+        display: inline-block;
+        padding: 0.375rem 0.75rem;
+        font-size: 0.875rem;
+        font-weight: 700;
+        line-height: 1;
+        text-align: center;
+        white-space: nowrap;
+        vertical-align: baseline;
+        border-radius: 0.375rem;
+        text-decoration: none;
+    }
+
+    .status-badge.bg-success {
+        background-color: #198754 !important;
+        color: white !important;
+    }
+
+    .status-badge.bg-warning {
+        background-color: #ffc107 !important;
+        color: #212529 !important;
+    }
+
+    .status-badge.bg-danger {
+        background-color: #dc3545 !important;
+        color: white !important;
+    }
+
+    .status-badge.bg-secondary {
+        background-color: #6c757d !important;
+        color: white !important;
+    }
+</style>
+@endsection
+
 @section('content')
 <div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">Rapport d'Émargement des Enseignants</h3>
-                </div>
-                <div class="card-body">
+    <!-- Header moderne -->
+    <div class="attendance-header">
+        <h1 class="page-title">
+            <i class="fas fa-chart-line me-3"></i>
+            Rapport d'Émargement des Enseignants
+        </h1>
+        <p class="page-subtitle">Analyse détaillée des présences et statistiques d'émargement</p>
+    </div>
+
+    <!-- Statistiques principales -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon icon-primary">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-number text-primary">{{ $stats['total'] }}</div>
+            <p class="stat-label">Total Émargements</p>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon icon-success">
+                <i class="fas fa-percentage"></i>
+            </div>
+            <div class="stat-number text-success">{{ $stats['attendance_rate'] }}%</div>
+            <p class="stat-label">Taux de Présence</p>
+            <div class="stat-description">
+                Présents: {{ $stats['present'] }} | 
+                En retard: {{ $stats['late'] }} | 
+                Absents: {{ $stats['absent'] }}
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon icon-accent">
+                <i class="fas fa-check-double"></i>
+            </div>
+            <div class="stat-number text-info">{{ $stats['validation_rate'] }}%</div>
+            <p class="stat-label">Taux de Validation</p>
+            <div class="stat-description">
+                Validés: {{ $stats['validated'] }} | 
+                En attente: {{ $stats['pending'] }} | 
+                Rejetés: {{ $stats['rejected'] }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="filters-card">
+        <h5 class="mb-3">
+            <i class="fas fa-filter me-2"></i>
+            Filtres de Recherche
+        </h5>
+        <div class="card-body">
                     <!-- Filters -->
                     <form method="GET" action="{{ route('esbtp.admin.attendance.report') }}" class="mb-4">
                         <div class="row">
@@ -36,7 +305,7 @@
                                         @foreach($enseignants as $enseignant)
                                             <option value="{{ $enseignant->id }}"
                                                 {{ request('enseignant_id') == $enseignant->id ? 'selected' : '' }}>
-                                                {{ $enseignant->nom_complet }}
+                                                {{ $enseignant->name }}
                                             </option>
                                         @endforeach
                                     </select>
@@ -94,54 +363,15 @@
                             </div>
                         </div>
                     </form>
+    </div>
 
-                    <!-- Statistics Cards -->
-                    <div class="row mb-4">
-                        <div class="col-md-3">
-                            <div class="card bg-info">
-                                <div class="card-body">
-                                    <h5 class="card-title">Total des émargements</h5>
-                                    <p class="card-text display-4">{{ $stats['total'] }}</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card bg-success">
-                                <div class="card-body">
-                                    <h5 class="card-title">Taux de présence</h5>
-                                    <p class="card-text display-4">{{ $stats['attendance_rate'] }}%</p>
-                                    <p class="mb-0">
-                                        Présents: {{ $stats['present'] }} |
-                                        En retard: {{ $stats['late'] }} |
-                                        Absents: {{ $stats['absent'] }}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card bg-warning">
-                                <div class="card-body">
-                                    <h5 class="card-title">Taux de validation</h5>
-                                    <p class="card-text display-4">{{ $stats['validation_rate'] }}%</p>
-                                    <p class="mb-0">
-                                        Validés: {{ $stats['validated'] }} |
-                                        En attente: {{ $stats['pending'] }} |
-                                        Rejetés: {{ $stats['rejected'] }}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card bg-primary">
-                                <div class="card-body">
-                                    <h5 class="card-title">Statistiques journalières</h5>
-                                    <canvas id="dailyStatsChart" width="100%" height="100"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Attendance Table -->
+    <!-- Table des données -->
+    <div class="data-table-card">
+        <h5 class="mb-3">
+            <i class="fas fa-table me-2"></i>
+            Liste des Émargements
+        </h5>
+        <!-- Attendance Table -->
                     <div class="table-responsive">
                         <table class="table table-bordered table-striped">
                             <thead>
@@ -161,21 +391,35 @@
                                 @foreach($attendances as $attendance)
                                     <tr>
                                         <td>{{ $attendance->created_at->format('d/m/Y H:i') }}</td>
-                                        <td>{{ $attendance->enseignant->nom_complet }}</td>
-                                        <td>{{ $attendance->matiere->nom }}</td>
+                                        <td>{{ $attendance->teacher->name }}</td>
+                                        <td>{{ $attendance->course->matiere->name ?? 'N/A' }}</td>
                                         <td>
-                                            <span class="badge badge-{{ $attendance->status === 'present' ? 'success' : ($attendance->status === 'late' ? 'warning' : 'danger') }}">
-                                                {{ ucfirst($attendance->status) }}
-                                            </span>
+                                            @if($attendance->status === 'present')
+                                                <span class="status-badge bg-success">Présent</span>
+                                            @elseif($attendance->status === 'late')
+                                                <span class="status-badge bg-warning">En retard</span>
+                                            @elseif($attendance->status === 'absent')
+                                                <span class="status-badge bg-danger">Absent</span>
+                                            @elseif($attendance->status === 'not_signed')
+                                                <span class="status-badge bg-secondary">Non émargé</span>
+                                            @elseif($attendance->status === 'signed')
+                                                <span class="status-badge bg-success">Émargé</span>
+                                            @elseif($attendance->status === 'fait')
+                                                <span class="status-badge bg-success">Fait</span>
+                                            @else
+                                                <span class="status-badge bg-secondary">{{ $attendance->status }}</span>
+                                            @endif
                                         </td>
                                         <td>{{ $attendance->marked_at ? $attendance->marked_at->format('H:i') : 'N/A' }}</td>
                                         <td>{{ $attendance->code }}</td>
                                         <td>
-                                            <span class="badge badge-{{ $attendance->validation_status === 'validated' ? 'success' : ($attendance->validation_status === 'pending' ? 'warning' : 'danger') }}">
-                                                {{ ucfirst($attendance->validation_status) }}
-                                            </span>
+                                            @if($attendance->validated_at)
+                                                <span class="status-badge bg-success">Validé</span>
+                                            @else
+                                                <span class="status-badge bg-warning">En attente</span>
+                                            @endif
                                         </td>
-                                        <td>{{ $attendance->validator ? $attendance->validator->name : 'N/A' }}</td>
+                                        <td>{{ $attendance->validated_at ? 'Auto-validé' : 'N/A' }}</td>
                                         <td>
                                             <button type="button" class="btn btn-sm btn-info"
                                                     data-toggle="modal"
@@ -187,6 +431,73 @@
                                 @endforeach
                             </tbody>
                         </table>
+                    </div>
+    </div>
+
+    <!-- Statistiques détaillées en bas de page -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="data-table-card stats-section">
+                <div class="row">
+                    <!-- Graphique des tendances -->
+                    <div class="col-lg-8">
+                        <div class="chart-container bg-white p-3 rounded shadow-sm">
+                            <h6 class="mb-3 text-dark fw-bold">
+                                <i class="fas fa-line-chart me-2 text-primary"></i>
+                                Évolution des Émargements par Jour
+                            </h6>
+                            <canvas id="dailyStatsChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Résumé par statut -->
+                    <div class="col-lg-4">
+                        <h6 class="mb-3 text-dark fw-bold">
+                            <i class="fas fa-chart-pie me-2 text-primary"></i>
+                            Répartition par Statut
+                        </h6>
+                        
+                        <!-- Mini cards pour les statistiques -->
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <div class="stat-mini-card">
+                                    <span class="stat-value text-success">{{ $stats['present'] }}</span>
+                                    <div class="stat-label">Présents</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="stat-mini-card">
+                                    <span class="stat-value text-warning">{{ $stats['late'] }}</span>
+                                    <div class="stat-label">En Retard</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="stat-mini-card">
+                                    <span class="stat-value text-danger">{{ $stats['absent'] }}</span>
+                                    <div class="stat-label">Absents</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="stat-mini-card">
+                                    <span class="stat-value text-info">{{ $stats['validated'] }}</span>
+                                    <div class="stat-label">Validés</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Résumé des taux -->
+                        <div class="stat-summary-card">
+                            <div class="row text-center">
+                                <div class="col-6">
+                                    <div class="rate-display text-success">{{ $stats['attendance_rate'] }}%</div>
+                                    <div class="small text-muted fw-medium">Taux de Présence</div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="rate-display text-info">{{ $stats['validation_rate'] }}%</div>
+                                    <div class="small text-muted fw-medium">Taux de Validation</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -208,10 +519,10 @@
                 <div class="modal-body">
                     <dl class="row">
                         <dt class="col-sm-4">Enseignant</dt>
-                        <dd class="col-sm-8">{{ $attendance->enseignant->nom_complet }}</dd>
+                        <dd class="col-sm-8">{{ $attendance->teacher->name }}</dd>
 
                         <dt class="col-sm-4">Matière</dt>
-                        <dd class="col-sm-8">{{ $attendance->matiere->nom }}</dd>
+                        <dd class="col-sm-8">{{ $attendance->course->matiere->name ?? 'N/A' }}</dd>
 
                         <dt class="col-sm-4">Date</dt>
                         <dd class="col-sm-8">{{ $attendance->created_at->format('d/m/Y H:i') }}</dd>
@@ -223,10 +534,10 @@
                         <dd class="col-sm-8">{{ $attendance->code }}</dd>
 
                         <dt class="col-sm-4">Validation</dt>
-                        <dd class="col-sm-8">{{ ucfirst($attendance->validation_status) }}</dd>
+                        <dd class="col-sm-8">{{ $attendance->validated_at ? 'Validé' : 'En attente' }}</dd>
 
                         <dt class="col-sm-4">Validé par</dt>
-                        <dd class="col-sm-8">{{ $attendance->validator ? $attendance->validator->name : 'N/A' }}</dd>
+                        <dd class="col-sm-8">{{ $attendance->validated_at ? 'Auto-validé' : 'N/A' }}</dd>
 
                         <dt class="col-sm-4">Commentaires</dt>
                         <dd class="col-sm-8">{{ $attendance->comments ?: 'Aucun commentaire' }}</dd>

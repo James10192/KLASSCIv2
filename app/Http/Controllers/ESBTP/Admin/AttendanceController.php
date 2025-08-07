@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use App\Models\ESBTPEnseignant;
 use App\Models\ESBTPClasse;
+use App\Models\ESBTPMatiere;
 use Illuminate\Support\Str;
 use App\Exports\TeacherAttendanceExport;
 use Maatwebsite\Excel\Facades\Excel;
@@ -23,7 +24,7 @@ class AttendanceController extends Controller
             ->latest()
             ->first();
 
-        $todayAttendances = ESBTPTeacherAttendance::with(['enseignant', 'emploiDuTemps', 'validator'])
+        $todayAttendances = ESBTPTeacherAttendance::with(['teacher', 'course.matiere', 'course.classe'])
             ->whereDate('created_at', today())
             ->orderBy('created_at', 'desc')
             ->get();
@@ -138,22 +139,23 @@ class AttendanceController extends Controller
         $request->validate([
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
-            'enseignant_id' => 'nullable|exists:esbtp_enseignants,id',
+            'enseignant_id' => 'nullable|exists:users,id',
             'export' => 'nullable|boolean'
         ]);
 
         $startDate = $request->start_date ? Carbon::parse($request->start_date) : now()->startOfMonth();
         $endDate = $request->end_date ? Carbon::parse($request->end_date) : now()->endOfMonth();
 
-        $query = ESBTPTeacherAttendance::with(['enseignant', 'emploiDuTemps', 'validator'])
+        $query = ESBTPTeacherAttendance::with(['teacher', 'course.matiere', 'course.classe'])
             ->whereBetween('created_at', [$startDate->startOfDay(), $endDate->endOfDay()]);
 
         if ($request->enseignant_id) {
-            $query->where('enseignant_id', $request->enseignant_id);
+            $query->where('teacher_id', $request->enseignant_id);
         }
 
         $attendances = $query->orderBy('created_at', 'desc')->get();
-        $enseignants = ESBTPEnseignant::all();
+        $enseignants = \App\Models\User::role('enseignant')->get();
+        $matieres = ESBTPMatiere::all();
 
         if ($request->export) {
             return Excel::download(
@@ -166,11 +168,28 @@ class AttendanceController extends Controller
             'total' => $attendances->count(),
             'present' => $attendances->where('status', 'present')->count(),
             'late' => $attendances->where('status', 'late')->count(),
+            'absent' => $attendances->where('status', 'absent')->count(),
             'validated' => $attendances->where('validation_status', 'validated')->count(),
             'rejected' => $attendances->where('validation_status', 'rejected')->count(),
-            'pending' => $attendances->where('validation_status', 'pending')->count()
+            'pending' => $attendances->where('validation_status', 'pending')->count(),
+            'attendance_rate' => $attendances->count() > 0
+                ? round(($attendances->where('status', 'present')->count() + $attendances->where('status', 'late')->count()) / $attendances->count() * 100, 2)
+                : 0,
+            'validation_rate' => $attendances->count() > 0
+                ? round($attendances->where('validation_status', 'validated')->count() / $attendances->count() * 100, 2)
+                : 0,
+            'daily_stats' => $attendances->groupBy(function($attendance) {
+                return $attendance->created_at->format('Y-m-d');
+            })->map(function($dayAttendances) {
+                return [
+                    'total' => $dayAttendances->count(),
+                    'present' => $dayAttendances->where('status', 'present')->count(),
+                    'late' => $dayAttendances->where('status', 'late')->count(),
+                    'absent' => $dayAttendances->where('status', 'absent')->count(),
+                ];
+            })
         ];
 
-        return view('esbtp.admin.attendance.report', compact('attendances', 'enseignants', 'stats', 'startDate', 'endDate'));
+        return view('esbtp.admin.attendance.report', compact('attendances', 'enseignants', 'matieres', 'stats', 'startDate', 'endDate'));
     }
 }

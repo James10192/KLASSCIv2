@@ -2,927 +2,1271 @@
 
 @section('title', 'Gestion des présences')
 
-@php
-// Définir la fonction getInitials localement si elle n'existe pas
-if (!function_exists('getInitials')) {
-    function getInitials($name) {
-        if (empty($name)) {
-            return 'NA';
-        }
-        $words = explode(' ', trim($name));
-        $initials = '';
-        foreach ($words as $word) {
-            if (!empty($word[0])) {
-                $initials .= strtoupper($word[0]);
-                if (strlen($initials) >= 2) break;
-            }
-        }
-        return $initials ?: 'NA';
+@section('styles')
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<style>
+    .attendance-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: var(--space-xl);
+        border-radius: var(--radius-large);
+        margin-bottom: var(--space-xl);
+        position: relative;
+        overflow: hidden;
+        box-shadow: var(--shadow-elevated);
     }
-}
-@endphp
+    
+    .attendance-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 120px;
+        height: 100%;
+        background: rgba(255,255,255,0.15);
+        transform: skewX(-15deg);
+        transform-origin: top;
+    }
+
+    .page-title {
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin: 0;
+        position: relative;
+        z-index: 1;
+        color: white;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .page-subtitle {
+        opacity: 0.95;
+        margin: var(--space-sm) 0 0;
+        position: relative;
+        z-index: 1;
+        color: rgba(255,255,255,0.9);
+        font-size: 1rem;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: var(--space-lg);
+        margin-bottom: var(--space-xl);
+    }
+
+    .stat-card {
+        background: var(--surface);
+        border-radius: var(--radius-medium);
+        padding: var(--space-lg);
+        border: 1px solid rgba(0,0,0,0.05);
+        transition: all 0.3s ease;
+        cursor: pointer;
+        box-shadow: var(--shadow-card);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        transition: width 0.3s ease;
+    }
+
+    .stat-card:hover {
+        box-shadow: var(--shadow-hover);
+        transform: translateY(-2px);
+    }
+
+    .stat-card:hover::before {
+        width: 8px;
+    }
+
+    .stat-card.present::before { background: var(--success); }
+    .stat-card.absent::before { background: var(--danger); }
+    .stat-card.late::before { background: var(--warning); }
+    .stat-card.excused::before { background: var(--accent-blue); }
+
+    .stat-card .stat-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: var(--space-md);
+        color: white;
+    }
+
+    .stat-card .stat-number {
+        font-size: 2.2rem;
+        font-weight: bold;
+        margin-bottom: var(--space-sm);
+    }
+
+    .stat-card .stat-label {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        margin: 0;
+        font-weight: 500;
+    }
+
+    .stat-card .stat-percentage {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-top: var(--space-xs);
+    }
+
+    .icon-success { background: var(--success); }
+    .icon-danger { background: var(--danger); }
+    .icon-warning { background: var(--warning); }
+    .icon-info { background: var(--accent-blue); }
+
+    .filters-card, .data-card, .chart-card {
+        background: var(--surface);
+        border-radius: var(--radius-medium);
+        padding: var(--space-lg);
+        border: 1px solid rgba(0,0,0,0.05);
+        box-shadow: var(--shadow-card);
+        margin-bottom: var(--space-lg);
+    }
+
+    .chart-container {
+        position: relative;
+        height: 350px;
+        width: 100%;
+        overflow: visible;
+    }
+
+    #attendanceChart {
+        max-height: 320px !important;
+        height: 320px !important;
+        width: 100% !important;
+    }
+
+    .table-modern {
+        border-collapse: separate;
+        border-spacing: 0;
+        border-radius: var(--radius-medium);
+        overflow: hidden;
+        box-shadow: var(--shadow-card);
+    }
+
+    .table-modern thead {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+        color: white;
+    }
+
+    .table-modern thead th {
+        border: none;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.8rem;
+        letter-spacing: 0.5px;
+        padding: var(--space-md);
+    }
+
+    .table-modern tbody tr {
+        transition: all 0.2s ease;
+    }
+
+    .table-modern tbody tr:hover {
+        background: rgba(102, 126, 234, 0.05);
+    }
+
+    .table-modern tbody td {
+        border: none;
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+        padding: var(--space-md);
+        vertical-align: middle;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 0.4rem 0.8rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        line-height: 1;
+        text-align: center;
+        white-space: nowrap;
+        border-radius: var(--radius-small);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .status-badge.present {
+        background: var(--success);
+        color: white;
+    }
+
+    .status-badge.absent {
+        background: var(--danger);
+        color: white;
+    }
+
+    .status-badge.late {
+        background: var(--warning);
+        color: var(--text-primary);
+    }
+
+    .status-badge.excused {
+        background: var(--accent-blue);
+        color: white;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: var(--space-sm);
+    }
+
+    .btn-modern {
+        padding: 0.5rem 1rem;
+        border-radius: var(--radius-small);
+        border: none;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .btn-primary-modern {
+        background: var(--primary);
+        color: white;
+    }
+
+    .btn-primary-modern:hover {
+        background: var(--secondary);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-hover);
+    }
+
+    .btn-info-modern {
+        background: var(--accent-blue);
+        color: white;
+    }
+
+    .btn-info-modern:hover {
+        background: var(--accent-orange);
+        transform: translateY(-1px);
+    }
+
+    .quick-actions {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: var(--space-md);
+        margin-bottom: var(--space-xl);
+    }
+
+    .quick-action {
+        background: var(--surface);
+        border: 1px solid rgba(102, 126, 234, 0.2);
+        border-radius: var(--radius-medium);
+        padding: var(--space-md);
+        text-align: center;
+        text-decoration: none;
+        color: var(--text-primary);
+        transition: all 0.3s ease;
+    }
+
+    .quick-action:hover {
+        background: var(--primary);
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-hover);
+        border-color: var(--primary);
+    }
+
+    .quick-action .action-icon {
+        font-size: 2rem;
+        margin-bottom: var(--space-sm);
+        color: var(--primary);
+        transition: color 0.3s ease;
+    }
+
+    .quick-action:hover .action-icon {
+        color: white;
+    }
+
+    /* Styles pour les statistiques coordinateur */
+    .bg-gradient-primary { background: linear-gradient(45deg, #4e73df, #224abe); }
+    .bg-gradient-success { background: linear-gradient(45deg, #1cc88a, #13855c); }
+    .bg-gradient-warning { background: linear-gradient(45deg, #f6c23e, #dda20a); }
+    .bg-gradient-info { background: linear-gradient(45deg, #36b9cc, #258391); }
+    
+    .text-white-50 { color: rgba(255, 255, 255, 0.7); }
+    .text-white-75 { color: rgba(255, 255, 255, 0.85); }
+
+    .card:hover {
+        transform: translateY(-2px);
+        transition: transform 0.2s ease-in-out;
+    }
+
+    /* Styles pour activités récentes et timeline */
+    .timeline {
+        position: relative;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .timeline-item {
+        position: relative;
+        padding-left: 30px;
+        margin-bottom: 20px;
+    }
+
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: 8px;
+        top: 0;
+        bottom: -20px;
+        width: 2px;
+        background-color: #e3e6f0;
+    }
+
+    .timeline-icon {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 8px;
+        color: white;
+    }
+
+    .timeline-icon.success { background-color: #28a745; }
+    .timeline-icon.warning { background-color: #ffc107; }
+    .timeline-icon.info { background-color: #17a2b8; }
+    .timeline-icon.danger { background-color: #dc3545; }
+
+    /* Styles pour section coordinateur */
+    .coordinator-section {
+        margin-bottom: var(--space-xl);
+        border-radius: var(--radius-large);
+        overflow: hidden;
+    }
+
+    .coordinator-section .card-header {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+        border: none;
+        padding: var(--space-lg);
+    }
+
+    .coordinator-actions .btn {
+        transition: all 0.3s ease;
+        border-radius: var(--radius-medium);
+        box-shadow: var(--shadow-card);
+    }
+
+    .coordinator-actions .btn:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-hover);
+    }
+
+    .alert-sm {
+        padding: 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .coordinator-actions .col-md-3 {
+            margin-bottom: var(--space-md);
+        }
+        
+        .timeline {
+            max-height: 300px;
+        }
+        
+        .stats-grid {
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        }
+    }
+</style>
+@endsection
 
 @section('content')
 <div class="container-fluid">
+    <!-- Header moderne -->
+    <div class="attendance-header">
+        <h1 class="page-title">
+            <i class="fas fa-users-class me-3"></i>
+            Gestion des Présences
+        </h1>
+        <p class="page-subtitle">Suivi et analyse des présences étudiantes en temps réel</p>
+    </div>
+
+    <!-- Statistiques principales -->
+    <div class="stats-grid">
+        <div class="stat-card present">
+            <div class="stat-icon icon-success">
+                <i class="fas fa-user-check"></i>
+            </div>
+            <div class="stat-number text-success">{{ $stats['present'] ?? 0 }}</div>
+            <p class="stat-label">Étudiants Présents</p>
+            <div class="stat-percentage">
+                {{ ($stats['total'] ?? 0) > 0 ? round(($stats['present'] ?? 0) / $stats['total'] * 100, 1) : 0 }}% du total
+            </div>
+        </div>
+
+        <div class="stat-card absent">
+            <div class="stat-icon icon-danger">
+                <i class="fas fa-user-times"></i>
+            </div>
+            <div class="stat-number text-danger">{{ $stats['absent'] ?? 0 }}</div>
+            <p class="stat-label">Étudiants Absents</p>
+            <div class="stat-percentage">
+                {{ ($stats['total'] ?? 0) > 0 ? round(($stats['absent'] ?? 0) / $stats['total'] * 100, 1) : 0 }}% du total
+            </div>
+        </div>
+
+        <div class="stat-card late">
+            <div class="stat-icon icon-warning">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="stat-number text-warning">{{ $stats['retard'] ?? 0 }}</div>
+            <p class="stat-label">Retards</p>
+            <div class="stat-percentage">
+                {{ ($stats['total'] ?? 0) > 0 ? round(($stats['retard'] ?? 0) / $stats['total'] * 100, 1) : 0 }}% du total
+            </div>
+        </div>
+
+        <div class="stat-card excused">
+            <div class="stat-icon icon-info">
+                <i class="fas fa-notes-medical"></i>
+            </div>
+            <div class="stat-number text-info">{{ $stats['excuse'] ?? 0 }}</div>
+            <p class="stat-label">Excusés</p>
+            <div class="stat-percentage">
+                {{ ($stats['total'] ?? 0) > 0 ? round(($stats['excuse'] ?? 0) / $stats['total'] * 100, 1) : 0 }}% du total
+            </div>
+        </div>
+    </div>
+
+    @if(auth()->user() && auth()->user()->hasRole('coordinateur') && $coordinatorStats)
+    <!-- Section Coordinateur - Suivi Enseignants -->
     <div class="row mb-4">
-        <div class="col-xl-3 col-md-6">
-            <div class="card bg-success text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="card-title mb-0">Présents</h6>
-                            <h2 class="mt-2 mb-0">{{ $stats['present'] ?? 0 }}</h2>
-                        </div>
-                        <i class="fas fa-user-check fa-2x opacity-50"></i>
+        <div class="col-12">
+            <div class="card border-0 shadow-sm coordinator-section">
+                <div class="card-header bg-gradient-primary text-white d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-0">
+                            <i class="fas fa-chalkboard-teacher me-2"></i>
+                            Suivi des Émargements Enseignants - Aujourd'hui
+                        </h5>
+                        <small class="text-white-75">Supervision en temps réel de l'activité pédagogique</small>
                     </div>
+                    @if($unreadNotifications > 0)
+                    <a href="{{ route('notifications.index') }}" class="btn btn-light btn-sm">
+                        <i class="fas fa-bell me-1"></i>
+                        {{ $unreadNotifications }} notifications
+                    </a>
+                    @endif
                 </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card bg-danger text-white">
                 <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="card-title mb-0">Absents</h6>
-                            <h2 class="mt-2 mb-0">{{ $stats['absent'] ?? 0 }}</h2>
+                    <div class="row">
+                        <!-- Émargements du jour -->
+                        <div class="col-xl-3 col-md-6 mb-3">
+                            <div class="card bg-gradient-primary text-white border-0 shadow">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="card-title text-white-50 mb-1">Émargements</h6>
+                                            <h3 class="mb-0 fw-bold">{{ $coordinatorStats['teacher_attendances_today'] ?? 0 }}</h3>
+                                            <small class="text-white-75">sur {{ $coordinatorStats['scheduled_courses_today'] ?? 0 }} cours</small>
+                                        </div>
+                                        <div class="text-white-50">
+                                            <i class="fas fa-clipboard-check fa-2x"></i>
+                                        </div>
+                                    </div>
+                                    <div class="progress mt-3" style="height: 4px;">
+                                        <div class="progress-bar bg-white" role="progressbar" 
+                                             style="width: {{ $coordinatorStats['teacher_attendance_rate'] ?? 0 }}%">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <i class="fas fa-user-times fa-2x opacity-50"></i>
+
+                        <!-- Appels terminés -->
+                        <div class="col-xl-3 col-md-6 mb-3">
+                            <div class="card bg-gradient-success text-white border-0 shadow">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="card-title text-white-50 mb-1">Appels Terminés</h6>
+                                            <h3 class="mb-0 fw-bold">{{ $coordinatorStats['roll_calls_completed_today'] ?? 0 }}</h3>
+                                            <small class="text-white-75">{{ $coordinatorStats['students_present_today'] ?? 0 }} présents</small>
+                                        </div>
+                                        <div class="text-white-50">
+                                            <i class="fas fa-users-check fa-2x"></i>
+                                        </div>
+                                    </div>
+                                    <div class="progress mt-3" style="height: 4px;">
+                                        <div class="progress-bar bg-white" role="progressbar" 
+                                             style="width: {{ $coordinatorStats['roll_call_completion_rate'] ?? 0 }}%">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Retards détectés -->
+                        <div class="col-xl-3 col-md-6 mb-3">
+                            <div class="card bg-gradient-warning text-white border-0 shadow">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="card-title text-white-50 mb-1">Retards Détectés</h6>
+                                            <h3 class="mb-0 fw-bold">{{ $coordinatorStats['delays_today'] ?? 0 }}</h3>
+                                            <small class="text-white-75">émargements manqués</small>
+                                        </div>
+                                        <div class="text-white-50">
+                                            <i class="fas fa-clock fa-2x"></i>
+                                        </div>
+                                    </div>
+                                    @if(($coordinatorStats['delays_today'] ?? 0) > 0)
+                                        <div class="mt-3">
+                                            <small class="text-white-75">⚠️ Attention requise</small>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Cours clôturés -->
+                        <div class="col-xl-3 col-md-6 mb-3">
+                            <div class="card bg-gradient-info text-white border-0 shadow">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="card-title text-white-50 mb-1">Cours Clôturés</h6>
+                                            <h3 class="mb-0 fw-bold">{{ $coordinatorStats['courses_closed_today'] ?? 0 }}</h3>
+                                            <small class="text-white-75">séances terminées</small>
+                                        </div>
+                                        <div class="text-white-50">
+                                            <i class="fas fa-check-circle fa-2x"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card bg-warning text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="card-title mb-0">Retards</h6>
-                            <h2 class="mt-2 mb-0">{{ $stats['retard'] ?? 0 }}</h2>
+
+                    <!-- Alertes coordinateur -->
+                    @if(($coordinatorStats['delays_today'] ?? 0) > 0 || ($coordinatorStats['high_absence_classes'] ?? 0) > 0)
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="alert-section">
+                                <h6 class="text-muted mb-3">🔔 Alertes du jour</h6>
+                                
+                                @if(($coordinatorStats['delays_today'] ?? 0) > 0)
+                                <div class="alert alert-warning border-0 shadow-sm mb-2">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                        <div>
+                                            <strong>{{ $coordinatorStats['delays_today'] }} retard(s) d'émargement</strong>
+                                            <p class="mb-0 small">Des enseignants n'ont pas émargé à temps</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                @endif
+
+                                @if(($coordinatorStats['high_absence_classes'] ?? 0) > 0)
+                                <div class="alert alert-danger border-0 shadow-sm mb-2">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-users-slash me-2"></i>
+                                        <div>
+                                            <strong>{{ $coordinatorStats['high_absence_classes'] }} classe(s) avec forte absentéisme</strong>
+                                            <p class="mb-0 small">Plus de 30% d'absences détectées</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                @endif
+                            </div>
                         </div>
-                        <i class="fas fa-clock fa-2x opacity-50"></i>
                     </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card bg-info text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="card-title mb-0">Excusés</h6>
-                            <h2 class="mt-2 mb-0">{{ $stats['excuse'] ?? 0 }}</h2>
+                    @endif
+
+                    <!-- Actions rapides coordinateur -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <h6 class="text-muted mb-3">🚀 Actions Rapides Coordinateur</h6>
+                            <div class="row coordinator-actions">
+                                <div class="col-md-3 mb-3">
+                                    <a href="{{ route('esbtp.teacher-attendance.report') }}" class="btn btn-outline-primary w-100 h-100 d-flex flex-column justify-content-center p-3">
+                                        <i class="fas fa-chalkboard-teacher fa-2x mb-2"></i>
+                                        <span class="fw-bold">Émargements</span>
+                                        <small class="text-muted">Voir tous les enseignants</small>
+                                    </a>
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <a href="{{ route('notifications.index') }}" class="btn btn-outline-info w-100 h-100 d-flex flex-column justify-content-center p-3">
+                                        <i class="fas fa-bell fa-2x mb-2"></i>
+                                        <span class="fw-bold">Notifications</span>
+                                        <small class="text-muted">{{ $unreadNotifications ?? 0 }} non lues</small>
+                                    </a>
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <button class="btn btn-outline-warning w-100 h-100 d-flex flex-column justify-content-center p-3" onclick="generateDailyReport()">
+                                        <i class="fas fa-chart-line fa-2x mb-2"></i>
+                                        <span class="fw-bold">Rapport du Jour</span>
+                                        <small class="text-muted">Générer le récap</small>
+                                    </button>
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <button class="btn btn-outline-success w-100 h-100 d-flex flex-column justify-content-center p-3" onclick="refreshData()">
+                                        <i class="fas fa-sync-alt fa-2x mb-2"></i>
+                                        <span class="fw-bold">Actualiser</span>
+                                        <small class="text-muted">Données en temps réel</small>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                        <i class="fas fa-notes-medical fa-2x opacity-50"></i>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+    @endif
 
-<div class="content-wrapper">
-    <div class="page-header">
-        <h3 class="page-title">
-            <span class="page-title-icon bg-gradient-primary text-white me-2">
-                <i class="mdi mdi-calendar-check"></i>
-            </span> Gestion des présences
-        </h3>
-
-        </div>
-
-        <!-- Tableau de bord des statistiques -->
-        <div class="row">
-            <!-- Total des présences -->
-
-
-            <!-- Présents -->
-            <div class="col-xl-3 col-md-6 mb-4">
-                <div class="card border-left-success shadow h-100 py-2">
-                    <div class="card-body">
-                        <div class="row no-gutters align-items-center">
-                            <div class="col mr-2">
-                                <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                    Présents</div>
-                                <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $statsPresent }} ({{ $statsPresentPercent }}%)</div>
-                                <div class="progress progress-sm mt-2">
-                                    <div class="progress-bar bg-success" role="progressbar" style="width: {{ $statsPresentPercent }}%" aria-valuenow="{{ $statsPresentPercent }}" aria-valuemin="0" aria-valuemax="100"></div>
-                                </div>
-                            </div>
-                            <div class="col-auto">
-                                <i class="fas fa-check-circle fa-2x text-gray-300"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+    <!-- Actions rapides -->
+    <div class="quick-actions">
+        <a href="{{ route('esbtp.attendances.create') }}" class="quick-action">
+            <div class="action-icon">
+                <i class="fas fa-plus-circle"></i>
             </div>
+            <div class="action-title">Marquer Présences</div>
+            <div class="action-description">Enregistrer les présences</div>
+        </a>
 
-            <!-- Absents -->
-            <div class="col-xl-3 col-md-6 mb-4">
-                <div class="card border-left-danger shadow h-100 py-2">
-                    <div class="card-body">
-                        <div class="row no-gutters align-items-center">
-                            <div class="col mr-2">
-                                <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
-                                    Absents</div>
-                                <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $statsAbsent }} ({{ $statsAbsentPercent }}%)</div>
-                                <div class="progress progress-sm mt-2">
-                                    <div class="progress-bar bg-danger" role="progressbar" style="width: {{ $statsAbsentPercent }}%" aria-valuenow="{{ $statsAbsentPercent }}" aria-valuemin="0" aria-valuemax="100"></div>
-                                </div>
-                            </div>
-                            <div class="col-auto">
-                                <i class="fas fa-times-circle fa-2x text-gray-300"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        <a href="{{ route('esbtp.attendances.rapport-form') }}" class="quick-action">
+            <div class="action-icon">
+                <i class="fas fa-chart-bar"></i>
             </div>
+            <div class="action-title">Générer Rapport</div>
+            <div class="action-description">Analyser les données</div>
+        </a>
 
-            <!-- Retards -->
-            <div class="col-xl-3 col-md-6 mb-4">
-                <div class="card border-left-warning shadow h-100 py-2">
-                    <div class="card-body">
-                        <div class="row no-gutters align-items-center">
-                            <div class="col mr-2">
-                                <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                    Retards</div>
-                                <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $statsRetard }} ({{ $statsRetardPercent }}%)</div>
-                                <div class="progress progress-sm mt-2">
-                                    <div class="progress-bar bg-warning" role="progressbar" style="width: {{ $statsRetardPercent }}%" aria-valuenow="{{ $statsRetardPercent }}" aria-valuemin="0" aria-valuemax="100"></div>
-                                </div>
-                            </div>
-                            <div class="col-auto">
-                                <i class="fas fa-clock fa-2x text-gray-300"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        <a href="#" class="quick-action" onclick="exportData()">
+            <div class="action-icon">
+                <i class="fas fa-file-export"></i>
             </div>
+            <div class="action-title">Exporter Données</div>
+            <div class="action-description">CSV, Excel, PDF</div>
+        </a>
 
-            <!-- Excusés -->
-            <div class="col-xl-3 col-md-6 mb-4">
-                <div class="card border-left-info shadow h-100 py-2">
-                    <div class="card-body">
-                        <div class="row no-gutters align-items-center">
-                            <div class="col mr-2">
-                                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                    Excusés</div>
-                                <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $statsExcuse }} ({{ $statsExcusePercent }}%)</div>
-                                <div class="progress progress-sm mt-2">
-                                    <div class="progress-bar bg-info" role="progressbar" style="width: {{ $statsExcusePercent }}%" aria-valuenow="{{ $statsExcusePercent }}" aria-valuemin="0" aria-valuemax="100"></div>
-                                </div>
-                            </div>
-                            <div class="col-auto">
-                                <i class="fas fa-notes-medical fa-2x text-gray-300"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        <a href="#" class="quick-action" onclick="showStatistics()">
+            <div class="action-icon">
+                <i class="fas fa-analytics"></i>
             </div>
-
-            <!-- Total des filtres appliqués (visible seulement si des filtres sont appliqués) -->
-            @if(request()->hasAny(['classe_id', 'matiere_id', 'date_debut', 'date_fin', 'statut']))
-            <div class="col-xl-3 col-md-6 mb-4">
-                <div class="card border-left-dark shadow h-100 py-2">
-                    <div class="card-body">
-                        <div class="row no-gutters align-items-center">
-                            <div class="col mr-2">
-                                <div class="text-xs font-weight-bold text-dark text-uppercase mb-1">
-                                    Total après filtres</div>
-                                <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $filteredTotal }}</div>
-                                <div class="small text-muted">Résultats filtrés</div>
-                            </div>
-                            <div class="col-auto">
-                                <i class="fas fa-filter fa-2x text-gray-300"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            @endif
-        </div>
-
-        <!-- Graphique des tendances 7 derniers jours -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card shadow">
-                    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                        <h6 class="m-0 font-weight-bold text-primary">Tendance des 7 derniers jours</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="chart-area">
-                            <canvas id="attendanceChart" style="height: 250px;"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <div class="action-title">Statistiques</div>
+            <div class="action-description">Analyse approfondie</div>
+        </a>
     </div>
 
     <div class="row">
-        <div class="col-lg-12 grid-margin stretch-card">
-            <div class="card">
-                <div class="card-body">
-                        <div class="d-flex justify-content-between mb-4">
-                            <h4 class="card-title mb-0">Liste des présences</h4>
-                            <div>
-                        <a href="{{ route('esbtp.attendances.create') }}" class="btn btn-gradient-primary btn-sm">
-                            <i class="mdi mdi-plus"></i> Marquer des présences
-                        </a>
-                        <a href="{{ route('esbtp.attendances.rapport-form') }}" class="btn btn-gradient-info btn-sm">
-                            <i class="mdi mdi-file-chart"></i> Générer un rapport
-                        </a>
-                            </div>
-                    </div>
+        <!-- Graphique des tendances -->
+        <div class="col-lg-8">
+            <div class="chart-card">
+                <h5 class="mb-3">
+                    <i class="fas fa-line-chart me-2 text-primary"></i>
+                    Tendance des 7 Derniers Jours
+                </h5>
+                <div class="chart-container">
+                    <canvas id="attendanceChart"></canvas>
+                </div>
+            </div>
+        </div>
 
-                        <!-- Filters -->
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">Filtres</h5>
-                            </div>
-                            <div class="card-body">
-                        <form action="{{ route('esbtp.attendances.index') }}" method="GET" class="row g-3">
-                            <div class="col-md-3">
-                                <label for="classe_id" class="form-label">Classe</label>
-                                        <select name="classe_id" id="classe_id" class="form-select">
-                                    <option value="">Toutes les classes</option>
-                                    @foreach($classes as $classe)
-                                        <option value="{{ $classe->id }}" {{ request('classe_id') == $classe->id ? 'selected' : '' }}>
-                                            {{ $classe->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-
-                                    <div class="col-md-3">
-                                        <label for="matiere_id" class="form-label">Matière</label>
-                                        <select name="matiere_id" id="matiere_id" class="form-select">
-                                            <option value="">Toutes les matières</option>
-                                            @foreach($matieres as $matiere)
-                                                <option value="{{ $matiere->id }}" {{ request('matiere_id') == $matiere->id ? 'selected' : '' }}>
-                                                    {{ $matiere->name }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-
-                            <div class="col-md-3">
-                                <label for="etudiant_id" class="form-label">Étudiant</label>
-                                        <select name="etudiant_id" id="etudiant_id" class="form-select">
-                                    <option value="">Tous les étudiants</option>
-                                    @foreach($etudiants as $etudiant)
-                                        <option value="{{ $etudiant->id }}" {{ request('etudiant_id') == $etudiant->id ? 'selected' : '' }}>
-                                            {{ $etudiant->nom_complet }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-
-                                    <div class="col-md-2">
-                                        <label for="date_debut" class="form-label">Date début</label>
-                                        <input type="date" class="form-control" id="date_debut" name="date_debut"
-                                               value="{{ request('date_debut') }}">
-                                    </div>
-
-                            <div class="col-md-2">
-                                        <label for="date_fin" class="form-label">Date fin</label>
-                                        <input type="date" class="form-control" id="date_fin" name="date_fin"
-                                               value="{{ request('date_fin') }}">
-                            </div>
-
-                            <div class="col-md-2">
-                                <label for="statut" class="form-label">Statut</label>
-                                        <select name="statut" id="statut" class="form-select">
-                                    <option value="">Tous les statuts</option>
-                                    <option value="present" {{ request('statut') == 'present' ? 'selected' : '' }}>Présent</option>
-                                    <option value="absent" {{ request('statut') == 'absent' ? 'selected' : '' }}>Absent</option>
-                                            <option value="retard" {{ request('statut') == 'retard' ? 'selected' : '' }}>Retard</option>
-                                    <option value="excuse" {{ request('statut') == 'excuse' ? 'selected' : '' }}>Excusé</option>
-                                </select>
-                            </div>
-
-                                    <div class="col-12">
-                                        <button type="submit" class="btn btn-primary">
-                                            <i class="fas fa-filter me-1"></i>Filtrer
-                                </button>
-                                        <a href="{{ route('esbtp.attendances.index') }}" class="btn btn-secondary">
-                                            <i class="fas fa-undo me-1"></i>Réinitialiser
-                                        </a>
-                            </div>
-                        </form>
-                            </div>
-                    </div>
-
-                        <!-- Statistiques par étudiant -->
-                        @if(count($statsParEtudiant) > 0)
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">Statistiques par étudiant</h5>
-                            </div>
-                            <div class="card-body">
-                    <div class="table-responsive">
-                                    <table class="table table-striped table-bordered table-hover">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th>Étudiant</th>
-                                                <th class="text-center">Présences</th>
-                                                <th class="text-center">Absences</th>
-                                                <th class="text-center">Retards</th>
-                                                <th class="text-center">Excusés</th>
-                                                <th class="text-center">Total</th>
-                                                <th class="text-center">Taux de présence</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach($statsParEtudiant as $stat)
-                                                <tr>
-                                                    <td>{{ $stat['etudiant']->nom_complet }}</td>
-                                                    <td class="text-center">
-                                                        <span class="badge bg-success">{{ $stat['present'] }}</span>
-                                                        <div class="progress progress-sm mt-1">
-                                                            <div class="progress-bar bg-success" role="progressbar" style="width: {{ $stat['present_percent'] }}%" aria-valuenow="{{ $stat['present_percent'] }}" aria-valuemin="0" aria-valuemax="100"></div>
-                                                        </div>
-                                                    </td>
-                                                    <td class="text-center">
-                                                        <span class="badge bg-danger">{{ $stat['absent'] }}</span>
-                                                        <div class="progress progress-sm mt-1">
-                                                            <div class="progress-bar bg-danger" role="progressbar" style="width: {{ $stat['absent_percent'] }}%" aria-valuenow="{{ $stat['absent_percent'] }}" aria-valuemin="0" aria-valuemax="100"></div>
-                                                        </div>
-                                                    </td>
-                                                    <td class="text-center">
-                                                        <span class="badge bg-warning">{{ $stat['retard'] }}</span>
-                                                        <div class="progress progress-sm mt-1">
-                                                            <div class="progress-bar bg-warning" role="progressbar" style="width: {{ $stat['retard_percent'] }}%" aria-valuenow="{{ $stat['retard_percent'] }}" aria-valuemin="0" aria-valuemax="100"></div>
-                                                        </div>
-                                                    </td>
-                                                    <td class="text-center">
-                                                        <span class="badge bg-info">{{ $stat['excuse'] }}</span>
-                                                        <div class="progress progress-sm mt-1">
-                                                            <div class="progress-bar bg-info" role="progressbar" style="width: {{ $stat['excuse_percent'] }}%" aria-valuenow="{{ $stat['excuse_percent'] }}" aria-valuemin="0" aria-valuemax="100"></div>
-                                                        </div>
-                                                    </td>
-                                                    <td class="text-center">{{ $stat['total'] }}</td>
-                                                    <td class="text-center">
-                                                        <strong>{{ $stat['present_percent'] }}%</strong>
-                                                        <div class="progress progress-sm mt-1">
-                                                            <div class="progress-bar bg-primary" role="progressbar" style="width: {{ $stat['present_percent'] }}%" aria-valuenow="{{ $stat['present_percent'] }}" aria-valuemin="0" aria-valuemax="100"></div>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
+        <!-- Statistiques par classe -->
+        <div class="col-lg-4">
+            <div class="data-card">
+                <h5 class="mb-3">
+                    <i class="fas fa-graduation-cap me-2 text-primary"></i>
+                    Présences par Classe
+                </h5>
+                @if(isset($classeStats) && count($classeStats) > 0)
+                    @foreach($classeStats as $classe)
+                        <div class="mb-4">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div>
+                                    <h6 class="fw-bold mb-1">{{ $classe['name'] }}</h6>
+                                    <small class="text-muted">{{ $classe['total_students'] }} étudiants</small>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-primary">{{ $classe['attendance_rate'] }}%</span>
                                 </div>
                             </div>
+                            
+                            <!-- Barres de progression pour chaque statut -->
+                            <div class="row g-1 mb-2">
+                                <div class="col-3">
+                                    <div class="text-center">
+                                        <div class="fw-bold text-success">{{ $classe['present'] }}</div>
+                                        <small class="text-muted">Présents</small>
+                                    </div>
+                                </div>
+                                <div class="col-3">
+                                    <div class="text-center">
+                                        <div class="fw-bold text-danger">{{ $classe['absent'] }}</div>
+                                        <small class="text-muted">Absents</small>
+                                    </div>
+                                </div>
+                                <div class="col-3">
+                                    <div class="text-center">
+                                        <div class="fw-bold text-warning">{{ $classe['retard'] }}</div>
+                                        <small class="text-muted">Retards</small>
+                                    </div>
+                                </div>
+                                <div class="col-3">
+                                    <div class="text-center">
+                                        <div class="fw-bold text-info">{{ $classe['excuse'] }}</div>
+                                        <small class="text-muted">Excusés</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Barre de progression globale -->
+                            <div class="progress" style="height: 8px;">
+                                @if($classe['total_attendance'] > 0)
+                                    <div class="progress-bar bg-success" style="width: {{ ($classe['present'] / $classe['total_attendance']) * 100 }}%"></div>
+                                    <div class="progress-bar bg-warning" style="width: {{ ($classe['retard'] / $classe['total_attendance']) * 100 }}%"></div>
+                                    <div class="progress-bar bg-info" style="width: {{ ($classe['excuse'] / $classe['total_attendance']) * 100 }}%"></div>
+                                    <div class="progress-bar bg-danger" style="width: {{ ($classe['absent'] / $classe['total_attendance']) * 100 }}%"></div>
+                                @else
+                                    <div class="progress-bar bg-secondary" style="width: 100%"></div>
+                                @endif
+                            </div>
                         </div>
-                        @endif
-
-                        <!-- Table -->
-                        <div class="table-responsive">
-                            <table class="table table-striped table-hover align-middle">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>#</th>
-                                    <th>Étudiant</th>
-                                    <th>Classe</th>
-                                        <th>Matière</th>
-                                    <th>Date</th>
-                                        <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($attendances as $attendance)
-                                    <tr data-absence-id="{{ $attendance->id }}">
-                                        <td>{{ $loop->iteration }}</td>
-                                        <td>{{ $attendance->etudiant->user->name ?? 'N/A' }}</td>
-                                        <td>{{ $attendance->seanceCours->emploiTemps->classe->name ?? 'N/A' }}</td>
-                                        <td>{{ $attendance->seanceCours->matiere->name ?? 'N/A' }}</td>
-                                        <td>{{ $attendance->date ? $attendance->date->format('d/m/Y') : 'N/A' }}</td>
-                                        <td>
-                                            @switch($attendance->statut)
-                                                @case('present')
-                                                    <span class="badge bg-success">Présent</span>
-                                                    @break
-                                                @case('absent')
-                                                    @if($attendance->justified_at)
-                                                        <span class="badge bg-warning text-dark">Absence justifiée en attente</span>
-                                                    @else
-                                                        <span class="badge bg-danger">Absent</span>
-                                                    @endif
-                                                    @break
-                                                @case('retard')
-                                                    <span class="badge bg-warning text-dark">Retard</span>
-                                                    @break
-                                                @case('excuse')
-                                                    <span class="badge bg-info">Excusé</span>
-                                                    @break
-                                                @default
-                                                    <span class="badge bg-secondary">{{ $attendance->statut }}</span>
-                                            @endswitch
-                                        </td>
-                                        <td>
-                                            @canany(['edit_attendances', 'edit attendances'])
-                                                <div class="btn-group btn-group-sm">
-                                                    <a href="{{ route('esbtp.attendances.edit', $attendance) }}" class="btn btn-outline-primary">
-                                                        <i class="fas fa-edit"></i>
-                                                    </a>
-
-                                                    @if($attendance->justified_at && $attendance->statut == 'absent')
-                                                        <button type="button" class="btn btn-outline-warning btn-justify"
-                                                            data-bs-toggle="modal"
-                                                            data-bs-target="#justificationModal{{ $attendance->id }}"
-                                                            data-absence-id="{{ $attendance->id }}"
-                                                            data-student-name="{{ $attendance->etudiant->user->name ?? 'N/A' }}"
-                                                            data-class-name="{{ $attendance->seanceCours->emploiTemps->classe->name ?? 'N/A' }}"
-                                                            data-subject-name="{{ $attendance->seanceCours->matiere->name ?? 'N/A' }}"
-                                                            data-date="{{ $attendance->date ? $attendance->date->format('d/m/Y') : 'N/A' }}"
-                                                            data-justified-at="{{ $attendance->justified_at ? $attendance->justified_at->format('d/m/Y H:i') : 'N/A' }}"
-                                                            data-justification="{{ $attendance->commentaire }}"
-                                                            data-document-path="{{ $attendance->document_path }}">
-                                                            <i class="fas fa-balance-scale"></i>
-                                                        </button>
-                                                    @endif
-
-                                                    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ $attendance->id }}">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </div>
-
-                                                <!-- Modal de confirmation de suppression -->
-                                                <div class="modal fade" id="deleteModal{{ $attendance->id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ $attendance->id }}" aria-hidden="true">
-                                                    <div class="modal-dialog">
-                                                        <div class="modal-content">
-                                                            <div class="modal-header bg-danger text-white">
-                                                                <h5 class="modal-title" id="deleteModalLabel{{ $attendance->id }}">Confirmation de suppression</h5>
-                                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                            </div>
-                                                            <div class="modal-body">
-                                                                <p>Êtes-vous sûr de vouloir supprimer cette présence ?</p>
-                                                                <p><strong>Étudiant :</strong> {{ $attendance->etudiant->user->name ?? 'N/A' }}</p>
-                                                                <p><strong>Date :</strong> {{ $attendance->date ? $attendance->date->format('d/m/Y') : 'N/A' }}</p>
-                                                                <p><strong>Matière :</strong> {{ $attendance->seanceCours->matiere->name ?? 'N/A' }}</p>
-                                                            </div>
-                                                            <div class="modal-footer">
-                                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                                                                <form action="{{ route('esbtp.attendances.destroy', $attendance) }}" method="POST">
-                                                                    @csrf
-                                                                    @method('DELETE')
-                                                                    <button type="submit" class="btn btn-danger">Supprimer</button>
-                                                                </form>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <!-- Modal pour traiter les justifications d'absence -->
-                                                @if($attendance->justified_at && $attendance->statut == 'absent')
-                                                <div class="modal fade" id="justificationModal{{ $attendance->id }}" tabindex="-1" aria-labelledby="justificationModalLabel{{ $attendance->id }}" aria-hidden="true">
-                                                    <div class="modal-dialog modal-lg">
-                                                        <div class="modal-content">
-                                                            <div class="modal-header">
-                                                                <h5 class="modal-title" id="justificationModalLabel{{ $attendance->id }}">Traiter la justification d'absence</h5>
-                                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                            </div>
-                                                            <div class="modal-body">
-                                                                <div class="row mb-3">
-                                                                    <div class="col-md-6">
-                                                                        <p><strong>Étudiant :</strong> <span id="justification-student-name{{ $attendance->id }}">{{ $attendance->etudiant->nom ?? 'N/A' }}</span></p>
-                                                                    </div>
-                                                                    <div class="col-md-6">
-                                                                        <p><strong>Classe :</strong> <span id="justification-class-name{{ $attendance->id }}">{{ $attendance->seanceCours->emploiTemps->classe->name ?? 'N/A' }}</span></p>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="row mb-3">
-                                                                    <div class="col-md-6">
-                                                                        <p><strong>Matière :</strong> <span id="justification-subject-name{{ $attendance->id }}">{{ $attendance->seanceCours->matiere->name ?? 'N/A' }}</span></p>
-                                                                    </div>
-                                                                    <div class="col-md-6">
-                                                                        <p><strong>Date :</strong> <span id="justification-date{{ $attendance->id }}">{{ $attendance->date ? $attendance->date->format('d/m/Y') : 'N/A' }}</span></p>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="row mb-3">
-                                                                    <div class="col-md-6">
-                                                                        <p><strong>Justifié le :</strong> <span id="justification-justified-at{{ $attendance->id }}">{{ $attendance->justified_at ? $attendance->justified_at->format('d/m/Y H:i') : 'N/A' }}</span></p>
-                                                                    </div>
-                                                                </div>
-                                                                <hr>
-                                                                <div class="row mb-3">
-                                                                    <div class="col-12">
-                                                                        <h6>Justification de l'étudiant :</h6>
-                                                                        <div class="p-3 bg-light border rounded" id="justification-text{{ $attendance->id }}">{{ $attendance->commentaire ?? 'Aucune justification fournie.' }}</div>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="row mb-3" id="justification-document-row{{ $attendance->id }}" @if(!$attendance->document_path) style="display: none;" @endif>
-                                                                    <div class="col-12">
-                                                                        <h6>Document justificatif :</h6>
-                                                                        <div class="p-3">
-                                                                            @if($attendance->document_path)
-                                                                                <a href="{{ asset('storage/' . $attendance->document_path) }}" id="justification-document-link{{ $attendance->id }}" class="btn btn-sm btn-outline-primary" target="_blank">
-                                                                                    <i class="fas fa-file-pdf"></i> Voir le document
-                                                                                </a>
-
-                                                                                @php
-                                                                                    $ext = pathinfo(storage_path('app/public/' . $attendance->document_path), PATHINFO_EXTENSION);
-                                                                                @endphp
-
-                                                                                @if(in_array(strtolower($ext), ['jpg', 'jpeg', 'png', 'gif']))
-                                                                                    <div class="mt-3">
-                                                                                        <img src="{{ asset('storage/' . $attendance->document_path) }}" alt="Justificatif" class="img-fluid thumbnail" style="max-height: 200px;">
-                                                                                    </div>
-                                                                                @endif
-                                                                            @else
-                                                                                <div class="alert alert-info">
-                                                                                    Aucun document justificatif n'a été fourni.
-                                                                                </div>
-                                                                            @endif
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                                <hr>
-                                                                <form id="justificationForm{{ $attendance->id }}" action="{{ route('esbtp.attendances.process-justification', $attendance->id) }}" method="POST">
-                                                                    @csrf
-                                                                    <div class="mb-3">
-                                                                        <label class="form-label">Décision :</label>
-                                                                        <div class="form-check">
-                                                                            <input class="form-check-input" type="radio" name="decision" id="decision-approve{{ $attendance->id }}" value="approve" checked>
-                                                                            <label class="form-check-label text-success" for="decision-approve{{ $attendance->id }}">
-                                                                                <i class="fas fa-check"></i> Approuver la justification (absence excusée)
-                                                                            </label>
-                                                                        </div>
-                                                                        <div class="form-check">
-                                                                            <input class="form-check-input" type="radio" name="decision" id="decision-reject{{ $attendance->id }}" value="reject">
-                                                                            <label class="form-check-label text-danger" for="decision-reject{{ $attendance->id }}">
-                                                                                <i class="fas fa-times"></i> Rejeter la justification (maintenir absence non excusée)
-                                                                            </label>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div class="mb-3">
-                                                                        <label for="admin_comment{{ $attendance->id }}" class="form-label">Commentaire (optionnel) :</label>
-                                                                        <textarea class="form-control" id="admin_comment{{ $attendance->id }}" name="admin_comment" rows="3" placeholder="Raison de la décision..."></textarea>
-                                                                    </div>
-                                                                </form>
-                                                            </div>
-                                                            <div class="modal-footer">
-                                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                                                                <button type="button" class="btn btn-primary" id="submit-justification{{ $attendance->id }}">Enregistrer la décision</button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                @endif
-                                            @else
-                                                <span class="text-muted"><i class="fas fa-lock"></i> Non autorisé</span>
-                                            @endcanany
-                                        </td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="7" class="text-center">Aucune présence enregistrée</td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
+                    @endforeach
+                @else
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-chart-pie fa-3x mb-3 opacity-50"></i>
+                        <p>Aucune donnée de présence</p>
+                        <p class="small">Les statistiques apparaîtront une fois les présences enregistrées</p>
                     </div>
+                @endif
+            </div>
+        </div>
+    </div>
 
-                    <!-- Pagination -->
-                        <div class="d-flex justify-content-center mt-4">
-                            {{ $attendances->links() }}
+    @if(auth()->user() && auth()->user()->hasRole('coordinateur') && $coordinatorStats)
+    <!-- Activités récentes coordinateur -->
+    <div class="row mb-4">
+        <div class="col-xl-8 col-lg-7 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">📝 Activités Récentes</h5>
+                    <small class="text-muted">Dernières 24h</small>
+                </div>
+                <div class="card-body">
+                    <div class="timeline" id="recent-activities">
+                        <!-- Les activités seront chargées via JavaScript -->
+                        <div class="text-center py-4">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                <span class="visually-hidden">Chargement...</span>
+                            </div>
+                            <p class="mt-2 text-muted">Chargement des activités récentes...</p>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+
+        <!-- Résumé quotidien -->
+        <div class="col-xl-4 col-lg-5 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0">
+                    <h5 class="mb-0">📊 Résumé du Jour</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted">Cours prévus:</span>
+                            <span class="fw-bold">{{ $coordinatorStats['scheduled_courses_today'] ?? 0 }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted">Émargements:</span>
+                            <span class="fw-bold text-primary">{{ $coordinatorStats['teacher_attendances_today'] ?? 0 }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted">Taux émargement:</span>
+                            <span class="fw-bold text-success">{{ $coordinatorStats['teacher_attendance_rate'] ?? 0 }}%</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted">Appels terminés:</span>
+                            <span class="fw-bold text-info">{{ $coordinatorStats['roll_calls_completed_today'] ?? 0 }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted">Étudiants présents:</span>
+                            <span class="fw-bold text-success">{{ $coordinatorStats['students_present_today'] ?? 0 }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted">Cours clôturés:</span>
+                            <span class="fw-bold">{{ $coordinatorStats['courses_closed_today'] ?? 0 }}</span>
+                        </div>
+                        @if(($coordinatorStats['delays_today'] ?? 0) > 0)
+                        <div class="alert alert-warning alert-sm mb-0">
+                            <small><strong>{{ $coordinatorStats['delays_today'] }} retard(s)</strong> détecté(s)</small>
+                        </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    <!-- Filtres -->
+    <div class="filters-card">
+        <h5 class="mb-3">
+            <i class="fas fa-filter me-2"></i>
+            Filtres de Recherche
+        </h5>
+        <form action="{{ route('esbtp.attendances.index') }}" method="GET">
+            <div class="row g-3">
+                <div class="col-md-2">
+                    <label for="classe_id" class="form-label fw-bold">Classe</label>
+                    <select name="classe_id" id="classe_id" class="form-select">
+                        <option value="">Toutes les classes</option>
+                        @foreach($classes as $classe)
+                            <option value="{{ $classe->id }}" {{ request('classe_id') == $classe->id ? 'selected' : '' }}>
+                                {{ $classe->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <label for="matiere_id" class="form-label fw-bold">Matière</label>
+                    <select name="matiere_id" id="matiere_id" class="form-select">
+                        <option value="">Toutes les matières</option>
+                        @foreach($matieres as $matiere)
+                            <option value="{{ $matiere->id }}" {{ request('matiere_id') == $matiere->id ? 'selected' : '' }}>
+                                {{ $matiere->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <label for="etudiant_id" class="form-label fw-bold">Étudiant</label>
+                    <select name="etudiant_id" id="etudiant_id" class="form-select">
+                        <option value="">Tous les étudiants</option>
+                        @foreach($etudiants as $etudiant)
+                            <option value="{{ $etudiant->id }}" {{ request('etudiant_id') == $etudiant->id ? 'selected' : '' }}>
+                                {{ $etudiant->nom_complet }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <label for="date_debut" class="form-label fw-bold">Date début</label>
+                    <input type="date" class="form-control" id="date_debut" name="date_debut"
+                           value="{{ request('date_debut') }}">
+                </div>
+
+                <div class="col-md-2">
+                    <label for="date_fin" class="form-label fw-bold">Date fin</label>
+                    <input type="date" class="form-control" id="date_fin" name="date_fin"
+                           value="{{ request('date_fin') }}">
+                </div>
+
+                <div class="col-md-2">
+                    <label for="statut" class="form-label fw-bold">Statut</label>
+                    <select name="statut" id="statut" class="form-select">
+                        <option value="">Tous les statuts</option>
+                        <option value="present" {{ request('statut') == 'present' ? 'selected' : '' }}>Présent</option>
+                        <option value="absent" {{ request('statut') == 'absent' ? 'selected' : '' }}>Absent</option>
+                        <option value="retard" {{ request('statut') == 'retard' ? 'selected' : '' }}>Retard</option>
+                        <option value="excuse" {{ request('statut') == 'excuse' ? 'selected' : '' }}>Excusé</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="row mt-3">
+                <div class="col-12">
+                    <button type="submit" class="btn-modern btn-primary-modern me-2">
+                        <i class="fas fa-search"></i>
+                        Filtrer
+                    </button>
+                    <a href="{{ route('esbtp.attendances.index') }}" class="btn-modern btn-info-modern">
+                        <i class="fas fa-refresh"></i>
+                        Réinitialiser
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Table des données -->
+    <div class="data-card">
+        <h5 class="mb-3">
+            <i class="fas fa-table me-2"></i>
+            Liste des Présences
+            <span class="badge bg-primary ms-2">{{ $attendances->count() }} enregistrements</span>
+        </h5>
+
+        <div class="table-responsive">
+            <table class="table table-modern">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Étudiant</th>
+                        <th>Classe</th>
+                        <th>Matière</th>
+                        <th>Statut</th>
+                        <th>Enseignant</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($attendances as $attendance)
+                        <tr>
+                            <td>
+                                <div class="fw-bold">{{ $attendance->date->format('d/m/Y') }}</div>
+                                <div class="small text-muted">{{ $attendance->created_at->format('H:i') }}</div>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-initial rounded-circle bg-primary text-white me-2">
+                                        {{ substr($attendance->etudiant->nom_complet, 0, 2) }}
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold">{{ $attendance->etudiant->nom_complet }}</div>
+                                        <div class="small text-muted">#{{ $attendance->etudiant->id }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark">
+                                    {{ $attendance->etudiant->classe->name ?? 'N/A' }}
+                                </span>
+                            </td>
+                            <td>{{ $attendance->matiere->name ?? 'N/A' }}</td>
+                            <td>
+                                @if($attendance->statut === 'present')
+                                    <span class="status-badge present">Présent</span>
+                                @elseif($attendance->statut === 'absent')
+                                    <span class="status-badge absent">Absent</span>
+                                @elseif($attendance->statut === 'retard')
+                                    <span class="status-badge late">Retard</span>
+                                @elseif($attendance->statut === 'excuse')
+                                    <span class="status-badge excused">Excusé</span>
+                                @else
+                                    <span class="status-badge bg-secondary text-white">{{ ucfirst($attendance->statut) }}</span>
+                                @endif
+                            </td>
+                            <td>
+                                <div class="small">
+                                    {{ $attendance->teacher->name ?? 'N/A' }}
+                                </div>
+                            </td>
+                            <td>
+                                <div class="action-buttons">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#detailsModal{{ $attendance->id }}">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <a href="{{ route('esbtp.attendances.edit', $attendance) }}" 
+                                       class="btn btn-sm btn-outline-warning">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="7" class="text-center py-5">
+                                <div class="text-muted">
+                                    <i class="fas fa-user-times fa-3x mb-3 opacity-50"></i>
+                                    <h6>Aucune présence enregistrée</h6>
+                                    <p class="mb-0">Commencez par marquer les présences des étudiants</p>
+                                </div>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        @if($attendances->hasPages())
+            <div class="d-flex justify-content-center mt-4">
+                {{ $attendances->appends(request()->query())->links() }}
+            </div>
+        @endif
     </div>
 </div>
 
+<!-- Modales de détails -->
+@foreach($attendances as $attendance)
+    <div class="modal fade" id="detailsModal{{ $attendance->id }}" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Détails de la Présence</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">Étudiant</dt>
+                        <dd class="col-sm-8">{{ $attendance->etudiant->nom_complet }}</dd>
+
+                        <dt class="col-sm-4">Classe</dt>
+                        <dd class="col-sm-8">{{ $attendance->etudiant->classe->name ?? 'N/A' }}</dd>
+
+                        <dt class="col-sm-4">Matière</dt>
+                        <dd class="col-sm-8">{{ $attendance->matiere->name ?? 'N/A' }}</dd>
+
+                        <dt class="col-sm-4">Date</dt>
+                        <dd class="col-sm-8">{{ $attendance->date->format('d/m/Y') }}</dd>
+
+                        <dt class="col-sm-4">Statut</dt>
+                        <dd class="col-sm-8">
+                            @if($attendance->statut === 'present')
+                                <span class="status-badge present">Présent</span>
+                            @elseif($attendance->statut === 'absent')
+                                <span class="status-badge absent">Absent</span>
+                            @elseif($attendance->statut === 'retard')
+                                <span class="status-badge late">Retard</span>
+                            @elseif($attendance->statut === 'excuse')
+                                <span class="status-badge excused">Excusé</span>
+                            @endif
+                        </dd>
+
+                        <dt class="col-sm-4">Enseignant</dt>
+                        <dd class="col-sm-8">{{ $attendance->teacher->name ?? 'N/A' }}</dd>
+
+                        <dt class="col-sm-4">Créé le</dt>
+                        <dd class="col-sm-8">{{ $attendance->created_at->format('d/m/Y H:i') }}</dd>
+                    </dl>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+@endforeach
 @endsection
 
-@section('scripts')
+@push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-$(document).ready(function() {
-    // Initialiser Select2
-    $('.select2').select2({
-        theme: 'bootstrap-5',
-        width: '100%'
-    });
-
-    // Initialiser les tooltips
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl)
-    });
-
-    // Confirmation de suppression
-    $('.delete-form').on('submit', function(e) {
-        e.preventDefault();
-        if (confirm('Êtes-vous sûr de vouloir supprimer cette présence ?')) {
-            this.submit();
-        }
-    });
-
-    // Graphique des tendances
-    var ctx = document.getElementById('attendanceChart').getContext('2d');
-    var data = {
-        labels: @json(array_keys($statsParJour)),
-        datasets: [
-            {
-                label: 'Présent',
-                backgroundColor: 'rgba(40, 167, 69, 0.2)',
-                borderColor: 'rgba(40, 167, 69, 1)',
-                data: @json(array_map(function($day) { return $day['present'] ?? 0; }, $statsParStatus)),
-                borderWidth: 2,
-                tension: 0.3
-            },
-            {
-                label: 'Absent',
-                backgroundColor: 'rgba(220, 53, 69, 0.2)',
-                borderColor: 'rgba(220, 53, 69, 1)',
-                data: @json(array_map(function($day) { return $day['absent'] ?? 0; }, $statsParStatus)),
-                borderWidth: 2,
-                tension: 0.3
-            },
-            {
-                label: 'Retard',
-                backgroundColor: 'rgba(255, 193, 7, 0.2)',
-                borderColor: 'rgba(255, 193, 7, 1)',
-                data: @json(array_map(function($day) { return $day['retard'] ?? 0; }, $statsParStatus)),
-                borderWidth: 2,
-                tension: 0.3
-            },
-            {
-                label: 'Excusé',
-                backgroundColor: 'rgba(23, 162, 184, 0.2)',
-                borderColor: 'rgba(23, 162, 184, 1)',
-                data: @json(array_map(function($day) { return $day['excuse'] ?? 0; }, $statsParStatus)),
-                borderWidth: 2,
-                tension: 0.3
-            }
-        ]
-    };
-
-    var options = {
+// Graphique des tendances
+const ctx = document.getElementById('attendanceChart').getContext('2d');
+const attendanceChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: {!! json_encode(array_map(function($date) { 
+            return \Carbon\Carbon::parse($date)->format('d/m'); 
+        }, array_keys($statsParStatus ?? []))) !!},
+        datasets: [{
+            label: 'Présents',
+            data: {!! json_encode(array_column($statsParStatus ?? [], 'present')) !!},
+            borderColor: '#10b981',
+            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+            borderWidth: 3,
+            fill: true,
+            tension: 0.4
+        }, {
+            label: 'Absents',
+            data: {!! json_encode(array_column($statsParStatus ?? [], 'absent')) !!},
+            borderColor: '#ef4444',
+            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            borderWidth: 3,
+            fill: true,
+            tension: 0.4
+        }, {
+            label: 'Retards',
+            data: {!! json_encode(array_column($statsParStatus ?? [], 'retard')) !!},
+            borderColor: '#f59e0b',
+            backgroundColor: 'rgba(245, 158, 11, 0.1)',
+            borderWidth: 3,
+            fill: true,
+            tension: 0.4
+        }, {
+            label: 'Excusés',
+            data: {!! json_encode(array_column($statsParStatus ?? [], 'excuse')) !!},
+            borderColor: '#06b6d4',
+            backgroundColor: 'rgba(6, 182, 212, 0.1)',
+            borderWidth: 3,
+            fill: true,
+            tension: 0.4
+        }]
+    },
+    options: {
         responsive: true,
         maintainAspectRatio: false,
-        interaction: {
-            mode: 'index',
-            intersect: false,
-        },
         plugins: {
             legend: {
                 position: 'top',
-            },
-            tooltip: {
-                usePointStyle: true,
-                callbacks: {
-                    label: function(context) {
-                        return context.dataset.label + ': ' + context.parsed.y + ' étudiants';
-                    }
-                }
             }
         },
         scales: {
             y: {
                 beginAtZero: true,
-                ticks: {
-                    precision: 0
+                grid: {
+                    color: 'rgba(0,0,0,0.1)'
+                }
+            },
+            x: {
+                grid: {
+                    display: false
                 }
             }
         }
-    };
-
-    var myChart = new Chart(ctx, {
-        type: 'line',
-        data: data,
-        options: options
-    });
+    }
 });
-</script>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Gestion des boutons de soumission des formulaires de justification
-        document.querySelectorAll('[id^="submit-justification"]').forEach(button => {
-            button.addEventListener('click', function() {
-                // Extraire l'ID de l'absence du bouton
-                const buttonId = this.id;
-                const absenceId = buttonId.replace('submit-justification', '');
+// Fonctions des actions rapides
+function exportData() {
+    alert('Fonction d\'export en cours de développement');
+}
 
-                // Soumettre le formulaire correspondant
-                document.getElementById('justificationForm' + absenceId).submit();
-            });
-        });
+function showStatistics() {
+    alert('Page de statistiques détaillées en cours de développement');
+}
 
-        // Highlight d'une absence spécifique si demandé dans l'URL (depuis une notification)
-        const urlParams = new URLSearchParams(window.location.search);
-        const highlightParam = urlParams.get('highlight');
+@if(auth()->user() && auth()->user()->hasRole('coordinateur') && $coordinatorStats)
+// Fonctions coordinateur
+function refreshData() {
+    location.reload();
+}
 
-        if (highlightParam && highlightParam.startsWith('absence_')) {
-            const absenceId = highlightParam.replace('absence_', '');
-            const row = document.querySelector(`tr[data-absence-id="${absenceId}"]`);
+function generateDailyReport() {
+    const loadingBtn = event.target;
+    const originalText = loadingBtn.innerHTML;
+    
+    loadingBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Génération...';
+    loadingBtn.disabled = true;
+    
+    fetch('{{ route("coordinateur.daily-report") ?? "#" }}', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+            date: new Date().toISOString().split('T')[0]
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showDailyReportModal(data.report);
+        } else {
+            alert('Erreur lors de la génération du rapport: ' + (data.error || 'Erreur inconnue'));
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('Erreur de connexion lors de la génération du rapport');
+    })
+    .finally(() => {
+        loadingBtn.innerHTML = originalText;
+        loadingBtn.disabled = false;
+    });
+}
 
-            if (row) {
-                // Faire défiler jusqu'à la ligne
-                row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+function showDailyReportModal(report) {
+    // Simple alert pour l'instant
+    alert('Rapport du ' + report.date + ':\n\n' +
+          'Cours prévus: ' + report.summary.cours_prevus + '\n' +
+          'Émargements: ' + report.summary.emargements_effectues + '\n' +
+          'Taux: ' + report.summary.taux_emargement + '\n' +
+          'Appels terminés: ' + report.summary.appels_termines);
+}
 
-                // Ajouter une classe de surbrillance temporaire
-                row.classList.add('highlight-row');
+// Charger les activités récentes
+document.addEventListener('DOMContentLoaded', function() {
+    loadRecentActivities();
+    
+    // Actualisation automatique toutes les 5 minutes
+    setInterval(function() {
+        loadRecentActivities();
+    }, 300000);
+});
 
-                // Clignotement de la ligne pendant quelques secondes
-                setTimeout(() => {
-                    row.classList.add('highlight-animation');
-                }, 500);
-
-                // Retirer la surbrillance après quelques secondes
-                setTimeout(() => {
-                    row.classList.remove('highlight-row');
-                    row.classList.remove('highlight-animation');
-                }, 5000);
+function loadRecentActivities() {
+    const activitiesContainer = document.getElementById('recent-activities');
+    if (!activitiesContainer) return;
+    
+    fetch('{{ route("coordinateur.recent-activities") ?? "#" }}?limit=10', {
+        method: 'GET',
+        headers: {
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.activities) {
+            let html = '';
+            
+            if (data.activities.length === 0) {
+                html = `
+                    <div class="text-center py-4">
+                        <i class="fas fa-history fa-2x text-muted mb-2"></i>
+                        <p class="text-muted">Aucune activité récente</p>
+                    </div>
+                `;
+            } else {
+                data.activities.forEach(activity => {
+                    html += `
+                        <div class="timeline-item">
+                            <div class="timeline-icon ${activity.type}">
+                                <i class="fas fa-${activity.icon}"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <h6 class="mb-1">${activity.title}</h6>
+                                <p class="text-muted mb-1">${activity.description}</p>
+                                <small class="text-muted">${activity.time}</small>
+                            </div>
+                        </div>
+                    `;
+                });
             }
+            
+            activitiesContainer.innerHTML = html;
+        } else {
+            activitiesContainer.innerHTML = `
+                <div class="text-center py-4 text-danger">
+                    <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                    <p>Erreur lors du chargement des activités</p>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        console.error('Erreur chargement activités:', error);
+        if (activitiesContainer) {
+            activitiesContainer.innerHTML = `
+                <div class="text-center py-4 text-warning">
+                    <i class="fas fa-wifi fa-2x mb-2"></i>
+                    <p>Impossible de charger les activités</p>
+                    <button class="btn btn-sm btn-outline-primary" onclick="loadRecentActivities()">Réessayer</button>
+                </div>
+            `;
         }
     });
+}
+@endif
 </script>
-
-<style>
-.border-left-primary {
-    border-left: 4px solid #4e73df;
-}
-.border-left-success {
-    border-left: 4px solid #1cc88a;
-}
-.border-left-danger {
-    border-left: 4px solid #e74a3b;
-}
-.border-left-warning {
-    border-left: 4px solid #f6c23e;
-}
-.border-left-info {
-    border-left: 4px solid #36b9cc;
-}
-.progress-sm {
-    height: 8px;
-}
-.chart-area {
-    position: relative;
-    height: 100%;
-    width: 100%;
-}
-.text-xs {
-    font-size: 0.7rem;
-}
-.attendance-row {
-    transition: all 0.2s ease-in-out;
-}
-.attendance-row:hover {
-    background-color: rgba(0, 0, 0, 0.03);
-    transform: translateY(-2px);
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-}
-.avatar {
-    width: 28px;
-    height: 28px;
-    font-size: 12px;
-}
-.smaller {
-    font-size: 0.75rem;
-}
-.bg-gradient-light {
-    background: linear-gradient(to right, #f8f9fa, #ffffff);
-}
-
-/* Pagination styling */
-.pagination {
-    --bs-pagination-padding-x: 0.75rem;
-    --bs-pagination-padding-y: 0.375rem;
-    --bs-pagination-font-size: 0.9rem;
-    --bs-pagination-color: var(--esbtp-green);
-    --bs-pagination-bg: #fff;
-    --bs-pagination-border-width: 1px;
-    --bs-pagination-border-color: #dee2e6;
-    --bs-pagination-border-radius: 0.375rem;
-    --bs-pagination-hover-color: var(--esbtp-green-dark);
-    --bs-pagination-hover-bg: #e9ecef;
-    --bs-pagination-hover-border-color: #dee2e6;
-    --bs-pagination-focus-color: var(--esbtp-green-dark);
-    --bs-pagination-focus-bg: #e9ecef;
-    --bs-pagination-focus-box-shadow: 0 0 0 0.25rem rgba(1, 99, 47, 0.25);
-    --bs-pagination-active-color: #fff;
-    --bs-pagination-active-bg: var(--esbtp-green);
-    --bs-pagination-active-border-color: var(--esbtp-green);
-    --bs-pagination-disabled-color: #6c757d;
-    --bs-pagination-disabled-bg: #fff;
-    --bs-pagination-disabled-border-color: #dee2e6;
-}
-
-/* Action buttons styling */
-.d-flex.justify-content-center .btn {
-    padding: 0.25rem 0.5rem;
-    margin: 0 0.15rem;
-    border-radius: 0.25rem;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    transition: all 0.2s;
-}
-
-.action-buttons {
-    display: flex;
-    justify-content: center;
-    gap: 0.25rem;
-}
-
-.action-buttons .btn {
-    margin: 0;
-    padding: 0.25rem 0.5rem;
-    min-width: 32px;
-    height: 32px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.action-buttons .btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-}
-
-.action-buttons .btn-outline-info:hover {
-    background-color: #17a2b8;
-    color: white;
-}
-
-.action-buttons .btn-outline-primary:hover {
-    background-color: var(--esbtp-green);
-    color: white;
-}
-
-.action-buttons .btn-outline-danger:hover {
-    background-color: #dc3545;
-    color: white;
-}
-
-.d-flex.justify-content-center .btn i {
-    font-size: 0.875rem;
-}
-
-.d-flex.justify-content-center .btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-}
-
-.d-flex.justify-content-center .btn-outline-info:hover {
-    background-color: #17a2b8;
-    color: white;
-}
-
-.d-flex.justify-content-center .btn-outline-primary:hover {
-    background-color: var(--esbtp-green);
-    color: white;
-}
-
-.d-flex.justify-content-center .btn-outline-danger:hover {
-    background-color: #dc3545;
-    color: white;
-}
-
-/* Avatar Circles with Initials */
-.avatar-circle {
-    width: 40px;
-    height: 40px;
-    background-color: var(--esbtp-green);
-    border-radius: 50%;
-    color: white;
-    text-align: center;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    font-size: 16px;
-}
-
-.avatar-circle .initials {
-    font-size: 16px;
-    line-height: 1;
-    position: relative;
-}
-
-.highlight-row {
-    background-color: #fff3cd !important;
-}
-
-.highlight-animation {
-    animation: highlight-pulse 1s infinite alternate;
-}
-
-@keyframes highlight-pulse {
-    from { background-color: #fff3cd; }
-    to { background-color: #ffe69c; }
-}
-
-.badge-justified {
-    background-color: #6c757d;
-    color: white;
-}
-</style>
-@endsection
+@endpush

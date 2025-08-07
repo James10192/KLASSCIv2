@@ -151,8 +151,8 @@
             @foreach($attendances as $attendance)
                 <tr>
                     <td>{{ $attendance->created_at->format('d/m/Y H:i') }}</td>
-                    <td>{{ $attendance->enseignant->nom_complet }}</td>
-                    <td>{{ $attendance->matiere->nom }}</td>
+                    <td>{{ $attendance->teacher->name }}</td>
+                    <td>{{ $attendance->course->matiere->name ?? 'N/A' }}</td>
                     <td>
                         <span class="status-badge status-{{ $attendance->status }}">
                             {{ ucfirst($attendance->status) }}

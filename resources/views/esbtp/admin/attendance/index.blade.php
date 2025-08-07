@@ -105,10 +105,10 @@
                     <tbody>
                         @forelse($todayAttendances as $attendance)
                             <tr>
-                                <td>{{ $attendance->enseignant->name }}</td>
+                                <td>{{ $attendance->teacher->name }}</td>
                                 <td>
-                                    {{ $attendance->emploiDuTemps->matiere->nom }}
-                                    ({{ $attendance->emploiDuTemps->classe->nom }})
+                                    {{ $attendance->course->matiere->name ?? 'N/A' }}
+                                    ({{ $attendance->course->classe->name ?? 'N/A' }})
                                 </td>
                                 <td>{{ $attendance->validated_at->format('H:i') }}</td>
                                 <td>

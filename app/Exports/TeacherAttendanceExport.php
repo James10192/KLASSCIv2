@@ -21,7 +21,7 @@ class TeacherAttendanceExport implements FromQuery, WithHeadings, WithMapping, S
     public function query()
     {
         $query = ESBTPTeacherAttendance::query()
-            ->with(['enseignant', 'emploiDuTemps.classe', 'emploiDuTemps.matiere'])
+            ->with(['teacher', 'course.classe', 'course.matiere'])
             ->orderBy('validated_at', 'desc');
 
         // Filtres
@@ -34,11 +34,11 @@ class TeacherAttendanceExport implements FromQuery, WithHeadings, WithMapping, S
         }
 
         if ($this->request->enseignant_id) {
-            $query->where('enseignant_id', $this->request->enseignant_id);
+            $query->where('teacher_id', $this->request->enseignant_id);
         }
 
         if ($this->request->classe_id) {
-            $query->whereHas('emploiDuTemps', function($q) {
+            $query->whereHas('course', function($q) {
                 $q->where('classe_id', $this->request->classe_id);
             });
         }
@@ -65,13 +65,13 @@ class TeacherAttendanceExport implements FromQuery, WithHeadings, WithMapping, S
     {
         return [
             $attendance->validated_at->format('d/m/Y'),
-            $attendance->enseignant->nom_complet,
-            $attendance->emploiDuTemps->classe->nom,
-            $attendance->emploiDuTemps->matiere->nom,
-            \Carbon\Carbon::parse($attendance->emploiDuTemps->heure_debut)->format('H:i'),
+            $attendance->teacher->name,
+            $attendance->course->classe->name ?? 'N/A',
+            $attendance->course->matiere->name ?? 'N/A',
+            $attendance->course ? \Carbon\Carbon::parse($attendance->course->heure_debut)->format('H:i') : 'N/A',
             $attendance->validated_at->format('H:i'),
-            $attendance->isOnTime() ? 'À l\'heure' : 'En retard',
-            $attendance->ip_address,
+            $attendance->status === 'present' ? 'À l\'heure' : 'En retard',
+            $attendance->ip_address ?? 'N/A',
             $attendance->geolocation_data ? json_encode($attendance->geolocation_data) : 'Non disponible'
         ];
     }

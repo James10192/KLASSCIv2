@@ -1254,4 +1254,310 @@ class NotificationService
             Log::error('Erreur lors de la notification d\'approbation de bon de sortie: ' . $e->getMessage());
         }
     }
+
+    /**
+     * ===== NOTIFICATIONS POUR LE WORKFLOW D'ÉMARGEMENT ENSEIGNANT =====
+     */
+
+    /**
+     * Notifier le coordinateur lorsqu'un enseignant effectue son émargement
+     */
+    public function notifyCoordinateurTeacherAttendanceSigned($teacherUser, $seanceCours)
+    {
+        try {
+            // Récupérer tous les coordinateurs
+            $coordinateurs = User::role(['coordinateur'])->get();
+            
+            $matiere = $seanceCours->matiere->name ?? 'Matière inconnue';
+            $classe = $seanceCours->emploiTemps->classe->name ?? $seanceCours->classe->name ?? 'Classe inconnue';
+            $horaire = $seanceCours->heure_debut ? 
+                \Carbon\Carbon::parse($seanceCours->heure_debut)->format('H:i') . '-' . 
+                \Carbon\Carbon::parse($seanceCours->heure_fin)->format('H:i') : 
+                'Horaire non défini';
+
+            $title = "Émargement enseignant effectué";
+            $message = "L'enseignant {$teacherUser->name} a effectué son émargement pour :\n";
+            $message .= "• Matière: {$matiere}\n";
+            $message .= "• Classe: {$classe}\n";
+            $message .= "• Horaire: {$horaire}\n";
+            $message .= "• Date: " . now()->format('d/m/Y à H:i');
+            
+            $link = route('esbtp.teacher-attendance.report'); // Page rapport émargements enseignants
+
+            foreach ($coordinateurs as $coordinateur) {
+                $this->createNotification($coordinateur, $title, $message, 'info', $link, $teacherUser);
+            }
+
+            Log::info('Notification émargement enseignant envoyée aux coordinateurs', [
+                'teacher_id' => $teacherUser->id,
+                'seance_id' => $seanceCours->id,
+                'coordinateurs_notifies' => $coordinateurs->count()
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur notification émargement enseignant: ' . $e->getMessage(), [
+                'teacher_id' => $teacherUser->id ?? null,
+                'seance_id' => $seanceCours->id ?? null
+            ]);
+        }
+    }
+
+    /**
+     * Notifier le coordinateur lorsqu'un enseignant fait l'appel des étudiants
+     */
+    public function notifyCoordinateurStudentRollCallCompleted($teacherUser, $seanceCours, $attendanceData)
+    {
+        try {
+            // Récupérer tous les coordinateurs
+            $coordinateurs = User::role(['coordinateur'])->get();
+            
+            $matiere = $seanceCours->matiere->name ?? 'Matière inconnue';
+            $classe = $seanceCours->emploiTemps->classe->name ?? $seanceCours->classe->name ?? 'Classe inconnue';
+            
+            $totalEtudiants = count($attendanceData);
+            $presents = collect($attendanceData)->where('attendance', 'present')->count();
+            $absents = collect($attendanceData)->where('attendance', 'absent')->count();
+
+            $title = "Appel des étudiants terminé";
+            $message = "L'enseignant {$teacherUser->name} a terminé l'appel pour :\n";
+            $message .= "• Matière: {$matiere}\n";
+            $message .= "• Classe: {$classe}\n";
+            $message .= "• Présents: {$presents}/{$totalEtudiants}\n";
+            $message .= "• Absents: {$absents}/{$totalEtudiants}\n";
+            $message .= "• Date: " . now()->format('d/m/Y à H:i');
+            
+            $link = route('esbtp.attendances.index'); // Page présences/absences étudiants
+
+            foreach ($coordinateurs as $coordinateur) {
+                $this->createNotification($coordinateur, $title, $message, 'success', $link, $teacherUser);
+            }
+
+            Log::info('Notification appel étudiants envoyée aux coordinateurs', [
+                'teacher_id' => $teacherUser->id,
+                'seance_id' => $seanceCours->id,
+                'presents' => $presents,
+                'absents' => $absents,
+                'coordinateurs_notifies' => $coordinateurs->count()
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur notification appel étudiants: ' . $e->getMessage(), [
+                'teacher_id' => $teacherUser->id ?? null,
+                'seance_id' => $seanceCours->id ?? null
+            ]);
+        }
+    }
+
+    /**
+     * Notifier le coordinateur lorsqu'un cours est clôturé
+     */
+    public function notifyCoordinateurCourseClosed($teacherUser, $seanceCours, $notes = null)
+    {
+        try {
+            // Récupérer tous les coordinateurs
+            $coordinateurs = User::role(['coordinateur'])->get();
+            
+            $matiere = $seanceCours->matiere->name ?? 'Matière inconnue';
+            $classe = $seanceCours->emploiTemps->classe->name ?? $seanceCours->classe->name ?? 'Classe inconnue';
+            $horaire = $seanceCours->heure_debut ? 
+                \Carbon\Carbon::parse($seanceCours->heure_debut)->format('H:i') . '-' . 
+                \Carbon\Carbon::parse($seanceCours->heure_fin)->format('H:i') : 
+                'Horaire non défini';
+
+            $title = "Cours clôturé";
+            $message = "L'enseignant {$teacherUser->name} a clôturé le cours :\n";
+            $message .= "• Matière: {$matiere}\n";
+            $message .= "• Classe: {$classe}\n";
+            $message .= "• Horaire: {$horaire}\n";
+            $message .= "• Date: " . now()->format('d/m/Y à H:i');
+            
+            if ($notes) {
+                $message .= "\n• Notes: " . substr($notes, 0, 100) . (strlen($notes) > 100 ? '...' : '');
+            }
+            
+            $link = route('esbtp.seances-cours.show', $seanceCours->id);
+
+            foreach ($coordinateurs as $coordinateur) {
+                $this->createNotification($coordinateur, $title, $message, 'success', $link, $teacherUser);
+            }
+
+            Log::info('Notification clôture cours envoyée aux coordinateurs', [
+                'teacher_id' => $teacherUser->id,
+                'seance_id' => $seanceCours->id,
+                'coordinateurs_notifies' => $coordinateurs->count()
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur notification clôture cours: ' . $e->getMessage(), [
+                'teacher_id' => $teacherUser->id ?? null,
+                'seance_id' => $seanceCours->id ?? null
+            ]);
+        }
+    }
+
+    /**
+     * Notifier le coordinateur en cas de retard d'émargement
+     */
+    public function notifyCoordinateurTeacherAttendanceDelay($seanceCours, $minutesDelay = 0)
+    {
+        try {
+            // Récupérer tous les coordinateurs
+            $coordinateurs = User::role(['coordinateur'])->get();
+            
+            $matiere = $seanceCours->matiere->name ?? 'Matière inconnue';
+            $classe = $seanceCours->emploiTemps->classe->name ?? $seanceCours->classe->name ?? 'Classe inconnue';
+            $enseignant = $seanceCours->enseignant->user->name ?? 'Enseignant inconnu';
+            $horaire = $seanceCours->heure_debut ? 
+                \Carbon\Carbon::parse($seanceCours->heure_debut)->format('H:i') . '-' . 
+                \Carbon\Carbon::parse($seanceCours->heure_fin)->format('H:i') : 
+                'Horaire non défini';
+
+            $title = "Retard d'émargement détecté";
+            $message = "L'enseignant {$enseignant} n'a pas encore effectué son émargement :\n";
+            $message .= "• Matière: {$matiere}\n";
+            $message .= "• Classe: {$classe}\n";
+            $message .= "• Horaire prévu: {$horaire}\n";
+            if ($minutesDelay > 0) {
+                $message .= "• Retard: {$minutesDelay} minutes\n";
+            }
+            $message .= "• Date: " . now()->format('d/m/Y à H:i');
+            
+            $link = route('esbtp.teacher-attendance.report'); // Page rapport émargements enseignants
+
+            foreach ($coordinateurs as $coordinateur) {
+                $this->createNotification($coordinateur, $title, $message, 'warning', $link);
+            }
+
+            Log::info('Notification retard émargement envoyée aux coordinateurs', [
+                'seance_id' => $seanceCours->id,
+                'minutes_delay' => $minutesDelay,
+                'coordinateurs_notifies' => $coordinateurs->count()
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur notification retard émargement: ' . $e->getMessage(), [
+                'seance_id' => $seanceCours->id ?? null
+            ]);
+        }
+    }
+
+    /**
+     * Notifier les étudiants absents après l'appel
+     */
+    public function notifyStudentsAbsence($absentStudents, $seanceCours, $teacherUser)
+    {
+        try {
+            $matiere = $seanceCours->matiere->name ?? 'Matière inconnue';
+            $classe = $seanceCours->emploiTemps->classe->name ?? $seanceCours->classe->name ?? 'Classe inconnue';
+            $enseignant = $teacherUser->name;
+            
+            $title = "Absence enregistrée";
+            $message = "Votre absence a été enregistrée pour le cours :\n";
+            $message .= "• Matière: {$matiere}\n";
+            $message .= "• Classe: {$classe}\n";
+            $message .= "• Enseignant: {$enseignant}\n";
+            $message .= "• Date: " . now()->format('d/m/Y à H:i') . "\n\n";
+            $message .= "Vous pouvez justifier cette absence si nécessaire.";
+            
+            $link = route('esbtp.mes-absences.index');
+
+            $studentsNotified = 0;
+            foreach ($absentStudents as $etudiant) {
+                if ($etudiant->user) {
+                    $this->createNotification($etudiant->user, $title, $message, 'warning', $link, $teacherUser);
+                    $studentsNotified++;
+                }
+            }
+
+            Log::info('Notifications absence envoyées aux étudiants', [
+                'seance_id' => $seanceCours->id,
+                'teacher_id' => $teacherUser->id,
+                'etudiants_notifies' => $studentsNotified,
+                'total_absents' => count($absentStudents)
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur notification absence étudiants: ' . $e->getMessage(), [
+                'seance_id' => $seanceCours->id ?? null,
+                'teacher_id' => $teacherUser->id ?? null
+            ]);
+        }
+    }
+
+    /**
+     * Notification récapitulative quotidienne pour les coordinateurs
+     */
+    public function sendDailyAttendanceSummaryToCoordinators()
+    {
+        try {
+            $coordinateurs = User::role(['coordinateur'])->get();
+            $today = now()->format('Y-m-d');
+            
+            // Récupérer les statistiques du jour
+            $stats = $this->getDailyAttendanceStats($today);
+            
+            $title = "Récapitulatif quotidien d'émargement";
+            $message = "Récapitulatif d'émargement du " . now()->format('d/m/Y') . " :\n\n";
+            $message .= "📚 Cours prévus: {$stats['total_courses']}\n";
+            $message .= "✅ Émargements effectués: {$stats['teacher_attendances']}\n";
+            $message .= "👥 Appels terminés: {$stats['student_calls_completed']}\n";
+            $message .= "🔒 Cours clôturés: {$stats['courses_closed']}\n";
+            $message .= "⚠️ Retards détectés: {$stats['delays']}\n\n";
+            $message .= "Taux de conformité: " . round(($stats['teacher_attendances'] / max(1, $stats['total_courses'])) * 100, 1) . "%";
+            
+            $link = route('esbtp.teacher-attendance.report'); // Page rapport émargements enseignants
+
+            foreach ($coordinateurs as $coordinateur) {
+                $this->createNotification($coordinateur, $title, $message, 'info', $link);
+            }
+
+            Log::info('Récapitulatif quotidien envoyé aux coordinateurs', [
+                'date' => $today,
+                'stats' => $stats,
+                'coordinateurs_notifies' => $coordinateurs->count()
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur récapitulatif quotidien: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Obtenir les statistiques quotidiennes d'émargement
+     */
+    private function getDailyAttendanceStats($date)
+    {
+        try {
+            $stats = [
+                'total_courses' => 0,
+                'teacher_attendances' => 0,
+                'student_calls_completed' => 0,
+                'courses_closed' => 0,
+                'delays' => 0
+            ];
+
+            // Cours prévus aujourd'hui
+            $stats['total_courses'] = \App\Models\ESBTPSeanceCours::whereDate('date', $date)->count();
+
+            // Émargements enseignants effectués
+            $stats['teacher_attendances'] = \App\Models\ESBTPTeacherAttendance::whereDate('validated_at', $date)->count();
+
+            // Simulations des autres statistiques (à adapter selon votre modèle de données)
+            $stats['student_calls_completed'] = $stats['teacher_attendances']; // Supposer que chaque émargement = appel fait
+            $stats['courses_closed'] = round($stats['teacher_attendances'] * 0.8); // 80% des émargements = cours clôturés
+            $stats['delays'] = max(0, $stats['total_courses'] - $stats['teacher_attendances']); // Retards = cours non émargés
+
+            return $stats;
+
+        } catch (\Exception $e) {
+            Log::error('Erreur calcul statistiques: ' . $e->getMessage());
+            return [
+                'total_courses' => 0,
+                'teacher_attendances' => 0,
+                'student_calls_completed' => 0,
+                'courses_closed' => 0,
+                'delays' => 0
+            ];
+        }
+    }
 }

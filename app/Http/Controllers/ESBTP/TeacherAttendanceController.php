@@ -9,6 +9,7 @@ use App\Models\ESBTPAttendanceSettings;
 use App\Models\ESBTPEmploiTemps;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPSeanceCours;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Carbon\Carbon;
@@ -24,27 +25,27 @@ class TeacherAttendanceController extends Controller
     {
         $user = auth()->user();
         $today = Carbon::today();
-
-        // Get the teacher's identifier (full name or other unique identifier)
-        $teacherIdentifier = $user->firstname . ' ' . $user->lastname;
-
-        // Get today's courses through SeanceCours
-        $todayCourses = ESBTPSeanceCours::whereHas('matiere')
-            ->whereHas('emploiTemps', function($query) use ($today) {
-                $query->where('is_active', true)
-                      ->where('is_current', true)
-                      ->where('date_debut', '<=', $today)
-                      ->where('date_fin', '>=', $today);
-            })
-            ->where('enseignant', $teacherIdentifier)
-            ->with(['matiere', 'emploiTemps.classe'])
+        
+        // Get today's courses for the teacher  
+        $dayOfWeek = $today->dayOfWeek; // 0=Sunday, 1=Monday, etc.
+        // Convert to database format (1=Monday, 7=Sunday)
+        $dayOfWeekDb = $dayOfWeek == 0 ? 7 : $dayOfWeek;
+        
+        $todayCourses = ESBTPSeanceCours::with(['matiere', 'emploiTemps.classe'])
+            ->where('teacher_id', $user->id) // Direct teacher assignment on seance
+            ->where('is_active', true)
+            ->where('jour', $dayOfWeekDb)
             ->get();
 
-        $attendances = ESBTPTeacherAttendance::where('teacher_id', $user->id)
-            ->whereDate('validated_at', Carbon::today())
-            ->get();
+        // Load teacher attendance status for each course
+        $todayCourses->each(function($course) use ($user, $today) {
+            $course->teacherAttendance = ESBTPTeacherAttendance::where('teacher_id', $user->id)
+                ->where('course_id', $course->id)
+                ->whereDate('date', $today)
+                ->first();
+        });
 
-        return view('esbtp.teacher-attendance.index', compact('todayCourses', 'attendances'));
+        return view('esbtp.teacher-attendance.index', compact('todayCourses'));
     }
 
     /**
@@ -92,60 +93,73 @@ class TeacherAttendanceController extends Controller
     {
         $user = Auth::user();
 
-        // Vérifier si l'utilisateur est connecté et a un profil enseignant
-        if (!$user || !$user->enseignant) {
-            return redirect()
-                ->route('dashboard')
-                ->with('error', 'Vous devez avoir un profil enseignant pour émarger.');
-        }
-
-        $teacher = $user->enseignant;
-
         // Valider les données du formulaire
         $request->validate([
             'code' => 'required|string|size:6',
-            'latitude' => 'required|numeric',
-            'longitude' => 'required|numeric',
-            'accuracy' => 'required|numeric'
+            'course_id' => 'required|exists:esbtp_seance_cours,id'
         ]);
 
         try {
-            // Vérifier si le code est valide
+            // Find the active daily code
             $dailyCode = ESBTPDailyCode::where('code', $request->code)
-                ->where('expiration', '>', now())
+                ->where('status', 'active')
+                ->where('is_active', true)
                 ->first();
 
-            if (!$dailyCode) {
+            if (!$dailyCode || !$dailyCode->isValid()) {
                 return back()->with('error', 'Code d\'émargement invalide ou expiré.');
             }
 
-            // Vérifier si l'enseignant a déjà émargé avec ce code
-            $existingAttendance = ESBTPTeacherAttendance::where('enseignant_id', $teacher->id)
-                ->where('daily_code_id', $dailyCode->id)
+            // Get the course (seance)
+            $seanceCours = ESBTPSeanceCours::findOrFail($request->course_id);
+            
+            // Check if teacher is assigned to this course
+            if ($seanceCours->teacher_id !== $user->id) {
+                return back()->with('error', 'Vous n\'êtes pas assigné à ce cours.');
+            }
+            
+            // Check if teacher has already marked attendance for this course today
+            $existingAttendance = ESBTPTeacherAttendance::where('teacher_id', $user->id)
+                ->where('course_id', $seanceCours->id)
+                ->whereDate('date', today())
                 ->first();
 
             if ($existingAttendance) {
-                return back()->with('error', 'Vous avez déjà émargé avec ce code.');
+                return back()->with('warning', 'Vous avez déjà émargé pour ce cours aujourd\'hui.');
             }
 
-            // Créer l'enregistrement de présence
-            $attendance = new ESBTPTeacherAttendance([
-                'enseignant_id' => $teacher->id,
+            // Create attendance record
+            ESBTPTeacherAttendance::create([
+                'teacher_id' => $user->id,
+                'course_id' => $seanceCours->id,
                 'daily_code_id' => $dailyCode->id,
-                'validated_at' => now(),
-                'status' => 'present', // ou calculer en fonction de l'heure
-                'latitude' => $request->latitude,
-                'longitude' => $request->longitude,
-                'accuracy' => $request->accuracy,
-                'validation_status' => 'pending'
+                'date' => now()->toDateString(),
+                'status' => 'present',
+                'attempts' => 1,
+                'ip_address' => $request->ip(),
+                'device_info' => json_encode(['user_agent' => $request->userAgent()]),
+                'validated_at' => now()
             ]);
 
-            $attendance->save();
+            // Record successful attempt on the daily code
+            $dailyCode->recordAttempt(true);
+
+            // **NOTIFICATION** : Notifier le coordinateur de l'émargement effectué
+            try {
+                $notificationService = app(NotificationService::class);
+                $notificationService->notifyCoordinateurTeacherAttendanceSigned($user, $seanceCours);
+            } catch (\Exception $e) {
+                \Log::error('Erreur lors de l\'envoi de la notification d\'émargement: ' . $e->getMessage());
+                // Ne pas interrompre le processus principal
+            }
 
             return back()->with('success', 'Émargement enregistré avec succès.');
 
         } catch (\Exception $e) {
             \Log::error('Erreur lors de l\'émargement: ' . $e->getMessage());
+            if (isset($dailyCode)) {
+                $dailyCode->recordAttempt(false);
+            }
             return back()->with('error', 'Une erreur est survenue lors de l\'émargement. Veuillez réessayer.');
         }
     }

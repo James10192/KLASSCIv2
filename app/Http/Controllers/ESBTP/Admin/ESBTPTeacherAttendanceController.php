@@ -8,6 +8,7 @@ use App\Models\ESBTPEnseignant;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPDailyCode;
 use App\Models\ESBTPAttendanceSettings;
+use App\Models\ESBTPSeanceCours;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use PDF;
@@ -16,13 +17,20 @@ class ESBTPTeacherAttendanceController extends Controller
 {
     public function index()
     {
+        // Check if this is a teacher accessing their attendance marking page
+        $user = auth()->user();
+        if ($user->hasRole(['enseignant', 'teacher'])) {
+            return $this->showTeacherAttendancePage();
+        }
+
+        // Admin view
         $date = request('date', now()->toDateString());
         $dailyCode = ESBTPDailyCode::whereDate('created_at', today())
             ->where('status', 'active')
             ->latest()
             ->first();
 
-        $todayAttendances = ESBTPTeacherAttendance::with(['enseignant', 'matiere'])
+        $todayAttendances = ESBTPTeacherAttendance::with(['teacher', 'course.matiere'])
             ->whereDate('created_at', $date)
             ->orderBy('created_at', 'desc')
             ->get();
@@ -33,27 +41,131 @@ class ESBTPTeacherAttendanceController extends Controller
         return view('esbtp.admin.attendance.index', compact('dailyCode', 'todayAttendances', 'codeStats', 'settings'));
     }
 
+    /**
+     * Show teacher attendance marking page with their courses
+     */
+    private function showTeacherAttendancePage()
+    {
+        $user = auth()->user();
+
+        // Get today's courses for the teacher  
+        $today = now()->format('Y-m-d');
+        $dayOfWeek = now()->dayOfWeek; // 0=Sunday, 1=Monday, etc.
+        // Convert to database format (1=Monday, 7=Sunday)
+        $dayOfWeekDb = $dayOfWeek == 0 ? 7 : $dayOfWeek;
+        
+        $todayCourses = ESBTPSeanceCours::with(['matiere', 'emploiTemps.classe'])
+            ->where('teacher_id', $user->id) // Direct teacher assignment on seance
+            ->where('is_active', true)
+            ->where('jour', $dayOfWeekDb)
+            ->get();
+
+        // Load teacher attendance status for each course
+        $todayCourses->each(function($course) use ($user, $today) {
+            $course->teacherAttendance = ESBTPTeacherAttendance::where('teacher_id', $user->id)
+                ->where('course_id', $course->id)
+                ->whereDate('date', $today)
+                ->first();
+        });
+
+        return view('esbtp.attendance.mark', compact('todayCourses'));
+    }
+
     public function store(Request $request)
     {
+        // Check if this is teacher self-attendance marking
+        if ($request->has('code') && $request->has('course_id')) {
+            return $this->markTeacherAttendance($request);
+        }
+
+        // Admin attendance marking (existing functionality)
         $validated = $request->validate([
-            'enseignant_id' => 'required|exists:esbtp_enseignants,id',
-            'matiere_id' => 'required|exists:esbtp_matieres,id',
+            'teacher_id' => 'required|exists:users,id',
+            'course_id' => 'required|exists:esbtp_seance_cours,id',
             'status' => 'required|in:present,absent,late',
             'remarks' => 'nullable|string',
         ]);
 
         $attendance = ESBTPTeacherAttendance::create([
-            'enseignant_id' => $validated['enseignant_id'],
-            'matiere_id' => $validated['matiere_id'],
+            'teacher_id' => $validated['teacher_id'],
+            'course_id' => $validated['course_id'],
             'date' => now()->toDateString(),
-            'time_in' => now()->toTimeString(),
             'status' => $validated['status'],
-            'remarks' => $validated['remarks'],
-            'ip_address' => $request->ip(),
-            'device_info' => $request->userAgent()
         ]);
 
         return redirect()->back()->with('success', 'Présence enregistrée avec succès');
+    }
+
+    /**
+     * Handle teacher self-attendance marking with code verification
+     */
+    private function markTeacherAttendance(Request $request)
+    {
+        $validated = $request->validate([
+            'code' => 'required|string|size:6',
+            'course_id' => 'required|exists:esbtp_seance_cours,id'
+        ]);
+
+        // Find the active daily code
+        $dailyCode = ESBTPDailyCode::where('code', $validated['code'])
+            ->where('status', 'active')
+            ->where('is_active', true)
+            ->first();
+
+        if (!$dailyCode) {
+            return redirect()->back()->with('error', 'Code d\'émargement invalide ou expiré.');
+        }
+
+        if (!$dailyCode->isValid()) {
+            return redirect()->back()->with('error', 'Code d\'émargement expiré.');
+        }
+
+        // Get the course (seance)
+        $seanceCours = ESBTPSeanceCours::findOrFail($validated['course_id']);
+        
+        // Get current teacher
+        $user = auth()->user();
+        
+        // Check if teacher is assigned to this course
+        if ($seanceCours->teacher_id !== $user->id) {
+            return redirect()->back()->with('error', 'Vous n\'êtes pas assigné à ce cours.');
+        }
+        
+        // Check if teacher has already marked attendance for this course today
+        $existingAttendance = ESBTPTeacherAttendance::where('teacher_id', $user->id)
+            ->where('course_id', $seanceCours->id)
+            ->whereDate('date', today())
+            ->first();
+
+        if ($existingAttendance) {
+            return redirect()->back()->with('warning', 'Vous avez déjà émargé pour ce cours aujourd\'hui.');
+        }
+
+        // Create attendance record
+        try {
+            $attendance = ESBTPTeacherAttendance::create([
+                'teacher_id' => $user->id,
+                'course_id' => $seanceCours->id,
+                'daily_code_id' => $dailyCode->id,
+                'date' => now()->toDateString(),
+                'status' => 'present', // Present/Done
+                'attempts' => 1,
+                'ip_address' => $request->ip(),
+                'device_info' => json_encode(['user_agent' => $request->userAgent()]),
+                'validated_at' => now()
+            ]);
+
+            // Record successful attempt on the daily code
+            $dailyCode->recordAttempt(true);
+
+            return redirect()->back()->with('success', 'Émargement enregistré avec succès.');
+
+        } catch (\Exception $e) {
+            // Record failed attempt
+            $dailyCode->recordAttempt(false);
+            
+            return redirect()->back()->with('error', 'Erreur lors de l\'enregistrement de l\'émargement: ' . $e->getMessage());
+        }
     }
 
     public function report(Request $request)
@@ -61,7 +173,7 @@ class ESBTPTeacherAttendanceController extends Controller
         $request->validate([
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
-            'enseignant_id' => 'nullable|exists:esbtp_enseignants,id',
+            'enseignant_id' => 'nullable|exists:users,id',
             'matiere_id' => 'nullable|exists:esbtp_matieres,id',
             'status' => 'nullable|in:present,late,absent',
             'validation_status' => 'nullable|in:pending,validated,rejected',
@@ -71,15 +183,17 @@ class ESBTPTeacherAttendanceController extends Controller
         $startDate = $request->start_date ? Carbon::parse($request->start_date) : now()->startOfMonth();
         $endDate = $request->end_date ? Carbon::parse($request->end_date) : now()->endOfMonth();
 
-        $query = ESBTPTeacherAttendance::with(['enseignant', 'matiere', 'validator'])
+        $query = ESBTPTeacherAttendance::with(['teacher', 'course.matiere'])
             ->whereBetween('created_at', [$startDate->startOfDay(), $endDate->endOfDay()]);
 
         if ($request->enseignant_id) {
-            $query->where('enseignant_id', $request->enseignant_id);
+            $query->where('teacher_id', $request->enseignant_id);
         }
 
         if ($request->matiere_id) {
-            $query->where('matiere_id', $request->matiere_id);
+            $query->whereHas('course', function($q) use ($request) {
+                $q->where('matiere_id', $request->matiere_id);
+            });
         }
 
         if ($request->status) {
@@ -124,7 +238,7 @@ class ESBTPTeacherAttendanceController extends Controller
             return $this->exportReport($attendances, $stats, $request->export_format);
         }
 
-        $enseignants = ESBTPEnseignant::all();
+        $enseignants = \App\Models\User::role('enseignant')->get();
         $matieres = ESBTPMatiere::all();
 
         return view('esbtp.admin.attendance.report', compact(
@@ -179,8 +293,8 @@ class ESBTPTeacherAttendanceController extends Controller
             foreach ($attendances as $attendance) {
                 fputcsv($file, [
                     $attendance->created_at->format('Y-m-d H:i:s'),
-                    $attendance->enseignant->nom_complet,
-                    $attendance->matiere->nom,
+                    $attendance->teacher->name,
+                    $attendance->course->matiere->name ?? 'N/A',
                     $attendance->status,
                     $attendance->marked_at,
                     $attendance->code,

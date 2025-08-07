@@ -532,6 +532,7 @@ try {
         'view_matieres',
         'send_messages',
         'receive_messages',
+        'view_own_attendance',  // Permission nécessaire pour accéder à /esbtp/teacher/attendance
         // Ajoute ici toutes les permissions nécessaires à l'enseignant
     ];
 

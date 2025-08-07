@@ -40,11 +40,11 @@ class ESBTPTeacherAttendance extends Model
     }
 
     /**
-     * Relation avec le cours
+     * Relation avec le cours (séance de cours)
      */
     public function course(): BelongsTo
     {
-        return $this->belongsTo(ESBTPCourse::class, 'course_id');
+        return $this->belongsTo(ESBTPSeanceCours::class, 'course_id');
     }
 
     /**

@@ -120,7 +120,7 @@
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="POST" action="{{ route('esbtp.attendance.mark.submit') }}" id="attendanceForm">
+            <form method="POST" action="{{ route('esbtp.attendance.mark') }}" id="attendanceForm">
                 @csrf
                 <input type="hidden" name="course_id" id="courseId">
                 <div class="modal-body">

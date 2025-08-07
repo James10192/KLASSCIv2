@@ -133,7 +133,22 @@ class ESBTPEmploiTempsController extends Controller
             ->where('filiere_id', $classe->filiere_id)
             ->where('niveau_etude_id', $classe->niveau_etude_id)
             ->when($semestre, function($query) use ($semestre) {
-                $query->where('semestre', $semestre);
+                // Convertir le semestre string en integer si nécessaire
+                if (is_string($semestre)) {
+                    if (strpos($semestre, 'Semestre 1') !== false) {
+                        $semestreInt = 1;
+                    } elseif (strpos($semestre, 'Semestre 2') !== false) {
+                        $semestreInt = 2;
+                    } else {
+                        $semestreInt = null; // Année complète - ne pas filtrer
+                    }
+                } else {
+                    $semestreInt = $semestre;
+                }
+                
+                if ($semestreInt) {
+                    $query->where('semestre', $semestreInt);
+                }
             })
             ->active()
             ->with(['matiere', 'enseignantPrincipal'])
@@ -142,11 +157,25 @@ class ESBTPEmploiTempsController extends Controller
         if ($planifications->isEmpty()) {
             // Aucune planification configurée
             $data['message_configuration'] = "Aucune planification académique n'a été configurée pour cette classe. Veuillez d'abord configurer la planification.";
-            $data['lien_configuration'] = route('esbtp.planning-general.annuel', [
+            // Convertir le semestre string en integer pour l'URL
+            $semestreUrl = 1; // Par défaut
+            if ($semestre) {
+                if (is_string($semestre)) {
+                    if (strpos($semestre, 'Semestre 1') !== false) {
+                        $semestreUrl = 1;
+                    } elseif (strpos($semestre, 'Semestre 2') !== false) {
+                        $semestreUrl = 2;
+                    }
+                } else {
+                    $semestreUrl = $semestre;
+                }
+            }
+            
+            $data['lien_configuration'] = route('esbtp.planning-general.index', [
                 'annee_id' => $annee->id,
                 'filiere_id' => $classe->filiere_id,
-                'niveau_id' => $classe->niveau_id,
-                'semestre' => $semestre ?: 1
+                'niveau_id' => $classe->niveau_etude_id,
+                'semestre' => $semestreUrl
             ]);
             return $data;
         }
@@ -379,13 +408,23 @@ class ESBTPEmploiTempsController extends Controller
             $matiereStats[$matiereName]++;
         }
 
+        // Ajouter les données de planification académique
+        $planificationData = [];
+        if ($emploi_temp->classe && $emploi_temp->annee) {
+            $planificationData = $this->getPlanificationDataForClasse(
+                $emploi_temp->classe, 
+                $emploi_temp->annee, 
+                $emploi_temp->semestre
+            );
+        }
+
         // Renommer la variable pour la vue
         $emploiTemps = $emploi_temp;
 
         return view('esbtp.emploi-temps.show', compact(
             'emploiTemps', 'seances', 'seancesParJour',
             'heuresDebut', 'heuresFin', 'joursNoms',
-            'matiereStats', 'timeSlots', 'days'
+            'matiereStats', 'timeSlots', 'days', 'planificationData'
         ));
     }
 

@@ -2,335 +2,421 @@
 
 @section('title', 'Tableau de bord enseignant')
 
+@section('styles')
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<style>
+    /* Styles spécifiques pour le dashboard enseignant */
+    body {
+        background-color: var(--background);
+    }
+    .emargement-widget {
+        border-radius: var(--radius-medium);
+        padding: var(--space-lg);
+        margin-bottom: var(--space-lg);
+    }
+    
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: var(--space-xs) var(--space-md);
+        border-radius: var(--radius-large);
+        font-size: var(--text-small);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    .status-badge.present { 
+        background-color: rgba(16, 185, 129, 0.1); 
+        color: var(--success); 
+        border: 1px solid rgba(16, 185, 129, 0.2); 
+    }
+    
+    .status-badge.absent { 
+        background-color: rgba(239, 68, 68, 0.1); 
+        color: var(--danger); 
+        border: 1px solid rgba(239, 68, 68, 0.2); 
+    }
+    
+    .status-badge.late { 
+        background-color: rgba(245, 158, 11, 0.1); 
+        color: var(--warning); 
+        border: 1px solid rgba(245, 158, 11, 0.2); 
+    }
+    
+    .status-badge.pending { 
+        background-color: rgba(107, 114, 128, 0.1); 
+        color: var(--neutral); 
+        border: 1px solid rgba(107, 114, 128, 0.2); 
+    }
+
+    .code-display {
+        font-family: 'Courier New', monospace;
+        font-size: 2.5rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, var(--primary), var(--accent-blue));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        text-align: center;
+        padding: var(--space-lg);
+        border: 2px dashed var(--primary);
+        border-radius: var(--radius-medium);
+        margin: var(--space-md) 0;
+    }
+
+    .quick-action-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-sm);
+        padding: var(--space-sm) var(--space-md);
+        background-color: transparent;
+        border: 1px solid var(--primary);
+        color: var(--primary);
+        border-radius: var(--radius-small);
+        text-decoration: none;
+        font-size: var(--text-small);
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+    .quick-action-btn:hover {
+        background-color: var(--primary);
+        color: white;
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-hover);
+    }
+
+    .notification-card {
+        border-left: 4px solid;
+        padding: var(--space-md);
+        margin-bottom: var(--space-md);
+        border-radius: var(--radius-small);
+    }
+
+    .notification-card.warning {
+        border-color: var(--warning);
+        background-color: rgba(245, 158, 11, 0.05);
+    }
+
+    .notification-card.info {
+        border-color: var(--accent-blue);
+        background-color: rgba(6, 182, 212, 0.05);
+    }
+</style>
+@endsection
+
 @section('content')
-<div class="container-fluid px-4">
-    <h1 class="mt-4">Tableau de bord</h1>
-    <ol class="breadcrumb mb-4">
-        <li class="breadcrumb-item active">Accueil</li>
-    </ol>
-
-    <!-- Bienvenue -->
-    <div class="card mb-4">
-        <div class="card-body">
-            <h2>Bienvenue, {{ Auth::user()->name }} !</h2>
-            <p>Vous êtes connecté à l'application ESBTP-yAKRO.</p>
-        </div>
-    </div>
-
-    <!-- Statistiques rapides -->
-    <div class="row mb-4">
-        <div class="col-xl-3 col-md-6">
-            <div class="card bg-primary text-white h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div class="me-3">
-                            <div class="text-white-75 small">Mes séances</div>
-                            <div class="text-lg fw-bold">{{ $attendanceStats['totalCourses'] ?? 0 }}</div>
-                        </div>
-                        <i class="fas fa-calendar fa-2x text-white-50"></i>
-                    </div>
-                </div>
-                <div class="card-footer d-flex align-items-center justify-content-between">
-                    <a class="small text-white stretched-link" href="{{ route('teacher.timetable') }}">Voir mon emploi du temps</a>
-                    <div class="small text-white"><i class="fas fa-angle-right"></i></div>
-                </div>
+<div class="dashboard-acasi">
+    <div class="main-content">
+        <!-- Header avec bienvenue -->
+        <div class="dashboard-header">
+            <div class="header-left">
+                <h1><i class="fas fa-chalkboard-teacher me-2"></i>Tableau de bord enseignant</h1>
+                <p class="header-subtitle">Bienvenue, <strong>{{ Auth::user()->name }}</strong> ! Gérez vos cours et émargements</p>
             </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card bg-success text-white h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div class="me-3">
-                            <div class="text-white-75 small">Taux de présence</div>
-                            <div class="text-lg fw-bold">{{ number_format($attendanceStats['attendanceRate'] ?? 0, 1) }}%</div>
-                        </div>
-                        <i class="fas fa-check-circle fa-2x text-white-50"></i>
-                    </div>
-                </div>
-                <div class="card-footer d-flex align-items-center justify-content-between">
-                    <a class="small text-white stretched-link" href="#">Voir les détails</a>
-                    <div class="small text-white"><i class="fas fa-angle-right"></i></div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card bg-secondary text-white h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div class="me-3">
-                            <div class="text-white-75 small">Notes à saisir</div>
-                            <div class="text-lg fw-bold">3</div>
-                        </div>
-                        <i class="fas fa-edit fa-2x text-white-50"></i>
-                    </div>
-                </div>
-                <div class="card-footer d-flex align-items-center justify-content-between">
-                    <a class="small text-white stretched-link" href="#">Saisir des notes</a>
-                    <div class="small text-white"><i class="fas fa-angle-right"></i></div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card bg-info text-white h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div class="me-3">
-                            <div class="text-white-75 small">Messages</div>
-                            <div class="text-lg fw-bold">7</div>
-                        </div>
-                        <i class="fas fa-envelope fa-2x text-white-50"></i>
-                    </div>
-                </div>
-                <div class="card-footer d-flex align-items-center justify-content-between">
-                    <a class="small text-white stretched-link" href="#">Voir les messages</a>
-                    <div class="small text-white"><i class="fas fa-angle-right"></i></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Statistiques -->
-    <div class="row">
-        <!-- Séances de cours à venir -->
-        <div class="col-lg-6">
-            <div class="card mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <div>
-                        <i class="fas fa-calendar-alt me-1"></i>
-                        Séances de cours à venir
-                    </div>
-                    <a href="{{ route('teacher.timetable') }}" class="btn btn-sm btn-primary">
-                        <i class="fas fa-external-link-alt me-1"></i> Mon emploi du temps
-                    </a>
-                </div>
-                <div class="card-body">
-                    <div class="upcoming-classes">
-                        @if(isset($upcomingClasses) && count($upcomingClasses) > 0)
-                            @foreach($upcomingClasses as $seance)
-                                <div class="class-item p-3 mb-3 d-flex align-items-center shadow-sm bg-white rounded border-start border-4 border-primary position-relative" style="transition: box-shadow 0.2s;">
-                                    <div class="date-badge-seance text-center me-4 flex-shrink-0">
-                                        <div class="fw-bold text-primary" style="font-size:1.1rem;">
-                                            {{ \Carbon\Carbon::parse($seance->date_seance)->translatedFormat('l') }}
-                                        </div>
-                                        <div class="text-dark" style="font-size:1.5rem;line-height:1;">
-                                            {{ \Carbon\Carbon::parse($seance->date_seance)->format('d') }}
-                                        </div>
-                                        <div class="text-muted" style="font-size:0.9rem;">
-                                            {{ \Carbon\Carbon::parse($seance->date_seance)->translatedFormat('F Y') }}
-                                        </div>
-                                    </div>
-                                    <div class="flex-grow-1">
-                                        <div class="d-flex align-items-center mb-1">
-                                            <i class="fas fa-book-open text-primary me-2"></i>
-                                            <span class="fw-bold fs-5">{{ $seance->matiere->name ?? 'Matière inconnue' }}</span>
-                                        </div>
-                                        <div class="text-muted mb-1">
-                                            <i class="fas fa-users me-1"></i>
-                                            {{ $seance->classe->name ?? 'Classe inconnue' }}
-                                        </div>
-                                        <div>
-                                            <span class="badge bg-opacity-10 text-primary border border-primary me-2">
-                                                <i class="far fa-clock me-1"></i>
-                                                {{ \Carbon\Carbon::parse($seance->heure_debut)->format('H:i') }} - {{ \Carbon\Carbon::parse($seance->heure_fin)->format('H:i') }}
-                                            </span>
-                                            @if($seance->salle)
-                                                <span class="badge bg-opacity-10 text-info border border-info">
-                                                    <i class="fas fa-door-open me-1"></i>
-                                                    {{ $seance->salle }}
-                                                </span>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </div>
-                            @endforeach
-                        @else
-                            <div class="alert alert-info">Aucune séance à venir.</div>
-                        @endif
-                    </div>
-                </div>
-                <div class="card-footer d-flex justify-content-end">
-                    <a href="{{ route('teacher.timetable') }}" class="btn btn-sm btn-primary">
-                        <i class="fas fa-calendar me-1"></i> Voir l'emploi du temps complet
-                    </a>
-                </div>
+            <div class="header-actions">
+                <span class="text-muted">{{ \Carbon\Carbon::now()->isoFormat('dddd D MMMM YYYY') }}</span>
             </div>
         </div>
 
-        <!-- Taux de présence -->
-        <div class="col-lg-6">
-            <div class="card mb-4">
-                <div class="card-header">
-                    <i class="fas fa-chart-pie me-1"></i>
-                    Taux de présence
-                </div>
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col-md-6">
-                            <div class="text-center">
-                                <div class="attendance-chart">
-                                    <!-- Canvas pour le graphique circulaire -->
-                                    <canvas id="attendanceChart" width="200" height="200"></canvas>
-                                </div>
+        <!-- Notifications importantes -->
+        @if(isset($notifications) && count($notifications) > 0)
+            <div class="mb-4">
+                @foreach($notifications as $notification)
+                    <div class="card-moderne mb-3 p-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="fas fa-{{ $notification['type'] === 'warning' ? 'exclamation-triangle text-warning' : 'info-circle text-info' }} me-2"></i>
+                                {{ $notification['message'] }}
+                            </div>
+                            <a href="{{ $notification['action'] }}" class="btn btn-sm btn-outline-primary">
+                                {{ $notification['action_text'] }}
+                            </a>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+
+        <!-- Grille des KPIs -->
+        <div class="row mb-4">
+            <!-- KPI 1: Émargement du jour -->
+            <div class="col-lg-3 col-md-6">
+                <div class="card-moderne p-3 {{ $todayAttendance ? 'border-success' : 'border-warning' }}">
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            <div class="rounded-circle p-3 {{ $todayAttendance ? 'bg-success' : 'bg-warning' }} text-white">
+                                <i class="fas fa-user-check fa-2x"></i>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <div class="attendance-stats">
-                                <div class="stat-item mb-3">
-                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <span class="fw-semibold">Total des cours</span>
-                                        <span class="badge bg-primary">{{ $attendanceStats['totalCourses'] ?? 0 }}</span>
-                                    </div>
-                                    <div class="progress" style="height: 8px;">
-                                        <div class="progress-bar bg-primary" role="progressbar" style="width: 100%"></div>
-                                    </div>
-                                </div>
-
-                                <div class="stat-item mb-3">
-                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <span class="fw-semibold">Cours assurés</span>
-                                        <span class="badge bg-success">{{ $attendanceStats['attendedCourses'] ?? 0 }}</span>
-                                    </div>
-                                    <div class="progress" style="height: 8px;">
-                                        <div class="progress-bar bg-success" role="progressbar"
-                                             style="width: {{ isset($attendanceStats['attendedCourses']) && isset($attendanceStats['totalCourses']) && $attendanceStats['totalCourses'] > 0 ? ($attendanceStats['attendedCourses'] / $attendanceStats['totalCourses'] * 100) : 0 }}%"></div>
-                                    </div>
-                                </div>
-
-                                <div class="stat-item">
-                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <span class="fw-semibold">Cours manqués</span>
-                                        <span class="badge bg-danger">{{ $attendanceStats['absentCourses'] ?? 0 }}</span>
-                                    </div>
-                                    <div class="progress" style="height: 8px;">
-                                        <div class="progress-bar bg-danger" role="progressbar"
-                                             style="width: {{ isset($attendanceStats['absentCourses']) && isset($attendanceStats['totalCourses']) && $attendanceStats['totalCourses'] > 0 ? ($attendanceStats['absentCourses'] / $attendanceStats['totalCourses'] * 100) : 0 }}%"></div>
-                                    </div>
-                                </div>
+                        <div class="flex-grow-1">
+                            <h6 class="fw-bold text-primary mb-1">Émargement</h6>
+                            <div class="mb-2">
+                                @if($todayAttendance)
+                                    <span class="badge bg-success">✓ Émargé</span>
+                                @else
+                                    <span class="badge bg-warning">En attente</span>
+                                @endif
                             </div>
+                            <small class="text-muted">
+                                @if($todayAttendance)
+                                    {{ $todayAttendance->validated_at->format('H:i') }}
+                                @else
+                                    Demander le code au coordinateur
+                                @endif
+                            </small>
+                        </div>
+                    </div>
+                    @if(!$todayAttendance && $dailyCode)
+                        <div class="mt-3 text-center">
+                            <a href="{{ route('esbtp.teacher.attendance.index') }}" class="btn btn-primary btn-sm">
+                                <i class="fas fa-edit me-1"></i> Émarger
+                            </a>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            <!-- KPI 2: Mes séances -->
+            <div class="col-lg-3 col-md-6">
+                <div class="card-moderne p-3 border-primary">
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            <div class="rounded-circle p-3 bg-primary text-white">
+                                <i class="fas fa-calendar-day fa-2x"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="fw-bold text-primary mb-1">Mes séances</h6>
+                            <div class="h4 mb-1">{{ $attendanceStats['totalCourses'] ?? 0 }}</div>
+                            <small class="text-muted">Total séances</small>
+                        </div>
+                    </div>
+                    <div class="mt-3 text-center">
+                        <a href="{{ route('teacher.timetable') }}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-eye me-1"></i> Voir
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KPI 3: Taux de présence -->
+            <div class="col-lg-3 col-md-6">
+                <div class="card-moderne p-3 {{ isset($attendanceStats['attendanceRate']) && $attendanceStats['attendanceRate'] > 90 ? 'border-success' : (isset($attendanceStats['attendanceRate']) && $attendanceStats['attendanceRate'] > 75 ? 'border-warning' : 'border-danger') }}">
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            <div class="rounded-circle p-3 {{ isset($attendanceStats['attendanceRate']) && $attendanceStats['attendanceRate'] > 90 ? 'bg-success' : (isset($attendanceStats['attendanceRate']) && $attendanceStats['attendanceRate'] > 75 ? 'bg-warning' : 'bg-danger') }} text-white">
+                                <i class="fas fa-chart-line fa-2x"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="fw-bold text-primary mb-1">Taux présence</h6>
+                            <div class="h4 mb-1">{{ number_format($attendanceStats['attendanceRate'] ?? 0, 1) }}%</div>
+                            <small class="text-muted">
+                                {{ $attendanceStats['attendedCourses'] ?? 0 }}/{{ $attendanceStats['totalCourses'] ?? 0 }} séances
+                            </small>
                         </div>
                     </div>
                 </div>
-                <div class="card-footer small text-muted">
-                    Taux de présence global: {{ isset($attendanceStats['attendanceRate']) ? number_format($attendanceStats['attendanceRate'], 1) : '0' }}%
-                </div>
             </div>
-        </div>
-    </div>
 
-    <!-- Notifications ou alertes -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card mb-4">
-                <div class="card-header">
-                    <i class="fas fa-bell me-1"></i>
-                    Notifications
-                </div>
-                <div class="card-body">
-                    @if(isset($notifications) && count($notifications) > 0)
-                        <div class="table-responsive">
-                            <table class="table table-bordered">
-                                <thead>
-                                    <tr>
-                                        <th>Date</th>
-                                        <th>Message</th>
-                                        <th>Type</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($notifications as $notification)
-                                        <tr>
-                                            <td>{{ $notification->created_at->format('d/m/Y H:i') }}</td>
-                                            <td>{{ $notification->message }}</td>
-                                            <td>
-                                                <span class="badge bg-{{ $notification->type == 'urgent' ? 'danger' : 'info' }}">
-                                                    {{ $notification->type }}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
+            <!-- KPI 4: Appels en attente -->
+            <div class="col-lg-3 col-md-6">
+                <div class="card-moderne p-3 {{ $pendingRollCalls->count() > 0 ? 'border-info' : 'border-secondary' }}">
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            <div class="rounded-circle p-3 {{ $pendingRollCalls->count() > 0 ? 'bg-info' : 'bg-secondary' }} text-white">
+                                <i class="fas fa-list-check fa-2x"></i>
+                            </div>
                         </div>
-                    @else
-                        <div class="alert alert-info mb-0">
-                            Aucune notification pour le moment.
+                        <div class="flex-grow-1">
+                            <h6 class="fw-bold text-primary mb-1">Appels</h6>
+                            <div class="h4 mb-1">{{ $pendingRollCalls->count() }}</div>
+                            <small class="text-muted">
+                                @if($pendingRollCalls->count() > 0)
+                                    En attente
+                                @else
+                                    À jour
+                                @endif
+                            </small>
+                        </div>
+                    </div>
+                    @if($pendingRollCalls->count() > 0)
+                        <div class="mt-3 text-center">
+                            <a href="#pending-roll-calls" class="btn btn-info btn-sm">
+                                <i class="fas fa-arrow-down me-1"></i> Voir
+                            </a>
                         </div>
                     @endif
                 </div>
             </div>
         </div>
+
+    <!-- Section principale: Cours et Actions -->
+    <div class="dashboard-main-grid">
+        <!-- Séances du jour -->
+        <div class="main-card">
+            <div class="main-card-header">
+                <div class="main-card-title">
+                    <i class="fas fa-calendar-day"></i>
+                    Mes cours aujourd'hui
+                </div>
+                <div class="main-card-subtitle">{{ $todayClasses->count() }} séance(s) programmée(s)</div>
+            </div>
+            <div class="main-card-body">
+                @if($todayClasses->count() > 0)
+                    <div class="course-list">
+                        @foreach($todayClasses as $cours)
+                            <div class="course-item">
+                                <div class="course-time">
+                                    <div class="time-display">
+                                        {{ $cours->heure_debut ? \Carbon\Carbon::parse($cours->heure_debut)->format('H:i') : 'N/A' }} - 
+                                        {{ $cours->heure_fin ? \Carbon\Carbon::parse($cours->heure_fin)->format('H:i') : 'N/A' }}
+                                    </div>
+                                    <div class="course-day">{{ $joursSemaine[$cours->jour] ?? 'Jour '.$cours->jour }}</div>
+                                </div>
+                                <div class="course-info">
+                                    <div class="course-subject">{{ $cours->matiere->name ?? 'Matière non définie' }}</div>
+                                    <div class="course-class">{{ $cours->classe->name ?? 'Classe non définie' }}</div>
+                                    <div class="course-type">{{ ucfirst($cours->type ?? 'cours') }}</div>
+                                </div>
+                                <div class="course-status">
+                                    @php
+                                        $hasAttendance = $cours->teacherAttendance()->whereDate('validated_at', \Carbon\Carbon::today())->exists();
+                                        $hasStudentCall = \App\Models\ESBTPAttendance::where('seance_cours_id', $cours->id)->exists();
+                                        $isCompleted = $cours->status === 'completed';
+                                    @endphp
+                                    
+                                    @if($isCompleted)
+                                        <span class="status-badge present">✓ Terminé</span>
+                                    @elseif($hasStudentCall)
+                                        <span class="status-badge present">✓ Appel fait</span>
+                                    @elseif($hasAttendance && \Carbon\Carbon::parse($cours->heure_debut)->isPast())
+                                        <span class="status-badge late">En cours</span>
+                                    @else
+                                        <span class="status-badge pending">Programmé</span>
+                                    @endif
+                                </div>
+                                <div class="course-actions">
+                                    @if($hasAttendance && !$isCompleted)
+                                        @if(!$hasStudentCall && \Carbon\Carbon::parse($cours->heure_debut)->subMinutes(15)->isPast())
+                                            <a href="{{ route('teacher.roll-call', $cours->id) }}" class="quick-action-btn">
+                                                <i class="fas fa-list-check"></i> Faire l'appel
+                                            </a>
+                                        @elseif($hasStudentCall)
+                                            <form method="POST" action="{{ route('teacher.close-course', $cours->id) }}" style="display:inline;">
+                                                @csrf
+                                                <button type="submit" class="quick-action-btn" 
+                                                        onclick="return confirm('Êtes-vous sûr de vouloir clôturer ce cours ?')">
+                                                    <i class="fas fa-check-circle"></i> Clôturer
+                                                </button>
+                                            </form>
+                                        @endif
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="empty-state">
+                        <i class="fas fa-calendar-times"></i>
+                        <p>Aucun cours programmé aujourd'hui</p>
+                    </div>
+                @endif
+            </div>
+        </div>
+
+        <!-- Appels en attente -->
+        @if($pendingRollCalls->count() > 0)
+            <div id="pending-roll-calls" class="main-card urgent">
+                <div class="main-card-header">
+                    <div class="main-card-title">
+                        <i class="fas fa-exclamation-circle"></i>
+                        Appels en attente
+                    </div>
+                    <div class="main-card-subtitle">{{ $pendingRollCalls->count() }} cours nécessitent un appel</div>
+                </div>
+                <div class="main-card-body">
+                    <div class="urgent-list">
+                        @foreach($pendingRollCalls as $cours)
+                            <div class="urgent-item">
+                                <div class="urgent-info">
+                                    <div class="urgent-title">
+                                        {{ $cours->matiere->name ?? 'Matière inconnue' }} - {{ $cours->classe->name ?? 'Classe inconnue' }}
+                                    </div>
+                                    <div class="urgent-time">
+                                        Débuté à {{ \Carbon\Carbon::parse($cours->heure_debut)->format('H:i') }}
+                                    </div>
+                                </div>
+                                <a href="{{ route('teacher.roll-call', $cours->id) }}" class="btn-urgent-action">
+                                    <i class="fas fa-list-check"></i>
+                                    Faire l'appel
+                                </a>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+        @endif
+    </div>
+    
+    <!-- Actions rapides -->
+    <div class="quick-actions-section">
+        <div class="section-header">
+            <h2 class="section-title">Actions rapides</h2>
+        </div>
+        <div class="quick-actions-grid">
+            <a href="{{ route('teacher.timetable') }}" class="quick-action-card">
+                <i class="fas fa-calendar-alt"></i>
+                <span>Mon emploi du temps</span>
+            </a>
+            <a href="{{ route('esbtp.teacher.attendance.index') }}" class="quick-action-card">
+                <i class="fas fa-user-check"></i>
+                <span>Émargement</span>
+            </a>
+            <a href="{{ route('esbtp.notes.index') }}" class="quick-action-card">
+                <i class="fas fa-edit"></i>
+                <span>Saisir des notes</span>
+            </a>
+            <a href="{{ route('teacher.grades') }}" class="quick-action-card">
+                <i class="fas fa-chart-line"></i>
+                <span>Mes statistiques</span>
+            </a>
+        </div>
     </div>
 </div>
+
+@if(session('success'))
+    <div class="alert alert-success alert-dismissible fade show position-fixed top-0 end-0 m-3" style="z-index: 9999;">
+        {{ session('success') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+@endif
+
+@if(session('error'))
+    <div class="alert alert-danger alert-dismissible fade show position-fixed top-0 end-0 m-3" style="z-index: 9999;">
+        {{ session('error') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+@endif
 @endsection
 
 @section('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    // Configuration du graphique de taux de présence
-    document.addEventListener('DOMContentLoaded', function() {
-        var ctx = document.getElementById('attendanceChart');
-
-        if(ctx) {
-            var attendanceChart = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Présent', 'Absent'],
-                    datasets: [{
-                        data: [
-                            {{ isset($attendanceStats['attendedCourses']) ? $attendanceStats['attendedCourses'] : 0 }},
-                            {{ isset($attendanceStats['absentCourses']) ? $attendanceStats['absentCourses'] : 0 }}
-                        ],
-                        backgroundColor: ['#22c55e', '#ef4444'],
-                        borderWidth: 0,
-                        hoverOffset: 4
-                    }]
-                },
-                options: {
-                    cutout: '75%',
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const label = context.label || '';
-                                    const value = context.raw || 0;
-                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                    const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
-                                    return `${label}: ${percentage}%`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
+$(document).ready(function() {
+    // Auto-hide alerts after 5 seconds
+    setTimeout(function() {
+        $('.alert').alert('close');
+    }, 5000);
+    
+    // Smooth scroll to pending roll calls
+    $('a[href="#pending-roll-calls"]').click(function(e) {
+        e.preventDefault();
+        $('html, body').animate({
+            scrollTop: $($(this).attr('href')).offset().top - 20
+        }, 500);
     });
+});
 </script>
-@endsection
-
-@section('styles')
-@parent
-<style>
-    .date-badge-seance {
-        min-width: 70px;
-        background: linear-gradient(135deg, #e0e7ff 0%, #f1f5f9 100%);
-        border-radius: 16px;
-        padding: 8px 0;
-        box-shadow: 0 2px 8px rgba(99,102,241,0.07);
-        margin-right: 1rem;
-    }
-    .class-item {
-        border-left: 4px solid #6366f1 !important;
-        transition: box-shadow 0.2s, border-color 0.2s;
-    }
-    .class-item:hover {
-        box-shadow: 0 6px 24px rgba(99,102,241,0.10);
-        border-left-color: #4338ca !important;
-        background: #f8fafc;
-    }
-</style>
 @endsection

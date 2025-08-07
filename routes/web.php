@@ -192,6 +192,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         Route::get('/dashboard/teacher/timetable', [TeacherDashboardController::class, 'showTimetable'])->name('teacher.timetable');
         Route::get('/dashboard/teacher/grades', [TeacherDashboardController::class, 'showGrades'])->name('teacher.grades');
         Route::get('/dashboard/teacher/attendance', [TeacherDashboardController::class, 'showAttendance'])->name('teacher.attendance');
+        Route::get('/dashboard/teacher/roll-call/{seance}', [TeacherDashboardController::class, 'showRollCall'])->name('teacher.roll-call');
+        Route::post('/dashboard/teacher/roll-call/{seance}', [TeacherDashboardController::class, 'storeRollCall'])->name('teacher.roll-call.store');
+        Route::post('/dashboard/teacher/close-course/{seance}', [TeacherDashboardController::class, 'closeCourse'])->name('teacher.close-course');
     });
 
     // Routes pour la gestion du profil admin
@@ -208,6 +211,11 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         Route::put('/coordinateur/profile/update', [AdminProfileController::class, 'update'])->name('coordinateur.profile.update');
         Route::put('/coordinateur/profile/update-professional', [AdminProfileController::class, 'updateProfessionalInfo'])->name('coordinateur.profile.update.professional');
         Route::put('/coordinateur/profile/update-password', [AdminProfileController::class, 'updatePassword'])->name('coordinateur.password.update');
+        
+        // Tableau de bord des présences pour coordinateurs
+        Route::get('/coordinateur/attendance-dashboard', [App\Http\Controllers\CoordinateurDashboardController::class, 'attendanceDashboard'])->name('coordinateur.attendance-dashboard');
+        Route::get('/coordinateur/recent-activities', [App\Http\Controllers\CoordinateurDashboardController::class, 'getRecentActivities'])->name('coordinateur.recent-activities');
+        Route::post('/coordinateur/daily-report', [App\Http\Controllers\CoordinateurDashboardController::class, 'generateDailyReport'])->name('coordinateur.daily-report');
     });
 
     // Routes pour les fonctionnalités ESBTP
@@ -785,6 +793,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         Route::get('/', [ESBTPNotificationController::class, 'index'])->name('notifications.index');
         Route::post('/{id}/read', [ESBTPNotificationController::class, 'markAsRead'])->name('notifications.markAsRead');
         Route::post('/mark-all-read', [ESBTPNotificationController::class, 'markAllAsRead'])->name('notifications.markAllAsRead');
+        Route::delete('/{id}/delete', [ESBTPNotificationController::class, 'delete'])->name('notifications.delete');
         Route::get('/unread-count', [ESBTPNotificationController::class, 'getUnreadCount'])->name('notifications.unreadCount');
     });
 
@@ -1251,6 +1260,7 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth'])->group(function () 
 });
 
 Route::prefix('esbtp')->middleware(['auth', 'validate.device', 'attendance.rate_limit'])->group(function () {
+    Route::get('/attendance/mark', [ESBTPTeacherAttendanceController::class, 'index'])->name('esbtp.attendance.mark.index');
     Route::post('/attendance/mark', [ESBTPTeacherAttendanceController::class, 'store'])->name('esbtp.attendance.mark');
     Route::get('/teacher/attendance/history', [TeacherAttendanceHistoryController::class, 'index'])->name('esbtp.teacher.attendance.history');
     // ... existing routes ...

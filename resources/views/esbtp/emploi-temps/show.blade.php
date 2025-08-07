@@ -204,6 +204,131 @@
                         </div>
                     @endif
 
+                    <!-- Section Planification Académique -->
+                    @if(isset($planificationData) && !empty($planificationData))
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="card border-primary shadow-lg" style="border-width: 2px !important;">
+                                    <div class="card-header bg-primary text-white py-3">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="mb-0">
+                                                    <i class="fas fa-calendar-check me-2"></i>
+                                                    <strong>Planification Académique</strong>
+                                                </h6>
+                                                <small class="opacity-75">Suivi des heures planifiées pour cette classe</small>
+                                            </div>
+                                            <div>
+                                                @if($planificationData['planifications_configurees'])
+                                                    <span class="badge bg-success fs-6 px-3 py-2">
+                                                        <i class="fas fa-check-circle me-1"></i>Configurée
+                                                    </span>
+                                                @else
+                                                    <span class="badge bg-warning text-dark fs-6 px-3 py-2">
+                                                        <i class="fas fa-exclamation-triangle me-1"></i>Non configurée
+                                                    </span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="card-body p-3">
+                                        @if($planificationData['planifications_configurees'])
+                                            <div class="row">
+                                                <div class="col-lg-8">
+                                                    <div class="table-responsive">
+                                                        <table class="table table-sm table-hover mb-0">
+                                                            <thead class="table-dark">
+                                                                <tr>
+                                                                    <th width="35%">Matière</th>
+                                                                    <th width="25%">Enseignant</th>
+                                                                    <th width="15%" class="text-center">H. Total</th>
+                                                                    <th width="15%" class="text-center">H. Restantes</th>
+                                                                    <th width="10%" class="text-center">%</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                @foreach($planificationData['matieres_planifiees'] as $matiere)
+                                                                <tr>
+                                                                    <td>
+                                                                        <div class="d-flex align-items-center">
+                                                                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 25px; height: 25px; flex-shrink: 0;">
+                                                                                <i class="fas fa-book" style="font-size: 10px;"></i>
+                                                                            </div>
+                                                                            <strong>{{ $matiere['matiere']->name }}</strong>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td>
+                                                                        @if($matiere['enseignant_principal'])
+                                                                            <small><i class="fas fa-user-tie text-secondary me-1"></i>{{ $matiere['enseignant_principal']->name }}</small>
+                                                                        @else
+                                                                            <small class="text-muted"><i class="fas fa-user-slash me-1"></i>Non assigné</small>
+                                                                        @endif
+                                                                    </td>
+                                                                    <td class="text-center">
+                                                                        <span class="badge bg-primary">{{ $matiere['volume_horaire_total'] }}h</span>
+                                                                    </td>
+                                                                    <td class="text-center">
+                                                                        <span class="badge bg-{{ $matiere['heures_restantes'] > 0 ? 'success' : 'warning' }}">
+                                                                            {{ $matiere['heures_restantes'] }}h
+                                                                        </span>
+                                                                    </td>
+                                                                    <td class="text-center">
+                                                                        <small><strong>{{ $matiere['pourcentage_utilise'] ?? 0 }}%</strong></small>
+                                                                    </td>
+                                                                </tr>
+                                                                @endforeach
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="col-lg-4">
+                                                    <div class="card bg-light border-0">
+                                                        <div class="card-body text-center">
+                                                            <h6 class="text-primary"><i class="fas fa-chart-pie me-2"></i>Résumé</h6>
+                                                            <div class="row">
+                                                                <div class="col-6">
+                                                                    <h4 class="text-primary mb-1">{{ $planificationData['heures_totales'] }}</h4>
+                                                                    <small>H. planifiées</small>
+                                                                </div>
+                                                                <div class="col-6">
+                                                                    <h4 class="text-success mb-1">{{ $planificationData['heures_restantes'] }}</h4>
+                                                                    <small>H. restantes</small>
+                                                                </div>
+                                                            </div>
+                                                            <hr>
+                                                            <small class="text-muted">
+                                                                <i class="fas fa-graduation-cap me-1"></i>{{ $emploiTemps->classe->name }}<br>
+                                                                <i class="fas fa-calendar me-1"></i>{{ $emploiTemps->semestre ?? 'Année complète' }}
+                                                            </small>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @else
+                                            <div class="alert alert-warning mb-0">
+                                                <div class="d-flex align-items-center">
+                                                    <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
+                                                    <div>
+                                                        <h6><strong>Planification non configurée</strong></h6>
+                                                        <p class="mb-2">{{ $planificationData['message_configuration'] ?? 'Aucune planification académique configurée pour cette classe.' }}</p>
+                                                        <small class="text-muted">Vous devez d'abord définir les volumes horaires des matières pour cette classe.</small>
+                                                        @if(isset($planificationData['lien_configuration']))
+                                                            <a href="{{ $planificationData['lien_configuration'] }}" class="btn btn-warning btn-sm" target="_blank">
+                                                                <i class="fas fa-clock me-1"></i>Configurer les volumes horaires
+                                                            </a>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+
                     @if (session('warning'))
                         <div class="alert alert-warning alert-dismissible fade show" role="alert">
                             <h5><i class="fas fa-exclamation-triangle me-2"></i>Attention</h5>
