@@ -1835,10 +1835,17 @@
                                 </div>
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
-                                    <a class="dropdown-item text-center view-all" href="{{ route('esbtp.mes-messages.index') }}">
-                                        <i class="fas fa-envelope-open me-1"></i>
-                                        Voir tous les messages
-                                    </a>
+                                    @if(auth()->user()->hasRole('etudiant'))
+                                        <a class="dropdown-item text-center view-all" href="{{ route('esbtp.mes-messages.index') }}">
+                                            <i class="fas fa-envelope-open me-1"></i>
+                                            Voir tous les messages
+                                        </a>
+                                    @else
+                                        <a class="dropdown-item text-center view-all" href="{{ route('esbtp.annonces.index') }}">
+                                            <i class="fas fa-envelope-open me-1"></i>
+                                            Voir tous les messages
+                                        </a>
+                                    @endif
                                 </li>
             </ul>
     </div>
