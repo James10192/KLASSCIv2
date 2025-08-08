@@ -544,7 +544,10 @@
                                                     <option value="{{ $etudiant->id }}"
                                             data-classe="{{ $etudiant->classe_active ? $etudiant->classe_active->id : '' }}"
                                                         {{ (old('etudiants') && in_array($etudiant->id, old('etudiants'))) ? 'selected' : '' }}>
-                                                        {{ $etudiant->matricule }} - {{ $etudiant->nom }} {{ $etudiant->prenoms }}
+                                                        {{ $etudiant->matricule }} - {{ $etudiant->nom }} {{ $etudiant->prenoms }} 
+                                                        @if($etudiant->classe_active)
+                                                            ({{ $etudiant->classe_active->name }})
+                                                        @endif
                                                     </option>
                                                 @endforeach
                                             </select>
@@ -903,6 +906,8 @@
             const filiereId = $('#filiere_filter').val();
             const niveauId = $('#niveau_filter').val();
             const classesChoicesInstance = choicesInstances['classes'];
+            
+            console.log('Filtres appliqués - Filière:', filiereId, 'Niveau:', niveauId);
 
             if (classesChoicesInstance && originalClassesOptions.length > 0) {
                 // Conserver les sélections actuelles
@@ -913,12 +918,18 @@
                     let show = true;
 
                     // Appliquer les filtres seulement si des filtres sont sélectionnés
-                    if (filiereId && option.customProperties.filiere && option.customProperties.filiere != filiereId) {
-                        show = false;
+                    if (filiereId && option.customProperties.filiere) {
+                        // Comparaison en string pour éviter les problèmes de type
+                        if (String(option.customProperties.filiere) !== String(filiereId)) {
+                            show = false;
+                        }
                     }
 
-                    if (niveauId && option.customProperties.niveau && option.customProperties.niveau != niveauId) {
-                        show = false;
+                    if (niveauId && option.customProperties.niveau) {
+                        // Comparaison en string pour éviter les problèmes de type
+                        if (String(option.customProperties.niveau) !== String(niveauId)) {
+                            show = false;
+                        }
                     }
 
                     return show;
@@ -942,6 +953,8 @@
         $('#classe_etudiant_filter').change(function() {
             const classeId = $(this).val();
             const etudiantsChoicesInstance = choicesInstances['etudiants'];
+            
+            console.log('Filtre classe pour étudiants:', classeId);
 
             if (etudiantsChoicesInstance && originalEtudiantsOptions.length > 0) {
                 // Conserver les sélections actuelles
@@ -952,8 +965,16 @@
                     let show = true;
 
                     // Appliquer le filtre seulement si une classe est sélectionnée
-                    if (classeId && option.customProperties.classe && option.customProperties.classe !== classeId) {
-                        show = false;
+                    if (classeId && option.customProperties.classe) {
+                        // Comparaison en string pour éviter les problèmes de type
+                        if (String(option.customProperties.classe) !== String(classeId)) {
+                            show = false;
+                        }
+                    }
+
+                    // Debug pour voir les données
+                    if (classeId) {
+                        console.log('Étudiant:', option.label, 'Classe:', option.customProperties.classe, 'Filtre:', classeId, 'Affiché:', show);
                     }
 
                     return show;
