@@ -69,6 +69,21 @@ class ESBTPEvaluationController extends Controller
         // Récupération des types d'évaluation pour le filtre
         $types = ESBTPEvaluation::select('type')->distinct()->pluck('type');
 
+        // Pour les rôles non-enseignants, récupérer les évaluations pour la gestion des liens externes
+        $evaluationsForExternalLinks = collect();
+        $currentUser = \Auth::user();
+        if (!$currentUser->hasRole(['teacher', 'enseignant', 'etudiant'])) {
+            $evaluationsForExternalLinks = ESBTPEvaluation::with(['classe', 'matiere'])
+                ->where('is_published', true)
+                ->whereNull('enseignant_id') // Seulement celles sans enseignant assigné
+                ->orWhere(function($query) {
+                    $query->whereNull('token_saisie_externe')
+                          ->orWhere('token_expire_at', '<', now());
+                })
+                ->orderBy('date_evaluation', 'desc')
+                ->get();
+        }
+
         return view('esbtp.evaluations.index', compact(
             'evaluations',
             'classes',
@@ -77,7 +92,8 @@ class ESBTPEvaluationController extends Controller
             'totalEvaluations',
             'evaluationsPubliees',
             'examens',
-            'devoirs'
+            'devoirs',
+            'evaluationsForExternalLinks'
         ));
     }
 
@@ -624,5 +640,86 @@ class ESBTPEvaluationController extends Controller
         } catch (\Exception $e) {
             return back()->with('error', 'Erreur lors de la génération du PDF : ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Génère un lien externe temporaire pour une évaluation
+     */
+    public function generateExternalLink(Request $request, ESBTPEvaluation $evaluation)
+    {
+        $request->validate([
+            'duree_heures' => 'required|integer|min:1|max:168', // Max 7 jours
+            'enseignant_externe_nom' => 'nullable|string|max:255'
+        ]);
+
+        try {
+            $evaluation->update([
+                'token_saisie_externe' => \Str::random(64),
+                'token_expire_at' => now()->addHours($request->duree_heures),
+                'enseignant_externe_nom' => $request->enseignant_externe_nom
+            ]);
+
+            $externalLink = route('external-grading.show', $evaluation->token_saisie_externe);
+            
+            return response()->json([
+                'success' => true,
+                'link' => $externalLink,
+                'expires_at' => $evaluation->token_expire_at->format('d/m/Y à H:i')
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la génération du lien'
+            ], 500);
+        }
+    }
+
+    /**
+     * Révoque un lien externe
+     */
+    public function revokeExternalLink(ESBTPEvaluation $evaluation)
+    {
+        try {
+            $evaluation->update([
+                'token_saisie_externe' => null,
+                'token_expire_at' => null
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Lien révoqué avec succès'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la révocation'
+            ], 500);
+        }
+    }
+
+    /**
+     * Récupère les évaluations avec liens externes actifs
+     */
+    public function getActiveExternalLinks()
+    {
+        $evaluations = ESBTPEvaluation::whereNotNull('token_saisie_externe')
+            ->where('token_expire_at', '>', now())
+            ->with(['classe', 'matiere', 'createdBy'])
+            ->orderBy('token_expire_at', 'asc')
+            ->get()
+            ->map(function ($eval) {
+                return [
+                    'id' => $eval->id,
+                    'titre' => $eval->titre,
+                    'classe' => $eval->classe->name ?? 'N/A',
+                    'matiere' => $eval->matiere->name ?? 'N/A',
+                    'enseignant_externe_nom' => $eval->enseignant_externe_nom,
+                    'expires_at' => $eval->token_expire_at->format('d/m/Y H:i'),
+                    'expires_in_hours' => round($eval->token_expire_at->diffInHours(now(), false), 1),
+                    'link' => route('external-grading.show', $eval->token_saisie_externe)
+                ];
+            });
+
+        return response()->json($evaluations);
     }
 }

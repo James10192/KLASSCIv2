@@ -70,6 +70,15 @@
         </div>
     </div>
 
+    <!-- Section de gestion des liens externes (pour admins/secrétaires uniquement) -->
+    @if(!auth()->user()->hasRole(['teacher', 'enseignant', 'etudiant']) && $evaluationsForExternalLinks->isNotEmpty())
+    <div class="row mb-4">
+        <div class="col-12">
+            @include('components.external-links-manager', ['evaluations' => $evaluationsForExternalLinks])
+        </div>
+    </div>
+    @endif
+
     <div class="row">
         <div class="col-12">
             <div class="card shadow-sm">

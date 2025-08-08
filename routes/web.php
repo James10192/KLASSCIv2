@@ -1597,6 +1597,13 @@ Route::middleware(['auth', 'role:coordinateur'])->prefix('esbtp')->name('esbtp.'
     });
 });
 
+// Routes pour la gestion des liens externes (pour admins/secrétaires)
+Route::middleware(['auth', 'role:superAdmin,secretary,coordinateur'])->prefix('esbtp')->name('esbtp.')->group(function () {
+    Route::post('/evaluations/{evaluation}/generate-external-link', [ESBTPEvaluationController::class, 'generateExternalLink'])->name('evaluations.generate-external-link');
+    Route::delete('/evaluations/{evaluation}/revoke-external-link', [ESBTPEvaluationController::class, 'revokeExternalLink'])->name('evaluations.revoke-external-link');
+    Route::get('/evaluations/active-external-links', [ESBTPEvaluationController::class, 'getActiveExternalLinks'])->name('evaluations.active-external-links');
+});
+
 // Routes pour la saisie externe de notes (sans authentification)
 Route::prefix('external-grading')->name('external-grading.')->group(function () {
     Route::get('/{token}', [App\Http\Controllers\ExternalGradingController::class, 'show'])->name('show');

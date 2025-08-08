@@ -286,12 +286,15 @@
                                         $hasAttendance = $cours->teacherAttendance()->whereDate('validated_at', \Carbon\Carbon::today())->exists();
                                         $hasStudentCall = \App\Models\ESBTPAttendance::where('seance_cours_id', $cours->id)->exists();
                                         $isCompleted = $cours->status === 'completed';
+                                        $isExpired = !$hasAttendance && $cours->heure_fin && \Carbon\Carbon::parse($cours->heure_fin)->isPast();
                                     @endphp
                                     
                                     @if($isCompleted)
                                         <span class="status-badge present">✓ Terminé</span>
                                     @elseif($hasStudentCall)
                                         <span class="status-badge present">✓ Appel fait</span>
+                                    @elseif($isExpired)
+                                        <span class="status-badge absent">Expiré - Absent</span>
                                     @elseif($hasAttendance && \Carbon\Carbon::parse($cours->heure_debut)->isPast())
                                         <span class="status-badge late">En cours</span>
                                     @else
@@ -299,7 +302,7 @@
                                     @endif
                                 </div>
                                 <div class="course-actions">
-                                    @if($hasAttendance && !$isCompleted)
+                                    @if(!$isExpired && $hasAttendance && !$isCompleted)
                                         @if(!$hasStudentCall && \Carbon\Carbon::parse($cours->heure_debut)->subMinutes(15)->isPast())
                                             <a href="{{ route('teacher.roll-call', $cours->id) }}" class="quick-action-btn">
                                                 <i class="fas fa-list-check"></i> Faire l'appel
@@ -313,6 +316,10 @@
                                                 </button>
                                             </form>
                                         @endif
+                                    @elseif($isExpired)
+                                        <span class="text-muted small">
+                                            <i class="fas fa-clock"></i> Cours expiré
+                                        </span>
                                     @endif
                                 </div>
                             </div>
