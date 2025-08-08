@@ -54,7 +54,7 @@ class ESBTPAnnonceController extends Controller
     public function create()
     {
         $classes = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
-        $etudiants = ESBTPEtudiant::with('classe_active')
+        $etudiants = ESBTPEtudiant::with('classe')
             ->distinct()
             ->orderBy('nom')
             ->orderBy('prenoms')

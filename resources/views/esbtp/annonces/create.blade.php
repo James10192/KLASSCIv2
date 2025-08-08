@@ -542,11 +542,11 @@
                                     id="etudiants" name="etudiants[]" multiple data-placeholder="Sélectionnez un ou plusieurs étudiants">
                                                 @foreach($etudiants as $etudiant)
                                                     <option value="{{ $etudiant->id }}"
-                                            data-classe="{{ $etudiant->classe_active ? $etudiant->classe_active->id : '' }}"
+                                            data-classe="{{ $etudiant->classe ? $etudiant->classe->id : '' }}"
                                                         {{ (old('etudiants') && in_array($etudiant->id, old('etudiants'))) ? 'selected' : '' }}>
                                                         {{ $etudiant->matricule }} - {{ $etudiant->nom }} {{ $etudiant->prenoms }} 
-                                                        @if($etudiant->classe_active)
-                                                            ({{ $etudiant->classe_active->name }})
+                                                        @if($etudiant->classe)
+                                                            ({{ $etudiant->classe->name }})
                                                         @endif
                                                     </option>
                                                 @endforeach
