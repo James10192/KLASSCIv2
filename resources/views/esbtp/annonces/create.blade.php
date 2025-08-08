@@ -33,9 +33,8 @@
     }
 
     .choices__inner {
-        background: rgba(255, 255, 255, 0.9);
-        backdrop-filter: blur(10px);
-        border: 2px solid transparent;
+        background: #ffffff;
+        border: 2px solid #e5e7eb;
         border-radius: 12px;
         font-size: 14px;
         min-height: 48px;
@@ -43,6 +42,7 @@
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         position: relative;
         overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
 
     .choices__inner::before {
@@ -69,11 +69,10 @@
     }
 
     .choices__list--dropdown {
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: 16px;
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        background: #ffffff;
+        border: 1px solid #d1d5db;
+        border-radius: 12px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
         z-index: 1050;
         overflow: hidden;
         animation: dropdownSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -91,12 +90,15 @@
     }
 
     .choices__item--selectable {
-        padding: 16px 20px;
+        padding: 12px 16px;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         position: relative;
         overflow: hidden;
-        border-radius: 8px;
-        margin: 4px 8px;
+        border-radius: 6px;
+        margin: 2px 4px;
+        color: #374151;
+        font-weight: 500;
+        border-bottom: 1px solid #f3f4f6;
     }
 
     .choices__item--selectable::before {
@@ -112,32 +114,39 @@
     }
 
     .choices__item--selectable:hover {
-        color: white;
-        transform: translateX(5px);
+        background: #f8fafc;
+        color: #1e40af;
+        font-weight: 600;
+        transform: translateX(3px);
+        border-left: 3px solid #1e40af;
     }
 
     .choices__item--selectable:hover::before {
         left: 0;
+        background: linear-gradient(135deg, #1e40af, #3b82f6);
+        opacity: 0.1;
     }
 
     .choices__item--selectable.is-highlighted {
-        background: var(--esbtp-green);
+        background: #1e40af;
         color: white;
-        transform: translateX(5px);
+        font-weight: 600;
+        transform: translateX(3px);
+        border-left: 3px solid #1e40af;
     }
 
     .choices__list--multiple .choices__item {
-        background: var(--esbtp-green);
+        background: #1e40af;
         border: none;
         border-radius: 20px;
         color: white;
         font-size: 13px;
-        font-weight: 500;
+        font-weight: 600;
         margin: 2px 4px 2px 0;
         padding: 6px 12px;
         display: inline-flex;
         align-items: center;
-        box-shadow: 0 2px 8px rgba(1, 99, 47, 0.3);
+        box-shadow: 0 2px 8px rgba(30, 64, 175, 0.3);
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         animation: slideInTag 0.3s ease-out;
     }
@@ -155,7 +164,8 @@
 
     .choices__list--multiple .choices__item:hover {
         transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(1, 99, 47, 0.4);
+        box-shadow: 0 4px 12px rgba(30, 64, 175, 0.4);
+        background: #3b82f6;
     }
 
     .choices__button {
@@ -180,9 +190,10 @@
     }
 
     .choices__placeholder {
-        color: #8b9dc3;
+        color: #6b7280;
         opacity: 1;
         font-style: italic;
+        font-weight: 400;
     }
 
     .choices__input {
@@ -191,7 +202,8 @@
         font-size: 14px;
         margin-bottom: 0;
         padding: 0;
-        color: #2d3748;
+        color: #374151;
+        font-weight: 500;
     }
 
     .choices__input:focus {
@@ -235,6 +247,21 @@
     /* Style pour l'alerte */
     .alert-danger {
         border-left: 4px solid #842029;
+    }
+
+    /* Amélioration visibilité des textes */
+    .choices__list--single .choices__item--selectable {
+        color: #374151;
+        font-weight: 500;
+    }
+
+    .choices__item[data-choice] {
+        color: #374151 !important;
+        font-weight: 500;
+    }
+
+    .choices__item--choice {
+        color: #374151 !important;
     }
 
     /* Media queries pour la responsivité */
