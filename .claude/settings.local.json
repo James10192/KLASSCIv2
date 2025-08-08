@@ -24,7 +24,8 @@
       "Bash(/mnt/c/xampp/php/php.exe -r \"\nrequire_once ''vendor/autoload.php'';\n$app = require_once ''bootstrap/app.php'';\n$app->make(''Illuminate\\Contracts\\Console\\Kernel'')->bootstrap();\n\necho \"\"=== Test du système émargement -> planification ===\"\" . PHP_EOL;\n\n// 1. Vérifier qu''on a des planifications avec les nouveaux champs\n$planifications = \\App\\Models\\ESBTPPlanificationAcademique::take(3)->get();\necho \"\"Nombre de planifications: \"\" . $planifications->count() . PHP_EOL;\n\nif ($planifications->count() > 0) {\n    $planif = $planifications->first();\n    echo \"\"Première planification - ID: {$planif->id}\"\" . PHP_EOL;\n    echo \"\"  - Volume horaire total: {$planif->volume_horaire_total}h\"\" . PHP_EOL;\n    echo \"\"  - Heures effectuées: \"\" . ($planif->heures_effectuees ?? ''NULL'') . \"\"h\"\" . PHP_EOL;\n    echo \"\"  - Dernière MAJ: \"\" . ($planif->derniere_mise_a_jour_heures ?? ''NULL'') . PHP_EOL;\n}\n\n// 2. Vérifier les séances de cours\n$seances = \\App\\Models\\ESBTPSeanceCours::take(3)->get();\necho PHP_EOL . \"\"Nombre de séances de cours: \"\" . $seances->count() . PHP_EOL;\n\n// 3. Vérifier les codes d''émargement\n$codes = \\App\\Models\\ESBTPDailyCode::take(3)->get();\necho \"\"Nombre de codes d''émargement: \"\" . $codes->count() . PHP_EOL;\n\n// 4. Vérifier les émargements enseignants\n$attendances = \\App\\Models\\ESBTPTeacherAttendance::take(3)->get();\necho \"\"Nombre d''émargements enseignants: \"\" . $attendances->count() . PHP_EOL;\n\")",
       "Bash(/mnt/c/xampp/php/php.exe:*)",
       "Bash(php:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(grep:*)"
     ],
     "deny": []
   }
