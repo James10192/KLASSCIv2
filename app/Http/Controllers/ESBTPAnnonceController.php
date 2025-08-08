@@ -100,7 +100,7 @@ class ESBTPAnnonceController extends Controller
             $annonce->date_expiration = $request->date_expiration;
             $annonce->type = $request->type;
             $annonce->priorite = $request->priorite;
-            $annonce->is_published = $request->has('is_published');
+            $annonce->is_published = $request->get('is_published') == '1';
             $annonce->created_by = Auth::id();
 
             // Handle file upload
@@ -206,7 +206,7 @@ class ESBTPAnnonceController extends Controller
             $annonce->date_expiration = $request->date_expiration;
             $annonce->type = $request->type;
             $annonce->priorite = $request->priorite;
-            $annonce->is_published = $request->has('is_published');
+            $annonce->is_published = $request->get('is_published') == '1';
             $annonce->updated_by = Auth::id();
 
             // Handle file upload
