@@ -330,24 +330,24 @@ class TeacherDashboardController extends Controller
     public function showGrades()
     {
         $user = Auth::user();
-        $enseignantNom = $user->name;
+        $userId = $user->id;
 
         // Récupérer les évaluations créées par cet enseignant
-        $evaluations = ESBTPEvaluation::where('enseignant', $enseignantNom)
+        $evaluations = ESBTPEvaluation::where('created_by', $userId)
             ->with(['matiere', 'classe'])
-            ->orderBy('date', 'desc')
+            ->orderBy('date_evaluation', 'desc')
             ->paginate(10);
 
         // Récupérer les dernières notes saisies par cet enseignant
-        $recentGrades = ESBTPNote::whereHas('evaluation', function($query) use ($enseignantNom) {
-                $query->where('enseignant', $enseignantNom);
+        $recentGrades = ESBTPNote::whereHas('evaluation', function($query) use ($userId) {
+                $query->where('created_by', $userId);
             })
             ->with(['etudiant', 'evaluation.matiere'])
             ->orderBy('created_at', 'desc')
             ->take(10)
             ->get();
 
-        return view('teacher.grades', compact('evaluations', 'recentGrades', 'enseignantNom'));
+        return view('teacher.grades', compact('evaluations', 'recentGrades', 'user'));
     }
 
     /**
@@ -356,47 +356,47 @@ class TeacherDashboardController extends Controller
     public function showAttendance()
     {
         $user = Auth::user();
-        $enseignantNom = $user->name;
+        $teacher = \App\Models\ESBTPTeacher::where('user_id', $user->id)->first();
+        $teacherId = $teacher ? $teacher->id : null;
 
         // Récupérer les séances de cours pour lesquelles l'enseignant a enregistré des présences
-        $seances = ESBTPSeanceCours::where('teacher', $enseignantNom)
+        $seances = ESBTPSeanceCours::where('teacher_id', $teacherId)
             ->whereHas('attendances')
-            ->with(['emploiTemps.classe', 'matiere', 'attendances.etudiant'])
-            ->orderBy('date', 'desc')
+            ->with(['classe', 'matiere', 'attendances.etudiant'])
+            ->orderBy('date_seance', 'desc')
             ->paginate(10);
 
         // Récupérer les statistiques de présence par classe
         $classeStats = DB::table('esbtp_attendances')
             ->join('esbtp_seance_cours', 'esbtp_attendances.seance_cours_id', '=', 'esbtp_seance_cours.id')
-            ->join('esbtp_emploi_temps', 'esbtp_seance_cours.emploi_temps_id', '=', 'esbtp_emploi_temps.id')
-            ->join('esbtp_classes', 'esbtp_emploi_temps.classe_id', '=', 'esbtp_classes.id')
-            ->where('esbtp_seance_cours.teacher', $enseignantNom)
+            ->join('esbtp_classes', 'esbtp_attendances.classe_id', '=', 'esbtp_classes.id')
+            ->where('esbtp_seance_cours.teacher_id', $teacherId)
             ->select(
-                'esbtp_classes.nom as classe',
+                'esbtp_classes.name as classe',
                 DB::raw('COUNT(*) as total'),
                 DB::raw('SUM(CASE WHEN esbtp_attendances.status = "present" THEN 1 ELSE 0 END) as presents'),
                 DB::raw('SUM(CASE WHEN esbtp_attendances.status = "absent" THEN 1 ELSE 0 END) as absents'),
                 DB::raw('SUM(CASE WHEN esbtp_attendances.status = "late" THEN 1 ELSE 0 END) as retards')
             )
-            ->groupBy('esbtp_classes.nom')
+            ->groupBy('esbtp_classes.name')
             ->get();
 
-        return view('teacher.attendance', compact('seances', 'classeStats', 'enseignantNom'));
+        return view('teacher.attendance', compact('seances', 'classeStats', 'user'));
     }
 
     /**
      * Récupérer les séances de cours à venir pour l'enseignant
      */
-    private function getUpcomingClasses($enseignantNom)
+    private function getUpcomingClasses($teacherId)
     {
         $today = Carbon::today();
         $inAWeek = Carbon::today()->addDays(7);
 
         try {
-            return ESBTPSeanceCours::where('teacher', $enseignantNom)
-                ->whereBetween('date', [$today->format('Y-m-d'), $inAWeek->format('Y-m-d')])
-                ->with(['matiere', 'emploiTemps.classe'])
-                ->orderBy('date')
+            return ESBTPSeanceCours::where('teacher_id', $teacherId)
+                ->whereBetween('date_seance', [$today->format('Y-m-d'), $inAWeek->format('Y-m-d')])
+                ->with(['matiere', 'classe'])
+                ->orderBy('date_seance')
                 ->orderBy('heure_debut')
                 ->take(5)
                 ->get();
@@ -409,16 +409,14 @@ class TeacherDashboardController extends Controller
     /**
      * Calculer les statistiques de présence pour l'enseignant
      */
-    private function getAttendanceStats($enseignantNom)
+    private function getAttendanceStats($teacherId)
     {
         try {
-            $seances = ESBTPSeanceCours::where('teacher', $enseignantNom)->get();
+            $seances = ESBTPSeanceCours::where('teacher_id', $teacherId)->get();
             $totalSeances = $seances->count();
 
-            // Compter les séances où l'enseignant était présent (présence marquée)
-            $presentSeances = $seances->filter(function($seance) {
-                return $seance->presence_enseignant === true;
-            })->count();
+            // Compter les séances où l'enseignant a fait l'émargement
+            $presentSeances = ESBTPTeacherAttendance::where('teacher_id', $teacherId)->count();
 
             // Calculer le taux de présence
             $attendanceRate = $totalSeances > 0 ? ($presentSeances / $totalSeances) * 100 : 0;

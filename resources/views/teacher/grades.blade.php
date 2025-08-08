@@ -70,7 +70,7 @@
                                             {{ $evaluation->type }}
                                         </span>
                                     </td>
-                                    <td>{{ \Carbon\Carbon::parse($evaluation->date)->format('d/m/Y') }}</td>
+                                    <td>{{ \Carbon\Carbon::parse($evaluation->date_evaluation)->format('d/m/Y') }}</td>
                                     <td>
                                         @php
                                             $totalEtudiants = $evaluation->classe->etudiants->count() ?? 0;
