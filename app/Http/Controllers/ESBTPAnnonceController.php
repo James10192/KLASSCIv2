@@ -78,6 +78,7 @@ class ESBTPAnnonceController extends Controller
             'priorite' => 'required|in:0,1,2',
             'classes' => 'required_if:type,classe|array',
             'etudiants' => 'required_if:type,etudiant|array',
+            'piece_jointe' => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png|max:5120',
         ], [
             'titre.required' => 'Le titre est obligatoire',
             'contenu.required' => 'Le contenu est obligatoire',
@@ -86,6 +87,8 @@ class ESBTPAnnonceController extends Controller
             'priorite.required' => 'La priorité est obligatoire',
             'classes.required_if' => 'Veuillez sélectionner au moins une classe',
             'etudiants.required_if' => 'Veuillez sélectionner au moins un étudiant',
+            'piece_jointe.mimes' => 'Le fichier doit être au format PDF, Word, Excel ou image (JPG, PNG)',
+            'piece_jointe.max' => 'Le fichier ne doit pas dépasser 5 MB',
         ]);
 
         DB::beginTransaction();
@@ -99,6 +102,15 @@ class ESBTPAnnonceController extends Controller
             $annonce->priorite = $request->priorite;
             $annonce->is_published = $request->has('is_published');
             $annonce->created_by = Auth::id();
+
+            // Handle file upload
+            if ($request->hasFile('piece_jointe')) {
+                $file = $request->file('piece_jointe');
+                $filename = time() . '_' . $file->getClientOriginalName();
+                $path = $file->storeAs('annonces', $filename, 'public');
+                $annonce->piece_jointe = $path;
+            }
+
             $annonce->save();
 
             // Attacher les classes ou les étudiants selon le type
@@ -171,6 +183,7 @@ class ESBTPAnnonceController extends Controller
             'priorite' => 'required|in:0,1,2',
             'classes' => 'required_if:type,classe|array',
             'etudiants' => 'required_if:type,etudiant|array',
+            'piece_jointe' => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png|max:5120',
         ], [
             'titre.required' => 'Le titre est obligatoire',
             'contenu.required' => 'Le contenu est obligatoire',
@@ -179,6 +192,8 @@ class ESBTPAnnonceController extends Controller
             'priorite.required' => 'La priorité est obligatoire',
             'classes.required_if' => 'Veuillez sélectionner au moins une classe',
             'etudiants.required_if' => 'Veuillez sélectionner au moins un étudiant',
+            'piece_jointe.mimes' => 'Le fichier doit être au format PDF, Word, Excel ou image (JPG, PNG)',
+            'piece_jointe.max' => 'Le fichier ne doit pas dépasser 5 MB',
         ]);
 
         DB::beginTransaction();
@@ -193,6 +208,21 @@ class ESBTPAnnonceController extends Controller
             $annonce->priorite = $request->priorite;
             $annonce->is_published = $request->has('is_published');
             $annonce->updated_by = Auth::id();
+
+            // Handle file upload
+            if ($request->hasFile('piece_jointe')) {
+                // Delete old file if exists
+                if ($annonce->piece_jointe && \Storage::disk('public')->exists($annonce->piece_jointe)) {
+                    \Storage::disk('public')->delete($annonce->piece_jointe);
+                }
+                
+                // Upload new file
+                $file = $request->file('piece_jointe');
+                $filename = time() . '_' . $file->getClientOriginalName();
+                $path = $file->storeAs('annonces', $filename, 'public');
+                $annonce->piece_jointe = $path;
+            }
+
             $annonce->save();
 
             // Mettre à jour les associations
@@ -233,6 +263,11 @@ class ESBTPAnnonceController extends Controller
             // Détacher d'abord toutes les relations
             $annonce->classes()->detach();
             $annonce->etudiants()->detach();
+
+            // Supprimer le fichier associé s'il existe
+            if ($annonce->piece_jointe && \Storage::disk('public')->exists($annonce->piece_jointe)) {
+                \Storage::disk('public')->delete($annonce->piece_jointe);
+            }
 
             // Puis supprimer l'annonce
             $annonce->delete();
