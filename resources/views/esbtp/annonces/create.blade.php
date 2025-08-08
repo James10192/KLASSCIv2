@@ -771,10 +771,48 @@
     };
 
     document.addEventListener('DOMContentLoaded', function() {
-        // Initialiser Choices.js pour les sélecteurs multiples
+        // Stocker les options originales avant initialisation de Choices.js
+        const originalClassesOptions = [];
+        const originalEtudiantsOptions = [];
+        
+        // Sauvegarder les options originales des classes
         const classesSelect = document.getElementById('classes');
+        if (classesSelect) {
+            Array.from(classesSelect.options).forEach(option => {
+                if (option.value) {
+                    originalClassesOptions.push({
+                        value: option.value,
+                        label: option.textContent,
+                        selected: option.selected,
+                        disabled: false,
+                        customProperties: {
+                            filiere: option.dataset.filiere,
+                            niveau: option.dataset.niveau
+                        }
+                    });
+                }
+            });
+        }
+        
+        // Sauvegarder les options originales des étudiants
         const etudiantsSelect = document.getElementById('etudiants');
+        if (etudiantsSelect) {
+            Array.from(etudiantsSelect.options).forEach(option => {
+                if (option.value) {
+                    originalEtudiantsOptions.push({
+                        value: option.value,
+                        label: option.textContent,
+                        selected: option.selected,
+                        disabled: false,
+                        customProperties: {
+                            classe: option.dataset.classe
+                        }
+                    });
+                }
+            });
+        }
 
+        // Initialiser Choices.js pour les sélecteurs multiples
         if (classesSelect) {
             const classesChoices = initializeChoices(classesSelect, {
                 ...multipleSelectConfig,
@@ -797,12 +835,36 @@
             $('#filiere_filter, #niveau_filter').val('');
             $('#classe_etudiant_filter').val('');
             
-            // Déclencher les événements change pour restaurer toutes les options
-            $('#filiere_filter').trigger('change');
-            $('#classe_etudiant_filter').trigger('change');
+            // Restaurer manuellement toutes les options originales
+            const classesChoicesInstance = choicesInstances['classes'];
+            const etudiantsChoicesInstance = choicesInstances['etudiants'];
             
-            // Supprimer le message informatif des étudiants
-            $('#etudiants-info').remove();
+            if (classesChoicesInstance && originalClassesOptions.length > 0) {
+                const currentClassesSelections = classesChoicesInstance.getValue(true);
+                classesChoicesInstance.clearStore();
+                classesChoicesInstance.setChoices(originalClassesOptions, 'value', 'label', true);
+                
+                // Restaurer les sélections
+                currentClassesSelections.forEach(value => {
+                    classesChoicesInstance.setChoiceByValue(value);
+                });
+            }
+            
+            if (etudiantsChoicesInstance && originalEtudiantsOptions.length > 0) {
+                const currentEtudiantsSelections = etudiantsChoicesInstance.getValue(true);
+                etudiantsChoicesInstance.clearStore();
+                etudiantsChoicesInstance.setChoices(originalEtudiantsOptions, 'value', 'label', true);
+                
+                // Restaurer les sélections
+                currentEtudiantsSelections.forEach(value => {
+                    etudiantsChoicesInstance.setChoiceByValue(value);
+                });
+                
+                // Mettre à jour le message informatif
+                if ($('#etudiants-info').length) {
+                    $('#etudiants-info').text(`${originalEtudiantsOptions.length} étudiant(s) disponible(s)`);
+                }
+            }
         }
 
         // Ajouter un bouton de réinitialisation (optionnel)
@@ -842,45 +904,37 @@
             const niveauId = $('#niveau_filter').val();
             const classesChoicesInstance = choicesInstances['classes'];
 
-            if (classesChoicesInstance) {
-                // Récupérer toutes les options originales
-                const allOptions = Array.from(document.getElementById('classes').options);
-                const filteredChoices = [];
-
-                allOptions.forEach(option => {
-                    // Inclure toujours les options qui ont déjà été sélectionnées
-                    if (!option.value) return; // Ignorer les options vides
-                    
-                    const classeFiliereId = option.dataset.filiere;
-                    const classeNiveauId = option.dataset.niveau;
+            if (classesChoicesInstance && originalClassesOptions.length > 0) {
+                // Conserver les sélections actuelles
+                const currentSelections = classesChoicesInstance.getValue(true);
+                
+                // Filtrer les options originales
+                const filteredChoices = originalClassesOptions.filter(option => {
                     let show = true;
 
                     // Appliquer les filtres seulement si des filtres sont sélectionnés
-                    if (filiereId && classeFiliereId && classeFiliereId != filiereId) {
+                    if (filiereId && option.customProperties.filiere && option.customProperties.filiere != filiereId) {
                         show = false;
                     }
 
-                    if (niveauId && classeNiveauId && classeNiveauId != niveauId) {
+                    if (niveauId && option.customProperties.niveau && option.customProperties.niveau != niveauId) {
                         show = false;
                     }
 
-                    // Si aucun filtre n'est appliqué, montrer toutes les options
-                    if (!filiereId && !niveauId) {
-                        show = true;
-                    }
-
-                    if (show) {
-                        filteredChoices.push({
-                            value: option.value,
-                            label: option.textContent,
-                            selected: option.selected,
-                            disabled: false
-                        });
-                    }
+                    return show;
                 });
 
-                // Mettre à jour les choix disponibles
+                // Vider et remplir avec les nouvelles options
+                classesChoicesInstance.clearStore();
                 classesChoicesInstance.setChoices(filteredChoices, 'value', 'label', true);
+                
+                // Restaurer les sélections précédentes si elles sont toujours disponibles
+                currentSelections.forEach(value => {
+                    const optionExists = filteredChoices.some(choice => choice.value === value);
+                    if (optionExists) {
+                        classesChoicesInstance.setChoiceByValue(value);
+                    }
+                });
             }
         });
 
@@ -889,43 +943,36 @@
             const classeId = $(this).val();
             const etudiantsChoicesInstance = choicesInstances['etudiants'];
 
-            if (etudiantsChoicesInstance) {
-                const allOptions = Array.from(document.getElementById('etudiants').options);
-                const filteredChoices = [];
-                let visibleCount = 0;
-
-                allOptions.forEach(option => {
-                    // Inclure toujours les options qui ont déjà été sélectionnées
-                    if (!option.value) return; // Ignorer les options vides
-                    
-                    const etudiantClasseId = option.dataset.classe;
+            if (etudiantsChoicesInstance && originalEtudiantsOptions.length > 0) {
+                // Conserver les sélections actuelles
+                const currentSelections = etudiantsChoicesInstance.getValue(true);
+                
+                // Filtrer les options originales
+                const filteredChoices = originalEtudiantsOptions.filter(option => {
                     let show = true;
 
                     // Appliquer le filtre seulement si une classe est sélectionnée
-                    if (classeId && etudiantClasseId && etudiantClasseId !== classeId) {
+                    if (classeId && option.customProperties.classe && option.customProperties.classe !== classeId) {
                         show = false;
                     }
 
-                    // Si aucun filtre n'est appliqué, montrer tous les étudiants
-                    if (!classeId) {
-                        show = true;
-                    }
+                    return show;
+                });
 
-                    if (show) {
-                        filteredChoices.push({
-                            value: option.value,
-                            label: option.textContent,
-                            selected: option.selected,
-                            disabled: false
-                        });
-                        visibleCount++;
+                // Vider et remplir avec les nouvelles options
+                etudiantsChoicesInstance.clearStore();
+                etudiantsChoicesInstance.setChoices(filteredChoices, 'value', 'label', true);
+                
+                // Restaurer les sélections précédentes si elles sont toujours disponibles
+                currentSelections.forEach(value => {
+                    const optionExists = filteredChoices.some(choice => choice.value === value);
+                    if (optionExists) {
+                        etudiantsChoicesInstance.setChoiceByValue(value);
                     }
                 });
 
-                // Mettre à jour les choix disponibles
-                etudiantsChoicesInstance.setChoices(filteredChoices, 'value', 'label', true);
-
                 // Afficher un message informatif
+                const visibleCount = filteredChoices.length;
                 const infoMessage = visibleCount > 0
                     ? `${visibleCount} étudiant(s) disponible(s)`
                     : "Aucun étudiant disponible avec ce filtre";
