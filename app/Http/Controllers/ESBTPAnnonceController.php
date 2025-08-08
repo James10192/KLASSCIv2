@@ -55,6 +55,7 @@ class ESBTPAnnonceController extends Controller
     {
         $classes = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
         $etudiants = ESBTPEtudiant::with('classe')
+            ->whereHas('classe')  // Exclure les étudiants sans classe affectée
             ->distinct()
             ->orderBy('nom')
             ->orderBy('prenoms')

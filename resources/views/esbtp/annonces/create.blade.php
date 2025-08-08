@@ -488,7 +488,7 @@
                                                 @foreach($classes as $classe)
                                                     <option value="{{ $classe->id }}"
                                                         data-filiere="{{ $classe->filiere_id }}"
-                                                        data-niveau="{{ $classe->niveau_id }}"
+                                                        data-niveau="{{ $classe->niveau_etude_id }}"
                                                         {{ (old('classes') && in_array($classe->id, old('classes'))) ? 'selected' : '' }}>
                                                         {{ $classe->name }}
                                                     </option>
@@ -544,10 +544,7 @@
                                                     <option value="{{ $etudiant->id }}"
                                             data-classe="{{ $etudiant->classe ? $etudiant->classe->id : '' }}"
                                                         {{ (old('etudiants') && in_array($etudiant->id, old('etudiants'))) ? 'selected' : '' }}>
-                                                        {{ $etudiant->matricule }} - {{ $etudiant->nom }} {{ $etudiant->prenoms }} 
-                                                        @if($etudiant->classe)
-                                                            ({{ $etudiant->classe->name }})
-                                                        @endif
+                                                        {{ $etudiant->nom }} {{ $etudiant->prenoms }}
                                                     </option>
                                                 @endforeach
                                             </select>
