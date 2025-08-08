@@ -2,141 +2,439 @@
 
 @section('title', 'Émargement des Cours')
 
+@section('styles')
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<style>
+    .dashboard-container {
+        background-color: var(--background);
+        min-height: 100vh;
+        padding: var(--space-lg);
+    }
+
+    .attendance-page-header {
+        background-color: var(--surface);
+        border-radius: var(--radius-medium);
+        padding: var(--space-lg);
+        margin-bottom: var(--space-lg);
+        box-shadow: var(--shadow-card);
+        text-align: center;
+    }
+
+    .page-title {
+        font-size: var(--title-main);
+        font-weight: 700;
+        color: var(--primary);
+        margin: 0 0 var(--space-sm) 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-md);
+    }
+
+    .page-subtitle {
+        color: var(--text-secondary);
+        font-size: var(--text-normal);
+        margin: 0;
+    }
+
+    .courses-section {
+        background-color: var(--surface);
+        border-radius: var(--radius-medium);
+        box-shadow: var(--shadow-card);
+        overflow: hidden;
+    }
+
+    .section-header {
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        color: white;
+        padding: var(--space-lg);
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
+    }
+
+    .section-title {
+        font-size: var(--text-normal);
+        font-weight: 700;
+        margin: 0;
+        flex: 1;
+    }
+
+    .date-badge {
+        background-color: rgba(255, 255, 255, 0.2);
+        padding: var(--space-xs) var(--space-sm);
+        border-radius: var(--radius-small);
+        font-size: var(--text-small);
+        font-weight: 600;
+    }
+
+    .courses-grid {
+        padding: var(--space-lg);
+        display: grid;
+        gap: var(--space-md);
+    }
+
+    .course-card {
+        display: grid;
+        grid-template-columns: 140px 1fr auto auto;
+        gap: var(--space-md);
+        align-items: center;
+        padding: var(--space-md) var(--space-lg);
+        background: linear-gradient(135deg, rgba(248, 250, 252, 0.8), rgba(241, 245, 249, 0.4));
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        border-radius: var(--radius-medium);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .course-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-hover);
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.6));
+    }
+
+    .course-time {
+        text-align: center;
+        padding: var(--space-sm);
+        background-color: var(--primary);
+        color: white;
+        border-radius: var(--radius-small);
+        font-family: 'Courier New', monospace;
+        font-weight: 700;
+        font-size: var(--text-small);
+    }
+
+    .course-info {
+        min-width: 0;
+    }
+
+    .course-subject {
+        font-size: var(--text-normal);
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: var(--space-xs);
+    }
+
+    .course-details {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-sm);
+        font-size: var(--text-small);
+        color: var(--text-secondary);
+    }
+
+    .detail-item {
+        display: flex;
+        align-items: center;
+        gap: var(--space-xs);
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: var(--space-xs) var(--space-md);
+        border-radius: var(--radius-large);
+        font-size: var(--text-small);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        gap: var(--space-xs);
+    }
+
+    .status-badge.success {
+        background-color: rgba(16, 185, 129, 0.1);
+        color: var(--success);
+        border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .status-badge.warning {
+        background-color: rgba(245, 158, 11, 0.1);
+        color: var(--warning);
+        border: 1px solid rgba(245, 158, 11, 0.2);
+    }
+
+    .status-badge.danger {
+        background-color: rgba(239, 68, 68, 0.1);
+        color: var(--danger);
+        border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+
+    .action-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-xs);
+        padding: var(--space-sm) var(--space-md);
+        border: none;
+        border-radius: var(--radius-small);
+        font-size: var(--text-small);
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .action-btn.primary {
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        color: white;
+    }
+
+    .action-btn.primary:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-elevated);
+        color: white;
+    }
+
+    .action-btn.success {
+        background-color: var(--success);
+        color: white;
+    }
+
+    .action-btn.danger {
+        background-color: var(--danger);
+        color: white;
+    }
+
+    .action-btn.secondary {
+        background-color: var(--neutral);
+        color: white;
+    }
+
+    .action-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none !important;
+        box-shadow: none !important;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: var(--space-xl);
+        color: var(--text-muted);
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        margin-bottom: var(--space-md);
+        opacity: 0.5;
+        color: var(--accent-blue);
+    }
+
+    .empty-state h5 {
+        color: var(--text-primary);
+        margin-bottom: var(--space-sm);
+    }
+
+    /* Modal moderne */
+    .modal-moderne .modal-content {
+        border-radius: var(--radius-medium);
+        border: none;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+    }
+
+    .modal-moderne .modal-header {
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        color: white;
+        border-bottom: none;
+        padding: var(--space-lg);
+        border-radius: var(--radius-medium) var(--radius-medium) 0 0;
+    }
+
+    .modal-moderne .modal-body {
+        padding: var(--space-xl);
+    }
+
+    .code-input {
+        font-family: 'Courier New', monospace;
+        font-size: 1.5rem;
+        font-weight: 700;
+        text-align: center;
+        padding: var(--space-lg);
+        border: 2px solid var(--primary);
+        border-radius: var(--radius-medium);
+        background: var(--background);
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 0.3em;
+    }
+
+    .code-input:focus {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+        background: white;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .course-card {
+            grid-template-columns: 1fr;
+            text-align: center;
+            gap: var(--space-sm);
+        }
+        
+        .course-details {
+            justify-content: center;
+        }
+    }
+</style>
+@endsection
+
 @section('content')
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">
-                        <i class="fas fa-clipboard-check me-2"></i>
-                        Émargement des Cours
-                    </h5>
+<div class="dashboard-container">
+    <!-- Header de la page -->
+    <div class="attendance-page-header">
+        <h1 class="page-title">
+            <i class="fas fa-clipboard-check"></i>
+            Émargement des Cours
+        </h1>
+        <p class="page-subtitle">Gérez votre présence pour les cours d'aujourd'hui</p>
+    </div>
+
+    @if(session('success'))
+        <div class="alert alert-success alert-dismissible fade show position-fixed top-0 end-0 m-3" style="z-index: 9999;">
+            {{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+
+    @if(session('error'))
+        <div class="alert alert-danger alert-dismissible fade show position-fixed top-0 end-0 m-3" style="z-index: 9999;">
+            {{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+
+    <!-- Section des cours -->
+    <div class="courses-section">
+        <div class="section-header">
+            <i class="fas fa-calendar-day"></i>
+            <h2 class="section-title">Mes Cours du Jour</h2>
+            <div class="date-badge">{{ now()->format('d/m/Y') }}</div>
+        </div>
+        
+        <div class="courses-grid">
+            @if($todayCourses->isEmpty())
+                <div class="empty-state">
+                    <i class="fas fa-calendar-times"></i>
+                    <h5>Aucun cours programmé aujourd'hui</h5>
+                    <p>Profitez de votre journée libre ! 🎉</p>
                 </div>
-                <div class="card-body">
-                    @if(session('success'))
-                        <div class="alert alert-success alert-dismissible fade show" role="alert">
-                            {{ session('success') }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            @else
+                @foreach($todayCourses as $course)
+                    <div class="course-card">
+                        <div class="course-time">
+                            {{ $course->heure_debut ? \Carbon\Carbon::parse($course->heure_debut)->format('H:i') : '--:--' }}<br>
+                            {{ $course->heure_fin ? \Carbon\Carbon::parse($course->heure_fin)->format('H:i') : '--:--' }}
                         </div>
-                    @endif
-
-                    @if(session('error'))
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            {{ session('error') }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    @endif
-
-                    <!-- Cours du Jour -->
-                    <div class="card mb-4">
-                        <div class="card-header bg-info text-white">
-                            <h6 class="mb-0">Mes Cours du Jour - {{ now()->format('d/m/Y') }}</h6>
-                        </div>
-                        <div class="card-body">
-                            @if($todayCourses->isEmpty())
-                                <div class="alert alert-info">
-                                    <i class="fas fa-info-circle me-2"></i>
-                                    Vous n'avez pas de cours programmé aujourd'hui.
+                        
+                        <div class="course-info">
+                            <div class="course-subject">{{ $course->matiere->name ?? 'Matière non définie' }}</div>
+                            <div class="course-details">
+                                <div class="detail-item">
+                                    <i class="fas fa-users"></i>
+                                    <span>{{ $course->classe->name ?? 'Classe non définie' }}</span>
                                 </div>
+                                @if($course->salle)
+                                    <div class="detail-item">
+                                        <i class="fas fa-door-open"></i>
+                                        <span>{{ $course->salle }}</span>
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+
+                        <div class="course-status">
+                            @if($course->teacherAttendance && $course->teacherAttendance->status === 'fait')
+                                <span class="status-badge success">
+                                    <i class="fas fa-check-circle"></i>
+                                    Émargé
+                                </span>
+                            @elseif($course->teacherAttendance && $course->teacherAttendance->status === 'not_signed')
+                                <span class="status-badge danger">
+                                    <i class="fas fa-times-circle"></i>
+                                    Non signé
+                                </span>
                             @else
-                                <div class="table-responsive">
-                                    <table class="table table-striped">
-                                        <thead>
-                                            <tr>
-                                                <th>Horaire</th>
-                                                <th>Matière</th>
-                                                <th>Classe</th>
-                                                <th>Salle</th>
-                                                <th>Statut</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach($todayCourses as $course)
-                                                <tr>
-                                                    <td>{{ $course->heure_debut ? \Carbon\Carbon::parse($course->heure_debut)->format('H:i') : '--:--' }} - {{ $course->heure_fin ? \Carbon\Carbon::parse($course->heure_fin)->format('H:i') : '--:--' }}</td>
-                                                    <td>{{ $course->matiere->name ?? '—' }}</td>
-                                                    <td>{{ $course->classe->name ?? '—' }}</td>
-                                                    <td>{{ $course->salle ?? '—' }}</td>
-                                                    <td>
-                                                        @if($course->teacherAttendance && $course->teacherAttendance->status === 'fait')
-                                                            <span class="badge bg-success">Émargé</span>
-                                                        @elseif($course->teacherAttendance && $course->teacherAttendance->status === 'not_signed')
-                                                            <span class="badge bg-danger">Non signé</span>
-                                                        @else
-                                                            <span class="badge bg-warning">En attente</span>
-                                                        @endif
-                                                    </td>
-                                                    <td>
-                                                        @if(!$course->teacherAttendance)
-                                                            <button type="button" class="btn btn-primary btn-sm"
-                                                                    data-bs-toggle="modal"
-                                                                    data-bs-target="#markAttendanceModal"
-                                                                    data-course-id="{{ $course->id }}">
-                                                                <i class="fas fa-signature me-1"></i>
-                                                                Émarger
-                                                            </button>
-                                                        @elseif($course->teacherAttendance && $course->teacherAttendance->status === 'not_signed')
-                                                            <button type="button" class="btn btn-danger btn-sm" disabled>
-                                                                <i class="fas fa-times-circle me-1"></i>
-                                                                Émargement clôturé
-                                                            </button>
-                                                        @elseif($course->teacherAttendance && $course->teacherAttendance->status === 'fait')
-                                                            <button type="button" class="btn btn-success btn-sm" disabled>
-                                                                <i class="fas fa-check-circle me-1"></i>
-                                                                Déjà émargé
-                                                            </button>
-                                                        @elseif(!$course->attendance)
-                                                            <button type="button" class="btn btn-secondary btn-sm" disabled>
-                                                                <i class="fas fa-clock me-1"></i>
-                                                                Pas encore disponible
-                                                            </button>
-                                                        @endif
-                                                    </td>
-                                                </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
-                                </div>
+                                <span class="status-badge warning">
+                                    <i class="fas fa-clock"></i>
+                                    En attente
+                                </span>
+                            @endif
+                        </div>
+
+                        <div class="course-actions">
+                            @if(!$course->teacherAttendance)
+                                <button type="button" class="action-btn primary"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#markAttendanceModal"
+                                        data-course-id="{{ $course->id }}">
+                                    <i class="fas fa-signature"></i>
+                                    Émarger
+                                </button>
+                            @elseif($course->teacherAttendance && $course->teacherAttendance->status === 'not_signed')
+                                <button type="button" class="action-btn danger" disabled>
+                                    <i class="fas fa-times-circle"></i>
+                                    Clôturé
+                                </button>
+                            @elseif($course->teacherAttendance && $course->teacherAttendance->status === 'fait')
+                                <button type="button" class="action-btn success" disabled>
+                                    <i class="fas fa-check-circle"></i>
+                                    Fait
+                                </button>
+                            @elseif(!$course->attendance)
+                                <button type="button" class="action-btn secondary" disabled>
+                                    <i class="fas fa-hourglass-half"></i>
+                                    Bientôt
+                                </button>
                             @endif
                         </div>
                     </div>
-                </div>
-            </div>
+                @endforeach
+            @endif
         </div>
     </div>
 </div>
 
 @push('modals')
-<!-- Modal d'Émargement -->
-<div class="modal fade" id="markAttendanceModal" tabindex="-1" aria-labelledby="markAttendanceModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+<!-- Modal d'Émargement Moderne -->
+<div class="modal fade modal-moderne" id="markAttendanceModal" tabindex="-1" aria-labelledby="markAttendanceModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
+            <div class="modal-header">
                 <h5 class="modal-title">
                     <i class="fas fa-signature me-2"></i>
                     Émarger le Cours
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="POST" action="{{ route('esbtp.attendance.mark') }}" id="attendanceForm">
                 @csrf
                 <input type="hidden" name="course_id" id="courseId">
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="attendanceCode" class="form-label">Code d'Émargement</label>
-                        <input type="text" class="form-control" id="attendanceCode"
+                    <div class="text-center mb-4">
+                        <i class="fas fa-user-check" style="font-size: 3rem; color: var(--primary); margin-bottom: var(--space-md);"></i>
+                        <h6 style="color: var(--text-primary); margin-bottom: var(--space-sm);">Confirmez votre présence</h6>
+                        <p style="color: var(--text-secondary); margin: 0;">Saisissez le code fourni par l'administration</p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="attendanceCode" class="form-label fw-bold text-center d-block" style="color: var(--text-primary);">
+                            <i class="fas fa-key me-2"></i>Code d'Émargement
+                        </label>
+                        <input type="text" class="code-input form-control" id="attendanceCode"
                                name="code" required maxlength="6"
-                               placeholder="Entrez le code à 6 caractères">
-                        <div class="form-text">
-                            Ce code vous est fourni par l'administration.
+                               placeholder="XXXXXX" autocomplete="off">
+                        <div class="form-text text-center mt-3" style="color: var(--text-secondary);">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Code à 6 caractères fourni par l'administration
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn btn-primary" id="submitAttendance">
+                <div class="modal-footer d-flex justify-content-center gap-3">
+                    <button type="button" class="btn-acasi secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Annuler
+                    </button>
+                    <button type="submit" class="btn-acasi primary" id="submitAttendance">
                         <i class="fas fa-check me-2"></i>
                         Confirmer ma présence
                     </button>
@@ -149,26 +447,89 @@
 
 @push('scripts')
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Sélection du modal et du champ caché
-        const modal = document.getElementById('markAttendanceModal');
-        const courseIdInput = document.getElementById('courseId');
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-hide alerts after 5 seconds
+    setTimeout(function() {
+        const alerts = document.querySelectorAll('.alert');
+        alerts.forEach(alert => {
+            if (alert.classList.contains('show')) {
+                alert.classList.remove('show');
+                setTimeout(() => alert.remove(), 150);
+            }
+        });
+    }, 5000);
 
-        if (modal) {
-            modal.addEventListener('show.bs.modal', function(event) {
-                const button = event.relatedTarget;
-                if (button && courseIdInput) {
-                    const courseId = button.getAttribute('data-course-id');
-                    courseIdInput.value = courseId;
+    // Sélection du modal et du champ caché
+    const modal = document.getElementById('markAttendanceModal');
+    const courseIdInput = document.getElementById('courseId');
+    const attendanceForm = document.getElementById('attendanceForm');
+    const submitButton = document.getElementById('submitAttendance');
+
+    if (modal) {
+        modal.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            if (button && courseIdInput) {
+                const courseId = button.getAttribute('data-course-id');
+                courseIdInput.value = courseId;
+            }
+            
+            // Focus automatique sur le champ code après l'ouverture
+            setTimeout(function() {
+                const codeInput = document.getElementById('attendanceCode');
+                if (codeInput) {
+                    codeInput.focus();
+                    codeInput.value = ''; // Reset le champ
                 }
-                // Focus automatique sur le champ code après l'ouverture
-                setTimeout(function() {
-                    const codeInput = document.getElementById('attendanceCode');
-                    if (codeInput) codeInput.focus();
-                }, 300);
+            }, 300);
+        });
+
+        // Format code input automatically (uppercase, max 6 chars)
+        const codeInput = document.getElementById('attendanceCode');
+        if (codeInput) {
+            codeInput.addEventListener('input', function(e) {
+                let value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                if (value.length > 6) value = value.substring(0, 6);
+                e.target.value = value;
+                
+                // Auto-submit when 6 characters are entered
+                if (value.length === 6) {
+                    setTimeout(() => {
+                        if (attendanceForm) attendanceForm.submit();
+                    }, 500);
+                }
+            });
+
+            // Handle form submission
+            attendanceForm.addEventListener('submit', function(e) {
+                if (codeInput.value.length !== 6) {
+                    e.preventDefault();
+                    codeInput.focus();
+                    codeInput.style.borderColor = 'var(--danger)';
+                    setTimeout(() => {
+                        codeInput.style.borderColor = '';
+                    }, 3000);
+                    return;
+                }
+                
+                // Disable button and show loading state
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Vérification...';
             });
         }
+    }
+
+    // Add hover effects to course cards
+    const courseCards = document.querySelectorAll('.course-card');
+    courseCards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-3px)';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+        });
     });
+});
 </script>
 @endpush
 @endsection

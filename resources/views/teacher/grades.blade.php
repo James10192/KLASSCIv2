@@ -23,9 +23,6 @@
                             <a href="{{ route('esbtp.evaluations.create') }}" class="btn btn-primary">
                                 <i class="fas fa-plus-circle me-2"></i>Nouvelle évaluation
                             </a>
-                            <a href="{{ route('esbtp.notes.saisie-rapide-form') }}" class="btn btn-success ms-2">
-                                <i class="fas fa-table me-2"></i>Saisie rapide des notes
-                            </a>
                         </div>
                     </div>
                 </div>
@@ -93,11 +90,9 @@
                                     </td>
                                     <td>
                                         <div class="btn-group" role="group">
-                                            <a href="{{ route('esbtp.notes.saisie-rapide', $evaluation->id) }}" class="btn btn-sm btn-primary" title="Saisir des notes">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                            <a href="{{ route('esbtp.evaluations.show', $evaluation->id) }}" class="btn btn-sm btn-info" title="Détails">
+                                            <a href="{{ route('esbtp.evaluations.show', $evaluation->id) }}" class="btn btn-sm btn-primary" title="Voir l'évaluation">
                                                 <i class="fas fa-eye"></i>
+                                                Voir
                                             </a>
                                         </div>
                                     </td>

@@ -36,7 +36,11 @@ class ESBTPEvaluation extends Model
         'annee_universitaire_id',
         'is_published',
         'created_by',
-        'updated_by'
+        'updated_by',
+        'enseignant_id',
+        'enseignant_externe_nom',
+        'token_saisie_externe',
+        'token_expire_at'
     ];
 
     /**
@@ -45,7 +49,8 @@ class ESBTPEvaluation extends Model
      * @var array
      */
     protected $casts = [
-        'date_evaluation' => 'date'
+        'date_evaluation' => 'date',
+        'token_expire_at' => 'datetime'
     ];
 
     const STATUS_DRAFT = 'draft';
@@ -116,6 +121,16 @@ class ESBTPEvaluation extends Model
     public function updatedBy()
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    /**
+     * Relation avec l'enseignant assigné à l'évaluation.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function enseignant()
+    {
+        return $this->belongsTo(User::class, 'enseignant_id');
     }
 
     /**

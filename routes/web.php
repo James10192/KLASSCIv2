@@ -1596,3 +1596,9 @@ Route::middleware(['auth', 'role:coordinateur'])->prefix('esbtp')->name('esbtp.'
         Route::get('/api/events', [App\Http\Controllers\ESBTPEvenementAcademiqueController::class, 'getEvents'])->name('api.events');
     });
 });
+
+// Routes pour la saisie externe de notes (sans authentification)
+Route::prefix('external-grading')->name('external-grading.')->group(function () {
+    Route::get('/{token}', [App\Http\Controllers\ExternalGradingController::class, 'show'])->name('show');
+    Route::post('/{token}', [App\Http\Controllers\ExternalGradingController::class, 'store'])->name('store');
+});

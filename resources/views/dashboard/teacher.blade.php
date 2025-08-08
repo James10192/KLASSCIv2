@@ -170,7 +170,7 @@
                     </div>
                     @if(!$todayAttendance && $dailyCode)
                         <div class="mt-3 text-center">
-                            <a href="{{ route('esbtp.teacher.attendance.index') }}" class="btn btn-primary btn-sm">
+                            <a href="{{ route('esbtp.attendance.mark') }}" class="btn btn-primary btn-sm">
                                 <i class="fas fa-edit me-1"></i> Émarger
                             </a>
                         </div>
@@ -371,17 +371,13 @@
                 <i class="fas fa-calendar-alt"></i>
                 <span>Mon emploi du temps</span>
             </a>
-            <a href="{{ route('esbtp.teacher.attendance.index') }}" class="quick-action-card">
+            <a href="{{ route('esbtp.attendance.mark') }}" class="quick-action-card">
                 <i class="fas fa-user-check"></i>
                 <span>Émargement</span>
             </a>
-            <a href="{{ route('esbtp.notes.index') }}" class="quick-action-card">
+            <a href="{{ route('teacher.grades') }}" class="quick-action-card">
                 <i class="fas fa-edit"></i>
                 <span>Saisir des notes</span>
-            </a>
-            <a href="{{ route('teacher.grades') }}" class="quick-action-card">
-                <i class="fas fa-chart-line"></i>
-                <span>Mes statistiques</span>
             </a>
         </div>
     </div>

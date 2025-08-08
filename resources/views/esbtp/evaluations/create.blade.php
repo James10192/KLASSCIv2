@@ -1,42 +1,48 @@
-@extends('esbtp.evaluations.form')
+@extends('layouts.app')
 
 @section('title', 'Ajouter une évaluation - ESBTP-yAKRO')
 
-@section('content_form')
-<div class="container-fluid">
-    <!-- Matières statiques (fallback) -->
-    <div id="matiere-data" data-matieres="{{ json_encode($matieres) }}" style="display: none;"></div>
+@section('content')
+<!-- Matières statiques (fallback) -->
+<div id="matiere-data" data-matieres="{{ json_encode($matieres) }}" style="display: none;"></div>
 
+<!-- Header Section -->
+<div class="page-header bg-gradient-primary rounded-4 p-4 mb-4 text-white">
+    <div class="d-flex align-items-center gap-3">
+        <div class="icon-container bg-white bg-opacity-20 rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+            <i class="fas fa-plus-circle fa-lg"></i>
+        </div>
+        <div>
+            <h1 class="h3 mb-1">Nouvelle Évaluation</h1>
+            <p class="mb-0 opacity-75">Créer une nouvelle évaluation</p>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid">
     <div class="row">
         <div class="col-12">
-            <div class="card shadow-sm">
-                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
-                    <h5 class="mb-0 text-primary">
-                        <i class="fas fa-plus-circle me-2"></i>Ajouter une nouvelle évaluation
-                    </h5>
-                    <a href="{{ route('esbtp.evaluations.index') }}" class="btn btn-outline-secondary shadow-sm">
-                        <i class="fas fa-arrow-left me-1"></i>Retour à la liste
-                    </a>
-                </div>
-                <div class="card-body">
-                    @if ($errors->any())
-                        <div class="alert alert-danger alert-dismissible fade show shadow-sm border-start border-danger border-4" role="alert">
-                            <div class="d-flex">
-                                <div class="me-3">
-                                    <i class="fas fa-exclamation-circle fs-4"></i>
-                                </div>
-                                <div>
-                                    <h5 class="alert-heading">Erreur de validation</h5>
-                                    <ul class="mb-0 ps-3">
-                                        @foreach ($errors->all() as $error)
-                                            <li>{{ $error }}</li>
-                                        @endforeach
-                                    </ul>
-                                </div>
-                            </div>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            @if ($errors->any())
+                <div class="alert alert-danger alert-dismissible fade show border-start border-danger border-4 mb-4" role="alert">
+                    <div class="d-flex">
+                        <div class="me-3">
+                            <i class="fas fa-exclamation-circle fs-4"></i>
                         </div>
-                    @endif
+                        <div>
+                            <h5 class="alert-heading">Erreur de validation</h5>
+                            <ul class="mb-0 ps-3">
+                                @foreach ($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            @endif
+
+            <form action="{{ route('esbtp.evaluations.store') }}" method="POST">
+                @csrf
 
                     <div class="row g-4">
                         <!-- Informations générales de l'évaluation -->
@@ -237,6 +243,79 @@
                             </div>
                         </div>
 
+                        <!-- Section d'assignation d'enseignant (uniquement pour les non-enseignants) -->
+                        @if(!auth()->user()->hasRole(['teacher', 'enseignant']))
+                        <div class="col-12">
+                            <div class="card shadow-sm border-0">
+                                <div class="card-header bg-white border-bottom border-warning border-opacity-25">
+                                    <h6 class="mb-0 text-warning">
+                                        <i class="fas fa-user-tie me-2"></i>Assignation d'enseignant
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label for="enseignant_id" class="form-label text-muted mb-1">Enseignant de la plateforme</label>
+                                            <select class="form-select shadow-sm" id="enseignant_id" name="enseignant_id">
+                                                <option value="">-- Sélectionner un enseignant --</option>
+                                                @foreach($enseignants as $enseignant)
+                                                    <option value="{{ $enseignant->id }}" {{ old('enseignant_id') == $enseignant->id ? 'selected' : '' }}>
+                                                        {{ $enseignant->name }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                            <div class="form-text">
+                                                <i class="fas fa-info-circle text-info me-1"></i>
+                                                L'enseignant pourra saisir les notes directement
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="col-md-6">
+                                            <label for="enseignant_externe_nom" class="form-label text-muted mb-1">Enseignant externe</label>
+                                            <input type="text" class="form-control shadow-sm" id="enseignant_externe_nom" 
+                                                   name="enseignant_externe_nom" value="{{ old('enseignant_externe_nom') }}"
+                                                   placeholder="Nom de l'enseignant externe">
+                                            <div class="form-text">
+                                                <i class="fas fa-info-circle text-info me-1"></i>
+                                                Si l'enseignant n'a pas de compte
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mt-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="generer_lien_externe" 
+                                                   name="generer_lien_externe" value="1" {{ old('generer_lien_externe') ? 'checked' : '' }}>
+                                            <label class="form-check-label" for="generer_lien_externe">
+                                                Générer un lien de saisie pour l'enseignant externe
+                                            </label>
+                                            <div class="form-text">
+                                                <i class="fas fa-link text-primary me-1"></i>
+                                                Un lien temporaire sera créé pour permettre la saisie des notes (valable 30 jours)
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="alert alert-info border-0 shadow-sm mt-3">
+                                        <div class="d-flex">
+                                            <div class="me-2">
+                                                <i class="fas fa-lightbulb"></i>
+                                            </div>
+                                            <div>
+                                                <strong>Options d'assignation :</strong>
+                                                <ul class="mb-0 mt-2">
+                                                    <li><strong>Enseignant de la plateforme :</strong> Peut se connecter et saisir les notes</li>
+                                                    <li><strong>Enseignant externe :</strong> Traçabilité du nom seulement</li>
+                                                    <li><strong>Lien externe :</strong> Envoyez le lien à l'enseignant pour qu'il saisisse les notes</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        @endif
+
                         <!-- Boutons de soumission -->
                         <div class="col-12">
                             <div class="card shadow-sm border-0">
@@ -256,11 +335,14 @@
                                         </div>
                                     </div>
 
-                                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                                        <button type="reset" class="btn btn-outline-secondary me-md-2 shadow-sm">
+                                    <div class="d-flex gap-3 justify-content-end">
+                                        <a href="{{ route('esbtp.evaluations.index') }}" class="btn btn-outline-secondary">
+                                            <i class="fas fa-arrow-left me-1"></i>Retour
+                                        </a>
+                                        <button type="reset" class="btn btn-outline-secondary">
                                             <i class="fas fa-undo me-1"></i>Réinitialiser
                                         </button>
-                                        <button type="submit" class="btn btn-primary shadow-sm">
+                                        <button type="submit" class="btn btn-primary">
                                             <i class="fas fa-save me-1"></i>Enregistrer l'évaluation
                                         </button>
                                     </div>
@@ -268,8 +350,7 @@
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
+            </form>
         </div>
     </div>
 </div>

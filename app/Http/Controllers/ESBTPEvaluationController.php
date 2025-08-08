@@ -7,6 +7,7 @@ use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPEtudiant;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Models\ESBTPAnneeUniversitaire;
@@ -105,6 +106,15 @@ class ESBTPEvaluationController extends Controller
         $classes = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
         $matieres = ESBTPMatiere::where('is_active', true)->orderBy('name')->get();
         $types = ESBTPEvaluation::getTypes();
+        
+        // Récupérer la liste des enseignants pour l'assignation (seulement pour les non-enseignants)
+        $enseignants = collect();
+        $currentUser = \Auth::user();
+        if (!$currentUser->hasRole(['teacher', 'enseignant'])) {
+            $enseignants = User::whereHas('roles', function($query) {
+                $query->whereIn('name', ['teacher', 'enseignant']);
+            })->orderBy('name')->get();
+        }
 
         // Prepare subjects for JavaScript
         $matieresJson = $matieres->map(function ($matiere) {
@@ -116,7 +126,7 @@ class ESBTPEvaluationController extends Controller
             ];
         });
 
-        return view('esbtp.evaluations.create', compact('classes', 'matieres', 'matieresJson', 'matiere_id', 'types'));
+        return view('esbtp.evaluations.create', compact('classes', 'matieres', 'matieresJson', 'matiere_id', 'types', 'enseignants'));
     }
 
     /**
@@ -192,6 +202,23 @@ class ESBTPEvaluationController extends Controller
             $evaluation->matiere_id = $request->matiere_id;
             $evaluation->created_by = \Auth::id();
             $evaluation->is_published = $request->has('is_published') ? 1 : 0;
+            
+            // Auto-assigner l'enseignant si c'est un rôle enseignant qui crée l'évaluation
+            $user = \Auth::user();
+            if ($user->hasRole(['teacher', 'enseignant'])) {
+                $evaluation->enseignant_id = \Auth::id();
+            } else {
+                // Pour les autres rôles, utiliser l'assignation du formulaire
+                if ($request->has('enseignant_id') && $request->enseignant_id) {
+                    $evaluation->enseignant_id = $request->enseignant_id;
+                } elseif ($request->has('enseignant_externe_nom') && $request->enseignant_externe_nom) {
+                    $evaluation->enseignant_externe_nom = $request->enseignant_externe_nom;
+                    if ($request->has('generer_lien_externe') && $request->generer_lien_externe) {
+                        $evaluation->token_saisie_externe = \Str::random(64);
+                        $evaluation->token_expire_at = now()->addDays(30);
+                    }
+                }
+            }
 
             // Ajouter les valeurs par défaut pour les champs manquants
             $evaluation->periode = $request->periode ?? 'semestre1'; // Valeur par défaut pour periode
@@ -227,8 +254,18 @@ class ESBTPEvaluationController extends Controller
 
             \Log::info('Évaluation créée avec succès. ID: ' . $evaluation->id);
 
+            $successMessage = 'L\'évaluation a été créée avec succès';
+            
+            // Si un lien externe a été généré, l'ajouter au message
+            if ($evaluation->token_saisie_externe) {
+                $externalLink = route('external-grading.show', $evaluation->token_saisie_externe);
+                $successMessage .= '. <br><strong>Lien de saisie externe généré :</strong><br>';
+                $successMessage .= '<div class="mt-2"><input type="text" class="form-control" value="' . $externalLink . '" onclick="this.select()" readonly></div>';
+                $successMessage .= '<small class="text-muted">Copiez ce lien et envoyez-le à l\'enseignant externe. Le lien expire le ' . $evaluation->token_expire_at->format('d/m/Y à H:i') . '</small>';
+            }
+
             return redirect()->route('esbtp.evaluations.index')
-                ->with('success', 'L\'évaluation a été créée avec succès');
+                ->with('success', $successMessage);
         } catch (\Exception $e) {
             \Log::error('Erreur lors de la création de l\'évaluation: ' . $e->getMessage());
             \Log::error('Trace: ' . $e->getTraceAsString());
