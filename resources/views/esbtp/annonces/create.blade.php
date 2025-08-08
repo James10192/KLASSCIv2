@@ -468,10 +468,16 @@
                                                     </select>
                                                 </div>
                                 </div>
-                                <div class="col-md-4 mb-2">
+                                <div class="col-md-6 mb-2">
                                     <button type="button" class="btn btn-sm btn-outline-primary w-100" id="select_all_classes">
                                         <i class="fas fa-check-double me-1"></i>
                                         Sélectionner toutes les classes visibles
+                                    </button>
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary w-100 reset-filters">
+                                        <i class="fas fa-undo me-1"></i>
+                                        Réinitialiser les filtres
                                     </button>
                                                 </div>
                                             </div>
@@ -517,6 +523,12 @@
                                     <button type="button" class="btn btn-sm btn-outline-primary w-100" id="select_all_etudiants">
                                         <i class="fas fa-check-double me-1"></i>
                                         Sélectionner tous les étudiants visibles
+                                    </button>
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary w-100 reset-filters">
+                                        <i class="fas fa-undo me-1"></i>
+                                        Réinitialiser les filtres
                                     </button>
                                                 </div>
                                             </div>
@@ -779,6 +791,25 @@
             });
         }
 
+        // Fonction pour réinitialiser les filtres
+        function resetFilters() {
+            // Réinitialiser les filtres de classes
+            $('#filiere_filter, #niveau_filter').val('');
+            $('#classe_etudiant_filter').val('');
+            
+            // Déclencher les événements change pour restaurer toutes les options
+            $('#filiere_filter').trigger('change');
+            $('#classe_etudiant_filter').trigger('change');
+            
+            // Supprimer le message informatif des étudiants
+            $('#etudiants-info').remove();
+        }
+
+        // Ajouter un bouton de réinitialisation (optionnel)
+        $(document).on('click', '.reset-filters', function() {
+            resetFilters();
+        });
+
         // Gestion de l'affichage du champ de date de publication
         $('#status').change(function() {
             if ($(this).val() === 'scheduled') {
@@ -817,19 +848,28 @@
                 const filteredChoices = [];
 
                 allOptions.forEach(option => {
+                    // Inclure toujours les options qui ont déjà été sélectionnées
+                    if (!option.value) return; // Ignorer les options vides
+                    
                     const classeFiliereId = option.dataset.filiere;
                     const classeNiveauId = option.dataset.niveau;
-                let show = true;
+                    let show = true;
 
-                if (filiereId && classeFiliereId != filiereId) {
-                    show = false;
-                }
+                    // Appliquer les filtres seulement si des filtres sont sélectionnés
+                    if (filiereId && classeFiliereId && classeFiliereId != filiereId) {
+                        show = false;
+                    }
 
-                if (niveauId && classeNiveauId != niveauId) {
-                    show = false;
-                }
+                    if (niveauId && classeNiveauId && classeNiveauId != niveauId) {
+                        show = false;
+                    }
 
-                    if (show && option.value) {
+                    // Si aucun filtre n'est appliqué, montrer toutes les options
+                    if (!filiereId && !niveauId) {
+                        show = true;
+                    }
+
+                    if (show) {
                         filteredChoices.push({
                             value: option.value,
                             label: option.textContent,
@@ -852,40 +892,49 @@
             if (etudiantsChoicesInstance) {
                 const allOptions = Array.from(document.getElementById('etudiants').options);
                 const filteredChoices = [];
-            let visibleCount = 0;
+                let visibleCount = 0;
 
                 allOptions.forEach(option => {
+                    // Inclure toujours les options qui ont déjà été sélectionnées
+                    if (!option.value) return; // Ignorer les options vides
+                    
                     const etudiantClasseId = option.dataset.classe;
-                let show = true;
+                    let show = true;
 
-                if (classeId && etudiantClasseId !== classeId) {
-                    show = false;
-                }
+                    // Appliquer le filtre seulement si une classe est sélectionnée
+                    if (classeId && etudiantClasseId && etudiantClasseId !== classeId) {
+                        show = false;
+                    }
 
-                    if (show && option.value) {
+                    // Si aucun filtre n'est appliqué, montrer tous les étudiants
+                    if (!classeId) {
+                        show = true;
+                    }
+
+                    if (show) {
                         filteredChoices.push({
                             value: option.value,
                             label: option.textContent,
                             selected: option.selected,
                             disabled: false
                         });
-                    visibleCount++;
-                }
-            });
+                        visibleCount++;
+                    }
+                });
 
                 // Mettre à jour les choix disponibles
                 etudiantsChoicesInstance.setChoices(filteredChoices, 'value', 'label', true);
 
                 // Afficher un message informatif
-            const infoMessage = visibleCount > 0
-                ? `${visibleCount} étudiant(s) disponible(s)`
-                : "Aucun étudiant disponible avec ce filtre";
+                const infoMessage = visibleCount > 0
+                    ? `${visibleCount} étudiant(s) disponible(s)`
+                    : "Aucun étudiant disponible avec ce filtre";
 
-            if ($('#etudiants-info').length) {
-                $('#etudiants-info').text(infoMessage);
-            } else {
-                $('<div id="etudiants-info" class="text-muted small mt-2 mb-2">' + infoMessage + '</div>').insertBefore('#etudiants');
-            }
+                if ($('#etudiants-info').length) {
+                    $('#etudiants-info').text(infoMessage);
+                } else {
+                    $('<div id="etudiants-info" class="text-muted small mt-2 mb-2">' + infoMessage + '</div>').insertBefore('#etudiants');
+                }
             }
         });
 
