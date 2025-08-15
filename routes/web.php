@@ -23,6 +23,8 @@ use App\Http\Controllers\ESBTPSeanceCoursController;
 use App\Http\Controllers\ESBTPAttendanceController;
 use App\Http\Controllers\ESBTPExamenController;
 use App\Http\Controllers\ESBTP\TeacherAttendanceController;
+use App\Http\Controllers\ESBTP\ESBTPReinscriptionController;
+use App\Http\Controllers\TeacherController;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\ParentDashboardController;
 use App\Http\Controllers\ParentNotificationController;
@@ -195,6 +197,16 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         Route::get('/dashboard/teacher/roll-call/{seance}', [TeacherDashboardController::class, 'showRollCall'])->name('teacher.roll-call');
         Route::post('/dashboard/teacher/roll-call/{seance}', [TeacherDashboardController::class, 'storeRollCall'])->name('teacher.roll-call.store');
         Route::post('/dashboard/teacher/close-course/{seance}', [TeacherDashboardController::class, 'closeCourse'])->name('teacher.close-course');
+        Route::get('/teacher/profile', [TeacherController::class, 'profile'])->name('teacher.profile');
+        Route::get('/teacher/select-call-type/{seance}', [App\Http\Controllers\ESBTP\TeacherAttendanceController::class, 'selectCallType'])->name('teacher.select-call-type');
+        
+        // Routes pour les rapports de séance
+        Route::get('/teacher/session-report/create/{seance}', [App\Http\Controllers\ESBTP\SessionReportController::class, 'create'])->name('teacher.session-report.create');
+        Route::post('/teacher/session-report/store/{seance}', [App\Http\Controllers\ESBTP\SessionReportController::class, 'store'])->name('teacher.session-report.store');
+        Route::get('/teacher/session-reports', [App\Http\Controllers\ESBTP\SessionReportController::class, 'index'])->name('teacher.session-report.index');
+        Route::get('/teacher/session-report/{report}', [App\Http\Controllers\ESBTP\SessionReportController::class, 'show'])->name('teacher.session-report.show');
+        Route::get('/teacher/session-report/{report}/edit', [App\Http\Controllers\ESBTP\SessionReportController::class, 'edit'])->name('teacher.session-report.edit');
+        Route::put('/teacher/session-report/{report}', [App\Http\Controllers\ESBTP\SessionReportController::class, 'update'])->name('teacher.session-report.update');
     });
 
     // Routes pour la gestion du profil admin
@@ -312,6 +324,26 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::resource('partnerships', \App\Http\Controllers\ESBTP\PartnershipController::class);
 
             // Routes du module comptabilité - PROVISOIREMENT SUPPRIMÉ POUR REDÉFINITION
+            
+            // Routes pour le système de réinscription
+            Route::prefix('reinscription')->name('reinscription.')->group(function () {
+                Route::get('/', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'index'])->name('index');
+                
+                // Routes statiques AVANT les routes avec paramètres
+                Route::get('export/results', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'exportResults'])->name('export');
+                
+                // Routes pour la gestion des règles académiques
+                Route::prefix('regles')->name('regles.')->group(function () {
+                    Route::get('/', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'regles'])->name('index');
+                    Route::post('/', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'storeRegle'])->name('store');
+                    Route::put('{id}', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'updateRegle'])->name('update');
+                    Route::delete('{id}', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'destroyRegle'])->name('destroy');
+                });
+                
+                // Routes avec paramètres à la FIN
+                Route::get('{etudiant}', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'show'])->name('show');
+                Route::put('{etudiant}', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'update'])->name('update');
+            });
         });
 
         // Routes accessibles aux superAdmin et secrétaires
@@ -349,6 +381,17 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::post('process-attach-to-classes', [ESBTPMatiereController::class, 'processAttachToClasses'])
                     ->name('process-attach-to-classes')
                     ->middleware(['permission:edit_matieres|edit matieres']);
+                
+                // Routes AJAX pour la configuration des liaisons
+                Route::get('{matiere}/liaisons', [ESBTPMatiereController::class, 'getLiaisons'])
+                    ->name('liaisons')
+                    ->middleware(['permission:view_matieres|view matieres']);
+                Route::post('{matiere}/update-liaisons', [ESBTPMatiereController::class, 'updateLiaisons'])
+                    ->name('update-liaisons')
+                    ->middleware(['permission:edit_matieres|edit matieres']);
+                Route::get('{matiere}/statistiques-liaisons', [ESBTPMatiereController::class, 'getStatistiquesLiaisons'])
+                    ->name('statistiques-liaisons')
+                    ->middleware(['permission:view_matieres|view matieres']);
             });
 
             // Routes CRUD pour les matières
@@ -481,6 +524,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::post('/planification', [ESBTPPlanningGeneralController::class, 'storePlanification'])->name('store-planification');
                 Route::delete('/planification/{id}', [ESBTPPlanningGeneralController::class, 'destroyPlanification'])->name('destroy-planification');
                 Route::post('/planification/{id}/valider', [ESBTPPlanningGeneralController::class, 'validerPlanification'])->name('valider-planification');
+                Route::post('/configure-rapide', [ESBTPPlanningGeneralController::class, 'configureRapide'])->name('configure-rapide');
                 Route::get('/annuel', [ESBTPPlanningGeneralController::class, 'annuel'])->name('annuel');
                 Route::get('/repartition-matieres', [ESBTPPlanningGeneralController::class, 'repartitionMatieres'])->name('repartition-matieres');
                 Route::get('/coordinateur', [ESBTPPlanningGeneralController::class, 'coordinateur'])->name('coordinateur')
@@ -491,7 +535,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::prefix('evenements-academiques')->name('evenements-academiques.')->group(function () {
                 Route::get('/', [App\Http\Controllers\ESBTPEvenementAcademiqueController::class, 'index'])->name('index');
                 Route::get('/create', [App\Http\Controllers\ESBTPEvenementAcademiqueController::class, 'create'])->name('create');
+                Route::get('/create-quick/{type}/{annee_id}', [App\Http\Controllers\ESBTPEvenementAcademiqueController::class, 'createQuick'])->name('create-quick');
                 Route::post('/', [App\Http\Controllers\ESBTPEvenementAcademiqueController::class, 'store'])->name('store');
+                Route::post('/bulk-action', [App\Http\Controllers\ESBTPEvenementAcademiqueController::class, 'bulkAction'])->name('bulk-action');
                 Route::get('/{evenementAcademique}', [App\Http\Controllers\ESBTPEvenementAcademiqueController::class, 'show'])->name('show');
                 Route::get('/{evenementAcademique}/edit', [App\Http\Controllers\ESBTPEvenementAcademiqueController::class, 'edit'])->name('edit');
                 Route::put('/{evenementAcademique}', [App\Http\Controllers\ESBTPEvenementAcademiqueController::class, 'update'])->name('update');
@@ -968,6 +1014,7 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'role:superAdmin'])-
     Route::resource('enseignants', ESBTPEnseignantController::class);
     Route::get('enseignants/{teacher}/matieres', [ESBTPEnseignantController::class, 'matieres'])->name('enseignants.matieres');
     Route::post('enseignants/{teacher}/assign-matieres', [ESBTPEnseignantController::class, 'assignMatieres'])->name('enseignants.assign-matieres');
+    Route::post('enseignants/{teacher}/toggle-status', [ESBTPEnseignantController::class, 'toggleStatus'])->name('enseignants.toggleStatus');
     Route::resource('specialties', ESBTPSpecialtyController::class);
     Route::put('specialties/{id}/restore', [ESBTPSpecialtyController::class, 'restore'])->name('specialties.restore');
     Route::resource('continuing-education', ESBTPContinuingEducationController::class);

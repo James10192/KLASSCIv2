@@ -468,7 +468,7 @@ body {
 }
 
 /* === BADGES === */
-.badge {
+.badge, .status-badge {
     display: inline-flex;
     align-items: center;
     padding: var(--space-xs) var(--space-sm);
@@ -479,24 +479,49 @@ body {
     letter-spacing: 0.5px;
 }
 
-.badge.success {
+.badge.success, .status-badge.success {
     background-color: rgba(16, 185, 129, 0.1);
     color: var(--success);
 }
 
-.badge.danger {
+.badge.danger, .status-badge.danger {
     background-color: rgba(239, 68, 68, 0.1);
     color: var(--danger);
 }
 
-.badge.warning {
+.badge.warning, .status-badge.warning {
     background-color: rgba(245, 158, 11, 0.1);
     color: var(--warning);
 }
 
-.badge.primary {
+.badge.primary, .status-badge.primary {
     background-color: rgba(30, 58, 138, 0.1);
     color: var(--primary);
+}
+
+.badge.info, .status-badge.info {
+    background-color: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+}
+
+/* === INFO ITEMS === */
+.info-item {
+    margin-bottom: var(--space-md);
+}
+
+.info-label {
+    font-size: var(--text-small);
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.info-value {
+    font-size: var(--text-normal);
+    color: var(--text-primary);
+    font-weight: 500;
 }
 
 /* === BOUTONS === */
@@ -934,4 +959,378 @@ body {
 }
 .p-xl {
     padding: var(--space-xl);
+}
+
+/* === TABLE MODERNE === */
+.table-moderne {
+    overflow-x: auto;
+    border-radius: var(--radius-medium);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    background: white;
+}
+
+.table-moderne table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+}
+
+.table-moderne thead tr {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: white;
+}
+
+.table-moderne th {
+    padding: var(--space-lg) var(--space-md);
+    text-align: left;
+    font-weight: 600;
+    font-size: var(--text-small);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.table-moderne th.text-center {
+    text-align: center;
+}
+
+.table-moderne tbody tr {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+}
+
+.table-moderne tbody tr:hover {
+    background-color: rgba(30, 58, 138, 0.05);
+}
+
+.table-moderne td {
+    padding: var(--space-lg) var(--space-md);
+    vertical-align: middle;
+}
+
+.table-moderne .table-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--space-xs) var(--space-md);
+    border-radius: var(--radius-small);
+    font-weight: 500;
+    font-size: var(--text-small);
+}
+
+.table-moderne .table-badge.primary {
+    background: rgba(30, 58, 138, 0.1);
+    color: var(--primary);
+}
+
+.table-moderne .table-badge.success {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success);
+    font-weight: 600;
+}
+
+.table-moderne .table-badge.warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning);
+    font-weight: 600;
+}
+
+.table-moderne .table-badge.danger {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+    font-weight: 500;
+}
+
+.table-moderne .table-badge.neutral {
+    background: rgba(107, 114, 128, 0.1);
+    color: var(--neutral);
+    font-weight: 500;
+}
+
+.table-moderne .table-actions {
+    display: flex;
+    justify-content: center;
+    gap: var(--space-xs);
+}
+
+.table-moderne .btn-table-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: var(--radius-small);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+}
+
+.table-moderne .btn-table-action.primary {
+    background: rgba(30, 58, 138, 0.1);
+    color: var(--primary);
+}
+
+.table-moderne .btn-table-action.primary:hover {
+    background: var(--primary);
+    color: white;
+}
+
+.table-moderne .btn-table-action.danger {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+}
+
+.table-moderne .btn-table-action.danger:hover {
+    background: var(--danger);
+    color: white;
+}
+
+.table-moderne .btn-table-action.success {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success);
+}
+
+.table-moderne .btn-table-action.success:hover {
+    background: var(--success);
+    color: white;
+}
+
+/* === FORMULAIRES MODERNES === */
+.form-group-moderne {
+    margin-bottom: var(--space-lg);
+}
+
+.form-label-moderne {
+    display: block;
+    margin-bottom: var(--space-sm);
+    font-weight: 600;
+    font-size: var(--text-small);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+}
+
+.form-input-moderne, .form-select-moderne, .form-textarea-moderne {
+    width: 100%;
+    padding: var(--space-md);
+    border: 2px solid rgba(0, 0, 0, 0.1);
+    border-radius: var(--radius-small);
+    font-size: var(--text-normal);
+    font-family: inherit;
+    transition: all 0.2s ease;
+    background-color: white;
+    color: var(--text-primary);
+}
+
+.form-input-moderne:focus, .form-select-moderne:focus, .form-textarea-moderne:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+    color: var(--text-primary);
+}
+
+.form-input-moderne::placeholder, .form-textarea-moderne::placeholder {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.form-select-moderne {
+    cursor: pointer;
+    color: var(--text-primary);
+}
+
+.form-select-moderne option {
+    background-color: white;
+    color: var(--text-primary);
+    padding: var(--space-sm);
+}
+
+.form-select-moderne:disabled {
+    background-color: var(--background);
+    color: var(--text-muted);
+    cursor: not-allowed;
+}
+
+.form-textarea-moderne {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.form-check-moderne {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.form-check-input-moderne {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(0, 0, 0, 0.2);
+    border-radius: var(--radius-small);
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-color: white;
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.form-check-input-moderne:checked {
+    background-color: var(--primary);
+    border-color: var(--primary);
+}
+
+.form-check-input-moderne:checked::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.form-check-input-moderne:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(30, 58, 138, 0.2);
+}
+
+.form-check-label-moderne {
+    font-size: var(--text-normal);
+    color: var(--text-primary);
+    cursor: pointer;
+    user-select: none;
+}
+
+/* === MODAL MODERNE === */
+.modal-moderne {
+    border: none;
+    border-radius: var(--radius-large);
+    box-shadow: var(--shadow-large);
+}
+
+.modal-moderne .modal-header {
+    background-color: var(--primary);
+    color: white;
+    border-radius: var(--radius-large) var(--radius-large) 0 0;
+    padding: var(--space-lg) var(--space-xl);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: none;
+}
+
+.modal-moderne .modal-title {
+    font-weight: 600;
+    margin: 0;
+    color: white;
+}
+
+.modal-moderne .modal-body {
+    padding: var(--space-xl);
+    background-color: white;
+    color: var(--text-primary);
+}
+
+.modal-moderne .modal-footer {
+    padding: var(--space-lg) var(--space-xl);
+    background-color: var(--background);
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-md);
+    border-radius: 0 0 var(--radius-large) var(--radius-large);
+    border: none;
+}
+
+.modal-moderne .close {
+    color: white !important;
+    opacity: 0.9;
+    font-size: 1.25rem;
+    background: none;
+    border: none;
+    padding: var(--space-sm);
+    border-radius: var(--radius-small);
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    text-shadow: none;
+    font-weight: normal;
+    line-height: 1;
+}
+
+.modal-moderne .close:hover {
+    opacity: 1;
+    background-color: rgba(255, 255, 255, 0.15);
+    color: white !important;
+    text-decoration: none;
+    transform: scale(1.1);
+}
+
+.modal-moderne .close:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
+}
+
+.modal-moderne .close:active {
+    transform: scale(0.95);
+}
+
+/* Amélioration des boutons dans les modals */
+.modal-moderne .btn-acasi {
+    border: none;
+    padding: var(--space-sm) var(--space-lg);
+    border-radius: var(--radius-small);
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.modal-moderne .btn-acasi:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-elevated);
+}
+
+/* === GRILLES DE FORMULAIRE === */
+.form-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-lg);
+}
+
+.form-grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: var(--space-lg);
+}
+
+@media (max-width: 768px) {
+    .form-grid-2, .form-grid-3 {
+        grid-template-columns: 1fr;
+    }
+    
+    .table-moderne .table-actions {
+        flex-direction: column;
+    }
+    
+    .table-moderne {
+        font-size: var(--text-small);
+    }
+}
+
+/* === GRILLE SPÉCIFIQUE RÉINSCRIPTION === */
+.reinscription-grid {
+    display: grid;
+    grid-template-columns: 350px 1fr;
+    gap: var(--space-lg);
+    margin-bottom: var(--space-xl);
+}
+
+@media (max-width: 1024px) {
+    .reinscription-grid {
+        grid-template-columns: 1fr;
+    }
 }

@@ -272,6 +272,58 @@
             :annees="$annees"
         />
 
+        @if($anneeSelectionnee)
+            <!-- Raccourcis pour événements manquants -->
+            @php
+                $hasRentree = \App\Models\ESBTPEvenementAcademique::where('annee_universitaire_id', $anneeSelectionnee->id)
+                    ->where('type', 'rentree')
+                    ->exists();
+                $hasFermeture = \App\Models\ESBTPEvenementAcademique::where('annee_universitaire_id', $anneeSelectionnee->id)
+                    ->where('type', 'fermeture')
+                    ->exists();
+            @endphp
+            
+            @if(!$hasRentree || !$hasFermeture)
+                <div class="card-moderne mb-lg" style="border-left: 4px solid var(--warning);">
+                    <div class="card-body-moderne">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <h6 class="text-warning mb-2">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    Événements manquants pour {{ $anneeSelectionnee->name }}
+                                </h6>
+                                <p class="text-muted mb-0">
+                                    @if(!$hasRentree && !$hasFermeture)
+                                        Les événements de rentrée et de fermeture ne sont pas encore définis.
+                                    @elseif(!$hasRentree)
+                                        L'événement de rentrée n'est pas encore défini.
+                                    @else
+                                        L'événement de fermeture n'est pas encore défini.
+                                    @endif
+                                </p>
+                            </div>
+                            <div class="d-flex gap-2">
+                                @if(!$hasRentree)
+                                    <a href="{{ route('esbtp.evenements-academiques.create-quick', ['type' => 'rentree', 'annee_id' => $anneeSelectionnee->id]) }}" 
+                                       class="btn-acasi success">
+                                        <i class="fas fa-graduation-cap me-2"></i>
+                                        Créer Rentrée
+                                    </a>
+                                @endif
+                                @if(!$hasFermeture)
+                                    <a href="{{ route('esbtp.evenements-academiques.create-quick', ['type' => 'fermeture', 'annee_id' => $anneeSelectionnee->id]) }}" 
+                                       class="btn-acasi secondary">
+                                        <i class="fas fa-flag-checkered me-2"></i>
+                                        Créer Fermeture
+                                    </a>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
+        @endif
+
         <div class="card-moderne">
             <div class="card-header-moderne">
                 <div class="actions-top">
@@ -374,12 +426,49 @@
                 </div>
                 @endif
 
+                    <!-- Actions en lot -->
+                    @if($evenements->count() > 0)
+                    <div class="bulk-actions-bar card-moderne mb-lg" style="display: none;" id="bulk-actions-bar">
+                        <div class="p-md d-flex justify-content-between align-items-center">
+                            <span id="selected-count">0 événement(s) sélectionné(s)</span>
+                            <div class="d-flex gap-2">
+                                <form id="bulk-form" method="POST" action="{{ route('esbtp.evenements-academiques.bulk-action') }}" style="display: inline;">
+                                    @csrf
+                                    <input type="hidden" name="action" id="bulk-action">
+                                    <input type="hidden" name="status" id="bulk-status">
+                                    <div id="selected-events"></div>
+                                    
+                                    <select class="form-select-moderne" id="bulk-status-select" style="display: none;">
+                                        <option value="">Choisir un statut</option>
+                                        @foreach(\App\Models\ESBTPEvenementAcademique::STATUTS as $key => $label)
+                                            <option value="{{ $key }}">{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                    
+                                    <button type="button" class="btn-acasi warning" onclick="changeBulkStatus()">
+                                        <i class="fas fa-edit me-2"></i> Changer statut
+                                    </button>
+                                    <button type="button" class="btn-acasi danger" onclick="deleteBulkEvents()">
+                                        <i class="fas fa-trash me-2"></i> Supprimer
+                                    </button>
+                                </form>
+                                <button type="button" class="btn-acasi secondary" onclick="clearSelection()">
+                                    <i class="fas fa-times me-2"></i> Annuler
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+
                     <!-- Liste des événements -->
                     <div class="evenements-liste">
                         @forelse($evenements as $evenement)
-                        <div class="evenement-card">
+                        <div class="evenement-card" data-event-id="{{ $evenement->id }}">
                             <div class="evenement-header">
                                 <div class="evenement-info">
+                                    <div class="d-flex align-items-center me-3">
+                                        <input type="checkbox" class="event-checkbox me-2" value="{{ $evenement->id }}" onchange="updateBulkActions()">
+                                    </div>
                                     <div class="evenement-icon">
                                         <i class="fas fa-{{ $evenement->icone }} color-{{ $evenement->couleur }}"></i>
                                     </div>
@@ -498,5 +587,62 @@ $(document).ready(function() {
         $(this).closest('form').submit();
     });
 });
+
+// Bulk actions functionality
+function updateBulkActions() {
+    const checkboxes = document.querySelectorAll('.event-checkbox:checked');
+    const count = checkboxes.length;
+    const bulkBar = document.getElementById('bulk-actions-bar');
+    const countSpan = document.getElementById('selected-count');
+    const selectedEventsDiv = document.getElementById('selected-events');
+    
+    if (count > 0) {
+        bulkBar.style.display = 'block';
+        countSpan.textContent = count + ' événement(s) sélectionné(s)';
+        
+        // Clear and add hidden inputs for selected events
+        selectedEventsDiv.innerHTML = '';
+        checkboxes.forEach(checkbox => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'events[]';
+            input.value = checkbox.value;
+            selectedEventsDiv.appendChild(input);
+        });
+    } else {
+        bulkBar.style.display = 'none';
+    }
+}
+
+function clearSelection() {
+    document.querySelectorAll('.event-checkbox').forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    updateBulkActions();
+}
+
+function changeBulkStatus() {
+    const statusSelect = document.getElementById('bulk-status-select');
+    const bulkStatus = document.getElementById('bulk-status');
+    const bulkAction = document.getElementById('bulk-action');
+    
+    statusSelect.style.display = 'inline-block';
+    statusSelect.onchange = function() {
+        if (this.value) {
+            if (confirm('Êtes-vous sûr de vouloir changer le statut des événements sélectionnés ?')) {
+                bulkAction.value = 'change_status';
+                bulkStatus.value = this.value;
+                document.getElementById('bulk-form').submit();
+            }
+        }
+    };
+}
+
+function deleteBulkEvents() {
+    if (confirm('Êtes-vous sûr de vouloir supprimer les événements sélectionnés ? Cette action est irréversible.')) {
+        document.getElementById('bulk-action').value = 'delete';
+        document.getElementById('bulk-form').submit();
+    }
+}
 </script>
 @endpush

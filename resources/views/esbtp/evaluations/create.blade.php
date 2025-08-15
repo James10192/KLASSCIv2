@@ -8,26 +8,25 @@
 
 @section('content')
 <div class="dashboard-acasi">
-    <!-- Header Section -->
-    <div class="dashboard-header">
-        <div class="header-left">
-            <h1><i class="fas fa-plus-circle me-2"></i>Nouvelle Évaluation</h1>
-            <p class="header-subtitle">Créer une nouvelle évaluation pour vos étudiants</p>
-        </div>
-        <div class="header-actions">
-            @if(!auth()->user()->hasRole(['teacher', 'enseignant']))
-            <a href="{{ route('esbtp.evaluations.index') }}" class="btn-secondary">
-                <i class="fas fa-arrow-left me-1"></i>Retour à la liste
-            </a>
-            @else
-            <a href="{{ route('teacher.dashboard') }}" class="btn-secondary">
-                <i class="fas fa-arrow-left me-1"></i>Retour au tableau de bord
-            </a>
-            @endif
-        </div>
-    </div>
-
     <div class="main-content">
+        <!-- Header Section -->
+        <div class="dashboard-header">
+            <div class="header-left">
+                <h1><i class="fas fa-plus-circle me-2"></i>Nouvelle Évaluation</h1>
+                <p class="header-subtitle">Créer une nouvelle évaluation pour vos étudiants</p>
+            </div>
+            <div class="header-actions">
+                @if(!auth()->user()->hasRole(['teacher', 'enseignant']))
+                <a href="{{ route('esbtp.evaluations.index') }}" class="btn-acasi secondary">
+                    <i class="fas fa-arrow-left"></i>Retour à la liste
+                </a>
+                @else
+                <a href="{{ route('teacher.dashboard') }}" class="btn-acasi secondary">
+                    <i class="fas fa-arrow-left"></i>Retour au tableau de bord
+                </a>
+                @endif
+            </div>
+        </div>
         <!-- Matières statiques (fallback) -->
         <div id="matiere-data" data-matieres="{{ json_encode($matieres) }}" style="display: none;"></div>
 
@@ -278,11 +277,11 @@
 
                 <!-- Section 5: Actions -->
                 <div class="form-actions">
-                    <button type="reset" class="btn-secondary">
-                        <i class="fas fa-undo me-1"></i>Réinitialiser
+                    <button type="reset" class="btn-acasi secondary">
+                        <i class="fas fa-undo"></i>Réinitialiser
                     </button>
-                    <button type="submit" class="btn-primary">
-                        <i class="fas fa-save me-1"></i>Enregistrer l'évaluation
+                    <button type="submit" class="btn-acasi primary">
+                        <i class="fas fa-save"></i>Enregistrer l'évaluation
                     </button>
                 </div>
             </div>

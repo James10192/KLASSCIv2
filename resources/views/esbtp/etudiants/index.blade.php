@@ -19,6 +19,11 @@
                 <a href="{{ route('esbtp.inscriptions.create') }}" class="btn-acasi primary">
                     <i class="fas fa-plus-circle"></i>Ajouter un étudiant
                 </a>
+                @if(auth()->user()->hasRole(['superAdmin', 'secretaire', 'coordinateur']))
+                <a href="{{ route('esbtp.reinscription.index') }}" class="btn-acasi success">
+                    <i class="fas fa-user-graduate"></i>Réinscriptions
+                </a>
+                @endif
             </div>
         </div>
 

@@ -2,36 +2,52 @@
 
 @section('title', 'Ajouter une matière - ESBTP-yAKRO')
 
+@section('styles')
+<link href="{{ asset('css/dashboard-moderne.css') }}" rel="stylesheet">
+@endsection
+
 @section('content')
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Ajouter une nouvelle matière</h5>
-                    <a href="{{ route('esbtp.matieres.index') }}" class="btn btn-secondary">
-                        <i class="fas fa-list me-1"></i>Liste des matières
-                    </a>
+<div class="main-content">
+    <!-- Header Section -->
+    <div class="dashboard-header">
+        <div class="header-left">
+            <h1><i class="fas fa-plus-circle me-2"></i>Ajouter une Matière</h1>
+            <p class="header-subtitle">Créez une nouvelle matière avec ses paramètres et associations</p>
+        </div>
+        <div class="header-actions">
+            <a href="{{ route('esbtp.matieres.index') }}" class="btn-acasi secondary">
+                <i class="fas fa-list me-1"></i>Liste des matières
+            </a>
+        </div>
+    </div>
+
+    <!-- Error Alert -->
+    @if(session('error'))
+        <div class="card-moderne mb-lg" style="border-left: 4px solid var(--danger);">
+            <div class="p-lg">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-exclamation-circle color-danger me-2"></i>
+                    <span>{{ session('error') }}</span>
                 </div>
+            </div>
+        </div>
+    @endif
 
-                <div class="card-body">
-                    @if(session('error'))
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            <i class="fas fa-exclamation-circle me-1"></i>{{ session('error') }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    @endif
+    <!-- Form Container -->
+    <form action="{{ route('esbtp.matieres.store') }}" method="POST">
+        @csrf
 
-                    <form action="{{ route('esbtp.matieres.store') }}" method="POST">
-                        @csrf
-
-                        <div class="row mb-4">
-                            <div class="col-md-6">
-                                <div class="card">
-                                    <div class="card-header bg-light">
-                                        <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Informations générales</h6>
-                                    </div>
-                                    <div class="card-body">
+        <!-- Informations générales -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card-moderne">
+                    <div class="main-card-header">
+                        <h3 class="main-card-title">
+                            <i class="fas fa-info-circle"></i>Informations générales
+                        </h3>
+                        <p class="main-card-subtitle">Code et nom de la matière</p>
+                    </div>
+                    <div class="main-card-body">
                                         <!-- Code de la matière -->
                                         <div class="mb-3">
                                             <label for="code" class="form-label">Code de la matière <span class="text-danger">*</span></label>
@@ -50,16 +66,19 @@
                                                 <div class="invalid-feedback">{{ $message }}</div>
                                             @enderror
                                         </div>
-                                    </div>
-                                </div>
-                            </div>
+                    </div>
+                </div>
+            </div>
 
-                            <div class="col-md-6">
-                                <div class="card">
-                                    <div class="card-header bg-light">
-                                        <h6 class="mb-0"><i class="fas fa-sliders-h me-2"></i>Paramètres d'évaluation</h6>
-                                    </div>
-                                    <div class="card-body">
+            <div class="col-md-6">
+                <div class="card-moderne">
+                    <div class="main-card-header">
+                        <h3 class="main-card-title">
+                            <i class="fas fa-sliders-h"></i>Paramètres d'évaluation
+                        </h3>
+                        <p class="main-card-subtitle">Coefficient et volume horaire</p>
+                    </div>
+                    <div class="main-card-body">
                                         <!-- Coefficient -->
                                         <div class="mb-3">
                                             <label for="coefficient" class="form-label">Coefficient <span class="text-danger">*</span></label>
@@ -111,48 +130,87 @@
                                                 <div class="invalid-feedback">{{ $message }}</div>
                                             @enderror
                                         </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-                        <div class="row mb-4">
-                            <div class="col-md-6">
-                                <div class="card">
-                                    <div class="card-header bg-light">
-                                        <h6 class="mb-0"><i class="fas fa-link me-2"></i>Associations</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <!-- Filière associée -->
+        <!-- Associations -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card-moderne">
+                    <div class="main-card-header">
+                        <h3 class="main-card-title">
+                            <i class="fas fa-link"></i>Associations
+                        </h3>
+                        <p class="main-card-subtitle">Filières et niveaux d'étude</p>
+                    </div>
+                    <div class="main-card-body">
+                                        <!-- Filières associées (multi-sélection) -->
                                         <div class="mb-3">
-                                            <label for="filiere_id" class="form-label">Filière</label>
-                                            <select class="form-select select2 @error('filiere_id') is-invalid @enderror" id="filiere_id" name="filiere_id">
-                                                <option value="">Sélectionner une filière</option>
+                                            <label class="form-label">
+                                                <i class="fas fa-graduation-cap me-1"></i>Filières
+                                                <small class="text-muted">(Sélection multiple autorisée)</small>
+                                            </label>
+                                            <div class="border rounded p-3 @error('filieres') is-invalid @enderror" style="max-height: 200px; overflow-y: auto;">
                                                 @foreach($filieres as $filiere)
-                                                    <option value="{{ $filiere->id }}" {{ old('filiere_id') == $filiere->id ? 'selected' : '' }}>
-                                                        {{ $filiere->name }} ({{ $filiere->code }})
-                                                    </option>
+                                                <div class="form-check mb-2">
+                                                    <input class="form-check-input filiere-check" type="checkbox" 
+                                                           value="{{ $filiere->id }}" 
+                                                           id="create_filiere_{{ $filiere->id }}" 
+                                                           name="filieres[]"
+                                                           {{ in_array($filiere->id, old('filieres', [])) ? 'checked' : '' }}>
+                                                    <label class="form-check-label" for="create_filiere_{{ $filiere->id }}">
+                                                        <strong>{{ $filiere->name }}</strong>
+                                                        @if($filiere->code)
+                                                            <small class="text-muted">({{ $filiere->code }})</small>
+                                                        @endif
+                                                    </label>
+                                                </div>
                                                 @endforeach
-                                            </select>
-                                            @error('filiere_id')
-                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            </div>
+                                            @error('filieres')
+                                                <div class="invalid-feedback d-block">{{ $message }}</div>
                                             @enderror
                                         </div>
 
-                                        <!-- Niveau d'étude associé -->
+                                        <!-- Niveaux d'étude associés (multi-sélection) -->
                                         <div class="mb-3">
-                                            <label for="niveau_etude_id" class="form-label">Niveau d'étude</label>
-                                            <select class="form-select select2 @error('niveau_etude_id') is-invalid @enderror" id="niveau_etude_id" name="niveau_etude_id">
-                                                <option value="">Sélectionner un niveau d'étude</option>
+                                            <label class="form-label">
+                                                <i class="fas fa-layer-group me-1"></i>Niveaux d'étude
+                                                <small class="text-muted">(Sélection multiple autorisée)</small>
+                                            </label>
+                                            <div class="border rounded p-3 @error('niveaux') is-invalid @enderror" style="max-height: 200px; overflow-y: auto;">
                                                 @foreach($niveauxEtudes as $niveau)
-                                                    <option value="{{ $niveau->id }}" {{ old('niveau_etude_id') == $niveau->id ? 'selected' : '' }}>
-                                                        {{ $niveau->name }} ({{ $niveau->code }})
-                                                    </option>
+                                                <div class="form-check mb-2">
+                                                    <input class="form-check-input niveau-check" type="checkbox" 
+                                                           value="{{ $niveau->id }}" 
+                                                           id="create_niveau_{{ $niveau->id }}" 
+                                                           name="niveaux[]"
+                                                           {{ in_array($niveau->id, old('niveaux', [])) ? 'checked' : '' }}>
+                                                    <label class="form-check-label" for="create_niveau_{{ $niveau->id }}">
+                                                        <strong>{{ $niveau->name }}</strong>
+                                                        @if($niveau->code)
+                                                            <small class="text-muted">({{ $niveau->code }})</small>
+                                                        @endif
+                                                    </label>
+                                                </div>
                                                 @endforeach
-                                            </select>
-                                            @error('niveau_etude_id')
-                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            </div>
+                                            @error('niveaux')
+                                                <div class="invalid-feedback d-block">{{ $message }}</div>
                                             @enderror
+                                        </div>
+
+                                        <!-- Aperçu des combinaisons -->
+                                        <div class="mb-3">
+                                            <label class="form-label">
+                                                <i class="fas fa-eye me-1"></i>Aperçu des combinaisons
+                                            </label>
+                                            <div id="create-combinations-preview" class="alert alert-info">
+                                                <i class="fas fa-info-circle me-2"></i>
+                                                Sélectionnez des filières et des niveaux pour voir les combinaisons possibles.
+                                            </div>
                                         </div>
 
                                         <!-- Type de formation -->
@@ -176,16 +234,19 @@
                                                 <div class="invalid-feedback">{{ $message }}</div>
                                             @enderror
                                         </div>
-                                    </div>
-                                </div>
-                            </div>
+                    </div>
+                </div>
+            </div>
 
-                            <div class="col-md-6">
-                                <div class="card">
-                                    <div class="card-header bg-light">
-                                        <h6 class="mb-0"><i class="fas fa-align-left me-2"></i>Description et options</h6>
-                                    </div>
-                                    <div class="card-body">
+            <div class="col-md-6">
+                <div class="card-moderne">
+                    <div class="main-card-header">
+                        <h3 class="main-card-title">
+                            <i class="fas fa-align-left"></i>Description et options
+                        </h3>
+                        <p class="main-card-subtitle">Informations complémentaires</p>
+                    </div>
+                    <div class="main-card-body">
                                         <!-- Description -->
                                         <div class="mb-3">
                                             <label for="description" class="form-label">Description</label>
@@ -203,26 +264,23 @@
                                         <small class="form-text text-muted">
                                             <i class="fas fa-info-circle me-1"></i>Une matière inactive ne pourra pas être utilisée dans les emplois du temps ou les évaluations.
                                         </small>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-12 text-end">
-                                <button type="reset" class="btn btn-secondary me-2">
-                                    <i class="fas fa-undo me-1"></i>Réinitialiser
-                                </button>
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-save me-1"></i>Enregistrer la matière
-                                </button>
-                            </div>
-                        </div>
-                    </form>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+
+        <!-- Action Buttons -->
+        <div class="card-moderne">
+            <div class="p-lg text-center">
+                <button type="reset" class="btn-acasi secondary me-2">
+                    <i class="fas fa-undo me-1"></i>Réinitialiser
+                </button>
+                <button type="submit" class="btn-acasi primary">
+                    <i class="fas fa-save me-1"></i>Enregistrer la matière
+                </button>
+            </div>
+        </div>
+    </form>
 </div>
 
 @endsection
@@ -261,6 +319,71 @@
 
         $('#heures_cm, #heures_td, #heures_tp, #heures_stage, #heures_perso').on('input', calculateTotalHours);
         calculateTotalHours(); // Calcul initial
+
+        // ===== GESTION DE L'APERÇU DES COMBINAISONS =====
+        
+        // Fonction pour mettre à jour l'aperçu des combinaisons
+        function updateCreateCombinationsPreview() {
+            const selectedFilieres = [];
+            const selectedNiveaux = [];
+            
+            $('.filiere-check:checked').each(function() {
+                const label = $(this).next('label').find('strong').text();
+                selectedFilieres.push({
+                    id: $(this).val(),
+                    name: label
+                });
+            });
+            
+            $('.niveau-check:checked').each(function() {
+                const label = $(this).next('label').find('strong').text();
+                selectedNiveaux.push({
+                    id: $(this).val(),
+                    name: label
+                });
+            });
+            
+            const previewDiv = $('#create-combinations-preview');
+            
+            if (selectedFilieres.length === 0 || selectedNiveaux.length === 0) {
+                previewDiv.html(`
+                    <i class="fas fa-info-circle me-2"></i>
+                    Sélectionnez au moins une filière et un niveau pour voir les combinaisons possibles.
+                `).removeClass('alert-success').addClass('alert-info');
+                return;
+            }
+            
+            let combinationsHtml = `
+                <div class="d-flex align-items-center mb-3">
+                    <i class="fas fa-check-circle text-success me-2"></i>
+                    <strong>${selectedFilieres.length * selectedNiveaux.length} combinaison(s) sélectionnée(s)</strong>
+                </div>
+                <div class="row">
+            `;
+            
+            selectedFilieres.forEach(filiere => {
+                selectedNiveaux.forEach(niveau => {
+                    combinationsHtml += `
+                        <div class="col-md-4 mb-2">
+                            <div class="badge bg-primary text-wrap p-2">
+                                <i class="fas fa-link me-1"></i>
+                                ${filiere.name} ↔ ${niveau.name}
+                            </div>
+                        </div>
+                    `;
+                });
+            });
+            
+            combinationsHtml += '</div>';
+            
+            previewDiv.html(combinationsHtml).removeClass('alert-info').addClass('alert-success');
+        }
+
+        // Écouter les changements dans les checkboxes
+        $(document).on('change', '.filiere-check, .niveau-check', updateCreateCombinationsPreview);
+        
+        // Mise à jour initiale
+        updateCreateCombinationsPreview();
     });
 </script>
 @endsection

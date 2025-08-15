@@ -52,12 +52,15 @@
         margin-bottom: var(--space-lg);
         box-shadow: var(--shadow-card);
         position: relative;
-        height: 400px;
+        height: 450px;
+        overflow: hidden; /* Empêcher les scrollbars */
     }
     
     .chart-container canvas {
         max-height: 100%;
+        max-width: 100%;
         width: 100% !important;
+        height: auto !important;
     }
     
     .matiere-card {
@@ -283,7 +286,12 @@
     
     @media (max-width: 768px) {
         .chart-container {
-            height: 300px;
+            height: 350px;
+            padding: var(--space-md);
+        }
+        
+        .chart-container canvas {
+            max-height: 300px !important;
         }
         
         .matiere-stats {
@@ -293,6 +301,17 @@
         
         .summary-stats {
             grid-template-columns: 1fr;
+        }
+    }
+    
+    @media (max-width: 576px) {
+        .chart-container {
+            height: 300px;
+            padding: var(--space-sm);
+        }
+        
+        .chart-container h5 {
+            font-size: 1rem;
         }
     }
 </style>
@@ -317,7 +336,7 @@
                 <div class="col-md-3">
                     <label for="annee_id" class="form-label">Année Universitaire</label>
                     <select name="annee_id" id="annee_id" class="form-select" onchange="this.form.submit()">
-                        <option value="">Toutes les années</option>
+                        <option value="all" {{ request('annee_id') == 'all' ? 'selected' : '' }}>Toutes les années</option>
                         @foreach($annees as $annee)
                             <option value="{{ $annee->id }}" {{ request('annee_id') == $annee->id ? 'selected' : '' }}>
                                 {{ $annee->name }}
@@ -327,10 +346,13 @@
                 </div>
                 <div class="col-md-3">
                     <label for="classe_id" class="form-label">Classe</label>
-                    <select name="classe_id" id="classe_id" class="form-select" onchange="this.form.submit()">
+                    <select name="classe_id" id="classe_id" class="form-select" onchange="filterByClasse(this.value)">
                         <option value="">Toutes les classes</option>
                         @foreach($classes as $classe)
-                            <option value="{{ $classe->id }}" {{ request('classe_id') == $classe->id ? 'selected' : '' }}>
+                            <option value="{{ $classe->id }}" 
+                                    data-filiere-id="{{ $classe->filiere_id }}"
+                                    data-niveau-id="{{ $classe->niveau_etude_id }}"
+                                    {{ request('classe_id') == $classe->id ? 'selected' : '' }}>
                                 {{ $classe->name }} ({{ $classe->filiere->name ?? 'N/A' }})
                             </option>
                         @endforeach
@@ -414,7 +436,13 @@
                 <h5><i class="fas fa-list me-2"></i>Détail par Matière</h5>
                 <p class="text-muted mb-0">
                     @if(request('classe_id'))
-                        Classe : {{ $classes->find(request('classe_id'))->name ?? 'N/A' }}
+                        @php
+                            $classeHeader = $classes->find(request('classe_id'));
+                            $filiereHeader = $classeHeader?->filiere?->name ?? 'N/A';
+                            $niveauHeader = $classeHeader?->niveau?->name ?? 'N/A';
+                        @endphp
+                        Classe : {{ $classeHeader?->name ?? 'N/A' }} 
+                        <span class="badge bg-info ms-2">{{ $filiereHeader }} - {{ $niveauHeader }}</span>
                     @else
                         Toutes les classes
                     @endif
@@ -422,15 +450,37 @@
                         - Année : {{ $annees->find(request('annee_id'))->name ?? 'N/A' }}
                     @endif
                 </p>
+                @if(request('classe_id'))
+                    <small class="text-info">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Les configurations s'appliqueront spécifiquement à la combinaison {{ $filiereHeader }} - {{ $niveauHeader }}
+                    </small>
+                @else
+                    <small class="text-success">
+                        <i class="fas fa-list-ul me-1"></i>
+                        Affichage détaillé : chaque configuration par combinaison filière/niveau
+                    </small>
+                @endif
             </div>
             <div class="card-body">
                 @if($repartition->count() > 0)
                     @foreach($repartition as $index => $item)
-                    <div class="matiere-card">
+                    <div class="matiere-card" 
+                         data-matiere-id="{{ $item['matiere']->id }}"
+                         data-filiere-id="{{ $item['filiere_id'] ?? '' }}" 
+                         data-niveau-id="{{ $item['niveau_id'] ?? '' }}"
+                         data-matiere-name="{{ $item['matiere']->name }}"
+                         data-filiere-name="{{ $item['filiere']->name ?? '' }}"
+                         data-niveau-name="{{ $item['niveau']->name ?? '' }}">
                         <div class="d-flex justify-content-between align-items-start mb-3">
                             <div>
-                                <h6 class="matiere-nom">{{ $item['matiere']->name ?? 'Matière inconnue' }}</h6>
-                                <small class="text-muted">{{ $item['matiere']->code ?? 'N/A' }}</small>
+                                <h6 class="matiere-nom">
+                                    {{ $item['matiere']->name ?? 'Matière inconnue' }}
+                                    <br><small class="badge bg-secondary">{{ $item['filiere']->name ?? 'N/A' }} - {{ $item['niveau']->name ?? 'N/A' }}</small>
+                                </h6>
+                                <small class="text-muted">
+                                    {{ $item['matiere']->code ?? 'N/A' }}
+                                </small>
                             </div>
                             <div class="objectif-badge {{ $item['est_configure'] ? ($item['pourcentage_realise'] >= 80 ? 'atteint' : ($item['pourcentage_realise'] >= 50 ? 'proche' : 'loin')) : 'loin' }}">
                                 @if($item['est_configure'])
@@ -496,10 +546,48 @@
                                 <i class="fas fa-exclamation-triangle"></i>
                             </div>
                             <div class="fw-bold mb-1">Planning non configuré</div>
-                            <div class="text-muted mb-2">Aucune planification horaire n'a été définie pour cette matière.</div>
-                            <a href="{{ route('esbtp.planning-general.index') }}" class="btn btn-sm btn-warning configure-btn">
-                                <i class="fas fa-cog me-1"></i>Configurer le planning
-                            </a>
+                            @if($item['matiere'])
+                                @php
+                                    // Pour vue spécifique par classe
+                                    if (request('classe_id')) {
+                                        $classeSelectionnee = $classes->find(request('classe_id'));
+                                        $filiereId = $classeSelectionnee?->filiere_id ?? null;
+                                        $niveauId = $classeSelectionnee?->niveau_id ?? null;
+                                        $filiereName = $classeSelectionnee?->filiere?->name ?? 'Non spécifiée';
+                                        $niveauName = $classeSelectionnee?->niveau?->name ?? 'Non spécifié';
+                                    } else {
+                                        // Pour vue détaillée : utiliser les données de la combinaison spécifique
+                                        $filiereId = $item['filiere_id'] ?? null;
+                                        $niveauId = $item['niveau_id'] ?? null;
+                                        $filiereName = $item['filiere']->name ?? 'Non spécifiée';
+                                        $niveauName = $item['niveau']->name ?? 'Non spécifié';
+                                    }
+                                    
+                                    $contexteTexte = ($filiereId && $niveauId) ? 
+                                        "pour " . $filiereName . " - " . $niveauName :
+                                        "pour les filières/niveaux de cette année";
+                                @endphp
+                                <div class="text-muted mb-2">
+                                    Aucune planification horaire n'a été définie pour cette matière {{ $contexteTexte }}.
+                                </div>
+                                <button type="button" class="btn btn-sm btn-warning configure-btn" 
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#configureModal"
+                                        data-matiere-id="{{ $item['matiere']->id }}"
+                                        data-matiere-name="{{ $item['matiere']->name }}"
+                                        data-matiere-code="{{ $item['matiere']->code }}"
+                                        data-filiere-id="{{ $filiereId }}"
+                                        data-niveau-id="{{ $niveauId }}"
+                                        data-filiere-name="{{ $filiereName }}"
+                                        data-niveau-name="{{ $niveauName }}"
+                                        title="Configurer {{ $contexteTexte }}">
+                                    <i class="fas fa-cog me-1"></i>Configurer {{ $classeSelectionnee ? $filiereName . ' - ' . $niveauName : 'le planning' }}
+                                </button>
+                            @else
+                                <span class="text-muted">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>Matière non définie
+                                </span>
+                            @endif
                         </div>
                         @endif
                         
@@ -523,14 +611,205 @@
         </div>
     </div>
 </div>
+
+<!-- Modal de configuration rapide du planning -->
+<div class="modal fade" id="configureModal" tabindex="-1" aria-labelledby="configureModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="configureModalLabel">
+                    <i class="fas fa-cog me-2"></i>Configuration du planning
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="configureForm">
+                    @csrf
+                    <input type="hidden" id="matiere_id" name="matiere_id">
+                    <input type="hidden" name="annee_id" value="{{ $anneeSelectionnee?->id }}">
+                    <input type="hidden" name="classe_id" value="{{ request('classe_id') }}">
+                    <input type="hidden" id="filiere_id" name="filiere_id">
+                    <input type="hidden" id="niveau_id" name="niveau_id">
+                    
+                    <!-- Informations contextuelles -->
+                    <div class="alert alert-info">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <div>
+                                <strong>Configuration pour :</strong>
+                                <span id="modal-context">
+                                    Année {{ $anneeSelectionnee?->name }}
+                                    @if(request('classe_id'))
+                                        @php
+                                            $classeModal = $classes->find(request('classe_id'));
+                                        @endphp
+                                        - {{ $classeModal?->filiere?->name ?? 'N/A' }} - {{ $classeModal?->niveau?->name ?? 'N/A' }}
+                                        <small class="text-muted">(Classe : {{ $classeModal?->name ?? 'N/A' }})</small>
+                                    @else
+                                        - Toutes les filières/niveaux
+                                    @endif
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Configuration de base -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="volume_horaire" class="form-label">
+                                    <i class="fas fa-clock me-1"></i>Volume horaire prévu (heures)
+                                </label>
+                                <input type="number" class="form-control" id="volume_horaire" name="volume_horaire" 
+                                       min="1" max="200" step="0.5" required>
+                                <div class="form-text">Nombre total d'heures à enseigner</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="periode" class="form-label">
+                                    <i class="fas fa-calendar-alt me-1"></i>Période
+                                </label>
+                                <select class="form-select" id="periode" name="periode" required>
+                                    <option value="">Choisir une période</option>
+                                    <option value="semestre1">Semestre 1</option>
+                                    <option value="semestre2">Semestre 2</option>
+                                    <option value="annee">Année complète</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="nb_seances" class="form-label">
+                                    <i class="fas fa-list-ol me-1"></i>Nombre de séances
+                                </label>
+                                <input type="number" class="form-control" id="nb_seances" name="nb_seances" 
+                                       min="1" max="100" required>
+                                <div class="form-text">Nombre total de séances prévues</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="duree_seance" class="form-label">
+                                    <i class="fas fa-hourglass-half me-1"></i>Durée par séance (heures)
+                                </label>
+                                <input type="number" class="form-control" id="duree_seance" name="duree_seance" 
+                                       min="0.5" max="8" step="0.5" required>
+                                <div class="form-text">Durée moyenne de chaque séance</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Calcul automatique -->
+                    <div class="alert alert-secondary" id="calcul-automatique" style="display: none;">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-calculator me-2"></i>
+                            <span id="calcul-text"></span>
+                        </div>
+                    </div>
+
+                    <!-- Notes optionnelles -->
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">
+                            <i class="fas fa-sticky-note me-1"></i>Notes (optionnel)
+                        </label>
+                        <textarea class="form-control" id="notes" name="notes" rows="2" 
+                                  placeholder="Remarques ou objectifs spécifiques..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Annuler
+                </button>
+                <a href="{{ route('esbtp.planning-general.index', array_filter(['annee_id' => $anneeSelectionnee?->id, 'classe_id' => request('classe_id')])) }}" 
+                   class="btn btn-info">
+                    <i class="fas fa-cogs me-1"></i>Configuration avancée
+                </a>
+                <button type="submit" form="configureForm" class="btn btn-primary" id="saveBtn">
+                    <i class="fas fa-save me-1"></i>Enregistrer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
 <script>
+// ===== FILTRAGE CLIENT-SIDE (fonction globale) =====
+function filterByClasse(classeId) {
+    const cards = document.querySelectorAll('.matiere-card');
+    console.log('Filtrage par classe:', classeId);
+    console.log('Nombre de cartes:', cards.length);
+    
+    if (!classeId) {
+        // Afficher toutes les cartes
+        cards.forEach(card => {
+            card.style.display = 'block';
+        });
+        console.log('Affichage de toutes les cartes');
+        if (typeof updateChartsWithVisibleData === 'function') {
+            updateChartsWithVisibleData();
+        }
+        return;
+    }
+    
+    // Récupérer les infos de la classe sélectionnée
+    const classeSelect = document.querySelector('select[name="classe_id"]');
+    const selectedOption = classeSelect ? classeSelect.querySelector(`option[value="${classeId}"]`) : null;
+    if (!selectedOption) {
+        console.error('Option sélectionnée introuvable');
+        return;
+    }
+    
+    const targetFiliereId = selectedOption.dataset.filiereId;
+    const targetNiveauId = selectedOption.dataset.niveauId;
+    
+    console.log('Filière cible:', targetFiliereId, 'Niveau cible:', targetNiveauId);
+    
+    let visibleCount = 0;
+    
+    // Filtrer les cartes
+    cards.forEach(card => {
+        const cardFiliereId = card.dataset.filiereId;
+        const cardNiveauId = card.dataset.niveauId;
+        
+        console.log('Carte:', card.dataset.matiereName, 'Filière:', cardFiliereId, 'Niveau:', cardNiveauId);
+        
+        if (cardFiliereId === targetFiliereId && cardNiveauId === targetNiveauId) {
+            card.style.display = 'block';
+            visibleCount++;
+        } else {
+            card.style.display = 'none';
+        }
+    });
+    
+    console.log('Cartes visibles après filtrage:', visibleCount);
+    if (typeof updateChartsWithVisibleData === 'function') {
+        updateChartsWithVisibleData();
+    }
+}
+
 $(document).ready(function() {
     // Données pour les graphiques
-    const repartitionData = @json($repartition->toArray());
-    const totalHeures = repartitionData.reduce((sum, item) => sum + parseFloat(item.total_heures), 0);
+    const repartitionDataRaw = @json($repartition->toArray());
+    console.log('Données graphiques brutes:', repartitionDataRaw);
+    
+    // Convertir l'objet en array
+    const repartitionData = Object.values(repartitionDataRaw);
+    console.log('Données graphiques (array):', repartitionData);
+    console.log('Nombre d\'éléments:', repartitionData.length);
+    
+    const totalHeures = repartitionData.reduce((sum, item) => {
+        // Utiliser les heures planifiées si disponibles, sinon les heures réalisées
+        const heures = item.est_configure ? parseFloat(item.heures_planifiees) : parseFloat(item.total_heures);
+        return sum + heures;
+    }, 0);
+    console.log('Total heures:', totalHeures);
     
     // Les pourcentages sont déjà calculés côté serveur, pas besoin de les recalculer
     
@@ -541,31 +820,52 @@ $(document).ready(function() {
     ];
     
     if (repartitionData.length > 0) {
-        // Graphique en secteurs
-        const pieCtx = document.getElementById('pieChart').getContext('2d');
-        new Chart(pieCtx, {
-            type: 'pie',
-            data: {
-                labels: repartitionData.map(item => item.matiere ? item.matiere.name : 'N/A'),
-                datasets: [{
-                    data: repartitionData.map(item => parseFloat(item.total_heures)),
-                    backgroundColor: colors.slice(0, repartitionData.length),
-                    borderWidth: 2,
-                    borderColor: '#fff'
-                }]
-            },
+        console.log('Création des graphiques...');
+        
+        // Vérifier les éléments du DOM
+        const pieElement = document.getElementById('pieChart');
+        const barElement = document.getElementById('barChart');
+        console.log('PieChart element:', pieElement);
+        console.log('BarChart element:', barElement);
+        
+        if (pieElement) {
+            // Graphique en secteurs
+            const pieCtx = pieElement.getContext('2d');
+            const pieLabels = repartitionData.map(item => {
+                if (item.matiere && item.matiere.name) {
+                    return item.matiere.name; // Utiliser seulement le nom de la matière
+                }
+                return 'N/A';
+            });
+            console.log('Labels pie:', pieLabels);
+            
+            new Chart(pieCtx, {
+                type: 'pie',
+                data: {
+                    labels: pieLabels,
+                    datasets: [{
+                        data: repartitionData.map(item => {
+                            // Utiliser les heures planifiées si disponibles, sinon les heures réalisées
+                            return item.est_configure ? parseFloat(item.heures_planifiees) : parseFloat(item.total_heures);
+                        }),
+                        backgroundColor: colors.slice(0, repartitionData.length),
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        position: 'right',
+                        position: window.innerWidth < 768 ? 'bottom' : 'right',
                         labels: {
                             usePointStyle: true,
-                            padding: 20,
+                            padding: window.innerWidth < 768 ? 10 : 15,
                             font: {
-                                size: 12
-                            }
+                                size: window.innerWidth < 768 ? 10 : 11
+                            },
+                            boxWidth: window.innerWidth < 768 ? 10 : 12
                         }
                     },
                     tooltip: {
@@ -581,21 +881,36 @@ $(document).ready(function() {
                 }
             }
         });
+        } else {
+            console.error('Élément pieChart introuvable dans le DOM');
+        }
         
-        // Graphique en barres
-        const barCtx = document.getElementById('barChart').getContext('2d');
-        new Chart(barCtx, {
-            type: 'bar',
-            data: {
-                labels: repartitionData.map(item => item.matiere ? item.matiere.name : 'N/A'),
-                datasets: [{
-                    label: 'Heures',
-                    data: repartitionData.map(item => parseFloat(item.total_heures)),
-                    backgroundColor: colors.slice(0, repartitionData.length),
-                    borderWidth: 1,
-                    borderColor: '#fff'
-                }]
-            },
+        if (barElement) {
+            // Graphique en barres
+            const barCtx = barElement.getContext('2d');
+            const barLabels = repartitionData.map(item => {
+                if (item.matiere && item.matiere.name) {
+                    return item.matiere.name; // Utiliser seulement le nom de la matière
+                }
+                return 'N/A';
+            });
+            console.log('Labels bar:', barLabels);
+            
+            new Chart(barCtx, {
+                type: 'bar',
+                data: {
+                    labels: barLabels,
+                    datasets: [{
+                        label: 'Heures planifiées',
+                        data: repartitionData.map(item => {
+                            // Utiliser les heures planifiées si disponibles, sinon les heures réalisées
+                            return item.est_configure ? parseFloat(item.heures_planifiees) : parseFloat(item.total_heures);
+                        }),
+                        backgroundColor: colors.slice(0, repartitionData.length),
+                        borderWidth: 1,
+                        borderColor: '#fff'
+                    }]
+                },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
@@ -625,6 +940,12 @@ $(document).ready(function() {
                 }
             }
         });
+        } else {
+            console.error('Élément barChart introuvable dans le DOM');
+        }
+    } else {
+        console.warn('Aucune donnée disponible pour les graphiques');
+        console.log('RepartitionData:', repartitionData);
     }
     
     // Animation des barres de progression
@@ -655,6 +976,229 @@ $(document).ready(function() {
             }, 300);
         }, index * 100);
     });
+
+    // Gestion du modal de configuration
+    document.getElementById('configureModal').addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        const matiereId = button.getAttribute('data-matiere-id');
+        const matiereName = button.getAttribute('data-matiere-name');
+        const matiereCode = button.getAttribute('data-matiere-code');
+        const filiereId = button.getAttribute('data-filiere-id');
+        const niveauId = button.getAttribute('data-niveau-id');
+        const filiereName = button.getAttribute('data-filiere-name');
+        const niveauName = button.getAttribute('data-niveau-name');
+        
+        // Mettre à jour le titre du modal
+        document.getElementById('configureModalLabel').innerHTML = '<i class="fas fa-cog me-2"></i>Configuration du planning - ' + matiereName;
+        
+        // Remplir le formulaire
+        document.getElementById('matiere_id').value = matiereId;
+        document.getElementById('filiere_id').value = filiereId || '';
+        document.getElementById('niveau_id').value = niveauId || '';
+        
+        // Mettre à jour le contexte affiché
+        const contextElement = document.getElementById('modal-context');
+        if (contextElement) {
+            let contextHTML = 'Année {{ $anneeSelectionnee?->name }}';
+            if (filiereId && niveauId) {
+                contextHTML += ` - <strong>${filiereName} - ${niveauName}</strong>`;
+                const classeInfo = button.closest('.matiere-card')?.querySelector('.matiere-nom')?.textContent || 'N/A';
+                contextHTML += ` <small class="text-muted">(Configuration spécifique)</small>`;
+            } else {
+                contextHTML += ' - <em>Toutes les filières/niveaux</em>';
+            }
+            contextElement.innerHTML = contextHTML;
+        }
+        
+        // Réinitialiser le formulaire
+        document.getElementById('configureForm').reset();
+        document.getElementById('matiere_id').value = matiereId; // Remettre l'ID après reset
+        document.getElementById('filiere_id').value = filiereId || '';
+        document.getElementById('niveau_id').value = niveauId || '';
+        document.getElementById('calcul-automatique').style.display = 'none';
+    });
+
+    // Calculs automatiques en temps réel
+    function updateCalculations() {
+        const volumeHoraire = parseFloat(document.getElementById('volume_horaire').value) || 0;
+        const nbSeances = parseInt(document.getElementById('nb_seances').value) || 0;
+        const dureeSeance = parseFloat(document.getElementById('duree_seance').value) || 0;
+        
+        if (volumeHoraire > 0 && nbSeances > 0 && dureeSeance > 0) {
+            const totalCalcule = nbSeances * dureeSeance;
+            const difference = Math.abs(totalCalcule - volumeHoraire);
+            
+            let message = '';
+            let alertClass = 'alert-secondary';
+            
+            if (Math.abs(totalCalcule - volumeHoraire) < 0.1) {
+                message = `Parfait ! ${nbSeances} séances de ${dureeSeance}h = ${totalCalcule}h`;
+                alertClass = 'alert-success';
+            } else if (totalCalcule > volumeHoraire) {
+                message = `Attention : ${nbSeances} séances de ${dureeSeance}h = ${totalCalcule}h (${difference}h de plus que prévu)`;
+                alertClass = 'alert-warning';
+            } else {
+                message = `Attention : ${nbSeances} séances de ${dureeSeance}h = ${totalCalcule}h (${difference}h de moins que prévu)`;
+                alertClass = 'alert-warning';
+            }
+            
+            const calculElement = document.getElementById('calcul-automatique');
+            calculElement.className = 'alert ' + alertClass;
+            document.getElementById('calcul-text').textContent = message;
+            calculElement.style.display = 'block';
+        } else {
+            document.getElementById('calcul-automatique').style.display = 'none';
+        }
+    }
+
+    // Auto-calcul des valeurs manquantes
+    function setupInputListeners() {
+        const inputs = ['volume_horaire', 'nb_seances', 'duree_seance'];
+        inputs.forEach(inputId => {
+            document.getElementById(inputId).addEventListener('input', function() {
+                updateCalculations();
+                
+                // Auto-calcul intelligent
+                const volumeHoraire = parseFloat(document.getElementById('volume_horaire').value) || 0;
+                const nbSeances = parseInt(document.getElementById('nb_seances').value) || 0;
+                const dureeSeance = parseFloat(document.getElementById('duree_seance').value) || 0;
+                
+                // Si on a volume et nb séances, calculer durée
+                if (volumeHoraire > 0 && nbSeances > 0 && dureeSeance === 0) {
+                    const dureeCalculee = Math.round((volumeHoraire / nbSeances) * 2) / 2; // Arrondir au 0.5 près
+                    document.getElementById('duree_seance').value = dureeCalculee;
+                }
+                
+                // Si on a volume et durée, calculer nb séances
+                if (volumeHoraire > 0 && dureeSeance > 0 && nbSeances === 0) {
+                    const seancesCalculees = Math.round(volumeHoraire / dureeSeance);
+                    document.getElementById('nb_seances').value = seancesCalculees;
+                }
+                
+                updateCalculations();
+            });
+        });
+    }
+    
+    // Initialiser les écouteurs d'événements
+    setupInputListeners();
+
+    // Soumission du formulaire
+    document.getElementById('configureForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const submitBtn = document.getElementById('saveBtn');
+        
+        // Désactiver le bouton
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Enregistrement...';
+        
+        fetch('{{ route("esbtp.planning-general.configure-rapide") }}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        })
+        .then(response => response.json())
+        .then(response => {
+            if (response.success) {
+                // Fermer le modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('configureModal'));
+                modal.hide();
+                
+                // Afficher un message de succès
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed';
+                alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+                alertDiv.innerHTML = `
+                    <i class="fas fa-check-circle me-2"></i>${response.message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                document.body.appendChild(alertDiv);
+                
+                // Recharger la page après un délai
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            } else {
+                alert('Erreur : ' + response.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Erreur lors de la sauvegarde');
+        })
+        .finally(() => {
+            // Réactiver le bouton
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Enregistrer';
+        });
+    });
+
+    // ===== DEBUG MODAL =====
+    console.log('Bootstrap version:', typeof bootstrap !== 'undefined' ? 'loaded' : 'NOT LOADED');
+    
+    // Test de clic sur les boutons
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('button[data-bs-target="#configureModal"]')) {
+            console.log('Bouton modal cliqué!');
+            console.log('Button:', e.target.closest('button'));
+            console.log('Modal element:', document.getElementById('configureModal'));
+            
+            // Test manuel d'ouverture du modal
+            setTimeout(() => {
+                const modalEl = document.getElementById('configureModal');
+                if (modalEl && typeof bootstrap !== 'undefined') {
+                    const modalInstance = new bootstrap.Modal(modalEl);
+                    modalInstance.show();
+                    console.log('Modal ouvert manuellement');
+                } else {
+                    console.error('Bootstrap ou modal element introuvable');
+                }
+            }, 100);
+        }
+    });
+    
+    // Vérifier l'état du modal
+    const modalElement = document.getElementById('configureModal');
+    if (modalElement) {
+        console.log('Modal element found:', modalElement);
+        modalElement.addEventListener('shown.bs.modal', function () {
+            console.log('Modal shown event triggered');
+        });
+        modalElement.addEventListener('hidden.bs.modal', function () {
+            console.log('Modal hidden event triggered');
+        });
+        modalElement.addEventListener('show.bs.modal', function () {
+            console.log('Modal show event triggered');
+        });
+    } else {
+        console.error('Modal element NOT FOUND');
+    }
+
+    
+    // Appliquer le filtre initial si une classe est sélectionnée
+    const currentClasseId = new URLSearchParams(window.location.search).get('classe_id');
+    if (currentClasseId) {
+        filterByClasse(currentClasseId);
+    }
+    
+    // Fonction globale pour mettre à jour les graphiques avec les données visibles
+    window.updateChartsWithVisibleData = function() {
+        const visibleCards = document.querySelectorAll('.matiere-card[style*="block"], .matiere-card:not([style*="none"])');
+        const filteredData = Array.from(visibleCards).map(card => {
+            const matiereId = card.dataset.matiereId;
+            const originalItem = repartitionData.find(item => item.matiere && item.matiere.id == matiereId);
+            return originalItem;
+        }).filter(item => item);
+        
+        console.log('Données filtrées pour graphiques:', filteredData);
+        
+        // TODO: Recréer les graphiques avec filteredData
+        // Pour l'instant, on garde les graphiques existants
+    }
 });
 </script>
 @endpush

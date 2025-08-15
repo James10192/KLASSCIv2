@@ -715,6 +715,16 @@
             }
 
             .quick-actions-grid {
+                grid-template-columns: repeat(2, 1fr);
+                min-width: 240px;
+                gap: 6px;
+                padding: 8px;
+            }
+        }
+
+        /* Seulement sur très petit écran (mobiles portrait) passer à 1 colonne */
+        @media (max-width: 479.98px) {
+            .quick-actions-grid {
                 grid-template-columns: 1fr;
                 min-width: 200px;
             }
@@ -1336,12 +1346,12 @@
 
                         <!-- Student Management -->
                         <div class="menu-accordion">
-                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') ? 'active' : '' }}">
+                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.reinscription.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-user-graduate"></i></div>
                                 <div class="menu-text">Étudiants</div>
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
-                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') ? 'show' : '' }}">
+                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.reinscription.*') ? 'show' : '' }}">
                                 <a href="{{ route('esbtp.etudiants.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.etudiants.*') ? 'active' : '' }}">
                                     <i class="fas fa-list"></i>
                                     <span>Liste des Étudiants</span>
@@ -1350,6 +1360,12 @@
                                     <i class="fas fa-user-plus"></i>
                                     <span>Nouvelle Inscription</span>
                                 </a>
+                                @if(auth()->user()->hasRole(['superAdmin', 'secretaire', 'coordinateur']))
+                                <a href="{{ route('esbtp.reinscription.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.reinscription.*') ? 'active' : '' }}">
+                                    <i class="fas fa-redo"></i>
+                                    <span>Réinscriptions</span>
+                                </a>
+                                @endif
                             </div>
                         </div>
                     @endif
@@ -1379,12 +1395,12 @@
 
                         <!-- Student Management -->
                         <div class="menu-accordion">
-                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.attendances.*') ? 'active' : '' }}">
+                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.attendances.*') || Request::routeIs('esbtp.reinscription.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-user-graduate"></i></div>
                                 <div class="menu-text">Gestion étudiants</div>
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
-                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.attendances.*') ? 'show' : '' }}">
+                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.attendances.*') || Request::routeIs('esbtp.reinscription.*') ? 'show' : '' }}">
                                 <a href="{{ route('esbtp.etudiants.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.etudiants.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Liste des étudiants</span>
@@ -1392,6 +1408,10 @@
                                 <a href="{{ route('esbtp.inscriptions.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.inscriptions.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Inscriptions</span>
+                                </a>
+                                <a href="{{ route('esbtp.reinscription.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.reinscription.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Réinscriptions</span>
                                 </a>
                                 <a href="{{ route('esbtp.attendances.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.attendances.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
@@ -1456,7 +1476,15 @@
                             </a>
                         </div>
 
-                        <!-- Planning General -->
+                        <!-- Matières -->
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.matieres.index') }}" class="menu-link {{ Request::routeIs('esbtp.matieres.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-book"></i></div>
+                                <div class="menu-text">Matières</div>
+                            </a>
+                        </div>
+
+                        <!-- Planning Général -->
                         <div class="menu-item">
                             <a href="{{ route('esbtp.planning-general.index') }}" class="menu-link {{ Request::routeIs('esbtp.planning-general.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-calendar-check"></i></div>
@@ -1737,6 +1765,13 @@
                             <div class="menu-text">Mon profil</div>
                         </a>
                     </div>
+                    @elserole('teacher')
+                    <div class="menu-item">
+                        <a href="{{ route('teacher.profile') }}" class="menu-link {{ request()->routeIs('teacher.profile') ? 'active' : '' }}">
+                            <div class="menu-icon"><i class="fas fa-chalkboard-teacher"></i></div>
+                            <div class="menu-text">Mon profil</div>
+                        </a>
+                    </div>
                     @else
                     <div class="menu-item">
                         <a href="{{ route('admin.profile') }}" class="menu-link {{ request()->routeIs('admin.profile') ? 'active' : '' }}">
@@ -1917,6 +1952,10 @@
                                         @elserole('coordinateur')
                                             <a class="dropdown-item" href="{{ route('coordinateur.profile') }}">
                                                 <i class="fas fa-user-tie me-2"></i> Mon profil
+                                            </a>
+                                        @elserole('teacher')
+                                            <a class="dropdown-item" href="{{ route('teacher.profile') }}">
+                                                <i class="fas fa-chalkboard-teacher me-2"></i> Mon profil
                                             </a>
                                         @else
                                             <a class="dropdown-item" href="{{ route('admin.profile') }}">

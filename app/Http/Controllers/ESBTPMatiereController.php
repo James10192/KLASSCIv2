@@ -62,6 +62,10 @@ class ESBTPMatiereController extends Controller
             'heures_perso' => 'required|integer|min:0',
             'niveau_etude_id' => 'nullable|exists:esbtp_niveau_etudes,id',
             'filiere_id' => 'nullable|exists:esbtp_filieres,id',
+            'filieres' => 'nullable|array',
+            'filieres.*' => 'exists:esbtp_filieres,id',
+            'niveaux' => 'nullable|array',
+            'niveaux.*' => 'exists:esbtp_niveau_etudes,id',
             'type_formation' => 'required|in:generale,technologique_professionnelle',
             'couleur' => 'nullable|string|max:50',
             'is_active' => 'required|boolean',
@@ -74,14 +78,31 @@ class ESBTPMatiereController extends Controller
         // Créer la nouvelle matière
         $matiere = ESBTPMatiere::create($validatedData);
 
-        // Attacher les filières si présentes
-        if ($request->has('filiere_id')) {
-            $matiere->filieres()->attach($request->filiere_id);
+        // Gérer les liaisons multiple ou simples
+        $filiereIds = [];
+        $niveauIds = [];
+        
+        // Priorité à la multi-sélection si elle existe
+        if ($request->has('filieres') && is_array($request->filieres)) {
+            $filiereIds = $request->filieres;
+        } elseif ($request->has('filiere_id') && $request->filiere_id) {
+            $filiereIds = [$request->filiere_id];
+        }
+        
+        if ($request->has('niveaux') && is_array($request->niveaux)) {
+            $niveauIds = $request->niveaux;
+        } elseif ($request->has('niveau_etude_id') && $request->niveau_etude_id) {
+            $niveauIds = [$request->niveau_etude_id];
         }
 
-        // Attacher les niveaux d'études si présents
-        if ($request->has('niveau_etude_id')) {
-            $matiere->niveaux()->attach($request->niveau_etude_id);
+        // Attacher les filières
+        if (!empty($filiereIds)) {
+            $matiere->filieres()->attach($filiereIds);
+        }
+
+        // Attacher les niveaux d'études
+        if (!empty($niveauIds)) {
+            $matiere->niveaux()->attach($niveauIds);
         }
 
         // Rediriger avec un message de succès
@@ -418,5 +439,122 @@ class ESBTPMatiereController extends Controller
         }
 
         return redirect()->back()->with('success', 'Les matières ont été attachées aux classes avec succès.');
+    }
+
+    /**
+     * Récupère les liaisons existantes d'une matière (filières et niveaux).
+     *
+     * @param  \App\Models\ESBTPMatiere  $matiere
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getLiaisons(ESBTPMatiere $matiere)
+    {
+        try {
+            $matiere->load(['filieres', 'niveaux']);
+            
+            $filieres = $matiere->filieres->pluck('id')->toArray();
+            $niveaux = $matiere->niveaux->pluck('id')->toArray();
+            
+            return response()->json([
+                'success' => true,
+                'filieres' => $filieres,
+                'niveaux' => $niveaux
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de la récupération des liaisons: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la récupération des liaisons'
+            ], 500);
+        }
+    }
+
+    /**
+     * Met à jour les liaisons d'une matière avec les filières et niveaux sélectionnés.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Models\ESBTPMatiere  $matiere
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function updateLiaisons(Request $request, ESBTPMatiere $matiere)
+    {
+        try {
+            $validated = $request->validate([
+                'filieres' => 'required|array|min:1',
+                'filieres.*' => 'exists:esbtp_filieres,id',
+                'niveaux' => 'required|array|min:1',
+                'niveaux.*' => 'exists:esbtp_niveau_etudes,id',
+            ]);
+
+            // Synchroniser les filières
+            $matiere->filieres()->sync($validated['filieres']);
+            
+            // Synchroniser les niveaux
+            $matiere->niveaux()->sync($validated['niveaux']);
+            
+            // Mettre à jour les champs directs pour compatibilité (optionnel)
+            if (count($validated['filieres']) == 1 && count($validated['niveaux']) == 1) {
+                $matiere->update([
+                    'filiere_id' => $validated['filieres'][0],
+                    'niveau_etude_id' => $validated['niveaux'][0],
+                    'updated_by' => Auth::id()
+                ]);
+            }
+
+            $totalCombinations = count($validated['filieres']) * count($validated['niveaux']);
+            
+            return response()->json([
+                'success' => true,
+                'message' => "Liaisons mises à jour avec succès ! {$totalCombinations} combinaison(s) configurée(s)."
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Données invalides: ' . implode(', ', $e->validator->errors()->all())
+            ], 422);
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de la mise à jour des liaisons: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la sauvegarde des liaisons'
+            ], 500);
+        }
+    }
+
+    /**
+     * Récupère les statistiques de liaisons pour une matière.
+     *
+     * @param  \App\Models\ESBTPMatiere  $matiere
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getStatistiquesLiaisons(ESBTPMatiere $matiere)
+    {
+        try {
+            $matiere->load(['filieres', 'niveaux', 'classes']);
+            
+            $stats = [
+                'filieres_count' => $matiere->filieres->count(),
+                'niveaux_count' => $matiere->niveaux->count(),
+                'classes_count' => $matiere->classes->count(),
+                'combinations_count' => $matiere->filieres->count() * $matiere->niveaux->count(),
+                'filieres_names' => $matiere->filieres->pluck('name')->toArray(),
+                'niveaux_names' => $matiere->niveaux->pluck('name')->toArray(),
+            ];
+            
+            return response()->json([
+                'success' => true,
+                'stats' => $stats
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de la récupération des statistiques: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la récupération des statistiques'
+            ], 500);
+        }
     }
 }

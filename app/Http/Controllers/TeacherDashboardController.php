@@ -98,7 +98,7 @@ class TeacherDashboardController extends Controller
             $notifications[] = [
                 'type' => 'warning',
                 'message' => 'Vous n\'avez pas encore fait votre émargement aujourd\'hui.',
-                'action' => route('esbtp.teacher.attendance.index'),
+                'action' => route('esbtp.attendance.mark'),
                 'action_text' => 'Émarger maintenant'
             ];
         }
@@ -135,31 +135,37 @@ class TeacherDashboardController extends Controller
     public function showRollCall($seanceId)
     {
         $user = Auth::user();
-        $teacher = \App\Models\ESBTPTeacher::where('user_id', $user->id)->first();
+        $callType = request()->get('type', 'start');
         
         $seance = ESBTPSeanceCours::with(['matiere', 'classe', 'classe.etudiants'])
             ->where('id', $seanceId)
-            ->where('teacher_id', $teacher->id ?? null)
+            ->where('teacher_id', $user->id)
             ->firstOrFail();
 
-        // Vérifier que l'enseignant est émargé aujourd'hui
-        $todayAttendance = ESBTPTeacherAttendance::where('teacher_id', $user->id)
-            ->whereDate('validated_at', Carbon::today())
-            ->first();
-
-        if (!$todayAttendance) {
-            return redirect()->route('teacher.dashboard')
-                ->with('error', 'Vous devez d\'abord faire votre émargement avant de pouvoir faire l\'appel.');
+        // **WORKFLOW** : Vérifier le workflow et les permissions
+        $workflow = \App\Models\ESBTPSessionWorkflow::getOrCreateForSession($seanceId, $user->id);
+        
+        // Vérifier si cette étape peut être exécutée
+        if ($callType === 'start' && !$workflow->canExecuteStep('call_start')) {
+            return redirect()->route('teacher.select-call-type', $seanceId)
+                ->with('error', 'Vous devez d\'abord compléter l\'émargement avant de faire l\'appel de début.');
+        }
+        
+        if ($callType === 'end' && !$workflow->canExecuteStep('call_end')) {
+            return redirect()->route('teacher.select-call-type', $seanceId)
+                ->with('error', 'Vous devez d\'abord effectuer l\'appel de début avant de faire l\'appel de fin.');
         }
 
         // Récupérer les étudiants de la classe
         $etudiants = $seance->classe->etudiants()->with('user')->get();
 
-        // Vérifier si l'appel a déjà été fait
-        $existingAttendances = ESBTPAttendance::where('seance_cours_id', $seanceId)->get();
+        // Vérifier si l'appel a déjà été fait pour ce type
+        $existingAttendances = ESBTPAttendance::where('seance_cours_id', $seanceId)
+            ->where('call_type', $callType)
+            ->get();
         $hasRollCall = $existingAttendances->isNotEmpty();
 
-        return view('dashboard.teacher-roll-call', compact('seance', 'etudiants', 'existingAttendances', 'hasRollCall'));
+        return view('dashboard.teacher-roll-call', compact('seance', 'etudiants', 'existingAttendances', 'hasRollCall', 'callType'));
     }
 
     /**
@@ -168,22 +174,38 @@ class TeacherDashboardController extends Controller
     public function storeRollCall(Request $request, $seanceId)
     {
         $user = Auth::user();
-        $teacher = \App\Models\ESBTPTeacher::where('user_id', $user->id)->first();
+        $callType = $request->input('call_type', 'start');
         
         $seance = ESBTPSeanceCours::where('id', $seanceId)
-            ->where('teacher_id', $teacher->id ?? null)
+            ->where('teacher_id', $user->id)
             ->firstOrFail();
 
         $request->validate([
             'attendances' => 'required|array',
-            'attendances.*' => 'in:present,absent,late'
+            'attendances.*' => 'in:present,absent,late',
+            'call_type' => 'required|in:start,end'
         ]);
+
+        // **WORKFLOW** : Vérifier que cette étape peut être exécutée
+        $workflow = \App\Models\ESBTPSessionWorkflow::getOrCreateForSession($seanceId, $user->id);
+        
+        if ($callType === 'start' && !$workflow->canExecuteStep('call_start')) {
+            return redirect()->route('teacher.select-call-type', $seanceId)
+                ->with('error', 'Vous ne pouvez pas effectuer l\'appel de début maintenant.');
+        }
+        
+        if ($callType === 'end' && !$workflow->canExecuteStep('call_end')) {
+            return redirect()->route('teacher.select-call-type', $seanceId)
+                ->with('error', 'Vous ne pouvez pas effectuer l\'appel de fin maintenant.');
+        }
 
         try {
             DB::beginTransaction();
 
-            // Supprimer les anciens appels pour cette séance
-            ESBTPAttendance::where('seance_cours_id', $seanceId)->delete();
+            // Supprimer les anciens appels pour cette séance et ce type
+            ESBTPAttendance::where('seance_cours_id', $seanceId)
+                ->where('call_type', $callType)
+                ->delete();
 
             // Enregistrer les nouveaux appels
             foreach ($request->attendances as $etudiantId => $status) {
@@ -195,9 +217,17 @@ class TeacherDashboardController extends Controller
                     'teacher_id' => $user->id,
                     'date' => Carbon::today(),
                     'status' => $status,
+                    'call_type' => $callType,
                     'is_justified' => false,
                     'created_by' => $user->id
                 ]);
+            }
+
+            // **WORKFLOW** : Marquer cette étape comme terminée
+            if ($callType === 'start') {
+                $workflow->markCallStartDone();
+            } elseif ($callType === 'end') {
+                $workflow->markCallEndDone();
             }
 
             DB::commit();
@@ -225,8 +255,11 @@ class TeacherDashboardController extends Controller
                 // Ne pas interrompre le processus principal
             }
 
-            return redirect()->route('teacher.dashboard')
-                ->with('success', 'Appel enregistré avec succès pour le cours de ' . $seance->matiere->name . '.');
+            $callTypeText = $callType === 'start' ? 'de début' : 'de fin';
+            $successMessage = "Appel {$callTypeText} enregistré avec succès pour le cours de " . $seance->matiere->name . ".";
+            
+            return redirect()->route('teacher.select-call-type', $seanceId)
+                ->with('success', $successMessage);
                 
         } catch (\Exception $e) {
             DB::rollback();

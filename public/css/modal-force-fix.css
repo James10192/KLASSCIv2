@@ -94,3 +94,53 @@ div.modal,
     /* Annuler les marges par défaut */
     margin: 0 !important;
 }
+
+/* ===== Centrage et élargissement du modal de configuration (Centrage viewport fixe) ===== */
+#configureModal.modal.show {
+    display: block !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 1055 !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+}
+
+#configureModal .modal-dialog {
+    position: fixed !important;
+    top: 50vh !important;
+    left: 50vw !important;
+    transform: translate(-50%, -50%) !important;
+    margin: 0 !important;
+    z-index: 1056 !important;
+    max-width: 90vw !important;
+}
+
+#configureModal .modal-content {
+    position: relative !important;
+    z-index: 1057 !important;
+    background: white !important;
+    border-radius: 8px !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* ===== DEBUG MODE DÉSACTIVÉ ===== */
+/*
+#configureModal {
+    border: 3px solid red !important;
+}
+
+#configureModal .modal-backdrop {
+    background-color: rgba(255, 0, 0, 0.5) !important;
+    z-index: 1054 !important;
+}
+
+#configureModal .modal-dialog {
+    border: 2px solid blue !important;
+}
+
+#configureModal .modal-content {
+    border: 2px solid green !important;
+}
+*/

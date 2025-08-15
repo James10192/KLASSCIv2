@@ -157,10 +157,18 @@ document.addEventListener('DOMContentLoaded', function() {
         },
 
         bindEvents() {
-            this.generateBtn.addEventListener('click', () => this.generateLink());
-            this.copyBtn.addEventListener('click', () => this.copyLink());
-            this.closeResult.addEventListener('click', () => this.hideResult());
-            this.refreshBtn.addEventListener('click', () => this.loadActiveLinks());
+            if (this.generateBtn) {
+                this.generateBtn.addEventListener('click', () => this.generateLink());
+            }
+            if (this.copyBtn) {
+                this.copyBtn.addEventListener('click', () => this.copyLink());
+            }
+            if (this.closeResult) {
+                this.closeResult.addEventListener('click', () => this.hideResult());
+            }
+            if (this.refreshBtn) {
+                this.refreshBtn.addEventListener('click', () => this.loadActiveLinks());
+            }
         },
 
         async generateLink() {
@@ -205,21 +213,33 @@ document.addEventListener('DOMContentLoaded', function() {
         },
 
         async loadActiveLinks() {
+            if (!this.linksContainer) {
+                console.log('Container des liens non trouvé, skip loadActiveLinks');
+                return;
+            }
+
             this.setLoading(this.refreshBtn, true);
 
             try {
                 const response = await fetch('/esbtp/evaluations/active-external-links');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
                 const links = await response.json();
-
                 this.renderActiveLinks(links);
             } catch (error) {
                 console.error('Erreur lors du chargement des liens actifs:', error);
-                this.linksContainer.innerHTML = `
-                    <div class="text-center text-danger py-4">
-                        <i class="fas fa-exclamation-triangle fa-2x"></i>
-                        <p class="mt-2">Erreur lors du chargement des liens</p>
-                    </div>
-                `;
+                
+                if (this.linksContainer) {
+                    this.linksContainer.innerHTML = `
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-info-circle fa-2x"></i>
+                            <p class="mt-2">Aucun lien externe actif pour le moment</p>
+                        </div>
+                    `;
+                }
             } finally {
                 this.setLoading(this.refreshBtn, false);
             }
@@ -358,6 +378,8 @@ document.addEventListener('DOMContentLoaded', function() {
         },
 
         setLoading(button, loading) {
+            if (!button) return;
+            
             if (loading) {
                 button.disabled = true;
                 const icon = button.querySelector('i');

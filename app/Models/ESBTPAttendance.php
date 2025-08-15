@@ -29,6 +29,7 @@ class ESBTPAttendance extends Model
         'heure_debut',
         'heure_fin',
         'statut', // 'present', 'absent', 'retard', 'excuse'
+        'call_type', // 'start', 'end'
         'commentaire',
         'document_path',
         'justified_at',

@@ -5,85 +5,115 @@
 @section('page_title', 'Profil SuperAdmin')
 
 @section('content')
-<div class="container-fluid">
-    <div class="row">
-        <!-- Carte d'informations personnelles -->
-        <div class="col-md-6 mx-auto">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="card-title mb-0"><i class="fas fa-user-shield me-2"></i>Profil SuperAdmin</h5>
+<div class="dashboard-acasi">
+    <div class="main-content">
+        <div class="dashboard-header">
+            <div class="header-info">
+                <h1 class="page-title">Mon Profil SuperAdmin</h1>
+                <p class="page-description">Informations personnelles et permissions administrateur</p>
+            </div>
+            <div class="header-actions">
+                <button type="button" class="btn-acasi btn-acasi-secondary" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+                    <i class="fas fa-key"></i>
+                    Changer mot de passe
+                </button>
+                <button type="button" class="btn-acasi btn-acasi-primary" data-bs-toggle="modal" data-bs-target="#editProfileModal">
+                    <i class="fas fa-edit"></i>
+                    Modifier profil
+                </button>
+            </div>
+        </div>
+
+        <div class="dashboard-main-grid" style="grid-template-columns: 1fr 2fr;">
+            <!-- Informations personnelles -->
+            <div class="main-card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-user-shield"></i>
+                        Informations personnelles
+                    </h3>
                 </div>
                 <div class="card-body">
-                    <div class="text-center mb-4">
+                    <div class="profile-photo-section">
                         @if($user->profile_photo_path)
-                            <img src="{{ Storage::url($user->profile_photo_path) }}" alt="Photo de profil" class="img-thumbnail rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
+                            <img src="{{ Storage::url($user->profile_photo_path) }}" alt="Photo de profil" class="profile-photo">
                         @else
-                            <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center text-white" style="width: 150px; height: 150px; margin: 0 auto;">
-                                <span style="font-size: 3rem;">{{ strtoupper(substr($user->name, 0, 1)) }}</span>
+                            <div class="profile-photo profile-photo-placeholder">
+                                <span>{{ strtoupper(substr($user->name, 0, 1)) }}</span>
                             </div>
                         @endif
-                        <h4 class="mt-3">{{ $user->name }}</h4>
-                        <p class="badge bg-danger">Super Administrateur</p>
-                        <p class="text-muted">{{ $user->email }}</p>
-                    </div>
-                    
-                    <h5 class="border-bottom pb-2 mb-3"><i class="fas fa-info-circle me-2"></i>Informations personnelles</h5>
-                    
-                    <div class="row mb-2">
-                        <div class="col-md-4 fw-bold">Nom complet:</div>
-                        <div class="col-md-8">{{ $user->name }}</div>
-                    </div>
-                    <div class="row mb-2">
-                        <div class="col-md-4 fw-bold">Email:</div>
-                        <div class="col-md-8">{{ $user->email }}</div>
-                    </div>
-                    <div class="row mb-2">
-                        <div class="col-md-4 fw-bold">Statut:</div>
-                        <div class="col-md-8">
-                            @if($user->is_active)
-                                <span class="badge bg-success">Actif</span>
-                            @else
-                                <span class="badge bg-danger">Inactif</span>
-                            @endif
+                        <div class="profile-info-basic">
+                            <h2 class="profile-name">{{ $user->name }}</h2>
+                            <span class="status-badge status-badge-danger">Super Administrateur</span>
+                            <p class="profile-subtitle">{{ $user->email }}</p>
                         </div>
                     </div>
-                    <div class="row mb-2">
-                        <div class="col-md-4 fw-bold">Date de création:</div>
-                        <div class="col-md-8">{{ $user->created_at->format('d/m/Y à H:i') }}</div>
-                    </div>
-                    <div class="row mb-2">
-                        <div class="col-md-4 fw-bold">Dernière connexion:</div>
-                        <div class="col-md-8">{{ $user->last_login_at ? \Carbon\Carbon::parse($user->last_login_at)->format('d/m/Y à H:i') : 'Jamais' }}</div>
-                    </div>
-                    
-                    <h5 class="border-bottom pb-2 mb-3 mt-4"><i class="fas fa-user-tag me-2"></i>Rôles et permissions</h5>
-                    
-                    <div class="row mb-2">
-                        <div class="col-md-4 fw-bold">Rôle:</div>
-                        <div class="col-md-8">
-                            <span class="badge bg-danger">Super Administrateur</span>
+
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <label>Nom complet</label>
+                            <span>{{ $user->name }}</span>
                         </div>
-                    </div>
-                    <div class="mb-3">
-                        <div class="fw-bold mb-2">Permissions:</div>
-                        <div class="d-flex flex-wrap gap-1">
-                            @foreach($user->getAllPermissions() as $permission)
-                                <span class="badge bg-info">{{ $permission->name }}</span>
-                            @endforeach
+                        <div class="info-item">
+                            <label>Email</label>
+                            <span>{{ $user->email }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Statut</label>
+                            <span>
+                                @if($user->is_active)
+                                    <span class="status-badge status-badge-success">Actif</span>
+                                @else
+                                    <span class="status-badge status-badge-danger">Inactif</span>
+                                @endif
+                            </span>
+                        </div>
+                        <div class="info-item">
+                            <label>Date de création</label>
+                            <span>{{ $user->created_at->format('d/m/Y à H:i') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Dernière connexion</label>
+                            <span>{{ $user->last_login_at ? \Carbon\Carbon::parse($user->last_login_at)->format('d/m/Y à H:i') : 'Jamais' }}</span>
                         </div>
                     </div>
                 </div>
-                <div class="card-footer text-center">
-                    <div class="row">
-                        <div class="col-6">
-                            <a href="#" class="btn btn-outline-primary btn-sm w-100" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
-                                <i class="fas fa-key me-1"></i>Changer mot de passe
-                            </a>
+            </div>
+
+            <!-- Rôles et permissions -->
+            <div class="main-card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-user-tag"></i>
+                        Rôles et permissions
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="stats-grid" style="grid-template-columns: 1fr;">
+                        <div class="stat-item">
+                            <div class="stat-icon">
+                                <i class="fas fa-crown"></i>
+                            </div>
+                            <div class="stat-content">
+                                <span class="stat-label">Rôle principal</span>
+                                <span class="stat-value">
+                                    <span class="status-badge status-badge-danger">Super Administrateur</span>
+                                </span>
+                            </div>
                         </div>
-                        <div class="col-6">
-                            <a href="#" class="btn btn-outline-secondary btn-sm w-100" data-bs-toggle="modal" data-bs-target="#editProfileModal">
-                                <i class="fas fa-edit me-1"></i>Modifier profil
-                            </a>
+                    </div>
+
+                    <div class="info-section">
+                        <h4 class="section-title">
+                            <i class="fas fa-key"></i>
+                            Permissions accordées
+                        </h4>
+                        <div class="permissions-grid">
+                            @foreach($user->getAllPermissions() as $permission)
+                                <div class="permission-item">
+                                    <span class="status-badge status-badge-info">{{ $permission->name }}</span>
+                                </div>
+                            @endforeach
                         </div>
                     </div>
                 </div>
@@ -96,11 +126,11 @@
 <div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="changePasswordModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
+            <div class="modal-header">
                 <h5 class="modal-title" id="changePasswordModalLabel">Changer mon mot de passe</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form action="{{ route('esbtp.admin.update-password') }}" method="POST">
+            <form id="changePasswordForm" action="{{ route('esbtp.admin.update-password') }}" method="POST">
                 @csrf
                 @method('PUT')
                 <div class="modal-body">
@@ -117,24 +147,27 @@
                         <input type="password" class="form-control" id="password_confirmation" name="password_confirmation" required>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn btn-primary">Changer mot de passe</button>
-                </div>
             </form>
+            <div class="modal-footer">
+                <button type="button" class="btn-acasi btn-acasi-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="submit" form="changePasswordForm" class="btn-acasi btn-acasi-primary">
+                    <i class="fas fa-key"></i>
+                    Changer mot de passe
+                </button>
+            </div>
         </div>
     </div>
 </div>
 
 <!-- Modal édition de profil -->
 <div class="modal fade" id="editProfileModal" tabindex="-1" aria-labelledby="editProfileModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
+            <div class="modal-header">
                 <h5 class="modal-title" id="editProfileModalLabel">Modifier mon profil</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form action="{{ route('esbtp.admin.update-profile') }}" method="POST" enctype="multipart/form-data">
+            <form id="editProfileForm" action="{{ route('esbtp.admin.update-profile') }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
                 <div class="modal-body">
@@ -152,11 +185,14 @@
                         <small class="form-text text-muted">Laissez vide pour conserver l'image actuelle.</small>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn btn-primary">Enregistrer les modifications</button>
-                </div>
             </form>
+            <div class="modal-footer">
+                <button type="button" class="btn-acasi btn-acasi-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="submit" form="editProfileForm" class="btn-acasi btn-acasi-primary">
+                    <i class="fas fa-save"></i>
+                    Enregistrer les modifications
+                </button>
+            </div>
         </div>
     </div>
 </div>

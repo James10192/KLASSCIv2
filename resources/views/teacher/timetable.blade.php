@@ -2,118 +2,295 @@
 
 @section('title', 'Emploi du temps - Enseignant')
 
-@section('content')
-<div class="container-fluid px-4">
-    <h1 class="mt-4">Mon emploi du temps</h1>
-    <ol class="breadcrumb mb-4">
-        <li class="breadcrumb-item"><a href="{{ route('teacher.dashboard') }}">Tableau de bord</a></li>
-        <li class="breadcrumb-item active">Emploi du temps</li>
-    </ol>
+@section('styles')
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+@endsection
 
-    <div class="card mb-4">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <div>
-                <i class="fas fa-calendar-alt me-1"></i>
-                Mon emploi du temps
+@section('content')
+<div class="dashboard-acasi">
+    <div class="main-content">
+        <!-- Header Section -->
+        <div class="dashboard-header">
+            <div class="header-left">
+                <h1><i class="fas fa-calendar-alt me-2"></i>Mon emploi du temps</h1>
+                <p class="header-subtitle">Consultez vos créneaux de cours de la semaine</p>
             </div>
-            <div>
-                <a href="{{ route('teacher.dashboard') }}" class="btn btn-sm btn-outline-primary">
-                    <i class="fas fa-arrow-left me-1"></i> Retour au tableau de bord
+            <div class="header-actions">
+                <a href="{{ route('teacher.dashboard') }}" class="btn-acasi secondary">
+                    <i class="fas fa-arrow-left"></i>Retour au tableau de bord
                 </a>
             </div>
         </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-bordered table-striped">
-                    <thead>
-                        <tr>
-                            <th>Horaire</th>
+
+        <!-- Emploi du temps -->
+        <div class="main-card">
+            <div class="main-card-header">
+                <div class="main-card-title">
+                    <i class="fas fa-calendar-week"></i>
+                    Planning hebdomadaire
+                </div>
+                <div class="main-card-subtitle">Votre emploi du temps de la semaine courante</div>
+            </div>
+            <div class="main-card-body">
+                <div class="timetable-container">
+                    <div class="timetable-grid">
+                        <!-- En-tête des jours -->
+                        <div class="timetable-header">
+                            <div class="time-header">Horaire</div>
                             @foreach($joursSemaine as $jour)
-                                <th>{{ $jour }}</th>
+                                <div class="day-header">{{ $jour }}</div>
                             @endforeach
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($creneaux as $creneau)
-                            @php
-                                [$start, $end] = explode('-', $creneau);
-                            @endphp
-                            <tr>
-                                <td class="fw-bold align-middle" style="font-size:0.95em;">{{ $creneau }}</td>
-                                @foreach($joursSemaine as $jourIndex => $jourNom)
-                                    @php
-                                        $seance = $emploiTempsSemaine[$jourIndex]->first(function($s) use ($start, $end) {
-                                            $debut = \Carbon\Carbon::parse($s->heure_debut)->format('H:i');
-                                            $fin = \Carbon\Carbon::parse($s->heure_fin)->format('H:i');
-                                            return ($start >= $debut && $start < $fin);
-                                        });
-                                    @endphp
-                                    <td class="p-1 align-middle" style="line-height:1.1;">
-                                        @if($seance)
-                                            <div class="tt-card-cours d-flex flex-column align-items-center justify-content-center h-100" style="min-width:60px; min-height:60px; font-size:0.92em;">
-                                                <span class="fw-bold text-primary">{{ $seance->matiere->name ?? 'Matière' }}</span>
-                                                <span class="text-muted small">{{ $seance->classe->name ?? '' }}</span>
-                                                <span class="badge bg-opacity-10 text-info border border-info mt-1">{{ $seance->salle ?? '' }}</span>
-                                            </div>
-                                        @else
-                                            <div class="tt-card-vide d-flex flex-column align-items-center justify-content-center h-100" style="min-width:60px; min-height:60px; font-size:0.92em;">
-                                                <i class="fas fa-coffee fa-sm text-muted mb-1"></i>
-                                                <span class="text-muted small">Pause</span>
-                                            </div>
-                                        @endif
-                                    </td>
-                                @endforeach
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+                        </div>
+                        
+                        <!-- Grille des créneaux -->
+                        <div class="timetable-body">
+                            @foreach($creneaux as $creneau)
+                                @php
+                                    [$start, $end] = explode('-', $creneau);
+                                @endphp
+                                <div class="timetable-row">
+                                    <div class="time-slot">
+                                        <div class="time-display">{{ $start }}</div>
+                                        <div class="time-end">{{ $end }}</div>
+                                    </div>
+                                    @foreach($joursSemaine as $jourIndex => $jourNom)
+                                        @php
+                                            $seance = $emploiTempsSemaine[$jourIndex]->first(function($s) use ($start, $end) {
+                                                $debut = \Carbon\Carbon::parse($s->heure_debut)->format('H:i');
+                                                $fin = \Carbon\Carbon::parse($s->heure_fin)->format('H:i');
+                                                return ($start >= $debut && $start < $fin);
+                                            });
+                                        @endphp
+                                        <div class="course-slot">
+                                            @if($seance)
+                                                <div class="course-card course-active">
+                                                    <div class="course-subject">{{ $seance->matiere->name ?? 'Matière' }}</div>
+                                                    <div class="course-class">{{ $seance->classe->name ?? '' }}</div>
+                                                    @if($seance->salle)
+                                                        <div class="course-room">
+                                                            <i class="fas fa-map-marker-alt"></i>
+                                                            {{ $seance->salle }}
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                            @else
+                                                <div class="course-card course-empty">
+                                                    <i class="fas fa-coffee"></i>
+                                                    <span>Libre</span>
+                                                </div>
+                                            @endif
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 @endsection
 
-@section('styles')
+@push('styles')
 <style>
-    .table-responsive { overflow-x: auto; }
-    .table thead th {
-        position: sticky;
-        top: 0;
-        background: #f8fafc;
-        z-index: 2;
+/* Styles spécifiques pour l'emploi du temps moderne */
+.timetable-container {
+    overflow-x: auto;
+    border-radius: var(--radius-medium);
+    background: var(--surface);
+    box-shadow: var(--shadow-card);
+}
+
+.timetable-grid {
+    min-width: 800px;
+}
+
+.timetable-header {
+    display: grid;
+    grid-template-columns: 120px repeat(7, 1fr);
+    background: linear-gradient(135deg, rgba(30, 58, 138, 0.05), rgba(30, 64, 175, 0.02));
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.time-header {
+    padding: var(--space-md);
+    font-weight: 700;
+    color: var(--primary);
+    font-size: var(--text-small);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.day-header {
+    padding: var(--space-md);
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: var(--text-normal);
+    text-align: center;
+    border-left: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.timetable-body {
+    display: flex;
+    flex-direction: column;
+}
+
+.timetable-row {
+    display: grid;
+    grid-template-columns: 120px repeat(7, 1fr);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    min-height: 80px;
+}
+
+.timetable-row:last-child {
+    border-bottom: none;
+}
+
+.time-slot {
+    padding: var(--space-md);
+    background: var(--background);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    border-right: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.time-display {
+    font-size: var(--text-normal);
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: var(--space-xs);
+}
+
+.time-end {
+    font-size: var(--text-small);
+    color: var(--text-secondary);
+}
+
+.course-slot {
+    padding: var(--space-sm);
+    border-left: 1px solid rgba(0, 0, 0, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.course-card {
+    width: 100%;
+    height: 100%;
+    padding: var(--space-md);
+    border-radius: var(--radius-small);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    transition: all 0.2s ease;
+    min-height: 64px;
+}
+
+.course-card.course-active {
+    background: linear-gradient(135deg, rgba(30, 58, 138, 0.08), rgba(30, 64, 175, 0.05));
+    border: 1px solid rgba(30, 58, 138, 0.15);
+    border-left: 4px solid var(--primary);
+}
+
+.course-card.course-active:hover {
+    background: linear-gradient(135deg, rgba(30, 58, 138, 0.12), rgba(30, 64, 175, 0.08));
+    border-color: rgba(30, 58, 138, 0.25);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-elevated);
+}
+
+.course-card.course-empty {
+    background: rgba(107, 114, 128, 0.05);
+    border: 1px solid rgba(107, 114, 128, 0.1);
+    color: var(--text-muted);
+}
+
+.course-subject {
+    font-size: var(--text-normal);
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: var(--space-xs);
+    line-height: 1.2;
+}
+
+.course-class {
+    font-size: var(--text-small);
+    color: var(--text-secondary);
+    margin-bottom: var(--space-xs);
+}
+
+.course-room {
+    font-size: var(--text-small);
+    color: var(--accent-blue);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+}
+
+.course-empty i {
+    font-size: 1.2rem;
+    margin-bottom: var(--space-xs);
+    opacity: 0.5;
+}
+
+.course-empty span {
+    font-size: var(--text-small);
+    font-weight: 500;
+}
+
+/* Responsive pour emploi du temps */
+@media (max-width: 768px) {
+    .timetable-header,
+    .timetable-row {
+        grid-template-columns: 100px repeat(7, minmax(120px, 1fr));
     }
-    .table {
-        border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(99,102,241,0.07);
-        overflow: hidden;
+    
+    .time-slot {
+        padding: var(--space-sm);
     }
-    .tt-card {
-        background: #fff;
-        border-left: 4px solid var(--nextadmin-primary, #6366f1);
-        min-height: 60px;
-        min-width: 60px;
-        transition: box-shadow 0.2s;
-        font-size: 0.92em;
+    
+    .course-card {
+        padding: var(--space-sm);
+        min-height: 56px;
     }
-    .tt-card:hover {
-        box-shadow: 0 4px 16px rgba(99,102,241,0.12);
+    
+    .course-subject {
+        font-size: var(--text-small);
     }
-    .tt-cours { border-color: #6366f1; background: rgba(99,102,241,0.07); }
-    .tt-td { border-color: #22c55e; background: rgba(34,197,94,0.07); }
-    .tt-tp { border-color: #f59e0b; background: rgba(245,158,11,0.07); }
-    .tt-badge-cours { background: #6366f1; color: #fff; }
-    .tt-badge-td { background: #22c55e; color: #fff; }
-    .tt-badge-tp { background: #f59e0b; color: #fff; }
-    .tt-card-vide {
-        background: #f3f4f6;
-        border-radius: 8px;
-        min-height: 60px;
-        min-width: 60px;
-        font-size: 0.92em;
+    
+    .course-class,
+    .course-room {
+        font-size: calc(var(--text-small) - 1px);
     }
-    @media (max-width: 991.98px) {
-        .table-responsive { font-size: 0.92rem; }
-        .tt-card, .tt-card-vide { min-width: 48px; min-height: 48px; font-size: 0.88em; }
+}
+
+@media (max-width: 480px) {
+    .timetable-header,
+    .timetable-row {
+        grid-template-columns: 80px repeat(7, minmax(100px, 1fr));
     }
+    
+    .course-card {
+        padding: var(--space-xs);
+        min-height: 48px;
+    }
+    
+    .time-display {
+        font-size: var(--text-small);
+    }
+    
+    .time-end {
+        font-size: calc(var(--text-small) - 1px);
+    }
+}
 </style>
-@endsection
+@endpush

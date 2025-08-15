@@ -210,8 +210,8 @@
                         <div class="col-md-6">
                             <div class="info-item">
                                 <strong>Période :</strong>
-                                {{ \Carbon\Carbon::parse($anneeSelectionnee->annee_debut)->format('d/m/Y') }} - 
-                                {{ \Carbon\Carbon::parse($anneeSelectionnee->annee_fin)->format('d/m/Y') }}
+                                {{ \Carbon\Carbon::parse($anneeSelectionnee->start_date)->format('d/m/Y') }} - 
+                                {{ \Carbon\Carbon::parse($anneeSelectionnee->end_date)->format('d/m/Y') }}
                             </div>
                             <div class="info-item mt-2">
                                 <strong>Statut :</strong>

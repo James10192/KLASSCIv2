@@ -14,15 +14,19 @@ use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\User;
 use App\Models\ESBTPEtudiant;
+use App\Services\PlanningConfigurationService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class ESBTPPlanningGeneralController extends Controller
 {
-    public function __construct()
+    protected $planningConfigService;
+
+    public function __construct(PlanningConfigurationService $planningConfigService)
     {
         $this->middleware('auth');
+        $this->planningConfigService = $planningConfigService;
     }
 
     /**
@@ -251,28 +255,38 @@ class ESBTPPlanningGeneralController extends Controller
         $periode = $request->input('periode', 'annee'); // semestre1, semestre2, ou annee
         
         $annees = ESBTPAnneeUniversitaire::orderBy('start_date', 'desc')->get();
-        $anneeSelectionnee = ESBTPAnneeUniversitaire::find($anneeId) ?? 
-                            ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        
+        // Gérer la sélection d'année
+        if (empty($anneeId) || $anneeId === 'all') {
+            // "Toutes les années" - utiliser l'année courante pour l'affichage mais traiter toutes les données
+            $anneeSelectionnee = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+            if (!$anneeSelectionnee && $annees->count() > 0) {
+                $anneeSelectionnee = $annees->first();
+            }
+            // Pour "toutes les années", on passe null à la méthode de calcul
+            $anneeIdPourCalcul = null;
+        } else {
+            $anneeSelectionnee = ESBTPAnneeUniversitaire::find($anneeId);
+            $anneeIdPourCalcul = $anneeId;
+        }
         $classes = ESBTPClasse::with(['filiere', 'niveau'])->orderBy('name')->get();
         
-        // Répartition globale ou par classe avec comparaison planifié vs réalisé
-        if ($classeId) {
-            $repartition = $this->calculerRepartitionMatieresClasse($classeId, $anneeId, $periode);
-        } else {
-            $repartition = $this->calculerRepartitionMatieres($anneeId, $periode);
-        }
+        // Toujours afficher toutes les combinaisons détaillées
+        // Le filtrage par classe se fera côté client en JavaScript
+        $repartition = $this->calculerRepartitionMatieresDetaillees($anneeIdPourCalcul, $periode);
         
         // Debug: vérifier les données
         \Log::info('Repartition data:', [
             'count' => $repartition->count(),
             'anneeId' => $anneeId,
+            'anneeIdPourCalcul' => $anneeIdPourCalcul,
             'classeId' => $classeId,
             'periode' => $periode,
             'sample' => $repartition->take(2)->toArray()
         ]);
         
         // Comparaison avec les objectifs
-        $objectifsComparaison = $this->comparerAvecObjectifs($repartition, $classeId, $anneeId);
+        $objectifsComparaison = $this->comparerAvecObjectifs($repartition, $classeId, $anneeIdPourCalcul);
 
         return view('esbtp.planning-general.repartition-matieres', compact(
             'annees', 'anneeSelectionnee', 'classes', 'repartition', 'objectifsComparaison', 'anneeId', 'classeId'
@@ -311,6 +325,119 @@ class ESBTPPlanningGeneralController extends Controller
             'annees', 'anneeSelectionnee', 'allocationHoraire', 'programmationHebdomadaire',
             'codesEmargement', 'tauxPresenceClasses', 'mois'
         ));
+    }
+
+    /**
+     * Configuration rapide d'une planification via AJAX
+     */
+    public function configureRapide(Request $request)
+    {
+        try {
+            // Convertir la période du format frontend vers le format service
+            $requestData = $request->all();
+            if (isset($requestData['periode'])) {
+                $requestData['semestre'] = match($requestData['periode']) {
+                    'semestre1', 'S1' => 1,
+                    'semestre2', 'S2' => 2,
+                    'annee', 'Annuel' => 1, // Par défaut semestre 1 pour annuel
+                    default => 1
+                };
+            }
+
+            // Utiliser le service de configuration
+            if ($request->filiere_id && $request->niveau_id) {
+                // Configuration spécifique
+                $planification = $this->planningConfigService->configureRapide($requestData);
+                $matiere = ESBTPMatiere::find($request->matiere_id);
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => "Configuration du planning de {$matiere->name} pour la filière/niveau spécifié enregistrée avec succès !",
+                    'planification' => $planification
+                ]);
+            } else {
+                // Configuration en lot pour toutes les combinaisons existantes
+                $selections = $this->getExistingCombinations($request->annee_id);
+                $baseConfig = $requestData;
+                
+                $results = $this->planningConfigService->configureBulk($selections, $baseConfig);
+                $successCount = $results->where('success', true)->count();
+                $matiere = ESBTPMatiere::find($request->matiere_id);
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => "Configuration du planning de {$matiere->name} appliquée à {$successCount} combinaison(s) filière/niveau",
+                    'results' => $results
+                ]);
+            }
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Données invalides : ' . implode(', ', $e->validator->errors()->all())
+            ], 422);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la configuration : ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Méthode pour la configuration avancée utilisant le service
+     */
+    public function configureAvance(Request $request)
+    {
+        try {
+            $planification = $this->planningConfigService->configureAvance($request->all());
+            
+            return redirect()->back()->with('success', 'Configuration avancée enregistrée avec succès !');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return redirect()->back()->withErrors($e->validator)->withInput();
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Erreur lors de la configuration : ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * API pour obtenir les options de configuration d'une matière
+     */
+    public function getConfigurationOptions(int $matiereId, Request $request)
+    {
+        try {
+            $options = $this->planningConfigService->getConfigurationOptions($matiereId, $request->input('annee_id'));
+            
+            return response()->json([
+                'success' => true,
+                'options' => $options
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Obtenir les combinaisons existantes pour configuration en lot
+     */
+    private function getExistingCombinations(int $anneeId): array
+    {
+        $combinaisons = ESBTPPlanificationAcademique::where('annee_universitaire_id', $anneeId)
+            ->select('filiere_id', 'niveau_id')
+            ->distinct()
+            ->get();
+
+        return $combinaisons->map(function ($combinaison) use ($anneeId) {
+            return [
+                'filiere_id' => $combinaison->filiere_id,
+                'niveau_id' => $combinaison->niveau_id,
+                'annee_id' => $anneeId
+            ];
+        })->toArray();
     }
 
     // ============ MÉTHODES PRIVÉES DE CALCUL ============
@@ -583,6 +710,82 @@ class ESBTPPlanningGeneralController extends Controller
             ];
         });
     }
+
+    /**
+     * Calcule la répartition détaillée par combinaison filière/niveau (pour vue globale)
+     */
+    private function calculerRepartitionMatieresDetaillees($anneeId, $periode = 'annee')
+    {
+        // Récupérer toutes les planifications avec leurs filières/niveaux
+        $planificationsQuery = ESBTPPlanificationAcademique::with(['matiere', 'filiere', 'niveauEtude'])
+            ->select('matiere_id', 'filiere_id', 'niveau_etude_id', 
+                    DB::raw('SUM(volume_horaire_total) as heures_planifiees'))
+            ->groupBy('matiere_id', 'filiere_id', 'niveau_etude_id');
+            
+        if ($anneeId) {
+            $planificationsQuery->where('annee_universitaire_id', $anneeId);
+        }
+        
+        // Filtrer par semestre si spécifié
+        if ($periode === 'semestre1') {
+            $planificationsQuery->where('semestre', 1);
+        } elseif ($periode === 'semestre2') {
+            $planificationsQuery->where('semestre', 2);
+        }
+        
+        $planifications = $planificationsQuery->get();
+        
+        // Récupérer les heures réalisées par combinaison matière/filière/niveau
+        $seancesQuery = ESBTPSeanceCours::with(['matiere', 'classe.filiere', 'classe.niveau'])
+            ->join('esbtp_emploi_temps', 'esbtp_seance_cours.emploi_temps_id', '=', 'esbtp_emploi_temps.id')
+            ->join('esbtp_classes', 'esbtp_emploi_temps.classe_id', '=', 'esbtp_classes.id')
+            ->select('esbtp_seance_cours.matiere_id', 'esbtp_classes.filiere_id', 'esbtp_classes.niveau_etude_id',
+                    DB::raw('COUNT(*) as nb_seances'), 
+                    DB::raw('SUM(TIME_TO_SEC(TIMEDIFF(esbtp_seance_cours.heure_fin, esbtp_seance_cours.heure_debut))/3600) as total_heures'))
+            ->groupBy('esbtp_seance_cours.matiere_id', 'esbtp_classes.filiere_id', 'esbtp_classes.niveau_etude_id');
+        
+        if ($anneeId) {
+            $seancesQuery->where('esbtp_emploi_temps.annee_universitaire_id', $anneeId);
+        }
+        
+        $seancesRealisees = $seancesQuery->get()->keyBy(function($item) {
+            return $item->matiere_id . '_' . $item->filiere_id . '_' . $item->niveau_etude_id;
+        });
+        
+        // Calculer le total pour les pourcentages
+        $totalHeuresGlobal = $seancesRealisees->sum('total_heures');
+        
+        // Construire le résultat détaillé
+        return $planifications->map(function($planification) use ($seancesRealisees, $totalHeuresGlobal, $periode) {
+            $key = $planification->matiere_id . '_' . $planification->filiere_id . '_' . $planification->niveau_etude_id;
+            $seanceRealisee = $seancesRealisees->get($key);
+            
+            $totalHeures = $seanceRealisee ? $seanceRealisee->total_heures : 0;
+            $nbSeances = $seanceRealisee ? $seanceRealisee->nb_seances : 0;
+            $heuresPlanifiees = $planification->heures_planifiees;
+            $heuresRestantes = max(0, $heuresPlanifiees - $totalHeures);
+            
+            return [
+                'matiere' => $planification->matiere,
+                'filiere' => $planification->filiere,
+                'niveau' => $planification->niveauEtude,
+                'filiere_id' => $planification->filiere_id,
+                'niveau_id' => $planification->niveau_etude_id,
+                'nb_seances' => $nbSeances,
+                'total_heures' => round($totalHeures, 2),
+                'heures_planifiees' => round($heuresPlanifiees, 2),
+                'heures_restantes' => round($heuresRestantes, 2),
+                'pourcentage_realise' => $heuresPlanifiees > 0 ? round(($totalHeures / $heuresPlanifiees) * 100, 1) : 0,
+                'pourcentage' => $totalHeuresGlobal > 0 ? round(($totalHeures / $totalHeuresGlobal) * 100, 1) : 0,
+                'est_configure' => $heuresPlanifiees > 0,
+                'periode' => $periode,
+                'combinaison_unique' => $planification->matiere->name . ' - ' . 
+                                      $planification->filiere->name . ' - ' . 
+                                      $planification->niveauEtude->name
+            ];
+        })->sortBy('combinaison_unique');
+    }
+
     
     private function comparerAvecObjectifs($repartition, $classeId, $anneeId) { 
         return []; 

@@ -382,7 +382,7 @@
                             </div>
                             <div class="meta-item">
                                 <i class="fas fa-calendar"></i>
-                                <span>Depuis {{ $teacher->created_at->format('M Y') }}</span>
+                                <span>Depuis {{ $teacher->created_at ? $teacher->created_at->format('M Y') : 'Non disponible' }}</span>
                             </div>
                         </div>
                     </div>
@@ -603,12 +603,12 @@
                                     <i class="fas fa-edit me-2"></i>Modifier le profil
                                 </a>
                                 
-                                <a href="{{ route('esbtp.enseignants.matieres', $teacher) }}" class="btn-acasi secondary">
+                                <a href="{{ route('esbtp.enseignants.matieres', ['teacher' => $teacher]) }}" class="btn-acasi secondary">
                                     <i class="fas fa-book me-2"></i>Gérer les matières
                                 </a>
                                 
                                 @if($teacher->status === 'active')
-                                <form action="{{ route('esbtp.enseignants.toggleStatus', $teacher) }}" method="POST" 
+                                <form action="{{ route('esbtp.enseignants.toggleStatus', ['teacher' => $teacher]) }}" method="POST" 
                                       onsubmit="return confirm('Désactiver cet enseignant ?')">
                                     @csrf
                                     <button type="submit" class="btn-acasi warning w-100">
@@ -616,7 +616,7 @@
                                     </button>
                                 </form>
                                 @else
-                                <form action="{{ route('esbtp.enseignants.toggleStatus', $teacher) }}" method="POST" 
+                                <form action="{{ route('esbtp.enseignants.toggleStatus', ['teacher' => $teacher]) }}" method="POST" 
                                       onsubmit="return confirm('Activer cet enseignant ?')">
                                     @csrf
                                     <button type="submit" class="btn-acasi success w-100">
@@ -625,7 +625,7 @@
                                 </form>
                                 @endif
                                 
-                                <form action="{{ route('esbtp.enseignants.destroy', $teacher) }}" method="POST" 
+                                <form action="{{ route('esbtp.enseignants.destroy', ['enseignant' => $teacher]) }}" method="POST" 
                                       onsubmit="return confirm('Supprimer définitivement cet enseignant ? Cette action est irréversible.')">
                                     @csrf
                                     @method('DELETE')
@@ -721,11 +721,11 @@
                             </div>
                             <div class="info-row">
                                 <span class="info-label">Créé le</span>
-                                <span class="info-value">{{ $teacher->created_at->format('d/m/Y') }}</span>
+                                <span class="info-value">{{ $teacher->created_at ? $teacher->created_at->format('d/m/Y') : 'Non disponible' }}</span>
                             </div>
                             <div class="info-row">
                                 <span class="info-label">Modifié le</span>
-                                <span class="info-value">{{ $teacher->updated_at->format('d/m/Y') }}</span>
+                                <span class="info-value">{{ $teacher->updated_at ? $teacher->updated_at->format('d/m/Y') : 'Non disponible' }}</span>
                             </div>
                             @if($teacher->createdBy)
                             <div class="info-row">

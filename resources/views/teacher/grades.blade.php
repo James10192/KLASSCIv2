@@ -8,23 +8,22 @@
 
 @section('content')
 <div class="dashboard-acasi">
-    <!-- Header -->
-    <div class="dashboard-header">
-        <div class="header-left">
-            <h1><i class="fas fa-edit me-2"></i>Gestion des notes</h1>
-            <p class="header-subtitle">Gérer les évaluations et les notes de vos étudiants</p>
-        </div>
-        <div class="header-actions">
-            <a href="{{ route('teacher.dashboard') }}" class="btn-secondary me-2">
-                <i class="fas fa-arrow-left me-1"></i>Retour
-            </a>
-            <a href="{{ route('esbtp.evaluations.create') }}" class="btn-primary">
-                <i class="fas fa-plus-circle me-1"></i>Nouvelle évaluation
-            </a>
-        </div>
-    </div>
-
     <div class="main-content">
+        <!-- Header -->
+        <div class="dashboard-header">
+            <div class="header-left">
+                <h1><i class="fas fa-edit me-2"></i>Gestion des notes</h1>
+                <p class="header-subtitle">Gérer les évaluations et les notes de vos étudiants</p>
+            </div>
+            <div class="header-actions">
+                <a href="{{ route('teacher.dashboard') }}" class="btn-acasi secondary">
+                    <i class="fas fa-arrow-left"></i>Retour
+                </a>
+                <a href="{{ route('esbtp.evaluations.create') }}" class="btn-acasi primary">
+                    <i class="fas fa-plus-circle"></i>Nouvelle évaluation
+                </a>
+            </div>
+        </div>
         <!-- Statistiques rapides -->
         <div class="dashboard-stats">
             <div class="stat-card">
@@ -149,8 +148,8 @@
                             <i class="fas fa-clipboard-list"></i>
                             <h3>Aucune évaluation</h3>
                             <p>Vous n'avez pas encore créé d'évaluations.</p>
-                            <a href="{{ route('esbtp.evaluations.create') }}" class="btn-primary">
-                                <i class="fas fa-plus-circle me-1"></i> Créer une évaluation
+                            <a href="{{ route('esbtp.evaluations.create') }}" class="btn-acasi primary">
+                                <i class="fas fa-plus-circle"></i> Créer une évaluation
                             </a>
                         </div>
                     @endif
@@ -539,6 +538,33 @@
 .empty-state.small p {
     color: var(--muted);
     margin: 0;
+}
+
+/* Amélioration de l'empty-state pour les boutons */
+.empty-state .btn-acasi {
+    margin-top: var(--space-lg);
+    padding: var(--space-md) var(--space-xl);
+    font-size: var(--text-normal);
+    font-weight: 600;
+    box-shadow: var(--shadow-elevated);
+    border-radius: var(--radius-medium);
+}
+
+.empty-state .btn-acasi:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+}
+
+.empty-state h3 {
+    color: var(--text-primary);
+    margin-bottom: var(--space-sm);
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.empty-state p {
+    margin-bottom: 0;
+    color: var(--text-secondary);
 }
 
 @media (max-width: 768px) {

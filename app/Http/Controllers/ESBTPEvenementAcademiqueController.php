@@ -88,6 +88,72 @@ class ESBTPEvenementAcademiqueController extends Controller
     }
 
     /**
+     * Show the form for creating a quick academic event (start/end of year).
+     */
+    public function createQuick($type, $anneeId)
+    {
+        // Vérifier que le type est valide
+        if (!in_array($type, ['rentree', 'fermeture'])) {
+            return redirect()->route('esbtp.evenements-academiques.index')
+                ->with('error', 'Type d\'événement non valide pour la création rapide.');
+        }
+
+        $annees = ESBTPAnneeUniversitaire::orderBy('start_date', 'desc')->get();
+        $anneeSelectionnee = ESBTPAnneeUniversitaire::find($anneeId);
+        
+        if (!$anneeSelectionnee) {
+            return redirect()->route('esbtp.evenements-academiques.index')
+                ->with('error', 'Année universitaire non trouvée.');
+        }
+
+        // Données pour les sélecteurs
+        $filieres = ESBTPFiliere::where('is_active', true)->orderBy('name')->get();
+        $niveaux = ESBTPNiveauEtude::where('is_active', true)->orderBy('year')->get();
+
+        // Pré-remplir les données selon le type
+        $defaultData = $this->getQuickEventDefaults($type, $anneeSelectionnee);
+
+        return view('esbtp.evenements-academiques.create', compact(
+            'annees', 'anneeSelectionnee', 'filieres', 'niveaux', 'defaultData'
+        ));
+    }
+
+    /**
+     * Get default data for quick event creation
+     */
+    private function getQuickEventDefaults($type, $anneeUniversitaire)
+    {
+        $defaults = [
+            'type' => $type,
+            'annee_universitaire_id' => $anneeUniversitaire->id,
+            'icone' => ESBTPEvenementAcademique::ICONES_TYPES[$type],
+            'couleur' => ESBTPEvenementAcademique::COULEURS_TYPES[$type],
+            'afficher_calendrier' => true,
+            'afficher_timeline' => true,
+            'notification_active' => true,
+            'jours_notification' => 7,
+        ];
+
+        if ($type === 'rentree') {
+            $defaults['titre'] = 'Rentrée académique ' . $anneeUniversitaire->name;
+            $defaults['description'] = 'Début de l\'année académique ' . $anneeUniversitaire->name . '. Accueil des nouveaux étudiants et reprise des cours.';
+            $defaults['date_debut'] = $anneeUniversitaire->start_date->format('Y-m-d');
+            $defaults['lieu'] = 'Campus ESBTP';
+            $defaults['heure_debut'] = '08:00';
+            $defaults['notes'] = 'Prévoir l\'accueil des nouveaux étudiants et la distribution des emplois du temps.';
+        } elseif ($type === 'fermeture') {
+            $defaults['titre'] = 'Fin d\'année académique ' . $anneeUniversitaire->name;
+            $defaults['description'] = 'Clôture de l\'année académique ' . $anneeUniversitaire->name . '. Fin des cours et début des vacances.';
+            $defaults['date_debut'] = $anneeUniversitaire->end_date->format('Y-m-d');
+            $defaults['lieu'] = 'Campus ESBTP';
+            $defaults['heure_fin'] = '17:00';
+            $defaults['notes'] = 'Bilan de l\'année académique et préparation de la prochaine rentrée.';
+        }
+
+        return $defaults;
+    }
+
+    /**
      * Store a newly created resource in storage.
      */
     public function store(Request $request)
@@ -111,6 +177,14 @@ class ESBTPEvenementAcademiqueController extends Controller
             'afficher_calendrier' => 'boolean',
             'afficher_timeline' => 'boolean',
         ]);
+
+        // Validation des dates cohérentes
+        $validationErrors = $this->validateEventDates($request->all());
+        if (!empty($validationErrors)) {
+            return redirect()->back()
+                ->withErrors($validationErrors)
+                ->withInput();
+        }
 
         $evenement = ESBTPEvenementAcademique::create([
             'annee_universitaire_id' => $request->annee_universitaire_id,
@@ -197,6 +271,14 @@ class ESBTPEvenementAcademiqueController extends Controller
             'afficher_timeline' => 'boolean',
             'statut' => 'required|in:' . implode(',', array_keys(ESBTPEvenementAcademique::STATUTS)),
         ]);
+
+        // Validation des dates cohérentes
+        $validationErrors = $this->validateEventDates($request->all(), $evenementAcademique->id);
+        if (!empty($validationErrors)) {
+            return redirect()->back()
+                ->withErrors($validationErrors)
+                ->withInput();
+        }
 
         $evenementAcademique->update([
             'annee_universitaire_id' => $request->annee_universitaire_id,
@@ -306,6 +388,48 @@ class ESBTPEvenementAcademiqueController extends Controller
     }
 
     /**
+     * Actions en lot sur les événements
+     */
+    public function bulkAction(Request $request)
+    {
+        $request->validate([
+            'action' => 'required|in:delete,change_status',
+            'events' => 'required|array|min:1',
+            'events.*' => 'exists:esbtp_evenements_academiques,id',
+            'status' => 'nullable|in:' . implode(',', array_keys(ESBTPEvenementAcademique::STATUTS)),
+        ]);
+
+        $events = ESBTPEvenementAcademique::whereIn('id', $request->events)->get();
+        $count = 0;
+
+        try {
+            DB::beginTransaction();
+
+            foreach ($events as $event) {
+                if ($request->action === 'delete' && $event->isDeletable()) {
+                    $event->delete();
+                    $count++;
+                } elseif ($request->action === 'change_status') {
+                    $event->update([
+                        'statut' => $request->status,
+                        'updated_by' => Auth::id(),
+                    ]);
+                    $count++;
+                }
+            }
+
+            DB::commit();
+
+            $actionText = $request->action === 'delete' ? 'supprimés' : 'mis à jour';
+            return redirect()->back()->with('success', "{$count} événement(s) {$actionText} avec succès.");
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            return redirect()->back()->with('error', 'Erreur lors de l\'action en lot : ' . $e->getMessage());
+        }
+    }
+
+    /**
      * API pour récupérer les événements d'une année
      */
     public function getEvents(Request $request)
@@ -344,6 +468,106 @@ class ESBTPEvenementAcademiqueController extends Controller
                 'participants' => $event->participants_formatted,
             ];
         }));
+    }
+
+    /**
+     * Valider la cohérence des dates d'un événement
+     */
+    private function validateEventDates($data, $eventId = null)
+    {
+        $errors = [];
+        
+        // Récupérer l'année universitaire
+        $anneeUniversitaire = ESBTPAnneeUniversitaire::find($data['annee_universitaire_id']);
+        if (!$anneeUniversitaire) {
+            $errors['annee_universitaire_id'] = 'Année universitaire non trouvée.';
+            return $errors;
+        }
+
+        $dateDebut = Carbon::parse($data['date_debut']);
+        $dateFin = isset($data['date_fin']) && $data['date_fin'] ? Carbon::parse($data['date_fin']) : null;
+
+        // 1. Vérifier que les dates sont dans la période de l'année universitaire
+        if ($dateDebut->lt($anneeUniversitaire->start_date) || $dateDebut->gt($anneeUniversitaire->end_date)) {
+            $errors['date_debut'] = 'La date de début doit être comprise entre ' . 
+                $anneeUniversitaire->start_date->format('d/m/Y') . ' et ' . 
+                $anneeUniversitaire->end_date->format('d/m/Y') . 
+                ' (période de l\'année universitaire ' . $anneeUniversitaire->name . ').';
+        }
+
+        if ($dateFin && ($dateFin->lt($anneeUniversitaire->start_date) || $dateFin->gt($anneeUniversitaire->end_date))) {
+            $errors['date_fin'] = 'La date de fin doit être comprise entre ' . 
+                $anneeUniversitaire->start_date->format('d/m/Y') . ' et ' . 
+                $anneeUniversitaire->end_date->format('d/m/Y') . 
+                ' (période de l\'année universitaire ' . $anneeUniversitaire->name . ').';
+        }
+
+        // 2. Vérifier les conflits pour certains types d'événements
+        if (in_array($data['type'], ['rentree', 'fermeture'])) {
+            $query = ESBTPEvenementAcademique::where('annee_universitaire_id', $data['annee_universitaire_id'])
+                ->where('type', $data['type']);
+            
+            if ($eventId) {
+                $query->where('id', '!=', $eventId);
+            }
+            
+            $existingEvent = $query->first();
+            if ($existingEvent) {
+                $typeLabel = ESBTPEvenementAcademique::TYPES[$data['type']];
+                $errors['type'] = "Un événement de type \"{$typeLabel}\" existe déjà pour cette année universitaire.";
+            }
+        }
+
+        // 3. Vérifier les chevauchements critiques (examens, cérémonies)
+        if (in_array($data['type'], ['examens', 'ceremonie', 'soutenances'])) {
+            $query = ESBTPEvenementAcademique::where('annee_universitaire_id', $data['annee_universitaire_id'])
+                ->where('type', $data['type']);
+            
+            if ($eventId) {
+                $query->where('id', '!=', $eventId);
+            }
+
+            // Vérifier les chevauchements de dates
+            $query->where(function($q) use ($dateDebut, $dateFin) {
+                $endDate = $dateFin ?: $dateDebut;
+                $q->whereBetween('date_debut', [$dateDebut, $endDate])
+                  ->orWhereBetween('date_fin', [$dateDebut, $endDate])
+                  ->orWhere(function($subQ) use ($dateDebut, $endDate) {
+                      $subQ->where('date_debut', '<=', $dateDebut)
+                           ->where(function($dateQ) use ($endDate) {
+                               $dateQ->where('date_fin', '>=', $endDate)
+                                    ->orWhereNull('date_fin');
+                           });
+                  });
+            });
+
+            $conflictingEvent = $query->first();
+            if ($conflictingEvent) {
+                $typeLabel = ESBTPEvenementAcademique::TYPES[$data['type']];
+                $errors['date_debut'] = "Les dates choisies entrent en conflit avec un autre événement de type \"{$typeLabel}\" : {$conflictingEvent->titre}.";
+            }
+        }
+
+        // 4. Validation spécifique pour la rentrée/fermeture
+        if ($data['type'] === 'rentree') {
+            // La rentrée devrait être proche du début de l'année universitaire
+            $diffDays = $dateDebut->diffInDays($anneeUniversitaire->start_date);
+            if ($diffDays > 30) {
+                $errors['date_debut'] = 'La date de rentrée devrait être proche du début de l\'année universitaire (' . 
+                    $anneeUniversitaire->start_date->format('d/m/Y') . ').';
+            }
+        }
+
+        if ($data['type'] === 'fermeture') {
+            // La fermeture devrait être proche de la fin de l'année universitaire
+            $diffDays = $dateDebut->diffInDays($anneeUniversitaire->end_date);
+            if ($diffDays > 30) {
+                $errors['date_debut'] = 'La date de fermeture devrait être proche de la fin de l\'année universitaire (' . 
+                    $anneeUniversitaire->end_date->format('d/m/Y') . ').';
+            }
+        }
+
+        return $errors;
     }
 
     /**

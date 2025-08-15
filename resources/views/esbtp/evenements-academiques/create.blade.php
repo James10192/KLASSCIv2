@@ -181,7 +181,7 @@
                                     <option value="">Sélectionner une année</option>
                                     @foreach($annees as $annee)
                                         <option value="{{ $annee->id }}" 
-                                                {{ old('annee_universitaire_id', $anneeSelectionnee?->id) == $annee->id ? 'selected' : '' }}>
+                                                {{ old('annee_universitaire_id', $defaultData['annee_universitaire_id'] ?? $anneeSelectionnee?->id) == $annee->id ? 'selected' : '' }}>
                                             {{ $annee->name }}
                                         </option>
                                     @endforeach
@@ -197,7 +197,7 @@
                                 </label>
                                 <input type="text" name="titre" id="titre" 
                                        class="form-input-moderne @error('titre') is-invalid @enderror"
-                                       value="{{ old('titre') }}" required>
+                                       value="{{ old('titre', $defaultData['titre'] ?? '') }}" required>
                                 @error('titre')
                                     <span class="invalid-feedback">{{ $message }}</span>
                                 @enderror
@@ -209,7 +209,7 @@
                                 </label>
                                 <textarea name="description" id="description" rows="4"
                                           class="form-input-moderne @error('description') is-invalid @enderror" 
-                                          required>{{ old('description') }}</textarea>
+                                          required>{{ old('description', $defaultData['description'] ?? '') }}</textarea>
                                 @error('description')
                                     <span class="invalid-feedback">{{ $message }}</span>
                                 @enderror
@@ -222,7 +222,7 @@
                                     </label>
                                     <input type="date" name="date_debut" id="date_debut"
                                            class="form-input-moderne @error('date_debut') is-invalid @enderror"
-                                           value="{{ old('date_debut') }}" required>
+                                           value="{{ old('date_debut', $defaultData['date_debut'] ?? '') }}" required>
                                     @error('date_debut')
                                         <span class="invalid-feedback">{{ $message }}</span>
                                     @enderror
@@ -231,7 +231,7 @@
                                     <label for="date_fin" class="form-label-moderne">Date de fin (optionnel)</label>
                                     <input type="date" name="date_fin" id="date_fin"
                                            class="form-input-moderne @error('date_fin') is-invalid @enderror"
-                                           value="{{ old('date_fin') }}">
+                                           value="{{ old('date_fin', $defaultData['date_fin'] ?? '') }}">
                                     <small class="form-text-muted">
                                         Laissez vide pour un événement d'une journée
                                     </small>
@@ -246,7 +246,7 @@
                                     <label for="heure_debut" class="form-label-moderne">Heure de début (optionnel)</label>
                                     <input type="time" name="heure_debut" id="heure_debut"
                                            class="form-input-moderne @error('heure_debut') is-invalid @enderror"
-                                           value="{{ old('heure_debut') }}">
+                                           value="{{ old('heure_debut', $defaultData['heure_debut'] ?? '') }}">
                                     @error('heure_debut')
                                         <span class="invalid-feedback">{{ $message }}</span>
                                     @enderror
@@ -255,7 +255,7 @@
                                     <label for="heure_fin" class="form-label-moderne">Heure de fin (optionnel)</label>
                                     <input type="time" name="heure_fin" id="heure_fin"
                                            class="form-input-moderne @error('heure_fin') is-invalid @enderror"
-                                           value="{{ old('heure_fin') }}">
+                                           value="{{ old('heure_fin', $defaultData['heure_fin'] ?? '') }}">
                                     @error('heure_fin')
                                         <span class="invalid-feedback">{{ $message }}</span>
                                     @enderror
@@ -266,7 +266,7 @@
                                 <label for="lieu" class="form-label-moderne">Lieu</label>
                                 <input type="text" name="lieu" id="lieu"
                                        class="form-input-moderne @error('lieu') is-invalid @enderror"
-                                       value="{{ old('lieu') }}" placeholder="Salle, amphithéâtre, etc.">
+                                       value="{{ old('lieu', $defaultData['lieu'] ?? '') }}" placeholder="Salle, amphithéâtre, etc.">
                                 @error('lieu')
                                     <span class="invalid-feedback">{{ $message }}</span>
                                 @enderror
@@ -275,7 +275,7 @@
                             <div class="form-group-moderne">
                                 <label for="notes" class="form-label-moderne">Notes supplémentaires</label>
                                 <textarea name="notes" id="notes" rows="3"
-                                          class="form-input-moderne @error('notes') is-invalid @enderror">{{ old('notes') }}</textarea>
+                                          class="form-input-moderne @error('notes') is-invalid @enderror">{{ old('notes', $defaultData['notes'] ?? '') }}</textarea>
                                 @error('notes')
                                     <span class="invalid-feedback">{{ $message }}</span>
                                 @enderror
@@ -293,7 +293,7 @@
                                     <option value="">Choisir un type</option>
                                     @foreach(\App\Models\ESBTPEvenementAcademique::TYPES as $key => $label)
                                         <option value="{{ $key }}" 
-                                                {{ old('type') == $key ? 'selected' : '' }}>
+                                                {{ old('type', $defaultData['type'] ?? '') == $key ? 'selected' : '' }}>
                                             {{ $label }}
                                         </option>
                                     @endforeach
@@ -312,7 +312,7 @@
                                     <option value="">Choisir une icône</option>
                                     @foreach(\App\Models\ESBTPEvenementAcademique::ICONES_TYPES as $type => $icone)
                                         <option value="{{ $icone }}" 
-                                                {{ old('icone') == $icone ? 'selected' : '' }}>
+                                                {{ old('icone', $defaultData['icone'] ?? '') == $icone ? 'selected' : '' }}>
                                             {{ \App\Models\ESBTPEvenementAcademique::TYPES[$type] ?? $type }}
                                         </option>
                                     @endforeach
@@ -331,7 +331,7 @@
                                     <option value="">Choisir une couleur</option>
                                     @foreach(\App\Models\ESBTPEvenementAcademique::COULEURS as $key => $label)
                                         <option value="{{ $key }}" 
-                                                {{ old('couleur') == $key ? 'selected' : '' }}>
+                                                {{ old('couleur', $defaultData['couleur'] ?? '') == $key ? 'selected' : '' }}>
                                             {{ $label }}
                                         </option>
                                     @endforeach
@@ -345,14 +345,14 @@
                                 <label class="form-label-moderne">Options d'affichage</label>
                                 <div class="form-check-moderne">
                                     <input type="checkbox" name="afficher_calendrier" id="afficher_calendrier"
-                                           value="1" {{ old('afficher_calendrier', 1) ? 'checked' : '' }}>
+                                           value="1" {{ old('afficher_calendrier', $defaultData['afficher_calendrier'] ?? 1) ? 'checked' : '' }}>
                                     <label for="afficher_calendrier">
                                         Afficher dans le calendrier
                                     </label>
                                 </div>
                                 <div class="form-check-moderne">
                                     <input type="checkbox" name="afficher_timeline" id="afficher_timeline"
-                                           value="1" {{ old('afficher_timeline', 1) ? 'checked' : '' }}>
+                                           value="1" {{ old('afficher_timeline', $defaultData['afficher_timeline'] ?? 1) ? 'checked' : '' }}>
                                     <label for="afficher_timeline">
                                         Afficher dans la timeline
                                     </label>
@@ -363,7 +363,7 @@
                                 <label class="form-label-moderne">Notifications</label>
                                 <div class="form-check-moderne">
                                     <input type="checkbox" name="notification_active" id="notification_active"
-                                           value="1" {{ old('notification_active') ? 'checked' : '' }}>
+                                           value="1" {{ old('notification_active', $defaultData['notification_active'] ?? false) ? 'checked' : '' }}>
                                     <label for="notification_active">
                                         Activer les notifications
                                     </label>
@@ -372,7 +372,7 @@
                                     <label for="jours_notification" class="form-label-moderne">Jours avant notification</label>
                                     <input type="number" name="jours_notification" id="jours_notification"
                                            class="form-input-moderne" min="1" max="30"
-                                           value="{{ old('jours_notification', 7) }}">
+                                           value="{{ old('jours_notification', $defaultData['jours_notification'] ?? 7) }}">
                                 </div>
                             </div>
                             </div>
@@ -433,8 +433,57 @@ $(document).ready(function() {
         if (dateDebut && dateFin && dateFin < dateDebut) {
             alert('La date de fin doit être postérieure à la date de début');
             $('#date_fin').val('');
+            return;
         }
+        
+        // Validation de la période académique
+        validateAcademicPeriod();
     });
+
+    // Validation de l'année universitaire
+    $('#annee_universitaire_id').change(function() {
+        validateAcademicPeriod();
+    });
+
+    function validateAcademicPeriod() {
+        const anneeId = $('#annee_universitaire_id').val();
+        const dateDebut = $('#date_debut').val();
+        const dateFin = $('#date_fin').val();
+        
+        if (!anneeId || !dateDebut) return;
+        
+        const annees = @json($annees->keyBy('id')->map(function($annee) {
+            return ['start_date' => $annee->start_date->format('Y-m-d'), 'end_date' => $annee->end_date->format('Y-m-d'), 'name' => $annee->name];
+        }));
+        
+        const annee = annees[anneeId];
+        if (!annee) return;
+        
+        const startDate = new Date(annee.start_date);
+        const endDate = new Date(annee.end_date);
+        const eventStart = new Date(dateDebut);
+        
+        if (eventStart < startDate || eventStart > endDate) {
+            alert('La date de début doit être comprise entre ' + 
+                  new Intl.DateTimeFormat('fr-FR').format(startDate) + ' et ' + 
+                  new Intl.DateTimeFormat('fr-FR').format(endDate) + 
+                  ' (période de l\'année universitaire ' + annee.name + ').');
+            $('#date_debut').val('');
+            return;
+        }
+        
+        if (dateFin) {
+            const eventEnd = new Date(dateFin);
+            if (eventEnd < startDate || eventEnd > endDate) {
+                alert('La date de fin doit être comprise entre ' + 
+                      new Intl.DateTimeFormat('fr-FR').format(startDate) + ' et ' + 
+                      new Intl.DateTimeFormat('fr-FR').format(endDate) + 
+                      ' (période de l\'année universitaire ' + annee.name + ').');
+                $('#date_fin').val('');
+                return;
+            }
+        }
+    }
 
     // Validation des heures
     $('#heure_debut, #heure_fin').change(function() {

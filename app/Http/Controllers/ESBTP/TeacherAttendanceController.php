@@ -9,6 +9,7 @@ use App\Models\ESBTPAttendanceSettings;
 use App\Models\ESBTPEmploiTemps;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPSeanceCours;
+use App\Models\ESBTPSessionWorkflow;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -144,6 +145,10 @@ class TeacherAttendanceController extends Controller
             // Record successful attempt on the daily code
             $dailyCode->recordAttempt(true);
 
+            // **WORKFLOW** : Mettre à jour le workflow de la séance
+            $workflow = ESBTPSessionWorkflow::getOrCreateForSession($seanceCours->id, $user->id);
+            $workflow->markAttendanceSigned();
+
             // **NOTIFICATION** : Notifier le coordinateur de l'émargement effectué
             try {
                 $notificationService = app(NotificationService::class);
@@ -153,7 +158,9 @@ class TeacherAttendanceController extends Controller
                 // Ne pas interrompre le processus principal
             }
 
-            return back()->with('success', 'Émargement enregistré avec succès.');
+            // **REDIRECTION** : Rediriger vers la sélection du type d'appel
+            return redirect()->route('teacher.select-call-type', $seanceCours->id)
+                ->with('success', 'Émargement enregistré avec succès. Veuillez maintenant effectuer l\'appel.');
 
         } catch (\Exception $e) {
             \Log::error('Erreur lors de l\'émargement: ' . $e->getMessage());
@@ -223,5 +230,25 @@ class TeacherAttendanceController extends Controller
             ->paginate(20);
 
         return view('esbtp.teacher-attendance.report', compact('attendances'));
+    }
+
+    /**
+     * Affiche la page de sélection du type d'appel (début/fin)
+     */
+    public function selectCallType($seanceId)
+    {
+        $user = Auth::user();
+        $seance = ESBTPSeanceCours::with(['matiere', 'classe'])->findOrFail($seanceId);
+        
+        // Vérifier que l'enseignant est assigné à cette séance
+        if ($seance->teacher_id !== $user->id) {
+            return redirect()->route('teacher.dashboard')
+                ->with('error', 'Vous n\'êtes pas autorisé à accéder à cette séance.');
+        }
+        
+        // Récupérer ou créer le workflow pour cette séance
+        $workflow = ESBTPSessionWorkflow::getOrCreateForSession($seanceId, $user->id);
+        
+        return view('teacher.select-call-type', compact('seance', 'workflow'));
     }
 }

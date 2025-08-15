@@ -75,10 +75,12 @@ class ESBTPEvaluationController extends Controller
         if (!$currentUser->hasRole(['teacher', 'enseignant', 'etudiant'])) {
             $evaluationsForExternalLinks = ESBTPEvaluation::with(['classe', 'matiere'])
                 ->where('is_published', true)
-                ->whereNull('enseignant_id') // Seulement celles sans enseignant assigné
-                ->orWhere(function($query) {
-                    $query->whereNull('token_saisie_externe')
-                          ->orWhere('token_expire_at', '<', now());
+                ->where(function($query) {
+                    $query->whereNull('enseignant_id') // Sans enseignant assigné
+                          ->orWhere(function($subQuery) {
+                              $subQuery->whereNull('token_saisie_externe') // Pas de token généré
+                                       ->orWhere('token_expire_at', '<', now()); // Token expiré
+                          });
                 })
                 ->orderBy('date_evaluation', 'desc')
                 ->get();

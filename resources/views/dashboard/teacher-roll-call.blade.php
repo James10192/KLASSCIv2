@@ -2,6 +2,12 @@
 
 @section('title', 'Faire l\'appel')
 
+@php
+    $callType = request()->get('type', 'start');
+    $callTypeText = $callType === 'start' ? 'de début' : 'de fin';
+    $callTypeIcon = $callType === 'start' ? 'fa-play' : 'fa-stop';
+@endphp
+
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
@@ -263,8 +269,8 @@
     <!-- Information du cours -->
     <div class="course-info-card">
         <h1 class="course-info-title">
-            <i class="fas fa-clipboard-check"></i>
-            Faire l'appel
+            <i class="fas {{ $callTypeIcon }}"></i>
+            Appel {{ $callTypeText }}
         </h1>
         <div class="course-info-details">
             <div class="course-info-item">
@@ -312,12 +318,13 @@
 
     <form id="rollCallForm" method="POST" action="{{ route('teacher.roll-call.store', $seance->id) }}">
         @csrf
+        <input type="hidden" name="call_type" value="{{ $callType }}">
         
         <div class="roll-call-card">
             <div class="roll-call-header">
                 <h2 class="roll-call-title">
-                    <i class="fas fa-list-check"></i>
-                    Liste des étudiants ({{ $etudiants->count() }})
+                    <i class="fas {{ $callTypeIcon }}"></i>
+                    Appel {{ $callTypeText }} - {{ $etudiants->count() }} étudiants
                 </h2>
             </div>
             
@@ -391,9 +398,9 @@
                         <i class="fas fa-save"></i>
                         <span>{{ $hasRollCall ? 'Mettre à jour' : 'Enregistrer' }} l'appel</span>
                     </button>
-                    <a href="{{ route('teacher.dashboard') }}" class="btn-modern secondary">
+                    <a href="{{ route('teacher.select-call-type', $seance->id) }}" class="btn-modern secondary">
                         <i class="fas fa-arrow-left"></i>
-                        <span>Retour au tableau de bord</span>
+                        <span>Retour à la sélection</span>
                     </a>
                 </div>
             @endif

@@ -2,116 +2,117 @@
 
 @section('title', 'Liste des évaluations - ESBTP-yAKRO')
 
-@section('page_title', 'Gestion des évaluations')
+@section('styles')
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+@endsection
 
 @section('content')
-<div class="container-fluid">
-    <!-- Statistics Dashboard -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card bg-primary text-white h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="card-title mb-1">Total Évaluations</h6>
-                            <h2 class="mb-0">{{ $totalEvaluations }}</h2>
-                        </div>
-                        <div class="fs-1 opacity-50">
-                            <i class="fas fa-file-alt"></i>
-                        </div>
-                    </div>
+<div class="dashboard-acasi">
+    <div class="main-content">
+        <!-- Header Section -->
+        <div class="dashboard-header">
+            <div class="header-left">
+                <h1><i class="fas fa-clipboard-list me-2"></i>Gestion des évaluations</h1>
+                <p class="header-subtitle">Consultez et gérez toutes les évaluations de l'établissement</p>
+            </div>
+            <div class="header-actions">
+                <input type="search" class="search-bar" placeholder="Rechercher une évaluation...">
+                <a href="{{ route('esbtp.evaluations.create') }}" class="btn-acasi primary">
+                    <i class="fas fa-plus-circle"></i>Nouvelle évaluation
+                </a>
+            </div>
+        </div>
+        <!-- Statistiques KPI -->
+        <div class="kpi-grid">
+            <div class="kpi-card card-moderne bg-primary">
+                <div class="kpi-title">Total Évaluations</div>
+                <div class="kpi-value color-primary">{{ $totalEvaluations }}</div>
+                <div class="kpi-trend">
+                    <i class="fas fa-file-alt"></i>
+                    Toutes les évaluations
+                </div>
+            </div>
+            
+            <div class="kpi-card card-moderne bg-success">
+                <div class="kpi-title">Évaluations Publiées</div>
+                <div class="kpi-value color-success">{{ $evaluationsPubliees }}</div>
+                <div class="kpi-trend positive">
+                    <i class="fas fa-check-circle"></i>
+                    Actives
+                </div>
+            </div>
+            
+            <div class="kpi-card card-moderne bg-accent">
+                <div class="kpi-title">Examens</div>
+                <div class="kpi-value color-accent">{{ $examens }}</div>
+                <div class="kpi-trend">
+                    <i class="fas fa-graduation-cap"></i>
+                    Examens officiels
+                </div>
+            </div>
+            
+            <div class="kpi-card card-moderne bg-warning">
+                <div class="kpi-title">Devoirs</div>
+                <div class="kpi-value color-warning">{{ $devoirs }}</div>
+                <div class="kpi-trend">
+                    <i class="fas fa-pencil-alt"></i>
+                    Travaux dirigés
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card bg-success text-white h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="card-title mb-1">Évaluations Publiées</h6>
-                            <h2 class="mb-0">{{ $evaluationsPubliees }}</h2>
-                        </div>
-                        <div class="fs-1 opacity-50">
-                            <i class="fas fa-check-circle"></i>
-                        </div>
+
+        <!-- Section de gestion des liens externes (pour admins/secrétaires uniquement) -->
+        @if(!auth()->user()->hasRole(['teacher', 'enseignant', 'etudiant']))
+        <div class="main-card">
+            @if($evaluationsForExternalLinks->isNotEmpty())
+                @include('components.external-links-manager', ['evaluations' => $evaluationsForExternalLinks])
+            @else
+                <div class="main-card-header">
+                    <div class="main-card-title">
+                        <i class="fas fa-link"></i>
+                        Gestion des liens externes
+                    </div>
+                    <div class="main-card-subtitle">Génération de liens temporaires pour enseignants externes</div>
+                </div>
+                <div class="main-card-body">
+                    <div class="empty-state">
+                        <i class="fas fa-link-slash"></i>
+                        <p>
+                            Aucune évaluation disponible pour la génération de liens externes.<br>
+                            <small class="text-muted">Les évaluations doivent être publiées et sans enseignant assigné.</small>
+                        </p>
                     </div>
                 </div>
+            @endif
+        </div>
+        @endif
+
+        <!-- Section principale des évaluations -->
+        <div class="main-card">
+            <div class="main-card-header">
+                <div class="main-card-title">
+                    <i class="fas fa-list"></i>
+                    Liste des évaluations
+                </div>
+                <div class="main-card-subtitle">Gestion complète de toutes les évaluations de l'établissement</div>
             </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-info text-white h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="card-title mb-1">Examens</h6>
-                            <h2 class="mb-0">{{ $examens }}</h2>
-                        </div>
-                        <div class="fs-1 opacity-50">
-                            <i class="fas fa-graduation-cap"></i>
-                        </div>
+
+            <div class="main-card-body">
+                @if(session('success'))
+                    <div class="alert alert-success alert-dismissible fade show">
+                        <i class="fas fa-check-circle me-2"></i>
+                        {{ session('success') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-warning text-white h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="card-title mb-1">Devoirs</h6>
-                            <h2 class="mb-0">{{ $devoirs }}</h2>
-                        </div>
-                        <div class="fs-1 opacity-50">
-                            <i class="fas fa-pencil-alt"></i>
-                        </div>
+                @endif
+
+                @if(session('error'))
+                    <div class="alert alert-danger alert-dismissible fade show">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        {{ session('error') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Section de gestion des liens externes (pour admins/secrétaires uniquement) -->
-    @if(!auth()->user()->hasRole(['teacher', 'enseignant', 'etudiant']) && $evaluationsForExternalLinks->isNotEmpty())
-    <div class="row mb-4">
-        <div class="col-12">
-            @include('components.external-links-manager', ['evaluations' => $evaluationsForExternalLinks])
-        </div>
-    </div>
-    @endif
-
-    <div class="row">
-        <div class="col-12">
-            <div class="card shadow-sm">
-                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
-                    <h5 class="mb-0 text-primary">
-                        <i class="fas fa-list me-2"></i>Liste des évaluations
-                    </h5>
-                    <div>
-                        <button type="button" class="btn btn-outline-secondary me-2" id="bulkActionsBtn" disabled>
-                            <i class="fas fa-tasks me-1"></i>Actions groupées
-                        </button>
-                        <a href="{{ route('esbtp.evaluations.create') }}" class="btn btn-primary">
-                            <i class="fas fa-plus-circle me-1"></i>Nouvelle évaluation
-                        </a>
-                    </div>
-                </div>
-
-                <div class="card-body">
-                    @if(session('success'))
-                        <div class="alert alert-success alert-dismissible fade show shadow-sm border-start border-success border-4">
-                            <i class="fas fa-check-circle me-2"></i>
-                            {{ session('success') }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    @endif
-
-                    @if(session('error'))
-                        <div class="alert alert-danger alert-dismissible fade show shadow-sm border-start border-danger border-4">
-                            <i class="fas fa-exclamation-circle me-2"></i>
-                            {{ session('error') }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    @endif
+                @endif
 
                     <!-- Filters -->
                     <div class="row g-3 mb-4">
@@ -242,8 +243,8 @@
                                                         @endif
                                                     </button>
                                                 </form>
-                                                <a href="{{ route('esbtp.notes.saisie-rapide', $evaluation) }}" class="btn btn-primary btn-sm" data-bs-toggle="tooltip" title="Accéder à l'interface de gestion des notes">
-                                                    <i class="fas fa-pen-alt me-1"></i>{{ $evaluation->notes->count() > 0 ? 'Gérer les notes (' . $evaluation->notes->count() . ')' : 'Saisir les notes' }}
+                                                <a href="{{ route('esbtp.notes.saisie-rapide', $evaluation) }}" class="btn-manage-notes" title="Accéder à l'interface de gestion des notes">
+                                                    <i class="fas fa-pen-alt"></i>{{ $evaluation->notes->count() > 0 ? 'Gérer (' . $evaluation->notes->count() . ')' : 'Saisir' }}
                                                 </a>
                                             </div>
                                         </td>
@@ -341,70 +342,278 @@
 
 @push('styles')
 <style>
-    :root {
-        --esbtp-green: #01632f;
-        --esbtp-green-dark: #014a23;
-        --esbtp-orange: #f29400;
-    }
+/* Styles spécifiques pour la table moderne des évaluations */
+.filters-section {
+    background-color: var(--background);
+    padding: var(--space-md);
+    border-radius: var(--radius-small);
+    margin-bottom: var(--space-lg);
+}
 
-    .card {
-        border: none;
-        transition: transform 0.2s;
-    }
+.filters-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: var(--space-md);
+    align-items: end;
+}
 
-    .card:hover {
-        transform: translateY(-2px);
-    }
+.filter-select {
+    background-color: var(--surface);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: var(--radius-small);
+    padding: var(--space-sm) var(--space-md);
+    font-size: var(--text-normal);
+    color: var(--text-primary);
+    transition: all 0.2s ease;
+}
 
-    .status-select {
-        border-color: #dee2e6;
-        border-radius: 4px;
-        font-size: 0.825rem;
-    }
+.filter-select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(30, 58, 138, 0.1);
+}
 
-    .table th {
-        font-weight: 600;
-        font-size: 0.825rem;
-        color: #495057;
-    }
+.evaluations-table-container {
+    background-color: var(--surface);
+    border-radius: var(--radius-medium);
+    overflow: hidden;
+}
 
-    .table td {
-        font-size: 0.875rem;
-    }
+.table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-md) var(--space-lg);
+    background: linear-gradient(135deg, rgba(30, 58, 138, 0.05), rgba(30, 64, 175, 0.02));
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
 
-    .pagination {
-        --bs-pagination-active-bg: var(--esbtp-green);
-        --bs-pagination-active-border-color: var(--esbtp-green);
-    }
+.bulk-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
 
-    .btn-primary {
-        background-color: var(--esbtp-green);
-        border-color: var(--esbtp-green);
-    }
+.checkbox-modern {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
 
-    .btn-primary:hover {
-        background-color: var(--esbtp-green-dark);
-        border-color: var(--esbtp-green-dark);
-    }
+.btn-acasi.small {
+    padding: calc(var(--space-sm) * 0.75) var(--space-sm);
+    font-size: var(--text-small);
+}
 
-    .text-primary {
-        color: var(--esbtp-green) !important;
-    }
+.table-moderne {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-normal);
+}
 
-    .bg-primary {
-        background-color: var(--esbtp-green) !important;
-    }
+.table-moderne thead th {
+    padding: var(--space-md) var(--space-sm);
+    background-color: var(--background);
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: var(--text-small);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid rgba(0, 0, 0, 0.05);
+}
 
-    .select2-container--default .select2-selection--single {
-        height: 38px;
-        display: flex;
-        align-items: center;
-    }
+.table-row-moderne {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+}
 
-    .form-check-input:checked {
-        background-color: var(--esbtp-green);
-        border-color: var(--esbtp-green);
+.table-row-moderne:hover {
+    background-color: var(--background);
+}
+
+.table-row-moderne td {
+    padding: var(--space-md) var(--space-sm);
+    vertical-align: middle;
+}
+
+.evaluation-title-link {
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+.evaluation-title-link:hover {
+    color: var(--secondary);
+}
+
+.table-text {
+    color: var(--text-primary);
+    font-size: var(--text-normal);
+}
+
+.type-badge {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: var(--space-xs) var(--space-sm);
+    background-color: rgba(0, 0, 0, 0.03);
+    border-radius: var(--radius-small);
+    font-size: var(--text-small);
+    font-weight: 500;
+}
+
+.date-display {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    font-size: var(--text-normal);
+}
+
+.status-select {
+    background-color: var(--surface);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: var(--radius-small);
+    padding: var(--space-xs) var(--space-sm);
+    font-size: var(--text-small);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.status-select:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.notes-actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+}
+
+.btn-notes {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: var(--space-xs) var(--space-sm);
+    border: none;
+    border-radius: var(--radius-small);
+    font-size: var(--text-small);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+}
+
+.btn-notes.published {
+    background-color: rgba(16, 185, 129, 0.1);
+    color: var(--success);
+}
+
+.btn-notes.unpublished {
+    background-color: rgba(107, 114, 128, 0.1);
+    color: var(--neutral);
+}
+
+.btn-manage-notes {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: var(--space-xs) var(--space-sm);
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    border-radius: var(--radius-small);
+    font-size: var(--text-small);
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-manage-notes:hover {
+    background-color: var(--secondary);
+    color: white;
+    transform: translateY(-1px);
+}
+
+.actions-group {
+    display: flex;
+    gap: var(--space-xs);
+}
+
+.btn-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: var(--radius-small);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    font-size: var(--text-small);
+}
+
+.btn-action.view {
+    background-color: rgba(6, 182, 212, 0.1);
+    color: var(--accent-blue);
+}
+
+.btn-action.edit {
+    background-color: rgba(245, 158, 11, 0.1);
+    color: var(--warning);
+}
+
+.btn-action.delete {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+}
+
+.btn-action:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-elevated);
+}
+
+.pagination-wrapper {
+    display: flex;
+    justify-content: center;
+    padding: var(--space-lg);
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* Responsive pour mobile */
+@media (max-width: 768px) {
+    .filters-grid {
+        grid-template-columns: 1fr;
     }
+    
+    .table-header {
+        flex-direction: column;
+        gap: var(--space-sm);
+        align-items: stretch;
+    }
+    
+    .bulk-actions {
+        justify-content: center;
+    }
+    
+    .evaluations-table-container {
+        overflow-x: auto;
+    }
+    
+    .table-moderne {
+        min-width: 800px;
+    }
+    
+    .notes-actions {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+}
 </style>
 @endpush
 

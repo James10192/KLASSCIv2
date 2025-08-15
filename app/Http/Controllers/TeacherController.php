@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use App\Models\Laboratory;
 // App\....\Laboratory
@@ -366,5 +367,30 @@ class TeacherController extends Controller
         $teacher->load('subjects');
 
         return view('teachers.subjects', compact('teacher'));
+    }
+
+    /**
+     * Display the authenticated teacher's profile.
+     */
+    public function profile()
+    {
+        $teacher = Auth::user()->teacher;
+        
+        if (!$teacher) {
+            // Create a temporary teacher object with user data for display
+            $teacher = new Teacher();
+            $teacher->user = Auth::user();
+            $teacher->employee_id = 'N/A';
+            $teacher->qualification = null;
+            $teacher->experience = null;
+            $teacher->joining_date = null;
+            $teacher->department = null;
+            $teacher->designation = null;
+            $teacher->subjects = collect();
+        } else {
+            $teacher->load(['user', 'department', 'designation', 'subjects']);
+        }
+        
+        return view('teacher.profile', compact('teacher'));
     }
 }

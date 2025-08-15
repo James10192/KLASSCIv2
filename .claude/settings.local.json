@@ -25,7 +25,8 @@
       "Bash(/mnt/c/xampp/php/php.exe:*)",
       "Bash(php:*)",
       "Bash(git commit:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(mkdir:*)"
     ],
     "deny": []
   }

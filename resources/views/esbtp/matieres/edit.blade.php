@@ -2,49 +2,68 @@
 
 @section('title', 'Modifier la matière : ' . $matiere->name . ' - ESBTP-yAKRO')
 
+@section('styles')
+<link href="{{ asset('css/dashboard-moderne.css') }}" rel="stylesheet">
+@endsection
+
 @section('content')
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Modifier la matière : {{ $matiere->name }}</h5>
-                    <div>
-                        <a href="{{ route('esbtp.matieres.show', $matiere) }}" class="btn btn-info me-2">
-                            <i class="fas fa-eye me-1"></i>Détails
-                        </a>
-                        <a href="{{ route('esbtp.matieres.index') }}" class="btn btn-secondary">
-                            <i class="fas fa-list me-1"></i>Liste des matières
-                        </a>
-                    </div>
+<div class="main-content">
+    <!-- Header Section -->
+    <div class="dashboard-header">
+        <div class="header-left">
+            <h1><i class="fas fa-edit me-2"></i>Modifier la Matière</h1>
+            <p class="header-subtitle">{{ $matiere->name }}</p>
+        </div>
+        <div class="header-actions">
+            <a href="{{ route('esbtp.matieres.show', $matiere) }}" class="btn-acasi secondary me-2">
+                <i class="fas fa-eye me-1"></i>Détails
+            </a>
+            <a href="{{ route('esbtp.matieres.index') }}" class="btn-acasi secondary">
+                <i class="fas fa-list me-1"></i>Liste des matières
+            </a>
+        </div>
+    </div>
+
+    <!-- Success Alert -->
+    @if(session('success'))
+        <div class="card-moderne mb-lg" style="border-left: 4px solid var(--success);">
+            <div class="p-lg">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-check-circle color-success me-2"></i>
+                    <span>{{ session('success') }}</span>
                 </div>
+            </div>
+        </div>
+    @endif
 
-                <div class="card-body">
-                    @if(session('success'))
-                        <div class="alert alert-success alert-dismissible fade show" role="alert">
-                            <i class="fas fa-check-circle me-1"></i>{{ session('success') }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    @endif
+    <!-- Error Alert -->
+    @if(session('error'))
+        <div class="card-moderne mb-lg" style="border-left: 4px solid var(--danger);">
+            <div class="p-lg">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-exclamation-circle color-danger me-2"></i>
+                    <span>{{ session('error') }}</span>
+                </div>
+            </div>
+        </div>
+    @endif
 
-                    @if(session('error'))
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            <i class="fas fa-exclamation-circle me-1"></i>{{ session('error') }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    @endif
+    <!-- Form Container -->
+    <form action="{{ route('esbtp.matieres.update', $matiere) }}" method="POST">
+        @csrf
+        @method('PUT')
 
-                    <form action="{{ route('esbtp.matieres.update', $matiere) }}" method="POST">
-                        @csrf
-                        @method('PUT')
-
-                        <div class="row mb-4">
-                            <div class="col-md-6">
-                                <div class="card">
-                                    <div class="card-header bg-light">
-                                        <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Informations générales</h6>
-                                    </div>
-                                    <div class="card-body">
+        <!-- Informations générales -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card-moderne">
+                    <div class="main-card-header">
+                        <h3 class="main-card-title">
+                            <i class="fas fa-info-circle"></i>Informations générales
+                        </h3>
+                        <p class="main-card-subtitle">Code et nom de la matière</p>
+                    </div>
+                    <div class="main-card-body">
                                         <!-- Nom de la matière -->
                                         <div class="mb-3">
                                             <label for="name" class="form-label">Nom de la matière <span class="text-danger">*</span></label>
@@ -240,10 +259,10 @@
                                     <i class="fas fa-trash me-1"></i>Supprimer
                                 </button>
                                 <div>
-                                    <a href="{{ route('esbtp.matieres.show', $matiere) }}" class="btn btn-secondary me-2">
+                                    <a href="{{ route('esbtp.matieres.show', $matiere) }}" class="btn-acasi secondary me-2">
                                         <i class="fas fa-times me-1"></i>Annuler
                                     </a>
-                                    <button type="submit" class="btn btn-primary">
+                                    <button type="submit" class="btn-acasi primary">
                                         <i class="fas fa-save me-1"></i>Enregistrer les modifications
                                     </button>
                                 </div>

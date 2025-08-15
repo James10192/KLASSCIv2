@@ -3,108 +3,82 @@
 @section('title', 'Profil Parent')
 
 @section('content')
-<div class="container-fluid">
-    <!-- Hero Section -->
-    <div class="row mb-4">
-        <div class="col-md-12">
-            <div class="card border-0 shadow-sm overflow-hidden" style="border-radius: 15px;">
-                <div class="card-body p-0">
-                    <div class="row g-0">
-                        <div class="col-md-8 p-4">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h2 class="fw-bold mb-0">Mon profil parent</h2>
-                                <a href="{{ route('parent.dashboard') }}" class="btn btn-outline-secondary px-4">
-                                    <i class="fas fa-arrow-left me-2"></i> Retour au tableau de bord
-                                </a>
-                            </div>
-                            <p class="text-muted mb-4">Gérez vos informations personnelles et consultez les détails de vos enfants inscrits à l'établissement.</p>
-                        </div>
-                        <div class="col-md-4 d-none d-md-block" style="background: linear-gradient(135deg, var(--esbtp-green-light), var(--esbtp-green)); min-height: 180px;">
-                            <div class="h-100 d-flex align-items-center justify-content-center">
-                                <img src="https://img.freepik.com/free-vector/family-concept-illustration_114360-2047.jpg" alt="Parent Profile" class="img-fluid" style="max-height: 160px; opacity: 0.9;">
-                            </div>
-                        </div>
-                    </div>
-                </div>
+<div class="dashboard-acasi">
+    <div class="main-content">
+        <div class="dashboard-header">
+            <div class="header-info">
+                <h1 class="page-title">Mon Profil Parent</h1>
+                <p class="page-description">Gérez vos informations personnelles et consultez les détails de vos enfants</p>
+            </div>
+            <div class="header-actions">
+                <a href="{{ route('parent.dashboard') }}" class="btn-acasi btn-acasi-secondary">
+                    <i class="fas fa-arrow-left"></i>
+                    Retour au tableau de bord
+                </a>
+                <button type="button" class="btn-acasi btn-acasi-primary" data-bs-toggle="modal" data-bs-target="#editProfileModal">
+                    <i class="fas fa-edit"></i>
+                    Modifier mon profil
+                </button>
             </div>
         </div>
-    </div>
 
-    <div class="row">
-        <!-- Informations personnelles -->
-        <div class="col-lg-4 mb-4">
-            <div class="card border-0 shadow-sm h-100" style="border-radius: 15px;">
-                <div class="card-header bg-white py-3 d-flex align-items-center">
-                    <i class="fas fa-user-circle text-primary me-2"></i>
-                    <h5 class="card-title mb-0 fw-bold">Informations personnelles</h5>
+        <div class="dashboard-main-grid" style="grid-template-columns: 1fr 2fr;">
+            <!-- Informations personnelles -->
+            <div class="main-card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-user-circle"></i>
+                        Informations personnelles
+                    </h3>
                 </div>
                 <div class="card-body">
-                    <div class="text-center mb-4">
+                    <div class="profile-photo-section">
                         @if(isset($user->profile_image))
-                            <img src="{{ asset('storage/' . $user->profile_image) }}" alt="Photo de profil" class="rounded-circle img-thumbnail" style="width: 120px; height: 120px; object-fit: cover;">
+                            <img src="{{ asset('storage/' . $user->profile_image) }}" alt="Photo de profil" class="profile-photo">
                         @else
-                            <div class="rounded-circle bg-light d-flex align-items-center justify-content-center mx-auto" style="width: 120px; height: 120px;">
-                                <i class="fas fa-user text-secondary" style="font-size: 3rem;"></i>
+                            <div class="profile-photo profile-photo-placeholder">
+                                <i class="fas fa-user"></i>
                             </div>
                         @endif
-                        <h5 class="mt-3 mb-1">{{ $user->name }}</h5>
-                        <p class="text-muted">Parent</p>
-                    </div>
-
-                    <div class="list-group list-group-flush">
-                        <div class="list-group-item px-0 py-3 d-flex border-0 border-bottom">
-                            <div class="text-muted me-3" style="width: 30px;">
-                                <i class="fas fa-envelope"></i>
-                            </div>
-                            <div>
-                                <small class="text-muted d-block">Email</small>
-                                <span>{{ $user->email }}</span>
-                            </div>
-                        </div>
-                        <div class="list-group-item px-0 py-3 d-flex border-0 border-bottom">
-                            <div class="text-muted me-3" style="width: 30px;">
-                                <i class="fas fa-phone"></i>
-                            </div>
-                            <div>
-                                <small class="text-muted d-block">Téléphone</small>
-                                <span>{{ $user->phone ?? 'Non renseigné' }}</span>
-                            </div>
-                        </div>
-                        <div class="list-group-item px-0 py-3 d-flex border-0">
-                            <div class="text-muted me-3" style="width: 30px;">
-                                <i class="fas fa-calendar-alt"></i>
-                            </div>
-                            <div>
-                                <small class="text-muted d-block">Membre depuis</small>
-                                <span>{{ $user->created_at->format('d/m/Y') }}</span>
-                            </div>
+                        <div class="profile-info-basic">
+                            <h2 class="profile-name">{{ $user->name }}</h2>
+                            <span class="status-badge status-badge-info">Parent</span>
                         </div>
                     </div>
 
-                    <div class="d-grid gap-2 mt-4">
-                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#editProfileModal">
-                            <i class="fas fa-edit me-2"></i> Modifier mon profil
-                        </button>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <label>Email</label>
+                            <span>{{ $user->email }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Téléphone</label>
+                            <span>{{ $user->phone ?? 'Non renseigné' }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Membre depuis</label>
+                            <span>{{ $user->created_at->format('d/m/Y') }}</span>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Mes enfants -->
-        <div class="col-lg-8 mb-4">
-            <div class="card border-0 shadow-sm h-100" style="border-radius: 15px;">
-                <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between">
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-child text-success me-2"></i>
-                        <h5 class="card-title mb-0 fw-bold">Mes enfants</h5>
+            <!-- Mes enfants -->
+            <div class="main-card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-child"></i>
+                        Mes enfants
+                    </h3>
+                    <div class="card-actions">
+                        <span class="status-badge status-badge-success">{{ $children->count() }} enfant(s)</span>
                     </div>
-                    <span class="badge bg-success rounded-pill">{{ $children->count() }} enfant(s)</span>
                 </div>
                 <div class="card-body">
                     @if($children->count() > 0)
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle">
-                                <thead class="table-light">
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
                                     <tr>
                                         <th>Photo</th>
                                         <th>Nom</th>
@@ -118,25 +92,25 @@
                                         <tr>
                                             <td>
                                                 @if(isset($child->user->profile_image))
-                                                    <img src="{{ asset('storage/' . $child->user->profile_image) }}" alt="Photo" class="rounded-circle" width="40" height="40">
+                                                    <img src="{{ asset('storage/' . $child->user->profile_image) }}" alt="Photo" class="profile-photo-sm">
                                                 @else
-                                                    <div class="rounded-circle bg-light d-flex align-items-center justify-content-center text-secondary" style="width: 40px; height: 40px;">
+                                                    <div class="profile-photo-sm profile-photo-placeholder">
                                                         <i class="fas fa-user"></i>
                                                     </div>
                                                 @endif
                                             </td>
                                             <td class="fw-medium">{{ $child->user->name }}</td>
                                             <td>{{ $child->class->name ?? 'Non assignée' }}</td>
-                                            <td><span class="badge bg-light text-dark">{{ $child->registration_number }}</span></td>
+                                            <td><span class="status-badge status-badge-secondary">{{ $child->registration_number }}</span></td>
                                             <td>
-                                                <div class="btn-group" role="group">
-                                                    <a href="{{ route('parent.child.grades', $child->id) }}" class="btn btn-sm btn-outline-primary" title="Notes">
+                                                <div class="action-buttons">
+                                                    <a href="{{ route('parent.child.grades', $child->id) }}" class="btn-acasi btn-acasi-sm btn-acasi-primary" title="Notes">
                                                         <i class="fas fa-graduation-cap"></i>
                                                     </a>
-                                                    <a href="{{ route('parent.child.attendance', $child->id) }}" class="btn btn-sm btn-outline-info" title="Présences">
+                                                    <a href="{{ route('parent.child.attendance', $child->id) }}" class="btn-acasi btn-acasi-sm btn-acasi-info" title="Présences">
                                                         <i class="fas fa-calendar-check"></i>
                                                     </a>
-                                                    <a href="{{ route('parent.child.timetable', $child->id) }}" class="btn btn-sm btn-outline-success" title="Emploi du temps">
+                                                    <a href="{{ route('parent.child.timetable', $child->id) }}" class="btn-acasi btn-acasi-sm btn-acasi-success" title="Emploi du temps">
                                                         <i class="fas fa-calendar-alt"></i>
                                                     </a>
                                                 </div>
@@ -147,14 +121,15 @@
                             </table>
                         </div>
                     @else
-                        <div class="text-center py-5">
-                            <div class="mb-3">
-                                <i class="fas fa-child text-muted" style="font-size: 3rem;"></i>
+                        <div class="empty-state">
+                            <div class="empty-state-icon">
+                                <i class="fas fa-child"></i>
                             </div>
-                            <h5 class="text-muted">Aucun enfant associé</h5>
-                            <p class="text-muted">Veuillez contacter l'administration pour associer vos enfants à votre compte.</p>
-                            <button type="button" class="btn btn-primary mt-2" data-bs-toggle="modal" data-bs-target="#contactAdminModal">
-                                <i class="fas fa-envelope me-2"></i> Contacter l'administration
+                            <h3 class="empty-state-title">Aucun enfant associé</h3>
+                            <p class="empty-state-description">Veuillez contacter l'administration pour associer vos enfants à votre compte.</p>
+                            <button type="button" class="btn-acasi btn-acasi-primary" data-bs-toggle="modal" data-bs-target="#contactAdminModal">
+                                <i class="fas fa-envelope"></i>
+                                Contacter l'administration
                             </button>
                         </div>
                     @endif
@@ -166,13 +141,13 @@
 
 <!-- Modal de modification du profil -->
 <div class="modal fade" id="editProfileModal" tabindex="-1" aria-labelledby="editProfileModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow" style="border-radius: 15px;">
-            <div class="modal-header bg-light">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
                 <h5 class="modal-title" id="editProfileModalLabel">Modifier mon profil</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-4">
+            <div class="modal-body">
                 <form action="{{ route('profile.update') }}" method="POST" enctype="multipart/form-data">
                     @csrf
                     @method('PUT')
@@ -207,13 +182,14 @@
                         <label for="password_confirmation" class="form-label">Confirmer le mot de passe</label>
                         <input type="password" class="form-control" id="password_confirmation" name="password_confirmation">
                     </div>
-                    
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save me-2"></i> Enregistrer les modifications
-                        </button>
-                    </div>
                 </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-acasi btn-acasi-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="submit" form="editProfileModal" class="btn-acasi btn-acasi-primary">
+                    <i class="fas fa-save"></i>
+                    Enregistrer les modifications
+                </button>
             </div>
         </div>
     </div>
@@ -221,14 +197,14 @@
 
 <!-- Modal de contact avec l'administration -->
 <div class="modal fade" id="contactAdminModal" tabindex="-1" aria-labelledby="contactAdminModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow" style="border-radius: 15px;">
-            <div class="modal-header bg-light">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
                 <h5 class="modal-title" id="contactAdminModalLabel">Contacter l'administration</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-4">
-                <form action="{{ route('messages.store') }}" method="POST">
+            <div class="modal-body">
+                <form id="contactAdminForm" action="{{ route('messages.store') }}" method="POST">
                     @csrf
                     <input type="hidden" name="recipient_type" value="admin">
                     
@@ -241,30 +217,16 @@
                         <label for="message" class="form-label">Message</label>
                         <textarea class="form-control" id="message" name="message" rows="4" required placeholder="Décrivez votre demande..."></textarea>
                     </div>
-                    
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-paper-plane me-2"></i> Envoyer le message
-                        </button>
-                    </div>
                 </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-acasi btn-acasi-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="submit" form="contactAdminForm" class="btn-acasi btn-acasi-primary">
+                    <i class="fas fa-paper-plane"></i>
+                    Envoyer le message
+                </button>
             </div>
         </div>
     </div>
 </div>
-
-<style>
-    .table th {
-        font-weight: 600;
-        color: #555;
-    }
-    
-    .table tbody tr {
-        transition: all 0.2s;
-    }
-    
-    .table tbody tr:hover {
-        background-color: var(--esbtp-light-green);
-    }
-</style>
 @endsection 
