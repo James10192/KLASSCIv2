@@ -5,64 +5,6 @@
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
-    .pedagogie-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: var(--space-xl);
-        border-radius: var(--radius-large);
-        margin-bottom: var(--space-xl);
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .pedagogie-header::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        right: 0;
-        width: 100px;
-        height: 100%;
-        background: rgba(255,255,255,0.1);
-        transform: skewX(-15deg);
-        transform-origin: top;
-    }
-    
-    .pedagogie-nav {
-        background: var(--surface);
-        border-radius: var(--radius-medium);
-        padding: var(--space-md);
-        margin-bottom: var(--space-lg);
-        box-shadow: var(--shadow-card);
-    }
-    
-    .pedagogie-nav .nav-tabs {
-        border: none;
-        background: rgba(var(--primary-rgb), 0.05);
-        border-radius: var(--radius-small);
-        padding: var(--space-xs);
-    }
-    
-    .pedagogie-nav .nav-link {
-        border: none;
-        color: var(--text-secondary);
-        background: transparent;
-        border-radius: var(--radius-small);
-        padding: var(--space-sm) var(--space-md);
-        margin: 0 var(--space-xs);
-        transition: all 0.3s ease;
-        position: relative;
-    }
-    
-    .pedagogie-nav .nav-link.active {
-        background: var(--primary);
-        color: white;
-        box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.3);
-    }
-    
-    .pedagogie-nav .nav-link:hover {
-        background: rgba(var(--primary-rgb), 0.1);
-        transform: translateY(-1px);
-    }
     
     .dashboard-cards {
         display: grid;
@@ -294,62 +236,14 @@
 @section('content')
 <div class="dashboard-acasi">
     <div class="main-content">
-        <!-- Header Coordinateur -->
-        <div class="coordinateur-header">
-            <div class="row align-items-center">
-                <div class="col-md-8">
-                    <h1><i class="fas fa-user-tie me-2"></i>Interface Coordinateur</h1>
-                    <p class="mb-0">Gestion avancée du planning et supervision académique</p>
-                </div>
-                <div class="col-md-4 text-end">
-                    <div class="d-flex align-items-center gap-2">
-                        <!-- Sélecteur d'année -->
-                        <select class="form-select form-select-sm" onchange="changeAnnee(this.value)" style="max-width: 150px;">
-                            @foreach($annees as $annee)
-                                <option value="{{ $annee->id }}" {{ $anneeSelectionnee->id == $annee->id ? 'selected' : '' }}>
-                                    {{ $annee->libelle }}
-                                </option>
-                            @endforeach
-                        </select>
-                        
-                        <a href="{{ route('esbtp.planning-general.index') }}" class="btn-acasi secondary">
-                            <i class="fas fa-arrow-left me-1"></i>Retour
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Navigation du planning -->
-        <div class="planning-nav">
-            <ul class="nav nav-tabs" role="tablist">
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ route('esbtp.planning-general.index', ['annee_id' => request('annee_id')]) }}">
-                        <i class="fas fa-home me-2"></i>Vue d'ensemble
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ route('esbtp.planning-general.annuel', ['annee_id' => request('annee_id')]) }}">
-                        <i class="fas fa-calendar me-2"></i>Planning Annuel
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ route('esbtp.planning-general.repartition-matieres', ['annee_id' => request('annee_id')]) }}">
-                        <i class="fas fa-chart-pie me-2"></i>Répartition Matières
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ route('esbtp.attendance-codes.index') }}">
-                        <i class="fas fa-qrcode me-2"></i>Codes d'Émargement
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link active" href="{{ route('esbtp.planning-general.coordinateur', ['annee_id' => request('annee_id')]) }}">
-                        <i class="fas fa-user-tie me-2"></i>Coordinateur
-                    </a>
-                </li>
-            </ul>
-        </div>
+        <!-- Header et navigation du planning -->
+        <x-planning-header 
+            title="Interface Coordinateur" 
+            subtitle="Gestion avancée du planning et supervision académique"
+            active-tab="coordinateur"
+            :annee-selectionnee="$anneeSelectionnee"
+            :annees="$annees"
+        />
 
         <!-- Sélection du mois -->
         <div class="card-moderne mb-lg">

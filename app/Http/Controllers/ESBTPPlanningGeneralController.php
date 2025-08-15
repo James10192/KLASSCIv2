@@ -14,6 +14,8 @@ use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\User;
 use App\Models\ESBTPEtudiant;
+use App\Models\ESBTPDailyCode;
+use App\Models\ESBTPTeacherAttendance;
 use App\Services\PlanningConfigurationService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -646,6 +648,201 @@ class ESBTPPlanningGeneralController extends Controller
     
     private function grouperSeancesParSemaine($seances) { 
         return []; 
+    }
+
+    /**
+     * Interface d'émargement intégrée au planning général
+     */
+    public function emargement(Request $request)
+    {
+        $anneeId = $request->input('annee_id');
+        $annees = ESBTPAnneeUniversitaire::orderBy('start_date', 'desc')->get();
+        $anneeSelectionnee = $anneeId ? ESBTPAnneeUniversitaire::find($anneeId) : 
+                           ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        // Codes actifs (peut y en avoir plusieurs maintenant)
+        $activeCodes = ESBTPDailyCode::with(['seance.matiere', 'seance.classe'])
+            ->where('status', 'active')
+            ->where('valid_until', '>', now())
+            ->orderBy('created_at', 'desc')
+            ->get();
+            
+        // Code actif principal (pour compatibilité avec la vue existante)
+        $activeCode = $activeCodes->first();
+
+        // Codes récents
+        $recentCodes = ESBTPDailyCode::with('generator')
+            ->orderBy('created_at', 'desc')
+            ->take(10)
+            ->get();
+
+        // Récupérer les séances à venir (aujourd'hui et dans les 3 prochains jours)
+        $seancesAVenir = collect();
+        if ($anneeSelectionnee) {
+            $today = now();
+            $todayDayOfWeek = $today->dayOfWeek === 0 ? 7 : $today->dayOfWeek; // Dimanche = 7, Lundi = 1
+            
+            $seancesAVenir = ESBTPSeanceCours::with(['matiere', 'classe', 'teacher', 'emploiTemps'])
+                ->whereHas('emploiTemps', function($query) use ($anneeSelectionnee) {
+                    $query->where('annee_universitaire_id', $anneeSelectionnee->id)
+                          ->where(function($subQuery) {
+                              $subQuery->where('is_active', true)
+                                       ->orWhere('is_current', true);
+                          });
+                })
+                ->where('is_active', true)
+                ->where(function($query) use ($today, $todayDayOfWeek) {
+                    // Séances avec date précise (aujourd'hui et 3 prochains jours)
+                    $query->whereBetween('date_seance', [
+                        $today->format('Y-m-d'), 
+                        $today->copy()->addDays(3)->format('Y-m-d')
+                    ])
+                    // Ou séances récurrentes pour aujourd'hui et prochains jours
+                    ->orWhere(function($subQuery) use ($todayDayOfWeek) {
+                        $subQuery->whereNull('date_seance')
+                                 ->where('is_recurring', true)
+                                 ->where(function($dayQuery) use ($todayDayOfWeek) {
+                                     // Aujourd'hui et les 3 prochains jours de la semaine
+                                     for ($i = 0; $i < 4; $i++) {
+                                         $day = (($todayDayOfWeek + $i - 1) % 7) + 1;
+                                         if ($day > 6) $day = $day - 6; // Samedi max
+                                         $dayQuery->orWhere('jour', $day);
+                                     }
+                                 });
+                    })
+                    // Ou séances d'aujourd'hui (récurrentes sans date précise)
+                    ->orWhere(function($subQuery) use ($todayDayOfWeek) {
+                        $subQuery->where('jour', $todayDayOfWeek)
+                                 ->whereNull('date_seance');
+                    });
+                })
+                ->whereIn('type', ['course', 'td', 'tp', 'cm']) // Types de cours (pas pauses)
+                ->orderByRaw('CASE WHEN date_seance IS NOT NULL THEN date_seance ELSE CURDATE() END')
+                ->orderBy('heure_debut')
+                ->take(10)
+                ->get();
+        }
+
+        // Statistiques des émargements
+        $stats = $this->calculerStatsEmargement($anneeSelectionnee);
+
+        return view('esbtp.planning-general.emargement', compact(
+            'annees', 'anneeSelectionnee', 'activeCode', 'activeCodes', 'recentCodes', 'stats', 'seancesAVenir'
+        ));
+    }
+
+    /**
+     * Génère un nouveau code d'émargement depuis l'interface planning
+     */
+    public function genererCodeEmargement(Request $request)
+    {
+        $request->validate([
+            'type' => 'required|in:session,journee,personnalise',
+            'duree' => 'required|integer|min:1|max:72',
+            'activation' => 'nullable|in:immediate,1,2,4,24',
+            'description' => 'nullable|string|max:255',
+            'seance_id' => 'nullable|exists:esbtp_seance_cours,id'
+        ]);
+
+        try {
+            $seanceId = $request->input('seance_id');
+            
+            // Logique d'invalidation intelligente
+            if ($seanceId) {
+                // Si un code est créé pour une séance spécifique, invalider seulement les codes pour cette même séance
+                ESBTPDailyCode::where('status', 'active')
+                    ->where('seance_id', $seanceId)
+                    ->update(['status' => 'expired']);
+            } else {
+                // Si un code générique est créé, invalider seulement les codes génériques (sans seance_id)
+                ESBTPDailyCode::where('status', 'active')
+                    ->whereNull('seance_id')
+                    ->update(['status' => 'expired']);
+            }
+
+            // Calculer les dates d'activation et d'expiration
+            $activation = $request->input('activation', 'immediate');
+            $duree = (int) $request->input('duree', 2);
+            
+            $validFrom = $activation === 'immediate' ? now() : now()->addHours((int) $activation);
+            $validUntil = $validFrom->copy()->addHours($duree);
+
+            // Générer le code
+            $codeData = [
+                'code' => ESBTPDailyCode::generateCode(),
+                'valid_from' => $validFrom,
+                'valid_until' => $validUntil,
+                'is_active' => $activation === 'immediate',
+                'status' => $activation === 'immediate' ? 'active' : 'scheduled',
+                'created_by' => auth()->id(),
+                'description' => $request->input('description'),
+                'type' => $request->input('type')
+            ];
+
+            // Ajouter l'ID de la séance si fourni
+            if ($request->filled('seance_id')) {
+                $codeData['seance_id'] = $request->input('seance_id');
+            }
+
+            $code = ESBTPDailyCode::create($codeData);
+
+            $message = 'Nouveau code généré avec succès : ' . $code->code;
+            
+            if ($activation !== 'immediate') {
+                $heuresActivation = (int) $activation;
+                $message .= " (activation dans {$heuresActivation}h)";
+            }
+            
+            $message .= " - Valide pendant {$duree}h";
+
+            return redirect()->route('esbtp.planning-general.emargement', ['annee_id' => $request->input('annee_id')])
+                ->with('success', $message);
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Erreur lors de la génération du code : ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Calcule les statistiques d'émargement
+     */
+    private function calculerStatsEmargement($anneeSelectionnee)
+    {
+        if (!$anneeSelectionnee) {
+            return [
+                'total_emargements_aujourd_hui' => 0,
+                'enseignants_emarges_aujourd_hui' => 0,
+                'codes_generes_semaine' => 0,
+                'taux_emargement_semaine' => 0,
+            ];
+        }
+
+        $aujourd_hui = now()->toDateString();
+        $debutSemaine = now()->startOfWeek();
+        $finSemaine = now()->endOfWeek();
+
+        return [
+            'total_emargements_aujourd_hui' => ESBTPTeacherAttendance::whereDate('created_at', $aujourd_hui)->count(),
+            'enseignants_emarges_aujourd_hui' => ESBTPTeacherAttendance::whereDate('created_at', $aujourd_hui)
+                ->distinct('teacher_id')->count(),
+            'codes_generes_semaine' => ESBTPDailyCode::whereBetween('created_at', [$debutSemaine, $finSemaine])->count(),
+            'taux_emargement_semaine' => $this->calculerTauxEmargementSemaine(),
+        ];
+    }
+
+    /**
+     * Calcule le taux d'émargement de la semaine
+     */
+    private function calculerTauxEmargementSemaine()
+    {
+        $debutSemaine = now()->startOfWeek();
+        $finSemaine = now()->endOfWeek();
+        
+        $enseignantsActifs = User::role(['enseignant'])->where('is_active', true)->count();
+        $emargements = ESBTPTeacherAttendance::whereBetween('created_at', [$debutSemaine, $finSemaine])
+            ->distinct('teacher_id')->count();
+            
+        return $enseignantsActifs > 0 ? round(($emargements / $enseignantsActifs) * 100, 1) : 0;
     }
     
     private function calculerRepartitionMatieresClasse($classeId, $anneeId, $periode = 'annee') { 

@@ -50,7 +50,7 @@
                         <div style="display: flex; flex-wrap: wrap; gap: var(--space-xs); justify-content: center;">
                         @foreach($analyse['matieres_echouees'] as $matiere)
                         <span class="table-badge danger" style="margin-bottom: var(--space-xs);">
-                            {{ $matiere['matiere']->nom ?? 'N/A' }}
+                            {{ $matiere['matiere']->name ?? 'N/A' }}
                             ({{ number_format($matiere['moyenne'], 2) }})
                         </span>
                         @endforeach

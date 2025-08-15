@@ -343,8 +343,69 @@
                         profileImage.src = e.target.result;
                     }
                     reader.readAsDataURL(this.files[0]);
+                    
+                    // Upload automatique de la photo
+                    uploadProfilePhoto(this.files[0]);
                 }
             });
+        }
+        
+        function uploadProfilePhoto(file) {
+            const formData = new FormData();
+            formData.append('profile_photo', file);
+            formData.append('_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
+            formData.append('_method', 'PUT');
+            
+            // Afficher un indicateur de chargement
+            const editPhotoBtn = document.querySelector('.edit-photo-btn');
+            const originalIcon = editPhotoBtn.innerHTML;
+            editPhotoBtn.innerHTML = '<i class="fas fa-spinner fa-spin text-primary"></i>';
+            
+            fetch('{{ route("admin.profile.update") }}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Afficher un message de succès temporaire
+                    showTemporaryMessage('Photo de profil mise à jour avec succès!', 'success');
+                } else {
+                    showTemporaryMessage('Erreur lors de la mise à jour de la photo', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showTemporaryMessage('Erreur lors de la mise à jour de la photo', 'error');
+            })
+            .finally(() => {
+                // Restaurer l'icône originale
+                editPhotoBtn.innerHTML = originalIcon;
+            });
+        }
+        
+        function showTemporaryMessage(message, type) {
+            const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+            const iconClass = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
+            
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert ${alertClass} alert-dismissible fade show animate__animated animate__fadeIn`;
+            alertDiv.innerHTML = `
+                <i class="fas ${iconClass} me-2"></i> ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            
+            // Insérer l'alerte après le header
+            const header = document.querySelector('.dashboard-header');
+            header.parentNode.insertBefore(alertDiv, header.nextSibling);
+            
+            // Faire disparaître l'alerte après 3 secondes
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 3000);
         }
     });
 </script>

@@ -94,12 +94,30 @@ class AdminProfileController extends Controller
                 'profile_photo_path' => $user->profile_photo_path
             ]);
 
+            // Pour les requêtes AJAX, renvoyer une réponse JSON
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Profil mis à jour avec succès',
+                    'profile_photo_url' => $user->profile_photo_path ? Storage::url($user->profile_photo_path) : null
+                ]);
+            }
+
             return redirect()->back()->with('success', 'Profil mis à jour avec succès');
         } catch (\Exception $e) {
             \Log::error('Erreur lors de la mise à jour du profil', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
+            
+            // Pour les requêtes AJAX, renvoyer une erreur JSON
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Une erreur est survenue lors de la mise à jour du profil'
+                ], 500);
+            }
+            
             return redirect()->back()->with('error', 'Une erreur est survenue lors de la mise à jour du profil');
         }
     }

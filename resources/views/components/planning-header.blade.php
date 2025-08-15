@@ -43,13 +43,16 @@
     <div class="header-actions">
         <div class="btn-group">
             <button type="button" class="btn-acasi secondary dropdown-toggle" data-bs-toggle="dropdown">
-                <i class="fas fa-calendar-alt"></i>
+                <i class="fas fa-calendar-alt me-2"></i>
                 {{ $anneeSelectionnee ? $anneeSelectionnee->name : 'Sélectionner une année' }}
             </button>
-            <ul class="dropdown-menu">
+            <ul class="dropdown-menu" style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-small); box-shadow: var(--shadow-elevated);">
                 @foreach($annees as $annee)
                     <li>
-                        <a class="dropdown-item" href="{{ request()->url() }}?annee_id={{ $annee->id }}">
+                        <a class="dropdown-item" href="{{ request()->url() }}?annee_id={{ $annee->id }}" 
+                           style="color: var(--text-primary); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-small); transition: all 0.2s ease;"
+                           onmouseover="this.style.background='var(--background)'" 
+                           onmouseout="this.style.background='transparent'">
                             {{ $annee->name }}
                             @if(optional($annee)->is_current)
                                 <span class="badge bg-primary ms-2">En cours</span>
@@ -62,10 +65,10 @@
         
         @canany(['manage-planning', 'view-all-timetables'])
         <a href="{{ route('esbtp.planning-general.coordinateur', ['annee_id' => $anneeSelectionnee?->id]) }}" class="btn-acasi secondary">
-            <i class="fas fa-cogs"></i>Gestion Planning
+            <i class="fas fa-cogs me-2"></i>Gestion Planning
         </a>
         <a href="{{ route('esbtp.enseignants.index') }}" class="btn-acasi primary">
-            <i class="fas fa-users"></i>Gestion Enseignants
+            <i class="fas fa-users me-2"></i>Gestion Enseignants
         </a>
         @endcanany
     </div>
@@ -96,6 +99,12 @@
             <a class="nav-link {{ $activeTab === 'evenements' ? 'active' : '' }}" 
                href="{{ route('esbtp.evenements-academiques.index', ['annee_id' => $anneeSelectionnee?->id]) }}">
                 <i class="fas fa-calendar-check me-2"></i>Événements Académiques
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {{ $activeTab === 'emargement' ? 'active' : '' }}" 
+               href="{{ route('esbtp.planning-general.emargement', ['annee_id' => $anneeSelectionnee?->id]) }}">
+                <i class="fas fa-qrcode me-2"></i>Codes d'Émargement
             </a>
         </li>
         @canany(['manage-planning', 'view-all-timetables'])

@@ -1,0 +1,47 @@
+{
+  "allowedTools": [
+    "Bash(task-master:*)",
+    "Bash(git:*)",
+    "Bash(npm:*)",
+    "Bash(yarn:*)",
+    "Bash(php:*)",
+    "Bash(/mnt/c/xampp/php/php.exe:*)",
+    "Bash(composer:*)",
+    "Bash(ls:*)",
+    "Bash(cat:*)",
+    "Bash(grep:*)",
+    "Bash(mkdir:*)",
+    "Write",
+    "Read",
+    "Edit",
+    "MultiEdit",
+    "Glob",
+    "Grep",
+    "LS",
+    "TodoWrite",
+    "mcp__*"
+  ],
+  "dangerouslySkipPermissions": true,
+  "theme": "dark",
+  "hasCompletedOnboarding": true,
+  "hooks": [
+    {
+      "matcher": "Stop|Complete|Done",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "echo -e '\\a' && echo 'Tâche terminée !'"
+        }
+      ]
+    },
+    {
+      "matcher": "Edit|Write|MultiEdit",
+      "hooks": [
+        {
+          "type": "command", 
+          "command": "echo -e '\\a'"
+        }
+      ]
+    }
+  ]
+}

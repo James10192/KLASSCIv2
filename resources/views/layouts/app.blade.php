@@ -1353,17 +1353,17 @@
                             </button>
                             <div class="menu-accordion-content {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.reinscription.*') ? 'show' : '' }}">
                                 <a href="{{ route('esbtp.etudiants.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.etudiants.*') ? 'active' : '' }}">
-                                    <i class="fas fa-list"></i>
-                                    <span>Liste des Étudiants</span>
+                                    <div class="menu-icon"><i class="fas fa-list"></i></div>
+                                    <div class="menu-text">Liste des Étudiants</div>
                                 </a>
                                 <a href="{{ route('esbtp.inscriptions.create') }}" class="menu-sublink {{ Request::routeIs('esbtp.inscriptions.create') ? 'active' : '' }}">
-                                    <i class="fas fa-user-plus"></i>
-                                    <span>Nouvelle Inscription</span>
+                                    <div class="menu-icon"><i class="fas fa-user-plus"></i></div>
+                                    <div class="menu-text">Nouvelle Inscription</div>
                                 </a>
                                 @if(auth()->user()->hasRole(['superAdmin', 'secretaire', 'coordinateur']))
                                 <a href="{{ route('esbtp.reinscription.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.reinscription.*') ? 'active' : '' }}">
-                                    <i class="fas fa-redo"></i>
-                                    <span>Réinscriptions</span>
+                                    <div class="menu-icon"><i class="fas fa-redo"></i></div>
+                                    <div class="menu-text">Réinscriptions</div>
                                 </a>
                                 @endif
                             </div>

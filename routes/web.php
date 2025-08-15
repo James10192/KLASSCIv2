@@ -1626,6 +1626,10 @@ Route::middleware(['auth', 'role:coordinateur'])->prefix('esbtp')->name('esbtp.'
         ->middleware('permission:manage-planning|view-all-timetables');
     Route::get('/planning-general/impact-emargements', [\App\Http\Controllers\ESBTPPlanningGeneralController::class, 'impactEmargements'])->name('planning-general.impact-emargements')
         ->middleware('permission:manage-planning|view-all-timetables');
+    Route::get('/planning-general/emargement', [\App\Http\Controllers\ESBTPPlanningGeneralController::class, 'emargement'])->name('planning-general.emargement')
+        ->middleware('permission:manage-planning|view-all-timetables');
+    Route::post('/planning-general/emargement/generer-code', [\App\Http\Controllers\ESBTPPlanningGeneralController::class, 'genererCodeEmargement'])->name('planning-general.generer-code-emargement')
+        ->middleware('permission:manage-planning|view-all-timetables');
 });
 
 // Routes spécifiques pour les coordinateurs pour événements académiques

@@ -21,10 +21,14 @@ class ESBTPDailyCode extends Model
         'successful_attempts',
         'failed_attempts',
         'last_attempt_at',
-        'created_by'
+        'created_by',
+        'description',
+        'type',
+        'seance_id'
     ];
 
     protected $casts = [
+        'valid_from' => 'datetime',
         'valid_until' => 'datetime',
         'is_active' => 'boolean',
         'last_attempt_at' => 'datetime'
@@ -38,6 +42,11 @@ class ESBTPDailyCode extends Model
     public function attendances(): HasMany
     {
         return $this->hasMany(ESBTPTeacherAttendance::class, 'daily_code_id');
+    }
+
+    public function seance(): BelongsTo
+    {
+        return $this->belongsTo(ESBTPSeanceCours::class, 'seance_id');
     }
 
     public function isValid(): bool
