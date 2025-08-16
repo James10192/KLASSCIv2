@@ -88,6 +88,28 @@ class ESBTPNiveauEtude extends Model
     }
 
     /**
+     * Scope pour récupérer uniquement les niveaux d'études actifs.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    /**
+     * Scope pour récupérer uniquement les niveaux d'études inactifs.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeInactive($query)
+    {
+        return $query->where('is_active', false);
+    }
+
+    /**
      * Obtenir le nom complet du niveau d'études.
      *
      * @return string

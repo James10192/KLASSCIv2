@@ -11,6 +11,11 @@
     "Bash(cat:*)",
     "Bash(grep:*)",
     "Bash(mkdir:*)",
+    "Bash(curl:*)",
+    "Bash(find:*)",
+    "Bash(chmod:*)",
+    "Bash(ps:*)",
+    "Bash(kill:*)",
     "Write",
     "Read",
     "Edit",
@@ -19,29 +24,43 @@
     "Grep",
     "LS",
     "TodoWrite",
+    "WebFetch",
+    "WebSearch",
     "mcp__*"
   ],
   "dangerouslySkipPermissions": true,
   "theme": "dark",
   "hasCompletedOnboarding": true,
-  "hooks": [
-    {
-      "matcher": "Stop|Complete|Done",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "echo -e '\\a' && echo 'Tâche terminée !'"
-        }
-      ]
-    },
-    {
-      "matcher": "Edit|Write|MultiEdit",
-      "hooks": [
-        {
-          "type": "command", 
-          "command": "echo -e '\\a'"
-        }
-      ]
-    }
-  ]
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/notify-simple.sh 'Claude Started' 'New task started'"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/notify-simple.sh 'Task Completed' 'Claude has finished the task'"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/notify-simple.sh 'Input Required' 'Claude is waiting for your response'"
+          }
+        ]
+      }
+    ]
+  }
 }

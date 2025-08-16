@@ -39,11 +39,35 @@ class ESBTPFraisCategory extends Model
     ];
 
     /**
-     * Règles de validation pour cette catégorie
+     * Règles de validation pour cette catégorie (ancien système)
      */
     public function rules()
     {
         return $this->hasMany(ESBTPFraisRule::class, 'frais_category_id');
+    }
+
+    /**
+     * Configurations pour cette catégorie (nouveau système)
+     */
+    public function configurations()
+    {
+        return $this->hasMany(ESBTPFraisConfiguration::class, 'frais_category_id');
+    }
+
+    /**
+     * Options pour cette catégorie (nouveau système)
+     * Relation via les configurations
+     */
+    public function options()
+    {
+        return $this->hasManyThrough(
+            ESBTPFraisOption::class,
+            ESBTPFraisConfiguration::class,
+            'frais_category_id', // Foreign key sur configurations
+            'configuration_id',  // Foreign key sur options
+            'id',               // Local key sur categories
+            'id'                // Local key sur configurations
+        );
     }
 
     /**

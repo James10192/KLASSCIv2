@@ -66,21 +66,35 @@ class ESBTPDailyCode extends Model
         return $code;
     }
 
-    public static function createDailyCode(): self
+    public static function createDailyCode(string $description = null, int $durationMinutes = null, int $seanceId = null): self
     {
-        // Invalider les codes précédents
-        self::where('status', 'active')->update(['status' => 'expired']);
+        // Ne pas invalider automatiquement - c'est géré par le contrôleur maintenant
+        // pour l'invalidation intelligente
 
-        $settings = app(ESBTPAttendanceSettings::class);
-        $validityHours = $settings->get('code_validity_hours', 24);
+        // Déterminer la durée de validité
+        if ($durationMinutes) {
+            $validityMinutes = $durationMinutes;
+        } else {
+            try {
+                $settings = app(ESBTPAttendanceSettings::class);
+                $validityHours = $settings->get('code_validity_hours', 24);
+                $validityMinutes = $validityHours * 60;
+            } catch (\Exception $e) {
+                // Fallback si les settings ne sont pas disponibles
+                $validityMinutes = 24 * 60; // 24 heures par défaut
+            }
+        }
 
         return self::create([
             'code' => self::generateCode(),
             'valid_from' => now(),
-            'valid_until' => now()->addHours($validityHours),
+            'valid_until' => now()->addMinutes($validityMinutes),
             'is_active' => true,
             'status' => 'active',
-            'created_by' => auth()->id()
+            'created_by' => auth()->id(),
+            'description' => $description,
+            'type' => $seanceId ? 'session' : 'journee',
+            'seance_id' => $seanceId
         ]);
     }
 

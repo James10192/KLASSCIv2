@@ -245,6 +245,8 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             // Nouveau système de catégories de frais ESBTP
             Route::get('frais', [\App\Http\Controllers\ESBTPFraisController::class, 'index'])->name('frais.index');
             Route::get('frais/configure', [\App\Http\Controllers\ESBTPFraisController::class, 'configure'])->name('frais.configure');
+            Route::get('frais/optional-config', [\App\Http\Controllers\ESBTPFraisController::class, 'optionalConfig'])->name('frais.optional-config');
+            Route::post('frais/save-assignment', [\App\Http\Controllers\ESBTPFraisController::class, 'saveAssignment'])->name('frais.save-assignment');
             Route::get('frais/get-categories', [\App\Http\Controllers\ESBTPFraisController::class, 'getCategories'])->name('frais.get-categories');
             Route::post('frais/update-configuration', [\App\Http\Controllers\ESBTPFraisController::class, 'updateConfiguration'])->name('frais.update-configuration');
             Route::post('frais/{category}/toggle', [\App\Http\Controllers\ESBTPFraisController::class, 'toggleCategory'])->name('frais.toggle');
@@ -257,7 +259,24 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::get('frais/category-variants/{category}', [\App\Http\Controllers\ESBTPFraisController::class, 'getCategoryVariants'])->name('frais.category-variants');
             Route::get('frais/all-variants', [\App\Http\Controllers\ESBTPFraisController::class, 'getAllVariants'])->name('frais.all-variants');
             Route::post('frais/variants', [\App\Http\Controllers\ESBTPFraisController::class, 'storeVariant'])->name('frais.variants.store');
+            Route::put('frais/variants/{variant}', [\App\Http\Controllers\ESBTPFraisController::class, 'updateVariant'])->name('frais.variants.update');
             Route::delete('frais/variants/{variant}', [\App\Http\Controllers\ESBTPFraisController::class, 'destroyVariant'])->name('frais.variants.destroy');
+            
+            // Routes pour l'édition inline des configurations
+            Route::put('frais/configurations/{configuration}', [\App\Http\Controllers\ESBTPFraisController::class, 'updateConfigurationInline'])->name('frais.configurations.update');
+            Route::post('frais/configurations/{configuration}/toggle', [\App\Http\Controllers\ESBTPFraisController::class, 'toggleConfigurationStatus'])->name('frais.configurations.toggle');
+            Route::get('frais/configurations/{configuration}/options', [\App\Http\Controllers\ESBTPFraisController::class, 'getConfigurationOptions'])->name('frais.configurations.options');
+            
+            // Routes pour l'édition inline des options
+            Route::put('frais/options/{option}', [\App\Http\Controllers\ESBTPFraisController::class, 'updateOption'])->name('frais.options.update');
+            Route::post('frais/options/{option}/toggle', [\App\Http\Controllers\ESBTPFraisController::class, 'toggleOptionStatus'])->name('frais.options.toggle');
+            Route::delete('frais/options/{option}', [\App\Http\Controllers\ESBTPFraisController::class, 'destroyOption'])->name('frais.options.destroy');
+            
+            // Routes pour les assignations d'options
+            Route::get('frais/options/{option}/assignments', [\App\Http\Controllers\ESBTPFraisController::class, 'getOptionAssignments'])->name('frais.options.assignments');
+            Route::post('frais/options/assignments', [\App\Http\Controllers\ESBTPFraisController::class, 'saveOptionAssignments'])->name('frais.options.assignments.save');
+            Route::delete('frais/assignments/{assignment}', [\App\Http\Controllers\ESBTPFraisController::class, 'removeAssignment'])->name('frais.assignments.remove');
+            Route::delete('frais/options/{option}/assignments', [\App\Http\Controllers\ESBTPFraisController::class, 'clearOptionAssignments'])->name('frais.options.assignments.clear');
             
             // Routes API pour les relances automatiques
             Route::get('frais/{category}/overdue-students', [\App\Http\Controllers\ESBTPFraisController::class, 'getStudentsWithOverduePayments'])->name('frais.overdue-students');
@@ -1015,6 +1034,7 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'role:superAdmin'])-
     Route::get('enseignants/{teacher}/matieres', [ESBTPEnseignantController::class, 'matieres'])->name('enseignants.matieres');
     Route::post('enseignants/{teacher}/assign-matieres', [ESBTPEnseignantController::class, 'assignMatieres'])->name('enseignants.assign-matieres');
     Route::post('enseignants/{teacher}/toggle-status', [ESBTPEnseignantController::class, 'toggleStatus'])->name('enseignants.toggleStatus');
+    Route::post('enseignants/{enseignant}/update-availability', [ESBTPEnseignantController::class, 'updateAvailability'])->name('enseignants.update-availability');
     Route::resource('specialties', ESBTPSpecialtyController::class);
     Route::put('specialties/{id}/restore', [ESBTPSpecialtyController::class, 'restore'])->name('specialties.restore');
     Route::resource('continuing-education', ESBTPContinuingEducationController::class);
@@ -1282,6 +1302,8 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth'])->group(function () 
             ->name('attendance-codes.generate');
         Route::post('/attendance-codes/{code}/invalidate', [ESBTPAttendanceCodeController::class, 'invalidate'])
             ->name('attendance-codes.invalidate');
+        Route::post('/attendance-codes/cleanup-duplicates', [ESBTPAttendanceCodeController::class, 'cleanupDuplicates'])
+            ->name('attendance-codes.cleanup-duplicates');
         Route::get('/attendance-codes/report', [ESBTPAttendanceCodeController::class, 'report'])
             ->name('attendance-codes.report');
     });

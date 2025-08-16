@@ -112,4 +112,9 @@ class ESBTPTeacher extends Model
     {
         return $this->belongsTo(User::class, 'updated_by');
     }
+    
+    public function availabilities()
+    {
+        return $this->hasMany(ESBTPTeacherAvailability::class, 'teacher_id');
+    }
 }

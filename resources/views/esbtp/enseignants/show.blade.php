@@ -328,6 +328,240 @@
         background: var(--primary);
     }
     
+    /* Section de disponibilité principale */
+    .availability-main-section {
+        grid-column: 1 / -1;
+        background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+        border-radius: var(--radius-large);
+        padding: var(--space-xl);
+        margin: var(--space-xl) 0;
+        border: 1px solid var(--border-light);
+        box-shadow: var(--shadow-card);
+    }
+    
+    .availability-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: var(--space-lg);
+    }
+    
+    .availability-title {
+        display: flex;
+        align-items: center;
+        gap: var(--space-md);
+    }
+    
+    .availability-title h3 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0;
+    }
+    
+    .availability-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary), var(--accent-blue));
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        box-shadow: var(--shadow-medium);
+    }
+    
+    .availability-grid {
+        display: grid;
+        grid-template-columns: 100px repeat(7, 1fr);
+        gap: var(--space-sm);
+        background: white;
+        padding: var(--space-lg);
+        border-radius: var(--radius-medium);
+        border: 1px solid var(--border-light);
+    }
+    
+    .availability-time-header {
+        grid-column: 1;
+        font-weight: 600;
+        text-align: center;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+    
+    .availability-day-header {
+        text-align: center;
+        font-weight: 700;
+        color: var(--primary);
+        padding: var(--space-sm);
+        background: rgba(var(--primary-rgb), 0.1);
+        border-radius: var(--radius-small);
+        font-size: 0.9rem;
+    }
+    
+    .availability-time-slot {
+        text-align: center;
+        padding: var(--space-sm);
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        border-right: 1px solid var(--border-light);
+    }
+    
+    .availability-slot {
+        padding: var(--space-sm);
+        text-align: center;
+        border-radius: var(--radius-small);
+        font-size: 0.8rem;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .availability-slot.available {
+        background: var(--success);
+        color: white;
+        font-weight: 600;
+    }
+    
+    .availability-slot.preferred {
+        background: var(--primary);
+        color: white;
+        font-weight: 600;
+    }
+    
+    .availability-slot.unavailable {
+        background: var(--border);
+        color: var(--text-muted);
+    }
+    
+    .availability-legend {
+        display: flex;
+        justify-content: center;
+        gap: var(--space-lg);
+        margin-top: var(--space-lg);
+        flex-wrap: wrap;
+    }
+    
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: var(--space-xs);
+        font-size: 0.9rem;
+    }
+    
+    .legend-color {
+        width: 16px;
+        height: 16px;
+        border-radius: var(--radius-small);
+    }
+    
+    /* Styles pour les boutons d'édition de disponibilité */
+    .availability-actions {
+        display: flex;
+        gap: var(--space-sm);
+        align-items: center;
+    }
+    
+    .btn-edit-availability {
+        background: var(--primary);
+        color: white;
+        border: none;
+        padding: var(--space-sm) var(--space-md);
+        border-radius: var(--radius-medium);
+        font-size: 0.9rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: var(--space-xs);
+    }
+    
+    .btn-edit-availability:hover {
+        background: var(--primary-dark);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.3);
+    }
+    
+    .btn-save-availability {
+        background: var(--success);
+        color: white;
+        border: none;
+        padding: var(--space-sm) var(--space-md);
+        border-radius: var(--radius-medium);
+        font-size: 0.9rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: var(--space-xs);
+    }
+    
+    .btn-save-availability:hover {
+        background: var(--success-dark);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(var(--success-rgb), 0.3);
+    }
+    
+    .btn-cancel-availability {
+        background: var(--danger);
+        color: white;
+        border: none;
+        padding: var(--space-sm) var(--space-md);
+        border-radius: var(--radius-medium);
+        font-size: 0.9rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: var(--space-xs);
+    }
+    
+    .btn-cancel-availability:hover {
+        background: var(--danger-dark);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(var(--danger-rgb), 0.3);
+    }
+    
+    /* Mode édition pour les créneaux */
+    .availability-slot.editable {
+        cursor: pointer;
+        border: 2px solid transparent;
+        position: relative;
+    }
+    
+    .availability-slot.editable:hover {
+        border-color: var(--primary);
+        transform: scale(1.05);
+    }
+    
+    .availability-slot.editable.available:hover {
+        border-color: white;
+        box-shadow: 0 0 0 2px var(--success);
+    }
+    
+    .availability-slot.editable.preferred:hover {
+        border-color: white;
+        box-shadow: 0 0 0 2px var(--primary);
+    }
+    
+    .availability-slot.editable.unavailable:hover {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px var(--primary);
+    }
+    
+    /* Indicateur de modification */
+    .availability-slot.modified::after {
+        content: '●';
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        color: var(--warning);
+        font-size: 0.6rem;
+    }
+    
     @media (max-width: 1024px) {
         .info-grid {
             grid-template-columns: 1fr;
@@ -389,7 +623,7 @@
                 </div>
                 
                 <div class="profile-actions">
-                    <a href="{{ route('esbtp.enseignants.edit', $teacher) }}" class="btn-acasi primary">
+                    <a href="{{ route('esbtp.enseignants.edit', ['enseignant' => $teacher->id]) }}" class="btn-acasi primary">
                         <i class="fas fa-edit me-1"></i>Modifier
                     </a>
                     <a href="{{ route('esbtp.personnel.unified.index') }}" class="btn-acasi secondary">
@@ -599,7 +833,7 @@
                             </div>
                             
                             <div class="action-grid">
-                                <a href="{{ route('esbtp.enseignants.edit', $teacher) }}" class="btn-acasi primary">
+                                <a href="{{ route('esbtp.enseignants.edit', ['enseignant' => $teacher->id]) }}" class="btn-acasi primary">
                                     <i class="fas fa-edit me-2"></i>Modifier le profil
                                 </a>
                                 
@@ -676,35 +910,315 @@
                             </div>
                             @endif
                         </div>
-                        
-                        <!-- Disponibilités (version simplifiée) -->
-                        <div class="action-card">
-                            <div class="section-title">
-                                <div class="section-icon">
+                    </div>
+                    
+                    <!-- Section Disponibilités Principale -->
+                    <div class="availability-main-section">
+                        <div class="availability-header">
+                            <div class="availability-title">
+                                <div class="availability-icon">
                                     <i class="fas fa-calendar-alt"></i>
                                 </div>
-                                Disponibilités
+                                <h3>Disponibilités Hebdomadaires</h3>
                             </div>
-                            
-                            <div class="availability-mini-grid">
-                                <div class="availability-mini-day">L</div>
-                                <div class="availability-mini-day">M</div>
-                                <div class="availability-mini-day">M</div>
-                                <div class="availability-mini-day">J</div>
-                                <div class="availability-mini-day">V</div>
-                                <div class="availability-mini-day">S</div>
-                                <div class="availability-mini-day">D</div>
-                                
-                                @for($i = 0; $i < 77; $i++)
-                                    <div class="availability-mini-slot {{ $i % 3 == 0 ? 'available' : ($i % 7 == 0 ? 'preferred' : '') }}"></div>
-                                @endfor
-                            </div>
-                            
-                            <div class="form-help-text" style="margin-top: var(--space-sm); text-align: center;">
-                                <i class="fas fa-info-circle me-1"></i>
-                                Grille simplifiée des disponibilités
+                            <div class="availability-status">
+                                <span class="status-badge {{ $teacher->status === 'active' ? 'success' : 'warning' }}">
+                                    {{ $teacher->status === 'active' ? 'Disponible' : 'Non disponible' }}
+                                </span>
+                                <div class="availability-actions">
+                                    <button id="editAvailabilityBtn" class="btn-edit-availability" onclick="toggleEditMode()">
+                                        <i class="fas fa-edit me-1"></i>
+                                        <span class="edit-text">Modifier</span>
+                                    </button>
+                                    <button id="saveAvailabilityBtn" class="btn-save-availability" onclick="saveAvailability()" style="display: none;">
+                                        <i class="fas fa-save me-1"></i>
+                                        Sauvegarder
+                                    </button>
+                                    <button id="cancelAvailabilityBtn" class="btn-cancel-availability" onclick="cancelEditMode()" style="display: none;">
+                                        <i class="fas fa-times me-1"></i>
+                                        Annuler
+                                    </button>
+                                </div>
                             </div>
                         </div>
+                        
+                        <div class="availability-grid">
+                            <!-- En-têtes -->
+                            <div class="availability-time-header">Horaires</div>
+                            <div class="availability-day-header">Lundi</div>
+                            <div class="availability-day-header">Mardi</div>
+                            <div class="availability-day-header">Mercredi</div>
+                            <div class="availability-day-header">Jeudi</div>
+                            <div class="availability-day-header">Vendredi</div>
+                            <div class="availability-day-header">Samedi</div>
+                            <div class="availability-day-header">Dimanche</div>
+                            
+                            <!-- Créneaux horaires -->
+                            @php
+                                $timeSlots = [
+                                    '08:00-10:00', '10:00-12:00', '12:00-14:00', 
+                                    '14:00-16:00', '16:00-18:00', '18:00-20:00'
+                                ];
+                                $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+                                
+                                // Utiliser les vraies données de disponibilité
+                                $availability = $realAvailability ?? [
+                                    'monday' => array_fill(0, 6, 'unavailable'),
+                                    'tuesday' => array_fill(0, 6, 'unavailable'),
+                                    'wednesday' => array_fill(0, 6, 'unavailable'),
+                                    'thursday' => array_fill(0, 6, 'unavailable'),
+                                    'friday' => array_fill(0, 6, 'unavailable'),
+                                    'saturday' => array_fill(0, 6, 'unavailable'),
+                                    'sunday' => array_fill(0, 6, 'unavailable')
+                                ];
+                            @endphp
+                            
+                            @foreach($timeSlots as $index => $timeSlot)
+                                <div class="availability-time-slot">{{ $timeSlot }}</div>
+                                @foreach($days as $day)
+                                    @php
+                                        $status = $availability[$day][$index] ?? 'unavailable';
+                                        $icon = $status === 'preferred' ? '★' : ($status === 'available' ? '✓' : '✗');
+                                    @endphp
+                                    <div class="availability-slot {{ $status }}" 
+                                         id="slot-{{ $index }}-{{ array_search($day, $days) }}"
+                                         data-day="{{ array_search($day, $days) }}" 
+                                         data-time-index="{{ $index }}" 
+                                         data-original-status="{{ $status }}"
+                                         title="{{ ucfirst($day) }} {{ $timeSlot }} - {{ ucfirst($status) }}">
+                                        {{ $icon }}
+                                    </div>
+                                @endforeach
+                            @endforeach
+                        </div>
+                        
+                        <!-- Légende -->
+                        <div class="availability-legend">
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: var(--primary);"></div>
+                                <span>★ Créneaux préférés</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: var(--success);"></div>
+                                <span>✓ Disponible</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: var(--border);"></div>
+                                <span>✗ Non disponible</span>
+                            </div>
+                        </div>
+                        
+                        <!-- JavaScript pour l'édition de disponibilités -->
+                        <script>
+                        let isEditMode = false;
+                        let originalData = {};
+                        let modifiedSlots = new Set();
+                        
+                        function toggleEditMode() {
+                            isEditMode = !isEditMode;
+                            const slots = document.querySelectorAll('.availability-slot');
+                            const editBtn = document.getElementById('editAvailabilityBtn');
+                            const saveBtn = document.getElementById('saveAvailabilityBtn');
+                            const cancelBtn = document.getElementById('cancelAvailabilityBtn');
+                            
+                            if (isEditMode) {
+                                // Activer le mode édition
+                                slots.forEach(slot => {
+                                    slot.classList.add('editable');
+                                    slot.onclick = () => toggleSlotStatus(slot);
+                                    // Sauvegarder l'état original
+                                    originalData[slot.id] = slot.dataset.originalStatus;
+                                });
+                                
+                                editBtn.style.display = 'none';
+                                saveBtn.style.display = 'flex';
+                                cancelBtn.style.display = 'flex';
+                                
+                                // Changer le style du header pour indiquer le mode édition
+                                document.querySelector('.availability-main-section').style.background = 'linear-gradient(135deg, #fef3c7, #fde68a)';
+                                
+                                // Afficher un message d'aide
+                                showNotification('Mode édition activé. Cliquez sur les créneaux pour modifier la disponibilité.', 'info');
+                            } else {
+                                // Désactiver le mode édition
+                                slots.forEach(slot => {
+                                    slot.classList.remove('editable');
+                                    slot.onclick = null;
+                                });
+                                
+                                editBtn.style.display = 'flex';
+                                saveBtn.style.display = 'none';
+                                cancelBtn.style.display = 'none';
+                                
+                                document.querySelector('.availability-main-section').style.background = 'linear-gradient(135deg, #f8fafc, #e2e8f0)';
+                            }
+                        }
+                        
+                        function toggleSlotStatus(slot) {
+                            if (!isEditMode) return;
+                            
+                            const statuses = ['unavailable', 'available', 'preferred'];
+                            const icons = ['✗', '✓', '★'];
+                            const currentClasses = Array.from(slot.classList);
+                            let currentStatus = statuses.find(status => currentClasses.includes(status)) || 'unavailable';
+                            
+                            // Passer au statut suivant
+                            const currentIndex = statuses.indexOf(currentStatus);
+                            const nextIndex = (currentIndex + 1) % statuses.length;
+                            const nextStatus = statuses[nextIndex];
+                            
+                            // Supprimer l'ancienne classe de statut
+                            statuses.forEach(status => slot.classList.remove(status));
+                            
+                            // Ajouter la nouvelle classe
+                            slot.classList.add(nextStatus);
+                            
+                            // Changer l'icône
+                            slot.textContent = icons[nextIndex];
+                            
+                            // Marquer comme modifié si différent de l'original
+                            if (nextStatus !== originalData[slot.id]) {
+                                slot.classList.add('modified');
+                                modifiedSlots.add(slot.id);
+                            } else {
+                                slot.classList.remove('modified');
+                                modifiedSlots.delete(slot.id);
+                            }
+                            
+                            // Mettre à jour le tooltip
+                            const dayNames = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+                            const timeSlots = ['08:00-10:00', '10:00-12:00', '12:00-14:00', '14:00-16:00', '16:00-18:00', '18:00-20:00'];
+                            const statusNames = { unavailable: 'Non disponible', available: 'Disponible', preferred: 'Préféré' };
+                            
+                            const dayIndex = parseInt(slot.dataset.day);
+                            const timeIndex = parseInt(slot.dataset.timeIndex);
+                            slot.title = `${dayNames[dayIndex]} ${timeSlots[timeIndex]} - ${statusNames[nextStatus]}`;
+                        }
+                        
+                        function cancelEditMode() {
+                            // Restaurer les états originaux
+                            modifiedSlots.forEach(slotId => {
+                                const slot = document.getElementById(slotId);
+                                const originalStatus = originalData[slotId];
+                                const statuses = ['unavailable', 'available', 'preferred'];
+                                const icons = ['✗', '✓', '★'];
+                                
+                                // Supprimer toutes les classes de statut
+                                statuses.forEach(status => slot.classList.remove(status));
+                                
+                                // Restaurer le statut original
+                                slot.classList.add(originalStatus);
+                                slot.textContent = icons[statuses.indexOf(originalStatus)];
+                                slot.classList.remove('modified');
+                            });
+                            
+                            modifiedSlots.clear();
+                            toggleEditMode();
+                            showNotification('Modifications annulées', 'warning');
+                        }
+                        
+                        function saveAvailability() {
+                            if (modifiedSlots.size === 0) {
+                                showNotification('Aucune modification à sauvegarder', 'warning');
+                                return;
+                            }
+                            
+                            // Préparer les données à envoyer
+                            const changedSlots = [];
+                            modifiedSlots.forEach(slotId => {
+                                const slot = document.getElementById(slotId);
+                                const statuses = ['unavailable', 'available', 'preferred'];
+                                const currentStatus = statuses.find(status => slot.classList.contains(status));
+                                
+                                changedSlots.push({
+                                    day: parseInt(slot.dataset.day),
+                                    timeIndex: parseInt(slot.dataset.timeIndex),
+                                    status: currentStatus
+                                });
+                            });
+                            
+                            // Envoyer les données via AJAX
+                            const teacherId = {{ $teacher->id }};
+                            console.log('Données à envoyer:', { changes: changedSlots });
+                            
+                            fetch(`/esbtp/enseignants/${teacherId}/update-availability`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                                },
+                                body: JSON.stringify({ changes: changedSlots })
+                            })
+                            .then(response => {
+                                console.log('Réponse reçue:', response);
+                                return response.json();
+                            })
+                            .then(data => {
+                                console.log('Données reçues:', data);
+                                if (data.success) {
+                                    showNotification('Disponibilités mises à jour avec succès !', 'success');
+                                    
+                                    // Mettre à jour les données originales
+                                    modifiedSlots.forEach(slotId => {
+                                        const slot = document.getElementById(slotId);
+                                        const statuses = ['unavailable', 'available', 'preferred'];
+                                        const currentStatus = statuses.find(status => slot.classList.contains(status));
+                                        originalData[slotId] = currentStatus;
+                                        slot.dataset.originalStatus = currentStatus;
+                                        slot.classList.remove('modified');
+                                    });
+                                    
+                                    modifiedSlots.clear();
+                                    toggleEditMode();
+                                } else {
+                                    showNotification('Erreur lors de la sauvegarde : ' + (data.message || 'Erreur inconnue'), 'danger');
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Erreur complète:', error);
+                                showNotification('Erreur de connexion lors de la sauvegarde: ' + error.message, 'danger');
+                            });
+                        }
+                        
+                        function showNotification(message, type) {
+                            // Créer une notification toast
+                            const notification = document.createElement('div');
+                            notification.className = `notification toast-${type}`;
+                            notification.style.cssText = `
+                                position: fixed;
+                                top: 20px;
+                                right: 20px;
+                                background: ${type === 'success' ? '#10b981' : type === 'danger' ? '#ef4444' : type === 'warning' ? '#f59e0b' : '#3b82f6'};
+                                color: white;
+                                padding: 12px 20px;
+                                border-radius: 8px;
+                                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                                z-index: 1000;
+                                font-weight: 500;
+                                transform: translateX(100%);
+                                transition: transform 0.3s ease;
+                            `;
+                            notification.textContent = message;
+                            
+                            document.body.appendChild(notification);
+                            
+                            // Animer l'entrée
+                            setTimeout(() => {
+                                notification.style.transform = 'translateX(0)';
+                            }, 100);
+                            
+                            // Supprimer après 4 secondes
+                            setTimeout(() => {
+                                notification.style.transform = 'translateX(100%)';
+                                setTimeout(() => {
+                                    document.body.removeChild(notification);
+                                }, 300);
+                            }, 4000);
+                        }
+                        </script>
+                    </div>
+                    
+                    <div class="info-grid">
                         
                         <!-- Informations système -->
                         <div class="action-card">

@@ -131,6 +131,28 @@ class ESBTPFiliere extends Model
     }
 
     /**
+     * Scope pour récupérer uniquement les filières actives.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    /**
+     * Scope pour récupérer uniquement les filières inactives.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeInactive($query)
+    {
+        return $query->where('is_active', false);
+    }
+
+    /**
      * Vérifie si cette filière est un descendant d'une autre filière.
      * Utilisé pour éviter les cycles dans la hiérarchie des filières.
      *

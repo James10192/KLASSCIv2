@@ -208,7 +208,7 @@
                                     <tbody>
                                         @foreach($analyse['matieres_echouees'] as $matiere)
                                         <tr>
-                                            <td>{{ $matiere['matiere']->nom ?? 'N/A' }}</td>
+                                            <td>{{ $matiere['matiere']->name ?? $matiere['matiere']->nom ?? 'N/A' }}</td>
                                             <td style="text-align: center;">
                                                 <span class="table-badge danger">
                                                     {{ number_format($matiere['moyenne'], 2) }}/20

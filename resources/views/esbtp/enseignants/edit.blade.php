@@ -304,62 +304,189 @@
         transition: width 0.3s ease;
     }
     
+    /* Header principal amélioré */
+    .main-header {
+        background: linear-gradient(135deg, #1e40af, #3730a3);
+        color: white;
+        padding: var(--space-xl);
+        border-radius: var(--radius-large);
+        margin-bottom: var(--space-xl);
+        position: relative;
+        overflow: hidden;
+        box-shadow: var(--shadow-elevated);
+    }
+    
+    .main-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -20%;
+        width: 100px;
+        height: 200%;
+        background: rgba(255,255,255,0.05);
+        transform: skewX(-15deg);
+    }
+    
+    .header-content {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .header-left h1 {
+        font-size: 2rem;
+        margin: 0 0 var(--space-xs);
+        font-weight: 700;
+        color: white;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    .header-left p {
+        margin: 0;
+        opacity: 0.95;
+        font-size: 1.1rem;
+        color: rgba(255,255,255,0.95);
+        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+    
+    .header-actions {
+        display: flex;
+        gap: var(--space-md);
+    }
+    
+    .btn-header {
+        padding: var(--space-sm) var(--space-lg);
+        border: 2px solid rgba(255,255,255,0.4);
+        border-radius: var(--radius-full);
+        color: white;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: var(--space-xs);
+        background: rgba(255,255,255,0.1);
+        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+    
+    .btn-header:hover {
+        background: rgba(255,255,255,0.25);
+        border-color: rgba(255,255,255,0.6);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        color: white;
+        text-decoration: none;
+    }
+
+    /* Card d'information enseignant améliorée */
     .teacher-info-card {
-        background: var(--surface);
-        border-radius: var(--radius-medium);
-        padding: var(--space-lg);
-        margin-bottom: var(--space-lg);
-        border: 1px solid var(--border);
+        background: white;
+        border-radius: var(--radius-large);
+        padding: 0;
+        margin-bottom: var(--space-xl);
+        box-shadow: var(--shadow-card);
+        border: 1px solid var(--border-light);
+        overflow: hidden;
     }
     
     .teacher-info-header {
+        background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+        padding: var(--space-xl);
         display: flex;
         align-items: center;
-        gap: var(--space-md);
-        margin-bottom: var(--space-md);
+        gap: var(--space-lg);
+        border-bottom: 1px solid var(--border-light);
     }
     
     .teacher-avatar {
-        width: 80px;
-        height: 80px;
+        width: 100px;
+        height: 100px;
         border-radius: 50%;
-        background: var(--primary);
+        background: linear-gradient(135deg, var(--primary), var(--accent-blue));
         color: white;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.5rem;
-        font-weight: bold;
+        font-size: 2rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        box-shadow: var(--shadow-medium);
+        border: 4px solid white;
+    }
+    
+    .teacher-details {
+        flex: 1;
     }
     
     .teacher-details h3 {
-        margin: 0 0 var(--space-xs) 0;
+        margin: 0 0 var(--space-sm);
         color: var(--text-primary);
-        font-size: 1.3rem;
+        font-size: 1.5rem;
+        font-weight: 700;
     }
     
-    .teacher-details p {
-        margin: 0;
+    .teacher-details .email {
+        margin: 0 0 var(--space-xs);
         color: var(--text-secondary);
-        font-size: 0.9rem;
+        font-size: 1rem;
+        font-weight: 500;
+    }
+    
+    .teacher-details .specialization {
+        margin: 0;
+        color: var(--primary);
+        font-size: 0.95rem;
+        background: rgba(var(--primary-rgb), 0.1);
+        padding: var(--space-xs) var(--space-sm);
+        border-radius: var(--radius-small);
+        display: inline-block;
+        font-weight: 500;
+        border: 1px solid rgba(var(--primary-rgb), 0.2);
     }
     
     .teacher-meta {
-        display: flex;
-        gap: var(--space-lg);
-        margin-top: var(--space-md);
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 0;
+        background: white;
     }
     
     .meta-item {
         display: flex;
         align-items: center;
-        gap: var(--space-xs);
-        font-size: 0.9rem;
-        color: var(--text-secondary);
+        gap: var(--space-md);
+        padding: var(--space-lg);
+        font-size: 0.95rem;
+        border-right: 1px solid var(--border-light);
+        transition: all 0.3s ease;
+    }
+    
+    .meta-item:hover {
+        background: var(--background);
+    }
+    
+    .meta-item:last-child {
+        border-right: none;
     }
     
     .meta-icon {
         color: var(--primary);
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(var(--primary-rgb), 0.15);
+        border-radius: 50%;
+        padding: var(--space-xs);
+        font-size: 0.8rem;
+    }
+    
+    .meta-label {
+        font-weight: 600;
+        color: var(--text-primary);
     }
     
     .wizard-actions {
@@ -400,13 +527,21 @@
 @section('content')
 <div class="dashboard-acasi">
     <div class="main-content">
-        <div class="card-moderne">
-            <div class="card-header-moderne">
-                <h1 class="section-title">
-                    <i class="fas fa-user-edit me-2"></i>
-                    Modifier Enseignant
-                </h1>
-                <p class="section-subtitle">Mise à jour du profil de l'enseignant</p>
+        <div class="main-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <h1>
+                        <i class="fas fa-user-edit me-2"></i>
+                        Modifier Enseignant
+                    </h1>
+                    <p>Mise à jour du profil de l'enseignant</p>
+                </div>
+                <div class="header-actions">
+                    <a href="{{ route('esbtp.enseignants.show', ['enseignant' => $teacher->id]) }}" class="btn-header">
+                        <i class="fas fa-eye"></i>
+                        Voir le profil
+                    </a>
+                </div>
             </div>
         </div>
 
@@ -418,29 +553,78 @@
                 </div>
                 <div class="teacher-details">
                     <h3>{{ $teacher->user->name ?? 'Nom non disponible' }}</h3>
-                    <p>{{ $teacher->user->email ?? 'Email non disponible' }}</p>
-                    <p>{{ $teacher->specialization }}</p>
+                    <p class="email">{{ $teacher->user->email ?? 'Email non disponible' }}</p>
+                    @if($teacher->specialization)
+                        <span class="specialization">{{ $teacher->specialization }}</span>
+                    @endif
                 </div>
             </div>
             <div class="teacher-meta">
                 <div class="meta-item">
-                    <i class="fas fa-id-card meta-icon"></i>
-                    <span>{{ $teacher->matricule }}</span>
+                    <div class="meta-icon">
+                        <i class="fas fa-id-card"></i>
+                    </div>
+                    <div>
+                        <div class="meta-label">Matricule</div>
+                        <div>{{ $teacher->matricule ?? 'Non assigné' }}</div>
+                    </div>
                 </div>
                 <div class="meta-item">
-                    <i class="fas fa-calendar meta-icon"></i>
-                    <span>Créé le {{ $teacher->created_at->format('d/m/Y') }}</span>
+                    <div class="meta-icon">
+                        <i class="fas fa-calendar"></i>
+                    </div>
+                    <div>
+                        <div class="meta-label">Créé le</div>
+                        <div>{{ $teacher->created_at ? $teacher->created_at->format('d/m/Y') : 'Date inconnue' }}</div>
+                    </div>
                 </div>
                 <div class="meta-item">
-                    <i class="fas fa-building meta-icon"></i>
-                    <span>{{ $teacher->department->name ?? 'Aucun département' }}</span>
+                    <div class="meta-icon">
+                        <i class="fas fa-building"></i>
+                    </div>
+                    <div>
+                        <div class="meta-label">Département</div>
+                        <div>{{ $teacher->department->name ?? 'Aucun département' }}</div>
+                    </div>
                 </div>
                 <div class="meta-item">
-                    <i class="fas fa-circle meta-icon {{ $teacher->status === 'active' ? 'text-success' : 'text-danger' }}"></i>
-                    <span>{{ $teacher->status === 'active' ? 'Actif' : 'Inactif' }}</span>
+                    <div class="meta-icon">
+                        <i class="fas fa-circle {{ $teacher->status === 'active' ? 'text-success' : 'text-danger' }}"></i>
+                    </div>
+                    <div>
+                        <div class="meta-label">Statut</div>
+                        <div>{{ $teacher->status === 'active' ? 'Actif' : 'Inactif' }}</div>
+                    </div>
                 </div>
             </div>
         </div>
+
+        <!-- Messages d'erreur -->
+        @if ($errors->any())
+            <div class="card-moderne mb-lg" style="border-left: 4px solid var(--danger); background-color: rgba(239, 68, 68, 0.05);">
+                <div class="p-lg">
+                    <h4 style="color: var(--danger); margin-bottom: var(--space-md);">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Erreurs de validation
+                    </h4>
+                    <ul style="margin: 0; padding-left: 20px; color: var(--danger);">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            </div>
+        @endif
+
+        <!-- Messages de succès -->
+        @if (session('success'))
+            <div class="card-moderne mb-lg" style="border-left: 4px solid var(--success); background-color: rgba(16, 185, 129, 0.05);">
+                <div class="p-lg">
+                    <p style="margin: 0; color: var(--success); font-weight: 500;">
+                        <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
+                    </p>
+                </div>
+            </div>
+        @endif
 
         <div class="form-wizard">
             <div class="wizard-header">
@@ -480,7 +664,7 @@
                 <div class="progress-fill" style="width: 20%"></div>
             </div>
 
-            <form action="{{ route('esbtp.enseignants.update', $teacher) }}" method="POST" enctype="multipart/form-data" id="teacherForm">
+            <form action="{{ route('esbtp.enseignants.update', ['enseignant' => $teacher->id]) }}" method="POST" enctype="multipart/form-data" id="teacherForm">
                 @csrf
                 @method('PUT')
                 <div class="wizard-content">
@@ -720,7 +904,11 @@
                                 @for($hour = 8; $hour <= 18; $hour++)
                                     <div class="availability-time">{{ sprintf('%02d:00', $hour) }}</div>
                                     @for($day = 0; $day < 7; $day++)
-                                        <div class="availability-slot" 
+                                        @php
+                                            $key = $day . '_' . sprintf('%02d', $hour);
+                                            $availabilityClass = $availabilityData[$key] ?? 'unavailable';
+                                        @endphp
+                                        <div class="availability-slot {{ $availabilityClass }}" 
                                              data-day="{{ $day }}" 
                                              data-hour="{{ $hour }}"
                                              onclick="toggleAvailability(this)">
@@ -768,7 +956,7 @@
                 <div class="wizard-actions">
                     <div class="actions-left">
                         <a href="{{ route('esbtp.personnel.unified.index') }}" class="btn-acasi secondary">
-                            <i class="fas fa-arrow-left me-1"></i>Retour
+                            <i class="fas fa-times me-1"></i>Annuler
                         </a>
                         <button type="button" class="btn-acasi secondary" id="prevBtn" onclick="changeStep(-1)" style="display: none;">
                             <i class="fas fa-arrow-left me-1"></i>Précédent
@@ -920,5 +1108,27 @@ document.getElementById('password').addEventListener('input', function() {
 // Initialisation
 updateButtons();
 updateProgress();
+
+// Debug et validation du formulaire
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('teacherForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            console.log('Formulaire soumis');
+            console.log('Étape actuelle:', currentStep);
+            console.log('Total étapes:', totalSteps);
+            
+            // Validation finale avant soumission
+            if (currentStep !== totalSteps) {
+                e.preventDefault();
+                alert('Veuillez compléter toutes les étapes du formulaire avant de soumettre');
+                return false;
+            }
+            
+            console.log('Validation OK, soumission en cours...');
+        });
+    }
+});
+
 </script>
 @endpush 

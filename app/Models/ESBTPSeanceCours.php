@@ -397,6 +397,11 @@ class ESBTPSeanceCours extends Model
         return $this->heure_debut->diffInMinutes($this->heure_fin);
     }
 
+    public function getDureeEnMinutes()
+    {
+        return $this->getDuration();
+    }
+
     public function isOverlapping(ESBTPSeanceCours $other)
     {
         if ($this->jour !== $other->jour) {

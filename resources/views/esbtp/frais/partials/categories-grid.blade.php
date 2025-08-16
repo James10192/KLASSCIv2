@@ -16,7 +16,7 @@
         </div>
 
         @php
-            $existingRule = $rules->where('frais_category_id', $category->id)->first();
+            $existingConfiguration = $configurations->where('frais_category_id', $category->id)->first();
         @endphp
         
         <!-- Champs de configuration -->
@@ -28,7 +28,7 @@
                 <input type="number" 
                        style="width: 100%; padding: var(--space-sm); border: 1px solid #e5e7eb; border-radius: var(--radius-small); font-size: var(--text-normal);"
                        name="categories[{{ $category->id }}][amount]" 
-                       value="{{ $existingRule->amount ?? $category->default_amount }}" 
+                       value="{{ $existingConfiguration->amount ?? $category->default_amount }}" 
                        min="0" 
                        step="0.01"
                        {{ $category->is_mandatory ? 'required' : '' }}>
@@ -40,10 +40,49 @@
                 <input type="number" 
                        style="width: 100%; padding: var(--space-sm); border: 1px solid #e5e7eb; border-radius: var(--radius-small); font-size: var(--text-normal);"
                        name="categories[{{ $category->id }}][deadline_days]" 
-                       value="{{ $existingRule->payment_deadline_days ?? $category->payment_deadline_days }}" 
+                       value="{{ $existingConfiguration->payment_deadline_days ?? $category->payment_deadline_days }}" 
                        min="1" 
                        max="365"
                        {{ $category->is_mandatory ? 'required' : '' }}>
+            </div>
+        </div>
+        
+        <!-- Options avancées -->
+        <div style="border-top: 1px solid #e5e7eb; padding-top: var(--space-md); margin-top: var(--space-md);">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); margin-bottom: var(--space-sm);">
+                <div>
+                    <label style="display: flex; align-items: center; font-size: var(--text-small); color: var(--text-secondary);">
+                        <input type="checkbox" 
+                               name="categories[{{ $category->id }}][installments_allowed]" 
+                               value="1"
+                               {{ ($existingConfiguration && $existingConfiguration->installments_allowed) ? 'checked' : '' }}
+                               style="margin-right: var(--space-xs);">
+                        Échéancier autorisé
+                    </label>
+                </div>
+                <div>
+                    <label style="font-size: var(--text-small); font-weight: 600; color: var(--text-secondary); margin-bottom: var(--space-xs); display: block;">
+                        Max échéances
+                    </label>
+                    <input type="number" 
+                           style="width: 100%; padding: var(--space-sm); border: 1px solid #e5e7eb; border-radius: var(--radius-small); font-size: var(--text-normal);"
+                           name="categories[{{ $category->id }}][max_installments]" 
+                           value="{{ $existingConfiguration->max_installments ?? 1 }}" 
+                           min="1" 
+                           max="12">
+                </div>
+            </div>
+            <div>
+                <label style="font-size: var(--text-small); font-weight: 600; color: var(--text-secondary); margin-bottom: var(--space-xs); display: block;">
+                    Remise paiement anticipé (%)
+                </label>
+                <input type="number" 
+                       style="width: 100%; padding: var(--space-sm); border: 1px solid #e5e7eb; border-radius: var(--radius-small); font-size: var(--text-normal);"
+                       name="categories[{{ $category->id }}][early_payment_discount]" 
+                       value="{{ $existingConfiguration->early_payment_discount ?? 0 }}" 
+                       min="0" 
+                       max="100"
+                       step="0.01">
             </div>
         </div>
         

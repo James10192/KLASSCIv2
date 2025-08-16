@@ -9,6 +9,7 @@ use App\Models\ESBTPClasse;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPDepartment;
 use App\Models\ESBTPLaboratory;
+use App\Models\ESBTPTeacherAvailability;
 use App\Services\UserService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -293,27 +294,79 @@ class ESBTPEnseignantController extends Controller
     /**
      * Display the specified teacher.
      */
-    public function show(ESBTPTeacher $teacher)
+    public function show(ESBTPTeacher $enseignant)
     {
-        $teacher->load(['user', 'department', 'laboratory', 'createdBy', 'updatedBy']);
+        $enseignant->load(['user', 'department', 'laboratory', 'createdBy', 'updatedBy', 'availabilities']);
         
         // Récupérer les informations additionnelles si elles existent
         $profileData = null;
         if (Schema::hasTable('esbtp_enseignant_profiles')) {
             $profileData = DB::table('esbtp_enseignant_profiles')
-                ->where('user_id', $teacher->user_id)
+                ->where('user_id', $enseignant->user_id)
                 ->first();
         }
         
-        return view('esbtp.enseignants.show', compact('teacher', 'profileData'));
+        // Préparer les données de disponibilité réelles
+        $realAvailability = $this->prepareAvailabilityData($enseignant);
+        
+        // Passer $enseignant en tant que $teacher pour la compatibilité avec la vue
+        $teacher = $enseignant;
+        return view('esbtp.enseignants.show', compact('teacher', 'profileData', 'realAvailability'));
+    }
+    
+    /**
+     * Préparer les données de disponibilité pour l'affichage
+     */
+    private function prepareAvailabilityData($teacher)
+    {
+        $timeSlots = [
+            '08:00-10:00', '10:00-12:00', '12:00-14:00', 
+            '14:00-16:00', '16:00-18:00', '18:00-20:00'
+        ];
+        $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+        
+        // Initialiser avec 'unavailable' par défaut
+        $availability = [];
+        foreach ($days as $day) {
+            $availability[$day] = array_fill(0, count($timeSlots), 'unavailable');
+        }
+        
+        // Remplir avec les vraies données
+        foreach ($teacher->availabilities as $avail) {
+            $dayName = $days[$avail->day_of_week] ?? null;
+            
+            // Parser l'heure correctement selon le type
+            if ($avail->start_time instanceof \Carbon\Carbon) {
+                $startHour = $avail->start_time->hour;
+            } elseif (is_string($avail->start_time)) {
+                $startHour = (int) substr($avail->start_time, 0, 2);
+            } else {
+                $startHour = (int) substr((string) $avail->start_time, 0, 2);
+            }
+            
+            // Mapper les heures aux indices des créneaux
+            $slotIndex = null;
+            if ($startHour >= 8 && $startHour < 10) $slotIndex = 0;      // 08:00-10:00
+            elseif ($startHour >= 10 && $startHour < 12) $slotIndex = 1; // 10:00-12:00
+            elseif ($startHour >= 12 && $startHour < 14) $slotIndex = 2; // 12:00-14:00
+            elseif ($startHour >= 14 && $startHour < 16) $slotIndex = 3; // 14:00-16:00
+            elseif ($startHour >= 16 && $startHour < 18) $slotIndex = 4; // 16:00-18:00
+            elseif ($startHour >= 18 && $startHour < 20) $slotIndex = 5; // 18:00-20:00
+            
+            if ($dayName && $slotIndex !== null) {
+                $availability[$dayName][$slotIndex] = $avail->availability_type;
+            }
+        }
+        
+        return $availability;
     }
 
     /**
      * Show the form for editing the specified teacher.
      */
-    public function edit(ESBTPTeacher $teacher)
+    public function edit(ESBTPTeacher $enseignant)
     {
-        $teacher->load(['user', 'department', 'laboratory']);
+        $enseignant->load(['user', 'department', 'laboratory', 'availabilities']);
         
         $departments = ESBTPDepartment::where('is_active', true)->get();
         $laboratories = ESBTPLaboratory::where('is_active', true)->get();
@@ -324,7 +377,7 @@ class ESBTPEnseignantController extends Controller
         $profileData = null;
         if (Schema::hasTable('esbtp_enseignant_profiles')) {
             $profileData = DB::table('esbtp_enseignant_profiles')
-                ->where('user_id', $teacher->user_id)
+                ->where('user_id', $enseignant->user_id)
                 ->first();
         }
         
@@ -356,24 +409,34 @@ class ESBTPEnseignantController extends Controller
             'vacations' => 'Vacations'
         ];
         
+        // Préparer les données de disponibilité pour la grille
+        $availabilityData = [];
+        foreach ($enseignant->availabilities as $availability) {
+            $key = $availability->day_of_week . '_' . substr($availability->start_time, 0, 2);
+            $availabilityData[$key] = $availability->availability_type;
+        }
+        
+        // Assigner pour compatibilité avec la vue
+        $teacher = $enseignant;
+        
         return view('esbtp.enseignants.edit', compact(
             'teacher', 'profileData', 'departments', 'laboratories', 'matieres', 'classes',
-            'titres_academiques', 'grades_academiques', 'types_contrat', 'statuts_emploi'
+            'titres_academiques', 'grades_academiques', 'types_contrat', 'statuts_emploi', 'availabilityData'
         ));
     }
 
     /**
      * Update the specified teacher in storage.
      */
-    public function update(Request $request, ESBTPTeacher $teacher)
+    public function update(Request $request, ESBTPTeacher $enseignant)
     {
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $teacher->user_id,
+            'email' => 'required|string|email|max:255|unique:users,email,' . $enseignant->user_id,
             'phone' => 'nullable|string|max:20',
             'specialization' => 'required|string|max:255',
-            'department_id' => 'required|exists:departments,id',
-            'laboratory_id' => 'nullable|exists:laboratories,id',
+            'department_id' => 'required|exists:esbtp_departments,id',
+            'laboratory_id' => 'nullable|exists:esbtp_laboratories,id',
             'bio' => 'nullable|string|max:1000',
             'website' => 'nullable|url',
             'status' => 'required|in:active,inactive',
@@ -388,14 +451,14 @@ class ESBTPEnseignantController extends Controller
         
         try {
             // Mettre à jour l'utilisateur
-            $teacher->user->update([
+            $enseignant->user->update([
                 'name' => $request->name,
                 'email' => $request->email,
                 'phone' => $request->phone,
             ]);
 
             // Mettre à jour le profil enseignant
-            $teacher->update([
+            $enseignant->update([
                 'specialization' => $request->specialization,
                 'department_id' => $request->department_id,
                 'laboratory_id' => $request->laboratory_id,
@@ -548,6 +611,74 @@ class ESBTPEnseignantController extends Controller
         } catch (\Exception $e) {
             DB::rollback();
             return redirect()->back()->with('error', 'Erreur lors de l\'assignation : ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Mettre à jour les disponibilités de l'enseignant via AJAX
+     */
+    public function updateAvailability(Request $request, ESBTPTeacher $enseignant)
+    {
+        try {
+            $request->validate([
+                'changes' => 'required|array',
+                'changes.*.day' => 'required|integer|min:0|max:6',
+                'changes.*.timeIndex' => 'required|integer|min:0|max:5',
+                'changes.*.status' => 'required|in:available,preferred,unavailable'
+            ]);
+
+            DB::beginTransaction();
+
+            // Définir les créneaux horaires
+            $timeSlots = [
+                ['start' => '08:00', 'end' => '10:00'],
+                ['start' => '10:00', 'end' => '12:00'],
+                ['start' => '12:00', 'end' => '14:00'],
+                ['start' => '14:00', 'end' => '16:00'],
+                ['start' => '16:00', 'end' => '18:00'],
+                ['start' => '18:00', 'end' => '20:00']
+            ];
+
+            // Traiter chaque changement
+            foreach ($request->changes as $change) {
+                $day = $change['day'];
+                $timeIndex = $change['timeIndex'];
+                $status = $change['status'];
+                $timeSlot = $timeSlots[$timeIndex];
+
+                // Supprimer l'ancienne entrée pour ce jour/créneau
+                ESBTPTeacherAvailability::where([
+                    'teacher_id' => $enseignant->id,
+                    'day_of_week' => $day,
+                    'start_time' => $timeSlot['start']
+                ])->delete();
+
+                // Ajouter la nouvelle entrée seulement si ce n'est pas "unavailable"
+                if ($status !== 'unavailable') {
+                    ESBTPTeacherAvailability::create([
+                        'teacher_id' => $enseignant->id,
+                        'day_of_week' => $day,
+                        'start_time' => $timeSlot['start'],
+                        'end_time' => $timeSlot['end'],
+                        'availability_type' => $status
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Disponibilités mises à jour avec succès'
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la mise à jour: ' . $e->getMessage()
+            ], 500);
         }
     }
 }

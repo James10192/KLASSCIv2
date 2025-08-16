@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ESBTPDailyCode;
 use App\Models\ESBTPEnseignant;
 use App\Models\ESBTPTeacherAttendance;
+use App\Models\ESBTPSeanceCours;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -19,16 +20,29 @@ class ESBTPAttendanceCodeController extends Controller
     {
         $this->authorize('generate-attendance-codes');
 
-        $activeCode = ESBTPDailyCode::where('status', 'active')
+        $activeCodes = ESBTPDailyCode::with('seance.matiere', 'seance.classe', 'seance.teacher')
+            ->where('status', 'active')
             ->where('valid_until', '>', now())
-            ->first();
+            ->get();
+            
+        // Pour compatibilité avec la vue existante, prendre le premier
+        $activeCode = $activeCodes->first();
 
-        $recentCodes = ESBTPDailyCode::with('generator')
+        $recentCodes = ESBTPDailyCode::with(['generator', 'seance.matiere', 'seance.classe', 'seance.teacher'])
             ->orderBy('created_at', 'desc')
             ->take(10)
             ->get();
 
-        return view('esbtp.attendance.generate-code', compact('activeCode', 'recentCodes'));
+        // Récupérer les séances à venir pour la sélection
+        $today = Carbon::now();
+        $seancesAVenir = ESBTPSeanceCours::with(['matiere', 'classe', 'teacher', 'emploiTemps'])
+            ->whereNotNull('matiere_id')
+            ->whereNotNull('classe_id')
+            ->orderBy('heure_debut')
+            ->limit(20)
+            ->get();
+
+        return view('esbtp.attendance.generate-code', compact('activeCode', 'activeCodes', 'recentCodes', 'seancesAVenir'));
     }
 
     /**
@@ -38,27 +52,56 @@ class ESBTPAttendanceCodeController extends Controller
     {
         $this->authorize('generate-attendance-codes');
 
+        $request->validate([
+            'description' => 'nullable|string|max:255',
+            'duration_minutes' => 'nullable|integer|min:5|max:1440',
+            'seance_id' => 'nullable|exists:esbtp_seances_cours,id'
+        ]);
+
         try {
             // Log de debug : ID utilisateur
             Log::debug('Tentative de génération de code', [
                 'user_id' => Auth::id(),
-                'user' => Auth::user()
+                'user' => Auth::user(),
+                'seance_id' => $request->seance_id
             ]);
 
-            // Invalider les codes actifs existants
-            ESBTPDailyCode::where('status', 'active')
-                ->update(['status' => 'expired']);
+            // Logique d'invalidation intelligente - TOUJOURS invalider les codes du même type
+            if ($request->seance_id) {
+                // Si c'est pour une séance spécifique, invalider TOUS les codes pour cette séance
+                ESBTPDailyCode::where('status', 'active')
+                    ->where('seance_id', $request->seance_id)
+                    ->update(['status' => 'expired']);
+            } else {
+                // Si c'est un code général, invalider TOUS les codes généraux actifs
+                ESBTPDailyCode::where('status', 'active')
+                    ->whereNull('seance_id')
+                    ->update(['status' => 'expired']);
+            }
 
-            // Générer un nouveau code
-            $code = ESBTPDailyCode::createDailyCode();
+            // Paramètres du code
+            $description = $request->description;
+            $durationMinutes = $request->duration_minutes ?? 60; // 1 heure par défaut
+            $seanceId = $request->seance_id;
+
+            // Générer un nouveau code avec les paramètres
+            $code = ESBTPDailyCode::createDailyCode($description, $durationMinutes, $seanceId);
 
             Log::info('Nouveau code d\'émargement généré', [
                 'code' => $code->code,
-                'created_by' => Auth::id()
+                'created_by' => Auth::id(),
+                'seance_id' => $seanceId,
+                'description' => $description,
+                'duration_minutes' => $durationMinutes
             ]);
 
+            $message = 'Nouveau code généré avec succès : ' . $code->code;
+            if ($description) {
+                $message .= ' (' . $description . ')';
+            }
+
             return redirect()->route('esbtp.attendance-codes.index')
-                ->with('success', 'Nouveau code généré avec succès : ' . $code->code);
+                ->with('success', $message);
         } catch (\Exception $e) {
             Log::error('Erreur lors de la génération du code', [
                 'error' => $e->getMessage(),
@@ -166,6 +209,46 @@ class ESBTPAttendanceCodeController extends Controller
 
             return redirect()->back()
                 ->with('error', 'Erreur lors de l\'invalidation du code');
+        }
+    }
+
+    /**
+     * Nettoie les codes multiples actifs - garde seulement le plus récent
+     */
+    public function cleanupDuplicates()
+    {
+        $this->authorize('generate-attendance-codes');
+
+        try {
+            // Nettoyer les codes généraux multiples (sans seance_id)
+            $generalCodes = ESBTPDailyCode::where('status', 'active')
+                ->whereNull('seance_id')
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            if ($generalCodes->count() > 1) {
+                // Garder le plus récent, invalider les autres
+                $recentCode = $generalCodes->first();
+                $generalCodes->slice(1)->each(function($code) {
+                    $code->update(['status' => 'expired']);
+                });
+                
+                $invalidated = $generalCodes->count() - 1;
+                Log::info('Codes généraux dupliqués nettoyés', [
+                    'kept_code' => $recentCode->code,
+                    'invalidated_count' => $invalidated
+                ]);
+            }
+
+            return redirect()->back()
+                ->with('success', 'Nettoyage terminé. Codes dupliqués supprimés.');
+        } catch (\Exception $e) {
+            Log::error('Erreur lors du nettoyage des codes', [
+                'error' => $e->getMessage()
+            ]);
+
+            return redirect()->back()
+                ->with('error', 'Erreur lors du nettoyage des codes');
         }
     }
 

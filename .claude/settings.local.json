@@ -26,8 +26,19 @@
       "Bash(php:*)",
       "Bash(git commit:*)",
       "Bash(grep:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(touch:*)",
+      "Bash(bash:*)",
+      "Bash(chmod:*)",
+      "Bash(.claude/ccnotify/ccnotify.py)",
+      "Bash(sudo apt:*)",
+      "Bash(sudo apt install:*)",
+      "Bash(.claude/ccnotify/ccnotify.py Notification)",
+      "Bash(.claude/ccnotify/simple-notify.py Notification)",
+      "WebSearch",
+      "WebFetch(domain:docs.anthropic.com)"
     ],
-    "deny": []
+    "deny": [],
+    "defaultMode": "acceptEdits"
   }
 }

@@ -187,7 +187,7 @@ class ReeinscriptionService
         // Pour l'instant, récupérer toutes les notes de l'étudiant
         // car nous n'avons pas encore la logique pour mapper l'année académique à l'ID
         return ESBTPNote::where('etudiant_id', $etudiantId)
-            ->with(['evaluation.matiere'])
+            ->with(['evaluation.matiere', 'matiere'])
             ->get();
     }
 
@@ -197,7 +197,10 @@ class ReeinscriptionService
             return 0;
         }
 
-        $moyennesParMatiere = $notes->groupBy('evaluation.matiere.id')
+        $moyennesParMatiere = $notes->groupBy(function($note) {
+                // Utiliser matiere_id directement ou via evaluation
+                return $note->matiere_id ?? $note->evaluation?->matiere?->id;
+            })
             ->map(function($notesMatiere) {
                 return $notesMatiere->avg('note');
             });
@@ -207,15 +210,21 @@ class ReeinscriptionService
 
     private function getMatieresEchouees($notes, $moyennePassage)
     {
-        $moyennesParMatiere = $notes->groupBy('evaluation.matiere.id')
+        $moyennesParMatiere = $notes->groupBy(function($note) {
+                // Utiliser matiere_id directement ou via evaluation
+                return $note->matiere_id ?? $note->evaluation?->matiere?->id;
+            })
             ->map(function($notesMatiere) {
+                $premiereNote = $notesMatiere->first();
+                $matiere = $premiereNote->matiere ?? $premiereNote->evaluation?->matiere;
+                
                 return [
-                    'matiere' => $notesMatiere->first()->evaluation->matiere,
+                    'matiere' => $matiere,
                     'moyenne' => $notesMatiere->avg('note')
                 ];
             })
             ->filter(function($item) use ($moyennePassage) {
-                return $item['moyenne'] < $moyennePassage;
+                return $item['matiere'] && $item['moyenne'] < $moyennePassage;
             });
 
         return $moyennesParMatiere->values();

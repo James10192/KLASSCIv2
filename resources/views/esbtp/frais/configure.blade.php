@@ -4,6 +4,315 @@
 
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<style>
+/* Styles spécifiques pour la configuration des frais */
+.configuration-card {
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.configuration-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, transparent, var(--primary), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.configuration-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-elevated);
+}
+
+.configuration-card:hover::before {
+    opacity: 1;
+}
+
+.configuration-card.configured {
+    border-color: rgba(16, 185, 129, 0.3);
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(16, 185, 129, 0.02));
+}
+
+.configuration-card.configured::before {
+    background: linear-gradient(90deg, transparent, var(--success), transparent);
+}
+
+.configuration-card.partial {
+    border-color: rgba(245, 158, 11, 0.3);
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(245, 158, 11, 0.02));
+}
+
+.configuration-card.partial::before {
+    background: linear-gradient(90deg, transparent, var(--warning), transparent);
+}
+
+.configuration-card.not-configured {
+    border-color: rgba(239, 68, 68, 0.3);
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(239, 68, 68, 0.02));
+}
+
+.configuration-card.not-configured::before {
+    background: linear-gradient(90deg, transparent, var(--danger), transparent);
+}
+
+.class-icon {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    border-radius: var(--radius-circle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 20px;
+    margin-bottom: var(--space-md);
+}
+
+.progress-ring {
+    width: 60px;
+    height: 60px;
+    margin: var(--space-sm) auto;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.progress-ring circle {
+    transition: stroke-dashoffset 0.6s ease-in-out;
+    transform: rotate(-90deg);
+    transform-origin: 50% 50%;
+}
+
+.progress-ring svg {
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.stats-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--radius-small);
+    font-size: var(--text-small);
+    font-weight: 600;
+}
+
+.modal-backdrop {
+    background-color: rgba(0, 0, 0, 0.8) !important;
+}
+
+.configuration-modal {
+    backdrop-filter: blur(8px);
+}
+
+.category-config-card {
+    border: 2px solid rgba(0,0,0,0.05);
+    transition: all 0.2s ease;
+}
+
+.category-config-card:hover {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-elevated);
+}
+
+.category-config-card.mandatory {
+    border-left: 4px solid var(--danger);
+}
+
+.category-config-card.optional {
+    border-left: 4px solid var(--accent-blue);
+}
+
+/* Styles pour les onglets de configuration */
+.nav-tabs {
+    border-bottom: 2px solid #e5e7eb;
+    margin-bottom: var(--space-lg);
+}
+
+.nav-tabs .nav-link {
+    border: none;
+    padding: var(--space-md) var(--space-lg);
+    color: var(--text-secondary);
+    font-weight: 500;
+    border-radius: var(--radius-small) var(--radius-small) 0 0;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.nav-tabs .nav-link:hover {
+    background-color: rgba(30, 58, 138, 0.05);
+    color: var(--primary);
+    border-color: transparent;
+}
+
+.nav-tabs .nav-link.active {
+    background-color: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    position: relative;
+}
+
+.nav-tabs .nav-link.active::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: var(--primary);
+}
+
+.nav-tabs .nav-link .badge {
+    font-size: var(--text-small);
+    padding: 2px 6px;
+    border-radius: var(--radius-small);
+}
+
+.nav-tabs .nav-link.active .badge {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+}
+
+/* Configuration forms */
+.config-category-card {
+    background: var(--surface);
+    border: 1px solid #e5e7eb;
+    border-radius: var(--radius-medium);
+    padding: var(--space-lg);
+    margin-bottom: var(--space-md);
+    transition: all 0.2s ease;
+}
+
+.config-category-card:hover {
+    box-shadow: var(--shadow-elevated);
+    transform: translateY(-1px);
+}
+
+.config-category-card.mandatory {
+    border-left: 4px solid var(--danger);
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.05), rgba(239, 68, 68, 0.01));
+}
+
+.config-category-card.optional {
+    border-left: 4px solid var(--success);
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.05), rgba(16, 185, 129, 0.01));
+}
+
+.config-option-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-sm);
+    border: 1px solid #e5e7eb;
+    border-radius: var(--radius-small);
+    margin-bottom: var(--space-sm);
+    background: var(--background);
+    transition: all 0.2s ease;
+}
+
+.config-option-item:hover {
+    background: rgba(30, 58, 138, 0.05);
+    border-color: var(--primary);
+}
+
+.config-option-item:last-child {
+    margin-bottom: 0;
+}
+
+.option-details {
+    flex: 1;
+}
+
+.option-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--space-xs);
+}
+
+.option-description {
+    font-size: var(--text-small);
+    color: var(--text-secondary);
+}
+
+.option-price {
+    font-weight: 700;
+    color: var(--primary);
+    margin-left: var(--space-md);
+}
+
+.add-option-btn {
+    width: 100%;
+    padding: var(--space-md);
+    border: 2px dashed #d1d5db;
+    background: transparent;
+    border-radius: var(--radius-small);
+    color: var(--text-secondary);
+    font-size: var(--text-small);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.add-option-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: rgba(30, 58, 138, 0.05);
+}
+
+/* Modal Configuration Fix - Flexbox Centering */
+#configurationModal.modal.show {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 1055 !important;
+    padding: 1rem !important;
+    box-sizing: border-box !important;
+}
+
+#configurationModal.modal.show .modal-dialog {
+    position: static !important;
+    margin: 0 !important;
+    max-width: 90vw !important;
+    width: 900px !important;
+    max-height: 90vh !important;
+    transform: none !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+#configurationModal .modal-content {
+    background: white !important;
+    border-radius: var(--radius-medium) !important;
+    box-shadow: var(--shadow-elevated) !important;
+    max-height: 100% !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+#configurationModal .modal-body {
+    overflow-y: auto !important;
+    flex-grow: 1 !important;
+}
+
+#configurationModal .modal-backdrop {
+    z-index: 1054 !important;
+}
+</style>
 @endpush
 
 @section('content')
@@ -16,8 +325,8 @@
                 <p class="header-subtitle">Configuration des tarifs par classe et filière</p>
             </div>
             <div class="header-actions">
-                <a href="{{ route('esbtp.frais.index') }}" class="btn-acasi secondary">
-                    <i class="fas fa-list"></i>Catégories
+                <a href="{{ route('esbtp.frais.optional-config') }}" class="btn-acasi accent-blue" title="Configurer les frais optionnels (transport, cantine)">
+                    <i class="fas fa-sliders-h"></i>Frais Optionnels
                 </a>
                 <a href="{{ route('esbtp.frais.index') }}" class="btn-acasi primary">
                     <i class="fas fa-arrow-left"></i>Retour
@@ -84,134 +393,193 @@
             </div>
             
             @if($classes->count() > 0)
-                <div class="kpi-grid" style="margin-top: var(--space-lg);">
+                <div class="resultats-grid" style="margin-top: var(--space-lg);">
                     @foreach($classes as $classe)
-                        <div class="card-moderne kpi-card animate-slide-up" style="border: 1px solid #e5e7eb;">
-                            <!-- En-tête classe -->
-                            <div style="display: flex; align-items: center; margin-bottom: var(--space-md);">
-                                <div style="width: 40px; height: 40px; background: var(--primary); border-radius: var(--radius-circle); display: flex; align-items: center; justify-content: center; margin-right: var(--space-sm);">
-                                    <i class="fas fa-graduation-cap" style="color: white; font-size: 16px;"></i>
-                                </div>
-                                <div>
-                                    <div class="font-bold color-primary">{{ $classe->name }}</div>
-                                    <div style="font-size: var(--text-small); color: var(--text-secondary);">
-                                        {{ $classe->filiere->name }} - {{ $classe->niveau->name }}
+                        @php
+                            $statusClass = '';
+                            $statusIcon = '';
+                            $statusText = '';
+                            
+                            if($classe->obligatoires_configures == $classe->total_obligatoires) {
+                                $statusClass = 'configured';
+                                $statusIcon = 'fa-check-circle';
+                                $statusText = 'Complet';
+                            } elseif($classe->obligatoires_configures > 0) {
+                                $statusClass = 'partial';
+                                $statusIcon = 'fa-exclamation-triangle';
+                                $statusText = 'Partiel';
+                            } else {
+                                $statusClass = 'not-configured';
+                                $statusIcon = 'fa-times-circle';
+                                $statusText = 'Non configuré';
+                            }
+                        @endphp
+                        
+                        <div class="card-moderne configuration-card {{ $statusClass }} animate-slide-up">
+                            <div class="resultat-card" style="padding: var(--space-lg);">
+                                <!-- Header avec icône de classe -->
+                                <div style="display: flex; align-items: center; margin-bottom: var(--space-lg);">
+                                    <div class="class-icon">
+                                        <i class="fas fa-graduation-cap"></i>
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <div class="resultat-title" style="margin-bottom: var(--space-xs); color: var(--primary);">
+                                            {{ $classe->name }}
+                                        </div>
+                                        <div style="font-size: var(--text-small); color: var(--text-secondary);">
+                                            {{ $classe->filiere->name }} • {{ $classe->niveau->name }}
+                                        </div>
+                                        <div style="font-size: var(--text-small); color: var(--text-muted); margin-top: var(--space-xs);">
+                                            <i class="fas fa-users me-1"></i>{{ $classe->effectif }} étudiants
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <!-- Effectif -->
-                            <div class="kpi-title">Effectif Inscrit</div>
-                            <div class="kpi-value color-accent">{{ $classe->effectif }}</div>
-                            <div style="font-size: var(--text-small); color: var(--text-secondary); margin-bottom: var(--space-md);">étudiants actifs</div>
+                                <!-- Statistiques de configuration -->
+                                <div style="margin-bottom: var(--space-lg);">
+                                    <div class="resultat-title" style="margin-bottom: var(--space-sm);">Configuration des frais</div>
+                                    
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); margin-bottom: var(--space-md);">
+                                        <div style="text-align: center; padding: var(--space-sm); background: rgba(239, 68, 68, 0.1); border-radius: var(--radius-small);">
+                                            <div style="font-size: var(--amount-medium); font-weight: 700; color: var(--danger);">
+                                                {{ $classe->obligatoires_configures }}/{{ $classe->total_obligatoires }}
+                                            </div>
+                                            <div style="font-size: var(--text-small); color: var(--danger); font-weight: 600;">Obligatoires</div>
+                                        </div>
+                                        <div style="text-align: center; padding: var(--space-sm); background: rgba(59, 130, 246, 0.1); border-radius: var(--radius-small);">
+                                            @if($classe->optionnels_configures > 0)
+                                                <div style="font-size: var(--amount-medium); font-weight: 700; color: var(--accent-blue);">
+                                                    {{ $classe->optionnels_configures }}
+                                                </div>
+                                                <div style="font-size: var(--text-small); color: var(--accent-blue); font-weight: 600;">Assignés</div>
+                                            @else
+                                                <div style="font-size: var(--amount-medium); font-weight: 700; color: var(--text-muted);">
+                                                    <i class="fas fa-minus"></i>
+                                                </div>
+                                                <div style="font-size: var(--text-small); color: var(--text-muted); font-weight: 600;">Non assignés</div>
+                                            @endif
+                                        </div>
+                                    </div>
 
-                            <!-- Frais configurés -->
-                            <div style="display: flex; flex-wrap: wrap; gap: var(--space-xs); margin-bottom: var(--space-md);">
-                                @if($classe->obligatoires_configures > 0)
-                                    <span class="badge danger">
-                                        {{ $classe->obligatoires_configures }}/{{ $classe->total_obligatoires }} obligatoires
+                                    <!-- Progress ring pour le statut général -->
+                                    @php
+                                        $totalRequired = $classe->total_obligatoires;
+                                        $totalConfigured = $classe->obligatoires_configures;
+                                        $percentage = $totalRequired > 0 ? ($totalConfigured / $totalRequired) * 100 : 0;
+                                        $circumference = 2 * 3.14159 * 25; // rayon de 25
+                                        $strokeDashoffset = $circumference - ($percentage / 100) * $circumference;
+                                    @endphp
+                                    
+                                    <div style="display: flex; align-items: center; justify-content: center; margin-bottom: var(--space-md);">
+                                        <div class="progress-ring">
+                                            <svg width="60" height="60">
+                                                <circle cx="30" cy="30" r="25" stroke="#e5e7eb" stroke-width="4" fill="transparent"/>
+                                                <circle cx="30" cy="30" r="25" 
+                                                        stroke="{{ $percentage == 100 ? '#10b981' : ($percentage > 0 ? '#f59e0b' : '#ef4444') }}" 
+                                                        stroke-width="4" 
+                                                        fill="transparent"
+                                                        stroke-dasharray="{{ $circumference }}"
+                                                        stroke-dashoffset="{{ $strokeDashoffset }}"/>
+                                            </svg>
+                                            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: var(--text-small); font-weight: 700; color: var(--text-primary);">
+                                                {{ number_format($percentage, 0) }}%
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Badges de statut -->
+                                <div style="display: flex; justify-content: center; margin-bottom: var(--space-lg);">
+                                    <span class="stats-badge {{ $statusClass == 'configured' ? 'bg-success' : ($statusClass == 'partial' ? 'bg-warning' : 'bg-danger') }}" 
+                                          style="color: white;">
+                                        <i class="fas {{ $statusIcon }}"></i>{{ $statusText }}
                                     </span>
-                                @endif
-                                @if($classe->optionnels_configures > 0)
-                                    <span class="badge success">
-                                        {{ $classe->optionnels_configures }}/{{ $classe->total_optionnels }} optionnels
-                                    </span>
-                                @endif
-                                @if($classe->frais_configures->count() == 0)
-                                    <span class="badge" style="background: var(--neutral); color: white;">Aucun frais configuré</span>
-                                @endif
-                            </div>
+                                </div>
 
-                            <!-- Statut et action en vertical -->
-                            <div style="display: flex; flex-direction: column; gap: var(--space-sm);">
-                                <!-- Statut -->
-                                <div style="display: flex; justify-content: center;">
-                                    @if($classe->obligatoires_configures == $classe->total_obligatoires)
-                                        <span class="badge success">
-                                            <i class="fas fa-check-circle me-1"></i>Complet
-                                        </span>
-                                    @elseif($classe->obligatoires_configures > 0)
-                                        <span class="badge warning">
-                                            <i class="fas fa-exclamation-triangle me-1"></i>Partiel
-                                        </span>
-                                    @else
-                                        <span class="badge danger">
-                                            <i class="fas fa-times-circle me-1"></i>Non configuré
-                                        </span>
+                                <!-- Actions -->
+                                <div style="display: flex; flex-direction: column; gap: var(--space-sm);">
+                                    <button type="button" 
+                                            class="btn-acasi primary configure-btn" 
+                                            style="width: 100%; justify-content: center;" 
+                                            title="Configurer les frais pour cette classe"
+                                            data-filiere-id="{{ $classe->filiere->id }}"
+                                            data-niveau-id="{{ $classe->niveau->id }}"
+                                            data-filiere-name="{{ $classe->filiere->name }}"
+                                            data-niveau-name="{{ $classe->niveau->name }}"
+                                            onclick="openConfigurationModal(this)">
+                                        <i class="fas fa-cogs"></i>
+                                        <span class="configure-text">Configurer les Frais</span>
+                                    </button>
+                                    
+                                    @if($classe->configurations->count() > 0)
+                                        <button type="button" 
+                                                class="btn-acasi secondary" 
+                                                style="width: 100%; justify-content: center;" 
+                                                title="Voir le détail des configurations"
+                                                onclick="viewConfigurationDetails({{ $classe->filiere->id }}, {{ $classe->niveau->id }})">
+                                            <i class="fas fa-eye"></i>
+                                            <span>Voir Détails</span>
+                                        </button>
                                     @endif
                                 </div>
-                                
-                                <!-- Bouton action -->
-                                <button type="button" 
-                                        class="btn-acasi primary configure-btn" 
-                                        style="padding: var(--space-xs) var(--space-sm); width: 100%;" 
-                                        title="Configurer les frais"
-                                        data-filiere-id="{{ $classe->filiere->id }}"
-                                        data-niveau-id="{{ $classe->niveau->id }}"
-                                        data-filiere-name="{{ $classe->filiere->name }}"
-                                        data-niveau-name="{{ $classe->niveau->name }}"
-                                        onclick="openConfigurationModal(this)">
-                                    <i class="fas fa-cogs"></i>
-                                    <span class="configure-text">Configurer</span>
-                                </button>
                             </div>
                         </div>
                     @endforeach
                 </div>
             @else
-                <div class="text-center" style="padding: var(--space-xl); color: var(--text-secondary);">
-                    <i class="fas fa-exclamation-triangle" style="font-size: 48px; margin-bottom: var(--space-lg); color: var(--neutral);"></i>
-                    <h5 style="color: var(--text-secondary); margin-bottom: var(--space-sm);">Aucune classe trouvée</h5>
-                    <p style="color: var(--text-muted);">Vérifiez que vous avez des filières et niveaux d'étude actifs.</p>
+                <div class="empty-state">
+                    <i class="fas fa-graduation-cap"></i>
+                    <p>Aucune classe trouvée</p>
+                    <div style="font-size: var(--text-small); color: var(--text-muted); margin-top: var(--space-sm);">
+                        Vérifiez que vous avez des filières et niveaux d'étude actifs
+                    </div>
                 </div>
             @endif
         </div>
 
-        <!-- Modal de Configuration des Frais -->
+        <!-- Modal Simple pour Configuration des Frais par Classe -->
         <div class="modal fade" id="configurationModal" tabindex="-1" aria-labelledby="configurationModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-dialog modal-lg">
                 <div class="modal-content">
-                    <!-- Header du Modal -->
-                    <div class="modal-header" style="background: linear-gradient(135deg, var(--primary) 0%, var(--accent-blue) 100%); color: white; border-bottom: none; border-radius: var(--radius-medium) var(--radius-medium) 0 0; padding: var(--space-lg);">
-                        <div>
-                            <h4 class="modal-title" id="configurationModalLabel" style="margin: 0; font-weight: 700;">
-                                <i class="fas fa-cogs me-2"></i>Configuration des Frais
-                            </h4>
-                            <div id="modalClassInfo" style="margin-top: var(--space-sm); font-size: var(--text-small); opacity: 0.9;">
-                                <i class="fas fa-graduation-cap me-1"></i><span id="modalFiliere"></span> - <span id="modalNiveau"></span>
-                            </div>
-                        </div>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer" style="filter: brightness(0) invert(1);"></button>
+                    <!-- Header simple -->
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title" id="configurationModalLabel">
+                            <i class="fas fa-graduation-cap me-2"></i>Configuration des Frais par Classe
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
                     </div>
 
-                    <!-- Body du Modal -->
-                    <div class="modal-body" style="padding: var(--space-lg); background-color: var(--background);">
-                        <div style="margin-bottom: var(--space-lg); padding: var(--space-md); background: rgba(6, 182, 212, 0.1); border-radius: var(--radius-small); border-left: 4px solid var(--accent-blue);">
-                            <div style="font-size: var(--text-small); color: var(--text-primary); line-height: 1.6;">
-                                <i class="fas fa-info-circle me-1" style="color: var(--accent-blue);"></i>
-                                <strong>Configurez les montants et échéances spécifiques pour cette classe.</strong>
-                                Les frais <span class="badge danger" style="font-size: var(--text-small);">obligatoires</span> doivent être configurés.
-                            </div>
+                    <!-- Body simple -->
+                    <div class="modal-body">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Classe :</strong> <span id="modalClasseInfo">-</span><br>
+                            <small>Configurez les frais obligatoires pour cette classe (inscription, scolarité, examens).</small>
                         </div>
 
+                        <!-- Formulaire simple -->
                         <form id="configurationForm" method="POST" action="{{ route('esbtp.frais.update-configuration') }}">
                             @csrf
                             <input type="hidden" id="modalFiliereId" name="filiere_id">
                             <input type="hidden" id="modalNiveauId" name="niveau_id">
 
-                            <div id="categoriesContainer" class="resultats-grid">
-                                <!-- Les catégories seront chargées ici dynamiquement -->
+                            <div id="categoriesContainer">
+                                <!-- Les catégories seront chargées ici par AJAX -->
+                                <div class="text-center py-4">
+                                    <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
+                                    <p class="mt-2 text-muted">Chargement des catégories...</p>
+                                </div>
                             </div>
                         </form>
                     </div>
 
-                    <!-- Footer du Modal -->
-                    <div class="modal-footer" style="background-color: #f8fafc; border-top: 1px solid #e5e7eb; border-radius: 0 0 var(--radius-medium) var(--radius-medium); padding: var(--space-lg);">
-                        <button type="button" class="btn-acasi secondary" data-bs-dismiss="modal" style="padding: var(--space-md) var(--space-lg);">
+                    <!-- Footer simple -->
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                             <i class="fas fa-times me-1"></i>Annuler
                         </button>
-                        <button type="button" id="saveConfigurationBtn" class="btn-acasi primary" style="padding: var(--space-md) var(--space-lg);">
-                            <i class="fas fa-save me-1"></i>Enregistrer la Configuration
+                        <button type="button" id="saveConfigurationBtn" class="btn btn-primary">
+                            <i class="fas fa-save me-1"></i>Enregistrer
                         </button>
                     </div>
                 </div>
@@ -226,37 +594,16 @@
 <style>
 /* Styles spécifiques pour améliorer l'intégration avec dashboard-moderne.css */
 
-/* Centrer le modal sur le viewport actuel (zone visible) */
-#configurationModal {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    z-index: 1055 !important;
-}
-
-#configurationModal .modal-dialog {
-    position: absolute !important;
-    top: 50% !important;
-    left: 50% !important;
-    transform: translate(-50%, -50%) !important;
-    margin: 0 !important;
-    max-height: 90vh !important;
-    width: 90vw !important;
-    max-width: 1140px !important;
-}
-
-#configurationModal .modal-content {
-    max-height: 90vh !important;
-    border: none !important;
-    border-radius: var(--radius-medium) !important;
-    box-shadow: var(--shadow-elevated) !important;
-}
-
-#configurationModal .modal-body {
-    max-height: calc(90vh - 200px) !important;
-    overflow-y: auto !important;
+/* Styles supplémentaires pour la responsivité du modal */
+@media (max-width: 576px) {
+    #configurationModal.modal.show {
+        padding: 0.5rem !important;
+    }
+    
+    #configurationModal.modal.show .modal-dialog {
+        max-width: 95vw !important;
+        width: 95vw !important;
+    }
 }
 
 /* Assurer que le backdrop couvre tout le viewport */
@@ -338,161 +685,86 @@ input[type="number"]:focus {
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Fonction pour ouvrir le modal de configuration
+    console.log('DOM ready - Simple modal system');
+    
+    // Fonction simple pour ouvrir le modal
     window.openConfigurationModal = function(button) {
+        console.log('Opening configuration modal...');
+        
         const filiereId = button.dataset.filiereId;
         const niveauId = button.dataset.niveauId;
         const filiereName = button.dataset.filiereName;
         const niveauName = button.dataset.niveauName;
         
+        // Vérifier Bootstrap
+        if (typeof bootstrap === 'undefined') {
+            alert('Bootstrap non disponible');
+            return;
+        }
+        
         // Mettre à jour les informations du modal
         document.getElementById('modalFiliereId').value = filiereId;
         document.getElementById('modalNiveauId').value = niveauId;
-        document.getElementById('modalFiliere').textContent = filiereName;
-        document.getElementById('modalNiveau').textContent = niveauName;
+        document.getElementById('modalClasseInfo').textContent = `${filiereName} - ${niveauName}`;
         
-        // Charger les catégories pour cette classe
-        loadCategoriesForClass(filiereId, niveauId);
-        
-        // Ouvrir le modal centré sur le viewport actuel
-        const modal = new bootstrap.Modal(document.getElementById('configurationModal'));
+        // Ouvrir le modal
         const modalElement = document.getElementById('configurationModal');
-        
-        // Positionner le modal par rapport au viewport actuel
-        modalElement.addEventListener('show.bs.modal', function() {
-            // Empêcher le body de scroller pendant l'affichage du modal
-            document.body.style.overflow = 'hidden';
-            
-            // Forcer le modal à se positionner par rapport au viewport
-            modalElement.style.position = 'fixed';
-            modalElement.style.top = '0';
-            modalElement.style.left = '0';
-            modalElement.style.width = '100vw';
-            modalElement.style.height = '100vh';
-            modalElement.style.zIndex = '1055';
-        });
-        
-        // Restaurer le scroll du body à la fermeture
-        modalElement.addEventListener('hidden.bs.modal', function() {
-            document.body.style.overflow = '';
-        });
-        
+        const modal = new bootstrap.Modal(modalElement);
         modal.show();
         
-        // Effet visuel sur le bouton
-        const icon = button.querySelector('i');
-        const text = button.querySelector('.configure-text');
-        
-        const originalIcon = icon.className;
-        const originalText = text ? text.textContent : '';
-        
-        icon.className = 'fas fa-spinner fa-spin';
-        if (text) text.textContent = 'Ouverture...';
-        
-        setTimeout(() => {
-            icon.className = originalIcon;
-            if (text) text.textContent = originalText;
-        }, 1000);
+        // Charger les catégories après ouverture
+        modalElement.addEventListener('shown.bs.modal', function() {
+            loadCategories(filiereId, niveauId);
+        }, { once: true });
     };
     
     // Fonction pour charger les catégories
-    function loadCategoriesForClass(filiereId, niveauId) {
+    function loadCategories(filiereId, niveauId) {
         const container = document.getElementById('categoriesContainer');
-        container.innerHTML = '<div class="text-center p-4"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i><br><small class="text-muted mt-2 d-block">Chargement des catégories...</small></div>';
+        const url = `{{ route('esbtp.frais.get-categories') }}?filiere_id=${filiereId}&niveau_id=${niveauId}&type=mandatory`;
         
-        // Simuler le chargement des catégories (vous devrez implémenter l'endpoint AJAX)
-        fetch(`{{ route('esbtp.frais.get-categories') }}?filiere_id=${filiereId}&niveau_id=${niveauId}`)
+        fetch(url)
             .then(response => response.json())
             .then(data => {
-                container.innerHTML = data.html;
-                // Réappliquer les animations
-                container.querySelectorAll('.animate-slide-up').forEach((el, index) => {
-                    el.style.animationDelay = `${index * 0.1}s`;
-                });
+                if (data.success) {
+                    container.innerHTML = data.html;
+                } else {
+                    container.innerHTML = '<div class="alert alert-warning">Aucune catégorie trouvée</div>';
+                }
             })
             .catch(error => {
                 console.error('Erreur:', error);
-                container.innerHTML = '<div class="text-center p-4 text-danger"><i class="fas fa-exclamation-triangle fa-2x"></i><br><small class="mt-2 d-block">Erreur lors du chargement</small></div>';
+                container.innerHTML = '<div class="alert alert-danger">Erreur de chargement</div>';
             });
     }
     
     // Gestionnaire de sauvegarde
     document.getElementById('saveConfigurationBtn').addEventListener('click', function() {
         const form = document.getElementById('configurationForm');
-        const saveBtn = this;
-        
-        // État de chargement
-        const originalContent = saveBtn.innerHTML;
-        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Enregistrement...';
-        saveBtn.disabled = true;
-        
-        // Soumettre le formulaire
         const formData = new FormData(form);
         
         fetch(form.action, {
             method: 'POST',
             body: formData,
             headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'X-Requested-With': 'XMLHttpRequest'
             }
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Fermer le modal
                 bootstrap.Modal.getInstance(document.getElementById('configurationModal')).hide();
-                
-                // Afficher un message de succès
-                showNotification('Configuration enregistrée avec succès!', 'success');
-                
-                // Recharger la page pour mettre à jour les statuts
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000);
+                location.reload();
             } else {
-                showNotification(data.message || 'Erreur lors de l\'enregistrement', 'error');
+                alert('Erreur: ' + (data.message || 'Impossible d\'enregistrer'));
             }
         })
         .catch(error => {
             console.error('Erreur:', error);
-            showNotification('Erreur lors de l\'enregistrement', 'error');
-        })
-        .finally(() => {
-            saveBtn.innerHTML = originalContent;
-            saveBtn.disabled = false;
+            alert('Erreur de connexion');
         });
     });
-    
-    // Fonction pour afficher les notifications
-    function showNotification(message, type) {
-        const notificationContainer = document.getElementById('notification-container') || createNotificationContainer();
-        
-        const notification = document.createElement('div');
-        notification.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show`;
-        notification.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-        notification.innerHTML = `
-            <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        `;
-        
-        notificationContainer.appendChild(notification);
-        
-        // Auto-remove après 5 secondes
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.remove();
-            }
-        }, 5000);
-    }
-    
-    function createNotificationContainer() {
-        const container = document.createElement('div');
-        container.id = 'notification-container';
-        document.body.appendChild(container);
-        return container;
-    }
 });
 </script>
 @endpush
