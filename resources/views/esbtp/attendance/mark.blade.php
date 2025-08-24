@@ -207,6 +207,12 @@
         box-shadow: none !important;
     }
 
+    .btn-wide {
+        min-width: 160px;
+        padding: var(--space-md) var(--space-lg);
+        font-weight: 600;
+    }
+
     .empty-state {
         text-align: center;
         padding: var(--space-xl);
@@ -313,6 +319,15 @@
         </div>
         
         <div class="courses-grid">
+            Debug: {{ $todayCourses->count() }} cours trouvés - User: {{ Auth::id() }}
+            
+            @php
+                // Debug plus détaillé
+                $user = Auth::user();
+                $teacher = \App\Models\ESBTPTeacher::where('user_id', $user->id)->first();
+                echo "<!-- Debug: User ID = {$user->id}, Teacher = " . ($teacher ? $teacher->id : 'NULL') . " -->";
+            @endphp
+            
             @if($todayCourses->isEmpty())
                 <div class="empty-state">
                     <i class="fas fa-calendar-times"></i>
@@ -344,47 +359,75 @@
                         </div>
 
                         <div class="course-status">
-                            @if($course->teacherAttendance && $course->teacherAttendance->status === 'fait')
+                            @php
+                                $now = \Carbon\Carbon::now();
+                                $courseStart = \Carbon\Carbon::parse($course->heure_debut);
+                                $courseEnd = \Carbon\Carbon::parse($course->heure_fin);
+                                $earlyWindow = $courseStart->copy()->subMinutes(30); // 30 min avant
+                                $lateWindow = $courseEnd->copy()->addMinutes(15); // 15 min après
+                                
+                                $isAttended = $course->teacherAttendance && $course->teacherAttendance->status === 'fait';
+                                $isInWindow = $now->between($earlyWindow, $lateWindow);
+                                $isExpired = $now->gt($lateWindow);
+                                $isTooEarly = $now->lt($earlyWindow);
+                            @endphp
+                            
+                            @if($isAttended)
                                 <span class="status-badge success">
                                     <i class="fas fa-check-circle"></i>
                                     Émargé
                                 </span>
-                            @elseif($course->teacherAttendance && $course->teacherAttendance->status === 'not_signed')
+                            @elseif($isExpired && !$isAttended)
                                 <span class="status-badge danger">
                                     <i class="fas fa-times-circle"></i>
-                                    Non signé
+                                    Manqué
+                                </span>
+                            @elseif($isInWindow)
+                                <span class="status-badge success" style="background-color: rgba(34, 197, 94, 0.1); color: #16a34a; border: 1px solid rgba(34, 197, 94, 0.2);">
+                                    <i class="fas fa-play-circle"></i>
+                                    Disponible
+                                </span>
+                            @elseif($isTooEarly)
+                                <span class="status-badge warning">
+                                    <i class="fas fa-clock"></i>
+                                    Bientôt
                                 </span>
                             @else
                                 <span class="status-badge warning">
-                                    <i class="fas fa-clock"></i>
+                                    <i class="fas fa-hourglass-half"></i>
                                     En attente
                                 </span>
                             @endif
                         </div>
 
                         <div class="course-actions">
-                            @if(!$course->teacherAttendance)
-                                <button type="button" class="action-btn primary"
+                            @if(!$course->teacherAttendance && $isInWindow)
+                                <button type="button" class="action-btn primary btn-wide"
                                         data-bs-toggle="modal"
                                         data-bs-target="#markAttendanceModal"
                                         data-course-id="{{ $course->id }}">
                                     <i class="fas fa-signature"></i>
-                                    Émarger
+                                    Émarger maintenant
                                 </button>
-                            @elseif($course->teacherAttendance && $course->teacherAttendance->status === 'not_signed')
-                                <button type="button" class="action-btn danger" disabled>
-                                    <i class="fas fa-times-circle"></i>
-                                    Clôturé
-                                </button>
-                            @elseif($course->teacherAttendance && $course->teacherAttendance->status === 'fait')
-                                <button type="button" class="action-btn success" disabled>
+                            @elseif($isAttended)
+                                <button type="button" class="action-btn success btn-wide" disabled>
                                     <i class="fas fa-check-circle"></i>
-                                    Fait
+                                    Émargement fait
                                 </button>
-                            @elseif(!$course->attendance)
-                                <button type="button" class="action-btn secondary" disabled>
+                            @elseif($isExpired && !$isAttended)
+                                <button type="button" class="action-btn danger btn-wide" disabled>
+                                    <i class="fas fa-times-circle"></i>
+                                    Cours manqué
+                                </button>
+                            @elseif($isTooEarly)
+                                <button type="button" class="action-btn secondary btn-wide" disabled>
                                     <i class="fas fa-hourglass-half"></i>
-                                    Bientôt
+                                    Pas encore ouvert
+                                </button>
+                            @else
+                                <button type="button" class="action-btn secondary btn-wide" disabled>
+                                    <i class="fas fa-clock"></i>
+                                    En attente
                                 </button>
                             @endif
                         </div>
@@ -529,6 +572,76 @@ document.addEventListener('DOMContentLoaded', function() {
             this.style.transform = 'translateY(0)';
         });
     });
+
+    // Auto-refresh page every 2 minutes to update course statuses
+    setInterval(function() {
+        // Only refresh if no modal is open
+        const modals = document.querySelectorAll('.modal.show');
+        if (modals.length === 0) {
+            window.location.reload();
+        }
+    }, 120000); // 2 minutes
+
+    // Update time-based statuses every minute
+    setInterval(function() {
+        const now = new Date();
+        const courseCards = document.querySelectorAll('.course-card');
+        
+        courseCards.forEach(card => {
+            const timeElement = card.querySelector('.course-time');
+            if (timeElement) {
+                const timeText = timeElement.textContent.trim().split('\n');
+                const startTime = timeText[0];
+                const endTime = timeText[1];
+                
+                if (startTime && endTime) {
+                    const statusElement = card.querySelector('.status-badge');
+                    const actionButton = card.querySelector('.action-btn');
+                    
+                    // Parse course times (format: HH:MM)
+                    const today = new Date();
+                    const [startHour, startMin] = startTime.split(':');
+                    const [endHour, endMin] = endTime.split(':');
+                    
+                    const courseStart = new Date(today);
+                    courseStart.setHours(parseInt(startHour), parseInt(startMin), 0, 0);
+                    
+                    const courseEnd = new Date(today);
+                    courseEnd.setHours(parseInt(endHour), parseInt(endMin), 0, 0);
+                    
+                    const earlyWindow = new Date(courseStart);
+                    earlyWindow.setMinutes(courseStart.getMinutes() - 30);
+                    
+                    const lateWindow = new Date(courseEnd);
+                    lateWindow.setMinutes(courseEnd.getMinutes() + 15);
+                    
+                    // Update status based on current time
+                    const isInWindow = now >= earlyWindow && now <= lateWindow;
+                    const isExpired = now > lateWindow;
+                    const isTooEarly = now < earlyWindow;
+                    const isAttended = statusElement && statusElement.textContent.includes('Émargé');
+                    
+                    if (actionButton && !isAttended) {
+                        if (isExpired) {
+                            // Course has expired
+                            statusElement.className = 'status-badge danger';
+                            statusElement.innerHTML = '<i class="fas fa-times-circle"></i> Manqué';
+                            actionButton.className = 'action-btn danger btn-wide';
+                            actionButton.innerHTML = '<i class="fas fa-times-circle"></i> Cours manqué';
+                            actionButton.disabled = true;
+                        } else if (isInWindow && !actionButton.disabled) {
+                            // Course is available for attendance
+                            statusElement.className = 'status-badge success';
+                            statusElement.style.cssText = 'background-color: rgba(34, 197, 94, 0.1); color: #16a34a; border: 1px solid rgba(34, 197, 94, 0.2);';
+                            statusElement.innerHTML = '<i class="fas fa-play-circle"></i> Disponible';
+                            actionButton.className = 'action-btn primary btn-wide';
+                            actionButton.innerHTML = '<i class="fas fa-signature"></i> Émarger maintenant';
+                        }
+                    }
+                }
+            }
+        });
+    }, 60000); // 1 minute
 });
 </script>
 @endpush

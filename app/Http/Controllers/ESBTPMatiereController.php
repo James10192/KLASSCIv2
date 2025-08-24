@@ -15,11 +15,33 @@ class ESBTPMatiereController extends Controller
     /**
      * Affiche la liste des matières.
      *
+     * @param \Illuminate\Http\Request $request
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(Request $request)
     {
-        $matieres = ESBTPMatiere::with(['filieres', 'niveaux'])->get();
+        $query = ESBTPMatiere::with(['filieres', 'niveaux']);
+
+        // Filtrer par filière
+        if ($request->filled('filiere_filter')) {
+            $query->whereHas('filieres', function($q) use ($request) {
+                $q->where('esbtp_filieres.id', $request->filiere_filter);
+            });
+        }
+
+        // Filtrer par niveau
+        if ($request->filled('niveau_filter')) {
+            $query->whereHas('niveaux', function($q) use ($request) {
+                $q->where('esbtp_niveau_etudes.id', $request->niveau_filter);
+            });
+        }
+
+        // Filtrer par statut
+        if ($request->filled('statut_filter')) {
+            $query->where('is_active', $request->statut_filter == '1');
+        }
+
+        $matieres = $query->get();
 
         return view('esbtp.matieres.index', compact('matieres'));
     }
@@ -29,7 +51,7 @@ class ESBTPMatiereController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function create()
+    public function create(Request $request)
     {
         $this->authorize('create', ESBTPMatiere::class);
 
@@ -37,7 +59,17 @@ class ESBTPMatiereController extends Controller
         $niveauxEtudes = ESBTPNiveauEtude::all();
         $unitesEnseignement = collect(); // Collection vide temporaire
 
-        return view('esbtp.matieres.create', compact('filieres', 'niveauxEtudes', 'unitesEnseignement'));
+        // Récupérer les paramètres de pré-sélection depuis l'URL
+        $preselectedFiliereId = $request->get('filiere_id');
+        $preselectedNiveauId = $request->get('niveau_id');
+
+        return view('esbtp.matieres.create', compact(
+            'filieres', 
+            'niveauxEtudes', 
+            'unitesEnseignement',
+            'preselectedFiliereId',
+            'preselectedNiveauId'
+        ));
     }
 
     /**
@@ -554,6 +586,115 @@ class ESBTPMatiereController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des statistiques'
+            ], 500);
+        }
+    }
+
+    /**
+     * Récupère TOUTES les matières actives pour les assigner à une combinaison.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getAvailableForCombination(Request $request)
+    {
+        try {
+            $filiereId = $request->get('filiere_id');
+            $niveauId = $request->get('niveau_id');
+            
+            if (!$filiereId || !$niveauId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Les IDs filière et niveau sont requis'
+                ], 400);
+            }
+            
+            // Récupérer TOUTES les matières actives avec leur statut de liaison
+            $matieres = ESBTPMatiere::where('is_active', true)
+                ->select('id', 'name', 'code', 'description', 'coefficient', 'heures_cm', 'heures_td', 'heures_tp')
+                ->orderBy('name')
+                ->get()
+                ->map(function($matiere) use ($filiereId, $niveauId) {
+                    // Calculer le total des heures
+                    $matiere->total_heures = $matiere->heures_cm + $matiere->heures_td + $matiere->heures_tp;
+                    
+                    // Vérifier si la matière est déjà liée à cette combinaison
+                    $isLinkedToFiliere = $matiere->filieres()->where('esbtp_filieres.id', $filiereId)->exists();
+                    $isLinkedToNiveau = $matiere->niveaux()->where('esbtp_niveau_etudes.id', $niveauId)->exists();
+                    
+                    $matiere->is_already_linked = $isLinkedToFiliere && $isLinkedToNiveau;
+                    
+                    return $matiere;
+                });
+            
+            return response()->json([
+                'success' => true,
+                'matieres' => $matieres
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de la récupération des matières: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la récupération des matières'
+            ], 500);
+        }
+    }
+
+    /**
+     * Ajoute des matières à une ou plusieurs combinaisons filière/niveau.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function addToCombination(Request $request)
+    {
+        $request->validate([
+            'matiere_ids' => 'required|array',
+            'matiere_ids.*' => 'exists:esbtp_matieres,id',
+            'filiere_ids' => 'required|array',
+            'filiere_ids.*' => 'exists:esbtp_filieres,id',
+            'niveau_ids' => 'required|array',
+            'niveau_ids.*' => 'exists:esbtp_niveau_etudes,id',
+        ]);
+
+        try {
+            $matiereIds = $request->matiere_ids;
+            $filiereIds = $request->filiere_ids;
+            $niveauIds = $request->niveau_ids;
+            
+            $addedCount = 0;
+            
+            foreach ($matiereIds as $matiereId) {
+                $matiere = ESBTPMatiere::find($matiereId);
+                
+                if ($matiere) {
+                    // Ajouter les liaisons avec les filières
+                    foreach ($filiereIds as $filiereId) {
+                        $matiere->filieres()->syncWithoutDetaching([$filiereId]);
+                    }
+                    
+                    // Ajouter les liaisons avec les niveaux
+                    foreach ($niveauIds as $niveauId) {
+                        $matiere->niveaux()->syncWithoutDetaching([$niveauId]);
+                    }
+                    
+                    $addedCount++;
+                }
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => "{$addedCount} matière(s) ajoutée(s) avec succès aux combinaisons sélectionnées."
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de l\'ajout des matières: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de l\'ajout des matières'
             ], 500);
         }
     }

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Configuration Comptabilité - ESBTP-yAKRO')
+@section('title', 'Configuration Comptabilité')
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
@@ -351,23 +351,126 @@
             </div>
         </div>
 
-        <!-- Statistiques -->
+        <!-- Statistiques harmonisées avec le système de frais -->
         <div class="stats-grid">
             <div class="stat-card">
                 <span class="stat-value">{{ $configurations->count() }}</span>
                 <div class="stat-label">Paramètres configurables</div>
             </div>
             <div class="stat-card">
-                <span class="stat-value">{{ $configurations->where('type', 'boolean')->count() }}</span>
-                <div class="stat-label">Options activables</div>
+                <span class="stat-value">{{ \App\Models\ESBTPFraisCategory::active()->count() }}</span>
+                <div class="stat-label">Catégories de frais actives</div>
             </div>
             <div class="stat-card">
-                <span class="stat-value">{{ $configurations->where('type', 'number')->count() }}</span>
-                <div class="stat-label">Valeurs numériques</div>
+                <span class="stat-value">{{ \App\Models\ESBTPFraisConfiguration::where('is_valid', true)->count() }}</span>
+                <div class="stat-label">Configurations par classe</div>
             </div>
             <div class="stat-card">
-                <span class="stat-value">{{ $configurations->where('type', 'string')->count() }}</span>
-                <div class="stat-label">Textes configurables</div>
+                <span class="stat-value">{{ \App\Models\ESBTPFraisOption::where('is_active', true)->count() }}</span>
+                <div class="stat-label">Options de frais actives</div>
+            </div>
+        </div>
+        
+        <!-- Section système de frais moderne -->
+        <div class="card-moderne mb-lg">
+            <div class="p-lg">
+                <div class="section-title">
+                    <div class="section-icon">
+                        <i class="fas fa-money-bill-wave"></i>
+                    </div>
+                    Système de Frais
+                </div>
+                
+                <div class="row">
+                    <!-- Catégories de frais -->
+                    <div class="col-md-4">
+                        <div class="config-item">
+                            <div class="config-item-header">
+                                <div class="config-label">Catégories de frais</div>
+                                <span class="config-type-badge type-string">ACTIF</span>
+                            </div>
+                            <div class="config-description">
+                                Gestion des 3 types principaux : académique, service et administratif
+                            </div>
+                            <div class="config-control">
+                                @php
+                                    $categoriesByType = \App\Models\ESBTPFraisCategory::active()
+                                        ->selectRaw('category_type, COUNT(*) as count')
+                                        ->groupBy('category_type')
+                                        ->pluck('count', 'category_type');
+                                @endphp
+                                <div class="config-value-display">
+                                    <div><strong>Academic:</strong> {{ $categoriesByType['academic'] ?? 0 }}</div>
+                                    <div><strong>Service:</strong> {{ $categoriesByType['service'] ?? 0 }}</div>
+                                    <div><strong>Administrative:</strong> {{ $categoriesByType['administrative'] ?? 0 }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Configurations par classe -->
+                    <div class="col-md-4">
+                        <div class="config-item">
+                            <div class="config-item-header">
+                                <div class="config-label">Configurations par classe</div>
+                                <span class="config-type-badge type-number">CONFIG</span>
+                            </div>
+                            <div class="config-description">
+                                Tarifs spécifiques configurés par filière et niveau d'étude
+                            </div>
+                            <div class="config-control">
+                                @php
+                                    $configurationsParFiliere = \App\Models\ESBTPFraisConfiguration::with(['filiere', 'niveau'])
+                                        ->where('is_valid', true)
+                                        ->get()
+                                        ->groupBy('filiere.name');
+                                @endphp
+                                <div class="config-value-display">
+                                    @foreach($configurationsParFiliere as $filiere => $configs)
+                                        <div><strong>{{ $filiere }}:</strong> {{ $configs->count() }} config(s)</div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Options globales vs spécifiques -->
+                    <div class="col-md-4">
+                        <div class="config-item">
+                            <div class="config-item-header">
+                                <div class="config-label">Types d'options</div>
+                                <span class="config-type-badge type-json">MIXED</span>
+                            </div>
+                            <div class="config-description">
+                                Options globales disponibles pour tous vs options spécifiques par classe
+                            </div>
+                            <div class="config-control">
+                                @php
+                                    $optionsGlobales = \App\Models\ESBTPFraisOption::where('option_type', 'global')->where('is_active', true)->count();
+                                    $optionsClasse = \App\Models\ESBTPFraisOption::where('option_type', 'class_based')->where('is_active', true)->count();
+                                @endphp
+                                <div class="config-value-display">
+                                    <div><strong>Globales:</strong> {{ $optionsGlobales }}</div>
+                                    <div><strong>Par classe:</strong> {{ $optionsClasse }}</div>
+                                    <div class="mt-2 text-success"><i class="fas fa-check"></i> Système unifié</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Liens d'administration -->
+                <div class="action-buttons" style="border-top: 1px solid var(--border); padding-top: var(--space-lg); margin-top: var(--space-lg);">
+                    <a href="{{ route('esbtp.frais.index') }}" class="btn-acasi secondary">
+                        <i class="fas fa-list"></i> Gérer les catégories
+                    </a>
+                    <a href="{{ route('esbtp.frais.optional-config') }}" class="btn-acasi secondary">
+                        <i class="fas fa-cogs"></i> Configuration options
+                    </a>
+                    <a href="{{ route('esbtp.paiements.suivi-categories') }}" class="btn-acasi primary">
+                        <i class="fas fa-chart-bar"></i> Suivi par catégorie
+                    </a>
+                </div>
             </div>
         </div>
 
@@ -434,6 +537,84 @@
                                 </option>
                                 @endforeach
                             </select>
+                        @else
+                            <input type="text" 
+                                   class="form-control"
+                                   name="configurations[{{ $config->id }}]" 
+                                   value="{{ $config->valeur }}"
+                                   placeholder="Saisir {{ strtolower($config->nom ?? $config->cle) }}">
+                        @endif
+                        
+                        @if($config->unite)
+                        <span style="color: var(--text-secondary); font-size: var(--text-small);">{{ $config->unite }}</span>
+                        @endif
+                    </div>
+                </div>
+                @endforeach
+            </div>
+            @endif
+
+            <!-- Section Monitoring et Alertes -->
+            @php
+                $monitoringConfigs = $configurations->filter(function($config) {
+                    return str_starts_with($config->cle, 'alert_') || str_starts_with($config->cle, 'monitoring_') || str_starts_with($config->cle, 'notification_');
+                });
+            @endphp
+            
+            @if($monitoringConfigs->count() > 0)
+            <div class="config-section">
+                <div class="section-title">
+                    <div class="section-icon">
+                        <i class="fas fa-bell"></i>
+                    </div>
+                    Monitoring et Alertes
+                </div>
+                
+                <div class="info-alert" style="background: rgba(99, 102, 241, 0.1); border-color: var(--primary);">
+                    <div style="display: flex; align-items: center; gap: var(--space-sm);">
+                        <i class="fas fa-info-circle" style="color: var(--primary);"></i>
+                        <div>
+                            <strong>Système de monitoring intégré :</strong>
+                            Configuration des alertes automatiques pour les anomalies de paiement, les trop-perçus importants 
+                            et les tendances de recouvrement.
+                        </div>
+                    </div>
+                </div>
+
+                @foreach($monitoringConfigs as $config)
+                <div class="config-item">
+                    <div class="config-item-header">
+                        <div class="config-label">
+                            {{ $config->nom ?? str_replace('_', ' ', ucwords($config->cle, '_')) }}
+                        </div>
+                        <div style="display: flex; gap: var(--space-xs);">
+                            <span class="config-type-badge type-{{ $config->type ?? 'string' }}">
+                                {{ strtoupper($config->type ?? 'string') }}
+                            </span>
+                            <span class="config-key">{{ $config->cle }}</span>
+                        </div>
+                    </div>
+                    
+                    @if($config->description)
+                    <div class="config-description">{{ $config->description }}</div>
+                    @endif
+                    
+                    <div class="config-control">
+                        @if(($config->type ?? 'string') === 'boolean')
+                            <label class="toggle-switch">
+                                <input type="checkbox" 
+                                       name="configurations[{{ $config->id }}]" 
+                                       value="1"
+                                       {{ $config->valeur == '1' || $config->valeur === 'true' ? 'checked' : '' }}>
+                                <span class="slider"></span>
+                            </label>
+                            <input type="hidden" name="configurations[{{ $config->id }}]" value="0">
+                        @elseif(($config->type ?? 'string') === 'number')
+                            <input type="number" 
+                                   class="form-control"
+                                   name="configurations[{{ $config->id }}]" 
+                                   value="{{ $config->valeur }}"
+                                   step="0.01">
                         @else
                             <input type="text" 
                                    class="form-control"

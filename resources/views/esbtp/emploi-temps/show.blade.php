@@ -3,6 +3,7 @@
 @section('title', 'Emploi du temps - ' . (is_object($emploiTemps) && is_object($emploiTemps->classe) ? $emploiTemps->classe->name : 'Non défini') . ' - ESBTP-yAKRO')
 
 @section('styles')
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
     .timetable-container {
         overflow-x: auto;
@@ -50,32 +51,32 @@
     }
 
     .session-cours {
-        background-color: #3498db;
+        background-color: var(--primary);
     }
 
     .session-td {
-        background-color: #2ecc71;
+        background-color: var(--success);
     }
 
     .session-tp {
-        background-color: #9b59b6;
+        background-color: var(--secondary);
     }
 
     .session-examen {
-        background-color: #e74c3c;
+        background-color: var(--danger);
     }
 
     .session-autre {
-        background-color: #f39c12;
+        background-color: var(--warning);
     }
 
     /* Nouveaux styles pour les pauses et déjeuners */
     .session-pause {
-        background-color: #95a5a6;
+        background-color: var(--neutral);
     }
 
     .session-dejeuner {
-        background-color: #e67e22;
+        background-color: var(--accent-orange);
     }
 
     .session-info {
@@ -144,567 +145,328 @@
     }
 
     .seance-list-item {
-        border-left: 4px solid #3498db;
+        border-left: 4px solid var(--primary);
     }
 
     .seance-list-item.td {
-        border-left-color: #2ecc71;
+        border-left-color: var(--success);
     }
 
     .seance-list-item.tp {
-        border-left-color: #9b59b6;
+        border-left-color: var(--secondary);
     }
 
     .seance-list-item.examen {
-        border-left-color: #e74c3c;
+        border-left-color: var(--danger);
     }
 
     .seance-list-item.autre {
-        border-left-color: #f39c12;
+        border-left-color: var(--warning);
+    }
+
+    /* ================================
+       STYLES POUR LE MODAL DE CONFIGURATION
+    ================================ */
+    
+    /* Configuration variables supplémentaires pour le modal */
+    .config-section {
+        --border: #e5e7eb;
+        --text-sm: 0.875rem;
+        --primary-rgb: 30, 58, 138;
+    }
+    
+    .config-matiere-card {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: var(--space-lg);
+        padding: var(--space-lg);
+        border: 1px solid #e5e7eb;
+        border-radius: var(--radius-large);
+        margin-bottom: var(--space-md);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        background: var(--surface);
+        box-shadow: var(--shadow-card);
+        position: relative;
+    }
+    
+    .config-matiere-card:hover {
+        border-color: var(--primary);
+        box-shadow: 0 4px 12px rgba(30, 58, 138, 0.15);
+        transform: translateY(-1px);
+    }
+    
+    .config-matiere-card.configured {
+        border-color: var(--success);
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.06), rgba(16, 185, 129, 0.02));
+        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.1);
+    }
+    
+    .config-matiere-card.configured::before {
+        content: '✓';
+        position: absolute;
+        top: var(--space-sm);
+        right: var(--space-sm);
+        width: 24px;
+        height: 24px;
+        background: var(--success);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: bold;
+    }
+    
+    .matiere-details {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-sm);
+    }
+    
+    .matiere-name {
+        font-weight: 700;
+        font-size: 1.1rem;
+        color: var(--text-primary);
+        margin: 0;
+        line-height: 1.2;
+    }
+    
+    .matiere-description {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        line-height: 1.4;
+        margin: 0;
+    }
+    
+    .matiere-config {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
+        min-width: 280px;
+    }
+    
+    .config-section {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-sm);
+    }
+    
+    .config-label {
+        font-weight: 600;
+        font-size: var(--text-sm);
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin: 0;
+    }
+    
+    .volume-config {
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
+    }
+    
+    .volume-input {
+        flex: 1;
+        min-width: 80px;
+        padding: 0.5rem;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        transition: all 0.2s;
+    }
+    
+    .volume-input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
+        outline: none;
+    }
+    
+    .volume-unit {
+        font-size: var(--text-sm);
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+    
+    .teacher-config {
+        position: relative;
+    }
+    
+    .teacher-config .form-select {
+        padding: 0.5rem;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        transition: all 0.2s;
+    }
+    
+    .teacher-config .form-select:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
+        outline: none;
+    }
+    
+    /* Modal loading state */
+    .config-loading {
+        min-height: 200px;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .config-matiere-card {
+            flex-direction: column;
+            align-items: stretch;
+            text-align: center;
+            grid-template-columns: 1fr;
+        }
+        
+        .matiere-config {
+            justify-content: center;
+            min-width: auto;
+        }
     }
 </style>
 @endsection
 
 @section('content')
-<div class="container-fluid">
-    <div class="row mb-3">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Emploi du temps : {{ $emploiTemps->titre ?? 'Non défini' }}</h5>
-                    <div>
-                        <a href="{{ route('esbtp.emploi-temps.index') }}" class="btn btn-secondary me-2">
-                            <i class="fas fa-arrow-left me-1"></i>Retour à la liste
-                        </a>
-                        <div class="btn-group">
-                            <a href="{{ route('esbtp.emploi-temps.export-pdf', ['emploi_temp' => $emploiTemps->id]) }}" class="btn btn-danger me-2" target="_blank">
-                                <i class="fas fa-file-pdf me-1"></i>Générer PDF
-                            </a>
-                            <a href="{{ route('esbtp.emploi-temps.edit', ['emploi_temp' => $emploiTemps->id]) }}" class="btn btn-warning me-2">
-                                <i class="fas fa-edit me-1"></i>Modifier
-                            </a>
-                            <a href="{{ route('esbtp.seances-cours.create', ['emploi_temps_id' => $emploiTemps->id]) }}" class="btn btn-primary">
-                                <i class="fas fa-plus me-1"></i>Ajouter une séance
-                            </a>
-                        </div>
+<div class="dashboard-acasi">
+    <div class="main-content">
+        <!-- Header Section -->
+        <div class="dashboard-header">
+            <div class="header-left">
+                <h1><i class="fas fa-calendar-alt me-2"></i>{{ $emploiTemps->titre ?? 'Emploi du Temps' }}</h1>
+                <p class="header-subtitle">Emploi du temps de {{ $emploiTemps->classe->name ?? 'Non défini' }}</p>
+            </div>
+            <div class="header-actions">
+                <a href="{{ route('esbtp.emploi-temps.index') }}" class="btn-acasi secondary">
+                    <i class="fas fa-arrow-left"></i>Retour à la liste
+                </a>
+                <a href="{{ route('esbtp.emploi-temps.export-pdf', ['emploi_temp' => $emploiTemps->id]) }}" class="btn-acasi danger" target="_blank">
+                    <i class="fas fa-file-pdf"></i>Générer PDF
+                </a>
+                <a href="{{ route('esbtp.emploi-temps.edit', ['emploi_temp' => $emploiTemps->id]) }}" class="btn-acasi warning">
+                    <i class="fas fa-edit"></i>Modifier
+                </a>
+                <a href="{{ route('esbtp.seances-cours.create', ['emploi_temps_id' => $emploiTemps->id]) }}" class="btn-acasi primary">
+                    <i class="fas fa-plus"></i>Ajouter une séance
+                </a>
+            </div>
+        </div>
+
+        @if (session('success'))
+            <div class="alert alert-success border-start border-success border-4 mb-4">
+                <div class="d-flex">
+                    <div class="me-3">
+                        <i class="fas fa-check-circle fs-4"></i>
                     </div>
+                    <div>{{ session('success') }}</div>
                 </div>
-                <div class="card-body">
-                    @if (session('success'))
-                        <div class="alert alert-success alert-dismissible fade show" role="alert">
-                            {{ session('success') }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    @endif
+            </div>
+        @endif
 
-                    @if (session('error'))
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            {{ session('error') }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    @endif
-
-                    <!-- Section Planification Académique -->
-                    @if(isset($planificationData) && !empty($planificationData))
-                        <div class="row mb-4">
-                            <div class="col-12">
-                                <div class="card border-primary shadow-lg" style="border-width: 2px !important;">
-                                    <div class="card-header bg-primary text-white py-3">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <h6 class="mb-0">
-                                                    <i class="fas fa-calendar-check me-2"></i>
-                                                    <strong>Planification Académique</strong>
-                                                </h6>
-                                                <small class="opacity-75">Suivi des heures planifiées pour cette classe</small>
-                                            </div>
-                                            <div>
-                                                @if($planificationData['planifications_configurees'])
-                                                    <span class="badge bg-success fs-6 px-3 py-2">
-                                                        <i class="fas fa-check-circle me-1"></i>Configurée
-                                                    </span>
-                                                @else
-                                                    <span class="badge bg-warning text-dark fs-6 px-3 py-2">
-                                                        <i class="fas fa-exclamation-triangle me-1"></i>Non configurée
-                                                    </span>
-                                                @endif
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="card-body p-3">
-                                        @if($planificationData['planifications_configurees'])
-                                            <div class="row">
-                                                <div class="col-lg-8">
-                                                    <div class="table-responsive">
-                                                        <table class="table table-sm table-hover mb-0">
-                                                            <thead class="table-dark">
-                                                                <tr>
-                                                                    <th width="35%">Matière</th>
-                                                                    <th width="25%">Enseignant</th>
-                                                                    <th width="15%" class="text-center">H. Total</th>
-                                                                    <th width="15%" class="text-center">H. Restantes</th>
-                                                                    <th width="10%" class="text-center">%</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
-                                                                @foreach($planificationData['matieres_planifiees'] as $matiere)
-                                                                <tr>
-                                                                    <td>
-                                                                        <div class="d-flex align-items-center">
-                                                                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 25px; height: 25px; flex-shrink: 0;">
-                                                                                <i class="fas fa-book" style="font-size: 10px;"></i>
-                                                                            </div>
-                                                                            <strong>{{ $matiere['matiere']->name }}</strong>
-                                                                        </div>
-                                                                    </td>
-                                                                    <td>
-                                                                        @if($matiere['enseignant_principal'])
-                                                                            <small><i class="fas fa-user-tie text-secondary me-1"></i>{{ $matiere['enseignant_principal']->name }}</small>
-                                                                        @else
-                                                                            <small class="text-muted"><i class="fas fa-user-slash me-1"></i>Non assigné</small>
-                                                                        @endif
-                                                                    </td>
-                                                                    <td class="text-center">
-                                                                        <span class="badge bg-primary">{{ $matiere['volume_horaire_total'] }}h</span>
-                                                                    </td>
-                                                                    <td class="text-center">
-                                                                        <span class="badge bg-{{ $matiere['heures_restantes'] > 0 ? 'success' : 'warning' }}">
-                                                                            {{ $matiere['heures_restantes'] }}h
-                                                                        </span>
-                                                                    </td>
-                                                                    <td class="text-center">
-                                                                        <small><strong>{{ $matiere['pourcentage_utilise'] ?? 0 }}%</strong></small>
-                                                                    </td>
-                                                                </tr>
-                                                                @endforeach
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-                                                </div>
-                                                
-                                                <div class="col-lg-4">
-                                                    <div class="card bg-light border-0">
-                                                        <div class="card-body text-center">
-                                                            <h6 class="text-primary"><i class="fas fa-chart-pie me-2"></i>Résumé</h6>
-                                                            <div class="row">
-                                                                <div class="col-6">
-                                                                    <h4 class="text-primary mb-1">{{ $planificationData['heures_totales'] }}</h4>
-                                                                    <small>H. planifiées</small>
-                                                                </div>
-                                                                <div class="col-6">
-                                                                    <h4 class="text-success mb-1">{{ $planificationData['heures_restantes'] }}</h4>
-                                                                    <small>H. restantes</small>
-                                                                </div>
-                                                            </div>
-                                                            <hr>
-                                                            <small class="text-muted">
-                                                                <i class="fas fa-graduation-cap me-1"></i>{{ $emploiTemps->classe->name }}<br>
-                                                                <i class="fas fa-calendar me-1"></i>{{ $emploiTemps->semestre ?? 'Année complète' }}
-                                                            </small>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        @else
-                                            <div class="alert alert-warning mb-0">
-                                                <div class="d-flex align-items-center">
-                                                    <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
-                                                    <div>
-                                                        <h6><strong>Planification non configurée</strong></h6>
-                                                        <p class="mb-2">{{ $planificationData['message_configuration'] ?? 'Aucune planification académique configurée pour cette classe.' }}</p>
-                                                        <small class="text-muted">Vous devez d'abord définir les volumes horaires des matières pour cette classe.</small>
-                                                        @if(isset($planificationData['lien_configuration']))
-                                                            <a href="{{ $planificationData['lien_configuration'] }}" class="btn btn-warning btn-sm" target="_blank">
-                                                                <i class="fas fa-clock me-1"></i>Configurer les volumes horaires
-                                                            </a>
-                                                        @endif
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        @endif
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    @endif
-
-                    @if (session('warning'))
-                        <div class="alert alert-warning alert-dismissible fade show" role="alert">
-                            <h5><i class="fas fa-exclamation-triangle me-2"></i>Attention</h5>
-                            <p>{{ session('warning') }}</p>
-                            @if (session('show_force_delete'))
-                                <hr>
-                                <div class="d-flex justify-content-end">
-                                    @if(auth()->user()->hasRole('superAdmin') && auth()->user()->can('delete_timetables'))
-                                    <form action="{{ route('esbtp.emploi-temps.destroy', ['emploi_temp' => $emploiTemps->id]) }}" method="POST">
-                                        @csrf
-                                        @method('DELETE')
-                                        <input type="hidden" name="force_delete" value="1">
-                                        <button type="submit" class="btn btn-danger">
-                                            <i class="fas fa-trash me-1"></i>Confirmer la suppression forcée
-                                        </button>
-                                    </form>
-                                    @endif
-                                </div>
-                            @endif
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    @endif
-
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <div class="border-start border-primary ps-3">
-                                <h6 class="text-primary">Informations sur l'emploi du temps</h6>
-                                <p class="mb-1"><strong>Classe :</strong> {{ is_object($emploiTemps) && is_object($emploiTemps->classe) ? $emploiTemps->classe->name : 'Non définie' }}</p>
-                                <p class="mb-1"><strong>Filière :</strong> {{ is_object($emploiTemps) && is_object($emploiTemps->classe) && is_object($emploiTemps->classe->filiere) ? $emploiTemps->classe->filiere->name : 'Non définie' }}</p>
-                                <p class="mb-1"><strong>Niveau :</strong> {{ is_object($emploiTemps) && is_object($emploiTemps->classe) && is_object($emploiTemps->classe->niveau) ? $emploiTemps->classe->niveau->name : 'Non défini' }}</p>
-                                <p class="mb-1"><strong>Année universitaire :</strong> {{ is_object($emploiTemps) && is_object($emploiTemps->annee) ? $emploiTemps->annee->name : 'Non définie' }}</p>
-                                <p class="mb-1">
-                                    <strong>Période :</strong>
-                                    @if(isset($emploiTemps->semestre) && $emploiTemps->semestre == 'Semestre 1')
-                                        Semestre 1
-                                    @elseif(isset($emploiTemps->semestre) && $emploiTemps->semestre == 'Semestre 2')
-                                        Semestre 2
-                                    @else
-                                        Année complète
-                                    @endif
-                                </p>
-                                <p class="mb-1">
-                                    <strong>Statut :</strong>
-                                    @if(isset($emploiTemps->is_active) && $emploiTemps->is_active)
-                                        <span class="badge bg-success">Actif</span>
-                                        @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire'))
-                                        <form action="{{ route('esbtp.emploi-temps.update', ['emploi_temp' => $emploiTemps->id]) }}" method="POST" class="d-inline ms-2">
-                                            @csrf
-                                            @method('PUT')
-                                            <input type="hidden" name="is_active" value="0">
-                                            <button type="submit" class="btn btn-sm btn-outline-secondary" onclick="return confirm('Êtes-vous sûr de vouloir désactiver cet emploi du temps ?')">
-                                                <i class="fas fa-toggle-off me-1"></i>Désactiver
-                                            </button>
-                                        </form>
-                                        @endif
-                                    @else
-                                        <span class="badge bg-secondary">Inactif</span>
-                                        @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire'))
-                                        <form action="{{ route('esbtp.emploi-temps.update', ['emploi_temp' => $emploiTemps->id]) }}" method="POST" class="d-inline ms-2">
-                                            @csrf
-                                            @method('PUT')
-                                            <input type="hidden" name="is_active" value="1">
-                                            <button type="submit" class="btn btn-sm btn-outline-success" onclick="return confirm('Êtes-vous sûr de vouloir activer cet emploi du temps ? Cela désactivera tous les autres emplois du temps pour cette classe.')">
-                                                <i class="fas fa-toggle-on me-1"></i>Activer
-                                            </button>
-                                        </form>
-                                        @endif
-                                    @endif
-                                    @if(isset($emploiTemps->is_current) && $emploiTemps->is_current)
-                                        <span class="badge bg-info ms-1">Courant</span>
-                                    @else
-                                        @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire'))
-                                        <form action="{{ route('esbtp.emploi-temps.set-current', ['id' => $emploiTemps->id]) }}" method="POST" class="d-inline ms-2">
-                                            @csrf
-                                            <button type="submit" class="btn btn-sm btn-outline-info" onclick="return confirm('Êtes-vous sûr de vouloir définir cet emploi du temps comme courant ? Cela désactivera tous les autres emplois du temps pour cette classe.')">
-                                                <i class="fas fa-calendar-check me-1"></i>Définir comme courant
-                                            </button>
-                                        </form>
-                                        @endif
-                                    @endif
-                                </p>
-                            </div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <div class="border-start border-info ps-3">
-                                <h6 class="text-info">Statistiques des séances</h6>
-                                <p class="mb-1"><strong>Nombre total de séances :</strong> {{ is_object($emploiTemps) && is_object($emploiTemps->seances) ? $emploiTemps->seances->count() : '0' }}</p>
-                                <p class="mb-1">
-                                    <strong>Types de séances :</strong>
-                                    <span class="badge bg-secondary">{{ is_object($emploiTemps) && is_object($emploiTemps->seances) ? $emploiTemps->seances->where('type_seance', 'cours')->count() : '0' }} cours</span>
-                                    <span class="badge bg-secondary">{{ is_object($emploiTemps) && is_object($emploiTemps->seances) ? $emploiTemps->seances->where('type_seance', 'td')->count() : '0' }} TD</span>
-                                    <span class="badge bg-secondary">{{ is_object($emploiTemps) && is_object($emploiTemps->seances) ? $emploiTemps->seances->where('type_seance', 'tp')->count() : '0' }} TP</span>
-                                    <span class="badge bg-secondary">{{ is_object($emploiTemps) && is_object($emploiTemps->seances) ? $emploiTemps->seances->where('type_seance', 'examen')->count() : '0' }} examens</span>
-                                </p>
-                                <p class="mb-1"><strong>Séances actives :</strong> {{ is_object($emploiTemps) && is_object($emploiTemps->seances) ? $emploiTemps->seances->where('is_active', 1)->count() : '0' }}</p>
-                                <p class="mb-1"><strong>Séances par matière :</strong></p>
-                                <div style="max-height: 100px; overflow-y: auto;">
-                                    @if(isset($matiereStats) && is_array($matiereStats))
-                                        @foreach($matiereStats as $matiere => $count)
-                                            <small>{{ $matiere }}: {{ $count }} séance(s)</small><br>
-                                        @endforeach
-                                    @else
-                                        <small>Aucune donnée disponible</small>
-                                    @endif
-                                </div>
-                            </div>
-                        </div>
+        @if (session('error'))
+            <div class="alert alert-danger border-start border-danger border-4 mb-4">
+                <div class="d-flex">
+                    <div class="me-3">
+                        <i class="fas fa-exclamation-circle fs-4"></i>
                     </div>
-
-                    @php
-                    $typeLabels = [
-                        'course' => 'Cours magistral',
-                        'homework' => 'Devoir',
-                        'break' => 'Récréation',
-                        'lunch' => 'Pause déjeuner',
-                        'autre' => 'Autre',
-                    ];
-                    $typeColors = [
-                        'course' => '#3498db',
-                        'homework' => '#2ecc71',
-                        'break' => '#f39c12',
-                        'lunch' => '#e74c3c',
-                        'autre' => '#95a5a6',
-                    ];
-                    $legendOrder = ['course', 'homework', 'break', 'lunch', 'autre'];
-                    @endphp
-
-                    <div class="mb-3">
-                        <h6>Légende :</h6>
-                        <div class="d-flex flex-wrap">
-                            @foreach($legendOrder as $type)
-                                <div class="legend-item" style="margin-right: 15px; align-items: center; display: flex;">
-                                    <div class="legend-color" style="width: 15px; height: 15px; border-radius: 3px; margin-right: 5px; background-color: {{ $typeColors[$type] }};"></div>
-                                    <small>{{ $typeLabels[$type] }}</small>
-                            </div>
-                            @endforeach
-                        </div>
-                    </div>
-
-                    <div class="timetable-container mb-4">
-                        <table class="table table-bordered timetable">
-                            <thead>
-                                <tr>
-                                    <th class="text-center time-column">Heure</th>
-                                    <th class="text-center">Lundi</th>
-                                    <th class="text-center">Mardi</th>
-                                    <th class="text-center">Mercredi</th>
-                                    <th class="text-center">Jeudi</th>
-                                    <th class="text-center">Vendredi</th>
-                                    <th class="text-center">Samedi</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @php
-                                // Définir les créneaux horaires
-                                $timeSlots = isset($timeSlots) && is_array($timeSlots) ? $timeSlots : [];
-
-                                // Créer une grille pour suivre les cellules occupées par des rowspans
-                                $occupiedCells = [];
-                                foreach ($days as $day) {
-                                    foreach ($timeSlots as $slotIndex => $slot) {
-                                        $occupiedCells[$day][$slotIndex] = false;
-                                    }
-                                }
-
-                                // Pré-traiter les séances pour déterminer les rowspans
-                                $seancesWithRowspans = [];
-                                if (isset($emploiTemps) && $emploiTemps->seances) {
-                                    foreach ($emploiTemps->seances as $seance) {
-                                        $jour = $seance->jour;
-                                        $heureDebut = $seance->heure_debut->format('H:i');
-                                        $heureFin = $seance->heure_fin->format('H:i');
-
-                                        // Trouver l'index du créneau de début
-                                        $startSlotIndex = array_search($heureDebut, $timeSlots);
-                                        if ($startSlotIndex === false) continue;
-
-                                        // Calculer combien de créneaux cette séance occupe
-                                        $endSlotIndex = null;
-                                        foreach ($timeSlots as $index => $slot) {
-                                            // Check if this is the last slot
-                                            $nextSlotIndex = $index + 1;
-                                            $nextSlot = isset($timeSlots[$nextSlotIndex]) ? $timeSlots[$nextSlotIndex] : null;
-
-                                            // If this is the last slot or the end time is before the next slot starts
-                                            if ($nextSlot === null || $heureFin <= $nextSlot) {
-                                                if ($index >= $startSlotIndex) {
-                                                    $endSlotIndex = $index;
-                                                    break; // Found the ending slot, no need to continue
-                                                }
-                                            }
-                                        }
-
-                                        if ($endSlotIndex === null) $endSlotIndex = $startSlotIndex;
-
-                                        // Calculer le rowspan
-                                        $rowspan = $endSlotIndex - $startSlotIndex + 1;
-                                        if ($rowspan < 1) $rowspan = 1;
-
-                                        // Stocker les informations
-                                        $seancesWithRowspans[] = [
-                                            'seance' => $seance,
-                                            'jour' => $jour,
-                                            'startSlotIndex' => $startSlotIndex,
-                                            'endSlotIndex' => $endSlotIndex,
-                                            'rowspan' => $rowspan
-                                        ];
-
-                                        // Marquer les cellules comme occupées
-                                        for ($i = $startSlotIndex; $i <= $endSlotIndex; $i++) {
-                                            $occupiedCells[$jour][$i] = true;
-                                        }
-                                    }
-                                }
-                                @endphp
-
-                                @foreach($timeSlots as $slotIndex => $timeSlot)
-                                <tr>
-                                    <td class="text-center time-column">{{ $timeSlot }}</td>
-                                    @foreach($days as $day)
-                                        @php
-                                        // Vérifier si cette cellule est occupée par un rowspan d'une ligne précédente
-                                        $cellOccupied = $occupiedCells[$day][$slotIndex];
-
-                                        // Trouver la séance à afficher dans cette cellule (s'il y en a une)
-                                        $seanceToDisplay = null;
-                                        $rowspan = 1;
-
-                                        foreach ($seancesWithRowspans as $seanceData) {
-                                            if ($seanceData['jour'] == $day && $seanceData['startSlotIndex'] == $slotIndex) {
-                                                $seanceToDisplay = $seanceData['seance'];
-                                                $rowspan = $seanceData['rowspan'];
-                                                break;
-                                            }
-                                        }
-                                        @endphp
-
-                                        @if($seanceToDisplay && $cellOccupied)
-                                            @php
-                                                // Log pour debug
-                                                \Log::info('Affichage séance', [
-                                                    'id' => $seanceToDisplay->id,
-                                                    'type' => $seanceToDisplay->type,
-                                                    'label' => $seanceToDisplay->getSessionTypeText(),
-                                                    'color' => $seanceToDisplay->color,
-                                                ]);
-                                            @endphp
-                                            <td class="align-middle" rowspan="{{ $rowspan }}">
-                                                <div class="session-cell"
-                                                     style="background-color: {{ $seanceToDisplay->color }}"
-                                                     data-bs-toggle="tooltip"
-                                                     data-bs-placement="top"
-                                                     title="{{ $seanceToDisplay->getSessionDescription() }}">
-                                                    @if($seanceToDisplay->isBreak() || $seanceToDisplay->isLunch())
-                                                        <div class="session-info session-matiere text-center fw-bold">
-                                                            {{ $seanceToDisplay->getSessionTypeText() }}
-                                                        </div>
-                                                    @elseif($seanceToDisplay->isHomework())
-                                                        <div class="session-info session-matiere fw-bold">
-                                                            {{ $seanceToDisplay->getSessionTypeText() }} : {{ $seanceToDisplay->matiere->name ?? 'Matière non définie' }}
-                                                        </div>
-                                                        @if($seanceToDisplay->homework_due_date)
-                                                            <div class="session-info session-details">
-                                                                À rendre le {{ $seanceToDisplay->homework_due_date->format('d/m/Y') }}
-                                                            </div>
-                                                        @endif
-                                                    @elseif($seanceToDisplay->isCourse())
-                                                        <div class="session-info session-matiere fw-bold">
-                                                            {{ $seanceToDisplay->matiere->name ?? 'Matière non définie' }}
-                                                    </div>
-                                                    <div class="session-info session-enseignant">
-                                                            {{ $seanceToDisplay->teacher ? $seanceToDisplay->teacher->name : 'Non défini' }}
-                                                    </div>
-                                                    <div class="session-info session-details">
-                                                            {{ $seanceToDisplay->salle ?? 'Salle non définie' }}
-                                                        </div>
-                                                    @else
-                                                        <div class="session-info session-matiere text-center fw-bold">
-                                                            {{ $seanceToDisplay->getSessionTypeText() }}
-                                                        </div>
-                                                    @endif
-                                                    <div class="session-info session-details mt-1">
-                                                        {{ $seanceToDisplay->heure_debut->format('H:i') }} - {{ $seanceToDisplay->heure_fin->format('H:i') }}
-                                                    </div>
-                                                    <div class="session-actions mt-1">
-                                                        <div class="btn-group btn-group-sm">
-                                                            <a href="{{ route('esbtp.seances-cours.edit', $seanceToDisplay->id) }}" class="btn btn-sm btn-light">
-                                                                <i class="fas fa-edit"></i>
-                                                            </a>
-                                                            <form action="{{ route('esbtp.seances-cours.destroy', $seanceToDisplay->id) }}" method="POST" class="d-inline">
-                                                                @csrf
-                                                                @method('DELETE')
-                                                                <button type="submit" class="btn btn-sm btn-light" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette séance ?')">
-                                                                    <i class="fas fa-trash"></i>
-                                                                </button>
-                                                            </form>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                        @elseif(!$cellOccupied)
-                                            <td>
-                                                <a href="{{ route('esbtp.seances-cours.create', ['emploi_temps_id' => $emploiTemps->id ?? 0, 'jour' => $day, 'heure_debut' => $timeSlot]) }}" class="btn-add-session">
-                                                    <i class="fas fa-plus"></i>
-                                                </a>
-                                            </td>
-                                        @endif
-                                    @endforeach
-                                </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-12">
-                            <h6>Liste des séances</h6>
-                            <div class="list-group">
-                                @if(isset($emploiTemps) && is_object($emploiTemps) && is_object($emploiTemps->seances) && $emploiTemps->seances->count() > 0)
-                                    @foreach($emploiTemps->seances->sortBy('jour')->sortBy('heure_debut') as $seance)
-                                        <div class="list-group-item seance-list-item"
-                                             style="border-left: 4px solid {{ $seance->color ?? '#3498db' }};">
-                                            <div class="d-flex w-100 justify-content-between">
-                                                <h6 class="mb-1">
-                                                    @if($seance->isBreak() || $seance->isLunch())
-                                                        {{ $seance->getSessionTypeText() }}
-                                                    @elseif($seance->isHomework())
-                                                        {{ $seance->getSessionTypeText() }} : {{ $seance->matiere->name ?? 'Matière non définie' }}
-                                                    @elseif($seance->isCourse())
-                                                        {{ $seance->matiere->name ?? 'Matière non définie' }}
-                                                    @else
-                                                        {{ $seance->getSessionTypeText() }}
-                                                    @endif
-                                                    <span class="badge bg-secondary">{{ $seance->getSessionTypeText() }}</span>
-                                                </h6>
-                                                <small>
-                                                    {{ $seance->getNomJour() }}, {{ $seance->heure_debut->format('H:i') }} - {{ $seance->heure_fin->format('H:i') }}
-                                                </small>
-                                            </div>
-                                            <p class="mb-1">
-                                                        @if($seance->isBreak() || $seance->isLunch())
-                                                            <!-- Rien d'autre à afficher -->
-                                                        @elseif($seance->isHomework())
-                                                            <strong>À rendre le :</strong>
-                                                            {{ $seance->homework_due_date ? $seance->homework_due_date->format('d/m/Y') : 'Non définie' }}
-                                                        @elseif($seance->isCourse())
-                                                            <strong>Enseignant :</strong> {{ $seance->teacher ? $seance->teacher->name : 'Non défini' }} |
-                                                <strong>Salle :</strong> {{ $seance->salle ?? 'Non définie' }}
-                                                        @endif
-                                            </p>
-                                            <div class="d-flex justify-content-end">
-                                                <a href="{{ route('esbtp.seances-cours.edit', $seance->id) }}" class="btn btn-sm btn-warning me-2">
-                                                    <i class="fas fa-edit me-1"></i>Modifier
-                                                </a>
-                                                <form action="{{ route('esbtp.seances-cours.destroy', $seance->id) }}" method="POST">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette séance ?')">
-                                                        <i class="fas fa-trash me-1"></i>Supprimer
-                                                    </button>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    @endforeach
-                                @else
-                                    <div class="list-group-item">
-                                        <p class="mb-0 text-muted">Aucune séance n'a été ajoutée à cet emploi du temps.</p>
-                                    </div>
-                                @endif
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <div>{{ session('error') }}</div>
                 </div>
+            </div>
+        @endif
+        <!-- Section: Planification Académique -->
+        <x-emploi-temps.planification-section 
+            :planificationData="$planificationData" 
+            :emploiTemps="$emploiTemps" />
+
+        @if (session('warning'))
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                <h5><i class="fas fa-exclamation-triangle me-2"></i>Attention</h5>
+                <p>{{ session('warning') }}</p>
+                @if (session('show_force_delete'))
+                    <hr>
+                    <div class="d-flex justify-content-end">
+                        @if(auth()->user()->hasRole('superAdmin') && auth()->user()->can('delete_timetables'))
+                        <form action="{{ route('esbtp.emploi-temps.destroy', ['emploi_temp' => $emploiTemps->id]) }}" method="POST">
+                            @csrf
+                            @method('DELETE')
+                            <input type="hidden" name="force_delete" value="1">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash me-1"></i>Confirmer la suppression forcée
+                            </button>
+                        </form>
+                        @endif
+                    </div>
+                @endif
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+
+        <!-- Section: Informations et Statistiques -->
+        <x-emploi-temps.info-stats-section 
+            :emploiTemps="$emploiTemps" 
+            :matiereStats="$matiereStats ?? []" />
+
+
+        @php
+            // Définir les créneaux horaires et jours pour la grille
+            $timeSlots = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
+            $days = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+        @endphp
+
+        <!-- Section: Grille horaire (pleine largeur) -->
+        <x-emploi-temps.grille-horaire 
+            :seances="$emploiTemps->seances ?? collect()" 
+            :emploiTemps="$emploiTemps"
+            :timeSlots="$timeSlots"
+            :days="$days" />
+
+        <!-- Section: Liste des séances (pleine largeur) -->
+        <x-emploi-temps.liste-seances 
+            :seances="$emploiTemps->seances ?? collect()" 
+            :emploiTemps="$emploiTemps" />
+    </div>
+</div>
+
+<!-- Modal de Configuration des Volumes Horaires -->
+<div class="modal fade" id="volumeConfigModal" tabindex="-1" aria-labelledby="volumeConfigModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="volumeConfigModalLabel">
+                    <i class="fas fa-cog me-2"></i>
+                    Configuration des Volumes Horaires
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="config-header mb-4">
+                    <h6 class="mb-1">Combinaison sélectionnée</h6>
+                    <p class="text-muted mb-0" id="config-combination-name">{{ $emploiTemps->classe->filiere->name ?? 'Filière' }} - {{ $emploiTemps->classe->niveau->name ?? 'Niveau' }}</p>
+                </div>
+                
+                <form id="volume-config-form">
+                    <input type="hidden" id="config-filiere-id" name="filiere_id" value="{{ $emploiTemps->classe->filiere_id ?? '' }}">
+                    <input type="hidden" id="config-niveau-id" name="niveau_id" value="{{ $emploiTemps->classe->niveau_etude_id ?? '' }}">
+                    <input type="hidden" id="config-annee-id" name="annee_id" value="{{ $emploiTemps->annee->id ?? '' }}">
+                    
+                    <div class="config-loading text-center py-4" id="config-loading" style="display: none;">
+                        <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                        <p>Chargement des matières...</p>
+                    </div>
+                    
+                    <div id="matieres-container">
+                        <!-- Les matières seront chargées ici via AJAX -->
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Annuler
+                </button>
+                <button type="button" class="btn btn-primary" id="save-volume-config">
+                    <i class="fas fa-save me-1"></i>Sauvegarder
+                </button>
             </div>
         </div>
     </div>
@@ -713,6 +475,11 @@
 
 @section('scripts')
 <script>
+    // Variables globales pour le modal de configuration
+    let currentFiliereId = null;
+    let currentNiveauId = null;
+    let currentCombinaisonName = '';
+    
     document.addEventListener('DOMContentLoaded', function() {
         // Initialiser les tooltips Bootstrap
         var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -720,5 +487,188 @@
             return new bootstrap.Tooltip(tooltipTriggerEl);
         });
     });
+    
+    // Fonction pour ouvrir le modal de configuration des volumes
+    function openVolumeConfigModal(button) {
+        const filiereId = button.getAttribute('data-filiere-id');
+        const niveauId = button.getAttribute('data-niveau-id');
+        const anneeId = button.getAttribute('data-annee-id');
+        const combinationName = button.getAttribute('data-combination-name');
+        
+        // Stocker les valeurs globalement
+        currentFiliereId = filiereId;
+        currentNiveauId = niveauId;
+        currentCombinaisonName = combinationName;
+        
+        // Mettre à jour les champs cachés
+        $('#config-filiere-id').val(filiereId);
+        $('#config-niveau-id').val(niveauId);
+        $('#config-annee-id').val(anneeId);
+        $('#config-combination-name').text(combinationName);
+        
+        // Charger les matières
+        loadMatieresForConfiguration(filiereId, niveauId, anneeId);
+    }
+    
+    // Fonction pour charger les matières via AJAX
+    function loadMatieresForConfiguration(filiereId, niveauId, anneeId) {
+        $('#config-loading').show();
+        $('#matieres-container').empty();
+        
+        $.ajax({
+            url: '{{ route("esbtp.planning-general.get-matieres-configuration") }}',
+            method: 'GET',
+            data: {
+                filiere_id: filiereId,
+                niveau_id: niveauId,
+                annee_id: anneeId
+            },
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            success: function(response) {
+                $('#config-loading').hide();
+                
+                if (response.success) {
+                    $('#matieres-container').html(response.html).show();
+                    
+                    // Ajouter les event listeners sur les inputs
+                    $('.volume-input').on('input', function() {
+                        const $card = $(this).closest('.config-matiere-card');
+                        const value = parseInt($(this).val()) || 0;
+                        
+                        if (value > 0) {
+                            $card.addClass('configured');
+                        } else {
+                            $card.removeClass('configured');
+                        }
+                    });
+                } else {
+                    showAlert('error', response.message || 'Erreur lors du chargement des matières');
+                    $('#matieres-container').html('<div class="text-center text-muted py-4">Erreur lors du chargement</div>').show();
+                }
+            },
+            error: function(xhr) {
+                $('#config-loading').hide();
+                console.error('Erreur AJAX:', xhr);
+                showAlert('error', 'Erreur de communication avec le serveur');
+                $('#matieres-container').html('<div class="text-center text-muted py-4">Erreur de chargement</div>').show();
+            }
+        });
+    }
+    
+    // Gestionnaire pour la sauvegarde des volumes
+    $(document).on('click', '#save-volume-config', function() {
+        const $btn = $(this);
+        
+        // Validation des champs requis
+        if (!currentFiliereId || !currentNiveauId) {
+            showAlert('error', 'Informations de combinaison manquantes');
+            return;
+        }
+        
+        // Collecter les données du formulaire
+        const formData = {
+            filiere_id: currentFiliereId,
+            niveau_id: currentNiveauId,
+            annee_id: $('#config-annee-id').val(),
+            volumes: {},
+            teachers: {}
+        };
+        
+        // Collecter tous les volumes
+        $('.volume-input').each(function() {
+            const matiereId = $(this).attr('name').match(/volumes\[(\d+)\]/)[1];
+            const volume = parseInt($(this).val()) || 0;
+            formData.volumes[matiereId] = volume;
+        });
+        
+        // Collecter toutes les assignations de professeurs
+        $('.teacher-select').each(function() {
+            const matiereId = $(this).attr('name').match(/teachers\[(\d+)\]/)[1];
+            const selectedTeachers = $(this).val() || [];
+            formData.teachers[matiereId] = selectedTeachers;
+        });
+        
+        // Validation
+        if (!formData.filiere_id || !formData.niveau_id || !formData.annee_id) {
+            showAlert('error', 'Données manquantes pour la sauvegarde');
+            return;
+        }
+        
+        // Afficher loading sur le bouton
+        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Sauvegarde...');
+        
+        $.ajax({
+            url: '{{ route("esbtp.planning-general.save-volume-configuration") }}',
+            method: 'POST',
+            data: formData,
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            },
+            success: function(response) {
+                if (response.success) {
+                    showAlert('success', response.message);
+                    
+                    // Fermer le modal
+                    $('#volumeConfigModal').modal('hide');
+                    
+                    // Recharger la page pour mettre à jour les données de planification
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    showAlert('error', response.message || 'Erreur lors de la sauvegarde');
+                }
+            },
+            error: function(xhr) {
+                console.error('Erreur AJAX:', xhr);
+                let message = 'Erreur lors de la sauvegarde';
+                
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    message = xhr.responseJSON.message;
+                } else if (xhr.responseJSON && xhr.responseJSON.errors) {
+                    const errors = Object.values(xhr.responseJSON.errors).flat();
+                    message = errors.join(', ');
+                }
+                
+                showAlert('error', message);
+            },
+            complete: function() {
+                $btn.prop('disabled', false).html('<i class="fas fa-save me-1"></i>Sauvegarder');
+            }
+        });
+    });
+    
+    // Reset du modal à la fermeture
+    $('#volumeConfigModal').on('hidden.bs.modal', function() {
+        $('#matieres-container').empty();
+        $('#config-combination-name').text('-');
+        currentFiliereId = null;
+        currentNiveauId = null;
+        currentCombinaisonName = '';
+    });
+    
+    // Fonction utilitaire pour afficher les alertes
+    function showAlert(type, message) {
+        const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+        const iconClass = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle';
+        
+        const $alert = $(`
+            <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+                <i class="fas ${iconClass} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `);
+        
+        // Insérer l'alerte au début du container principal
+        $('.container-fluid').prepend($alert);
+        
+        // Auto-dismiss après 5 secondes
+        setTimeout(() => {
+            $alert.alert('close');
+        }, 5000);
+    }
 </script>
 @endsection

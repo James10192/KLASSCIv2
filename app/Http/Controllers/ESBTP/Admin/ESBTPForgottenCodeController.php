@@ -4,7 +4,7 @@ namespace App\Http\Controllers\ESBTP\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ESBTPTeacherAttendance;
-use App\Models\ESBTPAttendanceCode;
+use App\Models\ESBTPDailyCode;
 use App\Models\ESBTPEnseignant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -20,8 +20,8 @@ class ESBTPForgottenCodeController extends Controller
     public function index()
     {
         $teachers = ESBTPEnseignant::with('user')->get();
-        $recentCodes = ESBTPAttendanceCode::with('used_by.user')
-            ->whereDate('date', Carbon::today())
+        $recentCodes = ESBTPDailyCode::with('generator')
+            ->whereDate('created_at', Carbon::today())
             ->orderBy('created_at', 'desc')
             ->take(5)
             ->get();
@@ -41,13 +41,15 @@ class ESBTPForgottenCodeController extends Controller
             $code = $this->generateUniqueCode();
 
             // Create the attendance code record
-            $attendanceCode = ESBTPAttendanceCode::create([
+            $attendanceCode = ESBTPDailyCode::create([
                 'code' => $code,
-                'date' => Carbon::today(),
-                'expires_at' => Carbon::now()->addHours(24),
-                'is_manual' => true,
-                'manual_reason' => $request->reason,
-                'created_by' => auth()->id()
+                'valid_from' => now(),
+                'valid_until' => Carbon::now()->addHours(24),
+                'is_active' => true,
+                'status' => 'active',
+                'description' => 'Code manuel: ' . $request->reason,
+                'created_by' => auth()->id(),
+                'type' => 'manuel'
             ]);
 
             // Log the manual code generation
@@ -128,7 +130,7 @@ class ESBTPForgottenCodeController extends Controller
     {
         do {
             $code = strtoupper(substr(md5(uniqid()), 0, 6));
-        } while (ESBTPAttendanceCode::where('code', $code)->exists());
+        } while (ESBTPDailyCode::where('code', $code)->exists());
 
         return $code;
     }

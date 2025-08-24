@@ -5,93 +5,112 @@
 @section('page_title', 'Gestion des Notes')
 
 @section('content')
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card shadow-sm">
-                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
-                    <h3 class="card-title mb-0 text-primary">
-                        <i class="fas fa-graduation-cap me-2"></i>Liste des Notes
-                    </h3>
-                    <div>
-                        @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('teacher') || auth()->user()->hasRole('enseignant') || auth()->user()->can('create_grade'))
-                        <a href="{{ route('esbtp.notes.create') }}" class="btn btn-primary shadow-sm">
-                            <i class="fas fa-plus-circle me-1"></i> Ajouter une note
-                        </a>
-                        @endif
-                        <a href="{{ route('esbtp.notes.index') }}" class="btn btn-outline-secondary ms-2 shadow-sm">
-                            <i class="fas fa-sync me-1"></i> Actualiser
-                        </a>
-                    </div>
+<div class="dashboard-acasi">
+    <div class="main-content">
+        <!-- Header Section -->
+        <div class="dashboard-header">
+            <div class="header-left">
+                <h1><i class="fas fa-graduation-cap me-2"></i>Gestion des Notes</h1>
+                <p class="header-subtitle">Liste et gestion des notes des étudiants</p>
+            </div>
+            <div class="header-actions">
+                @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('teacher') || auth()->user()->hasRole('enseignant') || auth()->user()->can('create_grade'))
+                <a href="{{ route('esbtp.notes.create') }}" class="btn-acasi primary me-2">
+                    <i class="fas fa-plus-circle"></i>Ajouter une note
+                </a>
+                @endif
+                <a href="{{ route('esbtp.notes.index') }}" class="btn-acasi secondary">
+                    <i class="fas fa-sync"></i>Actualiser
+                </a>
+            </div>
+        </div>
+        @if (session('success'))
+            <div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
+                <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+
+        @if (session('error'))
+            <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+                <i class="fas fa-exclamation-circle me-2"></i>{{ session('error') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+
+        @if (session('info'))
+            <div class="alert alert-info alert-dismissible fade show mb-4" role="alert">
+                <i class="fas fa-info-circle me-2"></i>{{ session('info') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+
+        <!-- Filtres -->
+        <div class="main-card mb-4">
+            <div class="main-card-header" style="background: linear-gradient(135deg, rgba(6, 182, 212, 0.1), rgba(6, 182, 212, 0.05));">
+                <div class="main-card-title">
+                    <i class="fas fa-filter"></i>
+                    Filtres de recherche
                 </div>
-                <div class="card-body">
-                    @if (session('success'))
-                        <div class="alert alert-success alert-dismissible fade show shadow-sm border-start border-success border-4" role="alert">
-                            <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            <div class="main-card-body">
+                <form action="{{ route('esbtp.notes.index') }}" method="GET">
+                    <div class="row g-3">
+                        <div class="col-md-5">
+                            <div class="form-group-moderne">
+                                <label class="form-label-moderne">
+                                    <i class="fas fa-users"></i>
+                                    Classe
+                                </label>
+                                <select class="form-select-moderne" id="classe_id" name="classe_id">
+                                    <option value="">Toutes les classes</option>
+                                    @foreach($classes as $classe)
+                                        <option value="{{ $classe->id }}" {{ request('classe_id') == $classe->id ? 'selected' : '' }}>
+                                            {{ $classe->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
                         </div>
-                    @endif
-
-                    @if (session('error'))
-                        <div class="alert alert-danger alert-dismissible fade show shadow-sm border-start border-danger border-4" role="alert">
-                            <i class="fas fa-exclamation-circle me-2"></i>{{ session('error') }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        <div class="col-md-5">
+                            <div class="form-group-moderne">
+                                <label class="form-label-moderne">
+                                    <i class="fas fa-book"></i>
+                                    Matière
+                                </label>
+                                <select class="form-select-moderne" id="matiere_id" name="matiere_id">
+                                    <option value="">Toutes les matières</option>
+                                    @foreach($matieres as $matiere)
+                                        <option value="{{ $matiere->id }}" {{ request('matiere_id') == $matiere->id ? 'selected' : '' }}>
+                                            {{ $matiere->name ?? $matiere->nom ?? 'Matière sans nom' }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
                         </div>
-                    @endif
-
-                    @if (session('info'))
-                        <div class="alert alert-info alert-dismissible fade show shadow-sm border-start border-info border-4" role="alert">
-                            <i class="fas fa-info-circle me-2"></i>{{ session('info') }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    @endif
-
-                    <!-- Filtres -->
-                    <div class="card mb-4 shadow-sm border-0 bg-light">
-                        <div class="card-body">
-                            <h5 class="card-title mb-3 text-primary">
-                                <i class="fas fa-filter me-2"></i>Filtres de recherche
-                            </h5>
-                            <form action="{{ route('esbtp.notes.index') }}" method="GET">
-                                <div class="row g-3">
-                                    <div class="col-md-5">
-                                        <label for="classe_id" class="form-label text-muted small">Classe</label>
-                                        <select class="form-select shadow-sm" id="classe_id" name="classe_id">
-                                            <option value="">Toutes les classes</option>
-                                            @foreach($classes as $classe)
-                                                <option value="{{ $classe->id }}" {{ request('classe_id') == $classe->id ? 'selected' : '' }}>
-                                                    {{ $classe->name }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                    <div class="col-md-5">
-                                        <label for="matiere_id" class="form-label text-muted small">Matière</label>
-                                        <select class="form-select shadow-sm" id="matiere_id" name="matiere_id">
-                                            <option value="">Toutes les matières</option>
-                                            @foreach($matieres as $matiere)
-                                                <option value="{{ $matiere->id }}" {{ request('matiere_id') == $matiere->id ? 'selected' : '' }}>
-                                                    {{ $matiere->name ?? $matiere->nom ?? 'Matière sans nom' }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                    <div class="col-md-2 d-flex align-items-end">
-                                        <button type="submit" class="btn btn-primary w-100 shadow-sm">
-                                            <i class="fas fa-search me-1"></i> Filtrer
-                                        </button>
-                                    </div>
-                                </div>
-                            </form>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn-acasi primary w-100">
+                                <i class="fas fa-search"></i>Filtrer
+                            </button>
                         </div>
                     </div>
+                </form>
+            </div>
+        </div>
 
-                    <!-- Tableau des notes -->
-                    <div class="card shadow-sm border-0">
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-hover align-middle border-0 dataTable" id="notesTable">
-                                    <thead class="bg-light text-primary">
+        <!-- Tableau des notes -->
+        <div class="main-card">
+            <div class="main-card-header">
+                <div class="main-card-title">
+                    <i class="fas fa-list"></i>
+                    Liste des notes
+                </div>
+                <div class="main-card-subtitle">{{ count($notes) }} notes trouvées</div>
+            </div>
+            <div class="main-card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle border-0 dataTable" id="notesTable">
+                        <thead class="bg-light">
                                         <tr>
                                             <th>Étudiant</th>
                                             <th>Classe</th>
@@ -108,7 +127,7 @@
                                                 <td>
                                                     <div class="d-flex align-items-center">
                                                         <div class="me-3">
-                                                            <i class="fas fa-user-graduate fs-4 text-secondary"></i>
+                                                            <i class="fas fa-user-graduate fs-4 color-primary"></i>
                                                         </div>
                                                         <div>
                                                             <span class="fw-medium d-block">{{ $note->etudiant->nom }} {{ $note->etudiant->prenoms }}</span>
@@ -121,15 +140,15 @@
                                                 <td>
                                                     @php
                                                         $typeIcons = [
-                                                            'examen' => '<i class="fas fa-file-alt text-primary me-1"></i>',
-                                                            'devoir' => '<i class="fas fa-pencil-alt text-success me-1"></i>',
-                                                            'tp' => '<i class="fas fa-flask text-warning me-1"></i>',
-                                                            'projet' => '<i class="fas fa-project-diagram text-info me-1"></i>',
-                                                            'controle' => '<i class="fas fa-tasks text-secondary me-1"></i>',
-                                                            'rattrapage' => '<i class="fas fa-redo text-danger me-1"></i>',
+                                                            'examen' => '<i class="fas fa-file-alt color-primary me-1"></i>',
+                                                            'devoir' => '<i class="fas fa-pencil-alt color-success me-1"></i>',
+                                                            'tp' => '<i class="fas fa-flask color-warning me-1"></i>',
+                                                            'projet' => '<i class="fas fa-project-diagram color-accent me-1"></i>',
+                                                            'controle' => '<i class="fas fa-tasks color-neutral me-1"></i>',
+                                                            'rattrapage' => '<i class="fas fa-redo color-danger me-1"></i>',
                                                         ];
                                                         $type = $note->evaluation ? $note->evaluation->type : '';
-                                                        $icon = $typeIcons[$type] ?? '<i class="fas fa-question-circle text-muted me-1"></i>';
+                                                        $icon = $typeIcons[$type] ?? '<i class="fas fa-question-circle color-neutral me-1"></i>';
                                                     @endphp
                                                     <div>
                                                         <span class="d-block">{!! $icon !!} {{ $note->evaluation ? $note->evaluation->titre : 'N/A' }}</span>
@@ -140,11 +159,11 @@
                                                 </td>
                                                 <td>
                                                     @if($note->is_absent)
-                                                        <span class="badge bg-danger rounded-pill shadow-sm">
+                                                        <span class="status-badge danger">
                                                             <i class="fas fa-user-slash me-1"></i> Absent
                                                         </span>
                                                     @else
-                                                        <span class="badge bg-success rounded-pill shadow-sm">
+                                                        <span class="status-badge success">
                                                             {{ $note->note }}/{{ $note->evaluation->bareme }}
                                                         </span>
                                                     @endif
@@ -154,17 +173,17 @@
                                                     {{ $note->created_at->format('d/m/Y') }}
                                                 </td>
                                                 <td>
-                                                    <div class="d-flex justify-content-center">
-                                                        <a href="{{ route('esbtp.notes.show', $note->id) }}" class="btn btn-sm btn-info me-2 shadow-sm" data-bs-toggle="tooltip" title="Voir les détails">
+                                                    <div class="d-flex justify-content-center gap-1">
+                                                        <a href="{{ route('esbtp.notes.show', $note->id) }}" class="btn-acasi secondary btn-sm" data-bs-toggle="tooltip" title="Voir les détails">
                                                             <i class="fas fa-eye"></i>
                                                         </a>
                                                         @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('teacher') || auth()->user()->hasRole('enseignant') || auth()->user()->can('edit_grades'))
-                                                        <a href="{{ route('esbtp.notes.edit', $note->id) }}" class="btn btn-sm btn-warning me-2 shadow-sm" data-bs-toggle="tooltip" title="Modifier">
+                                                        <a href="{{ route('esbtp.notes.edit', $note->id) }}" class="btn-acasi warning btn-sm" data-bs-toggle="tooltip" title="Modifier">
                                                             <i class="fas fa-edit"></i>
                                                         </a>
                                                         @endif
                                                         @if(auth()->user()->hasRole('superAdmin') || auth()->user()->can('delete_grades'))
-                                                        <button type="button" class="btn btn-sm btn-danger shadow-sm" onclick="confirmDelete('{{ $note->id }}')" data-bs-toggle="tooltip" title="Supprimer">
+                                                        <button type="button" class="btn-acasi danger btn-sm" onclick="confirmDelete('{{ $note->id }}')" data-bs-toggle="tooltip" title="Supprimer">
                                                             <i class="fas fa-trash"></i>
                                                         </button>
                                                         @endif
@@ -214,13 +233,11 @@
                 </p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times me-1"></i>
-                    Annuler
+                <button type="button" class="btn-acasi secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i>Annuler
                 </button>
-                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
-                    <i class="fas fa-trash me-1"></i>
-                    Supprimer
+                <button type="button" class="btn-acasi danger" id="confirmDeleteBtn">
+                    <i class="fas fa-trash"></i>Supprimer
                 </button>
             </div>
         </div>
@@ -237,120 +254,31 @@
 
 @push('styles')
 <style>
-    /* Variables de couleurs ESBTP */
-    :root {
-        --esbtp-primary: #01632f;
-        --esbtp-primary-dark: #014a23;
-        --esbtp-primary-light: rgba(1, 99, 47, 0.1);
-        --esbtp-secondary: #f29400;
-    }
-
-    /* Styles généraux */
-    .text-primary {
-        color: var(--esbtp-primary) !important;
-    }
-
-    .bg-primary {
-        background-color: var(--esbtp-primary) !important;
-    }
-
-    .btn-primary {
-        background-color: var(--esbtp-primary);
-        border-color: var(--esbtp-primary);
-    }
-
-    .btn-primary:hover, .btn-primary:focus {
-        background-color: var(--esbtp-primary-dark);
-        border-color: var(--esbtp-primary-dark);
-    }
-
-    .btn-outline-primary {
-        color: var(--esbtp-primary);
-        border-color: var(--esbtp-primary);
-    }
-
-    .btn-outline-primary:hover {
-        background-color: var(--esbtp-primary);
-        border-color: var(--esbtp-primary);
-    }
-
-    /* Styles spécifiques à la page */
-    .table th {
-        font-weight: 600;
-        color: var(--esbtp-primary);
-    }
-
-    .table td {
-        vertical-align: middle;
-    }
-
-    .badge {
-        font-weight: 500;
-        padding: 0.5em 0.75em;
-    }
-
-    .form-select:focus, .form-control:focus {
-        border-color: var(--esbtp-primary);
-        box-shadow: 0 0 0 0.25rem rgba(1, 99, 47, 0.25);
-    }
-
-    .card {
-        border-radius: 0.5rem;
-    }
-
-    .card-header {
-        border-radius: 0.5rem 0.5rem 0 0 !important;
-    }
-
-    .btn {
-        border-radius: 0.375rem;
-    }
-
-    /* Animation pour les actions */
-    .btn-sm {
-        transition: transform 0.2s;
-    }
-
-    .btn-sm:hover {
-        transform: translateY(-2px);
-    }
-
-    /* Style pour le tableau */
-    .table-hover tbody tr:hover {
-        background-color: var(--esbtp-primary-light);
-    }
-
-    /* Style pour les badges */
-    .badge.bg-success {
-        background-color: var(--esbtp-primary) !important;
-    }
-
-    /* Style pour les icônes dans le tableau */
-    .fa-user-graduate {
-        color: var(--esbtp-primary);
-    }
-
-    /* Style pour le modal */
-    .modal-content {
-        border: none;
-        border-radius: 0.5rem;
-    }
-
-    .modal-header {
-        border-radius: 0.5rem 0.5rem 0 0;
-    }
-
-    /* DataTables personnalisation */
+    /* Styles spécifiques pour DataTables avec framework moderne */
     .dataTables_wrapper .dataTables_paginate .paginate_button.current {
-        background: var(--esbtp-primary) !important;
-        border-color: var(--esbtp-primary) !important;
+        background: var(--primary) !important;
+        border-color: var(--primary) !important;
         color: white !important;
     }
 
     .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
-        background: var(--esbtp-primary-light) !important;
-        border-color: var(--esbtp-primary) !important;
-        color: var(--esbtp-primary) !important;
+        background: rgba(30, 58, 138, 0.1) !important;
+        border-color: var(--primary) !important;
+        color: var(--primary) !important;
+    }
+
+    /* Style pour les hover du tableau */
+    .table-hover tbody tr:hover {
+        background-color: rgba(30, 58, 138, 0.05);
+    }
+
+    /* Animation pour les boutons d'action */
+    .btn-acasi.btn-sm {
+        transition: transform 0.2s;
+    }
+
+    .btn-acasi.btn-sm:hover {
+        transform: translateY(-2px);
     }
 </style>
 @endpush

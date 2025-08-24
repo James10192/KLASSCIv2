@@ -114,6 +114,141 @@
         </div>
     @endif
 
+    <!-- Filtres avancés -->
+    <div class="main-card mb-4">
+        <div class="main-card-header">
+            <div class="main-card-title">
+                <i class="fas fa-filter"></i>
+                Filtres avancés
+            </div>
+            <div class="main-card-subtitle">Filtrer et rechercher parmi les matières</div>
+        </div>
+        <div class="main-card-body">
+            <form id="filtersForm" method="GET" action="{{ route('esbtp.matieres.index') }}" class="row g-3">
+                <!-- Recherche globale -->
+                <div class="col-12">
+                    <div class="form-group-moderne">
+                        <label for="global-search" class="form-label-moderne">
+                            <i class="fas fa-search me-1"></i>Recherche globale
+                        </label>
+                        <input type="text" id="global-search" class="form-input-moderne" 
+                               placeholder="Tapez pour rechercher dans toutes les colonnes (code, nom, coefficient, heures, filières, niveaux...)">
+                    </div>
+                </div>
+
+                <!-- Filière -->
+                <div class="col-md-3">
+                    <div class="form-group-moderne">
+                        <label for="filter-filiere" class="form-label-moderne">
+                            <i class="fas fa-graduation-cap me-1"></i>Filière
+                        </label>
+                        <select name="filiere_filter" id="filter-filiere" class="form-select-moderne" onchange="document.getElementById('filtersForm').submit()">
+                            <option value="">Toutes les filières</option>
+                            @foreach(\App\Models\ESBTPFiliere::where('is_active', true)->get() as $filiere)
+                                <option value="{{ $filiere->id }}" {{ request('filiere_filter') == $filiere->id ? 'selected' : '' }}>{{ $filiere->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Niveau -->
+                <div class="col-md-3">
+                    <div class="form-group-moderne">
+                        <label for="filter-niveau" class="form-label-moderne">
+                            <i class="fas fa-layer-group me-1"></i>Niveau
+                        </label>
+                        <select name="niveau_filter" id="filter-niveau" class="form-select-moderne" onchange="document.getElementById('filtersForm').submit()">
+                            <option value="">Tous les niveaux</option>
+                            @foreach(\App\Models\ESBTPNiveauEtude::where('is_active', true)->get() as $niveau)
+                                <option value="{{ $niveau->id }}" {{ request('niveau_filter') == $niveau->id ? 'selected' : '' }}>{{ $niveau->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Statut -->
+                <div class="col-md-3">
+                    <div class="form-group-moderne">
+                        <label for="filter-statut" class="form-label-moderne">
+                            <i class="fas fa-toggle-on me-1"></i>Statut
+                        </label>
+                        <select name="statut_filter" id="filter-statut" class="form-select-moderne" onchange="document.getElementById('filtersForm').submit()">
+                            <option value="">Tous les statuts</option>
+                            <option value="1" {{ request('statut_filter') == '1' ? 'selected' : '' }}>Actif</option>
+                            <option value="0" {{ request('statut_filter') == '0' ? 'selected' : '' }}>Inactif</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Coefficient -->
+                <div class="col-md-3">
+                    <div class="form-group-moderne">
+                        <label for="filter-coefficient-min" class="form-label-moderne">
+                            <i class="fas fa-sort-numeric-up me-1"></i>Coefficient min.
+                        </label>
+                        <input type="number" id="filter-coefficient-min" class="form-input-moderne" placeholder="Ex: 1" min="0" step="0.1">
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="form-group-moderne">
+                        <label for="filter-coefficient-max" class="form-label-moderne">
+                            <i class="fas fa-sort-numeric-down me-1"></i>Coefficient max.
+                        </label>
+                        <input type="number" id="filter-coefficient-max" class="form-input-moderne" placeholder="Ex: 5" min="0" step="0.1">
+                    </div>
+                </div>
+
+                <!-- Volume horaire -->
+                <div class="col-md-3">
+                    <div class="form-group-moderne">
+                        <label for="filter-heures-min" class="form-label-moderne">
+                            <i class="fas fa-clock me-1"></i>Heures min.
+                        </label>
+                        <input type="number" id="filter-heures-min" class="form-input-moderne" placeholder="Ex: 10" min="0">
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="form-group-moderne">
+                        <label for="filter-heures-max" class="form-label-moderne">
+                            <i class="fas fa-clock me-1"></i>Heures max.
+                        </label>
+                        <input type="number" id="filter-heures-max" class="form-input-moderne" placeholder="Ex: 100" min="0">
+                    </div>
+                </div>
+
+                <!-- Actions des filtres -->
+                <div class="col-12">
+                    <div class="d-flex gap-2 justify-content-between align-items-center mt-3">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            <span id="results-count">{{ $matieres->count() }} matière(s) affichée(s)</span>
+                        </small>
+                        <div class="d-flex gap-2">
+                            <button type="button" id="clear-filters" class="btn-acasi secondary">
+                                <i class="fas fa-eraser me-1"></i>Effacer les filtres
+                            </button>
+                            <button type="button" id="apply-filters" class="btn-acasi primary">
+                                <i class="fas fa-search me-1"></i>Appliquer les filtres
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Résumé des filtres actifs -->
+            <div id="active-filters" class="mt-3" style="display: none;">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>Filtres actifs :
+                    </small>
+                </div>
+                <div id="filters-summary" class="d-flex flex-wrap gap-1"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- Matières Table -->
     <div class="card-moderne">
         <div class="main-card-header">
@@ -135,7 +270,6 @@
                             </th>
                             <th>Code</th>
                             <th>Nom</th>
-                            <th>Unité d'enseignement</th>
                             <th>Coefficient</th>
                             <th>Total heures</th>
                             <th>Filières</th>
@@ -158,9 +292,6 @@
                                         </td>
                                         <td>
                                             <div class="font-semibold color-primary">{{ $matiere->name }}</div>
-                                        </td>
-                                        <td>
-                                            <span class="text-muted">{{ $matiere->uniteEnseignement ? $matiere->uniteEnseignement->name : 'N/A' }}</span>
                                         </td>
                                         <td>
                                             <span class="font-bold color-accent">{{ $matiere->coefficient_default }}</span>
@@ -385,6 +516,25 @@
                         </div>
                     </div>
 
+                    <!-- Sélection des matières (pour les combinaisons vides) -->
+                    <div class="row mt-4" id="matieres-selection-container" style="display: none;">
+                        <div class="col-12">
+                            <div class="card-moderne">
+                                <div class="main-card-header">
+                                    <h3 class="main-card-title">
+                                        <i class="fas fa-book"></i>Matières disponibles
+                                    </h3>
+                                    <p class="main-card-subtitle">Sélectionnez les matières à ajouter à cette combinaison</p>
+                                </div>
+                                <div class="main-card-body">
+                                    <div id="matieres-list" style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border-light); border-radius: 8px; padding: 1rem; background: var(--bg-light);">
+                                        <!-- Les matières seront chargées ici dynamiquement -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Aperçu des combinaisons -->
                     <div class="row mt-4">
                         <div class="col-12">
@@ -547,6 +697,218 @@
             }
         });
 
+        // ===== GESTION DES FILTRES AVANCÉS =====
+        
+        // Fonction pour mettre à jour le compteur de résultats
+        function updateResultsCount() {
+            const visibleRows = table.rows({ search: 'applied' }).count();
+            const totalRows = table.rows().count();
+            $('#results-count').text(`${visibleRows} matière(s) affichée(s) sur ${totalRows}`);
+        }
+
+        // Recherche globale en temps réel
+        $('#global-search').on('input', function() {
+            const searchValue = this.value;
+            
+            // Appliquer la recherche DataTables
+            table.search(searchValue).draw();
+            
+            // Mettre à jour le compteur
+            updateResultsCount();
+        });
+
+        // Fonction pour appliquer les filtres avancés
+        function applyAdvancedFilters() {
+            const filters = {
+                filiere: $('#filter-filiere').val(),
+                niveau: $('#filter-niveau').val(),
+                statut: $('#filter-statut').val(),
+                coefficientMin: $('#filter-coefficient-min').val(),
+                coefficientMax: $('#filter-coefficient-max').val(),
+                heuresMin: $('#filter-heures-min').val(),
+                heuresMax: $('#filter-heures-max').val()
+            };
+
+            // Filtrer les lignes du tableau
+            table.rows().every(function() {
+                const row = this.node();
+                let showRow = true;
+
+                // Filtre par filière
+                if (filters.filiere) {
+                    const filiereCol = $(row).find('td:eq(5)');
+                    const filiereText = filiereCol.text();
+                    const filiereSelected = $('#filter-filiere option:selected').text();
+                    if (!filiereText.includes(filiereSelected) && !filiereText.includes('Aucune')) {
+                        showRow = false;
+                    }
+                }
+
+                // Filtre par niveau
+                if (filters.niveau) {
+                    const niveauCol = $(row).find('td:eq(6)');
+                    const niveauText = niveauCol.text();
+                    const niveauSelected = $('#filter-niveau option:selected').text();
+                    if (!niveauText.includes(niveauSelected) && !niveauText.includes('Aucun')) {
+                        showRow = false;
+                    }
+                }
+
+                // Filtre par statut
+                if (filters.statut !== '') {
+                    const statutCol = $(row).find('td:eq(7)');
+                    const isActive = statutCol.find('.badge.success').length > 0;
+                    const filterActive = filters.statut === '1';
+                    if (isActive !== filterActive) {
+                        showRow = false;
+                    }
+                }
+
+                // Filtre par coefficient
+                const coefficientCol = $(row).find('td:eq(3)');
+                const coefficient = parseFloat(coefficientCol.text()) || 0;
+                
+                if (filters.coefficientMin && coefficient < parseFloat(filters.coefficientMin)) {
+                    showRow = false;
+                }
+                if (filters.coefficientMax && coefficient > parseFloat(filters.coefficientMax)) {
+                    showRow = false;
+                }
+
+                // Filtre par heures
+                const heuresCol = $(row).find('td:eq(4)');
+                const heures = parseFloat(heuresCol.text().replace('h', '')) || 0;
+                
+                if (filters.heuresMin && heures < parseFloat(filters.heuresMin)) {
+                    showRow = false;
+                }
+                if (filters.heuresMax && heures > parseFloat(filters.heuresMax)) {
+                    showRow = false;
+                }
+
+                // Afficher ou masquer la ligne
+                if (showRow) {
+                    $(row).show();
+                } else {
+                    $(row).hide();
+                }
+            });
+
+            // Mettre à jour le résumé des filtres
+            updateFiltersDisplay(filters);
+            updateResultsCount();
+        }
+
+        // Fonction pour mettre à jour l'affichage des filtres actifs
+        function updateFiltersDisplay(filters) {
+            const activeFiltersDiv = $('#active-filters');
+            const summaryDiv = $('#filters-summary');
+            const activeFilters = [];
+
+            // Compiler les filtres actifs
+            if (filters.filiere) {
+                activeFilters.push({
+                    type: 'Filière',
+                    value: $('#filter-filiere option:selected').text(),
+                    id: 'filiere'
+                });
+            }
+            if (filters.niveau) {
+                activeFilters.push({
+                    type: 'Niveau',
+                    value: $('#filter-niveau option:selected').text(),
+                    id: 'niveau'
+                });
+            }
+            if (filters.statut !== '') {
+                activeFilters.push({
+                    type: 'Statut',
+                    value: filters.statut === '1' ? 'Actif' : 'Inactif',
+                    id: 'statut'
+                });
+            }
+            if (filters.coefficientMin) {
+                activeFilters.push({
+                    type: 'Coeff. min',
+                    value: filters.coefficientMin,
+                    id: 'coefficient-min'
+                });
+            }
+            if (filters.coefficientMax) {
+                activeFilters.push({
+                    type: 'Coeff. max',
+                    value: filters.coefficientMax,
+                    id: 'coefficient-max'
+                });
+            }
+            if (filters.heuresMin) {
+                activeFilters.push({
+                    type: 'Heures min',
+                    value: filters.heuresMin + 'h',
+                    id: 'heures-min'
+                });
+            }
+            if (filters.heuresMax) {
+                activeFilters.push({
+                    type: 'Heures max',
+                    value: filters.heuresMax + 'h',
+                    id: 'heures-max'
+                });
+            }
+
+            if (activeFilters.length > 0) {
+                // Afficher les filtres actifs
+                let summaryHtml = '';
+                activeFilters.forEach(filter => {
+                    summaryHtml += `
+                        <span class="badge bg-primary text-white d-flex align-items-center gap-1" style="font-size: 0.75rem;">
+                            <strong>${filter.type}:</strong> ${filter.value}
+                            <button type="button" class="btn-close btn-close-white btn-sm remove-filter" 
+                                    data-filter="${filter.id}" style="font-size: 0.5rem; padding: 0; margin-left: 4px;">
+                            </button>
+                        </span>
+                    `;
+                });
+                summaryDiv.html(summaryHtml);
+                activeFiltersDiv.show();
+            } else {
+                activeFiltersDiv.hide();
+            }
+        }
+
+        // Événement pour appliquer les filtres
+        $('#apply-filters').on('click', function() {
+            applyAdvancedFilters();
+        });
+
+        // Événement pour effacer tous les filtres
+        $('#clear-filters').on('click', function() {
+            $('#filtersForm')[0].reset();
+            table.search('').columns().search('').draw();
+            table.rows().every(function() {
+                $(this.node()).show();
+            });
+            $('#active-filters').hide();
+            updateResultsCount();
+        });
+
+        // Événement pour supprimer un filtre individuel
+        $(document).on('click', '.remove-filter', function() {
+            const filterId = $(this).data('filter');
+            $(`#filter-${filterId}`).val('');
+            applyAdvancedFilters();
+        });
+
+        // Application automatique des filtres lors des changements
+        $('#filtersForm select:not(#global-search), #filtersForm input:not(#global-search)').on('change input', function() {
+            // Délai pour éviter trop d'appels
+            clearTimeout(window.filterTimeout);
+            window.filterTimeout = setTimeout(applyAdvancedFilters, 500);
+        });
+
+        // Initialiser le compteur
+        updateResultsCount();
+
         // ===== GESTION DU MODAL DE CONFIGURATION DES LIAISONS =====
         
         // Ouvrir le modal et charger les données de la matière
@@ -554,17 +916,46 @@
             const button = event.relatedTarget;
             const matiereId = button.getAttribute('data-matiere-id');
             const matiereName = button.getAttribute('data-matiere-name');
+            const isEmptyCombo = button.getAttribute('data-empty-combo');
+            const filiereId = button.getAttribute('data-filiere-id');
+            const niveauId = button.getAttribute('data-niveau-id');
             
-            // Mettre à jour le titre du modal
-            document.getElementById('modal-matiere-name').textContent = matiereName;
-            document.getElementById('modal-matiere-id').value = matiereId;
-            
-            // Réinitialiser les checkboxes
-            $('.filiere-checkbox, .niveau-checkbox').prop('checked', false);
-            updateCombinationsPreview();
-            
-            // Charger les liaisons existantes
-            loadExistingLiaisons(matiereId);
+            // Déterminer le mode du modal
+            if (isEmptyCombo === 'true') {
+                // Mode ajout à combinaison vide
+                $('#modal-matiere-name').text(`Combinaison ${button.getAttribute('data-filiere-name')} + ${button.getAttribute('data-niveau-name')}`);
+                $('#modal-matiere-id').val('empty-combo');
+                $('#configureModalLabel').html('<i class="fas fa-plus me-2"></i>Ajouter matières à la combinaison');
+                
+                // Pré-sélectionner la filière et le niveau
+                $('.filiere-checkbox, .niveau-checkbox').prop('checked', false);
+                if (filiereId) $(`#filiere-${filiereId}`).prop('checked', true);
+                if (niveauId) $(`#niveau-${niveauId}`).prop('checked', true);
+                
+                // Changer le texte du bouton
+                $('#save-liaisons-btn').html('<i class="fas fa-plus me-1"></i>Ajouter les matières');
+                
+                // Afficher toutes les matières disponibles dans un nouveau conteneur
+                loadAvailableMatieres(filiereId, niveauId);
+                
+                updateCombinationsPreview();
+            } else {
+                // Mode configuration normale
+                $('#modal-matiere-name').text(matiereName);
+                $('#modal-matiere-id').val(matiereId);
+                $('#configureModalLabel').html('<i class="fas fa-link me-2"></i>Configuration des liaisons');
+                $('#save-liaisons-btn').html('<i class="fas fa-save me-1"></i>Enregistrer les liaisons');
+                
+                // Réinitialiser les checkboxes
+                $('.filiere-checkbox, .niveau-checkbox').prop('checked', false);
+                updateCombinationsPreview();
+                
+                // Charger les liaisons existantes
+                loadExistingLiaisons(matiereId);
+                
+                // Masquer la sélection de matières si elle existe
+                $('#matieres-selection-container').hide();
+            }
         });
 
         // Fonction pour charger les liaisons existantes
@@ -592,6 +983,72 @@
                 })
                 .catch(error => {
                     console.error('Erreur lors du chargement des liaisons:', error);
+                });
+        }
+
+        // Fonction pour charger les matières disponibles pour une combinaison vide
+        function loadAvailableMatieres(filiereId, niveauId) {
+            const matieresListDiv = $('#matieres-list');
+            const matieresContainer = $('#matieres-selection-container');
+            
+            // Afficher le conteneur
+            matieresContainer.show();
+            
+            // Afficher un loader pendant le chargement
+            matieresListDiv.html(`
+                <div class="d-flex justify-content-center align-items-center py-4">
+                    <div class="spinner-border text-primary me-2" role="status">
+                        <span class="visually-hidden">Chargement...</span>
+                    </div>
+                    <span>Chargement des matières disponibles...</span>
+                </div>
+            `);
+            
+            fetch(`/esbtp/matieres/available-for-combination?filiere_id=${filiereId}&niveau_id=${niveauId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.matieres.length > 0) {
+                        let matieresHtml = '';
+                        data.matieres.forEach(matiere => {
+                            matieresHtml += `
+                                <div class="form-check mb-3 p-2" style="border-radius: 6px; transition: all 0.2s ease;">
+                                    <input class="form-check-input matiere-checkbox" type="checkbox" 
+                                           value="${matiere.id}" id="matiere-${matiere.id}" name="selected_matieres[]"
+                                           style="margin-top: 0.35rem;">
+                                    <label class="form-check-label" for="matiere-${matiere.id}" style="cursor: pointer; width: 100%;">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <span class="font-semibold color-dark">${matiere.name}</span>
+                                                ${matiere.code ? `<span class="badge secondary ms-2">${matiere.code}</span>` : ''}
+                                            </div>
+                                            <div class="text-muted small">
+                                                ${matiere.coefficient ? `Coeff: ${matiere.coefficient}` : ''} 
+                                                ${matiere.total_heures ? `• ${matiere.total_heures}h` : ''}
+                                            </div>
+                                        </div>
+                                        ${matiere.description ? `<small class="text-muted d-block mt-1">${matiere.description}</small>` : ''}
+                                    </label>
+                                </div>
+                            `;
+                        });
+                        matieresListDiv.html(matieresHtml);
+                    } else {
+                        matieresListDiv.html(`
+                            <div class="d-flex align-items-center justify-content-center py-4 text-muted">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <span>Aucune matière disponible pour cette combinaison</span>
+                            </div>
+                        `);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur lors du chargement des matières:', error);
+                    matieresListDiv.html(`
+                        <div class="d-flex align-items-center justify-content-center py-4 text-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <span>Erreur lors du chargement des matières</span>
+                        </div>
+                    `);
                 });
         }
 
@@ -668,66 +1125,127 @@
         // Sauvegarde des liaisons
         $('#save-liaisons-btn').on('click', function() {
             const matiereId = $('#modal-matiere-id').val();
-            const selectedFilieres = $('.filiere-checkbox:checked').map(function() {
-                return $(this).val();
-            }).get();
-            const selectedNiveaux = $('.niveau-checkbox:checked').map(function() {
-                return $(this).val();
-            }).get();
-            
-            if (selectedFilieres.length === 0 || selectedNiveaux.length === 0) {
-                alert('Veuillez sélectionner au moins une filière et un niveau.');
-                return;
-            }
-            
             const saveBtn = $(this);
             const originalText = saveBtn.html();
             
-            // Désactiver le bouton pendant la sauvegarde
-            saveBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Enregistrement...');
-            
-            fetch(`/esbtp/matieres/${matiereId}/update-liaisons`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                },
-                body: JSON.stringify({
-                    filieres: selectedFilieres,
-                    niveaux: selectedNiveaux
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Fermer le modal
-                    $('#configureModal').modal('hide');
-                    
-                    // Afficher un message de succès
-                    const alertDiv = $(`
-                        <div class="alert alert-success alert-dismissible fade show" role="alert">
-                            <i class="fas fa-check-circle me-2"></i>${data.message}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    `);
-                    $('.card-body').prepend(alertDiv);
-                    
-                    // Recharger la page après 2 secondes
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 2000);
-                } else {
-                    alert('Erreur : ' + (data.message || 'Une erreur est survenue'));
+            if (matiereId === 'empty-combo') {
+                // Mode ajout de matières à combinaison vide
+                const selectedMatieres = $('.matiere-checkbox:checked').map(function() {
+                    return $(this).val();
+                }).get();
+                const selectedFilieres = $('.filiere-checkbox:checked').map(function() {
+                    return $(this).val();
+                }).get();
+                const selectedNiveaux = $('.niveau-checkbox:checked').map(function() {
+                    return $(this).val();
+                }).get();
+                
+                if (selectedMatieres.length === 0) {
+                    alert('Veuillez sélectionner au moins une matière.');
+                    return;
                 }
-            })
-            .catch(error => {
-                console.error('Erreur:', error);
-                alert('Erreur lors de la sauvegarde');
-            })
-            .finally(() => {
-                // Réactiver le bouton
-                saveBtn.prop('disabled', false).html(originalText);
-            });
+                
+                if (selectedFilieres.length === 0 || selectedNiveaux.length === 0) {
+                    alert('Veuillez sélectionner au moins une filière et un niveau.');
+                    return;
+                }
+                
+                // Désactiver le bouton pendant la sauvegarde
+                saveBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Ajout en cours...');
+                
+                fetch('/esbtp/matieres/add-to-combination', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                    },
+                    body: JSON.stringify({
+                        matiere_ids: selectedMatieres,
+                        filiere_ids: selectedFilieres,
+                        niveau_ids: selectedNiveaux
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Fermer le modal
+                        $('#configureModal').modal('hide');
+                        
+                        // Recharger la page pour voir les changements
+                        window.location.reload();
+                    } else {
+                        throw new Error(data.message || 'Erreur lors de l\'ajout');
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    alert('Erreur lors de l\'ajout des matières: ' + error.message);
+                })
+                .finally(() => {
+                    // Réactiver le bouton
+                    saveBtn.prop('disabled', false).html(originalText);
+                });
+                
+            } else {
+                // Mode configuration normale des liaisons
+                const selectedFilieres = $('.filiere-checkbox:checked').map(function() {
+                    return $(this).val();
+                }).get();
+                const selectedNiveaux = $('.niveau-checkbox:checked').map(function() {
+                    return $(this).val();
+                }).get();
+                
+                if (selectedFilieres.length === 0 || selectedNiveaux.length === 0) {
+                    alert('Veuillez sélectionner au moins une filière et un niveau.');
+                    return;
+                }
+                
+                // Désactiver le bouton pendant la sauvegarde
+                saveBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Enregistrement...');
+                
+                fetch(`/esbtp/matieres/${matiereId}/update-liaisons`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                    },
+                    body: JSON.stringify({
+                        filieres: selectedFilieres,
+                        niveaux: selectedNiveaux
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Fermer le modal
+                        $('#configureModal').modal('hide');
+                        
+                        // Afficher un message de succès
+                        const alertDiv = $(`
+                            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                <i class="fas fa-check-circle me-2"></i>${data.message}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        `);
+                        $('.card-body').prepend(alertDiv);
+                        
+                        // Recharger la page après 2 secondes
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 2000);
+                    } else {
+                        alert('Erreur : ' + (data.message || 'Une erreur est survenue'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    alert('Erreur lors de la sauvegarde');
+                })
+                .finally(() => {
+                    // Réactiver le bouton
+                    saveBtn.prop('disabled', false).html(originalText);
+                });
+            }
         });
     });
 </script>

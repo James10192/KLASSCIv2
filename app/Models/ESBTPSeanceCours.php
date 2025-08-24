@@ -102,7 +102,7 @@ class ESBTPSeanceCours extends Model
      */
     public function teacher()
     {
-        return $this->belongsTo(User::class, 'teacher_id');
+        return $this->belongsTo(ESBTPTeacher::class, 'teacher_id');
     }
 
     /**
@@ -462,7 +462,19 @@ class ESBTPSeanceCours extends Model
             self::TYPE_LUNCH => 'Pause déjeuner'
         ];
 
-        return $types[$this->type] ?? 'Inconnu';
+        return $types[$this->type] ?? 'Cours';
+    }
+    
+    public function getTypeIcon()
+    {
+        $icons = [
+            self::TYPE_COURSE => 'fa-chalkboard-teacher',
+            self::TYPE_HOMEWORK => 'fa-file-alt', 
+            self::TYPE_BREAK => 'fa-coffee',
+            self::TYPE_LUNCH => 'fa-utensils'
+        ];
+
+        return $icons[$this->type] ?? 'fa-chalkboard-teacher';
     }
 
     public function getSessionDescription()
@@ -494,5 +506,77 @@ class ESBTPSeanceCours extends Model
     public function getEnseignantNameAttribute()
     {
         return $this->enseignant ? $this->enseignant->name : 'Non assigné';
+    }
+
+    /**
+     * Calculer la date complète de la séance à partir de l'emploi du temps et du jour
+     */
+    public function getDateCompleteSeance()
+    {
+        if (!$this->emploiTemps || !$this->emploiTemps->date_debut) {
+            return null;
+        }
+
+        $dateDebut = $this->emploiTemps->date_debut;
+        $jourSeance = $this->jour; // 1=lundi, 2=mardi, etc.
+        
+        // Convertir le jour de la séance en jour de la semaine ISO (1=lundi, 7=dimanche)
+        $jourISO = $jourSeance === 7 ? 7 : $jourSeance;
+        
+        // Trouver le premier occurrence de ce jour dans la période de l'emploi du temps
+        $dateRecherche = clone $dateDebut;
+        
+        // Obtenir le jour de la semaine de la date de début (1=lundi, 7=dimanche)
+        $jourDateDebut = $dateRecherche->dayOfWeekIso;
+        
+        // Calculer combien de jours ajouter pour atteindre le jour voulu dans la même semaine
+        if ($jourISO >= $jourDateDebut) {
+            // Le jour est dans la même semaine
+            $joursAjouter = $jourISO - $jourDateDebut;
+        } else {
+            // Le jour est dans la semaine suivante
+            $joursAjouter = (7 - $jourDateDebut) + $jourISO;
+        }
+        
+        $dateSeance = $dateRecherche->addDays($joursAjouter);
+        
+        // Vérifier si la date calculée est dans la période de l'emploi du temps
+        if ($this->emploiTemps->date_fin && $dateSeance->gt($this->emploiTemps->date_fin)) {
+            // Si on dépasse la date de fin, prendre la dernière occurrence possible
+            $dateSeance = clone $this->emploiTemps->date_fin;
+            $jourDateFin = $dateSeance->dayOfWeekIso;
+            
+            if ($jourISO <= $jourDateFin) {
+                // Reculer pour trouver le jour dans la même semaine
+                $joursReculer = $jourDateFin - $jourISO;
+                $dateSeance = $dateSeance->subDays($joursReculer);
+            } else {
+                // Reculer à la semaine précédente
+                $joursReculer = 7 - ($jourISO - $jourDateFin);
+                $dateSeance = $dateSeance->subDays($joursReculer);
+            }
+        }
+        
+        return $dateSeance;
+    }
+
+    /**
+     * Obtenir la date complète formatée de la séance
+     */
+    public function getDateCompleteFormattee()
+    {
+        $date = $this->getDateCompleteSeance();
+        if (!$date) {
+            return 'Date non disponible';
+        }
+        
+        $jourMapping = [
+            1 => 'Lundi', 2 => 'Mardi', 3 => 'Mercredi', 
+            4 => 'Jeudi', 5 => 'Vendredi', 6 => 'Samedi', 7 => 'Dimanche'
+        ];
+        
+        $nomJour = $jourMapping[$this->jour] ?? 'Jour inconnu';
+        
+        return $nomJour . ' ' . $date->format('d/m/Y');
     }
 }

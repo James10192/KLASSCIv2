@@ -6,7 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Cache\RateLimiting\Limit;
-use App\Models\ESBTPAttendanceCode;
+use App\Models\ESBTPDailyCode;
 use Carbon\Carbon;
 
 class AttendanceRateLimiter
@@ -30,13 +30,14 @@ class AttendanceRateLimiter
         }
 
         // Check if code exists and get attempts
-        $code = ESBTPAttendanceCode::where('code', $request->code)
-            ->where('expiration', '>', now())
+        $code = ESBTPDailyCode::where('code', $request->code)
+            ->where('valid_until', '>', now())
+            ->where('status', 'active')
             ->first();
 
         if ($code) {
-            $attempts = $code->attempts()
-                ->where('user_id', auth()->id())
+            $attempts = \App\Models\ESBTPTeacherAttendance::where('daily_code_id', $code->id)
+                ->where('teacher_id', auth()->id())
                 ->count();
 
             if ($attempts >= 3) {

@@ -867,7 +867,7 @@
                                 </label>
                                 <input type="number" name="teaching_hours_due" id="teaching_hours_due" 
                                        class="form-input-moderne @error('teaching_hours_due') is-invalid @enderror"
-                                       value="{{ old('teaching_hours_due', $teacher->teaching_hours_due) }}"
+                                       value="{{ old('teaching_hours_due', (int)$teacher->teaching_hours_due) }}"
                                        min="0" max="80">
                                 @error('teaching_hours_due')
                                     <div class="invalid-feedback">{{ $message }}</div>
@@ -901,12 +901,29 @@
                                 <div class="availability-header">Sam</div>
                                 <div class="availability-header">Dim</div>
                                 
+                                <!-- DEBUG VISIBLE PAGE EDIT - Remis pour diagnostic modification -->
+                                <div style="background: #f0f8ff; padding: 10px; margin: 10px 0; border: 2px solid #007bff; border-radius: 5px;">
+                                    <h4>🔧 DEBUG PAGE EDIT - Données de disponibilité</h4>
+                                    <p><strong>Format availabilityData (unifié avec SHOW):</strong></p>
+                                    <pre style="background: white; padding: 5px; overflow-x: auto;">{{ json_encode($availabilityData ?? [], JSON_PRETTY_PRINT) }}</pre>
+                                    @if(isset($teacher->availabilities))
+                                        <p><strong>Données brutes depuis teacher->availabilities:</strong> {{ $teacher->availabilities->count() }} éléments</p>
+                                        <pre style="background: white; padding: 5px; overflow-x: auto;">{{ json_encode($teacher->availabilities->toArray(), JSON_PRETTY_PRINT) }}</pre>
+                                    @endif
+                                </div>
+                                
+                                @php
+                                    $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+                                    $hours = range(8, 18);
+                                @endphp
+                                
                                 @for($hour = 8; $hour <= 18; $hour++)
                                     <div class="availability-time">{{ sprintf('%02d:00', $hour) }}</div>
                                     @for($day = 0; $day < 7; $day++)
                                         @php
-                                            $key = $day . '_' . sprintf('%02d', $hour);
-                                            $availabilityClass = $availabilityData[$key] ?? 'unavailable';
+                                            $dayName = $days[$day];
+                                            $hourIndex = $hour - 8; // Index dans le tableau
+                                            $availabilityClass = $availabilityData[$dayName][$hourIndex] ?? 'unavailable';
                                         @endphp
                                         <div class="availability-slot {{ $availabilityClass }}" 
                                              data-day="{{ $day }}" 
@@ -1061,13 +1078,25 @@ function toggleAvailability(element) {
         }
     }
     
+    // DEBUG: Log des changements
+    console.log('🔧 DEBUG toggleAvailability:', {
+        day: element.dataset.day,
+        hour: element.dataset.hour,
+        currentClass: currentClass,
+        element: element
+    });
+    
     // Supprimer toutes les classes
     element.classList.remove(...classes);
     
     // Ajouter la classe suivante
     const currentIndex = classes.indexOf(currentClass);
     const nextIndex = (currentIndex + 1) % classes.length;
-    element.classList.add(classes[nextIndex]);
+    const nextClass = classes[nextIndex];
+    element.classList.add(nextClass);
+    
+    // DEBUG: Log du résultat
+    console.log('🔧 Nouveau statut:', nextClass);
 }
 
 // Validation en temps réel
@@ -1114,7 +1143,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('teacherForm');
     if (form) {
         form.addEventListener('submit', function(e) {
-            console.log('Formulaire soumis');
+            console.log('🔧 DEBUG FORM SUBMISSION');
             console.log('Étape actuelle:', currentStep);
             console.log('Total étapes:', totalSteps);
             
@@ -1125,7 +1154,52 @@ document.addEventListener('DOMContentLoaded', function() {
                 return false;
             }
             
-            console.log('Validation OK, soumission en cours...');
+            // DEBUG: Collecter les données de disponibilité modifiées
+            console.log('🔧 Collection des données de disponibilité...');
+            const availabilityData = {};
+            
+            document.querySelectorAll('.availability-slot').forEach(slot => {
+                const day = slot.dataset.day;
+                const hour = slot.dataset.hour;
+                let status = 'unavailable'; // valeur par défaut
+                
+                // Détecter la classe actuelle
+                if (slot.classList.contains('available')) status = 'available';
+                else if (slot.classList.contains('preferred')) status = 'preferred';
+                else if (slot.classList.contains('unavailable')) status = 'unavailable';
+                
+                const key = `${day}_${hour}`;
+                availabilityData[key] = status;
+            });
+            
+            console.log('🔧 Données de disponibilité collectées:', availabilityData);
+            console.log('🔧 Nombre de créneaux:', Object.keys(availabilityData).length);
+            
+            // DEBUG FRONT-END : Afficher ce qui va être envoyé
+            let debugInfo = `🔧 DEBUG SOUMISSION FORMULAIRE\n\n`;
+            debugInfo += `Nombre de créneaux: ${Object.keys(availabilityData).length}\n\n`;
+            debugInfo += `Échantillon des données:\n`;
+            Object.keys(availabilityData).slice(0, 5).forEach(key => {
+                debugInfo += `${key} = ${availabilityData[key]}\n`;
+            });
+            
+            if (Object.keys(availabilityData).length > 5) {
+                debugInfo += `... et ${Object.keys(availabilityData).length - 5} autres créneaux\n`;
+            }
+            
+            alert(debugInfo);
+            
+            // Ajouter les données au formulaire via des champs cachés
+            Object.keys(availabilityData).forEach(key => {
+                let input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = `availability[${key}]`;
+                input.value = availabilityData[key];
+                form.appendChild(input);
+                console.log(`🔧 Ajouté au form: availability[${key}] = ${availabilityData[key]}`);
+            });
+            
+            console.log('🔧 Validation OK, soumission en cours...');
         });
     }
 });

@@ -21,6 +21,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
 use App\Models\User;
 use App\Models\ESBTPFraisCategory;
+use App\Models\ESBTPFraisConfiguration;
 use App\Models\ESBTPFraisSubscription;
 use App\Models\ESBTP\Fee;
 use App\Services\ComptabiliteService;
@@ -400,42 +401,14 @@ class ESBTPInscriptionController extends Controller
 
             $selectedOptionals = $request->input('fee_optionals', []);
 
-            // Traitement des variants de frais sélectionnés
+            // Traitement des frais sélectionnés selon la nouvelle architecture
             $fraisVariants = $request->input('frais', []);
-            $fraisSubscriptions = [];
+            $selectedOptionals = []; // Format pour la nouvelle méthode ESBTPInscriptionService
             
-            // Traiter chaque catégorie de frais avec ses variants
+            // Convertir le format des frais pour la nouvelle architecture
             foreach ($fraisVariants as $categoryId => $fraisData) {
                 if (!empty($fraisData['variant_id'])) {
-                    $category = ESBTPFraisCategory::find($categoryId);
-                    if ($category) {
-                        $variantId = $fraisData['variant_id'];
-                        $amount = 0;
-                        
-                        if ($variantId === 'default') {
-                            // Option standard - utiliser la règle configurée ou le montant par défaut
-                            $rule = \App\Models\ESBTPFraisRule::where('frais_category_id', $categoryId)
-                                ->where('filiere_id', $inscriptionData['filiere_id'])
-                                ->where('niveau_id', $inscriptionData['niveau_id'])
-                                ->first();
-                            $amount = $rule ? $rule->amount : $category->default_amount;
-                        } else {
-                            // Variant spécifique
-                            $variant = \App\Models\ESBTPFraisVariant::find($variantId);
-                            if ($variant && $variant->frais_category_id == $categoryId) {
-                                $amount = $variant->amount;
-                            }
-                        }
-                        
-                        // Préparer les données de souscription
-                        $fraisSubscriptions[] = [
-                            'frais_category_id' => $categoryId,
-                            'variant_id' => $variantId === 'default' ? null : $variantId,
-                            'amount' => $amount,
-                            'status' => 'active',
-                            'subscribed_at' => now(),
-                        ];
-                    }
+                    $selectedOptionals[$categoryId] = $fraisData;
                 }
             }
 
@@ -445,27 +418,18 @@ class ESBTPInscriptionController extends Controller
                 'inscriptionData' => $inscriptionData,
                 'parentsData' => $parentsData,
                 'selectedOptionals' => $selectedOptionals,
-                'fraisVariants' => $fraisVariants,
-                'fraisSubscriptions' => $fraisSubscriptions
+                'fraisVariants' => $fraisVariants
             ]);
 
-            // Créer l'inscription (sans paiement - sera géré lors de la validation)
+            // Créer l'inscription avec les frais sélectionnés selon la nouvelle architecture
             $inscription = $this->inscriptionService->createInscription(
                 $etudiantData,
                 $inscriptionData,
                 $parentsData,
                 null, // Pas de paiement pour l'instant
                 auth()->id(),
-                [] // Pas de frais optionnels pour l'instant
+                $selectedOptionals // Frais optionnels sélectionnés selon la nouvelle architecture
             );
-
-            // Créer les souscriptions aux frais avec variants
-            if ($inscription && !empty($fraisSubscriptions)) {
-                foreach ($fraisSubscriptions as $subscriptionData) {
-                    $subscriptionData['inscription_id'] = $inscription->id;
-                    ESBTPFraisSubscription::create($subscriptionData);
-                }
-            }
 
             DB::commit();
 
@@ -533,7 +497,7 @@ class ESBTPInscriptionController extends Controller
             // Calculer les paiements pour cette catégorie
             $paiements = $inscription->paiements()
                 ->where('frais_category_id', $category->id)
-                ->where('status', 'validated')
+                ->where('status', 'validé')
                 ->get();
             
             $totalPaye = $paiements->sum('montant');
@@ -565,7 +529,7 @@ class ESBTPInscriptionController extends Controller
                 // Calculer les paiements pour cette catégorie
                 $paiements = $inscription->paiements()
                     ->where('frais_category_id', $category->id)
-                    ->where('status', 'validated')
+                    ->where('status', 'validé')
                     ->get();
                 
                 $totalPaye = $paiements->sum('montant');
@@ -579,7 +543,7 @@ class ESBTPInscriptionController extends Controller
                     'total_paye' => $totalPaye,
                     'solde' => $solde,
                     'paiements' => $paiements,
-                    'is_configured' => $rule !== null,
+                    'is_configured' => true, // Pour les frais optionnels souscrits, considérer comme configuré
                     'is_mandatory' => false,
                     'is_subscribed' => true,
                     'subscription' => $subscription,
@@ -979,7 +943,7 @@ class ESBTPInscriptionController extends Controller
         ];
 
         // Récupérer les catégories de frais pour la modal de paiement
-        $categoriesfrais = \App\Models\ESBTPFraisCategory::active()->ordered()->get();
+        $categoriesfrais = \App\Models\ESBTPFraisCategory::where('is_active', true)->orderBy('name')->get();
 
         return view('esbtp.inscriptions.administration', compact(
             'inscriptions',
@@ -1005,7 +969,7 @@ class ESBTPInscriptionController extends Controller
     {
         $request->validate([
             'montant' => 'required|numeric|min:0',
-            'fee_category_id' => 'required|exists:esbtp_fee_categories,id',
+            'fee_category_id' => 'required|exists:esbtp_frais_categories,id',
             'mode_paiement' => 'required|in:especes,cheque,virement,mobile_money',
             'reference_paiement' => 'nullable|string|max:100',
             'date_paiement' => 'required|date',
@@ -1062,6 +1026,228 @@ class ESBTPInscriptionController extends Controller
             Log::error('Erreur lors de la validation finale: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Erreur lors de la validation: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Effectuer un paiement pour une catégorie de frais spécifique.
+     */
+    public function payerFraisCategorie(Request $request, ESBTPInscription $inscription)
+    {
+        $request->validate([
+            'frais_category_id' => 'required|exists:esbtp_frais_categories,id',
+            'montant' => 'required|numeric|min:0',
+            'mode_paiement' => 'required|in:especes,cheque,virement,mobile_money',
+            'reference_paiement' => 'nullable|string|max:100',
+            'date_paiement' => 'required|date',
+            'commentaire' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // Vérifier que la catégorie de frais est bien configurée pour cette inscription
+            $category = ESBTPFraisCategory::findOrFail($request->frais_category_id);
+            
+            // Pour les frais optionnels, vérifier qu'il y a une souscription active
+            if (!$category->is_mandatory) {
+                $subscription = ESBTPFraisSubscription::where('inscription_id', $inscription->id)
+                    ->where('frais_category_id', $category->id)
+                    ->where('is_active', true)
+                    ->first();
+                
+                if (!$subscription) {
+                    return redirect()->back()->with('error', 'Vous n\'êtes pas souscrit à ce frais optionnel.');
+                }
+            }
+
+            // Créer le paiement
+            $paiement = ESBTPPaiement::create([
+                'inscription_id' => $inscription->id,
+                'etudiant_id' => $inscription->etudiant_id,
+                'annee_universitaire_id' => $inscription->annee_universitaire_id,
+                'frais_category_id' => $request->frais_category_id,
+                'type_paiement' => $category->is_mandatory ? 'frais_obligatoire' : 'frais_optionnel',
+                'motif' => 'Paiement ' . $category->name,
+                'montant' => $request->montant,
+                'mode_paiement' => $request->mode_paiement,
+                'reference_paiement' => $request->reference_paiement,
+                'date_paiement' => $request->date_paiement,
+                'commentaire' => $request->commentaire,
+                'numero_recu' => $this->genererNumeroRecu(),
+                'status' => 'validé',
+                'created_by' => auth()->id(),
+                'updated_by' => auth()->id(),
+            ]);
+
+            DB::commit();
+
+            return redirect()->back()->with('success', 
+                'Paiement de ' . number_format($request->montant, 0, ',', ' ') . ' FCFA enregistré avec succès pour ' . $category->name);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors du paiement de frais: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Erreur lors de l\'enregistrement du paiement: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Transférer un trop-perçu d'une catégorie de frais vers une autre.
+     */
+    public function transferOverpayment(Request $request, ESBTPInscription $inscription)
+    {
+        $request->validate([
+            'source_category_id' => 'required|exists:esbtp_frais_categories,id',
+            'amount' => 'required|numeric|min:0',
+            'destinations' => 'required|array|min:1',
+            'destinations.*.category_id' => 'required|exists:esbtp_frais_categories,id|different:source_category_id',
+            'destinations.*.amount' => 'required|numeric|min:1',
+            'comment' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $sourceCategory = ESBTPFraisCategory::findOrFail($request->source_category_id);
+            
+            // Calculer le solde source
+            $sourceBalanceInfo = $this->calculerSoldeCategorie($inscription, $sourceCategory);
+            
+            // Vérifier qu'il y a bien un trop-perçu sur la source
+            if ($sourceBalanceInfo['solde'] >= 0) {
+                return redirect()->back()->with('error', 'Aucun trop-perçu disponible pour cette catégorie de frais.');
+            }
+            
+            $availableAmount = abs($sourceBalanceInfo['solde']);
+            
+            // Calculer le total à transférer
+            $totalToTransfer = 0;
+            $destinationCategories = [];
+            
+            foreach ($request->destinations as $destination) {
+                $totalToTransfer += $destination['amount'];
+                $destinationCategories[] = ESBTPFraisCategory::findOrFail($destination['category_id']);
+            }
+            
+            // Vérifier que le total ne dépasse pas le trop-perçu disponible
+            if ($totalToTransfer > $availableAmount) {
+                return redirect()->back()->with('error', 
+                    'Le montant total à transférer (' . number_format($totalToTransfer, 0, ',', ' ') . ' FCFA) ' .
+                    'dépasse le trop-perçu disponible (' . number_format($availableAmount, 0, ',', ' ') . ' FCFA).');
+            }
+            
+            // Vérifier qu'il n'y a pas de doublons dans les destinations
+            $categoryIds = array_column($request->destinations, 'category_id');
+            if (count($categoryIds) !== count(array_unique($categoryIds))) {
+                return redirect()->back()->with('error', 'Impossible de transférer vers la même catégorie plusieurs fois.');
+            }
+            
+            // Créer une référence unique pour ce transfert multiple
+            $transferReference = 'MULTI-TRANSFER-' . time();
+            $createdPayments = [];
+            
+            // Créer les paiements sortants (un seul retrait global)
+            $retrait = ESBTPPaiement::create([
+                'inscription_id' => $inscription->id,
+                'etudiant_id' => $inscription->etudiant_id,
+                'annee_universitaire_id' => $inscription->annee_universitaire_id,
+                'frais_category_id' => $sourceCategory->id,
+                'type_paiement' => 'transfert_sortant_multi',
+                'motif' => 'Transfert vers ' . count($destinationCategories) . ' destinations',
+                'montant' => -$totalToTransfer, // Montant négatif pour réduire le trop-perçu
+                'mode_paiement' => 'transfert',
+                'reference_paiement' => $transferReference . '-OUT',
+                'date_paiement' => now(),
+                'commentaire' => $request->comment ?: 'Transfert multiple automatique de trop-perçu',
+                'numero_recu' => $this->genererNumeroRecu(),
+                'status' => 'validé',
+                'created_by' => auth()->id(),
+                'updated_by' => auth()->id(),
+            ]);
+            
+            $createdPayments[] = $retrait;
+            
+            // Créer les paiements entrants pour chaque destination
+            foreach ($request->destinations as $index => $destination) {
+                $destinationCategory = ESBTPFraisCategory::findOrFail($destination['category_id']);
+                $amount = $destination['amount'];
+                
+                $credit = ESBTPPaiement::create([
+                    'inscription_id' => $inscription->id,
+                    'etudiant_id' => $inscription->etudiant_id,
+                    'annee_universitaire_id' => $inscription->annee_universitaire_id,
+                    'frais_category_id' => $destinationCategory->id,
+                    'type_paiement' => 'transfert_entrant_multi',
+                    'motif' => 'Transfert depuis ' . $sourceCategory->name . ' (partie ' . ($index + 1) . ')',
+                    'montant' => $amount, // Montant positif pour créditer
+                    'mode_paiement' => 'transfert',
+                    'reference_paiement' => $transferReference . '-IN-' . ($index + 1),
+                    'date_paiement' => now(),
+                    'commentaire' => $request->comment ?: 'Réception transfert multiple de trop-perçu',
+                    'numero_recu' => $this->genererNumeroRecu(),
+                    'status' => 'validé',
+                    'created_by' => auth()->id(),
+                    'updated_by' => auth()->id(),
+                ]);
+                
+                $createdPayments[] = $credit;
+            }
+
+            DB::commit();
+            
+            // Préparer le message de succès
+            $destinationNames = collect($request->destinations)->map(function($dest) {
+                $category = ESBTPFraisCategory::find($dest['category_id']);
+                return $category->name . ' (' . number_format($dest['amount'], 0, ',', ' ') . ' FCFA)';
+            })->join(', ');
+
+            return redirect()->back()->with('success', 
+                "Transfert multiple de " . number_format($totalToTransfer, 0, ',', ' ') . " FCFA effectué avec succès " .
+                "de '{$sourceCategory->name}' vers: " . $destinationNames . "."
+            );
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors du transfert multiple de trop-perçu', [
+                'inscription_id' => $inscription->id,
+                'source_category_id' => $request->source_category_id,
+                'destinations' => $request->destinations ?? null,
+                'total_amount' => $totalToTransfer ?? null,
+                'error' => $e->getMessage()
+            ]);
+            
+            return redirect()->back()->with('error', 'Erreur lors du transfert: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Calculer le solde d'une catégorie de frais pour une inscription.
+     */
+    private function calculerSoldeCategorie(ESBTPInscription $inscription, ESBTPFraisCategory $category)
+    {
+        // Récupérer la configuration ou le montant par défaut
+        $configuration = ESBTPFraisConfiguration::where('frais_category_id', $category->id)
+            ->where('filiere_id', $inscription->filiere_id)
+            ->where('niveau_id', $inscription->niveau_id)
+            ->where('is_active', true)
+            ->first();
+
+        $montantAttendu = $configuration ? $configuration->amount : $category->default_amount;
+
+        // Calculer le total payé pour cette catégorie
+        $totalPaye = ESBTPPaiement::where('inscription_id', $inscription->id)
+            ->where('frais_category_id', $category->id)
+            ->where('status', 'validé')
+            ->sum('montant');
+
+        $solde = $montantAttendu - $totalPaye;
+
+        return [
+            'montant_attendu' => $montantAttendu,
+            'total_paye' => $totalPaye,
+            'solde' => $solde,
+            'is_configured' => (bool) $configuration,
+        ];
     }
 
     /**
@@ -1218,6 +1404,7 @@ class ESBTPInscriptionController extends Controller
 
     /**
      * Récupérer les frais applicables pour une classe donnée
+     * Architecture corrigée utilisant ESBTPFraisOption avec distinction class-based vs global
      */
     public function getFraisByClasse($classeId)
     {
@@ -1236,96 +1423,85 @@ class ESBTPInscriptionController extends Controller
                 ->orderBy('sort_order')
                 ->get();
             
-            // Filtrer les catégories qui sont applicables (ont des règles ou sont générales)
-            $applicableCategories = $allCategories->filter(function($category) use ($classe) {
-                // Vérifier s'il y a une règle applicable pour cette filière/niveau/année
-                $hasApplicableRule = $category->rules()
-                    ->where(function($query) use ($classe) {
-                        $query->where(function($q) use ($classe) {
-                            $q->where('filiere_id', $classe->filiere_id)
-                              ->orWhereNull('filiere_id');
-                        })
-                        ->where(function($q) use ($classe) {
-                            $q->where('niveau_id', $classe->niveau_etude_id)
-                              ->orWhereNull('niveau_id');
-                        })
-                        ->where(function($q) use ($classe) {
-                            $q->where('annee_universitaire_id', $classe->annee_universitaire_id)
-                              ->orWhereNull('annee_universitaire_id');
-                        });
-                    })
-                    ->exists();
-                
-                // Ou si c'est une catégorie générale (pas de règles spécifiques)
-                $isGeneral = $category->rules()->count() === 0;
-                
-                return $hasApplicableRule || $isGeneral;
-            });
-            
-            \Log::info('Catégories trouvées', [
-                'total_categories' => $allCategories->count(),
-                'applicable_categories' => $applicableCategories->count()
-            ]);
-            
             $fraisData = [];
             $hasUnconfiguredFees = false;
             
-            foreach ($applicableCategories as $category) {
-                // Récupérer la règle spécifique pour cette filière/niveau
-                $rule = \App\Models\ESBTPFraisRule::where('frais_category_id', $category->id)
-                    ->where('filiere_id', $classe->filiere_id)
-                    ->where('niveau_id', $classe->niveau_etude_id)
-                    ->first();
-                
-                $defaultAmount = $rule ? $rule->amount : $category->default_amount;
-                
-                \Log::info('Règle trouvée pour catégorie', [
+            foreach ($allCategories as $category) {
+                \Log::info('Traitement catégorie', [
                     'category_id' => $category->id,
                     'category_name' => $category->name,
-                    'filiere_id' => $classe->filiere_id,
-                    'niveau_id' => $classe->niveau_etude_id,
-                    'rule_found' => $rule ? 'Oui' : 'Non',
-                    'rule_amount' => $rule ? $rule->amount : null,
-                    'default_amount' => $category->default_amount,
-                    'final_amount' => $defaultAmount
+                    'category_type' => $category->category_type,
+                    'is_mandatory' => $category->is_mandatory
                 ]);
                 
-                // Récupérer les variants pour cette catégorie
-                $variants = \App\Models\ESBTPFraisVariant::where('frais_category_id', $category->id)
-                    ->where('is_active', true)
-                    ->orderBy('sort_order')
-                    ->get();
+                $defaultAmount = $category->default_amount;
+                $isConfigured = false;
+                $configurationType = 'default';
+                $options = collect();
                 
-                // Récupérer le nom de la classe pour rechercher la variante spécifique
-                $className = $classe->filiere->name . ' - ' . $classe->niveau->name;
-                $expectedVariantName = "Tarif " . $className;
-                
-                // Vérifier s'il y a une variante spécifique pour cette classe
-                $classSpecificVariant = $variants->where('name', $expectedVariantName)->first();
-                
-                // Déterminer si cette catégorie est configurée (règle OU variante spécifique)
-                $isConfigured = $rule !== null || $classSpecificVariant !== null || $variants->count() > 0;
-                if (!$isConfigured) {
-                    $hasUnconfiguredFees = true;
+                if ($category->is_mandatory) {
+                    // FRAIS OBLIGATOIRES : Recherche configuration par classe
+                    
+                    // 1. Chercher une configuration spécifique pour cette filière/niveau
+                    $configuration = \App\Models\ESBTPFraisConfiguration::where('frais_category_id', $category->id)
+                        ->where('filiere_id', $classe->filiere_id)
+                        ->where('niveau_id', $classe->niveau_etude_id)
+                        ->where('is_active', true)
+                        ->first();
+                    
+                    if ($configuration) {
+                        $defaultAmount = $configuration->amount;
+                        $isConfigured = true;
+                        $configurationType = 'configuration';
+                        \Log::info("Configuration trouvée pour catégorie {$category->name}", ['amount' => $configuration->amount]);
+                    }
+                    
+                    // 2. Chercher des variants/options class-based pour cette catégorie
+                    $classBasedOptions = \App\Models\ESBTPFraisOption::classBased()
+                        ->forFraisCategory($category->id)
+                        ->active()
+                        ->ordered()
+                        ->get();
+                    
+                    if ($classBasedOptions->count() > 0) {
+                        $options = $classBasedOptions;
+                        $isConfigured = true;
+                        if ($configurationType === 'default') {
+                            $configurationType = 'class_variants';
+                        }
+                        \Log::info("Options class-based trouvées pour {$category->name}", ['count' => $classBasedOptions->count()]);
+                    }
+                    
+                } else {
+                    // SERVICES OPTIONNELS : Utiliser EXACTEMENT la même logique qu'optional-config
+                    $categoryWithOptions = ESBTPFraisCategory::with(['options.assignments.filiere', 'options.assignments.niveau'])
+                        ->where('id', $category->id)
+                        ->first();
+                    
+                    if ($categoryWithOptions && $categoryWithOptions->options->count() > 0) {
+                        $options = $categoryWithOptions->options;
+                        $isConfigured = true;
+                        $configurationType = 'global_options';
+                        \Log::info("Options trouvées pour {$category->name} (logique optional-config)", ['count' => $options->count()]);
+                    }
                 }
                 
-                // Si il y a une variante spécifique pour cette classe, l'utiliser comme défaut
-                if ($classSpecificVariant) {
-                    $defaultAmount = $classSpecificVariant->amount;
+                if (!$isConfigured) {
+                    $hasUnconfiguredFees = true;
+                    \Log::warning("Catégorie non configurée: {$category->name}");
                 }
                 
                 $fraisData[] = [
                     'category' => $category,
-                    'default_amount' => $defaultAmount, // Montant configuré pour cette classe
-                    'configured_amount' => $defaultAmount, // Alias plus explicite
-                    'variants' => $variants,
+                    'default_amount' => $defaultAmount,
+                    'configured_amount' => $defaultAmount,
+                    'variants' => $options, // Compatibilité avec interface existante
+                    'options' => $options,
                     'is_mandatory' => $category->is_mandatory,
                     'is_configured' => $isConfigured,
-                    'rule' => $rule,
-                    'class_specific_variant' => $classSpecificVariant,
-                    'has_class_variant' => $classSpecificVariant !== null,
-                    'category_default_amount' => $category->default_amount, // Montant par défaut de la catégorie
-                    'configuration_type' => $classSpecificVariant ? 'variant' : ($rule ? 'rule' : 'default')
+                    'configuration_type' => $configurationType,
+                    'category_default_amount' => $category->default_amount,
+                    'category_type' => $category->category_type ?? 'academic'
                 ];
             }
             
@@ -1343,10 +1519,14 @@ class ESBTPInscriptionController extends Controller
             ]);
             
         } catch (\Exception $e) {
-            \Log::error('Erreur lors de la récupération des frais pour la classe: ' . $e->getMessage());
+            \Log::error('Erreur getFraisByClasse: ' . $e->getMessage(), [
+                'classe_id' => $classeId,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la récupération des frais'
+                'message' => 'Erreur lors de la récupération des frais: ' . $e->getMessage()
             ], 500);
         }
     }

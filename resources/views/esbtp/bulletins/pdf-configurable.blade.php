@@ -209,14 +209,14 @@
                 @endif
             </div>
             <div class="header-center">
-                @if(($settings['bulletin_show_logo'] ?? '1') == '1')
-                <img src="{{ asset('images/esbtp_logo.png') }}" alt="Logo ESBTP" class="logo">
+                @if(($settings['bulletin_show_logo'] ?? '1') == '1' && isset($logoBase64) && $logoBase64)
+                <img src="{{ $logoBase64 }}" alt="Logo ESBTP" class="logo">
                 @endif
                 @if(($settings['bulletin_show_school_info'] ?? '1') == '1')
                 <div class="school-name">
-                    {{ $settings['bulletin_school_name_custom'] ?: 'École Spéciale du Bâtiment et des Travaux Publics' }}
+                    {{ $settings['bulletin_school_name_custom'] ?: $settings['school_name'] }}
                 </div>
-                <div class="school-address">BP 04 BP 1234 Abidjan 04 • Tel: 00 00 00 00 • Fax: 00 00 00 00</div>
+                <div class="school-address">{{ $settings['school_address'] }} • Tel: {{ $settings['school_phone'] }} • {{ $settings['school_email'] }}</div>
                 @endif
             </div>
             <div class="header-right">
@@ -414,7 +414,9 @@
                         <tr>
                             <td>Note d'assiduité</td>
                             <td class="center">
-                                <div style="border: 1px solid #000; padding: 4px; width: 60px; display: inline-block;">{{ number_format($note_assiduite, 2) }}</div>
+                                <div style="border: 1px solid #000; padding: 4px; width: 60px; display: inline-block;">
+                                    {{ $note_assiduite > 0 ? '+' . number_format($note_assiduite, 2) : number_format($note_assiduite, 2) }}
+                                </div>
                             </td>
                         </tr>
                         @endif
@@ -554,9 +556,7 @@
         </div>
         @endif
 
-        @if(($settings['bulletin_show_print_button'] ?? '1') == '1')
-        <button onclick="window.print()" class="print-button">Imprimer le bulletin</button>
-        @endif
+        {{-- Bouton d'impression supprimé car le fichier est déjà un PDF généré --}}
     </div>
 </body>
 </html>

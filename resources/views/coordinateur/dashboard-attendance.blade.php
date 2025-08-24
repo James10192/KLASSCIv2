@@ -1,507 +1,617 @@
 @extends('layouts.app')
 
-@section('title', 'Tableau de Bord - Suivi des Présences')
+@section('title', 'Dashboard Coordinateur - Suivi des Présences')
+
+@section('styles')
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+@endsection
 
 @section('content')
-<div class="container-fluid py-4">
-    <!-- En-tête du tableau de bord -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h2 class="h4 mb-1">📊 Tableau de Bord - Suivi des Présences</h2>
-                            <p class="text-muted mb-0">Aperçu en temps réel des émargements enseignants et présences étudiants</p>
+<div class="dashboard-acasi">
+    <div class="main-content">
+        <!-- Header Section -->
+        <x-dashboard.dashboard-header 
+            title="Dashboard Coordinateur - Suivi des Présences"
+            subtitle="Monitoring en temps réel des émargements et présences - {{ \Carbon\Carbon::today()->format('d/m/Y') }}"
+            icon="fa-chart-pie"
+        />
+
+        <!-- Statistiques KPI -->
+        <x-dashboard.kpi-grid :stats="$stats" />
+
+        <!-- Section: Vue d'ensemble du workflow -->
+        <div class="mb-4">
+            <x-dashboard.main-card 
+            title="État du Workflow Aujourd'hui"
+            subtitle="Progression du processus: Émargement → Appel → Validation"
+            icon="fa-project-diagram"
+        >
+            <div class="workflow-container">
+                <div class="row text-center">
+                    <!-- Étape 1: Cours Programmés -->
+                    <div class="col-md-3 mb-3">
+                        <div class="workflow-step">
+                            <div class="workflow-icon primary">
+                                <i class="fas fa-calendar-alt"></i>
+                            </div>
+                            <h4 class="workflow-value text-primary">{{ $stats['scheduled_courses_today'] ?? 0 }}</h4>
+                            <h6 class="workflow-title">Cours Programmés</h6>
+                            <small class="workflow-subtitle">Séances planifiées</small>
                         </div>
-                        <div class="d-flex gap-2">
-                            <button class="btn btn-outline-primary btn-sm" onclick="refreshData()">
-                                <i class="fas fa-sync-alt me-1"></i> Actualiser
-                            </button>
-                            <div class="btn-group">
-                                <button class="btn btn-info btn-sm" onclick="showTeacherAttendance()">
-                                    <i class="fas fa-chalkboard-teacher me-1"></i> Enseignants
-                                </button>
-                                <button class="btn btn-success btn-sm" onclick="showStudentAttendance()">
-                                    <i class="fas fa-users me-1"></i> Étudiants
-                                </button>
+                    </div>
+
+                    <!-- Flèche 1 -->
+                    <div class="col-md-1 d-none d-md-flex align-items-center justify-content-center">
+                        <i class="fas fa-arrow-right text-muted fa-lg workflow-arrow"></i>
+                    </div>
+
+                    <!-- Étape 2: Émargements -->
+                    <div class="col-md-3 mb-3">
+                        <div class="workflow-step">
+                            <div class="workflow-icon success">
+                                <i class="fas fa-user-check"></i>
+                            </div>
+                            <h4 class="workflow-value text-success">{{ $stats['teacher_attendances_today'] ?? 0 }}</h4>
+                            <h6 class="workflow-title">Émargements</h6>
+                            <small class="workflow-subtitle">Enseignants émargés</small>
+                            <div class="workflow-progress">
+                                <div class="progress-bar-workflow bg-success" style="width: {{ $stats['teacher_attendance_rate'] ?? 0 }}%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Flèche 2 -->
+                    <div class="col-md-1 d-none d-md-flex align-items-center justify-content-center">
+                        <i class="fas fa-arrow-right text-muted fa-lg workflow-arrow"></i>
+                    </div>
+
+                    <!-- Étape 3: Appels -->
+                    <div class="col-md-3 mb-3">
+                        <div class="workflow-step">
+                            <div class="workflow-icon info">
+                                <i class="fas fa-clipboard-check"></i>
+                            </div>
+                            <h4 class="workflow-value text-info">{{ $stats['roll_calls_completed_today'] ?? 0 }}</h4>
+                            <h6 class="workflow-title">Appels Terminés</h6>
+                            <small class="workflow-subtitle">Présences saisies</small>
+                            @if(($stats['students_present_today'] ?? 0) > 0)
+                                <div class="workflow-badge text-info">{{ $stats['student_attendance_rate'] ?? 0 }}% présents</div>
+                            @endif
+                        </div>
+                    </div>
+
+                    <!-- Flèche 3 -->
+                    <div class="col-md-1 d-none d-md-flex align-items-center justify-content-center">
+                        <i class="fas fa-arrow-right text-muted fa-lg workflow-arrow"></i>
+                    </div>
+
+                    <!-- Étape 4: Workflow Complet -->
+                    <div class="col-md-3 mb-3">
+                        <div class="workflow-step">
+                            <div class="workflow-icon warning">
+                                <i class="fas fa-check-double"></i>
+                            </div>
+                            <h4 class="workflow-value text-warning">{{ $stats['courses_completed_today'] ?? 0 }}</h4>
+                            <h6 class="workflow-title">Workflow Complet</h6>
+                            <small class="workflow-subtitle">Émargement + Appel</small>
+                            @php
+                                $totalCourses = $stats['scheduled_courses_today'] ?? 0;
+                                $completedCourses = $stats['courses_completed_today'] ?? 0;
+                                $completionRate = $totalCourses > 0 ? round(($completedCourses / $totalCourses) * 100, 1) : 0;
+                            @endphp
+                            <div class="workflow-progress">
+                                <div class="progress-bar-workflow bg-warning" style="width: {{ $completionRate }}%"></div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Statistiques rapides -->
-    <div class="row mb-4">
-        <!-- Émargements du jour -->
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card bg-gradient-primary text-white border-0 shadow">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="card-title text-white-50 mb-1">Émargements Aujourd'hui</h6>
-                            <h3 class="mb-0 fw-bold">{{ $stats['teacher_attendances_today'] ?? 0 }}</h3>
-                            <small class="text-white-75">sur {{ $stats['scheduled_courses_today'] ?? 0 }} cours prévus</small>
+                
+                @if($totalCourses > 0)
+                <div class="workflow-summary">
+                    <div class="d-flex align-items-center justify-content-center">
+                        <div class="workflow-icon primary small me-3">
+                            <i class="fas fa-chart-pie"></i>
                         </div>
-                        <div class="text-white-50">
-                            <i class="fas fa-clipboard-check fa-2x"></i>
-                        </div>
-                    </div>
-                    <div class="progress mt-3" style="height: 4px;">
-                        <div class="progress-bar bg-white" role="progressbar" 
-                             style="width: {{ $stats['teacher_attendance_rate'] ?? 0 }}%">
+                        <div class="text-center">
+                            <span class="text-muted me-2">Progression globale:</span>
+                            <strong class="text-primary fs-5">{{ $completionRate }}%</strong>
+                            <span class="text-muted ms-2">({{ $completedCourses }}/{{ $totalCourses }})</span>
                         </div>
                     </div>
                 </div>
+                @endif
             </div>
+        </x-dashboard.main-card>
         </div>
 
-        <!-- Appels terminés -->
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card bg-gradient-success text-white border-0 shadow">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="card-title text-white-50 mb-1">Appels Terminés</h6>
-                            <h3 class="mb-0 fw-bold">{{ $stats['roll_calls_completed_today'] ?? 0 }}</h3>
-                            <small class="text-white-75">{{ $stats['students_present_today'] ?? 0 }} présents</small>
+        <!-- Section: Statistiques par Matière -->
+        <div class="mb-4">
+            <x-dashboard.main-card 
+            title="Statistiques par Matière"
+            subtitle="Progression des cours par matière aujourd'hui"
+            icon="fa-book-open"
+        >
+            @if(!empty($stats['subjects_stats']) && count($stats['subjects_stats']) > 0)
+            <div class="row">
+                @foreach($stats['subjects_stats'] as $subject)
+                <div class="col-lg-6 col-xl-4 mb-4">
+                    <div class="subject-card">
+                        <div class="subject-header">
+                            <h6 class="subject-name">{{ $subject['matiere_name'] }}</h6>
+                            @php
+                                $taux = $subject['taux_completion'] ?? 0;
+                                $badgeClass = $taux >= 80 ? 'success' : ($taux >= 50 ? 'warning' : 'primary');
+                            @endphp
+                            <span class="subject-badge badge-{{ $badgeClass }}">{{ $taux }}%</span>
                         </div>
-                        <div class="text-white-50">
-                            <i class="fas fa-users-check fa-2x"></i>
+                        
+                        <div class="subject-stats">
+                            <div class="stat-item">
+                                <div class="stat-value text-primary">{{ $subject['total_seances'] ?? 0 }}</div>
+                                <small class="stat-label">Séances</small>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value text-success">{{ $subject['emargements_effectues'] ?? 0 }}</div>
+                                <small class="stat-label">Émargé</small>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value text-info">{{ $subject['appels_effectues'] ?? 0 }}</div>
+                                <small class="stat-label">Appels</small>
+                            </div>
                         </div>
-                    </div>
-                    <div class="progress mt-3" style="height: 4px;">
-                        <div class="progress-bar bg-white" role="progressbar" 
-                             style="width: {{ $stats['roll_call_completion_rate'] ?? 0 }}%">
+                        
+                        <div class="subject-progress">
+                            <div class="progress-bar-subject bg-{{ $badgeClass }}" style="width: {{ $taux }}%"></div>
                         </div>
                     </div>
                 </div>
+                @endforeach
             </div>
+            @else
+            <div class="empty-state">
+                <i class="fas fa-book-open"></i>
+                <p>
+                    Aucune statistique par matière aujourd'hui
+                    <br><small class="text-muted">Les données apparaîtront dès qu'il y aura des cours planifiés.</small>
+                </p>
+            </div>
+            @endif
+        </x-dashboard.main-card>
         </div>
 
-        <!-- Retards détectés -->
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card bg-gradient-warning text-white border-0 shadow">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="card-title text-white-50 mb-1">Retards Détectés</h6>
-                            <h3 class="mb-0 fw-bold">{{ $stats['delays_today'] ?? 0 }}</h3>
-                            <small class="text-white-75">émargements en retard</small>
+        <!-- Section: Alertes et Actions Rapides -->
+        <div class="row">
+            <div class="col-lg-8 mb-4">
+                <x-dashboard.main-card 
+                    title="Alertes et Notifications"
+                    subtitle="Alertes importantes du jour"
+                    icon="fa-bell"
+                >
+                    @if(!empty($stats['alerts']) && count($stats['alerts']) > 0)
+                        @foreach($stats['alerts'] as $alert)
+                        <div class="alert-item alert-{{ $alert['type'] }}">
+                            <div class="alert-icon">
+                                <i class="fas fa-{{ $alert['type'] === 'warning' ? 'exclamation-triangle' : ($alert['type'] === 'danger' ? 'times-circle' : 'info-circle') }}"></i>
+                            </div>
+                            <div class="alert-content">
+                                <strong class="alert-title">{{ $alert['title'] }}</strong>
+                                <p class="alert-message">{{ $alert['message'] }}</p>
+                                @if(!empty($alert['details']))
+                                    <ul class="alert-details">
+                                        @foreach(array_slice($alert['details'], 0, 3) as $detail)
+                                        <li>{{ $detail }}</li>
+                                        @endforeach
+                                    </ul>
+                                @endif
+                            </div>
                         </div>
-                        <div class="text-white-50">
-                            <i class="fas fa-clock fa-2x"></i>
+                        @endforeach
+                    @else
+                    <div class="alert-item alert-success">
+                        <div class="alert-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="alert-content">
+                            <strong class="alert-title">Situation normale</strong>
+                            <p class="alert-message">Aucune alerte aujourd'hui</p>
                         </div>
                     </div>
-                    @if(($stats['delays_today'] ?? 0) > 0)
-                        <div class="mt-3">
-                            <small class="text-white-75">⚠️ Attention requise</small>
-                        </div>
                     @endif
-                </div>
+                </x-dashboard.main-card>
             </div>
-        </div>
 
-        <!-- Cours clôturés -->
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card bg-gradient-info text-white border-0 shadow">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="card-title text-white-50 mb-1">Cours Clôturés</h6>
-                            <h3 class="mb-0 fw-bold">{{ $stats['courses_closed_today'] ?? 0 }}</h3>
-                            <small class="text-white-75">séances terminées</small>
-                        </div>
-                        <div class="text-white-50">
-                            <i class="fas fa-check-circle fa-2x"></i>
-                        </div>
+            <div class="col-lg-4 mb-4">
+                <x-dashboard.main-card 
+                    title="Actions Rapides"
+                    subtitle="Raccourcis et outils"
+                    icon="fa-bolt"
+                >
+                    <div class="actions-grid">
+                        <a href="{{ route('esbtp.teacher-attendance.report') }}" class="action-button primary">
+                            <i class="fas fa-clipboard-list"></i>
+                            <span>Rapport Émargements</span>
+                        </a>
+                        <a href="{{ route('esbtp.attendances.index') }}" class="action-button success">
+                            <i class="fas fa-users"></i>
+                            <span>Gérer Présences</span>
+                        </a>
+                        <button class="action-button warning" onclick="generateReport()">
+                            <i class="fas fa-file-export"></i>
+                            <span>Export Journalier</span>
+                        </button>
+                        <button class="action-button info" onclick="refreshData()">
+                            <i class="fas fa-sync-alt"></i>
+                            <span>Actualiser</span>
+                        </button>
                     </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- Section d'actions rapides -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white border-0">
-                    <h5 class="mb-0">🚀 Actions Rapides</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-3 mb-3">
-                            <a href="{{ route('esbtp.teacher-attendance.report') }}" class="btn btn-outline-primary w-100 h-100 d-flex flex-column justify-content-center">
-                                <i class="fas fa-chalkboard-teacher fa-2x mb-2"></i>
-                                <span>Émargements Enseignants</span>
-                                <small class="text-muted">Voir tous les émargements</small>
-                            </a>
+                    <!-- Stats supplémentaires -->
+                    <div class="additional-stats">
+                        <div class="stat-row">
+                            <span class="stat-label">Étudiants total:</span>
+                            <span class="stat-value text-primary">{{ $stats['students_total_today'] ?? 0 }}</span>
                         </div>
-                        <div class="col-md-3 mb-3">
-                            <a href="{{ route('esbtp.attendances.index') }}" class="btn btn-outline-success w-100 h-100 d-flex flex-column justify-content-center">
-                                <i class="fas fa-users fa-2x mb-2"></i>
-                                <span>Présences Étudiants</span>
-                                <small class="text-muted">Gérer les présences</small>
-                            </a>
+                        <div class="stat-row">
+                            <span class="stat-label">Présents:</span>
+                            <span class="stat-value text-success">{{ $stats['students_present_today'] ?? 0 }}</span>
                         </div>
-                        <div class="col-md-3 mb-3">
-                            <a href="{{ route('notifications.index') }}" class="btn btn-outline-info w-100 h-100 d-flex flex-column justify-content-center">
-                                <i class="fas fa-bell fa-2x mb-2"></i>
-                                <span>Notifications</span>
-                                <small class="text-muted">{{ $unreadNotifications ?? 0 }} non lues</small>
-                            </a>
+                        <div class="stat-row">
+                            <span class="stat-label">Enseignants actifs:</span>
+                            <span class="stat-value text-info">{{ $stats['active_teachers_today'] ?? 0 }}</span>
                         </div>
-                        <div class="col-md-3 mb-3">
-                            <button class="btn btn-outline-warning w-100 h-100 d-flex flex-column justify-content-center" onclick="generateDailyReport()">
-                                <i class="fas fa-chart-line fa-2x mb-2"></i>
-                                <span>Rapport du Jour</span>
-                                <small class="text-muted">Générer le récap</small>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Activités récentes -->
-    <div class="row">
-        <div class="col-xl-8 col-lg-7 mb-4">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">📝 Activités Récentes</h5>
-                    <small class="text-muted">Dernières 24h</small>
-                </div>
-                <div class="card-body">
-                    <div class="timeline" id="recent-activities">
-                        <!-- Les activités seront chargées via JavaScript -->
-                        <div class="text-center py-4">
-                            <div class="spinner-border spinner-border-sm text-primary" role="status">
-                                <span class="visually-hidden">Chargement...</span>
-                            </div>
-                            <p class="mt-2 text-muted">Chargement des activités récentes...</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Alertes et notifications -->
-        <div class="col-xl-4 col-lg-5 mb-4">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-header bg-white border-0">
-                    <h5 class="mb-0">🔔 Alertes</h5>
-                </div>
-                <div class="card-body">
-                    <div id="alerts-container">
-                        <!-- Retards d'émargement -->
                         @if(($stats['delays_today'] ?? 0) > 0)
-                        <div class="alert alert-warning border-0 shadow-sm mb-3">
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-exclamation-triangle me-2"></i>
-                                <div>
-                                    <strong>{{ $stats['delays_today'] }} retard(s) d'émargement</strong>
-                                    <p class="mb-0 small">Des enseignants n'ont pas émargé à temps</p>
-                                </div>
-                            </div>
-                        </div>
-                        @endif
-
-                        <!-- Absences importantes -->
-                        @if(($stats['high_absence_classes'] ?? 0) > 0)
-                        <div class="alert alert-danger border-0 shadow-sm mb-3">
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-users-slash me-2"></i>
-                                <div>
-                                    <strong>{{ $stats['high_absence_classes'] }} classe(s) avec forte absentéisme</strong>
-                                    <p class="mb-0 small">Plus de 30% d'absences détectées</p>
-                                </div>
-                            </div>
-                        </div>
-                        @endif
-
-                        <!-- Tout va bien -->
-                        @if(($stats['delays_today'] ?? 0) == 0 && ($stats['high_absence_classes'] ?? 0) == 0)
-                        <div class="alert alert-success border-0 shadow-sm mb-3">
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-check-circle me-2"></i>
-                                <div>
-                                    <strong>Situation normale</strong>
-                                    <p class="mb-0 small">Aucune alerte particulière aujourd'hui</p>
-                                </div>
-                            </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Retards:</span>
+                            <span class="stat-value text-warning">{{ $stats['delays_today'] }}</span>
                         </div>
                         @endif
                     </div>
-                </div>
+                </x-dashboard.main-card>
             </div>
         </div>
     </div>
 </div>
+@endsection
+
+@section('scripts')
+<script>
+function refreshData() {
+    window.location.reload();
+}
+
+function generateReport() {
+    window.open('{{ route("coordinateur.daily-report") }}?date={{ \Carbon\Carbon::today()->format("Y-m-d") }}', '_blank');
+}
+
+// Auto-refresh every 2 minutes
+setInterval(function() {
+    if (document.visibilityState === 'visible') {
+        refreshData();
+    }
+}, 120000);
+
+// Animate cards on load
+document.addEventListener('DOMContentLoaded', function() {
+    const cards = document.querySelectorAll('.main-card, .kpi-card');
+    cards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        
+        setTimeout(() => {
+            card.style.transition = 'all 0.5s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+});
+</script>
+@endsection
 
 @push('styles')
 <style>
-.timeline {
-    position: relative;
-    max-height: 400px;
-    overflow-y: auto;
+/* Workflow Styles */
+.workflow-container {
+    padding: 1.5rem 0;
 }
 
-.timeline-item {
-    position: relative;
-    padding-left: 30px;
-    margin-bottom: 20px;
+.workflow-step {
+    text-align: center;
 }
 
-.timeline-item::before {
-    content: '';
-    position: absolute;
-    left: 8px;
-    top: 0;
-    bottom: -20px;
-    width: 2px;
-    background-color: #e3e6f0;
-}
-
-.timeline-icon {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
+.workflow-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: var(--radius-circle);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 8px;
+    font-size: 24px;
+    color: white;
+    margin: 0 auto 1rem auto;
+}
+
+.workflow-icon.small {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+}
+
+.workflow-icon.primary { background: linear-gradient(135deg, var(--primary), #60a5fa); }
+.workflow-icon.success { background: linear-gradient(135deg, var(--success), #34d399); }
+.workflow-icon.info { background: linear-gradient(135deg, var(--accent-blue), #38bdf8); }
+.workflow-icon.warning { background: linear-gradient(135deg, var(--warning), #fbbf24); }
+
+.workflow-value {
+    font-size: 2rem;
+    font-weight: 800;
+    margin: 0.5rem 0 0.25rem 0;
+}
+
+.workflow-title {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.workflow-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.workflow-progress {
+    width: 80%;
+    height: 4px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 2px;
+    margin: 0.5rem auto 0;
+    overflow: hidden;
+}
+
+.progress-bar-workflow {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.8s ease;
+}
+
+.workflow-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-top: 0.25rem;
+}
+
+.workflow-summary {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.workflow-arrow {
+    opacity: 0.6;
+}
+
+/* Subject Cards */
+.subject-card {
+    background: var(--surface);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: var(--radius-medium);
+    padding: 1.25rem;
+    height: 100%;
+    transition: all 0.2s ease;
+}
+
+.subject-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-elevated);
+}
+
+.subject-header {
+    display: flex;
+    justify-content: between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.subject-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+    flex: 1;
+}
+
+.subject-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 600;
     color: white;
 }
 
-.timeline-icon.success { background-color: #28a745; }
-.timeline-icon.warning { background-color: #ffc107; }
-.timeline-icon.info { background-color: #17a2b8; }
-.timeline-icon.danger { background-color: #dc3545; }
+.badge-success { background: var(--success); }
+.badge-warning { background: var(--warning); }
+.badge-primary { background: var(--primary); }
 
-.card {
-    transition: transform 0.2s ease-in-out;
+.subject-stats {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1rem;
 }
 
-.card:hover {
+.stat-item {
+    text-align: center;
+    flex: 1;
+}
+
+.stat-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.stat-label {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+}
+
+.subject-progress {
+    height: 6px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-bar-subject {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.8s ease;
+}
+
+/* Alert Items */
+.alert-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    border-left: 4px solid;
+    background: var(--surface);
+    border-radius: var(--radius-small);
+    margin-bottom: 1rem;
+}
+
+.alert-item.alert-success { border-left-color: var(--success); }
+.alert-item.alert-warning { border-left-color: var(--warning); }
+.alert-item.alert-danger { border-left-color: var(--danger); }
+.alert-item.alert-info { border-left-color: var(--accent-blue); }
+
+.alert-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-circle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: white;
+    flex-shrink: 0;
+}
+
+.alert-success .alert-icon { background: var(--success); }
+.alert-warning .alert-icon { background: var(--warning); }
+.alert-danger .alert-icon { background: var(--danger); }
+.alert-info .alert-icon { background: var(--accent-blue); }
+
+.alert-content {
+    flex: 1;
+}
+
+.alert-title {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    color: var(--text-primary);
+}
+
+.alert-message {
+    margin: 0 0 0.5rem 0;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.alert-details {
+    margin: 0;
+    padding-left: 1.25rem;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+/* Action Buttons */
+.actions-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.action-button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    border: none;
+    border-radius: var(--radius-medium);
+    color: white;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.action-button.primary { background: linear-gradient(135deg, var(--primary), #60a5fa); }
+.action-button.success { background: linear-gradient(135deg, var(--success), #34d399); }
+.action-button.warning { background: linear-gradient(135deg, var(--warning), #fbbf24); }
+.action-button.info { background: linear-gradient(135deg, var(--accent-blue), #38bdf8); }
+
+.action-button:hover {
     transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    color: white;
 }
 
-.bg-gradient-primary { background: linear-gradient(45deg, #4e73df, #224abe); }
-.bg-gradient-success { background: linear-gradient(45deg, #1cc88a, #13855c); }
-.bg-gradient-warning { background: linear-gradient(45deg, #f6c23e, #dda20a); }
-.bg-gradient-info { background: linear-gradient(45deg, #36b9cc, #258391); }
-</style>
-@endpush
-
-@push('scripts')
-<script>
-// Fonction de rafraîchissement des données
-function refreshData() {
-    location.reload();
+.action-button i {
+    font-size: 1.25rem;
 }
 
-// Fonction pour afficher les émargements enseignants
-function showTeacherAttendance() {
-    window.location.href = '{{ route("esbtp.teacher-attendance.report") }}';
+/* Additional Stats */
+.additional-stats {
+    padding-top: 1rem;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-// Fonction pour afficher les présences étudiants
-function showStudentAttendance() {
-    window.location.href = '{{ route("esbtp.attendances.index") }}';
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
-// Fonction pour générer le rapport quotidien
-function generateDailyReport() {
-    const loadingBtn = event.target;
-    const originalText = loadingBtn.innerHTML;
-    
-    loadingBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Génération...';
-    loadingBtn.disabled = true;
-    
-    fetch('{{ route("coordinateur.daily-report") }}', {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': '{{ csrf_token() }}',
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-            date: new Date().toISOString().split('T')[0]
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Afficher le rapport dans une modal ou une nouvelle fenêtre
-            showDailyReportModal(data.report);
-        } else {
-            alert('Erreur lors de la génération du rapport: ' + (data.error || 'Erreur inconnue'));
-        }
-    })
-    .catch(error => {
-        console.error('Erreur:', error);
-        alert('Erreur de connexion lors de la génération du rapport');
-    })
-    .finally(() => {
-        loadingBtn.innerHTML = originalText;
-        loadingBtn.disabled = false;
-    });
+.stat-row:last-child {
+    border-bottom: none;
 }
 
-function showDailyReportModal(report) {
-    // Créer et afficher une modal avec le rapport
-    const modalHtml = `
-        <div class="modal fade" id="dailyReportModal" tabindex="-1">
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Rapport du ${report.date}</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <h6>Résumé</h6>
-                                <ul class="list-group list-group-flush">
-                                    <li class="list-group-item d-flex justify-content-between">
-                                        <span>Cours prévus:</span>
-                                        <strong>${report.summary.cours_prevus}</strong>
-                                    </li>
-                                    <li class="list-group-item d-flex justify-content-between">
-                                        <span>Émargements:</span>
-                                        <strong>${report.summary.emargements_effectues}</strong>
-                                    </li>
-                                    <li class="list-group-item d-flex justify-content-between">
-                                        <span>Taux d'émargement:</span>
-                                        <strong>${report.summary.taux_emargement}</strong>
-                                    </li>
-                                    <li class="list-group-item d-flex justify-content-between">
-                                        <span>Appels terminés:</span>
-                                        <strong>${report.summary.appels_termines}</strong>
-                                    </li>
-                                    <li class="list-group-item d-flex justify-content-between">
-                                        <span>Étudiants présents:</span>
-                                        <strong>${report.summary.etudiants_presents}</strong>
-                                    </li>
-                                    <li class="list-group-item d-flex justify-content-between">
-                                        <span>Cours clôturés:</span>
-                                        <strong>${report.summary.cours_clotures}</strong>
-                                    </li>
-                                    <li class="list-group-item d-flex justify-content-between">
-                                        <span>Retards détectés:</span>
-                                        <strong>${report.summary.retards_detectes}</strong>
-                                    </li>
-                                </ul>
-                            </div>
-                            <div class="col-md-6">
-                                <h6>Recommandations</h6>
-                                ${report.recommendations.map(rec => `
-                                    <div class="alert alert-${rec.type} alert-sm">
-                                        <small><strong>${rec.message}</strong><br>
-                                        Action: ${rec.action}</small>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    // Supprimer l'ancienne modal si elle existe
-    const existingModal = document.getElementById('dailyReportModal');
-    if (existingModal) {
-        existingModal.remove();
+.stat-row .stat-label {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.stat-row .stat-value {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .workflow-step {
+        margin-bottom: 1.5rem;
     }
     
-    // Ajouter la nouvelle modal au DOM
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    .workflow-arrow {
+        display: none !important;
+    }
     
-    // Afficher la modal
-    const modal = new bootstrap.Modal(document.getElementById('dailyReportModal'));
-    modal.show();
+    .subject-stats {
+        flex-direction: column;
+        gap: 0.5rem;
+        text-align: left;
+    }
+    
+    .stat-item {
+        display: flex;
+        justify-content: space-between;
+        text-align: left;
+    }
+    
+    .actions-grid {
+        grid-template-columns: 1fr;
+    }
 }
-
-// Charger les activités récentes
-document.addEventListener('DOMContentLoaded', function() {
-    loadRecentActivities();
-    
-    // Actualisation automatique toutes les 5 minutes
-    setInterval(function() {
-        loadRecentActivities();
-    }, 300000);
-});
-
-function loadRecentActivities() {
-    const activitiesContainer = document.getElementById('recent-activities');
-    
-    fetch('{{ route("coordinateur.recent-activities") }}?limit=10', {
-        method: 'GET',
-        headers: {
-            'Accept': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success && data.activities) {
-            let html = '';
-            
-            if (data.activities.length === 0) {
-                html = `
-                    <div class="text-center py-4">
-                        <i class="fas fa-history fa-2x text-muted mb-2"></i>
-                        <p class="text-muted">Aucune activité récente</p>
-                    </div>
-                `;
-            } else {
-                data.activities.forEach(activity => {
-                    html += `
-                        <div class="timeline-item">
-                            <div class="timeline-icon ${activity.type}">
-                                <i class="fas fa-${activity.icon}"></i>
-                            </div>
-                            <div class="timeline-content">
-                                <h6 class="mb-1">${activity.title}</h6>
-                                <p class="text-muted mb-1">${activity.description}</p>
-                                <small class="text-muted">${activity.time}</small>
-                            </div>
-                        </div>
-                    `;
-                });
-            }
-            
-            activitiesContainer.innerHTML = html;
-        } else {
-            activitiesContainer.innerHTML = `
-                <div class="text-center py-4 text-danger">
-                    <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
-                    <p>Erreur lors du chargement des activités</p>
-                </div>
-            `;
-        }
-    })
-    .catch(error => {
-        console.error('Erreur chargement activités:', error);
-        activitiesContainer.innerHTML = `
-            <div class="text-center py-4 text-warning">
-                <i class="fas fa-wifi fa-2x mb-2"></i>
-                <p>Impossible de charger les activités</p>
-                <button class="btn btn-sm btn-outline-primary" onclick="loadRecentActivities()">Réessayer</button>
-            </div>
-        `;
-    });
-}
-</script>
+</style>
 @endpush
-@endsection

@@ -3,16 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\ESBTPFraisCategory;
-use App\Models\ESBTPFraisRule;
+// use App\Models\ESBTPFraisRule; // Supprimé - remplacé par ESBTPFraisConfiguration
 use App\Models\ESBTPFraisConfiguration;
 use App\Models\ESBTPFraisOption;
-use App\Models\ESBTPFraisVariant;
+// use App\Models\ESBTPFraisVariant; // Supprimé - remplacé par ESBTPFraisOption
 use App\Models\ESBTPOptionAssignment;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Services\FraisCalculationService;
 use App\Services\FraisCacheService;
+use App\Services\FraisManagementService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -22,10 +23,12 @@ class ESBTPFraisController extends Controller
 {
     protected $fraisCalculationService;
     protected $fraisCacheService;
+    protected $fraisManagementService;
 
     public function __construct(
         FraisCalculationService $fraisCalculationService,
-        FraisCacheService $fraisCacheService
+        FraisCacheService $fraisCacheService,
+        FraisManagementService $fraisManagementService
     ) {
         $this->middleware('auth');
         $this->middleware('permission:frais.view', ['only' => ['index', 'show']]);
@@ -36,6 +39,7 @@ class ESBTPFraisController extends Controller
         
         $this->fraisCalculationService = $fraisCalculationService;
         $this->fraisCacheService = $fraisCacheService;
+        $this->fraisManagementService = $fraisManagementService;
     }
 
     /**
@@ -46,16 +50,10 @@ class ESBTPFraisController extends Controller
         // Utiliser le cache pour les catégories fréquemment accédées
         $categories = $this->fraisCacheService->getCategories();
         
-        // Ajouter le nombre de configurations pour chaque catégorie
+        // Ajouter les statuts de configuration pour chaque catégorie
         $categories = $categories->map(function($category) {
-            if ($category->is_mandatory) {
-                // Pour les frais obligatoires, compter les configurations par classe
-                $category->configurations_count = ESBTPFraisConfiguration::where('frais_category_id', $category->id)->count();
-            } else {
-                // Pour les frais optionnels, compter toutes les assignations
-                // (car les options sont maintenant gérées dans optional-config)
-                $category->assignments_count = ESBTPOptionAssignment::count();
-            }
+            $status = $this->fraisManagementService->getConfigurationStatus($category);
+            $category->configuration_status = $status;
             return $category;
         });
         
@@ -178,7 +176,7 @@ class ESBTPFraisController extends Controller
             ->active()
             ->get();
 
-        // Statistiques - chercher par nom plutôt que par type
+        // Statistiques - chercher par nom plutôt que par type  
         $transportCategory = $optionalCategories->filter(function($cat) {
             return stripos($cat->name, 'transport') !== false;
         })->first();
@@ -380,34 +378,60 @@ class ESBTPFraisController extends Controller
     {
         $fraisCategory = $frai;
         
-        // Charger les configurations modernes au lieu des anciennes rules
-        $configurations = ESBTPFraisConfiguration::with(['filiere', 'niveau', 'options'])
-            ->where('frais_category_id', $fraisCategory->id)
-            ->active()
-            ->valid()
-            ->get();
-        
-        // Récupérer les options pour cette catégorie
-        $options = collect();
-        if ($configurations->count() > 0) {
-            $configurationIds = $configurations->pluck('id');
-            $options = ESBTPFraisOption::whereIn('configuration_id', $configurationIds)
+        // Utiliser le nouveau service pour gérer les différents types de frais
+        if ($fraisCategory->is_mandatory) {
+            // Pour les frais obligatoires (par classe)
+            $configurations = ESBTPFraisConfiguration::with(['filiere', 'niveau', 'options'])
+                ->where('frais_category_id', $fraisCategory->id)
                 ->active()
-                ->orderBy('sort_order')
+                ->valid()
                 ->get();
+            
+            // Récupérer les options par classe
+            $options = collect();
+            if ($configurations->count() > 0) {
+                $configurationIds = $configurations->pluck('id');
+                $options = ESBTPFraisOption::classBased()
+                    ->whereIn('configuration_id', $configurationIds)
+                    ->active()
+                    ->orderBy('sort_order')
+                    ->get();
+            }
+            
+            // Calculer les statistiques pour frais obligatoires
+            $stats = [
+                'total_configurations' => $configurations->count(),
+                'active_configurations' => $configurations->where('is_active', true)->count(),
+                'total_options' => $options->count(),
+                'total_classes' => ESBTPFiliere::active()->count() * ESBTPNiveauEtude::active()->count(),
+                'configured_classes' => $configurations->count(),
+                'coverage_percentage' => ESBTPFiliere::active()->count() * ESBTPNiveauEtude::active()->count() > 0 
+                    ? round(($configurations->count() / (ESBTPFiliere::active()->count() * ESBTPNiveauEtude::active()->count())) * 100, 1)
+                    : 0
+            ];
+        } else {
+            // Pour les services optionnels - utiliser EXACTEMENT la même logique qu'optional-config
+            $configurations = collect(); // Pas de configurations par classe pour les services globaux
+            
+            // Charger la catégorie avec ses options comme dans optional-config
+            $fraisCategoryWithOptions = ESBTPFraisCategory::with(['options.assignments.filiere', 'options.assignments.niveau'])
+                ->where('id', $fraisCategory->id)
+                ->first();
+            
+            $options = $fraisCategoryWithOptions ? $fraisCategoryWithOptions->options : collect();
+            
+            // Calculer les statistiques pour services globaux
+            $status = $this->fraisManagementService->getConfigurationStatus($fraisCategory);
+            $stats = [
+                'total_configurations' => 0, // Pas de configurations par classe
+                'active_configurations' => 0,
+                'total_options' => $options->count(),
+                'active_options' => $options->where('is_active', true)->count(),
+                'default_options' => $options->where('is_default', true)->count(),
+                'coverage_percentage' => 100, // Services globaux couvrent 100% (tous les étudiants)
+                'configuration_status' => $status
+            ];
         }
-        
-        // Calculer les statistiques avec le nouveau système
-        $stats = [
-            'total_configurations' => $configurations->count(),
-            'active_configurations' => $configurations->where('is_active', true)->count(),
-            'total_options' => $options->count(),
-            'total_classes' => ESBTPFiliere::active()->count() * ESBTPNiveauEtude::active()->count(),
-            'configured_classes' => $configurations->count(),
-            'coverage_percentage' => ESBTPFiliere::active()->count() * ESBTPNiveauEtude::active()->count() > 0 
-                ? round(($configurations->count() / (ESBTPFiliere::active()->count() * ESBTPNiveauEtude::active()->count())) * 100, 1)
-                : 0
-        ];
 
         return view('esbtp.frais.show', compact('fraisCategory', 'configurations', 'options', 'stats'));
     }
@@ -556,8 +580,8 @@ class ESBTPFraisController extends Controller
                     ->with('error', 'Impossible de supprimer cette catégorie car elle contient des paiements associés.');
             }
 
-            // Supprimer les règles associées
-            $frai->rules()->delete();
+            // Supprimer les configurations associées
+            $frai->configurations()->delete();
 
             // Supprimer la catégorie
             $frai->delete();
@@ -1347,7 +1371,7 @@ class ESBTPFraisController extends Controller
         }
 
         try {
-            $variant = ESBTPFraisVariant::findOrFail($variantId);
+            $variant = ESBTPFraisOption::findOrFail($variantId);
             
             $variant->update([
                 'name' => $request->name,

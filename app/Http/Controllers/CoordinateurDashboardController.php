@@ -46,41 +46,57 @@ class CoordinateurDashboardController extends Controller
         try {
             $stats = [];
 
-            // 1. Émargements enseignants aujourd'hui
+            // 1. Séances programmées aujourd'hui
             $stats['scheduled_courses_today'] = ESBTPSeanceCours::whereDate('date_seance', $date)
-                ->where('is_active', true)
                 ->count();
 
-            $stats['teacher_attendances_today'] = ESBTPTeacherAttendance::whereDate('validated_at', $date)
+            // 2. Émargements enseignants effectués
+            $stats['teacher_attendances_today'] = ESBTPTeacherAttendance::whereDate('created_at', $date)
                 ->count();
 
+            // 3. Taux d'émargement
             $stats['teacher_attendance_rate'] = $stats['scheduled_courses_today'] > 0 
                 ? round(($stats['teacher_attendances_today'] / $stats['scheduled_courses_today']) * 100, 1) 
                 : 0;
 
-            // 2. Appels terminés et présences étudiants
+            // 4. Appels terminés (séances avec présences étudiants enregistrées)
             $stats['roll_calls_completed_today'] = ESBTPSeanceCours::whereDate('date_seance', $date)
-                ->whereHas('attendances') // Séances avec des appels enregistrés
+                ->whereHas('attendances')
                 ->count();
 
-            $stats['students_present_today'] = ESBTPAttendance::whereDate('date', $date)
-                ->where('status', 'present')
+            // 5. Étudiants présents aujourd'hui (statut = 'present')
+            $stats['students_present_today'] = \App\Models\ESBTPAttendance::whereDate('date', $date)
+                ->where('statut', 'present')
                 ->count();
 
-            $stats['roll_call_completion_rate'] = $stats['scheduled_courses_today'] > 0 
-                ? round(($stats['roll_calls_completed_today'] / $stats['scheduled_courses_today']) * 100, 1) 
+            // 6. Total étudiants avec appel fait
+            $stats['students_total_today'] = \App\Models\ESBTPAttendance::whereDate('date', $date)
+                ->count();
+
+            // 7. Taux de présence étudiants
+            $stats['student_attendance_rate'] = $stats['students_total_today'] > 0
+                ? round(($stats['students_present_today'] / $stats['students_total_today']) * 100, 1)
                 : 0;
 
-            // 3. Retards détectés
+            // 8. Retards d'émargement (cours sans émargement enseignant)
             $stats['delays_today'] = max(0, $stats['scheduled_courses_today'] - $stats['teacher_attendances_today']);
 
-            // 4. Cours clôturés
-            $stats['courses_closed_today'] = ESBTPSeanceCours::whereDate('date_seance', $date)
-                ->where('status', 'completed')
+            // 9. Cours avec workflow complet (émargement + appel)
+            $stats['courses_completed_today'] = ESBTPSeanceCours::whereDate('date_seance', $date)
+                ->whereHas('teacherAttendance')
+                ->whereHas('attendances')
                 ->count();
 
-            // 5. Classes avec forte absentéisme (plus de 30% d'absences)
-            $stats['high_absence_classes'] = $this->getHighAbsenceClasses($date);
+            // 10. Enseignants actifs aujourd'hui
+            $stats['active_teachers_today'] = ESBTPTeacherAttendance::whereDate('created_at', $date)
+                ->distinct('teacher_id')
+                ->count();
+
+            // 11. Statistiques par matière
+            $stats['subjects_stats'] = $this->getSubjectStats($date);
+
+            // 12. Alertes importantes
+            $stats['alerts'] = $this->getAttendanceAlerts($date);
 
             return $stats;
 
@@ -92,13 +108,118 @@ class CoordinateurDashboardController extends Controller
                 'scheduled_courses_today' => 0,
                 'teacher_attendances_today' => 0,
                 'teacher_attendance_rate' => 0,
-                'roll_calls_completed_today' => 0,
                 'students_present_today' => 0,
-                'roll_call_completion_rate' => 0,
+                'students_total_today' => 0,
+                'student_attendance_rate' => 0,
+                'courses_completed_today' => 0,
+                'active_teachers_today' => 0,
+                'subjects_stats' => [],
+                'alerts' => [],
+                'roll_calls_completed_today' => 0,
                 'delays_today' => 0,
                 'courses_closed_today' => 0,
                 'high_absence_classes' => 0
             ];
+        }
+    }
+
+    /**
+     * Calcule les statistiques par matière
+     */
+    private function getSubjectStats($date)
+    {
+        try {
+            return ESBTPSeanceCours::whereDate('date_seance', $date)
+                ->with(['matiere', 'teacherAttendance', 'attendances'])
+                ->get()
+                ->groupBy('matiere_id')
+                ->map(function ($seances, $matiereId) {
+                    $matiere = $seances->first()->matiere;
+                    $totalSeances = $seances->count();
+                    $seancesAvecEmargement = $seances->filter(fn($s) => $s->teacherAttendance)->count();
+                    $seancesAvecAppel = $seances->filter(fn($s) => $s->attendances->count() > 0)->count();
+                    
+                    return [
+                        'matiere_name' => $matiere->name ?? 'Non défini',
+                        'total_seances' => $totalSeances,
+                        'emargements_effectues' => $seancesAvecEmargement,
+                        'appels_effectues' => $seancesAvecAppel,
+                        'taux_completion' => $totalSeances > 0 ? round(($seancesAvecAppel / $totalSeances) * 100, 1) : 0
+                    ];
+                })
+                ->sortByDesc('total_seances')
+                ->take(8)
+                ->values();
+        } catch (\Exception $e) {
+            \Log::error('Erreur stats matières: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Génère les alertes importantes
+     */
+    private function getAttendanceAlerts($date)
+    {
+        $alerts = [];
+        
+        try {
+            // Alerte retards d'émargement
+            $courssSansEmargement = ESBTPSeanceCours::whereDate('date_seance', $date)
+                ->whereDoesntHave('teacherAttendance')
+                ->with(['matiere', 'classe'])
+                ->get();
+            
+            if ($courssSansEmargement->count() > 0) {
+                $alerts[] = [
+                    'type' => 'warning',
+                    'title' => 'Émargements manquants',
+                    'message' => $courssSansEmargement->count() . ' cours sans émargement enseignant',
+                    'details' => $courssSansEmargement->take(3)->map(fn($c) => 
+                        ($c->matiere->name ?? 'Matière') . ' - ' . ($c->classe->name ?? 'Classe')
+                    )->toArray()
+                ];
+            }
+
+            // Alerte cours sans appel
+            $coursSansAppel = ESBTPSeanceCours::whereDate('date_seance', $date)
+                ->whereHas('teacherAttendance')
+                ->whereDoesntHave('attendances')
+                ->with(['matiere', 'classe'])
+                ->get();
+                
+            if ($coursSansAppel->count() > 0) {
+                $alerts[] = [
+                    'type' => 'info',
+                    'title' => 'Appels en attente',
+                    'message' => $coursSansAppel->count() . ' cours émargés sans appel d\'étudiants',
+                    'details' => $coursSansAppel->take(3)->map(fn($c) => 
+                        ($c->matiere->name ?? 'Matière') . ' - ' . ($c->classe->name ?? 'Classe')
+                    )->toArray()
+                ];
+            }
+
+            // Alerte taux de présence faible
+            $totalEtudiants = \App\Models\ESBTPAttendance::whereDate('date', $date)->count();
+            if ($totalEtudiants > 0) {
+                $presents = \App\Models\ESBTPAttendance::whereDate('date', $date)
+                    ->where('statut', 'present')->count();
+                $tauxPresence = round(($presents / $totalEtudiants) * 100, 1);
+                
+                if ($tauxPresence < 70) {
+                    $alerts[] = [
+                        'type' => 'danger',
+                        'title' => 'Taux de présence critique',
+                        'message' => "Seulement {$tauxPresence}% de présence étudiants aujourd'hui",
+                        'details' => ["{$presents} présents sur {$totalEtudiants} étudiants"]
+                    ];
+                }
+            }
+
+            return $alerts;
+        } catch (\Exception $e) {
+            \Log::error('Erreur génération alertes: ' . $e->getMessage());
+            return [];
         }
     }
 

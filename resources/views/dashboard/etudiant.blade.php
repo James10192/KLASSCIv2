@@ -3,450 +3,426 @@
 @section('title', 'Tableau de bord Étudiant')
 
 @push('styles')
-<style>
-    .bg-success-light {
-        background-color: rgba(40, 167, 69, 0.1);
-    }
-    .bg-danger-light {
-        background-color: rgba(220, 53, 69, 0.1);
-    }
-    .bg-warning-light {
-        background-color: rgba(255, 193, 7, 0.1);
-    }
-    .bg-info-light {
-        background-color: rgba(23, 162, 184, 0.1);
-    }
-    .progress {
-        background-color: #f8f9fa;
-    }
-</style>
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 @endpush
 
 @section('content')
-<div class="container-fluid px-4">
-    <h1 class="my-4">Bienvenue, {{ $user->name }}</h1>
-    <p class="text-muted">Votre espace étudiant ESBTP-yAKRO</p>
-
-    <div class="row">
-        <div class="col-xl-4 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Numéro matricule</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $student->matricule }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-id-card fa-2x text-gray-300"></i>
-                        </div>
+<div class="dashboard-acasi">
+    <div class="main-content">
+        <!-- Header Étudiant - même style que superadmin -->
+        <div class="dashboard-header">
+            <div class="header-left">
+                <h1>Bienvenue, {{ $user->name }}</h1>
+                <p class="header-subtitle">Votre espace étudiant ESBTP-yAKRO</p>
+            </div>
+            <div class="header-actions">
+                @if(isset($student))
+                    <div class="year-selector">
+                        <i class="fas fa-calendar me-1"></i>
+                        Année {{ date('Y') }}-{{ date('Y')+1 }}
                     </div>
-                    <a href="{{ route('esbtp.etudiants.show', ['etudiant' => $student->id]) }}" class="btn btn-sm btn-primary mt-3">Voir mon profil</a>
-                </div>
+                @endif
             </div>
         </div>
 
-        @if(isset($classe))
-        <div class="col-xl-4 col-md-6 mb-4">
-            <div class="card border-left-success shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                Classe</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $classe->nom }}</div>
+        <!-- Statistiques Étudiant - style moderne admin-stats -->
+        <div class="admin-stats" style="margin-bottom: var(--space-xl);">
+            <!-- Matricule -->
+            <div class="stat-card" style="padding: var(--space-xl); display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: var(--space-lg); flex: 1;">
+                    <div class="stat-icon primary">
+                        <i class="fas fa-id-card"></i>
+                    </div>
+                    <div style="flex: 1;">
+                        <div class="stat-value" style="margin-bottom: var(--space-xs);">{{ $student->matricule ?? 'N/A' }}</div>
+                        <div class="stat-label" style="margin: 0;">Numéro Matricule</div>
+                    </div>
+                </div>
+                <div>
+                    <a href="{{ isset($student) ? route('esbtp.etudiants.show', ['etudiant' => $student->id]) : '#' }}" class="btn-acasi primary" style="font-size: var(--text-small); padding: var(--space-sm) var(--space-md); white-space: nowrap;">
+                        <i class="fas fa-user" style="margin-right: var(--space-xs);"></i>
+                        Voir mon profil
+                    </a>
+                </div>
+            </div>
+
+            <!-- Taux de Présence -->
+            @if(isset($attendanceStats))
+            <div class="stat-card {{ $attendanceStats['rate'] >= 75 ? 'success' : ($attendanceStats['rate'] >= 50 ? 'warning' : 'danger') }}" style="padding: var(--space-xl); display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: var(--space-lg); flex: 1;">
+                    <div class="stat-icon {{ $attendanceStats['rate'] >= 75 ? 'success' : ($attendanceStats['rate'] >= 50 ? 'warning' : 'danger') }}">
+                        <i class="fas fa-clipboard-check"></i>
+                    </div>
+                    <div style="flex: 1;">
+                        <div class="stat-value" style="margin-bottom: var(--space-xs);">{{ $attendanceStats['rate'] }}%</div>
+                        <div class="stat-label" style="margin: 0;">Taux de Présence</div>
+                    </div>
+                </div>
+                <div>
+                    <a href="{{ route('esbtp.mes-absences.index') }}" class="btn-acasi primary" style="font-size: var(--text-small); padding: var(--space-sm) var(--space-md); white-space: nowrap;">
+                        <i class="fas fa-chart-line" style="margin-right: var(--space-xs);"></i>
+                        Mes présences
+                    </a>
+                </div>
+            </div>
+            @endif
+
+            <!-- Classe -->
+            @if(isset($classe))
+            <div class="stat-card success" style="padding: var(--space-xl); display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: var(--space-lg); flex: 1;">
+                    <div class="stat-icon success">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                    </div>
+                    <div style="flex: 1;">
+                        <div class="stat-value" style="margin-bottom: var(--space-xs);">{{ $classe->nom }}</div>
+                        <div class="stat-label" style="margin: 0;">Ma Classe</div>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: var(--space-xs); color: var(--success);">
+                    <i class="fas fa-users"></i>
+                    <span style="font-size: var(--text-small); font-weight: 500;">Formation active</span>
+                </div>
+            </div>
+            @endif
+
+            <!-- Filière -->
+            @if(isset($filiere))
+            <div class="stat-card" style="padding: var(--space-xl); display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: var(--space-lg); flex: 1;">
+                    <div class="stat-icon primary">
+                        <i class="fas fa-graduation-cap"></i>
+                    </div>
+                    <div style="flex: 1;">
+                        <div class="stat-value" style="margin-bottom: var(--space-xs);">{{ $filiere->nom }}</div>
+                        <div class="stat-label" style="margin: 0;">Filière</div>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: var(--space-xs); color: var(--neutral);">
+                    <i class="fas fa-certificate"></i>
+                    <span style="font-size: var(--text-small); font-weight: 500;">Spécialisation</span>
+                </div>
+            </div>
+            @endif
+
+            <!-- Notifications -->
+            @if(isset($unreadNotifications))
+            <div class="stat-card warning" style="padding: var(--space-xl); display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: var(--space-lg); flex: 1;">
+                    <div class="stat-icon warning">
+                        <i class="fas fa-bell"></i>
+                    </div>
+                    <div style="flex: 1;">
+                        <div class="stat-value" style="margin-bottom: var(--space-xs);">{{ $unreadNotifications }}</div>
+                        <div class="stat-label" style="margin: 0;">Notifications</div>
+                    </div>
+                </div>
+                <div>
+                    <a href="{{ route('esbtp.mes-notifications.index') }}" class="btn-acasi warning" style="font-size: var(--text-small); padding: var(--space-sm) var(--space-md); white-space: nowrap;">
+                        <i class="fas fa-envelope" style="margin-right: var(--space-xs);"></i>
+                        Voir notifications
+                    </a>
+                </div>
+            </div>
+            @endif
+
+            <!-- Niveau -->
+            @if(isset($niveau))
+            <div class="stat-card" style="padding: var(--space-xl); display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: var(--space-lg); flex: 1;">
+                    <div class="stat-icon primary">
+                        <i class="fas fa-layer-group"></i>
+                    </div>
+                    <div style="flex: 1;">
+                        <div class="stat-value" style="margin-bottom: var(--space-xs);">{{ $niveau->nom }}</div>
+                        <div class="stat-label" style="margin: 0;">Niveau d'Étude</div>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: var(--space-xs); color: var(--neutral);">
+                    <i class="fas fa-stairs"></i>
+                    <span style="font-size: var(--text-small); font-weight: 500;">Progression</span>
+                </div>
+            </div>
+            @endif
+        </div>
+
+        <!-- Planning Cours d'Aujourd'hui - même style que main-card -->
+        @if(isset($todayClasses) && $todayClasses->count() > 0)
+        <div class="main-card">
+            <div class="main-card-header">
+                <div class="main-card-title">
+                    <i class="fas fa-calendar-day"></i>
+                    Cours d'Aujourd'hui
+                </div>
+                <div class="main-card-subtitle">Planning du {{ date('d/m/Y') }}</div>
+            </div>
+            <div class="main-card-body">
+                <div class="course-list">
+                    @foreach($todayClasses as $cours)
+                    <div class="course-item">
+                        <div class="course-time">
+                            <div class="time-display">{{ $cours->heure_debut->format('H:i') }} - {{ $cours->heure_fin->format('H:i') }}</div>
+                            <div class="course-day">{{ \Carbon\Carbon::parse($cours->heure_debut)->diffInHours(\Carbon\Carbon::parse($cours->heure_fin)) }}h</div>
                         </div>
-                        <div class="col-auto">
-                            <i class="fas fa-chalkboard-teacher fa-2x text-gray-300"></i>
+                        <div class="course-info">
+                            <div class="course-subject">{{ $cours->matiere->nom ?? 'N/A' }}</div>
+                            <div class="course-class">{{ $cours->enseignant ?? 'Enseignant non défini' }}</div>
+                            <div class="course-type">{{ $cours->salle ?? 'Salle non définie' }}</div>
+                        </div>
+                        <div class="course-status">
+                            <span class="badge success">Programmé</span>
+                        </div>
+                        <div class="course-actions">
+                            <i class="fas fa-chevron-right color-primary"></i>
                         </div>
                     </div>
-                    <a href="{{ route('esbtp.student.classes.show', ['classe' => $classe->id]) }}" class="btn btn-sm btn-success mt-3">Détails de la classe</a>
+                    @endforeach
                 </div>
             </div>
         </div>
         @endif
 
-        @if(isset($filiere))
-        <div class="col-xl-4 col-md-6 mb-4">
-            <div class="card border-left-info shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                Filière</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $filiere->nom }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-graduation-cap fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
+        <!-- Examens à venir - même style que main-card urgent -->
+        @if(isset($upcomingExams) && $upcomingExams->count() > 0)
+        <div class="main-card urgent">
+            <div class="main-card-header">
+                <div class="main-card-title">
+                    <i class="fas fa-file-alt"></i>
+                    Examens à Venir
                 </div>
+                <div class="main-card-subtitle">{{ $upcomingExams->count() }} examen(s) programmé(s)</div>
             </div>
-        </div>
-        @endif
-    </div>
-
-    <div class="row">
-        @if(isset($unreadNotifications))
-        <div class="col-xl-4 col-md-6 mb-4">
-            <div class="card border-left-warning shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                Notifications non lues</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $unreadNotifications }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-bell fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                    <a href="{{ route('notifications.index') }}" class="btn btn-sm btn-warning mt-3">Voir toutes les notifications</a>
-                </div>
-            </div>
-        </div>
-        @endif
-
-        @if(isset($attendancePercentage))
-        <div class="col-xl-4 col-md-6 mb-4">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="text-uppercase fw-semibold text-muted mb-0">Présences</h6>
-                        <div class="stat-icon bg-primary-light rounded-circle p-2">
-                            <i class="fas fa-clipboard-check text-primary"></i>
-                        </div>
-                    </div>
-
-                    <div class="attendance-stats">
-                        <div class="d-flex align-items-center mb-2">
-                            <div class="progress flex-grow-1 me-2" style="height: 8px;">
-                                <div class="progress-bar {{ $attendancePercentage >= 75 ? 'bg-success' : ($attendancePercentage >= 50 ? 'bg-warning' : 'bg-danger') }}"
-                                     role="progressbar"
-                                     style="width: {{ $attendancePercentage }}%"
-                                     aria-valuenow="{{ $attendancePercentage }}"
-                                     aria-valuemin="0"
-                                     aria-valuemax="100">
-                                </div>
+            <div class="main-card-body">
+                <div class="urgent-list">
+                    @foreach($upcomingExams as $examen)
+                    <div class="urgent-item">
+                        <div class="urgent-info">
+                            <div class="urgent-title">{{ $examen->matiere->nom ?? 'N/A' }} - {{ $examen->type }}</div>
+                            <div class="urgent-time">
+                                <i class="fas fa-calendar-day"></i> {{ $examen->date->format('d/m/Y') }}
+                                <i class="fas fa-clock ml-3"></i> {{ $examen->heure }}
                             </div>
-                            <span class="fw-bold">{{ $attendancePercentage }}%</span>
                         </div>
-
-                        <div class="d-flex justify-content-between text-muted small">
-                            <span>Présences</span>
-                            <span>Objectif: 100%</span>
+                        <div class="urgent-countdown">
+                            @php
+                                $daysUntil = now()->diffInDays($examen->date, false);
+                            @endphp
+                            @if($daysUntil > 0)
+                                <span class="badge warning">{{ $daysUntil }} jour(s)</span>
+                            @elseif($daysUntil == 0)
+                                <span class="badge danger">Aujourd'hui</span>
+                            @else
+                                <span class="badge neutral">Passé</span>
+                            @endif
                         </div>
                     </div>
-
-                    <div class="mt-3">
-                        <a href="{{ route('esbtp.mes-absences.index') }}" class="btn btn-sm btn-primary w-100">
-                            <i class="fas fa-eye me-1"></i> Voir mes présences
-                        </a>
-                    </div>
+                    @endforeach
                 </div>
             </div>
         </div>
         @endif
 
-        @if(isset($niveau))
-        <div class="col-xl-4 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Niveau d'étude</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $niveau->nom }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-layer-group fa-2x text-gray-300"></i>
-                        </div>
+        <!-- Notes récentes - même style que resultats -->
+        @if(isset($recentGrades) && $recentGrades->count() > 0)
+        <div class="resultats-grid">
+            <div class="resultat-card card-moderne">
+                <div class="resultat-title">
+                    <i class="fas fa-chart-line"></i>
+                    Notes Récentes
+                </div>
+                <div class="resultat-montant color-primary">{{ $recentGrades->count() }} note(s)</div>
+                <div class="resultat-details">
+                    @foreach($recentGrades as $note)
+                    @php
+                        // Récupérer le nom de la matière
+                        $matiereName = $note->matiere->name ?? 'Matière non définie';
+                        
+                        // Récupérer la valeur de la note (convertir string en float)
+                        $noteValue = floatval($note->note ?? 0);
+                        
+                        // Gestion des étudiants absents
+                        $isAbsent = $note->is_absent ?? false;
+                        $statusText = $isAbsent ? 'Absent' : '';
+                    @endphp
+                    <div class="resultat-detail">
+                        <span>{{ $matiereName }}</span>
+                        @if($isAbsent)
+                            <span class="color-warning">
+                                <i class="fas fa-user-times" style="margin-right: 4px;"></i>Absent
+                            </span>
+                        @else
+                            <span class="color-{{ $noteValue >= 10 ? 'success' : 'danger' }}">
+                                {{ number_format($noteValue, 2) }}/20
+                            </span>
+                        @endif
                     </div>
+                    @endforeach
+                </div>
+                <div class="mt-md">
+                    <a href="{{ route('esbtp.mes-notes.index') }}" class="btn-acasi primary">
+                        <i class="fas fa-chart-bar"></i>
+                        Voir toutes mes notes
+                    </a>
                 </div>
             </div>
         </div>
         @endif
-    </div>
 
-    <!-- Cours aujourd'hui -->
-    @if(isset($todayClasses) && $todayClasses->count() > 0)
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Cours d'aujourd'hui</h6>
+        <!-- Emploi du temps - même style que table-moderne -->
+        <div class="table-moderne" style="margin-bottom: var(--space-xl);">
+            <div class="main-card-header">
+                <div class="main-card-title">
+                    <i class="fas fa-calendar-week"></i>
+                    Emploi du Temps
                 </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered" width="100%" cellspacing="0">
-                            <thead>
-                                <tr>
-                                    <th>Matière</th>
-                                    <th>Horaire</th>
-                                    <th>Salle</th>
-                                    <th>Enseignant</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($todayClasses as $cours)
-                                <tr>
-                                    <td>{{ $cours->matiere->nom ?? 'N/A' }}</td>
-                                    <td>{{ $cours->heure_debut->format('H:i') }} - {{ $cours->heure_fin->format('H:i') }}</td>
-                                    <td>{{ $cours->salle }}</td>
-                                    <td>{{ $cours->enseignant }}</td>
-                                </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
+                <div class="main-card-subtitle">
+                    @if(isset($classe) && $classe)
+                        {{ $classe->nom ?? $classe->name ?? 'Ma Classe' }}
+                    @elseif(isset($student) && isset($student->classe))
+                        {{ $student->classe->nom ?? $student->classe->name ?? 'Ma Classe' }}
+                    @else
+                        Classe non définie
+                    @endif
                 </div>
             </div>
-        </div>
-    </div>
-    @endif
-
-    <!-- Examens à venir -->
-    @if(isset($upcomingExams) && $upcomingExams->count() > 0)
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Examens à venir</h6>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered" width="100%" cellspacing="0">
-                            <thead>
-                                <tr>
-                                    <th>Type</th>
-                                    <th>Matière</th>
-                                    <th>Date</th>
-                                    <th>Heure</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($upcomingExams as $examen)
-                                <tr>
-                                    <td>{{ $examen->type }}</td>
-                                    <td>{{ $examen->matiere->nom ?? 'N/A' }}</td>
-                                    <td>{{ $examen->date->format('d/m/Y') }}</td>
-                                    <td>{{ $examen->heure }}</td>
-                                </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    @endif
-
-    <!-- Notes récentes -->
-    @if(isset($recentGrades) && $recentGrades->count() > 0)
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Notes récentes</h6>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered" width="100%" cellspacing="0">
-                            <thead>
-                                <tr>
-                                    <th>Matière</th>
-                                    <th>Évaluation</th>
-                                    <th>Note</th>
-                                    <th>Coefficient</th>
-                                    <th>Date</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($recentGrades as $note)
-                                <tr>
-                                    <td>{{ $note->matiere->nom ?? 'N/A' }}</td>
-                                    <td>{{ $note->evaluation->type ?? 'N/A' }}</td>
-                                    <td>{{ $note->note }}/20</td>
-                                    <td>{{ $note->coefficient }}</td>
-                                    <td>{{ $note->created_at->format('d/m/Y') }}</td>
-                                </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="text-center mt-3">
-                        <a href="{{ route('esbtp.mes-notes.index') }}" class="btn btn-primary">Voir toutes mes notes</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    @endif
-
-    <div class="card mb-4">
-        <div class="card-header">
-            <i class="fas fa-calendar me-1"></i>
-            Emploi du temps - {{ $classe->name ?? 'Classe non définie' }}
-        </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-bordered">
-                    <thead>
-                        <tr>
-                            <th>Horaire</th>
-                            @foreach(['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'] as $index => $jour)
-                                <th>{{ $jour }}</th>
-                            @endforeach
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach(['08:00-10:00', '10:00-12:00', '13:00-15:00', '15:00-17:00', '17:00-19:00'] as $horaire)
-                            <tr>
-                                <td class="align-middle">{{ $horaire }}</td>
-                                @foreach(range(0, 5) as $jour)
-                                    <td class="align-middle">
-                                        @if(isset($seances[$jour]))
-                                            @foreach($seances[$jour] as $seance)
-                                                @php
-                                                    $heureDebut = \Carbon\Carbon::parse($seance->heure_debut)->format('H:i');
-                                                    $heureFin = \Carbon\Carbon::parse($seance->heure_fin)->format('H:i');
-                                                    $creneauSeance = $heureDebut.'-'.$heureFin;
-                                                    $creneauMatch = false;
-
-                                                    // Extraire les heures de début et de fin du créneau actuel
-                                                    list($slotStart, $slotEnd) = explode('-', $horaire);
-
-                                                    // Debug logging
-                                                    \Log::debug('Comparaison des créneaux:', [
-                                                        'jour' => $jour,
-                                                        'horaire_attendu' => $horaire,
-                                                        'slot_start' => $slotStart,
-                                                        'slot_end' => $slotEnd,
-                                                        'seance_debut' => $heureDebut,
-                                                        'seance_fin' => $heureFin,
-                                                        'matiere' => $seance->matiere->name ?? 'Non définie',
-                                                        'seance_id' => $seance->id
-                                                    ]);
-
-                                                    // Comparer les heures sans les secondes
-                                                    if ($heureDebut === $slotStart && $heureFin === $slotEnd) {
-                                                        $creneauMatch = true;
-                                                        \Log::info('Créneau correspondant trouvé:', [
-                                                            'jour' => $jour,
-                                                            'horaire' => $horaire,
-                                                            'matiere' => $seance->matiere->name ?? 'Non définie',
-                                                            'seance_id' => $seance->id
-                                                        ]);
-                                                    }
-                                                @endphp
-                                                @if($creneauMatch)
-                                                    <div class="p-2 bg-light border rounded">
-                                                        <strong>{{ $seance->matiere->name ?? 'Matière non définie' }}</strong><br>
-                                                        @if($seance->salle)
-                                                            Salle: {{ $seance->salle }}<br>
-                                                        @endif
-                                                        @if($seance->enseignantName)
-                                                            Prof: {{ $seance->enseignantName }}
-                                                        @endif
-                                                    </div>
-                                                @endif
-                                            @endforeach
-                                        @else
-                                            @php
-                                                \Log::warning('Aucune séance trouvée pour le jour ' . $jour);
-                                            @endphp
-                                        @endif
-                                    </td>
-                                @endforeach
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        @if(isset($emploiTemps))
-            <div class="card-footer">
-                <small class="text-muted">
-                    Période: {{ \Carbon\Carbon::parse($emploiTemps->date_debut)->format('d/m/Y') }} -
-                    {{ \Carbon\Carbon::parse($emploiTemps->date_fin)->format('d/m/Y') }}
-                </small>
-            </div>
-        @endif
-    </div>
-
-    <!-- Statistiques de présence -->
-    <div class="col-md-6 mb-4">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-body d-flex flex-column">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="fw-bold">Statistiques de présence</h5>
-                    <div class="rounded-circle bg-light p-2">
-                        <i class="fas fa-chart-pie text-primary"></i>
-                    </div>
-                </div>
-
-                @php
-                    // Calculer le taux de présence en utilisant les données du contrôleur
-                    $totalAttendances = isset($presences) && isset($absences) ?
-                        $presences->count() + $absences->count() +
-                        (isset($retards) ? $retards->count() : 0) +
-                        (isset($excuses) ? $excuses->count() : 0) : 0;
-
-                    $present = isset($presences) ? $presences->count() : 0;
-                    $retard = isset($retards) ? $retards->count() : 0;
-                    $excuse = isset($excuses) ? $excuses->count() : 0;
-
-                    $presenceRate = $totalAttendances > 0 ?
-                        round((($present + $retard + $excuse) / $totalAttendances) * 100) : 100;
-
-                    // Couleur basée sur le taux de présence
-                    $progressColor = $presenceRate >= 75 ? 'success' : ($presenceRate >= 50 ? 'warning' : 'danger');
-                @endphp
-
-                <div class="attendance-stats mb-3">
-                    <div class="mb-2 d-flex justify-content-between">
-                        <span class="text-muted">Taux de présence</span>
-                        <span class="fw-bold">{{ $presenceRate }}%</span>
-                    </div>
-                    <div class="progress" style="height: 10px;">
-                        <div class="progress-bar bg-{{ $progressColor }}"
-                             role="progressbar"
-                             style="width: {{ $presenceRate }}%"
-                             aria-valuenow="{{ $presenceRate }}"
-                             aria-valuemin="0"
-                             aria-valuemax="100">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="d-flex mb-3 text-center">
-                    <div class="col-4">
-                        <div class="p-2 bg-success-light rounded mb-2">
-                            <i class="fas fa-check text-success"></i>
-                        </div>
-                        <h6 class="fw-bold mb-0">{{ $present }}</h6>
-                        <small class="text-muted">Présences</small>
-                    </div>
-                    <div class="col-4">
-                        <div class="p-2 bg-danger-light rounded mb-2">
-                            <i class="fas fa-times text-danger"></i>
-                        </div>
-                        <h6 class="fw-bold mb-0">{{ isset($absences) ? $absences->count() : 0 }}</h6>
-                        <small class="text-muted">Absences</small>
-                    </div>
-                    <div class="col-4">
-                        <div class="p-2 bg-warning-light rounded mb-2">
-                            <i class="fas fa-clock text-warning"></i>
-                        </div>
-                        <h6 class="fw-bold mb-0">{{ $retard }}</h6>
-                        <small class="text-muted">Retards</small>
-                    </div>
-                </div>
-
-                <a href="{{ route('esbtp.mes-absences.index') }}" class="btn btn-primary mt-auto">
-                    <i class="fas fa-calendar-check me-2"></i>Voir toutes mes absences
+            
+            <div class="empty-state" style="padding: var(--space-xl); text-align: center;">
+                <i class="fas fa-calendar-times" style="font-size: 3rem; color: var(--text-muted); margin-bottom: var(--space-lg);"></i>
+                <h4 style="color: var(--text-secondary); margin-bottom: var(--space-md);">Emploi du temps</h4>
+                <p style="color: var(--text-muted);">
+                    Consultez votre emploi du temps complet avec toutes les séances programmées.
+                </p>
+                <a href="{{ route('esbtp.mon-emploi-temps.index') }}" class="btn-acasi primary" style="margin-top: var(--space-md);">
+                    <i class="fas fa-calendar-plus" style="margin-right: var(--space-xs);"></i>
+                    Voir l'emploi du temps complet
                 </a>
+            </div>
+        </div>
+
+        <!-- Statistiques de présence détaillées - style moderne admin-stats -->
+        <div class="admin-stats" style="margin-bottom: var(--space-xl);">
+            @php
+                // Calculer le taux de présence en utilisant les données du contrôleur
+                $totalAttendances = isset($presences) && isset($absences) ?
+                    $presences->count() + $absences->count() +
+                    (isset($retards) ? $retards->count() : 0) +
+                    (isset($excuses) ? $excuses->count() : 0) : 0;
+
+                $present = isset($presences) ? $presences->count() : 0;
+                $retard = isset($retards) ? $retards->count() : 0;
+                $excuse = isset($excuses) ? $excuses->count() : 0;
+
+                $presenceRate = $totalAttendances > 0 ?
+                    round((($present + $retard + $excuse) / $totalAttendances) * 100) : 100;
+            @endphp
+
+            <div class="stat-card success" style="padding: var(--space-xl); display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: var(--space-lg); flex: 1;">
+                    <div class="stat-icon success">
+                        <i class="fas fa-check"></i>
+                    </div>
+                    <div style="flex: 1;">
+                        <div class="stat-value" style="margin-bottom: var(--space-xs);">{{ $present }}</div>
+                        <div class="stat-label" style="margin: 0;">Présences</div>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: var(--space-xs); color: var(--success);">
+                    <i class="fas fa-user-check"></i>
+                    <span style="font-size: var(--text-small); font-weight: 500;">Cours présent</span>
+                </div>
+            </div>
+            
+            <div class="stat-card danger" style="padding: var(--space-xl); display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: var(--space-lg); flex: 1;">
+                    <div class="stat-icon danger">
+                        <i class="fas fa-times"></i>
+                    </div>
+                    <div style="flex: 1;">
+                        <div class="stat-value" style="margin-bottom: var(--space-xs);">{{ isset($absences) ? $absences->count() : 0 }}</div>
+                        <div class="stat-label" style="margin: 0;">Absences</div>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: var(--space-xs); color: var(--danger);">
+                    <i class="fas fa-user-times"></i>
+                    <span style="font-size: var(--text-small); font-weight: 500;">Cours manqués</span>
+                </div>
+            </div>
+            
+            <div class="stat-card warning" style="padding: var(--space-xl); display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: var(--space-lg); flex: 1;">
+                    <div class="stat-icon warning">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div style="flex: 1;">
+                        <div class="stat-value" style="margin-bottom: var(--space-xs);">{{ $retard }}</div>
+                        <div class="stat-label" style="margin: 0;">Retards</div>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: var(--space-xs); color: var(--warning);">
+                    <i class="fas fa-stopwatch"></i>
+                    <span style="font-size: var(--text-small); font-weight: 500;">Arrivées tardives</span>
+                </div>
+            </div>
+            
+            <div class="stat-card" style="padding: var(--space-xl); display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: var(--space-lg); flex: 1;">
+                    <div class="stat-icon primary">
+                        <i class="fas fa-chart-pie"></i>
+                    </div>
+                    <div style="flex: 1;">
+                        <div class="stat-value" style="margin-bottom: var(--space-xs);">{{ $presenceRate }}%</div>
+                        <div class="stat-label" style="margin: 0;">Taux Global</div>
+                    </div>
+                </div>
+                <div>
+                    <a href="{{ route('esbtp.mes-absences.index') }}" class="btn-acasi primary" style="font-size: var(--text-small); padding: var(--space-sm) var(--space-md); white-space: nowrap;">
+                        <i class="fas fa-chart-line" style="margin-right: var(--space-xs);"></i>
+                        Voir détails
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions rapides - même style que quick-actions-section -->
+        <div class="quick-actions-section">
+            <div class="section-header">
+                <div class="section-title">
+                    <i class="fas fa-bolt"></i>
+                    Actions Rapides
+                </div>
+            </div>
+            <div class="quick-actions-grid">
+                <a href="{{ route('esbtp.mes-notes.index') }}" class="quick-action-card">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Mes Notes</span>
+                </a>
+
+                <a href="{{ route('esbtp.mes-absences.index') }}" class="quick-action-card">
+                    <i class="fas fa-calendar-check"></i>
+                    <span>Mes Présences</span>
+                </a>
+
+                <a href="{{ route('esbtp.mon-emploi-temps.index') }}" class="quick-action-card">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>Emploi du Temps</span>
+                </a>
+
+                <a href="{{ route('esbtp.mes-evaluations.index') }}" class="quick-action-card">
+                    <i class="fas fa-tasks"></i>
+                    <span>Mes Évaluations</span>
+                </a>
+
+                <a href="{{ route('esbtp.mes-notifications.index') }}" class="quick-action-card">
+                    <i class="fas fa-bell"></i>
+                    <span>Notifications</span>
+                </a>
+
+                @if(isset($student))
+                <a href="{{ route('esbtp.etudiants.show', ['etudiant' => $student->id]) }}" class="quick-action-card">
+                    <i class="fas fa-user-circle"></i>
+                    <span>Mon Profil</span>
+                </a>
+                @endif
             </div>
         </div>
     </div>

@@ -1,278 +1,806 @@
 @extends('layouts.app')
 
-@section('title', 'Paramètres du système')
+@section('title', 'Paramètres du Système - ESBTP-yAKRO')
+
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<style>
+    .settings-section {
+        background: var(--surface);
+        border-radius: var(--radius-large);
+        padding: var(--space-xl);
+        margin-bottom: var(--space-xl);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow-card);
+    }
+    
+    .section-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: var(--space-lg);
+        padding-bottom: var(--space-md);
+        border-bottom: 2px solid var(--border);
+    }
+    
+    .section-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: var(--radius-medium);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: var(--space-md);
+        font-size: 1.25rem;
+        color: white;
+    }
+    
+    .section-icon.school { background: linear-gradient(135deg, var(--primary), var(--secondary)); }
+    .section-icon.pdf { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+    .section-icon.bulletin { background: linear-gradient(135deg, #f39c12, #e67e22); }
+    .section-icon.display { background: linear-gradient(135deg, #9b59b6, #8e44ad); }
+    .section-icon.mentions { background: linear-gradient(135deg, #1abc9c, #16a085); }
+    .section-icon.stats { background: linear-gradient(135deg, #34495e, #2c3e50); }
+    
+    .section-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0;
+    }
+    
+    .section-description {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        margin: 0;
+    }
+    
+    .form-group {
+        margin-bottom: var(--space-lg);
+    }
+    
+    .form-label-modern {
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: var(--space-sm);
+        display: flex;
+        align-items: center;
+        gap: var(--space-xs);
+    }
+    
+    .form-control-modern {
+        border: 2px solid var(--border);
+        border-radius: var(--radius-medium);
+        padding: var(--space-sm) var(--space-md);
+        transition: all 0.3s ease;
+        font-size: 0.95rem;
+    }
+    
+    .form-control-modern:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
+        outline: none;
+    }
+    
+    .form-switch-modern {
+        position: relative;
+        display: inline-block;
+        width: 48px;
+        height: 24px;
+    }
+    
+    .form-switch-modern input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: .4s;
+        border-radius: 24px;
+    }
+    
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+    
+    input:checked + .slider {
+        background-color: var(--primary);
+    }
+    
+    input:checked + .slider:before {
+        transform: translateX(24px);
+    }
+    
+    .threshold-input {
+        width: 80px;
+        text-align: center;
+    }
+    
+    .btn-save {
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        border: none;
+        color: white;
+        padding: var(--space-md) var(--space-xl);
+        border-radius: var(--radius-large);
+        font-weight: 600;
+        box-shadow: var(--shadow-card);
+        transition: all 0.3s ease;
+    }
+    
+    .btn-save:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-hover);
+        color: white;
+    }
+    
+    .alert-modern {
+        border: none;
+        border-radius: var(--radius-medium);
+        padding: var(--space-md);
+        margin-bottom: var(--space-lg);
+    }
+    
+    .settings-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: var(--space-lg);
+    }
+    
+    .settings-grid-2 {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: var(--space-md);
+    }
+    
+    .settings-grid-3 {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: var(--space-md);
+    }
+    
+    .section-actions {
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
+        margin-left: auto;
+    }
+    
+    .section-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: var(--space-lg);
+        padding-bottom: var(--space-md);
+        border-bottom: 2px solid var(--border);
+    }
+    
+    .section-header .section-actions {
+        margin-left: auto;
+    }
+</style>
+@endpush
 
 @section('content')
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h3 class="card-title">
-                        <i class="fas fa-cogs me-2"></i>
-                        Paramètres de l'École
-                    </h3>
+<div class="dashboard-acasi">
+    <div class="main-content">
+        <!-- En-tête moderne -->
+        <div class="dashboard-header mb-lg">
+            <div class="header-content">
+                <div class="header-left">
+                    <h1 class="dashboard-title">Paramètres du Système</h1>
+                    <p class="dashboard-subtitle">Configuration de l'établissement et des bulletins PDF</p>
                 </div>
-                <div class="card-body">
-                    @if(session('success'))
-                        <div class="alert alert-success alert-dismissible fade show" role="alert">
-                            <i class="fas fa-check-circle me-2"></i>
-                            {{ session('success') }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                <div class="header-right">
+                    <div class="header-stats">
+                        <div class="stat-item">
+                            <span class="stat-number">{{ collect(request()->all())->count() }}</span>
+                            <span class="stat-label">Paramètres</span>
                         </div>
-                    @endif
-
-                    @if(session('error'))
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            <i class="fas fa-exclamation-circle me-2"></i>
-                            {{ session('error') }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                    @endif
-
-                    <form action="{{ route('esbtp.settings.update') }}" method="POST" enctype="multipart/form-data">
-                        @csrf
-                        @method('PUT')
-
-                        <!-- Section Informations de l'École -->
-                        <div class="row mb-4">
-                            <div class="col-12">
-                                <h5 class="text-primary border-bottom pb-2">
-                                    <i class="fas fa-university me-2"></i>
-                                    Informations de l'Établissement
-                                </h5>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="setting_school_name" class="form-label">Nom de l'établissement <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control @error('setting_school_name') is-invalid @enderror"
-                                       id="setting_school_name" name="setting_school_name"
-                                       value="{{ old('setting_school_name', \App\Helpers\SettingsHelper::get('school_name', '')) }}"
-                                       placeholder="Ex: École Spéciale du Bâtiment et des Travaux Publics">
-                                @error('setting_school_name')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="col-md-6 mb-3">
-                                <label for="setting_school_acronym" class="form-label">Sigle/Acronyme</label>
-                                <input type="text" class="form-control @error('setting_school_acronym') is-invalid @enderror"
-                                       id="setting_school_acronym" name="setting_school_acronym"
-                                       value="{{ old('setting_school_acronym', \App\Helpers\SettingsHelper::get('school_acronym', '')) }}"
-                                       placeholder="Ex: ESBTP">
-                                @error('setting_school_acronym')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="col-md-6 mb-3">
-                                <label for="setting_school_address" class="form-label">Adresse <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control @error('setting_school_address') is-invalid @enderror"
-                                       id="setting_school_address" name="setting_school_address"
-                                       value="{{ old('setting_school_address', \App\Helpers\SettingsHelper::get('school_address', '')) }}"
-                                       placeholder="Ex: BP 2541 Yamoussoukro">
-                                @error('setting_school_address')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="col-md-6 mb-3">
-                                <label for="setting_school_city" class="form-label">Ville</label>
-                                <input type="text" class="form-control @error('setting_school_city') is-invalid @enderror"
-                                       id="setting_school_city" name="setting_school_city"
-                                       value="{{ old('setting_school_city', \App\Helpers\SettingsHelper::get('school_city', '')) }}"
-                                       placeholder="Ex: Yamoussoukro">
-                                @error('setting_school_city')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                            <div class="col-md-6 mb-3">
-                                <label for="setting_school_email" class="form-label">Email <span class="text-danger">*</span></label>
-                                <input type="email" class="form-control @error('setting_school_email') is-invalid @enderror"
-                                       id="setting_school_email" name="setting_school_email"
-                                       value="{{ old('setting_school_email', \App\Helpers\SettingsHelper::get('school_email', '')) }}"
-                                       placeholder="Ex: esbtpabidjan@esbtp-ci.net">
-                                @error('setting_school_email')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                            <div class="col-md-6 mb-3">
-                                <label for="setting_school_phone" class="form-label">Téléphone</label>
-                                <input type="text" class="form-control @error('setting_school_phone') is-invalid @enderror"
-                                       id="setting_school_phone" name="setting_school_phone"
-                                       value="{{ old('setting_school_phone', \App\Helpers\SettingsHelper::get('school_phone', '')) }}"
-                                       placeholder="Ex: 30 64 39 93">
-                                @error('setting_school_phone')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                            <div class="col-md-6 mb-3">
-                                <label for="setting_school_mobile" class="form-label">Téléphone mobile/cellulaire</label>
-                                <input type="text" class="form-control @error('setting_school_mobile') is-invalid @enderror"
-                                       id="setting_school_mobile" name="setting_school_mobile"
-                                       value="{{ old('setting_school_mobile', \App\Helpers\SettingsHelper::get('school_mobile', '')) }}"
-                                       placeholder="Ex: 07 07 79 84 85">
-                                @error('setting_school_mobile')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                            <div class="col-md-6 mb-3">
-                                <label for="setting_school_logo" class="form-label">Logo de l'établissement</label>
-                                <input type="file" class="form-control @error('setting_school_logo') is-invalid @enderror"
-                                       id="setting_school_logo" name="setting_school_logo"
-                                       accept="image/*">
-                                @if(\App\Helpers\SettingsHelper::get('school_logo'))
-                                    <small class="text-muted">Fichier actuel: {{ basename(\App\Helpers\SettingsHelper::get('school_logo')) }}</small>
-                                @endif
-                                @error('setting_school_logo')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <!-- Section Direction -->
-                        <div class="row mb-4 mt-4">
-                            <div class="col-12">
-                                <h5 class="text-primary border-bottom pb-2">
-                                    <i class="fas fa-user-tie me-2"></i>
-                                    Direction
-                                </h5>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="setting_director_name" class="form-label">Nom du directeur</label>
-                                <input type="text" class="form-control @error('setting_director_name') is-invalid @enderror"
-                                       id="setting_director_name" name="setting_director_name"
-                                       value="{{ old('setting_director_name', \App\Helpers\SettingsHelper::get('director_name', '')) }}"
-                                       placeholder="Ex: Marc BIC">
-                                @error('setting_director_name')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="col-md-6 mb-3">
-                                <label for="setting_director_title" class="form-label">Titre du directeur</label>
-                                <input type="text" class="form-control @error('setting_director_title') is-invalid @enderror"
-                                       id="setting_director_title" name="setting_director_title"
-                                       value="{{ old('setting_director_title', \App\Helpers\SettingsHelper::get('director_title', 'Directeur Général')) }}"
-                                       placeholder="Ex: Directeur Général">
-                                @error('setting_director_title')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <!-- Section PDF -->
-                        <div class="row mb-4 mt-4">
-                            <div class="col-12">
-                                <h5 class="text-primary border-bottom pb-2">
-                                    <i class="fas fa-file-pdf me-2"></i>
-                                    Configuration PDF des Bulletins
-                                </h5>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-3 mb-3">
-                                <label for="setting_pdf_show_logo" class="form-label">Afficher le logo</label>
-                                <select class="form-control @error('setting_pdf_show_logo') is-invalid @enderror"
-                                        id="setting_pdf_show_logo" name="setting_pdf_show_logo">
-                                    <option value="1" {{ \App\Helpers\SettingsHelper::get('pdf_show_logo', '1') == '1' ? 'selected' : '' }}>Oui</option>
-                                    <option value="0" {{ \App\Helpers\SettingsHelper::get('pdf_show_logo', '1') == '0' ? 'selected' : '' }}>Non</option>
-                                </select>
-                                @error('setting_pdf_show_logo')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="col-md-3 mb-3">
-                                <label for="setting_pdf_font_size" class="form-label">Taille de police (pt)</label>
-                                <input type="number" class="form-control @error('setting_pdf_font_size') is-invalid @enderror"
-                                       id="setting_pdf_font_size" name="setting_pdf_font_size"
-                                       value="{{ old('setting_pdf_font_size', \App\Helpers\SettingsHelper::get('pdf_font_size', '12')) }}"
-                                       min="8" max="20" step="1">
-                                @error('setting_pdf_font_size')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="col-md-6 mb-3">
-                                <label for="setting_pdf_footer_text" class="form-label">Texte de pied de page</label>
-                                <input type="text" class="form-control @error('setting_pdf_footer_text') is-invalid @enderror"
-                                       id="setting_pdf_footer_text" name="setting_pdf_footer_text"
-                                       value="{{ old('setting_pdf_footer_text', \App\Helpers\SettingsHelper::get('pdf_footer_text', '')) }}"
-                                       placeholder="Ex: Bulletin informatisé, aucun duplicata n'est délivré">
-                                @error('setting_pdf_footer_text')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <div class="row mt-4">
-                            <div class="col-12">
-                                <button type="submit" class="btn btn-primary btn-lg">
-                                    <i class="fas fa-save me-2"></i>
-                                    Enregistrer les modifications
-                        </button>
-                                <a href="{{ route('dashboard') }}" class="btn btn-secondary btn-lg ms-2">
-                                    <i class="fas fa-arrow-left me-2"></i>
-                                    Retour au tableau de bord
-                                </a>
-                            </div>
-                        </div>
-                    </form>
+                    </div>
                 </div>
             </div>
         </div>
+
+        <!-- Alertes -->
+        @if(session('success'))
+            <div class="alert alert-success alert-modern alert-dismissible fade show" role="alert">
+                <i class="fas fa-check-circle me-2"></i>
+                {{ session('success') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        @endif
+
+        @if(session('error'))
+            <div class="alert alert-danger alert-modern alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                {{ session('error') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        @endif
+
+        <form action="{{ route('esbtp.settings.update') }}" method="POST" enctype="multipart/form-data">
+            @csrf
+            @method('PUT')
+
+            <!-- Section 1: Informations de l'École -->
+            <div class="settings-section">
+                <div class="section-header">
+                    <div class="section-icon school">
+                        <i class="fas fa-university"></i>
+                    </div>
+                    <div>
+                        <h3 class="section-title">Informations de l'Établissement</h3>
+                        <p class="section-description">Configuration des informations principales de l'école</p>
+                    </div>
+                </div>
+
+                <div class="settings-grid">
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-building text-primary"></i>
+                            Nom de l'établissement <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" class="form-control form-control-modern @error('setting_school_name') is-invalid @enderror"
+                               name="setting_school_name"
+                               value="{{ old('setting_school_name', \App\Helpers\SettingsHelper::get('school_name', 'ESBTP-yAKRO')) }}"
+                               placeholder="Ex: École Spéciale du Bâtiment et des Travaux Publics"
+                               required>
+                        @error('setting_school_name')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-map-marker-alt text-primary"></i>
+                            Adresse
+                        </label>
+                        <input type="text" class="form-control form-control-modern @error('setting_school_address') is-invalid @enderror"
+                               name="setting_school_address"
+                               value="{{ old('setting_school_address', \App\Helpers\SettingsHelper::get('school_address', '')) }}"
+                               placeholder="Ex: BP 04 BP 1234 Abidjan 04">
+                        @error('setting_school_address')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-phone text-primary"></i>
+                            Téléphone
+                        </label>
+                        <input type="text" class="form-control form-control-modern @error('setting_school_phone') is-invalid @enderror"
+                               name="setting_school_phone"
+                               value="{{ old('setting_school_phone', \App\Helpers\SettingsHelper::get('school_phone', '')) }}"
+                               placeholder="Ex: +225 00 00 00 00">
+                        @error('setting_school_phone')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-envelope text-primary"></i>
+                            Email
+                        </label>
+                        <input type="email" class="form-control form-control-modern @error('setting_school_email') is-invalid @enderror"
+                               name="setting_school_email"
+                               value="{{ old('setting_school_email', \App\Helpers\SettingsHelper::get('school_email', '')) }}"
+                               placeholder="Ex: contact@esbtp-yakro.com">
+                        @error('setting_school_email')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 2: Configuration PDF de Base -->
+            <div class="settings-section">
+                <div class="section-header">
+                    <div class="section-icon pdf">
+                        <i class="fas fa-file-pdf"></i>
+                    </div>
+                    <div>
+                        <h3 class="section-title">Configuration PDF de Base</h3>
+                        <p class="section-description">Paramètres généraux des bulletins PDF</p>
+                    </div>
+                </div>
+
+                <div class="settings-grid-2">
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-font text-primary"></i>
+                            Taille de police (px)
+                        </label>
+                        <input type="number" class="form-control form-control-modern"
+                               name="bulletin_font_size"
+                               value="{{ \App\Helpers\SettingsHelper::get('bulletin_font_size', '11') }}"
+                               min="8" max="16" step="1">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-image text-primary"></i>
+                            Afficher le logo
+                        </label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="bulletin_show_logo" value="1" 
+                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_logo', '1') == '1' ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-university text-primary"></i>
+                            Nom école personnalisé
+                        </label>
+                        <input type="text" class="form-control form-control-modern"
+                               name="bulletin_school_name_custom"
+                               value="{{ \App\Helpers\SettingsHelper::get('bulletin_school_name_custom', '') }}"
+                               placeholder="Laissez vide pour utiliser le nom par défaut">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-calendar text-primary"></i>
+                            Afficher date d'édition
+                        </label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="bulletin_show_edition_date" value="1" 
+                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_edition_date', '1') == '1' ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 3: En-tête du Bulletin -->
+            <div class="settings-section">
+                <div class="section-header">
+                    <div class="section-icon bulletin">
+                        <i class="fas fa-heading"></i>
+                    </div>
+                    <div>
+                        <h3 class="section-title">En-tête du Bulletin</h3>
+                        <p class="section-description">Configuration des informations en haut du bulletin</p>
+                    </div>
+                </div>
+
+                <div class="settings-grid-3">
+                    <div class="form-group">
+                        <label class="form-label-modern">Afficher en-tête</label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="bulletin_show_header" value="1" 
+                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_header', '1') == '1' ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">Info République</label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="bulletin_show_republic_info" value="1" 
+                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_republic_info', '1') == '1' ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">Info Ministère</label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="bulletin_show_ministry_info" value="1" 
+                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_ministry_info', '1') == '1' ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">Info École</label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="bulletin_show_school_info" value="1" 
+                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_school_info', '1') == '1' ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">Info Cycle</label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="bulletin_show_cycle_info" value="1" 
+                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_cycle_info', '1') == '1' ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="settings-grid">
+                    <div class="form-group">
+                        <label class="form-label-modern">Texte République</label>
+                        <input type="text" class="form-control form-control-modern"
+                               name="bulletin_republic_text"
+                               value="{{ \App\Helpers\SettingsHelper::get('bulletin_republic_text', 'République de Côte d\'Ivoire') }}"
+                               placeholder="République de Côte d'Ivoire">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">Devise Union</label>
+                        <input type="text" class="form-control form-control-modern"
+                               name="bulletin_union_text"
+                               value="{{ \App\Helpers\SettingsHelper::get('bulletin_union_text', 'Union-Discipline-Travail') }}"
+                               placeholder="Union-Discipline-Travail">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">Texte Ministère</label>
+                        <input type="text" class="form-control form-control-modern"
+                               name="bulletin_ministry_text"
+                               value="{{ \App\Helpers\SettingsHelper::get('bulletin_ministry_text', 'Ministère de l\'Enseignement Supérieur') }}"
+                               placeholder="Ministère de l'Enseignement Supérieur">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">Texte Cycle</label>
+                        <input type="text" class="form-control form-control-modern"
+                               name="bulletin_cycle_text"
+                               value="{{ \App\Helpers\SettingsHelper::get('bulletin_cycle_text', 'Brevet de Technicien Supérieur') }}"
+                               placeholder="Brevet de Technicien Supérieur">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 4: Affichage du Contenu -->
+            <div class="settings-section">
+                <div class="section-header">
+                    <div class="section-icon display">
+                        <i class="fas fa-eye"></i>
+                    </div>
+                    <div>
+                        <h3 class="section-title">Affichage du Contenu</h3>
+                        <p class="section-description">Contrôle de l'affichage des différentes sections</p>
+                    </div>
+                    <div class="section-actions">
+                        <button type="button" class="btn btn-sm btn-outline-success me-2" onclick="toggleSectionCheckboxes('content-section', true)">
+                            <i class="fas fa-check-double"></i> Tout cocher
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="toggleSectionCheckboxes('content-section', false)">
+                            <i class="fas fa-times"></i> Tout décocher
+                        </button>
+                    </div>
+                </div>
+
+                <div class="settings-grid-3" id="content-section">
+                    <div class="form-group">
+                        <label class="form-label-modern">Info Étudiant</label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="bulletin_show_student_info" value="1" 
+                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_student_info', '1') == '1' ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">Matricule</label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="bulletin_show_matricule" value="1" 
+                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_matricule', '1') == '1' ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">Date Naissance</label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="bulletin_show_birth_date" value="1" 
+                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_birth_date', '1') == '1' ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">Redoublant</label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="bulletin_show_redoublant" value="1" 
+                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_redoublant', '1') == '1' ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">Tableau Matières</label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="bulletin_show_subjects_table" value="1" 
+                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_subjects_table', '1') == '1' ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">Professeurs</label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="bulletin_show_teachers" value="1" 
+                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_teachers', '1') == '1' ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">Absences</label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="bulletin_show_absences" value="1" 
+                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_absences', '1') == '1' ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">Statistiques</label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="bulletin_show_statistics" value="1" 
+                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_statistics', '1') == '1' ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">Signature</label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="bulletin_show_signature" value="1" 
+                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_signature', '1') == '1' ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">Note d'assiduité</label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="bulletin_show_attendance_note" value="1" 
+                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_attendance_note', '1') == '1' ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">Décision du conseil</label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="bulletin_show_council_decision" value="1" 
+                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_council_decision', '1') == '1' ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 5: Statistiques de classe -->
+            <div class="settings-section">
+                <div class="section-header">
+                    <div class="section-icon stats">
+                        <i class="fas fa-chart-bar"></i>
+                    </div>
+                    <div>
+                        <h3 class="section-title">Statistiques de Classe</h3>
+                        <p class="section-description">Configuration de l'affichage des statistiques</p>
+                    </div>
+                    <div class="section-actions">
+                        <button type="button" class="btn btn-sm btn-outline-success me-2" onclick="toggleSectionCheckboxes('stats-section', true)">
+                            <i class="fas fa-check-double"></i> Tout cocher
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="toggleSectionCheckboxes('stats-section', false)">
+                            <i class="fas fa-times"></i> Tout décocher
+                        </button>
+                    </div>
+                </div>
+
+                <div class="settings-grid-3" id="stats-section">
+                    <div class="form-group">
+                        <label class="form-label-modern">Plus forte moyenne</label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="bulletin_show_highest_average" value="1" 
+                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_highest_average', '1') == '1' ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">Plus faible moyenne</label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="bulletin_show_lowest_average" value="1" 
+                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_lowest_average', '1') == '1' ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">Moyenne de classe</label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="bulletin_show_class_average" value="1" 
+                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_class_average', '1') == '1' ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 6: Mentions et Seuils -->
+            <div class="settings-section">
+                <div class="section-header">
+                    <div class="section-icon mentions">
+                        <i class="fas fa-medal"></i>
+                    </div>
+                    <div>
+                        <h3 class="section-title">Mentions et Seuils</h3>
+                        <p class="section-description">Configuration des mentions automatiques</p>
+                    </div>
+                </div>
+
+                <div class="settings-grid-3">
+                    <div class="form-group">
+                        <label class="form-label-modern">Calcul Auto</label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="bulletin_auto_calculate_mention" value="1" 
+                                   {{ \App\Helpers\SettingsHelper::get('bulletin_auto_calculate_mention', '1') == '1' ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">Félicitations</label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="bulletin_show_felicitation" value="1" 
+                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_felicitation', '1') == '1' ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">Encouragements</label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="bulletin_show_encouragement" value="1" 
+                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_encouragement', '1') == '1' ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="settings-grid">
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-star text-warning"></i>
+                            Seuil Félicitations (/20)
+                        </label>
+                        <input type="number" class="form-control form-control-modern threshold-input"
+                               name="bulletin_felicitation_threshold"
+                               value="{{ \App\Helpers\SettingsHelper::get('bulletin_felicitation_threshold', '16') }}"
+                               min="0" max="20" step="0.5">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-thumbs-up text-success"></i>
+                            Seuil Encouragements (/20)
+                        </label>
+                        <input type="number" class="form-control form-control-modern threshold-input"
+                               name="bulletin_encouragement_threshold"
+                               value="{{ \App\Helpers\SettingsHelper::get('bulletin_encouragement_threshold', '14') }}"
+                               min="0" max="20" step="0.5">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-award text-info"></i>
+                            Seuil Tableau d'honneur (/20)
+                        </label>
+                        <input type="number" class="form-control form-control-modern threshold-input"
+                               name="bulletin_honor_roll_threshold"
+                               value="{{ \App\Helpers\SettingsHelper::get('bulletin_honor_roll_threshold', '12') }}"
+                               min="0" max="20" step="0.5">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-exclamation-triangle text-danger"></i>
+                            Seuil Avertissement (/20)
+                        </label>
+                        <input type="number" class="form-control form-control-modern threshold-input"
+                               name="bulletin_work_warning_threshold"
+                               value="{{ \App\Helpers\SettingsHelper::get('bulletin_work_warning_threshold', '8') }}"
+                               min="0" max="20" step="0.5">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bouton de sauvegarde -->
+            <div class="text-center mt-xl">
+                <button type="submit" class="btn btn-save">
+                    <i class="fas fa-save me-2"></i>
+                    Sauvegarder les Paramètres
+                </button>
+            </div>
+        </form>
     </div>
 </div>
-
-<style>
-.card {
-    border: none;
-    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-}
-
-.card-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border-bottom: none;
-}
-
-.form-label {
-    font-weight: 600;
-    color: #495057;
-}
-
-.text-primary {
-    color: #667eea !important;
-}
-
-.border-bottom {
-    border-color: #dee2e6 !important;
-}
-
-.btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border: none;
-}
-
-.btn-primary:hover {
-    background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
-    transform: translateY(-1px);
-}
-
-.alert {
-    border: none;
-    border-radius: 10px;
-}
-</style>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Animation au scroll
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+            }
+        });
+    });
+    
+    document.querySelectorAll('.settings-section').forEach(section => {
+        section.style.opacity = '0';
+        section.style.transform = 'translateY(20px)';
+        section.style.transition = 'all 0.6s ease';
+        observer.observe(section);
+    });
+    
+    // Validation en temps réel
+    document.querySelectorAll('input[type="number"]').forEach(input => {
+        input.addEventListener('input', function() {
+            const min = parseFloat(this.min);
+            const max = parseFloat(this.max);
+            const value = parseFloat(this.value);
+            
+            if (value < min || value > max) {
+                this.style.borderColor = '#e74c3c';
+            } else {
+                this.style.borderColor = '#27ae60';
+            }
+        });
+    });
+    
+    // Preview des changements
+    document.querySelectorAll('.form-switch-modern input').forEach(toggle => {
+        toggle.addEventListener('change', function() {
+            const section = this.closest('.settings-section');
+            if (this.checked) {
+                section.style.borderLeft = '4px solid var(--primary)';
+            } else {
+                section.style.borderLeft = 'none';
+            }
+        });
+    });
+});
+
+// Fonction pour tout cocher/décocher dans une section
+function toggleSectionCheckboxes(sectionId, state) {
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+    
+    const checkboxes = section.querySelectorAll('input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = state;
+        // Déclencher l'événement change pour les effets visuels
+        checkbox.dispatchEvent(new Event('change'));
+    });
+    
+    // Animation pour indiquer l'action
+    section.style.transform = 'scale(1.02)';
+    section.style.transition = 'transform 0.3s ease';
+    setTimeout(() => {
+        section.style.transform = 'scale(1)';
+    }, 300);
+}
+</script>
+@endpush

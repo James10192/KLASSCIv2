@@ -13,7 +13,7 @@
                         <a href="{{ route('esbtp.bulletins.pdf-params', ['bulletin' => $bulletin->etudiant_id, 'classe_id' => $bulletin->classe_id, 'periode' => $bulletin->periode, 'annee_universitaire_id' => $bulletin->annee_universitaire_id]) }}" class="btn btn-secondary me-2" target="_blank">
                             <i class="fas fa-file-pdf me-1"></i>Télécharger PDF
                         </a>
-                        @if(auth()->user()->hasRole('superAdmin'))
+                        @if(auth()->check() && auth()->user() && auth()->user()->hasRole('superAdmin'))
                         <a href="{{ route('esbtp.bulletins.config-matieres', ['bulletin' => $bulletin->etudiant_id, 'classe_id' => $bulletin->classe_id, 'periode' => $bulletin->periode, 'annee_universitaire_id' => $bulletin->annee_universitaire_id]) }}" class="btn btn-info me-2">
                             <i class="fas fa-cog me-1"></i>Configurer Matières
                         </a>
@@ -387,7 +387,7 @@
                             <a href="{{ route('esbtp.bulletins.edit', $bulletin) }}" class="btn btn-primary">
                                 <i class="fas fa-edit"></i> Modifier
                             </a>
-                            @if(auth()->user()->hasRole('superAdmin'))
+                            @if(auth()->check() && auth()->user() && auth()->user()->hasRole('superAdmin'))
                                 <a href="{{ route('esbtp.bulletins.migrate-resultats-to-details', $bulletin) }}" class="btn btn-info ml-2">
                                     <i class="fas fa-sync"></i> Migrer résultats vers détails
                                 </a>

@@ -24,37 +24,37 @@
         </div>
         <!-- Statistiques KPI -->
         <div class="kpi-grid">
-            <div class="kpi-card card-moderne bg-primary">
-                <div class="kpi-title">Total Évaluations</div>
-                <div class="kpi-value color-primary">{{ $totalEvaluations }}</div>
-                <div class="kpi-trend">
+            <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
+                <div class="kpi-title" style="color: #000; font-weight: 600;">Total Évaluations</div>
+                <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ $totalEvaluations }}</div>
+                <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
                     <i class="fas fa-file-alt"></i>
                     Toutes les évaluations
                 </div>
             </div>
             
-            <div class="kpi-card card-moderne bg-success">
-                <div class="kpi-title">Évaluations Publiées</div>
-                <div class="kpi-value color-success">{{ $evaluationsPubliees }}</div>
-                <div class="kpi-trend positive">
+            <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
+                <div class="kpi-title" style="color: #000; font-weight: 600;">Évaluations Publiées</div>
+                <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ $evaluationsPubliees }}</div>
+                <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
                     <i class="fas fa-check-circle"></i>
                     Actives
                 </div>
             </div>
             
-            <div class="kpi-card card-moderne bg-accent">
-                <div class="kpi-title">Examens</div>
-                <div class="kpi-value color-accent">{{ $examens }}</div>
-                <div class="kpi-trend">
+            <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
+                <div class="kpi-title" style="color: #000; font-weight: 600;">Examens</div>
+                <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ $examens }}</div>
+                <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
                     <i class="fas fa-graduation-cap"></i>
                     Examens officiels
                 </div>
             </div>
             
-            <div class="kpi-card card-moderne bg-warning">
-                <div class="kpi-title">Devoirs</div>
-                <div class="kpi-value color-warning">{{ $devoirs }}</div>
-                <div class="kpi-trend">
+            <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
+                <div class="kpi-title" style="color: #000; font-weight: 600;">Devoirs</div>
+                <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ $devoirs }}</div>
+                <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
                     <i class="fas fa-pencil-alt"></i>
                     Travaux dirigés
                 </div>
@@ -62,7 +62,7 @@
         </div>
 
         <!-- Section de gestion des liens externes (pour admins/secrétaires uniquement) -->
-        @if(!auth()->user()->hasRole(['teacher', 'enseignant', 'etudiant']))
+        @if(auth()->check() && auth()->user() && !auth()->user()->hasRole(['teacher', 'enseignant', 'etudiant']))
         <div class="main-card">
             @if($evaluationsForExternalLinks->isNotEmpty())
                 @include('components.external-links-manager', ['evaluations' => $evaluationsForExternalLinks])
@@ -147,10 +147,13 @@
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <select class="form-select" name="is_published" id="published_filter">
+                            <select class="form-select" name="status" id="status_filter">
                                 <option value="">Tous les statuts</option>
-                                <option value="1" {{ request('is_published') === '1' ? 'selected' : '' }}>Publiées</option>
-                                <option value="0" {{ request('is_published') === '0' ? 'selected' : '' }}>Non publiées</option>
+                                <option value="draft" {{ request('status') === 'draft' ? 'selected' : '' }}>Brouillon</option>
+                                <option value="scheduled" {{ request('status') === 'scheduled' ? 'selected' : '' }}>Planifiée</option>
+                                <option value="in_progress" {{ request('status') === 'in_progress' ? 'selected' : '' }}>En cours</option>
+                                <option value="completed" {{ request('status') === 'completed' ? 'selected' : '' }}>Terminée</option>
+                                <option value="cancelled" {{ request('status') === 'cancelled' ? 'selected' : '' }}>Annulée</option>
                             </select>
                         </div>
                         <div class="col-md-2">
@@ -220,14 +223,19 @@
                                         <td>
                                             <form action="{{ route('esbtp.evaluations.update-status', $evaluation) }}" method="POST" class="d-inline status-form">
                                                 @csrf
-                                                @method('PATCH')
-                                                <select name="status" class="form-select form-select-sm status-select py-1 px-2" style="min-width: 120px;">
-                                                    <option value="draft" {{ $evaluation->status === 'draft' ? 'selected' : '' }} class="text-secondary">Brouillon</option>
-                                                    <option value="scheduled" {{ $evaluation->status === 'scheduled' ? 'selected' : '' }} class="text-primary">Planifiée</option>
-                                                    <option value="in_progress" {{ $evaluation->status === 'in_progress' ? 'selected' : '' }} class="text-warning">En cours</option>
-                                                    <option value="completed" {{ $evaluation->status === 'completed' ? 'selected' : '' }} class="text-success">Terminée</option>
-                                                    <option value="cancelled" {{ $evaluation->status === 'cancelled' ? 'selected' : '' }} class="text-danger">Annulée</option>
-                                                </select>
+                                                <input type="hidden" name="_method" value="PATCH">
+                                                <div class="d-flex align-items-center gap-2" style="min-width: 200px;">
+                                                    <select name="status" class="form-select form-select-sm status-select status-{{ $evaluation->status }}" data-original-value="{{ $evaluation->status }}" style="min-width: 150px; padding-right: 30px;">
+                                                        <option value="draft" {{ $evaluation->status === 'draft' ? 'selected' : '' }}>📝 Brouillon</option>
+                                                        <option value="scheduled" {{ $evaluation->status === 'scheduled' ? 'selected' : '' }}>📅 Planifiée</option>
+                                                        <option value="in_progress" {{ $evaluation->status === 'in_progress' ? 'selected' : '' }}>⏳ En cours</option>
+                                                        <option value="completed" {{ $evaluation->status === 'completed' ? 'selected' : '' }}>✅ Terminée</option>
+                                                        <option value="cancelled" {{ $evaluation->status === 'cancelled' ? 'selected' : '' }}>❌ Annulée</option>
+                                                    </select>
+                                                    <button type="submit" class="btn btn-sm btn-success save-status-btn" style="display: none;" title="Sauvegarder les modifications">
+                                                        <i class="fas fa-save"></i>
+                                                    </button>
+                                                </div>
                                             </form>
                                         </td>
                                         <td>
@@ -475,11 +483,12 @@
     background-color: var(--surface);
     border: 1px solid rgba(0, 0, 0, 0.1);
     border-radius: var(--radius-small);
-    padding: var(--space-xs) var(--space-sm);
+    padding: var(--space-xs) 30px var(--space-xs) var(--space-sm) !important;
     font-size: var(--text-small);
     color: var(--text-primary);
     cursor: pointer;
     transition: all 0.2s ease;
+    min-width: 140px;
 }
 
 .status-select:focus {
@@ -578,6 +587,71 @@
     box-shadow: var(--shadow-elevated);
 }
 
+/* Status select colors */
+.status-select.status-draft {
+    border-left: 4px solid #6b7280;
+    background-color: #f9fafb;
+}
+
+.status-select.status-scheduled {
+    border-left: 4px solid #3b82f6;
+    background-color: #eff6ff;
+}
+
+.status-select.status-in_progress {
+    border-left: 4px solid #f59e0b;
+    background-color: #fffbeb;
+}
+
+.status-select.status-completed {
+    border-left: 4px solid #10b981;
+    background-color: #ecfdf5;
+}
+
+.status-select.status-cancelled {
+    border-left: 4px solid #ef4444;
+    background-color: #fef2f2;
+}
+
+.status-loading {
+    font-size: 0.75rem;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.save-status-btn {
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.save-status-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.save-status-btn:disabled {
+    opacity: 0.6;
+}
+
+.status-form {
+    width: 100%;
+}
+
+/* Normal styling for save button */
+.save-status-btn {
+    border: 1px solid #28a745;
+    background-color: #28a745;
+    color: white;
+}
+
 .pagination-wrapper {
     display: flex;
     justify-content: center;
@@ -620,10 +694,60 @@
 @push('scripts')
 <script>
 $(document).ready(function() {
-    // Initialize Select2
-    $('.select2').select2({
-        width: '100%'
+    console.log('🚀 EVALUATION STATUS SCRIPT LOADED');
+    console.log('🔍 Found status selects:', $('.status-select').length);
+    console.log('🔍 Found save buttons:', $('.save-status-btn').length);
+    
+    // Setup CSRF token for all AJAX requests
+    $.ajaxSetup({
+        headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') || $('input[name="_token"]').first().val()
+        }
     });
+    
+    // Initialize save buttons - hide them initially and sync original values
+    $('.save-status-btn').each(function() {
+        var $btn = $(this);
+        var $form = $btn.closest('form');
+        var $select = $form.find('.status-select');
+        var originalValue = $select.data('original-value');
+        var currentValue = $select.val();
+        
+        // Update data-original-value to match current value (in case it was updated from server)
+        $select.attr('data-original-value', currentValue);
+        
+        // Hide button if status hasn't changed
+        if (currentValue === originalValue) {
+            $btn.hide();
+        } else {
+            // If they're different, it means we need to sync them
+            $select.attr('data-original-value', currentValue);
+            $btn.hide(); // Hide since they're now the same
+        }
+    });
+    
+    // Test immediat
+    setTimeout(function() {
+        console.log('🔧 Testing immediate functionality...');
+        $('.status-select').each(function(index) {
+            var $select = $(this);
+            var originalValue = $select.data('original-value');
+            console.log('Select #' + index + ' - Original value:', originalValue, 'Current value:', $select.val());
+        });
+        
+        $('.save-status-btn').each(function(index) {
+            console.log('Button #' + index + ' - Display:', $(this).css('display'), 'Visible:', $(this).is(':visible'));
+        });
+    }, 1000);
+    
+    // Initialize Select2 only if available
+    if (typeof $.fn.select2 !== 'undefined') {
+        $('.select2').select2({
+            width: '100%'
+        });
+    } else {
+        console.log('Select2 not available, skipping initialization');
+    }
 
     // Initialize tooltips
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
@@ -631,19 +755,154 @@ $(document).ready(function() {
         return new bootstrap.Tooltip(tooltipTriggerEl)
     });
 
-    // Handle status change
-    $('.status-select').change(function() {
-        $(this).closest('form').submit();
+    // Status change handler - simple approach
+    $(document).on('change', '.status-select', function() {
+        console.log('🔄 Status changed');
+        var select = this;
+        var form = $(select).closest('form')[0];
+        var saveBtn = $(form).find('.save-status-btn')[0];
+        var originalValue = $(select).data('original-value');
+        var currentValue = select.value;
+        
+        console.log('📊 Values - Original:', originalValue, 'Current:', currentValue);
+        
+        if (currentValue !== originalValue) {
+            console.log('✅ Showing save button');
+            $(saveBtn).show();
+        } else {
+            console.log('❌ Hiding save button');
+            $(saveBtn).hide();
+        }
     });
+    
+    // Debug: Add direct click handlers and check button state
+    setTimeout(function() {
+        $('.save-status-btn').each(function(index) {
+            var $btn = $(this);
+            console.log('🔧 Adding direct click handler to button #' + index);
+            console.log('🔍 Button #' + index + ' state:', {
+                display: $btn.css('display'),
+                visibility: $btn.css('visibility'),
+                opacity: $btn.css('opacity'),
+                disabled: $btn.prop('disabled'),
+                offset: $btn.offset(),
+                width: $btn.width(),
+                height: $btn.height()
+            });
+            
+            $btn.off('click.debug').on('click.debug', function(e) {
+                console.log('🎯 Direct click detected on save button #' + index);
+            });
+            
+            // Also add mousedown/mouseup for more debugging
+            $btn.on('mousedown', function() {
+                console.log('🖱️ Mouse down on save button #' + index);
+            });
+            
+            $btn.on('mouseup', function() {
+                console.log('🖱️ Mouse up on save button #' + index);
+            });
+        });
+    }, 2000);
+    
+    // Save button click handler
+    $(document).on('click', '.save-status-btn', function(e) {
+        e.preventDefault();
+        console.log('💾 Save button clicked!');
+        
+        var btn = this;
+        var form = $(btn).closest('form')[0];
+        var select = $(form).find('.status-select')[0];
+        var newValue = $(select).val();
+        var originalValue = $(select).attr('data-original-value');
+        
+        console.log('📊 About to save - Original:', originalValue, 'New:', newValue);
+        console.log('📋 Form action:', form.action);
+        console.log('📋 Form method:', form.method);
+        
+        // Debug: Check if _method field exists
+        var methodField = $(form).find('input[name="_method"]');
+        console.log('🔍 _method field found:', methodField.length > 0);
+        if (methodField.length > 0) {
+            console.log('🔍 _method value:', methodField.val());
+        }
+        
+        // Debug: Check all form inputs
+        console.log('📋 All form inputs:');
+        $(form).find('input, select').each(function() {
+            console.log('  - ' + this.name + ': ' + this.value);
+        });
+        
+        // Loading state
+        $(btn).prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+        $(select).prop('disabled', true);
+        
+        // Store the new value that will be saved
+        $(select).attr('data-pending-value', newValue);
+        
+        console.log('🚀 Submitting form via AJAX...');
+        
+        // Get CSRF token from multiple sources for reliability
+        var csrfToken = $(form).find('input[name="_token"]').val() || 
+                        $('meta[name="csrf-token"]').attr('content') || 
+                        $('input[name="_token"]').first().val();
+        
+        console.log('🔐 CSRF Token:', csrfToken);
+        
+        // Use AJAX with POST method and _method field (Laravel way)
+        $.ajax({
+            url: form.action,
+            type: 'POST',
+            data: {
+                _method: 'PATCH',
+                _token: csrfToken,
+                status: newValue
+            },
+            success: function(response) {
+                console.log('✅ AJAX Success:', response);
+                // Reload page to show updated status
+                window.location.reload();
+            },
+            error: function(xhr, status, error) {
+                console.error('❌ AJAX Error:', xhr.responseText);
+                // Re-enable form on error
+                $(btn).prop('disabled', false).html('<i class="fas fa-save"></i>');
+                $(select).prop('disabled', false);
+                alert('Erreur lors de la sauvegarde: ' + xhr.responseText);
+            }
+        });
+    });
+    
+    // Handle successful form submission detection
+    @if(session('success'))
+    console.log('✅ Status update success detected:', '{{ addslashes(session('success')) }}');
+    
+    // IMPORTANT: The data-original-value in HTML is already correct from server
+    // We just need to hide any visible save buttons since the values are now synced
+    $('.status-select').each(function() {
+        var $select = $(this);
+        var currentValue = $select.val();
+        var originalValue = $select.attr('data-original-value');
+        
+        console.log('🔄 Post-save check - Original:', originalValue, 'Current:', currentValue);
+        
+        // Hide save button since server has updated the data-original-value correctly
+        var $form = $select.closest('form');
+        var $saveBtn = $form.find('.save-status-btn');
+        $saveBtn.hide();
+        
+        console.log('✅ Save button hidden, values are synced from server');
+    });
+    @endif
 
     // Handle filters
-    $('#classe_filter, #matiere_filter, #type_filter, #published_filter').change(function() {
+    $('#classe_filter, #matiere_filter, #type_filter, #status_filter').change(function() {
         applyFilters();
     });
 
     // Reset filters
     $('#reset_filters').click(function() {
-        $('#classe_filter, #matiere_filter, #type_filter, #published_filter').val('').trigger('change');
+        $('#classe_filter, #matiere_filter, #type_filter, #status_filter').val('').trigger('change');
     });
 
     // Handle bulk selection
@@ -684,7 +943,7 @@ $(document).ready(function() {
         const classe_id = $('#classe_filter').val();
         const matiere_id = $('#matiere_filter').val();
         const type = $('#type_filter').val();
-        const is_published = $('#published_filter').val();
+        const status = $('#status_filter').val();
 
         if (classe_id) params.set('classe_id', classe_id);
         else params.delete('classe_id');
@@ -695,8 +954,8 @@ $(document).ready(function() {
         if (type) params.set('type', type);
         else params.delete('type');
 
-        if (is_published) params.set('is_published', is_published);
-        else params.delete('is_published');
+        if (status) params.set('status', status);
+        else params.delete('status');
 
         window.location.search = params.toString();
     }

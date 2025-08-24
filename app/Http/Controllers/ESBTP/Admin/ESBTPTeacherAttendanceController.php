@@ -47,6 +47,10 @@ class ESBTPTeacherAttendanceController extends Controller
     private function showTeacherAttendancePage()
     {
         $user = auth()->user();
+        
+        // Récupérer le modèle enseignant associé à l'utilisateur
+        $teacherModel = \App\Models\ESBTPTeacher::where('user_id', $user->id)->first();
+        $teacherId = $teacherModel ? $teacherModel->id : null;
 
         // Get today's courses for the teacher  
         $today = now()->format('Y-m-d');
@@ -55,14 +59,21 @@ class ESBTPTeacherAttendanceController extends Controller
         $dayOfWeekDb = $dayOfWeek == 0 ? 7 : $dayOfWeek;
         
         $todayCourses = ESBTPSeanceCours::with(['matiere', 'emploiTemps.classe'])
-            ->where('teacher_id', $user->id) // Direct teacher assignment on seance
-            ->where('is_active', true)
-            ->where('jour', $dayOfWeekDb)
+            ->where('teacher_id', $teacherId) // Use proper teacher_id from ESBTPTeacher table
+            ->where(function($query) use ($today, $dayOfWeekDb) {
+                // Séances avec date_seance aujourd'hui
+                $query->whereDate('date_seance', $today)
+                // OU séances récurrentes pour le jour d'aujourd'hui
+                ->orWhere('jour', $dayOfWeekDb);
+            })
+            ->whereHas('emploiTemps', function($query) {
+                $query->where('is_active', true);
+            })
             ->get();
 
         // Load teacher attendance status for each course
-        $todayCourses->each(function($course) use ($user, $today) {
-            $course->teacherAttendance = ESBTPTeacherAttendance::where('teacher_id', $user->id)
+        $todayCourses->each(function($course) use ($teacherId, $today) {
+            $course->teacherAttendance = ESBTPTeacherAttendance::where('teacher_id', $teacherId)
                 ->where('course_id', $course->id)
                 ->whereDate('date', $today)
                 ->first();
@@ -126,13 +137,19 @@ class ESBTPTeacherAttendanceController extends Controller
         // Get current teacher
         $user = auth()->user();
         
+        // Récupérer le modèle enseignant associé à l'utilisateur
+        $teacherModel = \App\Models\ESBTPTeacher::where('user_id', $user->id)->first();
+        if (!$teacherModel) {
+            return redirect()->back()->with('error', 'Aucun profil enseignant associé à ce compte.');
+        }
+        
         // Check if teacher is assigned to this course
-        if ($seanceCours->teacher_id !== $user->id) {
+        if ($seanceCours->teacher_id !== $teacherModel->id) {
             return redirect()->back()->with('error', 'Vous n\'êtes pas assigné à ce cours.');
         }
         
         // Check if teacher has already marked attendance for this course today
-        $existingAttendance = ESBTPTeacherAttendance::where('teacher_id', $user->id)
+        $existingAttendance = ESBTPTeacherAttendance::where('teacher_id', $teacherModel->id)
             ->where('course_id', $seanceCours->id)
             ->whereDate('date', today())
             ->first();
@@ -144,7 +161,7 @@ class ESBTPTeacherAttendanceController extends Controller
         // Create attendance record
         try {
             $attendance = ESBTPTeacherAttendance::create([
-                'teacher_id' => $user->id,
+                'teacher_id' => $teacherModel->id,
                 'course_id' => $seanceCours->id,
                 'daily_code_id' => $dailyCode->id,
                 'date' => now()->toDateString(),
@@ -158,7 +175,13 @@ class ESBTPTeacherAttendanceController extends Controller
             // Record successful attempt on the daily code
             $dailyCode->recordAttempt(true);
 
-            return redirect()->back()->with('success', 'Émargement enregistré avec succès.');
+            // Marquer l'émargement comme fait dans le workflow
+            $workflow = \App\Models\ESBTPSessionWorkflow::getOrCreateForSession($seanceCours->id, $user->id);
+            $workflow->markAttendanceSigned();
+
+            // Rediriger vers la page de sélection du type d'appel après émargement réussi
+            return redirect()->route('teacher.select-call-type', ['seance' => $seanceCours->id])
+                ->with('success', 'Émargement enregistré avec succès. Veuillez maintenant effectuer l\'appel des étudiants.');
 
         } catch (\Exception $e) {
             // Record failed attempt

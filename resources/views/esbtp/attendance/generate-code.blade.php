@@ -673,10 +673,15 @@
                                         </div>
                                     </td>
                                     <td class="text-center">
-                                        @if($code->status === 'active')
+                                        @if($code->status === 'active' && $code->valid_until > now())
                                             <span class="status-badge success">
                                                 <i class="fas fa-check-circle"></i>
                                                 Actif
+                                            </span>
+                                        @elseif($code->status === 'active' && $code->valid_until <= now())
+                                            <span class="status-badge warning">
+                                                <i class="fas fa-clock"></i>
+                                                Expiré
                                             </span>
                                         @elseif($code->status === 'expired')
                                             <span class="status-badge warning">
@@ -691,7 +696,7 @@
                                         @endif
                                     </td>
                                     <td class="text-center">
-                                        @if($code->status === 'active')
+                                        @if($code->status === 'active' && $code->valid_until > now())
                                             <form action="{{ route('esbtp.attendance-codes.invalidate', $code->id) }}" method="POST" class="d-inline">
                                                 @csrf
                                                 <button type="submit" class="btn-icon danger" onclick="return confirm('Invalider ce code ?')" title="Invalider">

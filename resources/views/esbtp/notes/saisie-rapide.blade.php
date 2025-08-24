@@ -5,205 +5,220 @@
 @section('page_title', 'Saisie rapide des notes')
 
 @section('content')
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card shadow-sm">
-                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
-                    <h5 class="mb-0 text-primary fw-bold">
-                        <i class="fas fa-pen-alt me-2"></i>Saisie des notes : {{ $evaluation->titre }}
-                    </h5>
-                    <div>
-                        <a href="{{ route('esbtp.evaluations.pdf', $evaluation) }}" class="btn btn-info me-2 shadow-sm">
-                            <i class="fas fa-file-pdf me-2"></i>Exporter en PDF
-                        </a>
-                        <a href="{{ route('esbtp.evaluations.show', $evaluation) }}" class="btn btn-secondary me-2 shadow-sm">
-                            <i class="fas fa-eye me-2"></i>Voir l'évaluation
-                        </a>
-                        <a href="{{ route('esbtp.evaluations.index') }}" class="btn btn-outline-secondary shadow-sm">
-                            <i class="fas fa-arrow-left me-2"></i>Retour
-                        </a>
+<div class="dashboard-acasi">
+    <div class="main-content">
+        <!-- Header Section -->
+        <div class="dashboard-header">
+            <div class="header-left">
+                <h1><i class="fas fa-pen-alt me-2"></i>Saisie des notes</h1>
+                <p class="header-subtitle">{{ $evaluation->titre }}</p>
+            </div>
+            <div class="header-actions">
+                <a href="{{ route('esbtp.evaluations.pdf', $evaluation) }}" class="btn-acasi secondary me-2">
+                    <i class="fas fa-file-pdf"></i>Exporter PDF
+                </a>
+                <a href="{{ route('esbtp.evaluations.show', $evaluation) }}" class="btn-acasi secondary me-2">
+                    <i class="fas fa-eye"></i>Voir l'évaluation
+                </a>
+                <a href="{{ route('esbtp.evaluations.index') }}" class="btn-acasi primary">
+                    <i class="fas fa-arrow-left"></i>Retour
+                </a>
+            </div>
+        </div>
+
+        @if (session('success'))
+            <div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
+                <i class="fas fa-check-circle me-2"></i>
+                {{ session('success') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+
+        @if (session('error'))
+            <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                {{ session('error') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+
+        <!-- Informations sur l'évaluation -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-6">
+                <div class="main-card h-100">
+                    <div class="main-card-header" style="background: linear-gradient(135deg, rgba(30, 58, 138, 0.1), rgba(30, 64, 175, 0.05));">
+                        <div class="main-card-title">
+                            <i class="fas fa-info-circle"></i>
+                            Informations sur l'évaluation
+                        </div>
+                    </div>
+                    <div class="main-card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <div class="info-item">
+                                    <div class="info-label">Titre</div>
+                                    <div class="info-value">{{ $evaluation->titre }}</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="info-item">
+                                    <div class="info-label">Type</div>
+                                    <div class="info-value">
+                                        @php
+                                            $typeIcons = [
+                                                'examen' => '<i class="fas fa-file-alt color-primary me-1"></i>',
+                                                'devoir' => '<i class="fas fa-pencil-alt color-success me-1"></i>',
+                                                'tp' => '<i class="fas fa-flask color-warning me-1"></i>',
+                                                'projet' => '<i class="fas fa-project-diagram color-accent me-1"></i>',
+                                                'controle' => '<i class="fas fa-tasks color-neutral me-1"></i>',
+                                                'rattrapage' => '<i class="fas fa-redo color-danger me-1"></i>',
+                                            ];
+                                            $icon = $typeIcons[$evaluation->type] ?? '<i class="fas fa-file-alt color-primary me-1"></i>';
+                                        @endphp
+                                        {!! $icon !!} {{ ucfirst($evaluation->type) }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="info-item">
+                                    <div class="info-label">Date</div>
+                                    <div class="info-value">
+                                        <i class="far fa-calendar-alt color-neutral me-1"></i>
+                                        {{ date('d/m/Y', strtotime($evaluation->date_evaluation)) }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="info-item">
+                                    <div class="info-label">Classe</div>
+                                    <div class="info-value">
+                                        <i class="fas fa-users color-neutral me-1"></i>
+                                        {{ $evaluation->classe->name }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="info-item">
+                                    <div class="info-label">Matière</div>
+                                    <div class="info-value">
+                                        <i class="fas fa-book color-neutral me-1"></i>
+                                        {{ $evaluation->matiere->name }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="info-item">
+                                    <div class="info-label">Barème</div>
+                                    <div class="info-value">
+                                        <i class="fas fa-calculator color-neutral me-1"></i>
+                                        {{ $evaluation->bareme }} points
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="info-item">
+                                    <div class="info-label">Coefficient</div>
+                                    <div class="info-value">
+                                        <i class="fas fa-balance-scale color-neutral me-1"></i>
+                                        {{ $evaluation->coefficient }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <div class="info-label">État des notes</div>
+                                    <div class="info-value">
+                                        <span class="status-badge {{ $evaluation->notes->count() > 0 ? 'success' : 'warning' }}">
+                                            <i class="fas {{ $evaluation->notes->count() > 0 ? 'fa-check-circle' : 'fa-exclamation-circle' }} me-1"></i>
+                                            {{ $evaluation->notes->count() > 0 ? $evaluation->notes->count() . ' notes saisies' : 'Aucune note saisie' }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                                </div>
+                            </div>
+                        </div>
+            <div class="col-md-6">
+                <div class="main-card h-100">
+                    <div class="main-card-header" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));">
+                        <div class="main-card-title">
+                            <i class="fas fa-question-circle"></i>
+                            Guide de saisie
+                        </div>
+                    </div>
+                    <div class="main-card-body">
+                        <div class="alert alert-info border-0">
+                            <i class="fas fa-lightbulb me-2"></i>
+                            <strong>Conseils pour une saisie efficace :</strong>
+                            <ul class="ps-4 mt-2 mb-0">
+                                <li>Utilisez la touche <kbd>Tab</kbd> pour passer au champ suivant</li>
+                                <li>Appuyez sur <kbd>Enter</kbd> pour valider une note et passer à la suivante</li>
+                                <li>Double-cliquez sur un champ pour le modifier rapidement</li>
+                                <li>Les champs en rouge indiquent des erreurs de saisie</li>
+                            </ul>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <div class="card-moderne mb-3">
+                                    <div class="card-body p-3">
+                                        <div class="d-flex align-items-center">
+                                            <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px">
+                                                <i class="fas fa-check"></i>
+                                            </div>
+                                            <div>
+                                                <h6 class="mb-1 fw-bold">Notes</h6>
+                                                <p class="mb-0 small">Entre 0 et {{ $evaluation->bareme }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card-moderne mb-3">
+                                    <div class="card-body p-3">
+                                        <div class="d-flex align-items-center">
+                                            <div class="rounded-circle bg-warning text-white d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px">
+                                                <i class="fas fa-user-slash"></i>
+                                            </div>
+                                            <div>
+                                                <h6 class="mb-1 fw-bold">Absents</h6>
+                                                <p class="mb-0 small">Cochez la case</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="card-body">
-                    @if (session('success'))
-                        <div class="alert alert-success alert-dismissible fade show shadow-sm border-start border-success border-4" role="alert">
-                            <i class="fas fa-check-circle me-2"></i>
-                            {{ session('success') }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    @endif
+            </div>
+        </div>
+        <!-- Formulaire de saisie des notes -->
+        <form action="{{ route('esbtp.notes.store-batch') }}" method="POST" id="notesForm">
+            @csrf
+            <input type="hidden" name="evaluation_id" value="{{ $evaluation->id }}">
 
-                    @if (session('error'))
-                        <div class="alert alert-danger alert-dismissible fade show shadow-sm border-start border-danger border-4" role="alert">
-                            <i class="fas fa-exclamation-circle me-2"></i>
-                            {{ session('error') }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    @endif
-
-                    <!-- Informations sur l'évaluation -->
-                    <div class="row g-4 mb-4">
-                        <div class="col-md-6">
-                            <div class="card border-0 bg-light shadow-sm h-100">
-                                <div class="card-header border-0 bg-white">
-                                    <h6 class="mb-0 fw-bold text-primary">
-                                        <i class="fas fa-info-circle me-2"></i>Informations sur l'évaluation
-                                    </h6>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-md-6 mb-3">
-                                            <label class="small text-muted d-block">Titre</label>
-                                            <span class="fw-medium">{{ $evaluation->titre }}</span>
-                                        </div>
-                                        <div class="col-md-6 mb-3">
-                                            <label class="small text-muted d-block">Type</label>
-                                            <span class="fw-medium">
-                                                @php
-                                                    $typeIcons = [
-                                                        'examen' => '<i class="fas fa-file-alt text-primary me-1"></i>',
-                                                        'devoir' => '<i class="fas fa-pencil-alt text-success me-1"></i>',
-                                                        'tp' => '<i class="fas fa-flask text-warning me-1"></i>',
-                                                        'projet' => '<i class="fas fa-project-diagram text-info me-1"></i>',
-                                                        'controle' => '<i class="fas fa-tasks text-secondary me-1"></i>',
-                                                        'rattrapage' => '<i class="fas fa-redo text-danger me-1"></i>',
-                                                    ];
-                                                    $icon = $typeIcons[$evaluation->type] ?? '<i class="fas fa-file-alt text-primary me-1"></i>';
-                                                @endphp
-                                                {!! $icon !!} {{ ucfirst($evaluation->type) }}
-                                            </span>
-                                        </div>
-                                        <div class="col-md-6 mb-3">
-                                            <label class="small text-muted d-block">Date</label>
-                                            <span class="fw-medium">
-                                                <i class="far fa-calendar-alt text-secondary me-1"></i>
-                                                {{ date('d/m/Y', strtotime($evaluation->date_evaluation)) }}
-                                            </span>
-                                        </div>
-                                        <div class="col-md-6 mb-3">
-                                            <label class="small text-muted d-block">Classe</label>
-                                            <span class="fw-medium">
-                                                <i class="fas fa-users text-secondary me-1"></i>
-                                                {{ $evaluation->classe->name }}
-                                            </span>
-                                        </div>
-                                        <div class="col-md-6 mb-3">
-                                            <label class="small text-muted d-block">Matière</label>
-                                            <span class="fw-medium">
-                                                <i class="fas fa-book text-secondary me-1"></i>
-                                                {{ $evaluation->matiere->name }}
-                                            </span>
-                                        </div>
-                                        <div class="col-md-6 mb-3">
-                                            <label class="small text-muted d-block">Barème</label>
-                                            <span class="fw-medium">
-                                                <i class="fas fa-calculator text-secondary me-1"></i>
-                                                {{ $evaluation->bareme }} points
-                                            </span>
-                                        </div>
-                                        <div class="col-md-6 mb-3">
-                                            <label class="small text-muted d-block">Coefficient</label>
-                                            <span class="fw-medium">
-                                                <i class="fas fa-balance-scale text-secondary me-1"></i>
-                                                {{ $evaluation->coefficient }}
-                                            </span>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label class="small text-muted d-block">État des notes</label>
-                                            <span class="badge {{ $evaluation->notes->count() > 0 ? 'bg-success' : 'bg-warning' }} rounded-pill">
-                                                <i class="fas {{ $evaluation->notes->count() > 0 ? 'fa-check-circle' : 'fa-exclamation-circle' }} me-1"></i>
-                                                {{ $evaluation->notes->count() > 0 ? $evaluation->notes->count() . ' notes saisies' : 'Aucune note saisie' }}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="card border-0 bg-light shadow-sm h-100">
-                                <div class="card-header border-0 bg-white">
-                                    <h6 class="mb-0 fw-bold text-primary">
-                                        <i class="fas fa-question-circle me-2"></i>Guide de saisie
-                                    </h6>
-                                </div>
-                                <div class="card-body">
-                                    <div class="alert alert-info shadow-sm border-0">
-                                        <i class="fas fa-lightbulb me-2"></i>
-                                        <strong>Conseils pour une saisie efficace :</strong>
-                                        <ul class="ps-4 mt-2 mb-0">
-                                            <li>Utilisez la touche <kbd>Tab</kbd> pour passer au champ suivant</li>
-                                            <li>Appuyez sur <kbd>Enter</kbd> pour valider une note et passer à la suivante</li>
-                                            <li>Double-cliquez sur un champ pour le modifier rapidement</li>
-                                            <li>Les champs en rouge indiquent des erreurs de saisie</li>
-                                        </ul>
-                                    </div>
-                                    <div class="row mt-3">
-                                        <div class="col-md-6">
-                                            <div class="card bg-white border-0 shadow-sm mb-3">
-                                                <div class="card-body p-3">
-                                                    <div class="d-flex align-items-center">
-                                                        <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px">
-                                                            <i class="fas fa-check"></i>
-                                                        </div>
-                                                        <div>
-                                                            <h6 class="mb-1 fw-bold">Notes</h6>
-                                                            <p class="mb-0 small">Entre 0 et {{ $evaluation->bareme }}</p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <div class="card bg-white border-0 shadow-sm mb-3">
-                                                <div class="card-body p-3">
-                                                    <div class="d-flex align-items-center">
-                                                        <div class="rounded-circle bg-warning text-white d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px">
-                                                            <i class="fas fa-user-slash"></i>
-                                                        </div>
-                                                        <div>
-                                                            <h6 class="mb-1 fw-bold">Absents</h6>
-                                                            <p class="mb-0 small">Cochez la case</p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+            <div class="main-card">
+                <div class="main-card-header">
+                    <div class="main-card-title">
+                        <i class="fas fa-list"></i>
+                        Liste des étudiants ({{ $etudiants->count() }})
                     </div>
-
-                    <!-- Formulaire de saisie des notes -->
-                    <form action="{{ route('esbtp.notes.store-batch') }}" method="POST" id="notesForm">
-                        @csrf
-                        <input type="hidden" name="evaluation_id" value="{{ $evaluation->id }}">
-
-                        <div class="card shadow-sm">
-                            <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
-                                <h6 class="mb-0 fw-bold text-primary">
-                                    <i class="fas fa-list me-2"></i>Liste des étudiants ({{ $etudiants->count() }})
-                                </h6>
-                                <div class="d-flex align-items-center">
-                                    <div class="input-group me-3 shadow-sm" style="width: 300px;">
-                                        <span class="input-group-text bg-white border-end-0">
-                                            <i class="fas fa-search text-muted"></i>
-                                        </span>
-                                        <input type="text" id="searchStudent" class="form-control border-start-0 ps-0" placeholder="Rechercher un étudiant...">
-                                    </div>
-                                    <button type="button" class="btn btn-outline-secondary me-2 shadow-sm" id="resetForm">
-                                        <i class="fas fa-undo me-2"></i>Réinitialiser
-                                    </button>
-                                    <button type="submit" class="btn btn-primary shadow-sm" id="saveAllBtn">
-                                        <i class="fas fa-save me-2"></i>Enregistrer toutes les notes
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="card-body p-0">
-                                <div class="table-responsive">
-                                    <table class="table table-hover align-middle mb-0" id="notesTable">
-                                        <thead class="bg-light">
+                    <div class="d-flex align-items-center gap-3">
+                        <input type="search" class="search-bar" id="searchStudent" placeholder="Rechercher un étudiant...">
+                        <button type="button" class="btn-acasi secondary" id="resetForm">
+                            <i class="fas fa-undo"></i>Réinitialiser
+                        </button>
+                        <button type="submit" class="btn-acasi primary" id="saveAllBtn">
+                            <i class="fas fa-save"></i>Enregistrer toutes les notes
+                        </button>
+                    </div>
+                </div>
+                <div class="main-card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0" id="notesTable">
+                            <thead class="bg-light">
                                             <tr>
                                                 <th class="border-top-0 border-bottom-0 py-3" width="5%">#</th>
                                                 <th class="border-top-0 border-bottom-0 py-3" width="10%">Matricule</th>
@@ -276,27 +291,24 @@
                                             @endforelse
                                         </tbody>
                                     </table>
-                                </div>
-                            </div>
-                            <div class="card-footer bg-white py-3">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="progress" style="height: 20px;" id="progressBar">
-                                            <div class="progress-bar bg-success" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6 text-end">
-                                        <button type="submit" class="btn btn-primary shadow-sm">
-                                            <i class="fas fa-save me-2"></i>Enregistrer toutes les notes
-                                        </button>
-                                    </div>
-                                </div>
+                    </div>
+                </div>
+                <div class="main-card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="progress" style="height: 20px;" id="progressBar">
+                                <div class="progress-bar bg-success" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
                             </div>
                         </div>
-                    </form>
+                        <div class="col-md-6 text-end">
+                            <button type="submit" class="btn-acasi success">
+                                <i class="fas fa-save"></i>Enregistrer toutes les notes
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
+        </form>
     </div>
 </div>
 @endsection
@@ -304,37 +316,23 @@
 @push('styles')
 <style>
     .note-input:focus {
-        box-shadow: 0 0 0 0.25rem rgba(1, 99, 47, 0.25);
-        border-color: #01632f;
+        box-shadow: 0 0 0 0.25rem rgba(30, 58, 138, 0.25);
+        border-color: var(--primary);
     }
 
     .bg-light-success {
-        background-color: rgba(1, 99, 47, 0.05);
+        background-color: rgba(16, 185, 129, 0.05);
     }
 
     .table th {
         font-weight: 600;
-        font-size: 0.85rem;
-        color: #495057;
+        font-size: var(--text-small);
+        color: var(--text-secondary);
     }
 
     .form-check-input:checked {
-        background-color: #01632f;
-        border-color: #01632f;
-    }
-
-    .btn-primary {
-        background-color: #01632f;
-        border-color: #01632f;
-    }
-
-    .btn-primary:hover {
-        background-color: #014a23;
-        border-color: #014a23;
-    }
-
-    .text-primary {
-        color: #01632f !important;
+        background-color: var(--primary);
+        border-color: var(--primary);
     }
 
     /* Animation pour les notifications de sauvegarde */
@@ -349,23 +347,39 @@
         position: fixed;
         top: 20px;
         right: 20px;
-        padding: 15px 25px;
-        background-color: #01632f;
+        padding: var(--space-md) var(--space-lg);
+        background-color: var(--primary);
         color: white;
-        border-radius: 5px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border-radius: var(--radius-small);
+        box-shadow: var(--shadow-elevated);
         z-index: 1050;
         animation: fadeInOut 2s forwards;
     }
 
     /* Style pour les cellules modifiées */
     .modified {
-        background-color: rgba(242, 148, 0, 0.1);
+        background-color: rgba(245, 158, 11, 0.1);
     }
 
-    /* Style pour le champ de recherche */
-    #searchStudent:focus {
-        box-shadow: none;
+    /* Style pour les inputs dans la table */
+    .table .form-control {
+        border: 1px solid #dee2e6;
+        border-radius: var(--radius-small);
+    }
+
+    .table .form-control:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 0.25rem rgba(30, 58, 138, 0.25);
+    }
+
+    /* Style pour la ligne active */
+    .table-active {
+        background-color: rgba(30, 58, 138, 0.05) !important;
+    }
+
+    /* Style pour les lignes d'absents */
+    .bg-light-danger {
+        background-color: rgba(239, 68, 68, 0.05) !important;
     }
 </style>
 @endpush

@@ -397,172 +397,137 @@
 @endsection
 
 @section('content')
-<div class="container-fluid">
-    <!-- Header moderne -->
-    <div class="attendance-header">
-        <h1 class="page-title">
-            <i class="fas fa-users-class me-3"></i>
-            Gestion des Présences
-        </h1>
-        <p class="page-subtitle">Suivi et analyse des présences étudiantes en temps réel</p>
-    </div>
-
-    <!-- Statistiques principales -->
-    <div class="stats-grid">
-        <div class="stat-card present">
-            <div class="stat-icon icon-success">
-                <i class="fas fa-user-check"></i>
+<div class="dashboard-acasi">
+    <div class="main-content">
+        <!-- Header Section -->
+        <div class="dashboard-header">
+            <div class="header-left">
+                <h1><i class="fas fa-users-class me-2"></i>Gestion des Présences</h1>
+                <p class="header-subtitle">Suivi et analyse des présences étudiantes en temps réel</p>
             </div>
-            <div class="stat-number text-success">{{ $stats['present'] ?? 0 }}</div>
-            <p class="stat-label">Étudiants Présents</p>
-            <div class="stat-percentage">
-                {{ ($stats['total'] ?? 0) > 0 ? round(($stats['present'] ?? 0) / $stats['total'] * 100, 1) : 0 }}% du total
+            <div class="header-actions">
+                <a href="{{ route('esbtp.attendances.create') }}" class="btn-acasi primary me-2">
+                    <i class="fas fa-plus-circle"></i>Marquer Présences
+                </a>
+                <a href="{{ route('esbtp.attendances.rapport-form') }}" class="btn-acasi secondary">
+                    <i class="fas fa-chart-bar"></i>Générer Rapport
+                </a>
             </div>
         </div>
 
-        <div class="stat-card absent">
-            <div class="stat-icon icon-danger">
-                <i class="fas fa-user-times"></i>
-            </div>
-            <div class="stat-number text-danger">{{ $stats['absent'] ?? 0 }}</div>
-            <p class="stat-label">Étudiants Absents</p>
-            <div class="stat-percentage">
-                {{ ($stats['total'] ?? 0) > 0 ? round(($stats['absent'] ?? 0) / $stats['total'] * 100, 1) : 0 }}% du total
-            </div>
-        </div>
-
-        <div class="stat-card late">
-            <div class="stat-icon icon-warning">
-                <i class="fas fa-clock"></i>
-            </div>
-            <div class="stat-number text-warning">{{ $stats['retard'] ?? 0 }}</div>
-            <p class="stat-label">Retards</p>
-            <div class="stat-percentage">
-                {{ ($stats['total'] ?? 0) > 0 ? round(($stats['retard'] ?? 0) / $stats['total'] * 100, 1) : 0 }}% du total
-            </div>
-        </div>
-
-        <div class="stat-card excused">
-            <div class="stat-icon icon-info">
-                <i class="fas fa-notes-medical"></i>
-            </div>
-            <div class="stat-number text-info">{{ $stats['excuse'] ?? 0 }}</div>
-            <p class="stat-label">Excusés</p>
-            <div class="stat-percentage">
-                {{ ($stats['total'] ?? 0) > 0 ? round(($stats['excuse'] ?? 0) / $stats['total'] * 100, 1) : 0 }}% du total
-            </div>
-        </div>
-    </div>
-
-    @if(auth()->user() && auth()->user()->hasRole('coordinateur') && $coordinatorStats)
-    <!-- Section Coordinateur - Suivi Enseignants -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card border-0 shadow-sm coordinator-section">
-                <div class="card-header bg-gradient-primary text-white d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5 class="mb-0">
-                            <i class="fas fa-chalkboard-teacher me-2"></i>
-                            Suivi des Émargements Enseignants - Aujourd'hui
-                        </h5>
-                        <small class="text-white-75">Supervision en temps réel de l'activité pédagogique</small>
-                    </div>
-                    @if($unreadNotifications > 0)
-                    <a href="{{ route('notifications.index') }}" class="btn btn-light btn-sm">
-                        <i class="fas fa-bell me-1"></i>
-                        {{ $unreadNotifications }} notifications
-                    </a>
-                    @endif
+        <!-- Statistiques principales -->
+        <div class="kpi-grid mb-4">
+            <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
+                <div class="kpi-title" style="color: #000; font-weight: 600;">Étudiants Présents</div>
+                <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ $stats['present'] ?? 0 }}</div>
+                <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
+                    <i class="fas fa-user-check"></i>
+                    {{ ($stats['total'] ?? 0) > 0 ? round(($stats['present'] ?? 0) / $stats['total'] * 100, 1) : 0 }}% du total
                 </div>
-                <div class="card-body">
-                    <div class="row">
-                        <!-- Émargements du jour -->
-                        <div class="col-xl-3 col-md-6 mb-3">
-                            <div class="card bg-gradient-primary text-white border-0 shadow">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h6 class="card-title text-white-50 mb-1">Émargements</h6>
-                                            <h3 class="mb-0 fw-bold">{{ $coordinatorStats['teacher_attendances_today'] ?? 0 }}</h3>
-                                            <small class="text-white-75">sur {{ $coordinatorStats['scheduled_courses_today'] ?? 0 }} cours</small>
-                                        </div>
-                                        <div class="text-white-50">
-                                            <i class="fas fa-clipboard-check fa-2x"></i>
-                                        </div>
-                                    </div>
-                                    <div class="progress mt-3" style="height: 4px;">
-                                        <div class="progress-bar bg-white" role="progressbar" 
-                                             style="width: {{ $coordinatorStats['teacher_attendance_rate'] ?? 0 }}%">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+            </div>
 
-                        <!-- Appels terminés -->
-                        <div class="col-xl-3 col-md-6 mb-3">
-                            <div class="card bg-gradient-success text-white border-0 shadow">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h6 class="card-title text-white-50 mb-1">Appels Terminés</h6>
-                                            <h3 class="mb-0 fw-bold">{{ $coordinatorStats['roll_calls_completed_today'] ?? 0 }}</h3>
-                                            <small class="text-white-75">{{ $coordinatorStats['students_present_today'] ?? 0 }} présents</small>
-                                        </div>
-                                        <div class="text-white-50">
-                                            <i class="fas fa-users-check fa-2x"></i>
-                                        </div>
-                                    </div>
-                                    <div class="progress mt-3" style="height: 4px;">
-                                        <div class="progress-bar bg-white" role="progressbar" 
-                                             style="width: {{ $coordinatorStats['roll_call_completion_rate'] ?? 0 }}%">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+            <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
+                <div class="kpi-title" style="color: #000; font-weight: 600;">Étudiants Absents</div>
+                <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ $stats['absent'] ?? 0 }}</div>
+                <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
+                    <i class="fas fa-user-times"></i>
+                    {{ ($stats['total'] ?? 0) > 0 ? round(($stats['absent'] ?? 0) / $stats['total'] * 100, 1) : 0 }}% du total
+                </div>
+            </div>
 
-                        <!-- Retards détectés -->
-                        <div class="col-xl-3 col-md-6 mb-3">
-                            <div class="card bg-gradient-warning text-white border-0 shadow">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h6 class="card-title text-white-50 mb-1">Retards Détectés</h6>
-                                            <h3 class="mb-0 fw-bold">{{ $coordinatorStats['delays_today'] ?? 0 }}</h3>
-                                            <small class="text-white-75">émargements manqués</small>
-                                        </div>
-                                        <div class="text-white-50">
-                                            <i class="fas fa-clock fa-2x"></i>
-                                        </div>
-                                    </div>
-                                    @if(($coordinatorStats['delays_today'] ?? 0) > 0)
-                                        <div class="mt-3">
-                                            <small class="text-white-75">⚠️ Attention requise</small>
-                                        </div>
-                                    @endif
-                                </div>
-                            </div>
-                        </div>
+            <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
+                <div class="kpi-title" style="color: #000; font-weight: 600;">Retards</div>
+                <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ $stats['retard'] ?? 0 }}</div>
+                <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
+                    <i class="fas fa-clock"></i>
+                    {{ ($stats['total'] ?? 0) > 0 ? round(($stats['retard'] ?? 0) / $stats['total'] * 100, 1) : 0 }}% du total
+                </div>
+            </div>
 
-                        <!-- Cours clôturés -->
-                        <div class="col-xl-3 col-md-6 mb-3">
-                            <div class="card bg-gradient-info text-white border-0 shadow">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h6 class="card-title text-white-50 mb-1">Cours Clôturés</h6>
-                                            <h3 class="mb-0 fw-bold">{{ $coordinatorStats['courses_closed_today'] ?? 0 }}</h3>
-                                            <small class="text-white-75">séances terminées</small>
-                                        </div>
-                                        <div class="text-white-50">
-                                            <i class="fas fa-check-circle fa-2x"></i>
-                                        </div>
-                                    </div>
-                                </div>
+            <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
+                <div class="kpi-title" style="color: #000; font-weight: 600;">Excusés</div>
+                <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ $stats['excuse'] ?? 0 }}</div>
+                <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
+                    <i class="fas fa-notes-medical"></i>
+                    {{ ($stats['total'] ?? 0) > 0 ? round(($stats['excuse'] ?? 0) / $stats['total'] * 100, 1) : 0 }}% du total
+                </div>
+            </div>
+        </div>
+
+        @if(auth()->user() && auth()->user()->hasRole('coordinateur') && $coordinatorStats)
+        <!-- Section Coordinateur - Suivi Enseignants -->
+        <div class="main-card mb-4">
+            <div class="main-card-header" style="background: linear-gradient(135deg, rgba(30, 58, 138, 0.1), rgba(30, 64, 175, 0.05));">
+                <div class="main-card-title">
+                    <i class="fas fa-chalkboard-teacher"></i>
+                    Suivi des Émargements Enseignants - Aujourd'hui
+                </div>
+                <div class="main-card-subtitle">Supervision en temps réel de l'activité pédagogique</div>
+                @if($unreadNotifications > 0)
+                <div class="ms-auto">
+                    <a href="{{ route('notifications.index') }}" class="btn-acasi warning btn-sm">
+                        <i class="fas fa-bell"></i>{{ $unreadNotifications }} notifications
+                    </a>
+                </div>
+                @endif
+            </div>
+            <div class="main-card-body">
+                <div class="kpi-grid">
+                    <!-- Émargements du jour -->
+                    <div class="kpi-card card-moderne bg-primary">
+                        <div class="kpi-title">Émargements</div>
+                        <div class="kpi-value color-primary">{{ $coordinatorStats['teacher_attendances_today'] ?? 0 }}</div>
+                        <div class="kpi-trend">
+                            <i class="fas fa-clipboard-check"></i>
+                            sur {{ $coordinatorStats['scheduled_courses_today'] ?? 0 }} cours
+                        </div>
+                        <div class="progress mt-3" style="height: 6px;">
+                            <div class="progress-bar bg-white" role="progressbar" 
+                                 style="width: {{ $coordinatorStats['teacher_attendance_rate'] ?? 0 }}%">
                             </div>
                         </div>
                     </div>
+
+                    <!-- Appels terminés -->
+                    <div class="kpi-card card-moderne bg-success">
+                        <div class="kpi-title">Appels Terminés</div>
+                        <div class="kpi-value color-success">{{ $coordinatorStats['roll_calls_completed_today'] ?? 0 }}</div>
+                        <div class="kpi-trend">
+                            <i class="fas fa-users-check"></i>
+                            {{ $coordinatorStats['students_present_today'] ?? 0 }} présents
+                        </div>
+                        <div class="progress mt-3" style="height: 6px;">
+                            <div class="progress-bar bg-white" role="progressbar" 
+                                 style="width: {{ $coordinatorStats['roll_call_completion_rate'] ?? 0 }}%">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Retards détectés -->
+                    <div class="kpi-card card-moderne bg-warning">
+                        <div class="kpi-title">Retards Détectés</div>
+                        <div class="kpi-value color-warning">{{ $coordinatorStats['delays_today'] ?? 0 }}</div>
+                        <div class="kpi-trend">
+                            <i class="fas fa-clock"></i>
+                            émargements manqués
+                            @if(($coordinatorStats['delays_today'] ?? 0) > 0)
+                                <div class="mt-2">
+                                    <small>⚠️ Attention requise</small>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+
+                    <!-- Cours clôturés -->
+                    <div class="kpi-card card-moderne bg-accent">
+                        <div class="kpi-title">Cours Clôturés</div>
+                        <div class="kpi-value color-accent">{{ $coordinatorStats['courses_closed_today'] ?? 0 }}</div>
+                        <div class="kpi-trend">
+                            <i class="fas fa-check-circle"></i>
+                            séances terminées
+                        </div>
+                    </div>
+                </div>
 
                     <!-- Alertes coordinateur -->
                     @if(($coordinatorStats['delays_today'] ?? 0) > 0 || ($coordinatorStats['high_absence_classes'] ?? 0) > 0)

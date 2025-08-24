@@ -174,7 +174,7 @@
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
                                     <label for="teaching_hours_due" class="form-label">Heures dues</label>
-                                    <input type="number" class="form-control @error('teaching_hours_due') is-invalid @enderror" id="teaching_hours_due" name="teaching_hours_due" value="{{ old('teaching_hours_due', $teacher->teaching_hours_due) }}">
+                                    <input type="number" class="form-control @error('teaching_hours_due') is-invalid @enderror" id="teaching_hours_due" name="teaching_hours_due" value="{{ old('teaching_hours_due', (int)$teacher->teaching_hours_due) }}">
                                     @error('teaching_hours_due')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror

@@ -427,4 +427,25 @@ class ESBTPClasseController extends Controller
             return response()->json(['error' => 'Une erreur est survenue lors de la récupération des données.'], 500);
         }
     }
+
+    /**
+     * Récupère les étudiants d'une classe pour l'API JavaScript.
+     *
+     * @param  \App\Models\ESBTPClasse  $classe
+     * @return \Illuminate\Http\Response
+     */
+    public function getEtudiants(ESBTPClasse $classe)
+    {
+        $etudiants = $classe->etudiants()
+            ->select('id', 'nom', 'prenom', 'matricule')
+            ->where('is_active', true)
+            ->orderBy('nom')
+            ->orderBy('prenom')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'etudiants' => $etudiants
+        ]);
+    }
 }

@@ -52,9 +52,6 @@ class ESBTPPlanningGeneralController extends Controller
         
         // Récupérer l'année universitaire sélectionnée ou celle en cours
         $anneeId = $request->input('annee_id');
-        $filiereId = $request->input('filiere_id');
-        $niveauId = $request->input('niveau_id');
-        $semestre = $request->input('semestre', 1);
         
         if (!$anneeId) {
             $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
@@ -64,52 +61,416 @@ class ESBTPPlanningGeneralController extends Controller
         // Données de base
         $annees = ESBTPAnneeUniversitaire::orderBy('start_date', 'desc')->get();
         $anneeSelectionnee = ESBTPAnneeUniversitaire::find($anneeId);
-        $filieres = ESBTPFiliere::where('is_active', true)->orderBy('name')->get();
-        $niveaux = ESBTPNiveauEtude::where('is_active', true)->orderBy('year')->get();
-        
-        // Variables pour les vues
-        $filiereSelectionnee = ESBTPFiliere::find($filiereId);
-        $niveauSelectionne = ESBTPNiveauEtude::find($niveauId);
-        
-        // Récupérer les planifications existantes
-        $planifications = collect();
-        $matieres = collect();
-        $enseignants = collect();
-        
-        if ($anneeId && $filiereId && $niveauId) {
-            $planifications = ESBTPPlanificationAcademique::with(['matiere', 'enseignantPrincipal'])
-                ->forAnnee($anneeId)
-                ->forFiliere($filiereId)
-                ->forNiveau($niveauId)
-                ->forSemestre($semestre)
-                ->orderBy('created_at', 'desc')
-                ->get();
-                
-            // Matières disponibles pour cette filière/niveau
-            $matieres = ESBTPMatiere::whereHas('classes', function($query) use ($filiereId, $niveauId) {
-                $query->where('filiere_id', $filiereId)
-                      ->where('niveau_etude_id', $niveauId);
-            })->orderBy('name')->get();
-            
-            // Enseignants disponibles
-            $enseignants = User::role('enseignant')
-                ->where('is_active', true)
-                ->orderBy('name')
-                ->get();
-        }
-        
-        // Statistiques de planification
-        $statistiques = $this->calculerStatistiquesPlanification($anneeId, $filiereId, $niveauId, $semestre);
         
         // Statistiques générales pour la vue index
         $stats = $this->calculerStatistiquesGenerales($anneeId);
         
+        // Récupérer les filtres
+        $filiereFilter = $request->input('filiere_filter');
+        $niveauFilter = $request->input('niveau_filter');
+        
+        // Récupérer toutes les combinaisons filière/niveau avec leurs matières
+        $combinaisons = $this->getCombinaisonsAvecMatieres($anneeId, $filiereFilter, $niveauFilter);
+        
         return view('esbtp.planning-general.index', compact(
-            'annees', 'anneeSelectionnee', 'filieres', 'filiereSelectionnee',
-            'niveaux', 'niveauSelectionne', 'matieres', 'enseignants',
-            'planifications', 'semestre', 'statistiques', 'stats',
-            'anneeId', 'filiereId', 'niveauId'
+            'annees', 'anneeSelectionnee', 'stats', 'combinaisons'
         ));
+    }
+    
+    /**
+     * Récupérer toutes les combinaisons filière/niveau avec leurs statistiques de configuration
+     */
+    private function getCombinaisonsAvecMatieres($anneeId, $filiereFilter = null, $niveauFilter = null)
+    {
+        // Récupérer les combinaisons avec filtres optionnels
+        $filieres = ESBTPFiliere::where('is_active', true);
+        if ($filiereFilter) {
+            $filieres->where('id', $filiereFilter);
+        }
+        $filieres = $filieres->orderBy('name')->get();
+        
+        $niveaux = ESBTPNiveauEtude::where('is_active', true);
+        if ($niveauFilter) {
+            $niveaux->where('id', $niveauFilter);
+        }
+        $niveaux = $niveaux->orderBy('year')->get();
+        
+        $combinaisons = [];
+        
+        foreach ($filieres as $filiere) {
+            foreach ($niveaux as $niveau) {
+                // Compter les planifications pour cette combinaison
+                $planifications = ESBTPPlanificationAcademique::where('filiere_id', $filiere->id)
+                    ->where('niveau_etude_id', $niveau->id);
+                    
+                if ($anneeId) {
+                    $planifications->where('annee_universitaire_id', $anneeId);
+                }
+                
+                $planifications = $planifications->with('matiere')->get();
+                
+                // Filtrer les planifications valides (matières réellement liées)
+                $planificationsValides = $planifications->filter(function($planification) use ($filiere, $niveau) {
+                    // Ignorer si matière supprimée
+                    if (!$planification->matiere) {
+                        return false;
+                    }
+                    
+                    // Vérifier si la matière est réellement liée à cette combinaison
+                    return ESBTPMatiere::where('id', $planification->matiere->id)
+                        ->where('is_active', true)
+                        ->whereHas('filieres', function($query) use ($filiere) {
+                            $query->where('esbtp_filieres.id', $filiere->id);
+                        })
+                        ->whereHas('niveaux', function($query) use ($niveau) {
+                            $query->where('esbtp_niveau_etudes.id', $niveau->id);
+                        })
+                        ->exists();
+                });
+                
+                // CORRECTION : Compter d'abord toutes les matières liées à cette combinaison
+                $matieresLieesALaCombinaisonCount = ESBTPMatiere::where('is_active', true)
+                    ->whereHas('filieres', function($query) use ($filiere) {
+                        $query->where('esbtp_filieres.id', $filiere->id);
+                    })
+                    ->whereHas('niveaux', function($query) use ($niveau) {
+                        $query->where('esbtp_niveau_etudes.id', $niveau->id);
+                    })
+                    ->count();
+                
+                // Calculer les statistiques
+                $totalMatieres = $matieresLieesALaCombinaisonCount; // Toutes les matières liées à cette combinaison
+                $totalHeures = $planificationsValides->sum('volume_horaire_total');
+                $matieresConfigurees = $planificationsValides->where('volume_horaire_total', '>', 0)->count(); // Matières liées ET configurées
+                
+                // Déterminer le statut
+                $statusClass = '';
+                $statusIcon = '';
+                $statusText = '';
+                
+                if ($totalMatieres == 0) {
+                    $statusClass = 'not-configured';
+                    $statusIcon = 'fa-plus-circle';
+                    $statusText = 'Non configuré';
+                } elseif ($matieresConfigurees == $totalMatieres) {
+                    $statusClass = 'configured';
+                    $statusIcon = 'fa-check-circle';
+                    $statusText = 'Complet';
+                } else {
+                    $statusClass = 'partial';
+                    $statusIcon = 'fa-exclamation-triangle';
+                    $statusText = 'Partiel';
+                }
+                
+                $combinaisons[] = [
+                    'filiere' => $filiere,
+                    'niveau' => $niveau,
+                    'name' => $filiere->name . ' - ' . $niveau->name,
+                    'total_matieres' => $totalMatieres,
+                    'total_heures' => $totalHeures,
+                    'matieres_configurees' => $matieresConfigurees,
+                    'status_class' => $statusClass,
+                    'status_icon' => $statusIcon,
+                    'status_text' => $statusText,
+                    'planifications' => $planificationsValides
+                ];
+            }
+        }
+        
+        return collect($combinaisons)->sortBy('name');
+    }
+    
+    /**
+     * Récupérer les matières disponibles pour configuration par AJAX
+     */
+    public function getMatieresPourConfiguration(Request $request)
+    {
+        $filiereId = $request->input('filiere_id');
+        $niveauId = $request->input('niveau_id');
+        $anneeId = $request->input('annee_id');
+        
+        if (!$filiereId || !$niveauId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Filière et niveau requis'
+            ]);
+        }
+        
+        // Récupérer les matières liées à cette combinaison filière/niveau
+        $matieresLiees = ESBTPMatiere::where('is_active', true)
+            ->whereHas('filieres', function($query) use ($filiereId) {
+                $query->where('esbtp_filieres.id', $filiereId);
+            })
+            ->whereHas('niveaux', function($query) use ($niveauId) {
+                $query->where('esbtp_niveau_etudes.id', $niveauId);
+            })
+            ->orderBy('name')
+            ->get();
+
+        // Si aucune matière liée, proposer toutes les matières disponibles pour association
+        if ($matieresLiees->isEmpty()) {
+            $matieres = ESBTPMatiere::where('is_active', true)->orderBy('name')->get();
+            $modeAssociation = true;
+        } else {
+            $matieres = $matieresLiees;
+            $modeAssociation = false;
+        }
+        
+        // Récupérer les planifications existantes pour cette combinaison
+        $planificationsExistantes = ESBTPPlanificationAcademique::where('filiere_id', $filiereId)
+            ->where('niveau_etude_id', $niveauId);
+            
+        if ($anneeId) {
+            $planificationsExistantes->where('annee_universitaire_id', $anneeId);
+        }
+        
+        $planificationsExistantes = $planificationsExistantes->with('matiere')->get()->keyBy('matiere_id');
+        
+        $html = '';
+        
+        if ($modeAssociation) {
+            // Mode association : permettre de sélectionner les matières à associer
+            $html .= '<div class="alert alert-info mb-4">';
+            $html .= '<i class="fas fa-info-circle me-2"></i>';
+            $html .= '<strong>Aucune matière associée</strong><br>';
+            $html .= 'Sélectionnez les matières que vous souhaitez associer à cette combinaison, puis configurez leurs volumes horaires.';
+            $html .= '</div>';
+            
+            $html .= '<div class="mb-3">';
+            $html .= '<button type="button" class="btn btn-secondary btn-sm" id="select-all-matieres">Tout sélectionner</button> ';
+            $html .= '<button type="button" class="btn btn-secondary btn-sm" id="deselect-all-matieres">Tout désélectionner</button>';
+            $html .= '</div>';
+        }
+
+        foreach ($matieres as $matiere) {
+            $planificationExistante = $planificationsExistantes->get($matiere->id);
+            $volumeActuel = $planificationExistante ? $planificationExistante->volume_horaire_total : 0;
+            $isConfigured = $volumeActuel > 0;
+            $isAssociated = !$modeAssociation; // En mode normal, toutes les matières sont associées
+            
+            $cardClass = 'config-matiere-card';
+            if ($modeAssociation) {
+                $cardClass .= ' association-mode';
+            }
+            if ($isConfigured) {
+                $cardClass .= ' configured';
+            }
+            
+            $html .= '<div class="' . $cardClass . '" data-matiere-id="' . $matiere->id . '">';
+            
+            if ($modeAssociation) {
+                // Checkbox pour sélectionner la matière à associer
+                $html .= '<div class="matiere-selection">';
+                $html .= '<input type="checkbox" class="form-check-input matiere-checkbox" id="matiere_' . $matiere->id . '" name="associations[' . $matiere->id . ']" value="1">';
+                $html .= '<label class="form-check-label" for="matiere_' . $matiere->id . '"></label>';
+                $html .= '</div>';
+            }
+            
+            $html .= '<div class="matiere-details">';
+            $html .= '<div class="matiere-name">' . htmlspecialchars($matiere->name) . '</div>';
+            if ($matiere->description) {
+                $html .= '<div class="matiere-description">' . htmlspecialchars($matiere->description) . '</div>';
+            }
+            
+            // Afficher info sur les associations existantes
+            if ($modeAssociation) {
+                $filieres = $matiere->filieres->pluck('name')->toArray();
+                $niveaux = $matiere->niveaux->pluck('name')->toArray();
+                if (!empty($filieres) || !empty($niveaux)) {
+                    $html .= '<div class="matiere-associations text-muted small">';
+                    if (!empty($filieres)) {
+                        $html .= '<span>Filières: ' . implode(', ', array_slice($filieres, 0, 2)) . (count($filieres) > 2 ? '...' : '') . '</span><br>';
+                    }
+                    if (!empty($niveaux)) {
+                        $html .= '<span>Niveaux: ' . implode(', ', array_slice($niveaux, 0, 2)) . (count($niveaux) > 2 ? '...' : '') . '</span>';
+                    }
+                    $html .= '</div>';
+                }
+            }
+            
+            $html .= '</div>';
+            $html .= '<div class="matiere-config">';
+            
+            // Section volume horaire
+            $html .= '<div class="config-section volume-config-section">';
+            $html .= '<label class="config-label"><i class="fas fa-clock"></i>Volume horaire</label>';
+            $html .= '<div class="volume-config">';
+            if ($modeAssociation) {
+                // En mode association, le volume n'est configurable que si la matière est sélectionnée
+                $html .= '<input type="number" name="volumes[' . $matiere->id . ']" value="' . $volumeActuel . '" min="0" max="200" class="form-control volume-input" placeholder="0" disabled>';
+            } else {
+                $html .= '<input type="number" name="volumes[' . $matiere->id . ']" value="' . $volumeActuel . '" min="0" max="200" class="form-control volume-input" placeholder="0">';
+            }
+            $html .= '<span class="volume-unit">heures</span>';
+            $html .= '</div>';
+            $html .= '</div>';
+            
+            // Section assignation de professeurs
+            $html .= '<div class="config-section teacher-config-section">';
+            $html .= '<label class="config-label"><i class="fas fa-user-tie"></i>Professeur(s) assigné(s)</label>';
+            $html .= '<div class="teacher-config">';
+            $html .= '<select name="teachers[' . $matiere->id . '][]" class="form-select teacher-select" multiple>';
+            $html .= '<option value="">Sélectionner un professeur</option>';
+            
+            // Récupérer les professeurs déjà assignés à cette matière
+            $assignedTeachers = [];
+            if (!$modeAssociation && $planificationExistante) {
+                $assignedTeacherIds = DB::table('esbtp_planification_teachers')
+                    ->where('planification_id', $planificationExistante->id)
+                    ->pluck('teacher_id')
+                    ->toArray();
+                $assignedTeachers = $assignedTeacherIds;
+            }
+
+            // Récupérer les professeurs actifs
+            $teachers = \App\Models\ESBTPTeacher::where('is_active', true)
+                ->with('user')
+                ->orderBy('user_id')
+                ->get();
+                
+            foreach ($teachers as $teacher) {
+                $teacherName = $teacher->user ? $teacher->user->name : $teacher->matricule;
+                $specialization = $teacher->specialization ? ' (' . $teacher->specialization . ')' : '';
+                $selected = in_array($teacher->id, $assignedTeachers) ? ' selected' : '';
+                $html .= '<option value="' . $teacher->id . '"' . $selected . '>' . htmlspecialchars($teacherName . $specialization) . '</option>';
+            }
+            
+            $html .= '</select>';
+            $html .= '</div>';
+            $html .= '</div>';
+            
+            $html .= '</div>';
+            $html .= '</div>';
+        }
+        
+        return response()->json([
+            'success' => true,
+            'html' => $html
+        ]);
+    }
+    
+    /**
+     * Sauvegarder la configuration des volumes horaires
+     */
+    public function saveVolumeConfiguration(Request $request)
+    {
+        $request->validate([
+            'filiere_id' => 'required|exists:esbtp_filieres,id',
+            'niveau_id' => 'required|exists:esbtp_niveau_etudes,id',
+            'annee_id' => 'required|exists:esbtp_annee_universitaires,id',
+            'volumes' => 'required|array',
+            'volumes.*' => 'nullable|integer|min:0|max:200',
+            'teachers' => 'nullable|array',
+            'teachers.*' => 'nullable|array',
+            'teachers.*.*' => 'exists:esbtp_teachers,id'
+        ]);
+        
+        DB::beginTransaction();
+        
+        try {
+            $savedCount = 0;
+            $updatedCount = 0;
+            
+            foreach ($request->volumes as $matiereId => $volume) {
+                if ($volume && $volume > 0) {
+                    $planification = ESBTPPlanificationAcademique::updateOrCreate(
+                        [
+                            'annee_universitaire_id' => $request->annee_id,
+                            'filiere_id' => $request->filiere_id,
+                            'niveau_etude_id' => $request->niveau_id,
+                            'matiere_id' => $matiereId,
+                            'semestre' => 1 // Par défaut semestre 1
+                        ],
+                        [
+                            'volume_horaire_total' => $volume,
+                            'volume_horaire_cm' => 0,
+                            'volume_horaire_td' => 0,
+                            'volume_horaire_tp' => 0,
+                            'coefficient' => 1,
+                            'credits_ects' => 0,
+                            'statut' => ESBTPPlanificationAcademique::STATUT_PLANIFIE,
+                            'updated_by' => Auth::id(),
+                            'created_by' => Auth::id()
+                        ]
+                    );
+                    
+                    if ($planification->wasRecentlyCreated) {
+                        $savedCount++;
+                    } else {
+                        $updatedCount++;
+                    }
+                    
+                    // Gérer les assignations de professeurs pour cette planification
+                    if (isset($request->teachers[$matiereId]) && !empty($request->teachers[$matiereId])) {
+                        // Supprimer les anciennes assignations
+                        DB::table('esbtp_planification_teachers')
+                            ->where('planification_id', $planification->id)
+                            ->delete();
+                        
+                        // Ajouter les nouvelles assignations
+                        foreach ($request->teachers[$matiereId] as $teacherId) {
+                            if (!empty($teacherId)) {
+                                DB::table('esbtp_planification_teachers')->insert([
+                                    'planification_id' => $planification->id,
+                                    'teacher_id' => $teacherId,
+                                    'created_at' => now(),
+                                    'updated_at' => now()
+                                ]);
+                            }
+                        }
+                    } else {
+                        // Si aucun professeur sélectionné, supprimer les assignations existantes
+                        DB::table('esbtp_planification_teachers')
+                            ->where('planification_id', $planification->id)
+                            ->delete();
+                    }
+                } else {
+                    // Supprimer si volume = 0
+                    $planificationsToDelete = ESBTPPlanificationAcademique::where('annee_universitaire_id', $request->annee_id)
+                        ->where('filiere_id', $request->filiere_id)
+                        ->where('niveau_etude_id', $request->niveau_id)
+                        ->where('matiere_id', $matiereId)
+                        ->get();
+                    
+                    // Supprimer les assignations de professeurs associées
+                    foreach ($planificationsToDelete as $planification) {
+                        DB::table('esbtp_planification_teachers')
+                            ->where('planification_id', $planification->id)
+                            ->delete();
+                    }
+                    
+                    // Supprimer les planifications
+                    ESBTPPlanificationAcademique::where('annee_universitaire_id', $request->annee_id)
+                        ->where('filiere_id', $request->filiere_id)
+                        ->where('niveau_etude_id', $request->niveau_id)
+                        ->where('matiere_id', $matiereId)
+                        ->delete();
+                }
+            }
+            
+            DB::commit();
+            
+            $message = 'Configuration sauvegardée avec succès.';
+            if ($savedCount > 0) {
+                $message .= " {$savedCount} nouvelle(s) planification(s) créée(s).";
+            }
+            if ($updatedCount > 0) {
+                $message .= " {$updatedCount} planification(s) mise(s) à jour.";
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => $message
+            ]);
+            
+        } catch (\Exception $e) {
+            DB::rollback();
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la sauvegarde: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**

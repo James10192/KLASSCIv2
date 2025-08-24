@@ -4,6 +4,7 @@
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/cursor-fix.css') }}">
 <style>
     .btn-acasi.small {
         padding: var(--space-xs) var(--space-sm);
@@ -181,7 +182,7 @@
                                 <option value="">Toutes</option>
                                 @foreach($annees ?? [] as $annee)
                                     <option value="{{ $annee->id }}" {{ request('annee_id') == $annee->id ? 'selected' : '' }}>
-                                        {{ $annee->libelle }}
+                                        {{ $annee->name }}
                                     </option>
                                 @endforeach
                             </select>
@@ -238,27 +239,62 @@
                                         </div>
                                     </td>
                                     <td>
-                                        @if($paiement->fraisCategory)
-                                            @php
-                                                $categoryColors = [
-                                                    'academic' => 'success',
-                                                    'service' => 'warning',
-                                                    'administrative' => 'info'
+                                        @php
+                                            // Logique harmonisée pour déterminer la catégorie
+                                            $categoryInfo = null;
+                                            $categoryColors = [
+                                                'academic' => 'success',
+                                                'service' => 'warning', 
+                                                'administrative' => 'info'
+                                            ];
+                                            $categoryIcons = [
+                                                'academic' => 'fas fa-graduation-cap',
+                                                'service' => 'fas fa-cogs',
+                                                'administrative' => 'fas fa-file-alt'
+                                            ];
+                                            
+                                            // D'abord essayer avec le nouveau système
+                                            if ($paiement->fraisCategory) {
+                                                $categoryInfo = [
+                                                    'name' => $paiement->fraisCategory->name,
+                                                    'type' => $paiement->fraisCategory->category_type ?? 'academic',
+                                                    'source' => 'Nouveau système'
                                                 ];
-                                                $categoryIcons = [
-                                                    'academic' => 'fas fa-graduation-cap',
-                                                    'service' => 'fas fa-cogs',
-                                                    'administrative' => 'fas fa-file-alt'
+                                            }
+                                            // Fallback sur l'ancien système
+                                            elseif ($paiement->categorie) {
+                                                $categoryInfo = [
+                                                    'name' => $paiement->categorie->nom ?? 'Catégorie ancienne',
+                                                    'type' => $paiement->categorie->nom && str_contains(strtolower($paiement->categorie->nom), 'cantine') ? 'service' : 'academic',
+                                                    'source' => 'Ancien système'
                                                 ];
-                                                $categoryType = $paiement->fraisCategory->category_type ?? 'academic';
-                                                $color = $categoryColors[$categoryType] ?? 'secondary';
-                                                $icon = $categoryIcons[$categoryType] ?? 'fas fa-money-bill';
-                                            @endphp
+                                            }
+                                            // Fallback sur le motif
+                                            elseif ($paiement->motif) {
+                                                $motifLower = strtolower($paiement->motif);
+                                                $type = 'academic';
+                                                if (str_contains($motifLower, 'cantine') || str_contains($motifLower, 'transport')) {
+                                                    $type = 'service';
+                                                } elseif (str_contains($motifLower, 'documentation') || str_contains($motifLower, 'examen')) {
+                                                    $type = 'administrative';
+                                                }
+                                                $categoryInfo = [
+                                                    'name' => $paiement->motif,
+                                                    'type' => $type,
+                                                    'source' => 'Inféré du motif'
+                                                ];
+                                            }
+                                            
+                                            $color = $categoryColors[$categoryInfo['type'] ?? 'academic'] ?? 'secondary';
+                                            $icon = $categoryIcons[$categoryInfo['type'] ?? 'academic'] ?? 'fas fa-money-bill';
+                                        @endphp
+                                        
+                                        @if($categoryInfo)
                                             <div class="badge bg-{{ $color }} d-flex align-items-center" style="max-width: 150px;">
                                                 <i class="{{ $icon }} me-1"></i>
-                                                <span class="text-truncate">{{ $paiement->fraisCategory->name }}</span>
+                                                <span class="text-truncate">{{ $categoryInfo['name'] }}</span>
                                             </div>
-                                            <small class="text-muted d-block">{{ ucfirst($categoryType) }}</small>
+                                            <small class="text-muted d-block">{{ ucfirst($categoryInfo['type']) }}</small>
                                         @else
                                             <span class="badge bg-secondary">
                                                 <i class="fas fa-question me-1"></i>Non définie
@@ -379,4 +415,5 @@
     font-size: 0.875rem;
 }
 </style>
+
 @endpush

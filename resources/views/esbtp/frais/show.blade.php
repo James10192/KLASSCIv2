@@ -26,11 +26,11 @@
                 </a>
                 @if($fraisCategory->is_mandatory)
                     <a href="{{ route('esbtp.frais.configure') }}" class="btn-acasi accent-blue">
-                        <i class="fas fa-graduation-cap"></i>Configuration
+                        <i class="fas fa-graduation-cap"></i>Configuration par Classes
                     </a>
                 @else
                     <a href="{{ route('esbtp.frais.optional-config') }}" class="btn-acasi success">
-                        <i class="fas fa-tasks"></i>Assignations
+                        <i class="fas fa-globe"></i>Services Optionnels
                     </a>
                 @endif
                 <a href="{{ route('esbtp.frais.index') }}" class="btn-acasi secondary">
@@ -176,70 +176,145 @@
         </div>
     </div>
 
-    <!-- Options modernes -->
-    @if($options->count() > 0)
-        <div class="card-moderne" style="padding: var(--space-lg); margin-bottom: var(--space-lg);">
-            <div class="section-title">
-                <i class="fas fa-list me-2"></i>Options Disponibles ({{ $options->count() }})
-            </div>
-            
-            <div style="margin-top: var(--space-lg);">
-                <div class="resultats-grid">
-                    @foreach($options as $option)
-                        <div class="card-moderne" style="padding: var(--space-md); border-left: 4px solid var(--{{ $option->is_default ? 'success' : 'accent-blue' }});">
-                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-sm);">
-                                <div style="flex: 1;">
-                                    <div style="font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-xs);">{{ $option->name }}</div>
-                                    @if($option->description)
-                                        <div style="font-size: var(--text-small); color: var(--text-secondary); margin-bottom: var(--space-sm);">{{ $option->description }}</div>
-                                    @endif
-                                </div>
-                                <div style="text-align: right;">
-                                    @if($option->is_default)
-                                        <span class="badge success" style="margin-bottom: var(--space-xs);">Défaut</span>
-                                    @endif
-                                    <span class="badge {{ $option->is_active ? 'primary' : 'secondary' }}">
-                                        {{ $option->is_active ? 'Actif' : 'Inactif' }}
-                                    </span>
-                                </div>
-                            </div>
-                            
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <div style="font-size: var(--amount-medium); font-weight: 700; color: var(--primary);">
-                                    +{{ number_format($option->additional_amount, 0, ',', ' ') }} F CFA
-                                </div>
-                                <div style="display: flex; gap: var(--space-xs);">
-                                    <button class="btn-acasi primary" style="padding: var(--space-xs) var(--space-sm); font-size: var(--text-small);" 
-                                            onclick="editOptionInline({{ $option->id }}, '{{ $option->name }}', '{{ $option->description }}', {{ $option->additional_amount }}, {{ $option->is_default ? 'true' : 'false' }})" 
-                                            title="Modifier">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button class="btn-acasi {{ $option->is_active ? 'warning' : 'success' }}" style="padding: var(--space-xs) var(--space-sm); font-size: var(--text-small);" 
-                                            onclick="toggleOption({{ $option->id }}, {{ $option->is_active ? 'false' : 'true' }})"
-                                            title="{{ $option->is_active ? 'Désactiver' : 'Activer' }}">
-                                        <i class="fas fa-{{ $option->is_active ? 'pause' : 'play' }}"></i>
-                                    </button>
-                                    <button class="btn-acasi danger" style="padding: var(--space-xs) var(--space-sm); font-size: var(--text-small);" 
-                                            onclick="deleteOption({{ $option->id }})" title="Supprimer">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    @endforeach
+    <!-- Options selon le type de frais -->
+    @if($fraisCategory->is_mandatory)
+        <!-- Options par classe pour frais obligatoires -->
+        @if($options->count() > 0)
+            <div class="card-moderne" style="padding: var(--space-lg); margin-bottom: var(--space-lg);">
+                <div class="section-title">
+                    <i class="fas fa-list me-2"></i>Options par Classe ({{ $options->count() }})
                 </div>
                 
-                <div style="text-align: center; margin-top: var(--space-lg);">
-                    <button class="btn-acasi primary" onclick="addOption({{ $fraisCategory->id }}, '{{ $fraisCategory->name }}')">
-                        <i class="fas fa-plus"></i>Ajouter une Option
-                    </button>
+                <div style="margin-top: var(--space-lg);">
+                    <div class="resultats-grid">
+                        @foreach($options as $option)
+                            <div class="card-moderne" style="padding: var(--space-md); border-left: 4px solid var(--{{ $option->is_default ? 'success' : 'accent-blue' }});">
+                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-sm);">
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-xs);">{{ $option->name }}</div>
+                                        @if($option->description)
+                                            <div style="font-size: var(--text-small); color: var(--text-secondary); margin-bottom: var(--space-sm);">{{ $option->description }}</div>
+                                        @endif
+                                        @if($option->configuration)
+                                            <div style="font-size: var(--text-small); color: var(--text-muted);">
+                                                <i class="fas fa-graduation-cap me-1"></i>{{ $option->configuration->filiere->name ?? 'N/A' }} - {{ $option->configuration->niveau->name ?? 'N/A' }}
+                                            </div>
+                                        @endif
+                                    </div>
+                                    <div style="text-align: right;">
+                                        @if($option->is_default)
+                                            <span class="badge success" style="margin-bottom: var(--space-xs);">Défaut</span>
+                                        @endif
+                                        <span class="badge {{ $option->is_active ? 'primary' : 'secondary' }}">
+                                            {{ $option->is_active ? 'Actif' : 'Inactif' }}
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div style="font-size: var(--amount-medium); font-weight: 700; color: var(--primary);">
+                                        +{{ number_format($option->additional_amount, 0, ',', ' ') }} F CFA
+                                    </div>
+                                    <div style="display: flex; gap: var(--space-xs);">
+                                        <button class="btn-acasi primary" style="padding: var(--space-xs) var(--space-sm); font-size: var(--text-small);" 
+                                                onclick="editOptionInline({{ $option->id }}, '{{ $option->name }}', '{{ $option->description }}', {{ $option->additional_amount }}, {{ $option->is_default ? 'true' : 'false' }})" 
+                                                title="Modifier">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn-acasi {{ $option->is_active ? 'warning' : 'success' }}" style="padding: var(--space-xs) var(--space-sm); font-size: var(--text-small);" 
+                                                onclick="toggleOption({{ $option->id }}, {{ $option->is_active ? 'false' : 'true' }})"
+                                                title="{{ $option->is_active ? 'Désactiver' : 'Activer' }}">
+                                            <i class="fas fa-{{ $option->is_active ? 'pause' : 'play' }}"></i>
+                                        </button>
+                                        <button class="btn-acasi danger" style="padding: var(--space-xs) var(--space-sm); font-size: var(--text-small);" 
+                                                onclick="deleteOption({{ $option->id }})" title="Supprimer">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                    
+                    <div style="text-align: center; margin-top: var(--space-lg);">
+                        <a href="{{ route('esbtp.frais.configure') }}" class="btn-acasi primary">
+                            <i class="fas fa-cogs"></i>Gérer les Configurations
+                        </a>
+                    </div>
                 </div>
             </div>
-        </div>
+        @endif
+    @else
+        <!-- Options globales pour services optionnels -->
+        @if($options->count() > 0)
+            <div class="card-moderne" style="padding: var(--space-lg); margin-bottom: var(--space-lg);">
+                <div class="section-title">
+                    <i class="fas fa-globe me-2"></i>Options Globales ({{ $options->count() }})
+                </div>
+                
+                <div style="margin-top: var(--space-lg);">
+                    <div class="resultats-grid">
+                        @foreach($options as $option)
+                            <div class="card-moderne" style="padding: var(--space-md); border-left: 4px solid var(--{{ $option->is_default ? 'success' : 'accent-blue' }});">
+                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-sm);">
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-xs);">{{ $option->name }}</div>
+                                        @if($option->description)
+                                            <div style="font-size: var(--text-small); color: var(--text-secondary); margin-bottom: var(--space-sm);">{{ $option->description }}</div>
+                                        @endif
+                                        <div style="font-size: var(--text-small); color: var(--text-muted);">
+                                            <i class="fas fa-globe me-1"></i>Disponible pour tous les étudiants
+                                        </div>
+                                    </div>
+                                    <div style="text-align: right;">
+                                        @if($option->is_default)
+                                            <span class="badge success" style="margin-bottom: var(--space-xs);">Défaut</span>
+                                        @endif
+                                        <span class="badge {{ $option->is_active ? 'primary' : 'secondary' }}">
+                                            {{ $option->is_active ? 'Actif' : 'Inactif' }}
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div style="font-size: var(--amount-medium); font-weight: 700; color: var(--primary);">
+                                        +{{ number_format($option->additional_amount, 0, ',', ' ') }} F CFA
+                                    </div>
+                                    <div style="display: flex; gap: var(--space-xs);">
+                                        <a href="{{ route('esbtp.frais.optional-config') }}" class="btn-acasi primary" style="padding: var(--space-xs) var(--space-sm); font-size: var(--text-small);" title="Gérer les services optionnels">
+                                            <i class="fas fa-cogs"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                    
+                    <div style="text-align: center; margin-top: var(--space-lg);">
+                        <a href="{{ route('esbtp.frais.optional-config') }}" class="btn-acasi success">
+                            <i class="fas fa-globe"></i>Gérer les Services Optionnels
+                        </a>
+                    </div>
+                </div>
+            </div>
+        @else
+            <div class="card-moderne" style="padding: var(--space-lg); background: rgba(59, 130, 246, 0.1); border-left: 4px solid var(--accent-blue);">
+                <div style="text-align: center;">
+                    <i class="fas fa-globe" style="font-size: 48px; color: var(--accent-blue); margin-bottom: var(--space-md);"></i>
+                    <div style="font-weight: 700; color: var(--accent-blue); margin-bottom: var(--space-sm);">Service global non configuré</div>
+                    <div style="color: var(--text-secondary); margin-bottom: var(--space-lg);">
+                        Ce service optionnel n'a pas encore d'options configurées.
+                    </div>
+                    <a href="{{ route('esbtp.frais.optional-config') }}" class="btn-acasi primary">
+                        <i class="fas fa-plus"></i>Configurer maintenant
+                    </a>
+                </div>
+            </div>
+        @endif
     @endif
 
-    <!-- Configuration par classe moderne -->
-    @if($configurations->count() > 0)
+    <!-- Configuration par classe moderne (seulement pour frais obligatoires) -->
+    @if($fraisCategory->is_mandatory && $configurations->count() > 0)
         <div class="card-moderne" style="padding: var(--space-lg); margin-bottom: var(--space-lg);">
             <div class="section-title">
                 <i class="fas fa-cogs me-2"></i>Configuration par Classes ({{ $configurations->count() }})
@@ -323,7 +398,7 @@
                 </div>
             </div>
         </div>
-    @else
+    @elseif($fraisCategory->is_mandatory)
         <div class="card-moderne" style="padding: var(--space-lg); background: rgba(59, 130, 246, 0.1); border-left: 4px solid var(--accent-blue);">
             <div style="text-align: center;">
                 <i class="fas fa-info-circle" style="font-size: 48px; color: var(--accent-blue); margin-bottom: var(--space-md);"></i>
@@ -340,6 +415,45 @@
 </div>
 
 @endsection
+
+<style>
+/* Fix modal centering */
+.modal.show {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.show .modal-dialog {
+    margin: 0;
+    transform: none;
+}
+
+/* Ensure modal backdrop covers full viewport */
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1040;
+}
+
+/* Center modal regardless of scroll position */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1050;
+}
+
+.modal-dialog {
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+}
+</style>
 
 <!-- Modal d'édition de configuration -->
 <div class="modal fade" id="editConfigModal" tabindex="-1" aria-labelledby="editConfigModalLabel" aria-hidden="true">

@@ -1,0 +1,154 @@
+/* Correctifs pour les problèmes de curseur erratique sur la page d'inscription */
+
+/* Désactiver l'animation float permanente qui cause des problèmes de curseur */
+.btn-add-parent {
+    animation: none !important;
+}
+
+/* Stabiliser les pseudo-éléments qui bougent avec le curseur */
+.choices__item--selectable::before,
+.btn-add-parent::before,
+.remove-parent::before,
+.add-parent-container::before {
+    transition: none !important;
+}
+
+/* Limiter les transformations au survol qui peuvent causer des conflits */
+.choices__item--selectable:hover {
+    transform: none !important;
+}
+
+.choices__item--selectable.is-highlighted {
+    transform: none !important;
+}
+
+/* Réduire les effets de transformation sur les cartes */
+.card:hover {
+    transform: translateY(-2px) !important; /* Réduire de -5px à -2px */
+}
+
+.parent-item:hover {
+    transform: translateY(-3px) scale(1.01) !important; /* Réduire les effets */
+}
+
+/* Stabiliser les boutons */
+.btn-add-parent:hover {
+    transform: translateY(-1px) scale(1.02) !important; /* Effets plus modérés */
+}
+
+.remove-parent:hover {
+    transform: translateY(-1px) scale(1.02) !important; /* Effets plus modérés */
+}
+
+/* Désactiver les animations des icônes qui peuvent bouger */
+.btn-add-parent:hover i {
+    transform: scale(1.1) !important; /* Supprimer la rotation */
+}
+
+/* Stabiliser les dropdowns Choices.js */
+.choices__list--dropdown {
+    animation: none !important;
+}
+
+/* Réduire les effets de survol sur les éléments sensibles */
+.form-check:hover .form-check-label {
+    transition: color 0.1s ease !important; /* Transition plus rapide */
+}
+
+/* Stabiliser les pseudo-éléments des titres */
+.section-title::before,
+.section-title::after {
+    animation: none !important;
+    transition: none !important;
+}
+
+/* Arrêter toutes les animations qui pourraient interférer */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* Mode de sécurité : désactiver toutes les animations problématiques */
+.cursor-safe-mode * {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+}
+
+.cursor-safe-mode *:hover {
+    transform: none !important;
+}
+
+.cursor-safe-mode *::before,
+.cursor-safe-mode *::after {
+    animation: none !important;
+    transition: none !important;
+}
+
+/* Fix for select dropdown options visibility issues */
+
+/* Generic fix for all form-select elements */
+.form-select option,
+.form-control option,
+select option {
+    background-color: #ffffff !important;
+    color: #374151 !important;
+    padding: 8px 12px !important;
+}
+
+.form-select option:checked,
+.form-select option:selected,
+.form-control option:checked,
+.form-control option:selected,
+select option:checked,
+select option:selected {
+    background-color: #3b82f6 !important;
+    color: #ffffff !important;
+}
+
+.form-select option:hover,
+.form-control option:hover,
+select option:hover {
+    background-color: #f3f4f6 !important;
+    color: #111827 !important;
+}
+
+/* Specific fix for année universitaire select */
+#annee_id,
+select[name="annee_id"] {
+    background-color: #ffffff !important;
+    color: #374151 !important;
+}
+
+#annee_id option,
+select[name="annee_id"] option {
+    background-color: #ffffff !important;
+    color: #374151 !important;
+    padding: 8px 12px !important;
+}
+
+#annee_id option:checked,
+#annee_id option:selected,
+select[name="annee_id"] option:checked,
+select[name="annee_id"] option:selected {
+    background-color: #3b82f6 !important;
+    color: #ffffff !important;
+}
+
+/* Force override any conflicting styles */
+.dashboard-acasi select option {
+    background: white !important;
+    color: #374151 !important;
+}
+
+.dashboard-acasi select option:checked,
+.dashboard-acasi select option:selected {
+    background: #3b82f6 !important;
+    color: white !important;
+}

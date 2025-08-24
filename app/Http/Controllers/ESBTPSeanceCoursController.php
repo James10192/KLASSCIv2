@@ -14,6 +14,8 @@ use Illuminate\Support\Facades\Log;
 use App\Models\ESBTPTeacher;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
+use App\Models\ESBTPEvaluation;
+use Carbon\Carbon;
 
 class ESBTPSeanceCoursController extends Controller
 {
@@ -175,27 +177,65 @@ class ESBTPSeanceCoursController extends Controller
     public function create(Request $request)
     {
         try {
-            // Validate required parameters
+            // Validate required parameters - jour et heure_debut sont optionnels
             $request->validate([
                 'emploi_temps_id' => 'required|exists:esbtp_emploi_temps,id',
-                'jour' => 'required|integer|min:1|max:7',
-                'heure_debut' => 'required|date_format:H:i',
+                'jour' => 'nullable|integer|min:1|max:7',
+                'heure_debut' => 'nullable|date_format:H:i',
             ]);
 
         // Récupérer l'emploi du temps
-            $emploiTemps = ESBTPEmploiTemps::with('classe.filiere', 'classe.niveau')
+            $emploiTemps = ESBTPEmploiTemps::with('classe.filiere', 'classe.niveau', 'annee')
                 ->findOrFail($request->emploi_temps_id);
 
-            // Récupérer les enseignants actifs
-        $teachers = ESBTPTeacher::with('user')
-                ->where('is_active', true)
-            ->get()
-                ->sortBy('user.name');
+            // Utiliser la même logique que dans l'emploi du temps pour récupérer les données de planification
+            $emploiTempsController = new ESBTPEmploiTempsController();
+            $reflection = new \ReflectionClass($emploiTempsController);
+            $method = $reflection->getMethod('getPlanificationDataForClasse');
+            $method->setAccessible(true);
+            
+            $planificationData = $method->invoke($emploiTempsController, 
+                $emploiTemps->classe, 
+                $emploiTemps->annee, 
+                $emploiTemps->semestre
+            );
 
-        // Récupérer les matières
-            $matieres = ESBTPMatiere::where('is_active', true)
-                ->orderBy('name')
-                ->get();
+            // Récupérer les matières configurées pour cette combinaison filière/niveau
+            $matieres = $planificationData['matieres_planifiees'];
+
+            // Récupérer les enseignants avec leurs disponibilités
+            $teachers = collect();
+            $availabilityData = [];
+            
+            foreach ($matieres as $matiere) {
+                // Ajouter les enseignants assignés à cette matière
+                if ($matiere['enseignants_assignes'] && $matiere['enseignants_assignes']->count() > 0) {
+                    foreach ($matiere['enseignants_assignes'] as $teacher) {
+                        if (!$teachers->contains('id', $teacher->id)) {
+                            $teachers->push($teacher);
+                        }
+                    }
+                }
+                
+                // Ajouter l'enseignant principal si pas d'assignations
+                if ($matiere['enseignant_principal'] && $matiere['enseignants_assignes']->count() == 0) {
+                    $teacherModel = ESBTPTeacher::where('user_id', $matiere['enseignant_principal']->id)->first();
+                    if ($teacherModel && !$teachers->contains('id', $teacherModel->id)) {
+                        $teachers->push($teacherModel);
+                    }
+                }
+            }
+
+            // Préparer les données de disponibilité pour tous les enseignants
+            $prepareAvailabilityMethod = $reflection->getMethod('prepareAvailabilityData');
+            $prepareAvailabilityMethod->setAccessible(true);
+            
+            foreach ($teachers as $teacher) {
+                $baseAvailability = $prepareAvailabilityMethod->invoke($emploiTempsController, $teacher);
+                
+                // Ajouter les séances existantes comme créneaux occupés
+                $availabilityData[$teacher->id] = $this->addExistingSessionsToAvailability($baseAvailability, $teacher);
+            }
 
             // Définir les types de séances disponibles
             $sessionTypes = [
@@ -225,12 +265,56 @@ class ESBTPSeanceCoursController extends Controller
                 'sessionTypes',
                 'joursSemaine',
                 'defaultColors',
-                'request'
+                'request',
+                'planificationData',
+                'availabilityData'
             ));
         } catch (\Exception $e) {
             Log::error('Error in SeanceCoursController@create: ' . $e->getMessage());
             return back()->with('error', 'Une erreur est survenue lors du chargement du formulaire.');
         }
+    }
+
+    /**
+     * Ajouter les séances existantes du professeur comme créneaux occupés
+     */
+    private function addExistingSessionsToAvailability($baseAvailability, $teacher)
+    {
+        // Récupérer toutes les séances du professeur dans des emplois du temps actifs
+        $existingSessions = ESBTPSeanceCours::where('teacher_id', $teacher->id)
+            ->whereHas('emploiTemps', function($query) {
+                $query->where('is_active', true);
+            })
+            ->get();
+
+        $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        
+        foreach ($existingSessions as $session) {
+            // Mapper le jour numérique vers la clé jour
+            $dayKey = $days[$session->jour - 1] ?? null; // jour 1=lundi -> index 0=monday
+            
+            if (!$dayKey || !isset($baseAvailability[$dayKey])) {
+                continue;
+            }
+            
+            // Parser les heures de la séance
+            $startHour = $session->heure_debut instanceof \Carbon\Carbon ? 
+                $session->heure_debut->hour : 
+                (int) substr($session->heure_debut, 0, 2);
+            $endHour = $session->heure_fin instanceof \Carbon\Carbon ? 
+                $session->heure_fin->hour : 
+                (int) substr($session->heure_fin, 0, 2);
+            
+            // Marquer comme occupé tous les créneaux de cette séance
+            for ($hour = $startHour; $hour < $endHour; $hour++) {
+                $hourIndex = $hour - 8; // 8h = index 0
+                if ($hourIndex >= 0 && $hourIndex < count($baseAvailability[$dayKey])) {
+                    $baseAvailability[$dayKey][$hourIndex] = 'occupied';
+                }
+            }
+        }
+        
+        return $baseAvailability;
     }
 
     /**
@@ -357,11 +441,72 @@ class ESBTPSeanceCoursController extends Controller
                     $createdSessions[] = $session->id;
                     \Log::info('Séance simple créée', ['id' => $session->id, 'jour' => $data['jour']]);
                 }
+
+                // Création automatique d'évaluations pour les séances de type "homework"
+                if ($request->type === 'homework') {
+                    $createdEvaluations = [];
+                    foreach ($createdSessions as $sessionId) {
+                        $seance = ESBTPSeanceCours::with('matiere')->find($sessionId);
+                        
+                        // Calculer la durée en minutes
+                        $heureDebut = Carbon::parse($seance->heure_debut);
+                        $heureFin = Carbon::parse($seance->heure_fin);
+                        $dureeMinutes = $heureFin->diffInMinutes($heureDebut);
+                        
+                        // Déterminer la période selon la date
+                        $periode = 'semestre1'; // Par défaut
+                        $dateSeance = Carbon::parse($seance->date_seance);
+                        if ($dateSeance->month >= 1 && $dateSeance->month <= 6) {
+                            $periode = 'semestre2';
+                        }
+                        
+                        $evaluationData = [
+                            'titre' => $seance->homework_description ?: 'Devoir - ' . ($seance->matiere->name ?? 'Matière'),
+                            'description' => $seance->homework_description,
+                            'matiere_id' => $seance->matiere_id,
+                            'classe_id' => $seance->classe_id,
+                            'type' => 'devoir',
+                            'date_evaluation' => $seance->date_seance,
+                            'coefficient' => 1.0,
+                            'bareme' => 20.00,
+                            'duree_minutes' => $dureeMinutes,
+                            'periode' => $periode,
+                            'annee_universitaire_id' => $seance->annee_universitaire_id,
+                            'status' => 'draft',
+                            'is_published' => false,
+                            'notes_published' => false,
+                            'created_by' => Auth::id(),
+                            'enseignant_id' => $seance->teacher_id
+                        ];
+                        
+                        $evaluation = ESBTPEvaluation::create($evaluationData);
+                        $createdEvaluations[] = $evaluation->id;
+                        
+                        \Log::info('Évaluation créée automatiquement', [
+                            'evaluation_id' => $evaluation->id, 
+                            'seance_id' => $sessionId,
+                            'date_evaluation' => $seance->date_seance,
+                            'titre' => $evaluation->titre
+                        ]);
+                    }
+                    
+                    \Log::info('Évaluations automatiques créées pour séances homework', [
+                        'evaluation_ids' => $createdEvaluations,
+                        'session_ids' => $createdSessions
+                    ]);
+                }
+
                 DB::commit();
                 \Log::info('Création séances terminée', ['ids' => $createdSessions]);
+                
+                $successMessage = 'Séance(s) ajoutée(s) avec succès.';
+                if ($request->type === 'homework') {
+                    $successMessage .= ' Les évaluations correspondantes ont été créées automatiquement.';
+                }
+                
             return redirect()
                 ->route('esbtp.emploi-temps.show', $request->emploi_temps_id)
-                    ->with('success', 'Séance(s) ajoutée(s) avec succès.');
+                    ->with('success', $successMessage);
             } catch (ValidationException $e) {
                 DB::rollBack();
                 \Log::error('Erreur validation transaction création séance', $e->errors());

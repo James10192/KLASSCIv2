@@ -130,6 +130,15 @@ class ESBTPPlanificationAcademique extends Model
     }
 
     /**
+     * Enseignants assignés à cette planification (relation many-to-many)
+     */
+    public function teachers()
+    {
+        return $this->belongsToMany(ESBTPTeacher::class, 'esbtp_planification_teachers', 'planification_id', 'teacher_id')
+                    ->withTimestamps();
+    }
+
+    /**
      * Relation avec l'utilisateur qui a créé la planification
      */
     public function createdBy()

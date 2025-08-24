@@ -16,7 +16,7 @@
                 <p class="header-subtitle">Créer une nouvelle évaluation pour vos étudiants</p>
             </div>
             <div class="header-actions">
-                @if(!auth()->user()->hasRole(['teacher', 'enseignant']))
+                @if(auth()->check() && auth()->user() && !auth()->user()->hasRole(['teacher', 'enseignant']))
                 <a href="{{ route('esbtp.evaluations.index') }}" class="btn-acasi secondary">
                     <i class="fas fa-arrow-left"></i>Retour à la liste
                 </a>
@@ -218,7 +218,7 @@
                 </div>
 
                 <!-- Section 4: Assignation d'enseignant (non-enseignants uniquement) -->
-                @if(!auth()->user()->hasRole(['teacher', 'enseignant']))
+                @if(auth()->check() && auth()->user() && !auth()->user()->hasRole(['teacher', 'enseignant']))
                 <div class="main-card">
                     <div class="main-card-header">
                         <div class="main-card-title">

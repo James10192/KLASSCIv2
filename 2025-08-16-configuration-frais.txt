@@ -1,0 +1,18 @@
+╭───────────────────────────────────────────────────╮
+│ ✻ Welcome to Claude Code!                         │
+│                                                   │
+│   /help for help, /status for your current setup  │
+│                                                   │
+│   cwd: /mnt/c/xampp/htdocs/ESBTP-yAKROv2Pascal    │
+╰───────────────────────────────────────────────────╯
+● Compact summary (ctrl+r to expand)
+  ⎿  Read app/Services/FraisCacheService.php (462 lines)
+  ⎿  Read database/migrations/2025_08_16_121109_optimize_frais_tables_indexes.php (221 lines)
+  ⎿  Read app/Models/ESBTPFraisOption.php (386 lines)
+  ⎿  Read app/Models/ESBTPFraisConfiguration.php (313 lines)
+  ⎿  Read app/Services/FraisCalculation/Strategies/AdministrativeFeeStrategy.php (228 lines)
+  ⎿  Todo list read (10 items)
+  ⎿  Claude usage limit reached. Your limit will reset at 3pm (Africa/Abidjan).
+
+      • /upgrade to increase your usage limit.
+

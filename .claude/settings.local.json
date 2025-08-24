@@ -36,7 +36,11 @@
       "Bash(.claude/ccnotify/ccnotify.py Notification)",
       "Bash(.claude/ccnotify/simple-notify.py Notification)",
       "WebSearch",
-      "WebFetch(domain:docs.anthropic.com)"
+      "WebFetch(domain:docs.anthropic.com)",
+      "Bash(curl:*)",
+      "WebFetch(domain:localhost)",
+      "WebFetch(domain:localhost)",
+      "WebFetch(domain:fr.scribd.com)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

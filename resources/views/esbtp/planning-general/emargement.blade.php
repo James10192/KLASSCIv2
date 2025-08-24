@@ -331,57 +331,135 @@
 
                     <!-- Séances de cours disponibles -->
                     @if($seancesAVenir->isNotEmpty())
-                        <div class="section-header mt-lg">
-                            <div class="section-title">
-                                <i class="fas fa-calendar-plus me-2"></i>
-                                Séances de cours à venir
-                            </div>
-                        </div>
+                        @php
+                            // Filtrer les vraies séances à venir (pas celles qui sont passées)
+                            $now = \Carbon\Carbon::now();
+                            $vraiSeancesAVenir = $seancesAVenir->filter(function($seance) use ($now) {
+                                // Si date_seance existe, utiliser cette date
+                                if ($seance->date_seance) {
+                                    // heure_debut peut être un datetime complet, extraire juste l'heure
+                                    $heureDebut = \Carbon\Carbon::parse($seance->heure_debut)->format('H:i:s');
+                                    $seanceDateTime = \Carbon\Carbon::parse($seance->date_seance . ' ' . $heureDebut);
+                                    return $seanceDateTime->gt($now);
+                                }
+                                
+                                // Sinon, pour les séances récurrentes, vérifier si l'heure n'est pas passée aujourd'hui
+                                $heureDebut = \Carbon\Carbon::parse($seance->heure_debut)->format('H:i:s');
+                                $today = \Carbon\Carbon::today();
+                                $seanceToday = $today->copy()->setTimeFromTimeString($heureDebut);
+                                
+                                // Si c'est aujourd'hui et que l'heure est passée, ne pas inclure
+                                if ($now->isToday() && $seanceToday->lt($now)) {
+                                    return false;
+                                }
+                                
+                                return true;
+                            });
+                        @endphp
                         
-                        <div class="course-list">
-                            @foreach($seancesAVenir->take(6) as $seance)
-                                <form method="POST" action="{{ route('esbtp.planning-general.generer-code-emargement') }}" style="display: contents;">
-                                    @csrf
-                                    <input type="hidden" name="annee_id" value="{{ $anneeSelectionnee?->id }}">
-                                    <input type="hidden" name="type" value="session">
-                                    <input type="hidden" name="seance_id" value="{{ $seance->id }}">
-                                    <input type="hidden" name="duree" value="{{ ceil($seance->getDuration() / 60) }}">
-                                    <input type="hidden" name="activation" value="immediate">
-                                    <input type="hidden" name="description" value="Code pour {{ $seance->matiere?->name }} - {{ $seance->classe?->nom }}">
+                        @if($vraiSeancesAVenir->isNotEmpty())
+                            <div class="section-header mt-lg">
+                                <div class="section-title">
+                                    <i class="fas fa-calendar-plus me-2"></i>
+                                    Séances de cours disponibles
+                                </div>
+                                <small class="text-muted">{{ $vraiSeancesAVenir->count() }} séance(s) à venir pour générer des codes</small>
+                            </div>
+                            
+                            <div class="course-list">
+                                @foreach($vraiSeancesAVenir->take(6) as $seance)
+                                    @php
+                                        $now = \Carbon\Carbon::now();
+                                        $isUpcoming = true;
+                                        
+                                        if ($seance->date_seance) {
+                                            $heureDebut = \Carbon\Carbon::parse($seance->heure_debut)->format('H:i:s');
+                                            $seanceDateTime = \Carbon\Carbon::parse($seance->date_seance . ' ' . $heureDebut);
+                                            $isUpcoming = $seanceDateTime->gt($now);
+                                        } else {
+                                            $heureDebut = \Carbon\Carbon::parse($seance->heure_debut)->format('H:i:s');
+                                            $seanceTime = \Carbon\Carbon::today()->setTimeFromTimeString($heureDebut);
+                                            $isUpcoming = $seanceTime->gt($now);
+                                        }
+                                    @endphp
                                     
-                                    <button type="submit" class="course-item" style="background: none; border: none; width: 100%; text-align: left;"
-                                            onclick="return confirm('Générer un code d\'émargement pour cette séance ?')">
-                                        <div class="course-time">
-                                            <div class="time-display">{{ $seance->heure_debut->format('H:i') }} - {{ $seance->heure_fin->format('H:i') }}</div>
-                                            <div class="course-day">
-                                                @if($seance->date_seance)
-                                                    {{ \Carbon\Carbon::parse($seance->date_seance)->format('d/m') }}
-                                                @else
-                                                    {{ $seance->jour_semaine_texte }}
+                                    @if($isUpcoming)
+                                        <form method="POST" action="{{ route('esbtp.planning-general.generer-code-emargement') }}" style="display: contents;">
+                                            @csrf
+                                            <input type="hidden" name="annee_id" value="{{ $anneeSelectionnee?->id }}">
+                                            <input type="hidden" name="type" value="session">
+                                            <input type="hidden" name="seance_id" value="{{ $seance->id }}">
+                                            <input type="hidden" name="duree" value="{{ ceil($seance->getDuration() / 60) }}">
+                                            <input type="hidden" name="activation" value="immediate">
+                                            <input type="hidden" name="description" value="Code pour {{ $seance->matiere?->name }} - {{ $seance->classe?->nom }}">
+                                            
+                                            <button type="submit" class="course-item" style="background: none; border: none; width: 100%; text-align: left;"
+                                                    onclick="return confirm('Générer un code d\'émargement pour cette séance ?')">
+                                                <div class="course-time">
+                                                    <div class="time-display">{{ $seance->heure_debut->format('H:i') }} - {{ $seance->heure_fin->format('H:i') }}</div>
+                                                    <div class="course-day">
+                                                        @if($seance->date_seance)
+                                                            {{ \Carbon\Carbon::parse($seance->date_seance)->format('d/m') }}
+                                                        @else
+                                                            Prochaine fois
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                                <div class="course-info">
+                                                    <div class="course-subject">{{ $seance->matiere?->name ?? 'Matière inconnue' }}</div>
+                                                    <div class="course-class">{{ $seance->classe?->nom ?? 'Classe inconnue' }}</div>
+                                                    @if($seance->teacher)
+                                                        <div class="course-type">{{ $seance->teacher->name }}</div>
+                                                    @endif
+                                                </div>
+                                                <div class="course-status">
+                                                    <div class="badge success">
+                                                        <i class="fas fa-plus-circle me-1"></i>
+                                                        Générer Code
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        </form>
+                                    @else
+                                        <!-- Cours passé - non cliquable -->
+                                        <div class="course-item" style="opacity: 0.5; background-color: rgba(156, 163, 175, 0.1);">
+                                            <div class="course-time">
+                                                <div class="time-display">{{ $seance->heure_debut->format('H:i') }} - {{ $seance->heure_fin->format('H:i') }}</div>
+                                                <div class="course-day">
+                                                    @if($seance->date_seance)
+                                                        {{ \Carbon\Carbon::parse($seance->date_seance)->format('d/m') }}
+                                                    @else
+                                                        Aujourd'hui
+                                                    @endif
+                                                </div>
+                                            </div>
+                                            <div class="course-info">
+                                                <div class="course-subject">{{ $seance->matiere?->name ?? 'Matière inconnue' }}</div>
+                                                <div class="course-class">{{ $seance->classe?->nom ?? 'Classe inconnue' }}</div>
+                                                @if($seance->teacher)
+                                                    <div class="course-type">{{ $seance->teacher->name }}</div>
                                                 @endif
                                             </div>
-                                        </div>
-                                        <div class="course-info">
-                                            <div class="course-subject">{{ $seance->matiere?->name ?? 'Matière inconnue' }}</div>
-                                            <div class="course-class">{{ $seance->classe?->nom ?? 'Classe inconnue' }}</div>
-                                            @if($seance->teacher)
-                                                <div class="course-type">{{ $seance->teacher->name }}</div>
-                                            @endif
-                                        </div>
-                                        <div class="course-status">
-                                            <div class="badge success">
-                                                <i class="fas fa-plus-circle me-1"></i>
-                                                Générer Code
+                                            <div class="course-status">
+                                                <div class="badge neutral">
+                                                    <i class="fas fa-clock me-1"></i>
+                                                    Cours passé
+                                                </div>
                                             </div>
                                         </div>
-                                    </button>
-                                </form>
-                            @endforeach
-                        </div>
-                        
-                        @if($seancesAVenir->count() > 6)
-                            <div class="text-center mt-md">
-                                <small style="color: var(--text-muted);">{{ $seancesAVenir->count() - 6 }} autre(s) séance(s) disponible(s)...</small>
+                                    @endif
+                                @endforeach
+                            </div>
+                            
+                            @if($vraiSeancesAVenir->count() > 6)
+                                <div class="text-center mt-md">
+                                    <small style="color: var(--text-muted);">{{ $vraiSeancesAVenir->count() - 6 }} autre(s) séance(s) disponible(s)...</small>
+                                </div>
+                            @endif
+                        @else
+                            <div class="empty-state mt-lg">
+                                <i class="fas fa-info-circle"></i>
+                                <p>Aucune séance de cours à venir trouvée.</p>
                             </div>
                         @endif
                     @else
@@ -460,10 +538,15 @@
                                 @endif
                             </div>
                             <div class="course-status">
-                                @if($code->status === 'active')
+                                @if($code->status === 'active' && $code->valid_until > now())
                                     <div class="badge success">
                                         <i class="fas fa-circle me-1"></i>
                                         Actif
+                                    </div>
+                                @elseif($code->status === 'active' && $code->valid_until <= now())
+                                    <div class="badge danger">
+                                        <i class="fas fa-clock me-1"></i>
+                                        Expiré
                                     </div>
                                 @elseif($code->status === 'expired')
                                     <div class="badge danger">
@@ -612,6 +695,7 @@
         </div>
 
         <!-- Section rapide pour les liens d'interface -->
+        {{-- 
         <div class="quick-actions-section">
             <div class="quick-actions-grid">
                 <a href="{{ route('esbtp.attendance-codes.report') }}" class="quick-action-card">
@@ -632,6 +716,7 @@
                 </a>
             </div>
         </div>
+        --}}
     </div>
 </div>
 @endsection
@@ -657,13 +742,56 @@ $(document).ready(function() {
         }
     });
 
-    // Auto-refresh de la page toutes les 5 minutes pour afficher les derniers codes
+    // Auto-refresh de la page toutes les 2 minutes pour actualiser les statuts des cours
     setInterval(function() {
-        // Ne pas rafraîchir si l'utilisateur est en train d'interagir
-        if (!document.hidden) {
+        // Ne pas rafraîchir si l'utilisateur est en train d'interagir ou si un modal est ouvert
+        const modals = document.querySelectorAll('.modal.show');
+        const activeInputs = document.querySelectorAll('input:focus, textarea:focus, select:focus');
+        
+        if (!document.hidden && modals.length === 0 && activeInputs.length === 0) {
             window.location.reload();
         }
-    }, 300000); // 5 minutes
+    }, 120000); // 2 minutes
+    
+    // Mise à jour en temps réel des statuts de cours toutes les minutes
+    setInterval(function() {
+        updateCourseStatuses();
+    }, 60000); // 1 minute
+    
+    function updateCourseStatuses() {
+        const now = new Date();
+        
+        $('.course-item').each(function() {
+            const timeDisplay = $(this).find('.time-display').text();
+            const badge = $(this).find('.badge');
+            
+            if (timeDisplay && timeDisplay.includes(' - ')) {
+                const [startTime, endTime] = timeDisplay.split(' - ');
+                
+                // Parse time
+                const today = new Date();
+                const [startHour, startMin] = startTime.split(':');
+                
+                const courseStart = new Date(today);
+                courseStart.setHours(parseInt(startHour), parseInt(startMin), 0, 0);
+                
+                // Si le cours est passé et que le badge dit encore "Générer Code"
+                if (now > courseStart && badge.hasClass('success') && badge.text().includes('Générer Code')) {
+                    badge.removeClass('success').addClass('neutral');
+                    badge.html('<i class="fas fa-clock me-1"></i> Cours passé');
+                    
+                    // Désactiver le bouton parent si c'est un bouton
+                    const button = $(this).closest('button');
+                    if (button.length) {
+                        button.prop('disabled', true);
+                        button.css('opacity', '0.5');
+                        button.css('cursor', 'not-allowed');
+                        button.off('click');
+                    }
+                }
+            }
+        });
+    }
 
     // Affichage du temps restant pour le code actif
     @if($activeCode && !$activeCode->valid_until->isPast())

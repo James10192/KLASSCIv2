@@ -46,9 +46,16 @@ class ESBTPPaiementController extends Controller
         // Récupérer les années universitaires pour le filtre
         $annees = ESBTPAnneeUniversitaire::orderBy('annee_debut', 'desc')->get();
 
-        // Construire la requête
-        $query = ESBTPPaiement::with(['etudiant.user', 'inscription.anneeUniversitaire', 'validatedBy', 'fraisCategory'])
-            ->orderBy('created_at', 'desc');
+        // Construire la requête avec toutes les relations nécessaires
+        $query = ESBTPPaiement::with([
+            'etudiant.user', 
+            'inscription.anneeUniversitaire', 
+            'inscription.filiere',
+            'inscription.niveauEtude', 
+            'validatedBy', 
+            'fraisCategory',
+            'categorie' // Ancien système pour compatibilité
+        ])->orderBy('created_at', 'desc');
 
         // Appliquer les filtres
         if ($search) {
@@ -87,98 +94,226 @@ class ESBTPPaiementController extends Controller
         // Paginer les résultats
         $paiements = $query->paginate(15);
 
-        // Statistiques des paiements harmonisées avec le système de catégories
-        // Créer une requête de base pour les statistiques (sans pagination)
-        $statsQuery = ESBTPPaiement::with(['fraisCategory']);
+        // Calculer les vraies statistiques basées sur les inscriptions et leurs frais attendus
+        $categoriesStats = $this->calculateCategoryStats(null);
         
-        // Appliquer les mêmes filtres que pour la requête principale
-        if ($search) {
-            $statsQuery->where(function ($q) use ($search) {
-                $q->whereHas('etudiant.user', function ($subQ) use ($search) {
-                    $subQ->where('name', 'like', "%{$search}%");
-                })
-                ->orWhereHas('etudiant', function ($subQ) use ($search) {
-                    $subQ->where('matricule', 'like', "%{$search}%");
-                })
-                ->orWhere('numero_recu', 'like', "%{$search}%")
-                ->orWhere('reference_paiement', 'like', "%{$search}%");
-            });
-        }
-
-        if ($status) {
-            $statsQuery->where('status', $status);
-        }
-
-        if ($dateDebut) {
-            $statsQuery->whereDate('date_paiement', '>=', $dateDebut);
-        }
-
-        if ($dateFin) {
-            $statsQuery->whereDate('date_paiement', '<=', $dateFin);
-        }
-
-        if ($anneeId) {
-            $statsQuery->whereHas('inscription', function ($q) use ($anneeId) {
-                $q->where('annee_universitaire_id', $anneeId);
-            });
-        } else {
-            $statsQuery->anneeEnCours();
-        }
+        // Calculer le total attendu et payé à partir des catégories
+        $totalAttendu = $categoriesStats['academic_total'] + $categoriesStats['service_total'] + $categoriesStats['administrative_total'];
+        $totalPaye = $categoriesStats['academic_paid'] + $categoriesStats['service_paid'] + $categoriesStats['administrative_paid'];
+        $totalEnAttente = $categoriesStats['academic_pending'] + $categoriesStats['service_pending'] + $categoriesStats['administrative_pending'];
         
         $stats = [
-            // Statistiques générales
-            'total' => (clone $statsQuery)->count(),
-            'montant_total' => (clone $statsQuery)->sum('montant'),
-            'valides' => (clone $statsQuery)->where('status', 'validé')->count(),
-            'montant_valide' => (clone $statsQuery)->where('status', 'validé')->sum('montant'),
-            'en_attente' => (clone $statsQuery)->where('status', 'en_attente')->count(),
-            'montant_en_attente' => (clone $statsQuery)->where('status', 'en_attente')->sum('montant'),
-            
-            // Statistiques par catégorie de frais
-            'academic_paid' => (clone $statsQuery)->whereHas('fraisCategory', function($q) {
-                $q->where('category_type', 'academic');
-            })->where('status', 'validé')->sum('montant'),
-            
-            'service_paid' => (clone $statsQuery)->whereHas('fraisCategory', function($q) {
-                $q->where('category_type', 'service');
-            })->where('status', 'validé')->sum('montant'),
-            
-            'administrative_paid' => (clone $statsQuery)->whereHas('fraisCategory', function($q) {
-                $q->where('category_type', 'administrative');
-            })->where('status', 'validé')->sum('montant'),
-            
-            // Statistiques en attente par catégorie
-            'academic_pending' => (clone $statsQuery)->whereHas('fraisCategory', function($q) {
-                $q->where('category_type', 'academic');
-            })->where('status', 'en_attente')->sum('montant'),
-            
-            'service_pending' => (clone $statsQuery)->whereHas('fraisCategory', function($q) {
-                $q->where('category_type', 'service');
-            })->where('status', 'en_attente')->sum('montant'),
-            
-            'administrative_pending' => (clone $statsQuery)->whereHas('fraisCategory', function($q) {
-                $q->where('category_type', 'administrative');
-            })->where('status', 'en_attente')->sum('montant'),
-            
-            // Totaux par catégorie (pour calculer les taux)
-            'academic_total' => (clone $statsQuery)->whereHas('fraisCategory', function($q) {
-                $q->where('category_type', 'academic');
-            })->sum('montant'),
-            
-            'service_total' => (clone $statsQuery)->whereHas('fraisCategory', function($q) {
-                $q->where('category_type', 'service');
-            })->sum('montant'),
-            
-            'administrative_total' => (clone $statsQuery)->whereHas('fraisCategory', function($q) {
-                $q->where('category_type', 'administrative');
-            })->sum('montant'),
+            // Statistiques générales basées sur les vraies données
+            'total' => $query->count(),
+            'montant_total' => $totalAttendu,
+            'valides' => $query->where('status', 'validé')->count(),
+            'montant_valide' => $totalPaye,
+            'en_attente' => $query->where('status', 'en_attente')->count(),
+            'montant_en_attente' => $totalEnAttente,
         ];
         
-        // Calcul du taux de recouvrement global
-        $stats['recovery_rate'] = $stats['montant_total'] > 0 ? 
-            round(($stats['montant_valide'] / $stats['montant_total']) * 100, 1) : 0;
+        // Ajouter les statistiques par catégorie
+        $stats = array_merge($stats, $categoriesStats);
+        
+        // Calcul du taux de recouvrement global corrigé
+        $stats['recovery_rate'] = $totalAttendu > 0 ? 
+            round(($totalPaye / $totalAttendu) * 100, 1) : 0;
 
         return view('esbtp.paiements.index', compact('paiements', 'annees', 'stats'));
+    }
+
+    /**
+     * Calcule les vraies statistiques basées sur les inscriptions et leurs frais attendus.
+     */
+    private function calculateCategoryStats($baseQuery = null)
+    {
+        // Obtenir l'année en cours pour les calculs
+        $anneeEnCours = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        
+        // Si aucune année courante, prendre la plus récente
+        if (!$anneeEnCours) {
+            $anneeEnCours = \App\Models\ESBTPAnneeUniversitaire::orderBy('annee_debut', 'desc')->first();
+        }
+        
+        if (!$anneeEnCours) {
+            return $this->getEmptyStats();
+        }
+
+        // Récupérer toutes les inscriptions actives de l'année en cours
+        $inscriptions = \App\Models\ESBTPInscription::with(['filiere', 'niveauEtude'])
+            ->where('annee_universitaire_id', $anneeEnCours->id)
+            ->where('status', 'active')
+            ->get();
+
+        $stats = [
+            'academic_paid' => 0,
+            'service_paid' => 0,
+            'administrative_paid' => 0,
+            'academic_pending' => 0,
+            'service_pending' => 0,
+            'administrative_pending' => 0,
+            'academic_total' => 0,
+            'service_total' => 0,
+            'administrative_total' => 0,
+        ];
+
+        // Pour chaque inscription, calculer les montants attendus et payés
+        foreach ($inscriptions as $inscription) {
+            $fraisStats = $this->calculateFraisForInscription($inscription);
+            
+            foreach (['academic', 'service', 'administrative'] as $type) {
+                $stats[$type . '_total'] += $fraisStats[$type]['expected'];
+                $stats[$type . '_paid'] += $fraisStats[$type]['paid'];
+                $stats[$type . '_pending'] += $fraisStats[$type]['expected'] - $fraisStats[$type]['paid'];
+            }
+        }
+
+        // S'assurer que les pending ne sont jamais négatifs
+        foreach (['academic', 'service', 'administrative'] as $type) {
+            $stats[$type . '_pending'] = max(0, $stats[$type . '_pending']);
+        }
+
+        return $stats;
+    }
+
+    /**
+     * Calcule les frais attendus et payés pour une inscription donnée.
+     */
+    private function calculateFraisForInscription($inscription)
+    {
+        $fraisStats = [
+            'academic' => ['expected' => 0, 'paid' => 0],
+            'service' => ['expected' => 0, 'paid' => 0],
+            'administrative' => ['expected' => 0, 'paid' => 0],
+        ];
+
+        // Récupérer toutes les catégories de frais actives
+        $categories = \App\Models\ESBTPFraisCategory::where('is_active', true)->get();
+
+        foreach ($categories as $category) {
+            $categoryType = $category->category_type ?? 'academic';
+            $expectedAmount = 0;
+
+            if ($category->is_mandatory) {
+                // Frais obligatoire : vérifier s'il y a une configuration pour cette classe
+                $configuration = \App\Models\ESBTPFraisConfiguration::where('frais_category_id', $category->id)
+                    ->where('filiere_id', $inscription->filiere_id)
+                    ->where('niveau_id', $inscription->niveau_id)
+                    ->where('is_active', true)
+                    ->where('is_valid', true)
+                    ->first();
+
+                if ($configuration) {
+                    $expectedAmount = $configuration->amount;
+                } else {
+                    // Utiliser le montant par défaut si pas de configuration spécifique
+                    $expectedAmount = $category->default_amount ?? 0;
+                }
+            } else {
+                // Service optionnel : vérifier s'il y a une souscription active
+                $subscription = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
+                    ->where('frais_category_id', $category->id)
+                    ->where('is_active', true)
+                    ->first();
+
+                if ($subscription) {
+                    $expectedAmount = $subscription->amount;
+                }
+            }
+
+            // Si un montant est attendu, l'ajouter aux stats
+            if ($expectedAmount > 0) {
+                $fraisStats[$categoryType]['expected'] += $expectedAmount;
+
+                // Calculer le montant payé pour cette catégorie
+                $paidAmount = ESBTPPaiement::where('inscription_id', $inscription->id)
+                    ->where('frais_category_id', $category->id)
+                    ->where('status', 'validé')
+                    ->sum('montant');
+
+                $fraisStats[$categoryType]['paid'] += $paidAmount;
+            }
+        }
+
+        return $fraisStats;
+    }
+
+    /**
+     * Retourne des stats vides en cas de problème.
+     */
+    private function getEmptyStats()
+    {
+        return [
+            'academic_paid' => 0,
+            'service_paid' => 0,
+            'administrative_paid' => 0,
+            'academic_pending' => 0,
+            'service_pending' => 0,
+            'administrative_pending' => 0,
+            'academic_total' => 0,
+            'service_total' => 0,
+            'administrative_total' => 0,
+        ];
+    }
+
+    /**
+     * Détermine le type de catégorie d'un paiement (nouveau système + fallback ancien).
+     */
+    private function determineCategoryType($paiement)
+    {
+        // D'abord essayer avec le nouveau système
+        if ($paiement->fraisCategory) {
+            return $paiement->fraisCategory->category_type ?? 'academic';
+        }
+
+        // Fallback sur l'ancien système
+        if ($paiement->categorie) {
+            return $this->mapOldCategoryToType($paiement->categorie->nom ?? '');
+        }
+
+        // Fallback basé sur le motif ou type_paiement
+        if ($paiement->motif || $paiement->type_paiement) {
+            return $this->inferCategoryFromMotif($paiement->motif ?? $paiement->type_paiement ?? '');
+        }
+
+        // Par défaut, considérer comme academic
+        return 'academic';
+    }
+
+    /**
+     * Mappe les anciennes catégories vers les nouveaux types.
+     */
+    private function mapOldCategoryToType($categoryName)
+    {
+        $name = strtolower($categoryName);
+        
+        if (str_contains($name, 'cantine') || str_contains($name, 'transport')) {
+            return 'service';
+        }
+        
+        if (str_contains($name, 'documentation') || str_contains($name, 'examen')) {
+            return 'administrative'; 
+        }
+        
+        return 'academic'; // inscription, scolarité par défaut
+    }
+
+    /**
+     * Infère le type de catégorie à partir du motif.
+     */
+    private function inferCategoryFromMotif($motif)
+    {
+        $motif = strtolower($motif);
+        
+        if (str_contains($motif, 'cantine') || str_contains($motif, 'transport')) {
+            return 'service';
+        }
+        
+        if (str_contains($motif, 'documentation') || str_contains($motif, 'examen')) {
+            return 'administrative';
+        }
+        
+        return 'academic';
     }
 
     /**
@@ -591,11 +726,12 @@ class ESBTPPaiementController extends Controller
             if ($category->is_mandatory) {
                 // Frais obligatoire : tous les étudiants sont concernés
                 $estConcerne = true;
-                $rule = \App\Models\ESBTPFraisRule::where('frais_category_id', $category->id)
+                $configuration = \App\Models\ESBTPFraisConfiguration::where('frais_category_id', $category->id)
                     ->where('filiere_id', $inscription->filiere_id)
                     ->where('niveau_id', $inscription->niveau_id)
+                    ->where('is_active', true)
                     ->first();
-                $montantAttendu = $rule ? $rule->amount : $category->default_amount;
+                $montantAttendu = $configuration ? $configuration->amount : $category->default_amount;
             } else {
                 // Service optionnel : vérifier s'il y a une souscription active
                 $subscription = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
@@ -674,7 +810,7 @@ class ESBTPPaiementController extends Controller
                 if ($category->is_mandatory) {
                     // Frais obligatoire : tous les étudiants sont concernés
                     $estConcerne = true;
-                    $rule = \App\Models\ESBTPFraisRule::where('frais_category_id', $category->id)
+                    $rule = \App\Models\ESBTPFraisConfiguration::where('frais_category_id', $category->id)
                         ->where('filiere_id', $inscription->filiere_id)
                         ->where('niveau_id', $inscription->niveau_id)
                         ->first();
@@ -755,7 +891,7 @@ class ESBTPPaiementController extends Controller
                 if ($category->is_mandatory) {
                     // Frais obligatoire : tous les étudiants sont concernés
                     $estConcerne = true;
-                    $rule = \App\Models\ESBTPFraisRule::where('frais_category_id', $category->id)
+                    $rule = \App\Models\ESBTPFraisConfiguration::where('frais_category_id', $category->id)
                         ->where('filiere_id', $inscription->filiere_id)
                         ->where('niveau_id', $inscription->niveau_id)
                         ->first();

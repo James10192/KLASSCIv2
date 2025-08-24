@@ -3,178 +3,239 @@
 @section('title', 'Détails du Département')
 @section('page_title', 'Détails du Département')
 
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+@endpush
+
 @section('content')
-<div class="main-content">
-    <div class="dashboard-header mb-xl">
-        <div class="header-content">
-            <h1 class="header-title">{{ $department->name }}</h1>
-            <p class="header-subtitle">Détails du département {{ $department->code }} - ESBTP</p>
-            <div style="margin-top: var(--space-md);">
-                @if($department->is_active)
-                    <span class="badge success">Département Actif</span>
-                @else
-                    <span class="badge warning">Département Inactif</span>
-                @endif
+<div class="dashboard-acasi">
+    <div class="main-content">
+        <!-- Header Section -->
+        <div class="dashboard-header">
+            <div class="header-left">
+                <h1><i class="fas fa-building me-2"></i>{{ $department->name }}</h1>
+                <p class="header-subtitle">Détails du département {{ $department->code }} - ESBTP</p>
+                <div class="mt-3">
+                    @if($department->is_active)
+                        <span class="status-badge success">
+                            <i class="fas fa-check-circle me-1"></i>Département Actif
+                        </span>
+                    @else
+                        <span class="status-badge warning">
+                            <i class="fas fa-pause-circle me-1"></i>Département Inactif
+                        </span>
+                    @endif
+                </div>
+            </div>
+            <div class="header-actions">
+                <a href="{{ route('esbtp.departments.index') }}" class="btn-acasi secondary">
+                    <i class="fas fa-arrow-left"></i> Retour à la liste
+                </a>
+                <a href="{{ route('esbtp.departments.edit', $department) }}" class="btn-acasi primary">
+                    <i class="fas fa-edit"></i> Modifier
+                </a>
             </div>
         </div>
-        <div class="header-actions">
-            <a href="{{ route('esbtp.departments.index') }}" class="btn-acasi secondary">
-                <i class="fas fa-arrow-left"></i> Retour à la liste
-            </a>
-            <a href="{{ route('esbtp.departments.edit', $department) }}" class="btn-acasi primary">
-                <i class="fas fa-edit"></i> Modifier
-            </a>
-        </div>
-    </div>
-    <div class="row">
-        <!-- Informations de base -->
-        <div class="col-md-6 mb-lg">
-            <div class="card-moderne">
-                <div class="p-lg">
-                    <div class="section-title mb-lg">Informations de base</div>
+
+        <div class="form-grid-2">
+            <!-- Informations de base -->
+            <div class="section-card">
+                <div class="section-card-header">
+                    <div class="section-card-title">
+                        <i class="fas fa-info-circle"></i>
+                        Informations de base
+                    </div>
+                </div>
+                <div class="section-card-body">
+                    <div class="info-item-moderne">
+                        <div class="info-label-moderne">
+                            <i class="fas fa-code"></i>
+                            Code du département
+                        </div>
+                        <div class="info-value-moderne highlight">{{ $department->code }}</div>
+                    </div>
                     
-                    <div style="display: grid; gap: var(--space-lg);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-md); background-color: #f8fafc; border-radius: var(--radius-small);">
-                            <span style="font-weight: 600; color: var(--text-secondary);">Code</span>
-                            <span style="font-weight: 700; color: var(--primary); font-size: var(--amount-medium);">{{ $department->code }}</span>
+                    <div class="info-item-moderne">
+                        <div class="info-label-moderne">
+                            <i class="fas fa-toggle-on"></i>
+                            Statut
                         </div>
-                        
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-md); background-color: #f8fafc; border-radius: var(--radius-small);">
-                            <span style="font-weight: 600; color: var(--text-secondary);">Statut</span>
-                            <div>
-                                @if($department->is_active)
-                                    <span class="badge success">Actif</span>
-                                @else
-                                    <span class="badge warning">Inactif</span>
-                                @endif
-                            </div>
+                        <div class="info-value-moderne">
+                            @if($department->is_active)
+                                <span class="status-badge success">
+                                    <i class="fas fa-check-circle me-1"></i>Actif
+                                </span>
+                            @else
+                                <span class="status-badge warning">
+                                    <i class="fas fa-pause-circle me-1"></i>Inactif
+                                </span>
+                            @endif
                         </div>
-                        
-                        <div style="padding: var(--space-md); background-color: #f8fafc; border-radius: var(--radius-small);">
-                            <div style="font-weight: 600; color: var(--text-secondary); margin-bottom: var(--space-sm);">Description</div>
-                            <div style="color: var(--text-primary);">{{ $department->description ?: 'Non définie' }}</div>
+                    </div>
+                    
+                    <div class="info-item-moderne">
+                        <div class="info-label-moderne">
+                            <i class="fas fa-align-left"></i>
+                            Description
                         </div>
-                        
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-md); background-color: #f8fafc; border-radius: var(--radius-small);">
-                            <span style="font-weight: 600; color: var(--text-secondary);">Date de création</span>
-                            <span style="color: var(--text-primary);">{{ $department->created_at->format('d/m/Y H:i') }}</span>
+                        <div class="info-value-moderne">{{ $department->description ?: 'Non définie' }}</div>
+                    </div>
+                    
+                    <div class="info-item-moderne">
+                        <div class="info-label-moderne">
+                            <i class="far fa-calendar-alt"></i>
+                            Date de création
                         </div>
-                        
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-md); background-color: #f8fafc; border-radius: var(--radius-small);">
-                            <span style="font-weight: 600; color: var(--text-secondary);">Dernière modification</span>
-                            <span style="color: var(--text-primary);">{{ $department->updated_at->format('d/m/Y H:i') }}</span>
+                        <div class="info-value-moderne">{{ $department->created_at->format('d/m/Y H:i') }}</div>
+                    </div>
+                    
+                    <div class="info-item-moderne">
+                        <div class="info-label-moderne">
+                            <i class="far fa-clock"></i>
+                            Dernière modification
+                        </div>
+                        <div class="info-value-moderne">{{ $department->updated_at->format('d/m/Y H:i') }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Informations du responsable -->
+            <div class="section-card">
+                <div class="section-card-header">
+                    <div class="section-card-title">
+                        <i class="fas fa-user-tie"></i>
+                        Informations du responsable
+                    </div>
+                </div>
+                <div class="section-card-body">
+                    <div class="info-item-moderne">
+                        <div class="info-label-moderne">
+                            <i class="fas fa-user"></i>
+                            Chef de département
+                        </div>
+                        <div class="info-value-moderne">{{ $department->head_name ?: 'Non défini' }}</div>
+                    </div>
+                    
+                    <div class="info-item-moderne">
+                        <div class="info-label-moderne">
+                            <i class="fas fa-graduation-cap"></i>
+                            Titre
+                        </div>
+                        <div class="info-value-moderne">{{ $department->head_title ?: 'Non défini' }}</div>
+                    </div>
+                    
+                    <div class="info-item-moderne">
+                        <div class="info-label-moderne">
+                            <i class="fas fa-envelope"></i>
+                            Email
+                        </div>
+                        <div class="info-value-moderne">
+                            @if($department->email)
+                                <a href="mailto:{{ $department->email }}" style="color: var(--primary); text-decoration: none;">
+                                    {{ $department->email }}
+                                </a>
+                            @else
+                                Non défini
+                            @endif
+                        </div>
+                    </div>
+                    
+                    <div class="info-item-moderne">
+                        <div class="info-label-moderne">
+                            <i class="fas fa-phone"></i>
+                            Téléphone
+                        </div>
+                        <div class="info-value-moderne">
+                            @if($department->phone)
+                                <a href="tel:{{ $department->phone }}" style="color: var(--primary); text-decoration: none;">
+                                    {{ $department->phone }}
+                                </a>
+                            @else
+                                Non défini
+                            @endif
+                        </div>
+                    </div>
+                    
+                    <div class="info-item-moderne">
+                        <div class="info-label-moderne">
+                            <i class="fas fa-map-marker-alt"></i>
+                            Bureau
+                        </div>
+                        <div class="info-value-moderne">{{ $department->office_location ?: 'Non défini' }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistiques -->
+        <div class="main-card">
+            <div class="main-card-header">
+                <div class="main-card-title">
+                    <i class="fas fa-chart-bar"></i>
+                    Statistiques du département
+                </div>
+                <div class="main-card-subtitle">Vue d'ensemble des données du département</div>
+            </div>
+            <div class="main-card-body">
+                <div class="kpi-grid">
+                    <div class="kpi-card card-moderne bg-primary">
+                        <div class="kpi-title">Spécialités</div>
+                        <div class="kpi-value color-primary">{{ $department->specialties ? $department->specialties->count() : 0 }}</div>
+                        <div class="kpi-trend">
+                            <i class="fas fa-graduation-cap"></i>
+                            Formations disponibles
+                        </div>
+                    </div>
+                    
+                    <div class="kpi-card card-moderne bg-success">
+                        <div class="kpi-title">Enseignants</div>
+                        <div class="kpi-value color-success">{{ $department->teachers ? $department->teachers->count() : 0 }}</div>
+                        <div class="kpi-trend positive">
+                            <i class="fas fa-chalkboard-teacher"></i>
+                            Corps professoral
+                        </div>
+                    </div>
+                    
+                    <div class="kpi-card card-moderne bg-accent">
+                        <div class="kpi-title">Étudiants</div>
+                        <div class="kpi-value color-accent">{{ $department->students ? $department->students->count() : 0 }}</div>
+                        <div class="kpi-trend">
+                            <i class="fas fa-user-graduate"></i>
+                            Étudiants inscrits
+                        </div>
+                    </div>
+                    
+                    <div class="kpi-card card-moderne bg-warning">
+                        <div class="kpi-title">Formations continues</div>
+                        <div class="kpi-value color-warning">{{ $department->continuingEducationPrograms ? $department->continuingEducationPrograms->count() : 0 }}</div>
+                        <div class="kpi-trend">
+                            <i class="fas fa-book"></i>
+                            Programmes actifs
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Informations du responsable -->
-        <div class="col-md-6 mb-lg">
-            <div class="card-moderne">
-                <div class="p-lg">
-                    <div class="section-title mb-lg">Informations du responsable</div>
-                    
-                    <div style="display: grid; gap: var(--space-lg);">
-                        <div style="padding: var(--space-md); background-color: #f8fafc; border-radius: var(--radius-small);">
-                            <div style="font-weight: 600; color: var(--text-secondary); margin-bottom: var(--space-sm);">Chef de département</div>
-                            <div style="color: var(--text-primary); font-weight: 600;">{{ $department->head_name ?: 'Non défini' }}</div>
-                        </div>
-                        
-                        <div style="padding: var(--space-md); background-color: #f8fafc; border-radius: var(--radius-small);">
-                            <div style="font-weight: 600; color: var(--text-secondary); margin-bottom: var(--space-sm);">Titre</div>
-                            <div style="color: var(--text-primary);">{{ $department->head_title ?: 'Non défini' }}</div>
-                        </div>
-                        
-                        <div style="padding: var(--space-md); background-color: #f8fafc; border-radius: var(--radius-small);">
-                            <div style="font-weight: 600; color: var(--text-secondary); margin-bottom: var(--space-sm);">Email</div>
-                            <div style="color: var(--text-primary);">
-                                @if($department->email)
-                                    <a href="mailto:{{ $department->email }}" style="color: var(--primary); text-decoration: none;">{{ $department->email }}</a>
-                                @else
-                                    Non défini
-                                @endif
-                            </div>
-                        </div>
-                        
-                        <div style="padding: var(--space-md); background-color: #f8fafc; border-radius: var(--radius-small);">
-                            <div style="font-weight: 600; color: var(--text-secondary); margin-bottom: var(--space-sm);">Téléphone</div>
-                            <div style="color: var(--text-primary);">
-                                @if($department->phone)
-                                    <a href="tel:{{ $department->phone }}" style="color: var(--primary); text-decoration: none;">{{ $department->phone }}</a>
-                                @else
-                                    Non défini
-                                @endif
-                            </div>
-                        </div>
-                        
-                        <div style="padding: var(--space-md); background-color: #f8fafc; border-radius: var(--radius-small);">
-                            <div style="font-weight: 600; color: var(--text-secondary); margin-bottom: var(--space-sm);">Bureau</div>
-                            <div style="color: var(--text-primary);">{{ $department->office_location ?: 'Non défini' }}</div>
-                        </div>
-                    </div>
+        <!-- Actions -->
+        <div class="main-card">
+            <div class="main-card-header">
+                <div class="main-card-title">
+                    <i class="fas fa-cogs"></i>
+                    Actions disponibles
                 </div>
             </div>
-        </div>
-    </div>
-
-    <!-- Statistiques -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card-moderne">
-                <div class="p-lg">
-                    <div class="section-title mb-lg">Statistiques du département</div>
-                    
-                    <div class="kpi-grid">
-                        <div class="kpi-card card-moderne" style="text-align: center; background: linear-gradient(135deg, var(--accent-blue), var(--primary));">
-                            <div style="color: white;">
-                                <i class="fas fa-graduation-cap fa-2x" style="margin-bottom: var(--space-md);"></i>
-                                <div class="kpi-title" style="color: white;">Spécialités</div>
-                                <div class="kpi-value" style="color: white;">{{ $department->specialties ? $department->specialties->count() : 0 }}</div>
-                            </div>
-                        </div>
-                        
-                        <div class="kpi-card card-moderne" style="text-align: center; background: linear-gradient(135deg, var(--success), var(--accent-blue));">
-                            <div style="color: white;">
-                                <i class="fas fa-chalkboard-teacher fa-2x" style="margin-bottom: var(--space-md);"></i>
-                                <div class="kpi-title" style="color: white;">Enseignants</div>
-                                <div class="kpi-value" style="color: white;">{{ $department->teachers ? $department->teachers->count() : 0 }}</div>
-                            </div>
-                        </div>
-                        
-                        <div class="kpi-card card-moderne" style="text-align: center; background: linear-gradient(135deg, var(--warning), var(--accent-orange));">
-                            <div style="color: white;">
-                                <i class="fas fa-user-graduate fa-2x" style="margin-bottom: var(--space-md);"></i>
-                                <div class="kpi-title" style="color: white;">Étudiants</div>
-                                <div class="kpi-value" style="color: white;">{{ $department->students ? $department->students->count() : 0 }}</div>
-                            </div>
-                        </div>
-                        
-                        <div class="kpi-card card-moderne" style="text-align: center; background: linear-gradient(135deg, var(--primary), var(--secondary));">
-                            <div style="color: white;">
-                                <i class="fas fa-book fa-2x" style="margin-bottom: var(--space-md);"></i>
-                                <div class="kpi-title" style="color: white;">Formations continues</div>
-                                <div class="kpi-value" style="color: white;">{{ $department->continuingEducationPrograms ? $department->continuingEducationPrograms->count() : 0 }}</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Actions -->
-    <div class="row mt-xl">
-        <div class="col-12">
-            <div style="padding: var(--space-lg); background-color: var(--surface); border-radius: var(--radius-medium); box-shadow: var(--shadow-card);">
-                <div style="display: flex; gap: var(--space-md); justify-content: center;">
-                    <a href="{{ route('esbtp.departments.edit', $department) }}" class="btn-acasi primary" style="padding: var(--space-md) var(--space-xl);">
+            <div class="main-card-body">
+                <div class="actions-section-premium">
+                    <a href="{{ route('esbtp.departments.edit', $department) }}" class="btn-action-premium btn-primary">
                         <i class="fas fa-edit"></i> Modifier le département
                     </a>
                     <form action="{{ route('esbtp.departments.destroy', $department) }}" method="POST" class="d-inline">
                         @csrf
                         @method('DELETE')
-                        <button type="submit" class="btn-acasi" style="background-color: var(--danger); color: white; padding: var(--space-md) var(--space-xl);" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce département ?')">
+                        <button type="submit" 
+                                class="btn-action-premium btn-danger" 
+                                onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce département ?')">
                             <i class="fas fa-trash"></i> Supprimer
                         </button>
                     </form>

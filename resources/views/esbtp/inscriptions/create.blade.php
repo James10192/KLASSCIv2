@@ -4,6 +4,7 @@
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/modal-force-fix.css') }}">
 <!-- Choices.js CSS -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
 <style>
@@ -637,6 +638,33 @@
                 <form id="inscriptionForm" method="POST" action="{{ route('esbtp.inscriptions.store') }}" enctype="multipart/form-data">
                     @csrf
                     
+                    <!-- Affichage des erreurs de validation -->
+                    @if ($errors->any())
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <h6><i class="fas fa-exclamation-triangle me-2"></i>Erreurs de validation :</h6>
+                            <ul class="mb-0">
+                                @foreach ($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    @endif
+
+                    @if (session('success'))
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    @endif
+
+                    @if (session('error'))
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fas fa-times-circle me-2"></i>{{ session('error') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    @endif
+                    
                     <!-- Informations personnelles -->
                     <div class="row">
                         <div class="col-md-12 mb-4">
@@ -666,12 +694,12 @@
                         <div class="col-md-4">
                             <div class="form-group mb-3">
                                 <label class="form-label fw-bold">Genre</label>
-                                <select class="form-control @error('genre') is-invalid @enderror" name="genre" required>
+                                <select class="form-control @error('sexe') is-invalid @enderror" name="sexe" required>
                                     <option value="">Sélectionner</option>
-                                    <option value="M" {{ old('genre') == 'M' ? 'selected' : '' }}>Masculin</option>
-                                    <option value="F" {{ old('genre') == 'F' ? 'selected' : '' }}>Féminin</option>
+                                    <option value="M" {{ old('sexe') == 'M' ? 'selected' : '' }}>Masculin</option>
+                                    <option value="F" {{ old('sexe') == 'F' ? 'selected' : '' }}>Féminin</option>
                                 </select>
-                                @error('genre')
+                                @error('sexe')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
@@ -721,12 +749,25 @@
                         <div class="col-md-4">
                             <div class="form-group mb-3">
                                 <label class="form-label fw-bold">Email</label>
-                                <input type="email" class="form-control @error('email') is-invalid @enderror" name="email" value="{{ old('email') }}">
-                                @error('email')
+                                <input type="email" class="form-control @error('email_personnel') is-invalid @enderror" name="email_personnel" value="{{ old('email_personnel') }}">
+                                @error('email_personnel')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
                         </div>
+                        <div class="col-md-4">
+                            <div class="form-group mb-3">
+                                <label class="form-label fw-bold">Matricule <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control @error('matricule') is-invalid @enderror" name="matricule" value="{{ old('matricule') }}" required placeholder="Ex: ETU2025001">
+                                <small class="form-text text-muted">Matricule unique de l'étudiant</small>
+                                @error('matricule')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
                         <div class="col-md-4">
                             <div class="form-group mb-3">
                                 <label class="form-label fw-bold">Photo <span class="text-danger">*</span></label>
@@ -737,10 +778,7 @@
                                 @enderror
                             </div>
                         </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <div class="form-group mb-3">
                                 <label class="form-label fw-bold">Ville de résidence</label>
                                 <input type="text" class="form-control @error('ville') is-invalid @enderror" name="ville" value="{{ old('ville') }}" required>
@@ -1083,6 +1121,7 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     let parentIndex = 1; // Le premier parent a l'index 0
+    let isLoadingFrais = false; // Flag pour éviter les déclenchements multiples
 
     // Fonction pour charger les parents existants
     function loadParentsExistants(selectElement) {
@@ -1219,13 +1258,72 @@ document.addEventListener('DOMContentLoaded', function() {
         newParent.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
+    // Sauvegarde des données du formulaire avant changement de classe
+    function saveFormData() {
+        const formData = {};
+        const form = document.getElementById('inscriptionForm');
+        const inputs = form.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"], input[type="date"], select, textarea');
+        
+        inputs.forEach(input => {
+            if (input.name && input.value) {
+                formData[input.name] = input.value;
+            }
+        });
+        
+        // Sauvegarder la photo sélectionnée (juste le nom du fichier pour info)
+        const photoInput = document.querySelector('input[name="photo"]');
+        if (photoInput && photoInput.files.length > 0) {
+            formData['photo_filename'] = photoInput.files[0].name;
+        }
+        
+        return formData;
+    }
+    
+    // Restauration des données du formulaire après chargement
+    function restoreFormData(formData) {
+        Object.keys(formData).forEach(name => {
+            const input = document.querySelector(`[name="${name}"]`);
+            if (input && name !== 'photo_filename') {
+                input.value = formData[name];
+            }
+        });
+        
+        // Afficher info sur la photo sélectionnée
+        if (formData['photo_filename']) {
+            const photoInput = document.querySelector('input[name="photo"]');
+            if (photoInput && photoInput.files.length === 0) {
+                // Créer un message d'info sur la photo précédemment sélectionnée
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'alert alert-info mt-2';
+                infoDiv.innerHTML = `<small><i class="fas fa-info-circle"></i> Photo précédemment sélectionnée: ${formData['photo_filename']}. Veuillez la resélectionner si nécessaire.</small>`;
+                photoInput.parentNode.appendChild(infoDiv);
+            }
+        }
+    }
+
     // Gestion du chargement des frais quand une classe est sélectionnée
     document.addEventListener('change', function(e) {
         if (e.target.id === 'classe_id') {
+            // Empêcher les déclenchements multiples
+            if (isLoadingFrais) {
+                console.log('Chargement des frais déjà en cours, ignoré');
+                return;
+            }
+            
+            // e.preventDefault(); // Empêcher le comportement par défaut - TEMPORAIREMENT DESACTIVE
+            // e.stopPropagation(); // Empêcher la propagation - TEMPORAIREMENT DESACTIVE
+            
             const classeId = e.target.value;
             const fraisContainer = document.getElementById('fraisContainer');
             
+            console.log('Changement de classe détecté:', classeId);
+            
             if (classeId && fraisContainer) {
+                isLoadingFrais = true; // Marquer comme en cours
+                
+                // Sauvegarder les données du formulaire
+                const savedData = saveFormData();
+                console.log('Données sauvegardées:', savedData);
                 // Afficher le loader
                 fraisContainer.innerHTML = `
                     <div class="row">
@@ -1241,7 +1339,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 `;
                 
                 // Charger les frais
-                fetch(`/esbtp/inscriptions/frais-by-classe/${classeId}`)
+                fetch(`/esbtp/inscriptions/frais-by-classe/${classeId}`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
                     .then(response => {
                         if (!response.ok) {
                             throw new Error(`Erreur HTTP ! Statut: ${response.status}`);
@@ -1249,9 +1353,16 @@ document.addEventListener('DOMContentLoaded', function() {
                         return response.json();
                     })
                     .then(data => {
+                        console.log('Données frais reçues:', data);
                         if (data.success) {
                             updateFraisContainer(data.frais, data.has_unconfigured_fees, data.configure_url);
                             updateResumeFrais();
+                            
+                            // Restaurer les données du formulaire après chargement des frais
+                            setTimeout(() => {
+                                restoreFormData(savedData);
+                                console.log('Données restaurées');
+                            }, 100);
                         } else {
                             fraisContainer.innerHTML = `
                                 <div class="alert alert-danger">
@@ -1260,6 +1371,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </div>
                             `;
                         }
+                        
+                        isLoadingFrais = false; // Réinitialiser le flag
                     })
                     .catch(error => {
                         console.error('Erreur lors du chargement des frais:', error);
@@ -1269,6 +1382,14 @@ document.addEventListener('DOMContentLoaded', function() {
                                 Erreur lors du chargement des frais. Veuillez réessayer.
                             </div>
                         `;
+                        
+                        // Restaurer les données même en cas d'erreur
+                        setTimeout(() => {
+                            restoreFormData(savedData);
+                            console.log('Données restaurées après erreur');
+                        }, 100);
+                        
+                        isLoadingFrais = false; // Réinitialiser le flag
                     });
             } else if (fraisContainer) {
                 // Réinitialiser le conteneur si aucune classe n'est sélectionnée
@@ -1284,8 +1405,50 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                     </div>
                 `;
+                isLoadingFrais = false; // Réinitialiser le flag
             }
         }
+    });
+
+    // Empêcher la soumission du formulaire pendant le chargement des frais
+    document.getElementById('inscriptionForm').addEventListener('submit', function(e) {
+        if (isLoadingFrais) {
+            e.preventDefault();
+            alert('Veuillez attendre la fin du chargement des frais avant de soumettre le formulaire.');
+            return false;
+        }
+        
+        // DEBUG : Vérifier les données avant soumission
+        console.log('SUBMIT EVENT TRIGGERED!');
+        console.log('Event details:', e);
+        console.log('Target:', e.target);
+        
+        const form = e.target;
+        const formData = new FormData(form);
+        
+        // Informations sur la photo
+        const photoInput = form.querySelector('input[name="photo"]');
+        if (photoInput && photoInput.files.length > 0) {
+            const file = photoInput.files[0];
+            console.log(`Photo: ${file.name} (${file.size} bytes, ${file.type})`);
+        } else {
+            console.log('Photo: AUCUNE SÉLECTIONNÉE');
+        }
+        
+        // Informations sur les autres champs principaux
+        console.log(`Nom: ${formData.get('nom') || 'VIDE'}`);
+        console.log(`Prénom: ${formData.get('prenoms') || 'VIDE'}`);
+        console.log(`Matricule: ${formData.get('matricule') || 'VIDE'}`);
+        console.log(`Classe: ${formData.get('classe_id') || 'VIDE'}`);
+        
+        // Vérifier les frais sélectionnés
+        const selectedFrais = document.querySelectorAll('.frais-option:checked');
+        console.log(`Frais sélectionnés: ${selectedFrais.length}`);
+        
+        console.log('Form data complète:', [...formData.entries()]);
+        console.log('Photo file:', photoInput ? photoInput.files[0] : 'null');
+        
+        // Laisser le formulaire se soumettre normalement
     });
 
     function updateFraisContainer(fraisData, hasUnconfiguredFees, configureUrl) {
@@ -1388,10 +1551,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function generateFraisHTML(frais) {
         const category = frais.category;
-        const variants = frais.variants;
+        const options = frais.options || frais.variants || []; // Support des deux noms
         const defaultAmount = frais.default_amount;
         const isMandatory = frais.is_mandatory;
         const isConfigured = frais.is_configured;
+        const configurationType = frais.configuration_type;
+        const categoryType = frais.category_type || 'academic';
+        
+        // Icônes selon le type de catégorie
+        const typeIcons = {
+            'academic': 'graduation-cap',
+            'service': 'cogs', 
+            'administrative': 'file-alt'
+        };
+        const icon = typeIcons[categoryType] || (isMandatory ? 'star' : 'plus-circle');
         
         let html = `
             <div class="row mb-4">
@@ -1400,21 +1573,32 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="card-body">
                             <h6 class="card-title d-flex justify-content-between">
                                 <span>
-                                    <i class="fas fa-${isMandatory ? 'star' : 'plus-circle'}"></i>
+                                    <i class="fas fa-${icon}"></i>
                                     ${category.name}
-                                    ${!isConfigured ? '<i class="fas fa-exclamation-triangle text-warning ms-1" title="Pas de variantes configurées"></i>' : ''}
+                                    ${!isConfigured ? '<i class="fas fa-exclamation-triangle text-warning ms-1" title="Pas d\'options configurées"></i>' : ''}
                                 </span>
-                                ${isMandatory ? '<span class="badge bg-danger">Obligatoire</span>' : '<span class="badge bg-info">Optionnel</span>'}
+                                <div>
+                                    ${isMandatory ? '<span class="badge bg-danger">Obligatoire</span>' : '<span class="badge bg-info">Optionnel</span>'}
+                                    <span class="badge bg-secondary ms-1">${categoryType.charAt(0).toUpperCase() + categoryType.slice(1)}</span>
+                                </div>
                             </h6>
                             <p class="card-text text-muted">${category.description || ''}</p>
                             
-                            ${frais.configuration_type === 'variant' ? `
+                            ${configurationType === 'variant' ? `
                                 <div class="alert alert-success alert-sm mb-3">
                                     <small><i class="fas fa-check-circle me-1"></i>Tarif configuré pour cette classe.</small>
                                 </div>
-                            ` : frais.configuration_type === 'rule' ? `
+                            ` : configurationType === 'rule' ? `
                                 <div class="alert alert-info alert-sm mb-3">
                                     <small><i class="fas fa-cog me-1"></i>Tarif configuré par règle de classe.</small>
+                                </div>
+                            ` : configurationType === 'configuration' ? `
+                                <div class="alert alert-success alert-sm mb-3">
+                                    <small><i class="fas fa-check-circle me-1"></i>Tarif configuré pour cette classe (${category.filiere || 'filière'} - ${category.niveau || 'niveau'}).</small>
+                                </div>
+                            ` : configurationType === 'global_options' ? `
+                                <div class="alert alert-primary alert-sm mb-3">
+                                    <small><i class="fas fa-globe me-1"></i>Options globales disponibles pour ce service.</small>
                                 </div>
                             ` : `
                                 <div class="alert alert-warning alert-sm mb-3">
@@ -1422,7 +1606,11 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </div>
                             `}
                             
-                            <div class="frais-options">
+                            <div class="frais-options">`;
+        
+        // Pour les frais obligatoires ou ayant un montant par défaut configuré
+        if (isMandatory || configurationType === 'rule' || configurationType === 'variant' || configurationType === 'configuration') {
+            html += `
                                 <div class="form-check mb-2">
                                     <input class="form-check-input frais-option" type="radio" 
                                            name="frais[${category.id}][variant_id]" 
@@ -1430,25 +1618,43 @@ document.addEventListener('DOMContentLoaded', function() {
                                            id="frais_${category.id}_default"
                                            ${isMandatory ? 'checked' : ''}>
                                     <label class="form-check-label" for="frais_${category.id}_default">
-                                        ${frais.configuration_type === 'variant' ? 'Tarif configuré pour cette classe' : 
-                                          frais.configuration_type === 'rule' ? 'Tarif configuré' : 
-                                          'Montant par défaut'} - <strong>${defaultAmount.toLocaleString()} FCFA</strong>
+                                        ${configurationType === 'variant' ? 'Tarif configuré pour cette classe' : 
+                                          configurationType === 'rule' ? 'Tarif configuré' : 
+                                          configurationType === 'configuration' ? 'Tarif configuré pour cette classe' :
+                                          'Montant par défaut'} - <strong>${(parseFloat(defaultAmount) || 0).toLocaleString()} FCFA</strong>
                                     </label>
                                 </div>
-        `;
+            `;
+        }
         
-        // Ajouter les variants seulement s'ils existent
-        if (isConfigured && variants.length > 0) {
-            variants.forEach(variant => {
+        // Ajouter les options configurées
+        if (isConfigured && options.length > 0) {
+            options.forEach(option => {
+                // Calculer le montant total (montant de base + montant additionnel) avec sécurité
+                const baseAmount = parseFloat(defaultAmount) || 0;
+                const additionalAmount = parseFloat(option.additional_amount) || parseFloat(option.amount) || 0;
+                let totalAmount = 0;
+                
+                if (configurationType === 'global_options') {
+                    totalAmount = baseAmount + additionalAmount;
+                } else {
+                    totalAmount = additionalAmount || baseAmount;
+                }
+                
+                // Sécurité : s'assurer que totalAmount est un nombre valide
+                if (isNaN(totalAmount) || totalAmount < 0) {
+                    totalAmount = 0;
+                }
+                
                 html += `
                     <div class="form-check mb-2">
                         <input class="form-check-input frais-option" type="radio" 
                                name="frais[${category.id}][variant_id]" 
-                               value="${variant.id}" 
-                               id="frais_${category.id}_${variant.id}">
-                        <label class="form-check-label" for="frais_${category.id}_${variant.id}">
-                            ${variant.name} - ${variant.amount.toLocaleString()} FCFA
-                            ${variant.description ? `<small class="text-muted d-block">${variant.description}</small>` : ''}
+                               value="${option.id}" 
+                               id="frais_${category.id}_${option.id}">
+                        <label class="form-check-label" for="frais_${category.id}_${option.id}">
+                            ${option.name} - <strong>${totalAmount.toLocaleString()} FCFA</strong>
+                            ${option.description ? `<small class="text-muted d-block">${option.description}</small>` : ''}
                         </label>
                     </div>
                 `;
@@ -1465,7 +1671,7 @@ document.addEventListener('DOMContentLoaded', function() {
                            id="frais_${category.id}_none"
                            checked>
                     <label class="form-check-label" for="frais_${category.id}_none">
-                        <em>Ne pas souscrire à ce frais</em>
+                        <em>Ne pas souscrire à ce service</em>
                     </label>
                 </div>
             `;
@@ -1493,12 +1699,69 @@ document.addEventListener('DOMContentLoaded', function() {
         selectedOptions.forEach(option => {
             if (option.value && option.value !== '') {
                 const label = option.closest('.form-check').querySelector('label').textContent;
-                const match = label.match(/(\d+(?:\.\d{3})*)/);
+                
+                // Debug : afficher la structure pour comprendre le problème
+                console.log('DEBUG - Option sélectionnée:', option);
+                console.log('DEBUG - Label:', label);
+                
+                // Récupérer le nom de la catégorie depuis le titre de la card
+                const fraisCard = option.closest('.card');
+                console.log('DEBUG - FraisCard trouvée:', fraisCard);
+                
+                // Essayer plusieurs sélecteurs pour trouver le titre
+                let titleElement = fraisCard ? fraisCard.querySelector('.card-title') : null;
+                if (!titleElement) {
+                    titleElement = fraisCard ? fraisCard.querySelector('h6') : null;
+                }
+                if (!titleElement) {
+                    titleElement = fraisCard ? fraisCard.querySelector('.card-header h6') : null;
+                }
+                
+                console.log('DEBUG - TitleElement:', titleElement);
+                console.log('DEBUG - TitleElement text:', titleElement ? titleElement.textContent : 'null');
+                
+                // Extraire le nom de la catégorie plus robustement
+                let categoryName = 'Frais';
+                if (titleElement && titleElement.textContent) {
+                    // Nettoyer le texte en supprimant les icônes et texte extra
+                    let text = titleElement.textContent.trim();
+                    // Supprimer les icônes Font Awesome (peuvent apparaître comme des caractères étranges)
+                    text = text.replace(/[\uF000-\uF8FF]|\uD83C[\uDF00-\uDFFF]|\uD83D[\uDC00-\uDE4F]/g, '');
+                    // Prendre seulement la première ligne/partie avant les badges
+                    const parts = text.split(/\s+/);
+                    if (parts.length >= 2 && (parts[0] === 'Frais' || parts[0] === 'frais')) {
+                        categoryName = parts.slice(0, 3).join(' '); // "Frais de inscription" par exemple
+                    } else {
+                        categoryName = text.split('\n')[0].trim();
+                    }
+                }
+                
+                console.log('DEBUG - CategoryName final:', categoryName);
+                
+                // Alternative : essayer d'extraire l'ID de catégorie du name de l'input
+                const nameAttr = option.getAttribute('name');
+                console.log('DEBUG - Name attribute:', nameAttr);
+                
+                // Si on n'a pas trouvé le nom via le DOM, utiliser une méthode alternative
+                if (categoryName === 'Frais' && nameAttr) {
+                    const categoryIdMatch = nameAttr.match(/frais\[(\d+)\]/);
+                    if (categoryIdMatch) {
+                        const categoryId = categoryIdMatch[1];
+                        // Essayer de trouver le nom via le data-attribute ou créer un nom générique
+                        categoryName = `Catégorie ${categoryId}`;
+                        console.log('DEBUG - CategoryName via name attr:', categoryName);
+                    }
+                }
+                
+                // Améliorer la regex pour gérer différents formats de nombres
+                const match = label.match(/(\d+(?:[.,\s]\d{3})*)/);
                 if (match) {
-                    const amount = parseInt(match[1].replace(/\./g, ''));
+                    // Nettoyer le nombre en supprimant tous les séparateurs
+                    const cleanNumber = match[1].replace(/[.,\s]/g, '');
+                    const amount = parseInt(cleanNumber) || 0;
                     totalAmount += amount;
                     resumeHTML += `<div class="d-flex justify-content-between">
-                        <span>${label.split(' - ')[0]}</span>
+                        <span>${categoryName}</span>
                         <span>${amount.toLocaleString()} FCFA</span>
                     </div>`;
                 }
@@ -1510,7 +1773,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <hr>
                 <div class="d-flex justify-content-between fw-bold">
                     <span>Total</span>
-                    <span>${totalAmount.toLocaleString()} FCFA</span>
+                    <span>${(totalAmount || 0).toLocaleString()} FCFA</span>
                 </div>
             `;
             resumeContainer.innerHTML = resumeHTML;

@@ -637,7 +637,7 @@
                 <!-- Statistiques rapides -->
                 <div class="quick-stats">
                     <div class="stat-card">
-                        <span class="stat-number">{{ $teacher->teaching_hours_due ?? 0 }}</span>
+                        <span class="stat-number">{{ (int)($teacher->teaching_hours_due ?? 0) }}</span>
                         <div class="stat-label">Heures dues</div>
                     </div>
                     <div class="stat-card">
@@ -762,7 +762,7 @@
                             @endif
                             <div class="info-row">
                                 <span class="info-label">Heures d'enseignement</span>
-                                <span class="info-value">{{ $teacher->teaching_hours_due ?? 0 }}h/semaine</span>
+                                <span class="info-value">{{ (int)($teacher->teaching_hours_due ?? 0) }}h/semaine</span>
                             </div>
                             @if($profileData && $profileData->type_contrat)
                             <div class="info-row">
@@ -955,26 +955,24 @@
                             
                             <!-- Créneaux horaires -->
                             @php
-                                $timeSlots = [
-                                    '08:00-10:00', '10:00-12:00', '12:00-14:00', 
-                                    '14:00-16:00', '16:00-18:00', '18:00-20:00'
-                                ];
+                                // Créneaux horaires par heure pour cohérence avec la page edit
+                                $hours = range(8, 18); // 08:00 à 18:00
                                 $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
                                 
-                                // Utiliser les vraies données de disponibilité
+                                // Utiliser les vraies données de disponibilité préparées par le contrôleur
                                 $availability = $realAvailability ?? [
-                                    'monday' => array_fill(0, 6, 'unavailable'),
-                                    'tuesday' => array_fill(0, 6, 'unavailable'),
-                                    'wednesday' => array_fill(0, 6, 'unavailable'),
-                                    'thursday' => array_fill(0, 6, 'unavailable'),
-                                    'friday' => array_fill(0, 6, 'unavailable'),
-                                    'saturday' => array_fill(0, 6, 'unavailable'),
-                                    'sunday' => array_fill(0, 6, 'unavailable')
+                                    'monday' => array_fill(0, 11, 'unavailable'),    // 8h à 18h = 11 heures
+                                    'tuesday' => array_fill(0, 11, 'unavailable'),
+                                    'wednesday' => array_fill(0, 11, 'unavailable'),
+                                    'thursday' => array_fill(0, 11, 'unavailable'),
+                                    'friday' => array_fill(0, 11, 'unavailable'),
+                                    'saturday' => array_fill(0, 11, 'unavailable'),
+                                    'sunday' => array_fill(0, 11, 'unavailable')
                                 ];
                             @endphp
                             
-                            @foreach($timeSlots as $index => $timeSlot)
-                                <div class="availability-time-slot">{{ $timeSlot }}</div>
+                            @foreach($hours as $index => $hour)
+                                <div class="availability-time-slot">{{ sprintf('%02d:00', $hour) }}</div>
                                 @foreach($days as $day)
                                     @php
                                         $status = $availability[$day][$index] ?? 'unavailable';
@@ -983,13 +981,68 @@
                                     <div class="availability-slot {{ $status }}" 
                                          id="slot-{{ $index }}-{{ array_search($day, $days) }}"
                                          data-day="{{ array_search($day, $days) }}" 
+                                         data-hour="{{ $hour }}" 
                                          data-time-index="{{ $index }}" 
                                          data-original-status="{{ $status }}"
-                                         title="{{ ucfirst($day) }} {{ $timeSlot }} - {{ ucfirst($status) }}">
+                                         title="{{ ucfirst($day) }} {{ sprintf('%02d:00', $hour) }} - {{ ucfirst($status) }}">
                                         {{ $icon }}
                                     </div>
                                 @endforeach
                             @endforeach
+                        </div>
+                        
+                        <!-- DEBUG VISIBLE PAGE SHOW -->
+                        <div style="background: #fff3cd; padding: 10px; margin: 10px 0; border: 2px solid #ffc107; border-radius: 5px;">
+                            <h4>🔍 DEBUG PAGE SHOW - Données de disponibilité</h4>
+                            <p><strong>Timestamp:</strong> {{ date('Y-m-d H:i:s') }}</p>
+                            <p><strong>$realAvailability:</strong> {{ $realAvailability ? 'EXISTE' : 'NULL' }}</p>
+                            <p><strong>Données depuis teacher->availabilities:</strong> {{ $teacher->availabilities ? $teacher->availabilities->count() : '0' }} éléments</p>
+                            @if($teacher->availabilities && $teacher->availabilities->count() > 0)
+                                <details>
+                                    <summary>Voir les données brutes ({{ $teacher->availabilities->count() }} entrées)</summary>
+                                    <pre style="background: white; padding: 5px; overflow-x: auto;">{{ json_encode($teacher->availabilities->toArray(), JSON_PRETTY_PRINT) }}</pre>
+                                </details>
+                            @endif
+                            <details>
+                                <summary>Voir les données finales utilisées pour l'affichage</summary>
+                                <pre style="background: white; padding: 5px; overflow-x: auto;">{{ json_encode($availability, JSON_PRETTY_PRINT) }}</pre>
+                            </details>
+                            
+                            <script>
+                            // DEBUG JavaScript sur page SHOW
+                            document.addEventListener('DOMContentLoaded', function() {
+                                console.log('🔍 DEBUG PAGE SHOW CHARGÉE à {{ date('H:i:s') }}');
+                                
+                                @if($teacher->availabilities && $teacher->availabilities->count() > 0)
+                                let availCount = {{ $teacher->availabilities->count() }};
+                                let debugShowInfo = `🔍 PAGE SHOW CHARGÉE\n\n`;
+                                debugShowInfo += `Heure: {{ date('H:i:s') }}\n`;
+                                debugShowInfo += `Disponibilités en DB: ${availCount} entrées\n`;
+                                
+                                // Compter les créneaux par statut dans les données finales
+                                let finalData = @json($availability);
+                                let countByStatus = {available: 0, preferred: 0, unavailable: 0};
+                                Object.keys(finalData).forEach(day => {
+                                    finalData[day].forEach(status => {
+                                        countByStatus[status]++;
+                                    });
+                                });
+                                
+                                debugShowInfo += `Créneaux finaux:\n`;
+                                debugShowInfo += `- Disponible: ${countByStatus.available}\n`;
+                                debugShowInfo += `- Préféré: ${countByStatus.preferred}\n`;
+                                debugShowInfo += `- Indisponible: ${countByStatus.unavailable}`;
+                                
+                                // Afficher après 1 seconde pour laisser la page se charger
+                                setTimeout(() => {
+                                    if(confirm(debugShowInfo + '\n\nVoulez-vous voir les détails dans la console ?')) {
+                                        console.log('🔍 Données brutes DB:', @json($teacher->availabilities->toArray()));
+                                        console.log('🔍 Données finales:', finalData);
+                                    }
+                                }, 1000);
+                                @endif
+                            });
+                            </script>
                         </div>
                         
                         <!-- Légende -->
@@ -1087,12 +1140,12 @@
                             
                             // Mettre à jour le tooltip
                             const dayNames = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
-                            const timeSlots = ['08:00-10:00', '10:00-12:00', '12:00-14:00', '14:00-16:00', '16:00-18:00', '18:00-20:00'];
+                            const hours = Array.from({length: 11}, (_, i) => String(i + 8).padStart(2, '0') + ':00'); // 08:00 à 18:00
                             const statusNames = { unavailable: 'Non disponible', available: 'Disponible', preferred: 'Préféré' };
                             
                             const dayIndex = parseInt(slot.dataset.day);
                             const timeIndex = parseInt(slot.dataset.timeIndex);
-                            slot.title = `${dayNames[dayIndex]} ${timeSlots[timeIndex]} - ${statusNames[nextStatus]}`;
+                            slot.title = `${dayNames[dayIndex]} ${hours[timeIndex]} - ${statusNames[nextStatus]}`;
                         }
                         
                         function cancelEditMode() {
@@ -1130,9 +1183,15 @@
                                 const statuses = ['unavailable', 'available', 'preferred'];
                                 const currentStatus = statuses.find(status => slot.classList.contains(status));
                                 
+                                // Calculer les heures réelles à partir du timeIndex
+                                const timeIndex = parseInt(slot.dataset.timeIndex);
+                                const startHour = 8 + timeIndex; // timeIndex 0 = 8h, timeIndex 1 = 9h, etc.
+                                const endHour = startHour + 1;   // Créneau d'1 heure
+                                
                                 changedSlots.push({
                                     day: parseInt(slot.dataset.day),
-                                    timeIndex: parseInt(slot.dataset.timeIndex),
+                                    startTime: String(startHour).padStart(2, '0') + ':00',
+                                    endTime: String(endHour).padStart(2, '0') + ':00',
                                     status: currentStatus
                                 });
                             });

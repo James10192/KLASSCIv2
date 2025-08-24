@@ -1,146 +1,171 @@
-/*!
- * KLASSCI Modal Fix - VERSION FORCE TOTALE
- * Solution de dernier recours avec !important et spécificité maximale
- */
+/* ========================================
+   FIX MODALS BOOTSTRAP - Z-INDEX CORRECT
+   ======================================== */
 
-/* ===== FORCE TOTALE Z-INDEX MODALS ===== */
+/* Bootstrap par défaut utilise :
+   - modal-backdrop: 1040
+   - modal: 1050
+   On corrige pour s'assurer que le modal est au-dessus du backdrop */
 
-/* Forcer tous les modals au-dessus de TOUT */
-.modal-backdrop,
-div.modal-backdrop {
-    z-index: 500 !important; /* KLASSCI: Toujours sous le modal */
-    position: fixed !important;
-    background-color: rgba(0, 0, 0, 0.7) !important;
-    opacity: 0.7 !important;
-    display: none;
+.modal-backdrop {
+    z-index: 1040 !important;
 }
-
-.modal,
-div.modal,
-#modalNouveauFournisseur,
-.modal[id*="modal"],
-.modal[class*="modal"] {
-    z-index: 1051 !important; /* KLASSCI: Toujours au-dessus du backdrop */
-    position: fixed !important;
-}
-
-/* SUPPRIMER LES ANCIENNES RÈGLES QUI CAUSENT DES CONFLITS */
-/* 
-.nextadmin-navbar, .navbar, nav.navbar, div.navbar { z-index: 100 !important; }
-.nextadmin-sidebar, #sidebar, aside#sidebar, div#sidebar { z-index: 200 !important; }
-.dropdown-menu, div.dropdown-menu, ul.dropdown-menu { z-index: 300 !important; }
-.search-results, #search-results, div.search-results, div#search-results { z-index: 400 !important; }
-.sidebar-overlay, #sidebar-overlay, div.sidebar-overlay, div#sidebar-overlay { z-index: 150 !important; }
-*/
-
-/* ===== CENTRAGE MODAL FORCE ===== */
 
 .modal {
-    align-items: center !important;
-    justify-content: center !important;
-    padding: 1rem !important;
-    /* border: 3px solid red !important;  // Debug désactivé */
-}
-
-/*
-.modal.show {
-    display: flex !important; pour sélectionner une classe
+    z-index: 1055 !important;
 }
 
 .modal-dialog {
-    margin: 0 !important;
-    max-width: 90vw !important;
-    width: auto !important;
-    position: relative !important;
-    z-index: 10000 !important;
+    z-index: 1060 !important;
+    position: relative;
 }
 
-.modal-content {
-    position: relative !important;
-    z-index: 10001 !important;
-    background: white !important;
-    border-radius: 8px !important;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
-} */
-
-/* ===== CORRECTIONS BOOTSTRAP CONFLICTS ===== */
-
-/* Désactiver tous les autres z-index élevés */
-.dropdown-menu[style*="z-index"] {
-    z-index: 300 !important;
-}
-
-/* Forcer la visibilité du modal */
-.modal.fade.show {
+/* S'assurer que les modals sont visibles quand ouverts */
+.modal.show {
+    display: block !important;
+    visibility: visible !important;
     opacity: 1 !important;
 }
 
-/* ===== DEBUG MODE ===== */
-/* .modal { border: 3px solid red !important; } */
-/* .modal-backdrop { background-color: rgba(0, 255, 0, 0.5) !important; } */
-/* .dropdown-menu { border: 2px solid blue !important; } */
-/* #sidebar { border-right: 3px solid orange !important; } */
-
-/* ===== Centrage et élargissement du modal de sélection de classe (Méthode Block) ===== */
-#classeSelectorModal.modal.show {
+.modal-backdrop.show {
     display: block !important;
+    visibility: visible !important;
+    opacity: 0.5 !important;
 }
 
+/* Centrage parfait des modales - Utilise Flexbox uniquement quand la modale est ouverte */
+.modal.show {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.modal.show .modal-dialog {
+    margin: 0 !important;
+    max-width: 90vw;
+    max-height: 90vh;
+    width: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.show .modal-content {
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.modal.show .modal-body {
+    overflow-y: auto;
+    flex: 1;
+    max-height: calc(90vh - 150px);
+}
+
+/* Style moderne sans conflit */
+.modal-content {
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    position: relative;
+    z-index: 1;
+}
+
+.modal-header {
+    border-bottom: 1px solid #e9ecef;
+    padding: 1.25rem;
+}
+
+.modal-body {
+    padding: 1.25rem;
+    position: relative;
+    z-index: 1;
+}
+
+.modal-footer {
+    border-top: 1px solid #e9ecef;
+    padding: 1rem 1.25rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .modal-dialog {
+        margin: 0.5rem;
+        max-width: calc(100vw - 1rem);
+    }
+}
+
+/* Boutons dans les modals */
+.modal .btn {
+    margin: 0 0.25rem;
+    position: relative;
+    z-index: 1;
+}
+
+/* Fix pour le body avec modal ouvert */
+body.modal-open {
+    overflow: hidden;
+}
+
+/* Désactiver les animations problématiques */
+.modal.fade .modal-dialog {
+    transition: none !important;
+    transform: none !important;
+}
+
+/* Debug - rendre les modals visibles en cas de problème */
+.modal {
+    pointer-events: auto !important;
+}
+
+.modal-dialog {
+    pointer-events: auto !important;
+}
+
+.modal-content {
+    pointer-events: auto !important;
+}
+
+/* ===== SUPPRESSION BACKDROP-FILTER COMPLÈTE ===== */
+/* Désactiver TOUS les backdrop-filter qui interfèrent avec les modales */
+*, *::before, *::after {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+/* S'assurer qu'aucun élément n'a de backdrop-filter */
+.navbar, .sidebar, .dropdown, .dropdown-menu, 
+.modal, .modal-backdrop, .modal-dialog, .modal-content,
+.search-results, .overlay, .backdrop {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+/* Corriger spécifiquement le modal class-selector */
 #classeSelectorModal .modal-dialog {
-    top: 25% !important;
-    left: 50% !important;
-    transform: translate(-50%, -50%) !important;
-
-    /* Annuler les marges par défaut */
-    margin: 0 !important;
-}
-
-/* ===== Centrage et élargissement du modal de configuration (Centrage viewport fixe) ===== */
-#configureModal.modal.show {
-    display: block !important;
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    z-index: 1055 !important;
-    background: rgba(0, 0, 0, 0.5) !important;
-}
-
-#configureModal .modal-dialog {
-    position: fixed !important;
-    top: 50vh !important;
-    left: 50vw !important;
-    transform: translate(-50%, -50%) !important;
-    margin: 0 !important;
-    z-index: 1056 !important;
-    max-width: 90vw !important;
-}
-
-#configureModal .modal-content {
     position: relative !important;
-    z-index: 1057 !important;
-    background: white !important;
-    border-radius: 8px !important;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
+    z-index: 1060 !important;
+    margin: 1.75rem auto !important;
+    transform: none !important;
+    transition: none !important;
 }
 
-/* ===== DEBUG MODE DÉSACTIVÉ ===== */
-/*
-#configureModal {
-    border: 3px solid red !important;
+#classeSelectorModal .modal-content {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    transform: none !important;
+    transition: none !important;
 }
 
-#configureModal .modal-backdrop {
-    background-color: rgba(255, 0, 0, 0.5) !important;
-    z-index: 1054 !important;
+/* Empêcher les mouvements erratiques du modal class-selector */
+#classeSelectorModal.modal.fade .modal-dialog {
+    transition: none !important;
+    transform: none !important;
 }
 
-#configureModal .modal-dialog {
-    border: 2px solid blue !important;
+#classeSelectorModal.modal.show .modal-dialog {
+    transform: none !important;
 }
-
-#configureModal .modal-content {
-    border: 2px solid green !important;
-}
-*/

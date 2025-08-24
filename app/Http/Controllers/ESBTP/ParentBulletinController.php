@@ -120,30 +120,14 @@ class ParentBulletinController extends Controller
         $parent = ESBTPParent::where('user_id', $user->id)->firstOrFail();
         
         // Récupérer le bulletin et vérifier qu'il appartient à un étudiant du parent
-        $bulletin = ESBTPBulletin::with(['etudiant', 'classe', 'anneeUniversitaire', 'resultatsMatiere.matiere'])
+        $bulletin = ESBTPBulletin::with(['etudiant', 'classe', 'anneeUniversitaire'])
             ->where('id', $bulletinId)
             ->whereHas('etudiant.parents', function($query) use ($parent) {
                 $query->where('esbtp_parents.id', $parent->id);
             })->firstOrFail();
         
-        // Préparer les données pour le PDF
-        $data = [
-            'bulletin' => $bulletin,
-            'etudiant' => $bulletin->etudiant,
-            'classe' => $bulletin->classe,
-            'anneeUniversitaire' => $bulletin->anneeUniversitaire,
-            'resultats' => $bulletin->resultatsMatiere,
-        ];
-        
-        // Générer le PDF
-        $pdf = PDF::loadView('parent.bulletins.pdf', $data);
-        
-        // Définir le nom du fichier
-        $fileName = 'Bulletin_' . $bulletin->etudiant->matricule . '_' . 
-            $bulletin->anneeUniversitaire->annee_debut . '_' . 
-            $bulletin->periode . '.pdf';
-        
-        // Télécharger le PDF
-        return $pdf->download($fileName);
+        // Déléguer la génération PDF au contrôleur principal pour utiliser les calculs corrigés
+        $bulletinController = new \App\Http\Controllers\ESBTPBulletinController();
+        return $bulletinController->genererPDF($bulletin);
     }
 } 

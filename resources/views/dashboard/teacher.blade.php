@@ -143,32 +143,75 @@
         <div class="row mb-4">
             <!-- KPI 1: Émargement du jour -->
             <div class="col-lg-3 col-md-6">
-                <div class="card-moderne p-3 {{ $todayAttendance ? 'border-success' : 'border-warning' }}">
+                @php
+                    $now = \Carbon\Carbon::now();
+                    $hasEmargementToday = $todayAttendance;
+                    $hasCoursesToday = $todayClasses->count() > 0;
+                    
+                    // Vérifier si des cours ont leur fenêtre d'émargement expirée
+                    $expiredCourses = $todayClasses->filter(function($cours) use ($now) {
+                        $courseEnd = \Carbon\Carbon::parse($cours->heure_fin);
+                        $lateWindow = $courseEnd->copy()->addMinutes(15);
+                        $hasAttendance = $cours->teacherAttendance()->whereDate('validated_at', \Carbon\Carbon::today())->exists();
+                        return $now->gt($lateWindow) && !$hasAttendance;
+                    });
+                    
+                    // Vérifier si des cours ont leur fenêtre d'émargement ouverte
+                    $availableCourses = $todayClasses->filter(function($cours) use ($now) {
+                        $courseStart = \Carbon\Carbon::parse($cours->heure_debut);
+                        $courseEnd = \Carbon\Carbon::parse($cours->heure_fin);
+                        $earlyWindow = $courseStart->copy()->subMinutes(30);
+                        $lateWindow = $courseEnd->copy()->addMinutes(15);
+                        $hasAttendance = $cours->teacherAttendance()->whereDate('validated_at', \Carbon\Carbon::today())->exists();
+                        return $now->between($earlyWindow, $lateWindow) && !$hasAttendance;
+                    });
+                    
+                    $cardClass = $hasEmargementToday ? 'border-success' : ($expiredCourses->count() > 0 ? 'border-danger' : ($availableCourses->count() > 0 ? 'border-success' : 'border-warning'));
+                    $iconClass = $hasEmargementToday ? 'bg-success' : ($expiredCourses->count() > 0 ? 'bg-danger' : ($availableCourses->count() > 0 ? 'bg-success' : 'bg-warning'));
+                @endphp
+                
+                <div class="card-moderne p-3 {{ $cardClass }}">
                     <div class="d-flex align-items-center">
                         <div class="me-3">
-                            <div class="rounded-circle p-3 {{ $todayAttendance ? 'bg-success' : 'bg-warning' }} text-white">
+                            <div class="rounded-circle p-3 {{ $iconClass }} text-white">
                                 <i class="fas fa-user-check fa-2x"></i>
                             </div>
                         </div>
                         <div class="flex-grow-1">
                             <h6 class="fw-bold text-primary mb-1">Émargement</h6>
                             <div class="mb-2">
-                                @if($todayAttendance)
+                                @if($hasEmargementToday)
                                     <span class="badge bg-success">✓ Émargé</span>
+                                @elseif($expiredCourses->count() > 0)
+                                    <span class="badge bg-danger">Expiré</span>
+                                @elseif($availableCourses->count() > 0)
+                                    <span class="badge bg-success">Ouvert maintenant</span>
+                                @elseif(!$hasCoursesToday)
+                                    <span class="badge bg-secondary">Pas de cours</span>
                                 @else
                                     <span class="badge bg-warning">En attente</span>
                                 @endif
                             </div>
                             <small class="text-muted">
-                                @if($todayAttendance)
+                                @if($hasEmargementToday)
                                     {{ $todayAttendance->validated_at->format('H:i') }}
+                                @elseif($expiredCourses->count() > 0)
+                                    {{ $expiredCourses->count() }} cours manqué(s)
+                                @elseif($availableCourses->count() > 0)
+                                    {{ $availableCourses->count() }} cours disponible(s)
                                 @else
                                     Demander le code au coordinateur
                                 @endif
                             </small>
                         </div>
                     </div>
-                    @if(!$todayAttendance && $dailyCode)
+                    @if($availableCourses->count() > 0)
+                        <div class="mt-3 text-center">
+                            <a href="{{ route('esbtp.attendance.mark') }}" class="btn btn-success btn-sm">
+                                <i class="fas fa-signature me-1"></i> Émarger maintenant
+                            </a>
+                        </div>
+                    @elseif(!$hasEmargementToday && $dailyCode && !$expiredCourses->count())
                         <div class="mt-3 text-center">
                             <a href="{{ route('esbtp.attendance.mark') }}" class="btn btn-primary btn-sm">
                                 <i class="fas fa-edit me-1"></i> Émarger
@@ -223,26 +266,44 @@
 
             <!-- KPI 4: Appels en attente -->
             <div class="col-lg-3 col-md-6">
-                <div class="card-moderne p-3 {{ $pendingRollCalls->count() > 0 ? 'border-info' : 'border-secondary' }}">
+                @php
+                    // Filtrer les appels en attente pour exclure les cours expirés
+                    $now = \Carbon\Carbon::now();
+                    $validPendingRollCalls = $pendingRollCalls->filter(function($cours) use ($now) {
+                        $courseEnd = \Carbon\Carbon::parse($cours->heure_fin);
+                        $expiredWindow = $courseEnd->copy()->addMinutes(30); // 30 min après la fin pour faire l'appel
+                        return $now->lte($expiredWindow);
+                    });
+                    
+                    $expiredRollCalls = $pendingRollCalls->filter(function($cours) use ($now) {
+                        $courseEnd = \Carbon\Carbon::parse($cours->heure_fin);
+                        $expiredWindow = $courseEnd->copy()->addMinutes(30);
+                        return $now->gt($expiredWindow);
+                    });
+                @endphp
+                
+                <div class="card-moderne p-3 {{ $validPendingRollCalls->count() > 0 ? 'border-info' : ($expiredRollCalls->count() > 0 ? 'border-danger' : 'border-secondary') }}">
                     <div class="d-flex align-items-center">
                         <div class="me-3">
-                            <div class="rounded-circle p-3 {{ $pendingRollCalls->count() > 0 ? 'bg-info' : 'bg-secondary' }} text-white">
+                            <div class="rounded-circle p-3 {{ $validPendingRollCalls->count() > 0 ? 'bg-info' : ($expiredRollCalls->count() > 0 ? 'bg-danger' : 'bg-secondary') }} text-white">
                                 <i class="fas fa-list-check fa-2x"></i>
                             </div>
                         </div>
                         <div class="flex-grow-1">
                             <h6 class="fw-bold text-primary mb-1">Appels</h6>
-                            <div class="h4 mb-1">{{ $pendingRollCalls->count() }}</div>
+                            <div class="h4 mb-1">{{ $validPendingRollCalls->count() }}</div>
                             <small class="text-muted">
-                                @if($pendingRollCalls->count() > 0)
+                                @if($validPendingRollCalls->count() > 0)
                                     En attente
+                                @elseif($expiredRollCalls->count() > 0)
+                                    {{ $expiredRollCalls->count() }} expiré(s)
                                 @else
                                     À jour
                                 @endif
                             </small>
                         </div>
                     </div>
-                    @if($pendingRollCalls->count() > 0)
+                    @if($validPendingRollCalls->count() > 0)
                         <div class="mt-3 text-center">
                             <a href="#pending-roll-calls" class="btn btn-info btn-sm">
                                 <i class="fas fa-arrow-down me-1"></i> Voir
@@ -283,42 +344,79 @@
                                 </div>
                                 <div class="course-status">
                                     @php
-                                        $hasAttendance = $cours->teacherAttendance()->whereDate('validated_at', \Carbon\Carbon::today())->exists();
+                                        $now = \Carbon\Carbon::now();
+                                        $courseStart = \Carbon\Carbon::parse($cours->heure_debut);
+                                        $courseEnd = \Carbon\Carbon::parse($cours->heure_fin);
+                                        $earlyWindow = $courseStart->copy()->subMinutes(30); // 30 min avant émargement
+                                        $lateWindow = $courseEnd->copy()->addMinutes(15); // 15 min après pour émargement
+                                        $rollCallWindow = $courseStart->copy()->subMinutes(15); // 15 min avant pour appel
+                                        
+                                        $hasTeacherAttendance = $cours->teacherAttendance()->whereDate('validated_at', \Carbon\Carbon::today())->exists();
                                         $hasStudentCall = \App\Models\ESBTPAttendance::where('seance_cours_id', $cours->id)->exists();
                                         $isCompleted = $cours->status === 'completed';
-                                        $isExpired = !$hasAttendance && $cours->heure_fin && \Carbon\Carbon::parse($cours->heure_fin)->isPast();
+                                        
+                                        $isEmargementExpired = $now->gt($lateWindow) && !$hasTeacherAttendance;
+                                        $isEmargementAvailable = $now->between($earlyWindow, $lateWindow) && !$hasTeacherAttendance;
+                                        $isAppelExpired = $now->gt($courseEnd->copy()->addMinutes(30)) && !$hasStudentCall;
+                                        $isCourseActive = $now->between($courseStart, $courseEnd);
                                     @endphp
                                     
                                     @if($isCompleted)
                                         <span class="status-badge present">✓ Terminé</span>
+                                    @elseif($hasStudentCall && $hasTeacherAttendance)
+                                        <span class="status-badge present">✓ Cours complet</span>
                                     @elseif($hasStudentCall)
                                         <span class="status-badge present">✓ Appel fait</span>
-                                    @elseif($isExpired)
+                                    @elseif($hasTeacherAttendance && !$hasStudentCall && $isCourseActive)
+                                        <span class="status-badge late">Émargé - Appel manquant</span>
+                                    @elseif($hasTeacherAttendance)
+                                        <span class="status-badge present">✓ Émargé</span>
+                                    @elseif($isEmargementExpired)
                                         <span class="status-badge absent">Expiré - Absent</span>
-                                    @elseif($hasAttendance && \Carbon\Carbon::parse($cours->heure_debut)->isPast())
-                                        <span class="status-badge late">En cours</span>
+                                    @elseif($isAppelExpired && !$hasStudentCall)
+                                        <span class="status-badge absent">Appel manqué</span>
+                                    @elseif($isEmargementAvailable)
+                                        <span class="status-badge" style="background-color: rgba(34, 197, 94, 0.1); color: #16a34a; border: 1px solid rgba(34, 197, 94, 0.2);">
+                                            <i class="fas fa-play-circle"></i> Émargement ouvert
+                                        </span>
+                                    @elseif($isCourseActive)
+                                        <span class="status-badge late">Cours en cours</span>
                                     @else
                                         <span class="status-badge pending">Programmé</span>
                                     @endif
                                 </div>
                                 <div class="course-actions">
-                                    @if(!$isExpired && $hasAttendance && !$isCompleted)
-                                        @if(!$hasStudentCall && \Carbon\Carbon::parse($cours->heure_debut)->subMinutes(15)->isPast())
-                                            <a href="{{ route('teacher.roll-call', $cours->id) }}" class="quick-action-btn">
-                                                <i class="fas fa-list-check"></i> Faire l'appel
-                                            </a>
-                                        @elseif($hasStudentCall)
-                                            <form method="POST" action="{{ route('teacher.close-course', $cours->id) }}" style="display:inline;">
-                                                @csrf
-                                                <button type="submit" class="quick-action-btn" 
-                                                        onclick="return confirm('Êtes-vous sûr de vouloir clôturer ce cours ?')">
-                                                    <i class="fas fa-check-circle"></i> Clôturer
-                                                </button>
-                                            </form>
-                                        @endif
-                                    @elseif($isExpired)
+                                    @if($isCompleted)
+                                        <span class="text-success small">
+                                            <i class="fas fa-check-double"></i> Cours terminé
+                                        </span>
+                                    @elseif($isEmargementExpired || $isAppelExpired)
+                                        <span class="text-danger small">
+                                            <i class="fas fa-times-circle"></i> Cours expiré
+                                        </span>
+                                    @elseif($hasTeacherAttendance && !$hasStudentCall && $now->gte($rollCallWindow))
+                                        <a href="{{ route('teacher.roll-call', $cours->id) }}" class="quick-action-btn">
+                                            <i class="fas fa-list-check"></i> Faire l'appel
+                                        </a>
+                                    @elseif($hasStudentCall && !$isCompleted)
+                                        <form method="POST" action="{{ route('teacher.close-course', $cours->id) }}" style="display:inline;">
+                                            @csrf
+                                            <button type="submit" class="quick-action-btn" 
+                                                    onclick="return confirm('Êtes-vous sûr de vouloir clôturer ce cours ?')">
+                                                <i class="fas fa-check-circle"></i> Clôturer
+                                            </button>
+                                        </form>
+                                    @elseif($isEmargementAvailable)
+                                        <a href="{{ route('esbtp.attendance.mark') }}" class="quick-action-btn" style="background-color: var(--success); color: white;">
+                                            <i class="fas fa-signature"></i> Émarger maintenant
+                                        </a>
+                                    @elseif(!$hasTeacherAttendance && $now->lt($earlyWindow))
                                         <span class="text-muted small">
-                                            <i class="fas fa-clock"></i> Cours expiré
+                                            <i class="fas fa-hourglass-half"></i> Pas encore ouvert
+                                        </span>
+                                    @else
+                                        <span class="text-muted small">
+                                            <i class="fas fa-clock"></i> En attente
                                         </span>
                                     @endif
                                 </div>
@@ -335,32 +433,47 @@
         </div>
 
         <!-- Appels en attente -->
-        @if($pendingRollCalls->count() > 0)
+        @if(isset($validPendingRollCalls) && $validPendingRollCalls->count() > 0)
             <div id="pending-roll-calls" class="main-card urgent">
                 <div class="main-card-header">
                     <div class="main-card-title">
                         <i class="fas fa-exclamation-circle"></i>
                         Appels en attente
                     </div>
-                    <div class="main-card-subtitle">{{ $pendingRollCalls->count() }} cours nécessitent un appel</div>
+                    <div class="main-card-subtitle">{{ $validPendingRollCalls->count() }} cours nécessitent un appel</div>
                 </div>
                 <div class="main-card-body">
                     <div class="urgent-list">
-                        @foreach($pendingRollCalls as $cours)
-                            <div class="urgent-item">
-                                <div class="urgent-info">
-                                    <div class="urgent-title">
-                                        {{ $cours->matiere->name ?? 'Matière inconnue' }} - {{ $cours->classe->name ?? 'Classe inconnue' }}
+                        @foreach($validPendingRollCalls as $cours)
+                            @php
+                                $now = \Carbon\Carbon::now();
+                                $courseEnd = \Carbon\Carbon::parse($cours->heure_fin);
+                                $expiredWindow = $courseEnd->copy()->addMinutes(30);
+                                $isStillValid = $now->lte($expiredWindow);
+                            @endphp
+                            
+                            @if($isStillValid)
+                                <div class="urgent-item">
+                                    <div class="urgent-info">
+                                        <div class="urgent-title">
+                                            {{ $cours->matiere->name ?? 'Matière inconnue' }} - {{ $cours->classe->name ?? 'Classe inconnue' }}
+                                        </div>
+                                        <div class="urgent-time">
+                                            Débuté à {{ \Carbon\Carbon::parse($cours->heure_debut)->format('H:i') }}
+                                            @if($now->gt($courseEnd))
+                                                <span class="text-warning ms-2">
+                                                    <i class="fas fa-clock"></i> 
+                                                    Expire dans {{ $expiredWindow->diffForHumans($now, true) }}
+                                                </span>
+                                            @endif
+                                        </div>
                                     </div>
-                                    <div class="urgent-time">
-                                        Débuté à {{ \Carbon\Carbon::parse($cours->heure_debut)->format('H:i') }}
-                                    </div>
+                                    <a href="{{ route('teacher.roll-call', $cours->id) }}" class="btn-urgent-action">
+                                        <i class="fas fa-list-check"></i>
+                                        Faire l'appel
+                                    </a>
                                 </div>
-                                <a href="{{ route('teacher.roll-call', $cours->id) }}" class="btn-urgent-action">
-                                    <i class="fas fa-list-check"></i>
-                                    Faire l'appel
-                                </a>
-                            </div>
+                            @endif
                         @endforeach
                     </div>
                 </div>
@@ -385,6 +498,10 @@
             <a href="{{ route('teacher.grades') }}" class="quick-action-card">
                 <i class="fas fa-edit"></i>
                 <span>Saisir des notes</span>
+            </a>
+            <a href="{{ route('teacher.availability') }}" class="quick-action-card">
+                <i class="fas fa-calendar-check"></i>
+                <span>Mes disponibilités</span>
             </a>
         </div>
     </div>
@@ -420,6 +537,77 @@ $(document).ready(function() {
             scrollTop: $($(this).attr('href')).offset().top - 20
         }, 500);
     });
+
+    // Auto-refresh dashboard every 2 minutes to update course statuses
+    setInterval(function() {
+        // Only refresh if no modals are open and no forms are being filled
+        const modals = document.querySelectorAll('.modal.show');
+        const activeInputs = document.querySelectorAll('input:focus, textarea:focus, select:focus');
+        
+        if (modals.length === 0 && activeInputs.length === 0) {
+            window.location.reload();
+        }
+    }, 120000); // 2 minutes
+
+    // Add visual countdown for expiring courses/attendance windows
+    function updateTimeBasedElements() {
+        const now = new Date();
+        
+        // Update status badges based on current time
+        $('.course-item').each(function() {
+            const timeDisplay = $(this).find('.time-display').text();
+            if (timeDisplay && timeDisplay.includes(' - ')) {
+                const [startTime, endTime] = timeDisplay.split(' - ');
+                
+                // Parse times
+                const today = new Date();
+                const [startHour, startMin] = startTime.split(':');
+                const [endHour, endMin] = endTime.split(':');
+                
+                const courseStart = new Date(today);
+                courseStart.setHours(parseInt(startHour), parseInt(startMin), 0, 0);
+                
+                const courseEnd = new Date(today);
+                courseEnd.setHours(parseInt(endHour), parseInt(endMin), 0, 0);
+                
+                const earlyWindow = new Date(courseStart);
+                earlyWindow.setMinutes(courseStart.getMinutes() - 30);
+                
+                const lateWindow = new Date(courseEnd);
+                lateWindow.setMinutes(courseEnd.getMinutes() + 15);
+                
+                const statusBadge = $(this).find('.status-badge');
+                
+                // Add time-based visual indicators
+                if (now > lateWindow && !statusBadge.hasClass('present')) {
+                    statusBadge.removeClass('pending late').addClass('absent');
+                    statusBadge.text('Expiré');
+                } else if (now >= earlyWindow && now <= lateWindow && !statusBadge.hasClass('present')) {
+                    if (statusBadge.hasClass('pending')) {
+                        statusBadge.addClass('available-pulse');
+                    }
+                }
+            }
+        });
+    }
+
+    // Update every minute
+    setInterval(updateTimeBasedElements, 60000);
+    
+    // Run once on load
+    updateTimeBasedElements();
 });
 </script>
+
+<style>
+.available-pulse {
+    animation: pulse-green 2s infinite;
+}
+
+@keyframes pulse-green {
+    0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+}
+</style>
 @endsection

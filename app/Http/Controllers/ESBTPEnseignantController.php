@@ -319,43 +319,47 @@ class ESBTPEnseignantController extends Controller
      */
     private function prepareAvailabilityData($teacher)
     {
-        $timeSlots = [
-            '08:00-10:00', '10:00-12:00', '12:00-14:00', 
-            '14:00-16:00', '16:00-18:00', '18:00-20:00'
-        ];
+        
+        // Utiliser des créneaux par heure comme la page EDIT pour cohérence
+        $hours = range(8, 18); // 8h à 18h = 11 heures 
         $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
         
         // Initialiser avec 'unavailable' par défaut
         $availability = [];
         foreach ($days as $day) {
-            $availability[$day] = array_fill(0, count($timeSlots), 'unavailable');
+            $availability[$day] = array_fill(0, count($hours), 'unavailable');
         }
         
-        // Remplir avec les vraies données
+        // Remplir avec les vraies données - traitement par heure
         foreach ($teacher->availabilities as $avail) {
             $dayName = $days[$avail->day_of_week] ?? null;
             
-            // Parser l'heure correctement selon le type
+            // Parser l'heure de début et de fin
             if ($avail->start_time instanceof \Carbon\Carbon) {
                 $startHour = $avail->start_time->hour;
+                $endHour = $avail->end_time->hour;
             } elseif (is_string($avail->start_time)) {
                 $startHour = (int) substr($avail->start_time, 0, 2);
+                $endHour = (int) substr($avail->end_time, 0, 2);
             } else {
                 $startHour = (int) substr((string) $avail->start_time, 0, 2);
+                $endHour = (int) substr((string) $avail->end_time, 0, 2);
             }
             
-            // Mapper les heures aux indices des créneaux
-            $slotIndex = null;
-            if ($startHour >= 8 && $startHour < 10) $slotIndex = 0;      // 08:00-10:00
-            elseif ($startHour >= 10 && $startHour < 12) $slotIndex = 1; // 10:00-12:00
-            elseif ($startHour >= 12 && $startHour < 14) $slotIndex = 2; // 12:00-14:00
-            elseif ($startHour >= 14 && $startHour < 16) $slotIndex = 3; // 14:00-16:00
-            elseif ($startHour >= 16 && $startHour < 18) $slotIndex = 4; // 16:00-18:00
-            elseif ($startHour >= 18 && $startHour < 20) $slotIndex = 5; // 18:00-20:00
+            // DEBUG DETAILLE
+            \Log::info("🔧 Processing availability: ID={$avail->id}, day={$avail->day_of_week} ($dayName), start={$avail->start_time} (hour=$startHour), end={$avail->end_time} (hour=$endHour), type={$avail->availability_type}");
             
-            if ($dayName && $slotIndex !== null) {
-                $availability[$dayName][$slotIndex] = $avail->availability_type;
+            // Remplir toutes les heures entre start_time et end_time
+            if ($dayName) {
+                for ($hour = $startHour; $hour < $endHour; $hour++) {
+                    $hourIndex = $hour - 8; // Index dans le tableau (8h = index 0)
+                    if ($hourIndex >= 0 && $hourIndex < count($hours)) {
+                        $availability[$dayName][$hourIndex] = $avail->availability_type;
+                        \Log::info("  -> Set {$dayName}[{$hourIndex}] (hour {$hour}) = {$avail->availability_type}");
+                    }
+                }
             }
+            
         }
         
         return $availability;
@@ -409,12 +413,8 @@ class ESBTPEnseignantController extends Controller
             'vacations' => 'Vacations'
         ];
         
-        // Préparer les données de disponibilité pour la grille
-        $availabilityData = [];
-        foreach ($enseignant->availabilities as $availability) {
-            $key = $availability->day_of_week . '_' . substr($availability->start_time, 0, 2);
-            $availabilityData[$key] = $availability->availability_type;
-        }
+        // Utiliser le même format que la page SHOW pour cohérence
+        $availabilityData = $this->prepareAvailabilityData($enseignant);
         
         // Assigner pour compatibilité avec la vue
         $teacher = $enseignant;
@@ -430,6 +430,11 @@ class ESBTPEnseignantController extends Controller
      */
     public function update(Request $request, ESBTPTeacher $enseignant)
     {
+        // DEBUG: Voir ce qui arrive dans la request
+        \Log::info('🔧 DEBUG UPDATE METHOD');
+        \Log::info('Request data keys: ' . implode(', ', array_keys($request->all())));
+        \Log::info('Request full data: ' . json_encode($request->all()));
+        
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $enseignant->user_id,
@@ -468,11 +473,107 @@ class ESBTPEnseignantController extends Controller
                 'teaching_hours_due' => $request->teaching_hours_due,
                 'updated_by' => auth()->id(),
             ]);
+            
+            // Traiter les données de disponibilité si présentes
+            if ($request->has('availability')) {
+                \Log::info('🔧 Traitement des disponibilités');
+                \Log::info('Availability data: ' . json_encode($request->availability));
+                
+                // Supprimer toutes les disponibilités existantes
+                $enseignant->availabilities()->delete();
+                
+                // Recréer les disponibilités à partir des données du formulaire
+                foreach ($request->availability as $key => $status) {
+                    if ($status !== 'unavailable') {
+                        // Parser la clé (format: "day_hour")
+                        [$dayIndex, $hour] = explode('_', $key);
+                        $dayIndex = (int) $dayIndex;
+                        $hour = (int) $hour;
+                        
+                        // Créer le créneau avec heure de fin
+                        $startTime = sprintf('%02d:00', $hour);
+                        $endTime = sprintf('%02d:00', $hour + 1);
+                        
+                        ESBTPTeacherAvailability::create([
+                            'teacher_id' => $enseignant->id,
+                            'day_of_week' => $dayIndex,
+                            'start_time' => $startTime,
+                            'end_time' => $endTime,
+                            'availability_type' => $status
+                        ]);
+                        
+                        \Log::info("Created availability: day=$dayIndex, $startTime-$endTime, status=$status");
+                    }
+                }
+                
+                \Log::info('🔧 Disponibilités mises à jour');
+            } else {
+                \Log::info('🔧 Aucune donnée de disponibilité reçue');
+            }
 
             DB::commit();
             
-            return redirect()->route('esbtp.personnel.unified.index')
-                ->with('success', 'Enseignant mis à jour avec succès');
+            // DEBUG FRONT : Préparer un message de debug détaillé pour l'utilisateur
+            $debugMessage = '✅ ENSEIGNANT MIS À JOUR AVEC SUCCÈS\n\n';
+            $debugMessage .= '🕒 Timestamp: ' . now()->format('Y-m-d H:i:s') . '\n\n';
+            
+            if ($request->has('availability')) {
+                $debugMessage .= '📊 DÉTAILS DES DISPONIBILITÉS:\n';
+                $debugMessage .= '- Total des créneaux reçus: ' . count($request->availability) . '\n';
+                
+                $statusCounts = ['available' => 0, 'preferred' => 0, 'unavailable' => 0];
+                $savedCount = 0;
+                $samples = [];
+                
+                foreach ($request->availability as $key => $status) {
+                    $statusCounts[$status]++;
+                    if ($status !== 'unavailable') {
+                        $savedCount++;
+                        if (count($samples) < 3) {
+                            [$day, $hour] = explode('_', $key);
+                            $dayNames = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+                            $samples[] = $dayNames[$day] . ' ' . sprintf('%02d:00', $hour) . ' = ' . $status;
+                        }
+                    }
+                }
+                
+                $debugMessage .= '- Disponibles: ' . $statusCounts['available'] . '\n';
+                $debugMessage .= '- Préférés: ' . $statusCounts['preferred'] . '\n';
+                $debugMessage .= '- Indisponibles: ' . $statusCounts['unavailable'] . '\n';
+                $debugMessage .= '- Sauvegardés en DB: ' . $savedCount . ' créneaux\n\n';
+                
+                if (!empty($samples)) {
+                    $debugMessage .= '📝 EXEMPLES SAUVEGARDÉS:\n';
+                    foreach ($samples as $sample) {
+                        $debugMessage .= '  • ' . $sample . '\n';
+                    }
+                    if ($savedCount > 3) {
+                        $debugMessage .= '  ... et ' . ($savedCount - 3) . ' autres\n';
+                    }
+                    $debugMessage .= '\n';
+                }
+                
+                $debugMessage .= '🔧 FORMAT DES CLÉS REÇUES: day_hour (ex: 0_8 = Lundi 08h)\n';
+                $debugMessage .= '💾 FORMAT SAUVEGARDÉ: start_time/end_time par heure\n\n';
+            } else {
+                $debugMessage .= '⚠️ AUCUNE DONNÉE DE DISPONIBILITÉ REÇUE\n\n';
+            }
+            
+            $debugMessage .= '📋 AUTRES DONNÉES TRAITÉES:\n';
+            $debugMessage .= '- Nom: ' . $request->name . '\n';
+            $debugMessage .= '- Email: ' . $request->email . '\n';
+            $debugMessage .= '- Spécialisation: ' . $request->specialization . '\n';
+            if ($request->filled('password')) {
+                $debugMessage .= '- Mot de passe: MODIFIÉ\n';
+            }
+            
+            $debugMessage .= '\n🎯 RÉSULTAT: Modification terminée, vérifiez la page SHOW';
+            
+            // Sauvegarder le message de debug en session
+            session(['debug_message' => $debugMessage]);
+            
+            // Rediriger vers une page de debug dédiée
+            return redirect()->route('esbtp.enseignants.debug-result', ['enseignant' => $enseignant->id]);
                 
         } catch (\Exception $e) {
             DB::rollback();
@@ -481,6 +582,20 @@ class ESBTPEnseignantController extends Controller
                 ->with('error', 'Une erreur est survenue lors de la mise à jour: ' . $e->getMessage())
                 ->withInput();
         }
+    }
+    
+    /**
+     * Afficher le résultat debug de la modification
+     */
+    public function debugResult(ESBTPTeacher $enseignant)
+    {
+        $debugMessage = session('debug_message', 'Aucun message de debug disponible');
+        session()->forget('debug_message');
+        
+        return view('esbtp.enseignants.debug-result', [
+            'enseignant' => $enseignant,
+            'debugMessage' => $debugMessage
+        ]);
     }
 
     /**
@@ -619,49 +734,90 @@ class ESBTPEnseignantController extends Controller
      */
     public function updateAvailability(Request $request, ESBTPTeacher $enseignant)
     {
+        error_log("🔧 DEBUG: updateAvailability called at " . date('H:i:s'));
+        
         try {
+            // DEBUG : Voir ce qui arrive
+            \Log::info('🔧 DEBUG updateAvailability METHOD');
+            \Log::info('Request changes: ' . json_encode($request->changes));
+            error_log("🔧 Changes received: " . json_encode($request->changes));
+            
             $request->validate([
                 'changes' => 'required|array',
                 'changes.*.day' => 'required|integer|min:0|max:6',
-                'changes.*.timeIndex' => 'required|integer|min:0|max:5',
+                'changes.*.startTime' => 'required|string|regex:/^[0-2][0-9]:[0-5][0-9]$/',
+                'changes.*.endTime' => 'required|string|regex:/^[0-2][0-9]:[0-5][0-9]$/',
                 'changes.*.status' => 'required|in:available,preferred,unavailable'
             ]);
 
             DB::beginTransaction();
 
-            // Définir les créneaux horaires
-            $timeSlots = [
-                ['start' => '08:00', 'end' => '10:00'],
-                ['start' => '10:00', 'end' => '12:00'],
-                ['start' => '12:00', 'end' => '14:00'],
-                ['start' => '14:00', 'end' => '16:00'],
-                ['start' => '16:00', 'end' => '18:00'],
-                ['start' => '18:00', 'end' => '20:00']
-            ];
+            // CORRIGÉ : Utiliser des créneaux par heure comme la page EDIT
+            $hours = range(8, 18); // 8h à 18h = 11 heures
 
             // Traiter chaque changement
             foreach ($request->changes as $change) {
                 $day = $change['day'];
-                $timeIndex = $change['timeIndex'];
+                $startTime = $change['startTime'];
+                $endTime = $change['endTime'];
                 $status = $change['status'];
-                $timeSlot = $timeSlots[$timeIndex];
 
-                // Supprimer l'ancienne entrée pour ce jour/créneau
-                ESBTPTeacherAvailability::where([
+                \Log::info("Processing change: day={$day}, {$startTime}-{$endTime}, status={$status}");
+
+                // Supprimer toutes les entrées qui se chevauchent avec le créneau sélectionné
+                $clickedStart = (int) substr($startTime, 0, 2);
+                $clickedEnd = (int) substr($endTime, 0, 2);
+                
+                \Log::info("Checking for existing entries to delete for teacher {$enseignant->id}, day {$day}, time {$startTime}-{$endTime}");
+                
+                $existingAvailabilities = ESBTPTeacherAvailability::where([
                     'teacher_id' => $enseignant->id,
-                    'day_of_week' => $day,
-                    'start_time' => $timeSlot['start']
-                ])->delete();
+                    'day_of_week' => $day
+                ])->get();
+                
+                \Log::info("Found " . $existingAvailabilities->count() . " existing entries for this day");
+                
+                foreach ($existingAvailabilities as $existing) {
+                    // CORRIGÉ: Parser correctement les heures depuis les timestamps
+                    if ($existing->start_time instanceof \Carbon\Carbon) {
+                        $existingStart = $existing->start_time->hour;
+                        $existingEnd = $existing->end_time->hour;
+                    } else {
+                        // Extraire l'heure depuis la position 11 du timestamp "YYYY-MM-DD HH:MM:SS"
+                        $existingStart = (int) substr($existing->start_time, 11, 2);
+                        $existingEnd = (int) substr($existing->end_time, 11, 2);
+                    }
+                    
+                    \Log::info("Existing entry ID={$existing->id}: {$existing->start_time}-{$existing->end_time} parsed as hours {$existingStart}-{$existingEnd}");
+                    
+                    // CORRIGÉ: Vérifier s'il y a chevauchement exact ou partiel
+                    // Deux créneaux se chevauchent si l'un commence avant que l'autre ne finisse
+                    $hasOverlap = ($clickedStart < $existingEnd) && ($clickedEnd > $existingStart);
+                    
+                    // AJOUTÉ: aussi supprimer si c'est exactement le même créneau
+                    $isExactMatch = ($clickedStart == $existingStart) && ($clickedEnd == $existingEnd);
+                    
+                    if ($hasOverlap || $isExactMatch) {
+                        \Log::info("Deleting existing availability ID={$existing->id}: {$existing->start_time}-{$existing->end_time} (overlaps/matches with {$startTime}-{$endTime})");
+                        $existing->delete();
+                    } else {
+                        \Log::info("Keeping existing availability ID={$existing->id}: no overlap with {$startTime}-{$endTime}");
+                    }
+                }
 
                 // Ajouter la nouvelle entrée seulement si ce n'est pas "unavailable"
                 if ($status !== 'unavailable') {
                     ESBTPTeacherAvailability::create([
                         'teacher_id' => $enseignant->id,
                         'day_of_week' => $day,
-                        'start_time' => $timeSlot['start'],
-                        'end_time' => $timeSlot['end'],
+                        'start_time' => $startTime,
+                        'end_time' => $endTime,
                         'availability_type' => $status
                     ]);
+                    
+                    \Log::info("Created availability: {$startTime}-{$endTime} = {$status}");
+                } else {
+                    \Log::info("Skipping creation for unavailable status");
                 }
             }
 

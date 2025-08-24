@@ -103,6 +103,22 @@ class ESBTPTeacher extends Model
         return $this->user ? $this->user->firstname . ' ' . $this->user->lastname : 'N/A';
     }
 
+    // Accesseur pour obtenir le nom (utilise name en fallback)
+    public function getNameAttribute()
+    {
+        if (!$this->user) {
+            return 'N/A';
+        }
+        
+        // Si firstname et lastname existent, les utiliser
+        if ($this->user->firstname && $this->user->lastname) {
+            return $this->user->firstname . ' ' . $this->user->lastname;
+        }
+        
+        // Sinon utiliser le champ name
+        return $this->user->name ?: 'N/A';
+    }
+
     public function createdBy()
     {
         return $this->belongsTo(User::class, 'created_by');

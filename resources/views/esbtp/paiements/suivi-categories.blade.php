@@ -5,386 +5,38 @@
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
-    .stats-overview {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: var(--space-lg);
-        margin-bottom: var(--space-xl);
-    }
-    
-    .stat-card {
-        text-align: center;
-        position: relative;
-        overflow: hidden;
-        background: linear-gradient(135deg, var(--surface) 0%, rgba(255, 255, 255, 0.9) 100%);
-        border: 1px solid rgba(0, 0, 0, 0.05);
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    
-    .stat-card:hover {
-        transform: translateY(-4px) scale(1.02);
-        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
-    }
-    
-    .stat-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 4px;
-        border-radius: var(--radius-medium) var(--radius-medium) 0 0;
-    }
-    
-    .stat-card::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
-        pointer-events: none;
-    }
-    
-    .stat-card.success::before { background: linear-gradient(90deg, var(--success), #34d399); }
-    .stat-card.warning::before { background: linear-gradient(90deg, var(--warning), #fbbf24); }
-    .stat-card.danger::before { background: linear-gradient(90deg, var(--danger), #f87171); }
-    .stat-card.primary::before { background: linear-gradient(90deg, var(--primary), #60a5fa); }
-    
-    .stat-icon {
-        width: 50px;
-        height: 50px;
-        border-radius: var(--radius-circle);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 0 auto var(--space-sm);
-        font-size: 20px;
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-    }
-    
-    .stat-card.success .stat-icon { color: var(--success); }
-    .stat-card.warning .stat-icon { color: var(--warning); }
-    .stat-card.danger .stat-icon { color: var(--danger); }
-    .stat-card.primary .stat-icon { color: var(--primary); }
-    
-    .stat-value {
-        font-size: var(--amount-large);
-        font-weight: 800;
-        margin-bottom: var(--space-xs);
-        background: linear-gradient(135deg, var(--text-primary), #6b7280);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-    
-    .stat-label {
+    .btn-acasi.small {
+        padding: var(--space-xs) var(--space-sm);
         font-size: var(--text-small);
-        color: var(--text-secondary);
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        font-weight: 600;
-    }
-    
-    .categories-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
-        gap: var(--space-xl);
-        margin-bottom: var(--space-xl);
-    }
-    
-    .category-card {
-        position: relative;
-        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        cursor: pointer;
-        background: linear-gradient(135deg, var(--surface) 0%, rgba(255, 255, 255, 0.95) 100%);
-        backdrop-filter: blur(20px);
-        border: 1px solid rgba(0, 0, 0, 0.05);
-        overflow: hidden;
-    }
-    
-    .category-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: linear-gradient(135deg, transparent 0%, rgba(99, 102, 241, 0.02) 100%);
-        opacity: 0;
-        transition: opacity 0.4s ease;
-    }
-    
-    .category-card:hover::before {
-        opacity: 1;
-    }
-    
-    .category-card:hover {
-        transform: translateY(-6px) rotate(0.5deg);
-        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
-        border-color: rgba(99, 102, 241, 0.2);
-    }
-    
-    .category-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: var(--space-lg);
-        position: relative;
-        z-index: 2;
-    }
-    
-    .category-icon {
-        width: 50px;
-        height: 50px;
-        border-radius: var(--radius-medium);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-size: 20px;
-        background: linear-gradient(135deg, var(--primary), var(--secondary));
-        box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
-        position: relative;
-    }
-    
-    .category-icon::after {
-        content: '';
-        position: absolute;
-        top: -2px;
-        left: -2px;
-        right: -2px;
-        bottom: -2px;
-        background: linear-gradient(135deg, var(--primary), var(--secondary));
-        border-radius: var(--radius-medium);
-        z-index: -1;
-        opacity: 0.3;
-        filter: blur(8px);
-    }
-    
-    .category-stats {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: var(--space-md);
-        margin-bottom: var(--space-lg);
-        position: relative;
-        z-index: 2;
-    }
-    
-    .mini-stat {
-        text-align: center;
-        padding: var(--space-md);
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.4));
-        border-radius: var(--radius-medium);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        backdrop-filter: blur(10px);
-        transition: all 0.3s ease;
-    }
-    
-    .mini-stat:hover {
-        transform: translateY(-2px);
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.6));
-    }
-    
-    .mini-stat-value {
-        font-size: var(--amount-medium);
-        font-weight: 800;
-        display: block;
-        margin-bottom: var(--space-xs);
-    }
-    
-    .mini-stat-label {
-        font-size: var(--text-small);
-        color: var(--text-secondary);
-        margin-top: var(--space-xs);
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    
-    /* Barre de progression moderne avec animations */
-    .progress-bar-modern {
-        height: 12px;
-        background: linear-gradient(90deg, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0.08) 100%);
-        border-radius: 8px;
-        overflow: hidden;
-        margin: var(--space-lg) 0;
-        position: relative;
-        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-    
-    .progress-bar-modern::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 50%;
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.3) 0%, transparent 100%);
-        border-radius: 8px 8px 0 0;
-    }
-    
-    .progress-fill-modern {
-        height: 100%;
-        border-radius: 8px;
-        transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .progress-fill-modern::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 50%;
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.4) 0%, transparent 100%);
-        border-radius: 8px 8px 0 0;
-    }
-    
-    .progress-fill-modern::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.4) 50%, transparent 100%);
-        animation: shimmer 2s infinite;
-    }
-    
-    @keyframes shimmer {
-        0% { left: -100%; }
-        100% { left: 100%; }
-    }
-    
-    .progress-fill-modern.success { 
-        background: linear-gradient(135deg, #10b981, #34d399, #6ee7b7);
-        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
-    }
-    
-    .progress-fill-modern.warning { 
-        background: linear-gradient(135deg, #f59e0b, #fbbf24, #fcd34d);
-        box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
-    }
-    
-    .progress-fill-modern.danger { 
-        background: linear-gradient(135deg, #ef4444, #f87171, #fca5a5);
-        box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
-    }
-    
-    /* Barre de progression segmentée pour la vue d'ensemble */
-    .segmented-progress {
-        height: 16px;
-        background: rgba(0, 0, 0, 0.05);
-        border-radius: 10px;
-        overflow: hidden;
-        display: flex;
-        position: relative;
-        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-    
-    .progress-segment {
-        height: 100%;
-        transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .progress-segment::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 50%;
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.4) 0%, transparent 100%);
-    }
-    
-    .progress-segment.success {
-        background: linear-gradient(135deg, #10b981, #34d399);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
-    }
-    
-    .progress-segment.warning {
-        background: linear-gradient(135deg, #f59e0b, #fbbf24);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
-    }
-    
-    .progress-segment.danger {
-        background: linear-gradient(135deg, #ef4444, #f87171);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
-    }
-    
-    .filter-bar {
-        background: var(--surface);
-        border-radius: var(--radius-medium);
-        padding: var(--space-lg);
-        margin-bottom: var(--space-lg);
-        box-shadow: var(--shadow-card);
-    }
-    
-    .filter-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: var(--space-md);
-        align-items: end;
-    }
-    
-    .form-group {
-        position: relative;
-    }
-    
-    .form-group label {
-        display: block;
-        font-size: var(--text-small);
-        font-weight: 600;
-        color: var(--text-secondary);
-        margin-bottom: var(--space-xs);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    
-    .form-group select {
-        width: 100%;
-        padding: var(--space-sm) var(--space-md);
-        border: 2px solid #e5e7eb;
         border-radius: var(--radius-small);
-        background: var(--surface);
-        font-size: var(--text-normal);
-        transition: all 0.2s ease;
     }
     
-    .form-group select:focus {
-        outline: none;
-        border-color: var(--primary);
-        box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
-    }
-    
-    .details-section {
-        margin-top: var(--space-xl);
-    }
-    
-    .students-list {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: var(--space-md);
-    }
-    
+    /* Styles pour les cartes d'étudiants */
     .student-card {
         padding: var(--space-md);
         border-left: 4px solid transparent;
         transition: all 0.2s ease;
+        position: relative;
+        overflow: hidden;
     }
     
-    .student-card.success { border-left-color: var(--success); background: rgba(16, 185, 129, 0.05); }
-    .student-card.warning { border-left-color: var(--warning); background: rgba(245, 158, 11, 0.05); }
-    .student-card.danger { border-left-color: var(--danger); background: rgba(239, 68, 68, 0.05); }
+    .student-card.success { 
+        border-left-color: var(--success); 
+        background: rgba(16, 185, 129, 0.05); 
+    }
+    .student-card.warning { 
+        border-left-color: var(--warning); 
+        background: rgba(245, 158, 11, 0.05); 
+    }
+    .student-card.danger { 
+        border-left-color: var(--danger); 
+        background: rgba(239, 68, 68, 0.05); 
+    }
+    
+    .student-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    }
     
     .student-info {
         display: flex;
@@ -449,73 +101,144 @@
         background: rgba(16, 185, 129, 0.1); 
         color: var(--success);
         border: 1px solid rgba(16, 185, 129, 0.2);
-        box-shadow: 0 2px 4px rgba(16, 185, 129, 0.1);
     }
     .percentage-badge.warning { 
         background: rgba(245, 158, 11, 0.1); 
         color: var(--warning);
         border: 1px solid rgba(245, 158, 11, 0.2);
-        box-shadow: 0 2px 4px rgba(245, 158, 11, 0.1);
     }
     .percentage-badge.danger { 
         background: rgba(239, 68, 68, 0.1); 
         color: var(--danger);
         border: 1px solid rgba(239, 68, 68, 0.2);
-        box-shadow: 0 2px 4px rgba(239, 68, 68, 0.1);
     }
     
-    /* Animation pulse pour les stats importantes */
-    .stat-card.danger .stat-value {
-        animation: pulse-danger 2s infinite;
+    .students-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: var(--space-md);
     }
     
-    @keyframes pulse-danger {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.7; }
+    /* Styles pour les catégories - ancien style visuel */
+    .categories-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+        gap: var(--space-xl);
+        margin-bottom: var(--space-xl);
     }
     
-    /* Hover effects améliorés pour les mini-stats */
+    .category-card {
+        position: relative;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+        background: linear-gradient(135deg, var(--surface) 0%, rgba(255, 255, 255, 0.95) 100%);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        overflow: hidden;
+        border-radius: var(--radius-medium);
+        box-shadow: var(--shadow-card);
+    }
+    
+    .category-card:hover {
+        transform: translateY(-6px) rotate(0.5deg);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        border-color: rgba(99, 102, 241, 0.2);
+    }
+    
+    .category-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: var(--space-lg);
+        position: relative;
+        z-index: 2;
+    }
+    
+    .category-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: var(--radius-medium);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 20px;
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+    }
+    
+    .category-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: var(--space-md);
+        margin-bottom: var(--space-lg);
+        position: relative;
+        z-index: 2;
+    }
+    
+    .mini-stat {
+        text-align: center;
+        padding: var(--space-md);
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.4));
+        border-radius: var(--radius-medium);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        backdrop-filter: blur(10px);
+        transition: all 0.3s ease;
+    }
+    
     .mini-stat:hover {
-        transform: translateY(-3px) scale(1.05);
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.8));
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.6));
     }
     
-    /* Effect de brillance sur les icônes */
-    .category-icon:hover::after {
-        animation: glow-pulse 1.5s ease-in-out infinite alternate;
+    .mini-stat-value {
+        font-size: var(--amount-medium);
+        font-weight: 800;
+        display: block;
+        margin-bottom: var(--space-xs);
     }
     
-    @keyframes glow-pulse {
-        from { opacity: 0.3; filter: blur(8px); }
-        to { opacity: 0.6; filter: blur(12px); }
+    .mini-stat-label {
+        font-size: var(--text-small);
+        color: var(--text-secondary);
+        margin-top: var(--space-xs);
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
     
-    /* Amélioration des student cards avec gradients */
-    .student-card {
+    /* Barre de progression moderne */
+    .progress-bar-modern {
+        height: 12px;
+        background: linear-gradient(90deg, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0.08) 100%);
+        border-radius: 8px;
+        overflow: hidden;
+        margin: var(--space-lg) 0;
+        position: relative;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .progress-fill-modern {
+        height: 100%;
+        border-radius: 8px;
+        transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
         position: relative;
         overflow: hidden;
     }
     
-    .student-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: linear-gradient(135deg, transparent 0%, rgba(255, 255, 255, 0.1) 100%);
-        opacity: 0;
-        transition: opacity 0.3s ease;
+    .progress-fill-modern.success { 
+        background: linear-gradient(135deg, #10b981, #34d399, #6ee7b7);
+        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
     }
     
-    .student-card:hover::before {
-        opacity: 1;
+    .progress-fill-modern.warning { 
+        background: linear-gradient(135deg, #f59e0b, #fbbf24, #fcd34d);
+        box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
     }
     
-    .student-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    .progress-fill-modern.danger { 
+        background: linear-gradient(135deg, #ef4444, #f87171, #fca5a5);
+        box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
     }
 </style>
 @endsection
@@ -539,164 +262,176 @@
             </div>
         </div>
 
-        <!-- Filtres -->
-        <div class="filter-bar">
-            <form method="GET" action="{{ route('esbtp.paiements.suivi-categories') }}">
-                <div class="filter-grid">
-                    <div class="form-group">
-                        <label for="annee_id">Année universitaire</label>
-                        <select name="annee_id" id="annee_id" onchange="this.form.submit()">
-                            @foreach($annees as $annee)
-                                <option value="{{ $annee->id }}" {{ $anneeId == $annee->id ? 'selected' : '' }}>
-                                    {{ $annee->name }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="filiere_id">Filière</label>
-                        <select name="filiere_id" id="filiere_id" onchange="this.form.submit()">
-                            <option value="">Toutes les filières</option>
-                            @foreach($filieres as $filiere)
-                                <option value="{{ $filiere->id }}" {{ $filiereId == $filiere->id ? 'selected' : '' }}>
-                                    {{ $filiere->name }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="niveau_id">Niveau d'étude</label>
-                        <select name="niveau_id" id="niveau_id" onchange="this.form.submit()">
-                            <option value="">Tous les niveaux</option>
-                            @foreach($niveaux as $niveau)
-                                <option value="{{ $niveau->id }}" {{ $niveauId == $niveau->id ? 'selected' : '' }}>
-                                    {{ $niveau->name }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="category_id">Catégorie détaillée</label>
-                        <select name="category_id" id="category_id" onchange="this.form.submit()">
-                            <option value="">Vue d'ensemble</option>
-                            @foreach($categories as $category)
-                                <option value="{{ $category->id }}" {{ $categoryId == $category->id ? 'selected' : '' }}>
-                                    {{ $category->name }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                </div>
-            </form>
-        </div>
-
-        <!-- Vue d'ensemble globale -->
+        <!-- Filtres et Actions -->
         <div class="card-moderne mb-lg">
             <div class="p-lg">
-                <div class="section-title mb-lg">
-                    <i class="fas fa-chart-pie me-2"></i>
-                    Vue d'Ensemble Globale
+                <form action="{{ route('esbtp.paiements.suivi-categories') }}" method="GET">
+                    <div class="row align-items-end">
+                        <div class="col-md-3">
+                            <label for="annee_id" class="form-label">Année universitaire</label>
+                            <select name="annee_id" id="annee_id" class="form-select" onchange="this.form.submit()">
+                                @foreach($annees as $annee)
+                                    <option value="{{ $annee->id }}" {{ $anneeId == $annee->id ? 'selected' : '' }}>
+                                        {{ $annee->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="filiere_id" class="form-label">Filière</label>
+                            <select name="filiere_id" id="filiere_id" class="form-select" onchange="this.form.submit()">
+                                <option value="">Toutes les filières</option>
+                                @foreach($filieres as $filiere)
+                                    <option value="{{ $filiere->id }}" {{ $filiereId == $filiere->id ? 'selected' : '' }}>
+                                        {{ $filiere->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="niveau_id" class="form-label">Niveau d'étude</label>
+                            <select name="niveau_id" id="niveau_id" class="form-select" onchange="this.form.submit()">
+                                <option value="">Tous les niveaux</option>
+                                @foreach($niveaux as $niveau)
+                                    <option value="{{ $niveau->id }}" {{ $niveauId == $niveau->id ? 'selected' : '' }}>
+                                        {{ $niveau->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="category_id" class="form-label">Catégorie détaillée</label>
+                            <select name="category_id" id="category_id" class="form-select" onchange="this.form.submit()">
+                                <option value="">Vue d'ensemble</option>
+                                @foreach($categories as $category)
+                                    <option value="{{ $category->id }}" {{ $categoryId == $category->id ? 'selected' : '' }}>
+                                        {{ $category->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn-acasi primary w-100">
+                                <i class="fas fa-filter"></i>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- KPI Cards comme dans la page index -->
+        <div class="kpi-grid">
+            <div class="card-moderne kpi-card">
+                <div class="kpi-title">Étudiants en Règle</div>
+                <div class="kpi-value color-success">{{ $vueEnsemble['etudiants_en_regle'] }}</div>
+                <div class="kpi-trend positive">
+                    <i class="fas fa-check-circle me-2"></i>
+                    @php
+                        $totalEtudiants = $vueEnsemble['etudiants_en_regle'] + $vueEnsemble['etudiants_en_retard'] + $vueEnsemble['etudiants_non_payes'];
+                    @endphp
+                    @if($totalEtudiants > 0)
+                        {{ round(($vueEnsemble['etudiants_en_regle'] / $totalEtudiants) * 100, 1) }}% du total
+                    @else
+                        Aucun étudiant
+                    @endif
+                </div>
+            </div>
+            
+            <div class="card-moderne kpi-card">
+                <div class="kpi-title">Paiements Partiels</div>
+                <div class="kpi-value color-warning">{{ $vueEnsemble['etudiants_en_retard'] }}</div>
+                <div class="kpi-trend">
+                    <i class="fas fa-clock me-2"></i>
+                    @if($totalEtudiants > 0)
+                        {{ round(($vueEnsemble['etudiants_en_retard'] / $totalEtudiants) * 100, 1) }}% du total
+                    @else
+                        Aucun étudiant
+                    @endif
+                </div>
+            </div>
+            
+            <div class="card-moderne kpi-card">
+                <div class="kpi-title">Impayés</div>
+                <div class="kpi-value color-danger">{{ $vueEnsemble['etudiants_non_payes'] }}</div>
+                <div class="kpi-trend negative">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    @if($totalEtudiants > 0)
+                        {{ round(($vueEnsemble['etudiants_non_payes'] / $totalEtudiants) * 100, 1) }}% du total
+                    @else
+                        Aucun étudiant
+                    @endif
+                </div>
+            </div>
+
+            <div class="card-moderne kpi-card">
+                <div class="kpi-title">Taux de Recouvrement Global</div>
+                <div class="kpi-value color-primary">{{ $vueEnsemble['taux_recouvrement_global'] }}%</div>
+                <div class="kpi-trend {{ $vueEnsemble['taux_recouvrement_global'] >= 75 ? 'positive' : ($vueEnsemble['taux_recouvrement_global'] >= 50 ? '' : 'negative') }}">
+                    <i class="fas fa-chart-line me-2"></i>
+                    {{ number_format($vueEnsemble['montant_total_recu'], 0, ',', ' ') }} / {{ number_format($vueEnsemble['montant_total_attendu'], 0, ',', ' ') }} FCFA
+                </div>
+            </div>
+        </div>
+
+        <!-- Répartition des étudiants - Style moderne avec barre pleine largeur -->
+        <div class="card-moderne mb-lg">
+            <div class="p-lg">
+                <div class="d-flex justify-content-between align-items-center mb-md">
+                    <div class="section-title mb-0">
+                        <i class="fas fa-chart-pie me-2"></i>
+                        Répartition des Étudiants et Recouvrement
+                    </div>
                 </div>
                 
-                <div class="stats-overview">
-                    <div class="card-moderne stat-card success">
-                        <div class="p-lg">
-                            <div class="stat-icon">
-                                <i class="fas fa-check-circle"></i>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="resultat-card border-start border-success border-3">
+                            <div class="resultat-title">Répartition par Statut</div>
+                            @php
+                                $totalConcernes = $vueEnsemble['etudiants_en_regle'] + $vueEnsemble['etudiants_en_retard'] + $vueEnsemble['etudiants_non_payes'];
+                                $enReglePercent = $totalConcernes > 0 ? ($vueEnsemble['etudiants_en_regle'] / $totalConcernes) * 100 : 0;
+                                $enRetardPercent = $totalConcernes > 0 ? ($vueEnsemble['etudiants_en_retard'] / $totalConcernes) * 100 : 0;
+                                $nonPayesPercent = 100 - $enReglePercent - $enRetardPercent;
+                            @endphp
+                            
+                            <div class="progress mb-3" style="height: 20px;">
+                                <div class="progress-bar bg-success" style="width: {{ $enReglePercent }}%" 
+                                     title="{{ $vueEnsemble['etudiants_en_regle'] }} étudiants en règle"></div>
+                                <div class="progress-bar bg-warning" style="width: {{ $enRetardPercent }}%" 
+                                     title="{{ $vueEnsemble['etudiants_en_retard'] }} paiements partiels"></div>
+                                <div class="progress-bar bg-danger" style="width: {{ $nonPayesPercent }}%" 
+                                     title="{{ $vueEnsemble['etudiants_non_payes'] }} impayés"></div>
                             </div>
-                            <div class="stat-value">{{ $vueEnsemble['etudiants_en_regle'] }}</div>
-                            <div class="stat-label">Étudiants en règle</div>
-                        </div>
-                    </div>
-                    
-                    <div class="card-moderne stat-card warning">
-                        <div class="p-lg">
-                            <div class="stat-icon">
-                                <i class="fas fa-clock"></i>
-                            </div>
-                            <div class="stat-value">{{ $vueEnsemble['etudiants_en_retard'] }}</div>
-                            <div class="stat-label">Paiements partiels</div>
-                        </div>
-                    </div>
-                    
-                    <div class="card-moderne stat-card danger">
-                        <div class="p-lg">
-                            <div class="stat-icon">
-                                <i class="fas fa-exclamation-triangle"></i>
-                            </div>
-                            <div class="stat-value">{{ $vueEnsemble['etudiants_non_payes'] }}</div>
-                            <div class="stat-label">Impayés (souscrits)</div>
-                        </div>
-                    </div>
-                    
-                    <div class="card-moderne stat-card primary">
-                        <div class="p-lg">
-                            <div class="stat-icon">
-                                <i class="fas fa-percentage"></i>
-                            </div>
-                            <div class="stat-value">{{ $vueEnsemble['taux_recouvrement_global'] }}%</div>
-                            <div class="stat-label">Taux de recouvrement</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-xl); align-items: center;">
-                    <div>
-                        <h6 class="font-semibold mb-sm">Répartition des étudiants concernés</h6>
-                        @php
-                            $totalConcernes = $vueEnsemble['etudiants_en_regle'] + $vueEnsemble['etudiants_en_retard'] + $vueEnsemble['etudiants_non_payes'];
-                            $enReglePercent = $totalConcernes > 0 ? ($vueEnsemble['etudiants_en_regle'] / $totalConcernes) * 100 : 0;
-                            $enRetardPercent = $totalConcernes > 0 ? ($vueEnsemble['etudiants_en_retard'] / $totalConcernes) * 100 : 0;
-                            $nonPayesPercent = 100 - $enReglePercent - $enRetardPercent;
-                        @endphp
-                        
-                        <!-- Barre de progression segmentée -->
-                        <div class="segmented-progress">
-                            <div class="progress-segment success" style="width: {{ $enReglePercent }}%;"></div>
-                            <div class="progress-segment warning" style="width: {{ $enRetardPercent }}%;"></div>
-                            <div class="progress-segment danger" style="width: {{ $nonPayesPercent }}%;"></div>
-                        </div>
-                        
-                        <div style="display: flex; justify-content: space-between; font-size: var(--text-small); margin-top: var(--space-xs);">
-                            <span class="color-success">{{ round($enReglePercent, 1) }}% en règle</span>
-                            <span class="color-warning">{{ round($enRetardPercent, 1) }}% partiels</span>
-                            <span class="color-danger">{{ round($nonPayesPercent, 1) }}% impayés</span>
-                        </div>
-                        
-                        <!-- Barre de progression traditionnelle pour le taux global -->
-                        <div style="margin-top: var(--space-md);">
-                            <h6 class="font-semibold mb-sm">Taux de recouvrement global</h6>
-                            <div class="progress-bar-modern">
-                                <div class="progress-fill-modern {{ $vueEnsemble['taux_recouvrement_global'] >= 80 ? 'success' : ($vueEnsemble['taux_recouvrement_global'] >= 50 ? 'warning' : 'danger') }}" 
-                                     style="width: {{ $vueEnsemble['taux_recouvrement_global'] }}%;"></div>
-                            </div>
-                            <div style="text-align: center; font-size: var(--text-small); margin-top: var(--space-xs);">
-                                <span class="font-semibold">{{ $vueEnsemble['taux_recouvrement_global'] }}%</span>
+                            
+                            <div class="d-flex justify-content-between text-small">
+                                <span class="text-success">{{ round($enReglePercent, 1) }}% en règle</span>
+                                <span class="text-warning">{{ round($enRetardPercent, 1) }}% partiels</span>
+                                <span class="text-danger">{{ round($nonPayesPercent, 1) }}% impayés</span>
                             </div>
                         </div>
                     </div>
                     
-                    <div>
-                        <h6 class="font-semibold mb-sm">Montants financiers</h6>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md);">
-                            <div class="text-center">
-                                <div class="color-success font-bold" style="font-size: var(--amount-medium);">{{ number_format($vueEnsemble['montant_total_recu']) }}</div>
-                                <div class="text-small color-secondary">FCFA reçus</div>
+                    <div class="col-md-6">
+                        <div class="resultat-card border-start border-primary border-3">
+                            <div class="resultat-title">Recouvrement Financier</div>
+                            <div class="progress mb-3" style="height: 20px;">
+                                <div class="progress-bar bg-primary" style="width: {{ $vueEnsemble['taux_recouvrement_global'] }}%"></div>
                             </div>
-                            <div class="text-center">
-                                <div class="color-secondary font-bold" style="font-size: var(--amount-medium);">{{ number_format($vueEnsemble['montant_total_attendu']) }}</div>
-                                <div class="text-small color-secondary">FCFA attendus</div>
+                            <div class="d-flex justify-content-between">
+                                <span class="text-success fw-bold">{{ number_format($vueEnsemble['montant_total_recu'], 0, ',', ' ') }} FCFA</span>
+                                <span class="text-muted">/ {{ number_format($vueEnsemble['montant_total_attendu'], 0, ',', ' ') }} FCFA</span>
                             </div>
+                            <small class="text-muted">
+                                Restant : {{ number_format($vueEnsemble['montant_total_attendu'] - $vueEnsemble['montant_total_recu'], 0, ',', ' ') }} FCFA
+                            </small>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Statistiques par catégorie -->
+        <!-- Statistiques par catégorie avec style visuel original -->
         @if(!$categoryId)
         <div class="card-moderne mb-lg">
             <div class="p-lg">
@@ -710,13 +445,20 @@
                     @php
                         $category = $stats['category'];
                         $progressClass = $stats['taux_recouvrement'] >= 80 ? 'success' : ($stats['taux_recouvrement'] >= 50 ? 'warning' : 'danger');
+                        $categoryIcons = [
+                            'academic' => 'fas fa-graduation-cap',
+                            'service' => 'fas fa-cogs',
+                            'administrative' => 'fas fa-file-alt'
+                        ];
+                        $categoryType = $category->category_type ?? 'academic';
+                        $icon = $categoryIcons[$categoryType] ?? 'fas fa-money-bill';
                     @endphp
-                    <div class="card-moderne category-card" onclick="window.location.href='{{ route('esbtp.paiements.suivi-categories') }}?{{ http_build_query(array_merge(request()->query(), ['category_id' => $category->id])) }}'">
+                    <div class="category-card" onclick="window.location.href='{{ route('esbtp.paiements.suivi-categories') }}?{{ http_build_query(array_merge(request()->query(), ['category_id' => $category->id])) }}'">
                         <div class="p-lg">
                             <div class="category-header">
                                 <div>
-                                    <div class="category-icon bg-primary">
-                                        <i class="{{ $category->icon ?? 'fas fa-money-bill' }}"></i>
+                                    <div class="category-icon">
+                                        <i class="{{ $icon }}"></i>
                                     </div>
                                 </div>
                                 <div class="text-right">
@@ -762,8 +504,8 @@
                             </div>
                             
                             <div style="display: flex; justify-content: space-between; font-size: var(--text-small);">
-                                <span class="color-success font-medium">{{ number_format($stats['montant_total_recu']) }} FCFA</span>
-                                <span class="color-secondary">/ {{ number_format($stats['montant_total_attendu']) }} FCFA</span>
+                                <span class="color-success font-medium">{{ number_format($stats['montant_total_recu'], 0, ',', ' ') }} FCFA</span>
+                                <span class="color-secondary">/ {{ number_format($stats['montant_total_attendu'], 0, ',', ' ') }} FCFA</span>
                             </div>
                         </div>
                     </div>
@@ -917,38 +659,17 @@
 @push('scripts')
 <script>
 $(function() {
-    // Animation des cartes au scroll
-    const observerOptions = {
-        threshold: 0.1,
-        rootMargin: '0px 0px -50px 0px'
-    };
-    
-    const observer = new IntersectionObserver(function(entries) {
-        entries.forEach((entry, index) => {
-            if (entry.isIntersecting) {
-                setTimeout(() => {
-                    entry.target.style.opacity = '1';
-                    entry.target.style.transform = 'translateY(0)';
-                }, index * 100);
-            }
-        });
-    }, observerOptions);
-    
-    // Observer toutes les cartes
-    $('.card-moderne').each(function() {
-        $(this).css({
-            'opacity': '0',
-            'transform': 'translateY(20px)',
-            'transition': 'all 0.6s ease-out'
-        });
-        observer.observe(this);
-    });
-    
     // Tooltip pour les pourcentages
     $('.percentage-badge').each(function() {
         const percentage = $(this).text();
         $(this).attr('title', `Taux de paiement: ${percentage}`);
     });
+    
+    // Animation simple au hover des cartes
+    $('.card').hover(
+        function() { $(this).addClass('shadow-lg'); },
+        function() { $(this).removeClass('shadow-lg'); }
+    );
 });
 </script>
 @endpush

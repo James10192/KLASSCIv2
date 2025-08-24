@@ -39,8 +39,8 @@ class ESBTPEvaluationController extends Controller
             $query->where('type', request('type'));
         }
 
-        if (request()->has('is_published') && request('is_published') != '') {
-            $query->where('is_published', request('is_published'));
+        if (request()->has('status') && request('status') != '') {
+            $query->where('status', request('status'));
         }
 
         if (request()->has('date_debut') && request('date_debut') != '') {
@@ -516,6 +516,8 @@ class ESBTPEvaluationController extends Controller
 
         $evaluations = ESBTPEvaluation::with(['matiere', 'classe'])
             ->forStudent($student->id)
+            ->where('is_published', true)
+            ->whereIn('status', ['scheduled', 'in_progress', 'completed'])
             ->orderBy('date_evaluation', 'desc')
             ->get()
             ->groupBy('type');
@@ -525,10 +527,12 @@ class ESBTPEvaluationController extends Controller
 
     public function updateStatus(Request $request, ESBTPEvaluation $evaluation)
     {
-        \Log::info('Début updateStatus', [
+        \Log::critical('🚨 UPDATE STATUS CALLED - Request received!', [
             'request_method' => $request->method(),
             'request_all' => $request->all(),
-            'evaluation_id' => $evaluation->id
+            'evaluation_id' => $evaluation->id,
+            'url' => $request->fullUrl(),
+            'user_id' => auth()->id()
         ]);
 
         try {
@@ -544,9 +548,23 @@ class ESBTPEvaluationController extends Controller
 
             $evaluation->update($validated);
 
+            // Logique automatique de publication
+            if ($validated['status'] === 'scheduled' && !$evaluation->is_published) {
+                $evaluation->update(['is_published' => true]);
+                \Log::info('Évaluation automatiquement publiée lors de la planification', [
+                    'evaluation_id' => $evaluation->id
+                ]);
+            } elseif ($validated['status'] === 'cancelled') {
+                $evaluation->update(['is_published' => false]);
+                \Log::info('Évaluation automatiquement dépubliée lors de l\'annulation', [
+                    'evaluation_id' => $evaluation->id
+                ]);
+            }
+
             \Log::info('Statut mis à jour avec succès', [
                 'evaluation_id' => $evaluation->id,
-                'new_status' => $validated['status']
+                'new_status' => $validated['status'],
+                'is_published' => $evaluation->fresh()->is_published
             ]);
 
             if ($request->wantsJson()) {
@@ -557,7 +575,22 @@ class ESBTPEvaluationController extends Controller
                 ]);
             }
 
-            return redirect()->back()->with('success', 'Statut mis à jour avec succès');
+            $statusLabels = [
+                'draft' => 'Brouillon',
+                'scheduled' => 'Planifiée',
+                'in_progress' => 'En cours',
+                'completed' => 'Terminée',
+                'cancelled' => 'Annulée'
+            ];
+            
+            $statusLabel = $statusLabels[$validated['status']] ?? $validated['status'];
+            $message = "Statut de l'évaluation \"{$evaluation->titre}\" mis à jour : {$statusLabel}";
+            
+            if ($validated['status'] === 'scheduled' && $evaluation->fresh()->is_published) {
+                $message .= ' (automatiquement publiée pour les étudiants)';
+            }
+            
+            return redirect()->back()->with('success', $message);
         } catch (\Exception $e) {
             \Log::error('Erreur lors de la mise à jour du statut', [
                 'evaluation_id' => $evaluation->id,

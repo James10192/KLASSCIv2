@@ -1,0 +1,604 @@
+{
+  "bulletin_design": {
+    "name": "ESBTP Official Bulletin Design",
+    "version": "2.0",
+    "description": "Design officiel bulletin de notes ESBTP basé sur le template existant",
+    
+    "page": {
+      "format": "A4",
+      "orientation": "portrait",
+      "margins": {
+        "top": "0cm",
+        "bottom": "0cm", 
+        "left": "0cm",
+        "right": "0cm"
+      },
+      "background_color": "#f8f9fa",
+      "print_size": {
+        "width": "27.7cm",
+        "height": "29.7cm"
+      }
+    },
+    
+    "container": {
+      "background_color": "#ffffff",
+      "box_shadow": "0 0 15px rgba(0, 0, 0, 0.1)",
+      "padding": "20px 30px",
+      "border_radius": "0",
+      "max_width": "1000px",
+      "print_border": "1px solid #000"
+    },
+    
+    "header": {
+      "margin_bottom": "15px",
+      "layout": "grid_3_columns",
+      "sections": {
+        "left": {
+          "width": "33.33%",
+          "content": "republic_info",
+          "text_align": "left",
+          "elements": [
+            {
+              "type": "text",
+              "content": "République de Côte d'Ivoire",
+              "class": "republic-title",
+              "font_weight": "bold",
+              "font_size": "14px"
+            },
+            {
+              "type": "text", 
+              "content": "Union-Discipline-Travail",
+              "class": "motto",
+              "font_style": "italic",
+              "font_size": "12px"
+            },
+            {
+              "type": "text",
+              "content": "Ministère de l'Enseignement Supérieur",
+              "class": "ministry-title",
+              "font_size": "12px"
+            },
+            {
+              "type": "text",
+              "content": "et de la Recherche Scientifique",
+              "class": "ministry-title",
+              "font_size": "12px"
+            }
+          ]
+        },
+        "center": {
+          "width": "33.33%",
+          "content": "school_logo_section",
+          "layout": "vertical",
+          "elements": [
+            {
+              "type": "logo",
+              "source": "logo.jpeg",
+              "alt": "Logo ESBTP",
+              "max_width": "150px",
+              "height": "120px",
+              "object_fit": "contain",
+              "display": "block",
+              "margin": "0 auto"
+            },
+            {
+              "type": "school_info",
+              "text_align": "center",
+              "margin_top": "10px",
+              "elements": [
+                {
+                  "content": "Ecole Spéciale",
+                  "class": "school-name",
+                  "font_size": "14px",
+                  "color": "#0A6B31",
+                  "font_weight": "bold"
+                },
+                {
+                  "content": "du Bâtiment et des Travaux Publics",
+                  "class": "school-name",
+                  "font_size": "14px",
+                  "color": "#0A6B31", 
+                  "font_weight": "bold"
+                },
+                {
+                  "content": "BP 2541 Yamoussoukro - Email: esbtpabidjan@esbtp-ci.net",
+                  "class": "school-contact",
+                  "font_size": "10px",
+                  "color": "#333"
+                },
+                {
+                  "content": "Tél/Fax: 30 64 39 93 - Cel: 07 07 79 84 85",
+                  "class": "school-contact",
+                  "font_size": "10px",
+                  "color": "#333"
+                }
+              ]
+            }
+          ]
+        },
+        "right": {
+          "width": "33.33%",
+          "content": "bulletin_info",
+          "text_align": "right",
+          "elements": [
+            {
+              "type": "text",
+              "content": "BULLETIN DE NOTES",
+              "class": "bulletin-header",
+              "font_weight": "bold",
+              "font_size": "14px",
+              "text_transform": "uppercase"
+            },
+            {
+              "type": "text",
+              "content": "premier semestre",
+              "class": "bulletin-header",
+              "font_weight": "bold",
+              "font_size": "14px"
+            },
+            {
+              "type": "text",
+              "content": "Edition du: {{edition_date}}",
+              "class": "edition-date",
+              "font_size": "12px"
+            },
+            {
+              "type": "text",
+              "content": "Cycle:",
+              "class": "cycle-info",
+              "font_size": "12px"
+            },
+            {
+              "type": "text",
+              "content": "Brevet de Technicien Superieur",
+              "class": "diploma-info",
+              "font_size": "12px"
+            },
+            {
+              "type": "text",
+              "content": "BTS",
+              "class": "diploma-code",
+              "font_size": "12px"
+            },
+            {
+              "type": "text",
+              "content": "Année Scolaire: {{academic_year}}",
+              "class": "academic-year",
+              "font_size": "12px",
+              "font_weight": "bold",
+              "margin_top": "20px"
+            }
+          ]
+        }
+      }
+    },
+    
+    "title_section": {
+      "margin_top": "20px",
+      "margin_bottom": "15px",
+      "title": {
+        "text": "BULLETIN DE NOTES",
+        "font_size": "18px",
+        "font_weight": "bold",
+        "text_align": "center",
+        "color": "#1e3a8a",
+        "text_decoration": "underline",
+        "letter_spacing": "1px"
+      },
+      "subtitle": {
+        "text": "SEMESTRE",
+        "font_size": "14px",
+        "font_weight": "bold",
+        "text_align": "center",
+        "color": "#64748b",
+        "margin_top": "5px"
+      }
+    },
+    
+    "student_info": {
+      "margin_top": "15px",
+      "container": {
+        "border": "2px solid #000",
+        "background": "#ffffff"
+      },
+      "layout": "grid",
+      "columns": 2,
+      "sections": {
+        "left_column": {
+          "width": "50%",
+          "table_class": "table-top student-table",
+          "font_size": "12px",
+          "fields": [
+            {
+              "label": "Matricule :",
+              "field": "student_matricule",
+              "label_weight": "bold"
+            },
+            {
+              "label": "Nom et Prénoms :",
+              "field": "student_name",
+              "label_weight": "bold"
+            },
+            {
+              "label": "Date de Naissance :",
+              "field": "student_birth_date",
+              "label_weight": "bold"
+            },
+            {
+              "label": "Redoublant :",
+              "field": "is_repeating",
+              "label_weight": "bold"
+            }
+          ]
+        },
+        "right_column": {
+          "width": "50%",
+          "table_class": "table-top student-table",
+          "font_size": "12px",
+          "fields": [
+            {
+              "label": "Classe :",
+              "field": "class_name",
+              "label_weight": "bold"
+            },
+            {
+              "label": "Année d'étude :",
+              "field": "study_year",
+              "label_weight": "bold"
+            },
+            {
+              "label": "Effectif :",
+              "field": "class_size",
+              "label_weight": "bold"
+            }
+          ]
+        }
+      },
+      "table_style": {
+        "cell_padding": "4px 8px",
+        "border": "none",
+        "vertical_align": "middle",
+        "margin_bottom": "10px"
+      }
+    },
+    
+    "subjects_table": {
+      "margin_top": "15px",
+      "margin_bottom": "10px",
+      "table_class": "table table-bordered",
+      "font_size": "12px",
+      "header": {
+        "background": "#f2f2f2",
+        "font_weight": "bold",
+        "text_align": "center",
+        "padding": "4px 8px",
+        "vertical_align": "middle"
+      },
+      "rows": {
+        "padding": "4px 8px",
+        "vertical_align": "middle",
+        "border": "1px solid #000"
+      },
+      "columns": [
+        {
+          "name": "Matière",
+          "align": "left"
+        },
+        {
+          "name": "Moyenne M",
+          "align": "center"
+        },
+        {
+          "name": "Coef C",
+          "align": "center"
+        },
+        {
+          "name": "Moy.Pond M*C",
+          "align": "center"
+        },
+        {
+          "name": "Rang",
+          "align": "center"
+        },
+        {
+          "name": "Professeurs",
+          "align": "left"
+        },
+        {
+          "name": "Appréciations",
+          "align": "center"
+        }
+      ],
+      "section_headers": {
+        "general": {
+          "text": "Enseignement Général",
+          "background": "#000000",
+          "color": "#ffffff",
+          "font_weight": "bold",
+          "text_align": "center",
+          "colspan": "7"
+        },
+        "technical": {
+          "text": "Enseignement Technique", 
+          "background": "#000000",
+          "color": "#ffffff",
+          "font_weight": "bold",
+          "text_align": "center",
+          "colspan": "7"
+        }
+      },
+      "total_rows": {
+        "general": {
+          "text": "Moyenne enseignement général",
+          "background": "#f2f2f2",
+          "font_weight": "bold",
+          "border_bottom": "2px solid #000",
+          "colspan": "7"
+        },
+        "technical": {
+          "text": "Moyenne enseignement technique",
+          "background": "#f2f2f2",
+          "font_weight": "bold",
+          "border_bottom": "2px solid #000",
+          "colspan": "7"
+        }
+      }
+    },
+    
+    "absences_table": {
+      "margin_top": "10px",
+      "margin_bottom": "10px",
+      "table_class": "table table-bordered",
+      "font_size": "12px",
+      "header": {
+        "text": "Nombre d'heures d'absence",
+        "background": "#000000",
+        "color": "#ffffff",
+        "font_weight": "bold",
+        "text_align": "center",
+        "colspan": "7"
+      },
+      "content": {
+        "justified_label": "Absences justifiées",
+        "justified_field": "justified_absences",
+        "justified_format": "{{value}} Heure(s)",
+        "unjustified_label": "Absences non justifiées", 
+        "unjustified_field": "unjustified_absences",
+        "unjustified_format": "{{value}} Heure(s)"
+      }
+    },
+    
+    "results_section": {
+      "margin_top": "10px",
+      "margin_bottom": "20px",
+      "table_class": "table table-bordered",
+      "font_size": "12px",
+      "header": {
+        "text": "RESULTATS",
+        "background": "#000000",
+        "color": "#ffffff",
+        "font_weight": "bold",
+        "text_align": "center",
+        "colspan": "7"
+      },
+      "layout": {
+        "columns": [
+          {
+            "name": "Paramètre",
+            "width": "auto"
+          },
+          {
+            "name": "Valeur",
+            "width": "auto",
+            "class": "result-value"
+          },
+          {
+            "name": "Type",
+            "width": "auto",
+            "text_align": "center"
+          },
+          {
+            "name": "Mention",
+            "width": "auto"
+          },
+          {
+            "name": "Statistique",
+            "width": "auto",
+            "text_align": "center"
+          },
+          {
+            "name": "Valeur Stat",
+            "width": "auto"
+          }
+        ]
+      },
+      "rows": [
+        {
+          "param": "Moyenne Brute",
+          "value_field": "raw_average",
+          "value_class": "result-cadre",
+          "mention_type": "MENTION",
+          "mention_value": "",
+          "stat_type": "STATISTIQUES",
+          "stat_value": ""
+        },
+        {
+          "param": "Note d'assiduité",
+          "value_field": "attendance_note",
+          "value_class": "result-cadre",
+          "mention_type": "Félicitation",
+          "mention_value_field": "felicitation",
+          "mention_class": "result-cadre",
+          "stat_type": "",
+          "stat_value": ""
+        },
+        {
+          "param": "Moyenne 1er Semestre",
+          "value_field": "semester_average",
+          "value_class": "result-cadre",
+          "mention_type": "Encouragement",
+          "mention_value_field": "encouragement",
+          "mention_class": "result-cadre",
+          "stat_type": "Plus forte moyenne",
+          "stat_value_field": "highest_average",
+          "stat_class": "result-cadre"
+        },
+        {
+          "param": "Rang",
+          "value_field": "student_rank",
+          "value_class": "result-cadre",
+          "mention_type": "Tableau d'honneur",
+          "mention_value_field": "honor_roll",
+          "mention_class": "result-cadre",
+          "stat_type": "Plus faible moyenne",
+          "stat_value_field": "lowest_average",
+          "stat_class": "result-cadre"
+        },
+        {
+          "param": "",
+          "value": "",
+          "mention_type": "Avertissement (Travail)",
+          "mention_value_field": "work_warning",
+          "mention_class": "result-cadre",
+          "stat_type": "Moyenne de la classe",
+          "stat_value_field": "class_average",
+          "stat_class": "result-cadre"
+        },
+        {
+          "param": "",
+          "value": "",
+          "mention_type": "Blâme (Conduite)",
+          "mention_value_field": "conduct_blame",
+          "mention_class": "result-cadre",
+          "stat_type": "",
+          "stat_value": ""
+        }
+      ],
+      "styles": {
+        "result_value": {
+          "background": "#f2f2f2",
+          "font_weight": "bold",
+          "text_align": "center"
+        },
+        "result_cadre": {
+          "border": "1px solid #000",
+          "padding": "0 20px"
+        }
+      }
+    },
+    
+    "decision_section": {
+      "margin_top": "30px",
+      "border_top": "1px solid #000",
+      "padding_top": "20px",
+      "layout": "grid",
+      "columns": 2,
+      "left_column": {
+        "width": "50%",
+        "text_align": "center",
+        "elements": [
+          {
+            "type": "title",
+            "content": "Décision du conseil de classe",
+            "class": "decision-title",
+            "font_weight": "bold",
+            "font_size": "12px",
+            "margin_bottom": "30px"
+          },
+          {
+            "type": "result",
+            "content_field": "council_decision",
+            "class": "decision-result", 
+            "font_weight": "bold",
+            "font_size": "16px",
+            "margin_top": "20px",
+            "font_style": "italic"
+          }
+        ]
+      },
+      "right_column": {
+        "width": "50%",
+        "text_align": "center",
+        "elements": [
+          {
+            "type": "signature_title",
+            "content": "Signature de la Directrice des Etudes",
+            "class": "signature-title",
+            "font_weight": "bold",
+            "font_size": "12px",
+            "margin_bottom": "30px"
+          },
+          {
+            "type": "signature_image",
+            "source": "signa.png",
+            "alt": "Signature",
+            "width": "250px",
+            "height": "150px"
+          }
+        ]
+      }
+    },
+    
+    "footer": {
+      "margin_top": "20px",
+      "text_align": "center",
+      "font_size": "10px",
+      "color": "#000000",
+      "content": "Bulletin informatisé, aucun duplicata n'est délivré",
+      "font_style": "italic"
+    },
+    
+    "print_button": {
+      "display": "block",
+      "margin_top": "20px",
+      "text_align": "center",
+      "button": {
+        "text": "Imprimer",
+        "background_color": "#ff1500",
+        "color": "#ffffff",
+        "border": "none",
+        "padding": "10px 20px",
+        "font_size": "16px",
+        "cursor": "pointer"
+      },
+      "print_hidden": true
+    },
+    
+    "typography": {
+      "primary_font": "Arial, sans-serif",
+      "base_font_size": "12px",
+      "body_background": "#f8f9fa",
+      "body_color": "#000"
+    },
+    
+    "colors": {
+      "primary": "#000000",
+      "school_green": "#0A6B31",
+      "background": "#ffffff",
+      "light_bg": "#f8f9fa",
+      "border": "#000000",
+      "table_header": "#f2f2f2",
+      "section_header": "#000000"
+    },
+    
+    "print_styles": {
+      "body": {
+        "width": "27.7cm",
+        "height": "29.7cm",
+        "margin": "0cm",
+        "padding": "0",
+        "background": "white",
+        "color": "black"
+      },
+      "container": {
+        "box_shadow": "none",
+        "padding": "0",
+        "max_width": "100%",
+        "border": "1px solid #000"
+      },
+      "button_hidden": true
+    }
+  }
+}
+  }
+}

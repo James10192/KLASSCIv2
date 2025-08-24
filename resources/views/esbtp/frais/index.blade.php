@@ -281,6 +281,9 @@
             <p class="header-subtitle">Configuration et gestion des frais scolaires par catégorie et type</p>
         </div>
         <div class="header-actions">
+            <a href="{{ route('esbtp.frais.optional-config') }}" class="btn-acasi accent-blue">
+                <i class="fas fa-globe"></i>Services Optionnels
+            </a>
             <a href="{{ route('esbtp.frais.configure') }}" class="btn-acasi secondary">
                 <i class="fas fa-cogs"></i>Configuration par Classe
             </a>
@@ -393,15 +396,15 @@
                                         <div class="category-meta">
                                             <div class="category-variants">
                                                 <i class="fas fa-cogs"></i>
-                                                {{ $category->configurations_count ?? 0 }} configuration(s)
+                                                {{ $category->configuration_status['message'] ?? 'Aucune configuration' }}
                                             </div>
                                             <span class="badge success">Obligatoire</span>
                                         </div>
                                     @else
-                                        @if($category->assignments_count > 0)
+                                        @if($category->configuration_status['is_configured'] ?? false)
                                             <div class="category-amount">
                                                 <i class="fas fa-check-circle color-success"></i>
-                                                Assigné aux classes
+                                                Service configuré
                                             </div>
                                         @else
                                             <div class="category-amount">
@@ -411,10 +414,10 @@
                                         @endif
                                         <div class="category-meta">
                                             <div class="category-variants">
-                                                <i class="fas fa-tasks"></i>
-                                                {{ $category->assignments_count ?? 0 }} assignation(s)
+                                                <i class="fas fa-globe"></i>
+                                                {{ $category->configuration_status['message'] ?? 'Aucune option' }}
                                             </div>
-                                            <span class="badge warning">Optionnel</span>
+                                            <span class="badge warning">Service Global</span>
                                         </div>
                                     @endif
                                     <div class="category-actions">
@@ -429,8 +432,8 @@
                                                 <i class="fas fa-graduation-cap"></i>
                                             </a>
                                         @else
-                                            <a href="{{ route('esbtp.frais.optional-config') }}" class="btn-acasi success" title="Gérer assignations">
-                                                <i class="fas fa-tasks"></i>
+                                            <a href="{{ route('esbtp.frais.optional-config') }}" class="btn-acasi success" title="Services optionnels">
+                                                <i class="fas fa-globe"></i>
                                             </a>
                                         @endif
                                     </div>
@@ -479,15 +482,15 @@
                                         <div class="category-meta">
                                             <div class="category-variants">
                                                 <i class="fas fa-cogs"></i>
-                                                {{ $category->configurations_count ?? 0 }} configuration(s)
+                                                {{ $category->configuration_status['message'] ?? 'Aucune configuration' }}
                                             </div>
                                             <span class="badge success">Obligatoire</span>
                                         </div>
                                     @else
-                                        @if($category->assignments_count > 0)
+                                        @if($category->configuration_status['is_configured'] ?? false)
                                             <div class="category-amount">
                                                 <i class="fas fa-check-circle color-success"></i>
-                                                Assigné aux classes
+                                                Service configuré
                                             </div>
                                         @else
                                             <div class="category-amount">
@@ -497,10 +500,10 @@
                                         @endif
                                         <div class="category-meta">
                                             <div class="category-variants">
-                                                <i class="fas fa-tasks"></i>
-                                                {{ $category->assignments_count ?? 0 }} assignation(s)
+                                                <i class="fas fa-globe"></i>
+                                                {{ $category->configuration_status['message'] ?? 'Aucune option' }}
                                             </div>
-                                            <span class="badge warning">Optionnel</span>
+                                            <span class="badge warning">Service Global</span>
                                         </div>
                                     @endif
                                     <div class="category-actions">
@@ -515,8 +518,8 @@
                                                 <i class="fas fa-graduation-cap"></i>
                                             </a>
                                         @else
-                                            <a href="{{ route('esbtp.frais.optional-config') }}" class="btn-acasi success" title="Gérer assignations">
-                                                <i class="fas fa-tasks"></i>
+                                            <a href="{{ route('esbtp.frais.optional-config') }}" class="btn-acasi success" title="Services optionnels">
+                                                <i class="fas fa-globe"></i>
                                             </a>
                                         @endif
                                     </div>
@@ -565,15 +568,15 @@
                                         <div class="category-meta">
                                             <div class="category-variants">
                                                 <i class="fas fa-cogs"></i>
-                                                {{ $category->configurations_count ?? 0 }} configuration(s)
+                                                {{ $category->configuration_status['message'] ?? 'Aucune configuration' }}
                                             </div>
                                             <span class="badge success">Obligatoire</span>
                                         </div>
                                     @else
-                                        @if($category->assignments_count > 0)
+                                        @if($category->configuration_status['is_configured'] ?? false)
                                             <div class="category-amount">
                                                 <i class="fas fa-check-circle color-success"></i>
-                                                Assigné aux classes
+                                                Service configuré
                                             </div>
                                         @else
                                             <div class="category-amount">
@@ -583,10 +586,10 @@
                                         @endif
                                         <div class="category-meta">
                                             <div class="category-variants">
-                                                <i class="fas fa-tasks"></i>
-                                                {{ $category->assignments_count ?? 0 }} assignation(s)
+                                                <i class="fas fa-globe"></i>
+                                                {{ $category->configuration_status['message'] ?? 'Aucune option' }}
                                             </div>
-                                            <span class="badge warning">Optionnel</span>
+                                            <span class="badge warning">Service Global</span>
                                         </div>
                                     @endif
                                     <div class="category-actions">
@@ -601,8 +604,8 @@
                                                 <i class="fas fa-graduation-cap"></i>
                                             </a>
                                         @else
-                                            <a href="{{ route('esbtp.frais.optional-config') }}" class="btn-acasi success" title="Gérer assignations">
-                                                <i class="fas fa-tasks"></i>
+                                            <a href="{{ route('esbtp.frais.optional-config') }}" class="btn-acasi success" title="Services optionnels">
+                                                <i class="fas fa-globe"></i>
                                             </a>
                                         @endif
                                     </div>

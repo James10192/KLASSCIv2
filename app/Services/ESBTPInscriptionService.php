@@ -120,12 +120,12 @@ class ESBTPInscriptionService
             // 6. Créer l'inscription
             $inscription = ESBTPInscription::create($inscriptionData);
 
-            // 6bis. Générer automatiquement les frais/échéances pour l'inscription
-            $feeAssignmentService = app(\App\Services\FeeAssignmentService::class);
-            $generatedFees = $feeAssignmentService->assignFeesToInscription($inscription, $selectedOptionals);
+            // 6bis. Générer automatiquement les frais selon la nouvelle architecture
+            $generatedFees = $this->generateFeesForInscription($inscription, $selectedOptionals);
             Log::info('Frais générés automatiquement pour l\'inscription', [
                 'inscription_id' => $inscription->id,
-                'fees' => collect($generatedFees)->pluck('id')
+                'fees_count' => count($generatedFees),
+                'selected_optionals' => $selectedOptionals
             ]);
 
             // 6ter. Générer automatiquement la facture liée à l'inscription
@@ -150,11 +150,11 @@ class ESBTPInscriptionService
             foreach ($generatedFees as $fee) {
                 \App\Models\ESBTPFactureDetail::create([
                     'facture_id' => $facture->id,
-                    'designation' => $fee->description,
+                    'designation' => $fee['description'],
                     'description' => null,
                     'quantite' => 1,
-                    'montant' => $fee->amount,
-                    'total_ligne' => $fee->amount,
+                    'montant' => $fee['amount'],
+                    'total_ligne' => $fee['amount'],
                 ]);
             }
 
@@ -550,6 +550,183 @@ class ESBTPInscriptionService
                 'success' => false,
                 'message' => 'Erreur lors de l\'annulation de l\'inscription: ' . $e->getMessage()
             ];
+        }
+    }
+
+    /**
+     * Générer les frais pour une inscription selon la nouvelle architecture
+     * 
+     * @param ESBTPInscription $inscription
+     * @param array $selectedOptionals Frais optionnels sélectionnés
+     * @return array Liste des frais générés
+     */
+    private function generateFeesForInscription(ESBTPInscription $inscription, array $selectedOptionals = [])
+    {
+        $generatedFees = [];
+        
+        try {
+            // 1. Charger la classe de l'inscription
+            $classe = $inscription->classe;
+            if (!$classe) {
+                Log::warning('Classe non trouvée pour l\'inscription', ['inscription_id' => $inscription->id]);
+                return [];
+            }
+
+            // 2. Générer les frais obligatoires
+            $mandatoryCategories = \App\Models\ESBTPFraisCategory::where('is_mandatory', true)
+                ->where('is_active', true)
+                ->get();
+
+            foreach ($mandatoryCategories as $category) {
+                // Chercher une configuration spécifique pour cette classe
+                $configuration = \App\Models\ESBTPFraisConfiguration::where('frais_category_id', $category->id)
+                    ->where('filiere_id', $classe->filiere_id)
+                    ->where('niveau_id', $classe->niveau_etude_id)
+                    ->where('is_active', true)
+                    ->first();
+
+                $amount = $configuration ? $configuration->amount : $category->default_amount;
+
+                $generatedFees[] = [
+                    'id' => 'mandatory_' . $category->id,
+                    'category_id' => $category->id,
+                    'description' => $category->name,
+                    'amount' => $amount,
+                    'type' => 'mandatory',
+                    'configuration_id' => $configuration ? $configuration->id : null
+                ];
+            }
+
+            // 3. Traiter les frais optionnels sélectionnés
+            foreach ($selectedOptionals as $categoryId => $optionData) {
+                if (empty($optionData['variant_id']) || $optionData['variant_id'] === 'none') {
+                    continue; // Pas d'option sélectionnée pour cette catégorie
+                }
+
+                $category = \App\Models\ESBTPFraisCategory::find($categoryId);
+                if (!$category) {
+                    Log::warning('Catégorie de frais non trouvée', ['category_id' => $categoryId]);
+                    continue;
+                }
+
+                if ($optionData['variant_id'] === 'default') {
+                    // Option par défaut - utiliser le montant configuré ou par défaut
+                    $configuration = \App\Models\ESBTPFraisConfiguration::where('frais_category_id', $categoryId)
+                        ->where('filiere_id', $classe->filiere_id)
+                        ->where('niveau_id', $classe->niveau_etude_id)
+                        ->where('is_active', true)
+                        ->first();
+
+                    $amount = $configuration ? $configuration->amount : $category->default_amount;
+                    $description = $category->name . ' (standard)';
+                } else {
+                    // Option spécifique
+                    $option = \App\Models\ESBTPFraisOption::find($optionData['variant_id']);
+                    if (!$option) {
+                        Log::warning('Option de frais non trouvée', ['option_id' => $optionData['variant_id']]);
+                        continue;
+                    }
+
+                    $amount = $option->additional_amount ?: $option->amount;
+                    $description = $category->name . ' - ' . $option->name;
+                }
+
+                $generatedFees[] = [
+                    'id' => 'optional_' . $categoryId . '_' . $optionData['variant_id'],
+                    'category_id' => $categoryId,
+                    'description' => $description,
+                    'amount' => $amount,
+                    'type' => 'optional',
+                    'option_id' => $optionData['variant_id'] !== 'default' ? $optionData['variant_id'] : null
+                ];
+            }
+
+            // 4. Créer les souscriptions pour les frais optionnels
+            $this->createOptionalFeeSubscriptions($inscription, $selectedOptionals);
+
+            Log::info('Frais générés avec succès', [
+                'inscription_id' => $inscription->id,
+                'mandatory_fees' => count(array_filter($generatedFees, fn($f) => $f['type'] === 'mandatory')),
+                'optional_fees' => count(array_filter($generatedFees, fn($f) => $f['type'] === 'optional')),
+                'total_amount' => array_sum(array_column($generatedFees, 'amount'))
+            ]);
+
+            return $generatedFees;
+
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la génération des frais', [
+                'inscription_id' => $inscription->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return [];
+        }
+    }
+
+    /**
+     * Créer les souscriptions aux frais optionnels sélectionnés
+     *
+     * @param ESBTPInscription $inscription
+     * @param array $selectedOptionals
+     * @return void
+     */
+    private function createOptionalFeeSubscriptions(ESBTPInscription $inscription, array $selectedOptionals = [])
+    {
+        try {
+            foreach ($selectedOptionals as $categoryId => $optionData) {
+                if (empty($optionData['variant_id']) || $optionData['variant_id'] === 'none') {
+                    continue; // Pas d'option sélectionnée pour cette catégorie
+                }
+
+                $category = \App\Models\ESBTPFraisCategory::find($categoryId);
+                if (!$category || $category->is_mandatory) {
+                    continue; // Skip si catégorie introuvable ou obligatoire
+                }
+
+                // Déterminer l'option et le montant
+                $optionId = null;
+                $amount = $category->default_amount;
+
+                if ($optionData['variant_id'] !== 'default') {
+                    $option = \App\Models\ESBTPFraisOption::find($optionData['variant_id']);
+                    if ($option) {
+                        $optionId = $option->id;
+                        $amount = $option->additional_amount ?: $option->amount;
+                    }
+                }
+
+                // Vérifier si la souscription existe déjà
+                $existingSubscription = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
+                    ->where('frais_category_id', $categoryId)
+                    ->first();
+
+                if (!$existingSubscription) {
+                    // Créer la nouvelle souscription
+                    \App\Models\ESBTPFraisSubscription::create([
+                        'inscription_id' => $inscription->id,
+                        'frais_category_id' => $categoryId,
+                        'selected_option_id' => $optionId,
+                        'amount' => $amount,
+                        'is_active' => true,
+                        'subscribed_at' => $inscription->date_inscription ?? now(),
+                        'created_by' => $inscription->created_by ?? auth()->id(),
+                        'notes' => 'Souscription créée automatiquement lors de l\'inscription'
+                    ]);
+
+                    Log::info('Souscription créée automatiquement', [
+                        'inscription_id' => $inscription->id,
+                        'category_id' => $categoryId,
+                        'option_id' => $optionId,
+                        'amount' => $amount
+                    ]);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la création des souscriptions', [
+                'inscription_id' => $inscription->id,
+                'error' => $e->getMessage()
+            ]);
         }
     }
 }

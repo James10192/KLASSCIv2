@@ -33,6 +33,35 @@
         </div>
     @endif
 
+    <!-- Pre-selection Info Alert -->
+    @if(isset($preselectedFiliereId) || isset($preselectedNiveauId))
+        <div class="card-moderne mb-lg" style="border-left: 4px solid var(--success);">
+            <div class="p-lg">
+                <div class="d-flex align-items-start">
+                    <i class="fas fa-info-circle color-success me-2 mt-1"></i>
+                    <div>
+                        <strong>Combinaison pré-sélectionnée</strong>
+                        <p class="mb-0 mt-1">Cette matière sera automatiquement associée à :
+                            @if(isset($preselectedFiliereId))
+                                @php
+                                    $selectedFiliere = $filieres->firstWhere('id', $preselectedFiliereId);
+                                @endphp
+                                <strong>{{ $selectedFiliere ? $selectedFiliere->name : "Filière ID $preselectedFiliereId" }}</strong>
+                            @endif
+                            @if(isset($preselectedFiliereId) && isset($preselectedNiveauId)) et @endif
+                            @if(isset($preselectedNiveauId))
+                                @php
+                                    $selectedNiveau = $niveauxEtudes->firstWhere('id', $preselectedNiveauId);
+                                @endphp
+                                <strong>{{ $selectedNiveau ? $selectedNiveau->name : "Niveau ID $preselectedNiveauId" }}</strong>
+                            @endif
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
     <!-- Form Container -->
     <form action="{{ route('esbtp.matieres.store') }}" method="POST">
         @csrf
@@ -159,11 +188,14 @@
                                                            value="{{ $filiere->id }}" 
                                                            id="create_filiere_{{ $filiere->id }}" 
                                                            name="filieres[]"
-                                                           {{ in_array($filiere->id, old('filieres', [])) ? 'checked' : '' }}>
+                                                           {{ in_array($filiere->id, old('filieres', isset($preselectedFiliereId) ? [$preselectedFiliereId] : [])) ? 'checked' : '' }}>
                                                     <label class="form-check-label" for="create_filiere_{{ $filiere->id }}">
                                                         <strong>{{ $filiere->name }}</strong>
                                                         @if($filiere->code)
                                                             <small class="text-muted">({{ $filiere->code }})</small>
+                                                        @endif
+                                                        @if(isset($preselectedFiliereId) && $filiere->id == $preselectedFiliereId)
+                                                            <span class="badge bg-success ms-2"><i class="fas fa-star"></i> Pré-sélectionnée</span>
                                                         @endif
                                                     </label>
                                                 </div>
@@ -187,11 +219,14 @@
                                                            value="{{ $niveau->id }}" 
                                                            id="create_niveau_{{ $niveau->id }}" 
                                                            name="niveaux[]"
-                                                           {{ in_array($niveau->id, old('niveaux', [])) ? 'checked' : '' }}>
+                                                           {{ in_array($niveau->id, old('niveaux', isset($preselectedNiveauId) ? [$preselectedNiveauId] : [])) ? 'checked' : '' }}>
                                                     <label class="form-check-label" for="create_niveau_{{ $niveau->id }}">
                                                         <strong>{{ $niveau->name }}</strong>
                                                         @if($niveau->code)
                                                             <small class="text-muted">({{ $niveau->code }})</small>
+                                                        @endif
+                                                        @if(isset($preselectedNiveauId) && $niveau->id == $preselectedNiveauId)
+                                                            <span class="badge bg-success ms-2"><i class="fas fa-star"></i> Pré-sélectionné</span>
                                                         @endif
                                                     </label>
                                                 </div>

@@ -1,0 +1,67 @@
+{{-- Composant pour les filtres de la page résultats étudiant --}}
+<div class="main-card mb-4">
+    <div class="main-card-header">
+        <div class="main-card-title">
+            <i class="fas fa-filter"></i>
+            Filtres de recherche
+        </div>
+        <div class="main-card-subtitle">Affinez votre recherche de résultats</div>
+    </div>
+    <div class="main-card-body">
+        <form action="{{ route('esbtp.resultats.etudiant', $etudiant) }}" method="GET" class="filter-form">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Classe</label>
+                    <select class="form-select" name="classe_id">
+                        @foreach($classes ?? [] as $c)
+                            <option value="{{ $c->id }}" {{ isset($classe_id) && $classe_id == $c->id ? 'selected' : '' }}>
+                                {{ $c->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                
+                <div class="col-md-3">
+                    <label class="form-label">Année Universitaire</label>
+                    <select class="form-select" name="annee_universitaire_id">
+                        @foreach($anneesUniversitaires ?? [] as $annee)
+                            <option value="{{ $annee->id }}" {{ isset($annee_id) && $annee_id == $annee->id ? 'selected' : '' }}>
+                                {{ $annee->annee_debut }}-{{ $annee->annee_fin }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                
+                <div class="col-md-3">
+                    <label class="form-label">Période</label>
+                    <select class="form-select" name="periode">
+                        @foreach($periodes ?? [] as $p)
+                            <option value="{{ $p->id }}" {{ isset($periode) && $periode == $p->id ? 'selected' : '' }}>
+                                {{ $p->nom }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                
+                <div class="col-md-3">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="submit" class="btn-acasi primary w-100">
+                        <i class="fas fa-search"></i>Filtrer
+                    </button>
+                </div>
+            </div>
+            
+            <div class="row mt-3">
+                <div class="col-md-12">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="include_all_statuses" value="1" 
+                               {{ isset($include_all_statuses) && $include_all_statuses ? 'checked' : '' }}>
+                        <label class="form-check-label">
+                            Inclure tous les étudiants (même ceux avec des inscriptions inactives)
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>

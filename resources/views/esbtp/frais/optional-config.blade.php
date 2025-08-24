@@ -62,59 +62,84 @@
     margin-top: var(--space-md);
 }
 
-/* Fix pour les modales parfaitement centrées sur l'écran */
-.modal {
-    z-index: 1055 !important;
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    overflow: hidden !important;
-    /* NE PAS mettre display: flex ici - ça casse les interactions de la page */
+/* === CORRECTION SPÉCIFIQUE MODALS FRAIS OPTIONNELS === */
+
+/* Forcer tous les modals de cette page au premier plan */
+#assignModal.modal,
+#editModal.modal,
+#deleteModal.modal,
+#addFeeModal.modal {
+    z-index: 9999 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
 }
 
-.modal.show {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-}
-
-.modal-dialog {
+#assignModal .modal-dialog,
+#editModal .modal-dialog,
+#deleteModal .modal-dialog,
+#addFeeModal .modal-dialog {
+    z-index: 10000 !important;
     position: relative !important;
-    margin: 30px auto !important;
-    width: auto !important;
-    max-width: 500px !important;
-    max-height: calc(100vh - 60px) !important;
-    /* pointer-events normal pour permettre les clics */
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
 }
 
-.modal.show .modal-dialog {
-    margin: 0 !important;
+#assignModal .modal-content,
+#editModal .modal-content,
+#deleteModal .modal-content,
+#addFeeModal .modal-content {
+    z-index: 10001 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: white !important;
+    border: none !important;
+    border-radius: 12px !important;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Désactiver animations sur modals show */
+#assignModal.modal.fade .modal-dialog,
+#editModal.modal.fade .modal-dialog,
+#deleteModal.modal.fade .modal-dialog,
+#addFeeModal.modal.fade .modal-dialog {
+    transition: none !important;
     transform: none !important;
-    top: auto !important;
 }
 
-.modal-dialog.modal-lg {
-    max-width: 800px !important;
+/* États d'affichage forcés */
+#assignModal.modal.show,
+#editModal.modal.show,
+#deleteModal.modal.show,
+#addFeeModal.modal.show {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
 }
 
-.modal-content {
-    position: relative !important;
-    max-height: 90vh !important;
-    overflow-y: auto !important;
-    border-radius: 8px !important;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.3) !important;
-    margin: 20px !important;
+/* Anti-curseur erratique quand modals ouverts */
+body.modal-open * {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
 }
 
+/* Empêcher mouvements de curseur */
+body.modal-open .btn,
+body.modal-open .card,
+body.modal-open .form-control {
+    animation: none !important;
+    transition: none !important;
+}
+
+body.modal-open .btn:hover,
+body.modal-open .card:hover {
+    transform: none !important;
+}
+
+/* Backdrop spécifique */
 .modal-backdrop {
-    z-index: 1050 !important;
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
+    z-index: 1040 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
 }
 
 /* Style pour les badges d'assignation */
@@ -138,6 +163,32 @@
     background: rgba(107, 114, 128, 0.1);
     color: #374151;
     border: 1px solid rgba(107, 114, 128, 0.2);
+}
+
+/* Style pour les boutons de fermeture des modals */
+.modal-header .btn-close {
+    background: transparent url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23000'%3e%3cpath d='m.235 1.027 1.027-.235 6.738 6.738 6.738-6.738 1.027.235-.235 1.027L8.792 8.792l6.738 6.738-.235 1.027-1.027-.235L7.53 9.584.792 16.322l-1.027-.235.235-1.027L6.738 8.322.235 1.027z'/%3e%3c/svg%3e") center/1em auto no-repeat;
+    border: 0;
+    border-radius: 0.375rem;
+    opacity: 0.8;
+    padding: 0.375rem;
+    width: 1.5em;
+    height: 1.5em;
+    color: #000;
+    background-size: 0.75em;
+}
+
+.modal-header .btn-close:hover,
+.modal-header .btn-close:focus {
+    opacity: 1;
+    background-color: rgba(0, 0, 0, 0.1);
+    transform: scale(1.1);
+    transition: all 0.2s ease;
+}
+
+.modal-header .btn-close:focus {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
 }
 </style>
 @endpush
@@ -510,9 +561,7 @@
                     <i class="fas fa-edit me-2"></i>
                     Modifier l'option
                 </h5>
-                <button type="button" class="close" data-bs-dismiss="modal">
-                    <i class="fas fa-times"></i>
-                </button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="editOptionForm">
                 <div class="modal-body">
@@ -555,9 +604,7 @@
                     <i class="fas fa-users me-2"></i>
                     Gérer les assignations - <span id="assignmentOptionName"></span>
                 </h5>
-                <button type="button" class="close" data-bs-dismiss="modal">
-                    <i class="fas fa-times"></i>
-                </button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="assignmentOptionId" name="option_id">
@@ -1022,5 +1069,84 @@ function deleteOption(optionId) {
         form.submit();
     }
 }
+
+// === FIX MODAL Z-INDEX DYNAMIQUE ===
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Initialisation du fix des modals pour les frais optionnels');
+    
+    // Liste des modals à corriger
+    const modals = ['assignModal', 'editModal', 'deleteModal', 'addFeeModal'];
+    
+    modals.forEach(modalId => {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            // Événement pour forcer z-index correct à l'ouverture
+            modal.addEventListener('show.bs.modal', function(e) {
+                console.log(`🔧 Préparation modal ${modalId}`);
+                
+                // Désactiver toutes les animations pendant l'ouverture
+                document.body.style.setProperty('overflow', 'hidden', 'important');
+                
+                // Ajouter style anti-cursor
+                const antiCursorStyle = document.createElement('style');
+                antiCursorStyle.id = `anti-cursor-${modalId}`;
+                antiCursorStyle.textContent = `
+                    * { animation: none !important; transition: none !important; }
+                    *:hover { transform: none !important; }
+                `;
+                document.head.appendChild(antiCursorStyle);
+            });
+            
+            modal.addEventListener('shown.bs.modal', function(e) {
+                console.log(`✅ Modal ${modalId} ouvert - Application des corrections`);
+                
+                // Forcer z-index très élevé
+                modal.style.setProperty('z-index', '9999', 'important');
+                modal.style.setProperty('backdrop-filter', 'none', 'important');
+                modal.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
+                
+                const modalDialog = modal.querySelector('.modal-dialog');
+                const modalContent = modal.querySelector('.modal-content');
+                
+                if (modalDialog) {
+                    modalDialog.style.setProperty('z-index', '10000', 'important');
+                    modalDialog.style.setProperty('backdrop-filter', 'none', 'important');
+                    modalDialog.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
+                }
+                
+                if (modalContent) {
+                    modalContent.style.setProperty('z-index', '10001', 'important');
+                    modalContent.style.setProperty('backdrop-filter', 'none', 'important');
+                    modalContent.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
+                    modalContent.style.setProperty('background', 'white', 'important');
+                }
+                
+                // Forcer backdrop en arrière
+                const backdrop = document.querySelector('.modal-backdrop');
+                if (backdrop) {
+                    backdrop.style.setProperty('z-index', '1040', 'important');
+                    backdrop.style.setProperty('backdrop-filter', 'none', 'important');
+                    backdrop.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
+                }
+            });
+            
+            // Nettoyer à la fermeture
+            modal.addEventListener('hidden.bs.modal', function(e) {
+                console.log(`🧹 Nettoyage modal ${modalId}`);
+                
+                // Supprimer style anti-cursor
+                const antiCursorStyle = document.getElementById(`anti-cursor-${modalId}`);
+                if (antiCursorStyle) {
+                    antiCursorStyle.remove();
+                }
+                
+                // Rétablir overflow
+                document.body.style.overflow = '';
+            });
+        }
+    });
+    
+    console.log('✅ Fix modals configuré pour:', modals);
+});
 </script>
 @endpush

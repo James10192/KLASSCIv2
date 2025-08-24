@@ -11,6 +11,8 @@ use App\Models\ESBTPNote;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPDailyCode;
 use App\Models\ESBTPTeacherAttendance;
+use App\Models\ESBTPTeacherAvailability;
+use App\Models\ESBTPTeacher;
 use App\Services\NotificationService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -72,7 +74,7 @@ class TeacherDashboardController extends Controller
             ->where('valid_until', '>', Carbon::now())
             ->first();
         
-        $todayAttendance = ESBTPTeacherAttendance::where('teacher_id', $user->id)
+        $todayAttendance = ESBTPTeacherAttendance::where('teacher_id', $teacherId)
             ->whereDate('validated_at', $today)
             ->latest()
             ->first();
@@ -111,10 +113,10 @@ class TeacherDashboardController extends Controller
             ];
         }
 
-        // 7. Jours de la semaine
+        // 7. Jours de la semaine (1=Lundi, 2=Mardi, etc.)
         $joursSemaine = [
-            0 => 'Lundi', 1 => 'Mardi', 2 => 'Mercredi', 3 => 'Jeudi',
-            4 => 'Vendredi', 5 => 'Samedi'
+            1 => 'Lundi', 2 => 'Mardi', 3 => 'Mercredi', 4 => 'Jeudi',
+            5 => 'Vendredi', 6 => 'Samedi', 0 => 'Dimanche', 7 => 'Dimanche'
         ];
 
         return view('dashboard.teacher', compact(
@@ -137,9 +139,15 @@ class TeacherDashboardController extends Controller
         $user = Auth::user();
         $callType = request()->get('type', 'start');
         
+        // Récupérer le teacher associé à l'utilisateur connecté
+        $teacher = ESBTPTeacher::where('user_id', $user->id)->first();
+        if (!$teacher) {
+            abort(403, 'Vous n\'êtes pas enregistré comme enseignant.');
+        }
+        
         $seance = ESBTPSeanceCours::with(['matiere', 'classe', 'classe.etudiants'])
             ->where('id', $seanceId)
-            ->where('teacher_id', $user->id)
+            ->where('teacher_id', $teacher->id)
             ->firstOrFail();
 
         // **WORKFLOW** : Vérifier le workflow et les permissions
@@ -176,8 +184,14 @@ class TeacherDashboardController extends Controller
         $user = Auth::user();
         $callType = $request->input('call_type', 'start');
         
+        // Récupérer le teacher associé à l'utilisateur connecté
+        $teacher = ESBTPTeacher::where('user_id', $user->id)->first();
+        if (!$teacher) {
+            abort(403, 'Vous n\'êtes pas enregistré comme enseignant.');
+        }
+        
         $seance = ESBTPSeanceCours::where('id', $seanceId)
-            ->where('teacher_id', $user->id)
+            ->where('teacher_id', $teacher->id)
             ->firstOrFail();
 
         $request->validate([
@@ -214,7 +228,7 @@ class TeacherDashboardController extends Controller
                     'seance_cours_id' => $seanceId,
                     'classe_id' => $seance->classe_id,
                     'matiere_id' => $seance->matiere_id,
-                    'teacher_id' => $user->id,
+                    'teacher_id' => $teacher->id,
                     'date' => Carbon::today(),
                     'status' => $status,
                     'call_type' => $callType,
@@ -492,5 +506,182 @@ class TeacherDashboardController extends Controller
             \Log::error('Erreur lors de la récupération des notifications: ' . $e->getMessage());
             return collect();
         }
+    }
+
+    /**
+     * Afficher la page de gestion des disponibilités de l'enseignant
+     */
+    public function showAvailability()
+    {
+        $user = Auth::user();
+        $teacher = ESBTPTeacher::where('user_id', $user->id)->first();
+        
+        if (!$teacher) {
+            return redirect()->route('teacher.dashboard')
+                ->with('error', 'Profil enseignant non trouvé.');
+        }
+
+        // Récupérer les disponibilités existantes et les organiser comme les pages admin
+        $availabilityData = $this->prepareAvailabilityData($teacher);
+
+        return view('teacher.availability', compact('teacher', 'availabilityData'));
+    }
+
+    /**
+     * Mettre à jour les disponibilités de l'enseignant via AJAX
+     */
+    public function updateAvailability(Request $request)
+    {
+        try {
+            $user = Auth::user();
+            $teacher = ESBTPTeacher::where('user_id', $user->id)->first();
+            
+            if (!$teacher) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Profil enseignant non trouvé.'
+                ], 404);
+            }
+
+            // Validation des données
+            $request->validate([
+                'changes' => 'required|array',
+                'changes.*.day' => 'required|integer|min:0|max:6',
+                'changes.*.startTime' => 'required|string|regex:/^[0-2][0-9]:[0-5][0-9]$/',
+                'changes.*.endTime' => 'required|string|regex:/^[0-2][0-9]:[0-5][0-9]$/',
+                'changes.*.status' => 'required|string|in:available,preferred,unavailable'
+            ]);
+
+            $changes = $request->input('changes');
+            
+            \Log::info('🔧 DEBUG updateAvailability METHOD - TEACHER SELF-SERVICE');
+            \Log::info('Teacher ID: ' . $teacher->id . ' (User: ' . $user->name . ')');
+            \Log::info('Request changes: ' . json_encode($changes));
+
+            DB::beginTransaction();
+
+            foreach ($changes as $change) {
+                $day = $change['day'];
+                $startTime = $change['startTime'];
+                $endTime = $change['endTime'];
+                $status = $change['status'];
+
+                \Log::info("Processing change: day=$day, $startTime-$endTime, status=$status");
+
+                // Convertir les heures en entiers pour la logique de chevauchement
+                $clickedStart = (int) substr($startTime, 0, 2);
+                $clickedEnd = (int) substr($endTime, 0, 2);
+                
+                // Supprimer les créneaux existants qui se chevauchent
+                $existingAvailabilities = ESBTPTeacherAvailability::where([
+                    'teacher_id' => $teacher->id,
+                    'day_of_week' => $day
+                ])->get();
+                
+                foreach ($existingAvailabilities as $existing) {
+                    // Parser correctement les heures depuis les timestamps
+                    if ($existing->start_time instanceof \Carbon\Carbon) {
+                        $existingStart = $existing->start_time->hour;
+                        $existingEnd = $existing->end_time->hour;
+                    } else {
+                        // Extraire l'heure depuis la position 11 du timestamp "YYYY-MM-DD HH:MM:SS"
+                        $existingStart = (int) substr($existing->start_time, 11, 2);
+                        $existingEnd = (int) substr($existing->end_time, 11, 2);
+                    }
+                    
+                    // Vérifier s'il y a chevauchement exact ou partiel
+                    $hasOverlap = ($clickedStart < $existingEnd) && ($clickedEnd > $existingStart);
+                    $isExactMatch = ($clickedStart == $existingStart) && ($clickedEnd == $existingEnd);
+                    
+                    if ($hasOverlap || $isExactMatch) {
+                        \Log::info("Deleting existing availability ID={$existing->id}: {$existing->start_time}-{$existing->end_time} (overlaps/matches with {$startTime}-{$endTime})");
+                        $existing->delete();
+                    }
+                }
+
+                // Créer la nouvelle disponibilité si le statut n'est pas 'unavailable'
+                if ($status !== 'unavailable') {
+                    $newAvailability = ESBTPTeacherAvailability::create([
+                        'teacher_id' => $teacher->id,
+                        'day_of_week' => $day,
+                        'start_time' => Carbon::today()->setHour($clickedStart)->setMinute(0),
+                        'end_time' => Carbon::today()->setHour($clickedEnd)->setMinute(0),
+                        'availability_type' => $status,
+                        'created_by' => $user->id,
+                        'updated_by' => $user->id
+                    ]);
+                    
+                    \Log::info("Created new availability: teacher_id={$teacher->id}, day_of_week=$day, start_time={$startTime}, end_time={$endTime}, type=$status");
+                } else {
+                    \Log::info("Skipping unavailable status (no DB entry needed)");
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Vos disponibilités ont été mises à jour avec succès.'
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Données invalides: ' . implode(', ', $e->validator->errors()->all())
+            ], 422);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Erreur lors de la mise à jour des disponibilités: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la mise à jour: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Préparer les données de disponibilité pour l'affichage (méthode identique aux pages admin)
+     */
+    private function prepareAvailabilityData($teacher)
+    {
+        // Utiliser des créneaux par heure comme la page EDIT pour cohérence
+        $hours = range(8, 18); // 8h à 18h = 11 heures 
+        $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']; // Exclure dimanche
+        
+        // Initialiser avec 'unavailable' par défaut
+        $availability = [];
+        foreach ($days as $day) {
+            $availability[$day] = array_fill(0, count($hours), 'unavailable');
+        }
+        
+        // Remplir avec les vraies données - traitement par heure
+        foreach ($teacher->availabilities as $avail) {
+            $dayName = $days[$avail->day_of_week] ?? null;
+            
+            // Parser l'heure de début et de fin
+            if ($avail->start_time instanceof \Carbon\Carbon) {
+                $startHour = $avail->start_time->hour;
+                $endHour = $avail->end_time->hour;
+            } elseif (is_string($avail->start_time)) {
+                $startHour = (int) substr($avail->start_time, 0, 2);
+                $endHour = (int) substr($avail->end_time, 0, 2);
+            } else {
+                $startHour = (int) substr((string) $avail->start_time, 0, 2);
+                $endHour = (int) substr((string) $avail->end_time, 0, 2);
+            }
+            
+            // Remplir toutes les heures entre start_time et end_time
+            if ($dayName) {
+                for ($hour = $startHour; $hour < $endHour; $hour++) {
+                    $hourIndex = $hour - 8; // Index dans le tableau (8h = index 0)
+                    if ($hourIndex >= 0 && $hourIndex < count($hours)) {
+                        $availability[$dayName][$hourIndex] = $avail->availability_type;
+                    }
+                }
+            }
+        }
+        
+        return $availability;
     }
 }

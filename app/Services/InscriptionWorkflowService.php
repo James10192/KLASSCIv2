@@ -43,7 +43,7 @@ class InscriptionWorkflowService
 
             // Vérifier que le paiement est validé
             $paiement = ESBTPPaiement::find($inscription->paiement_validation_id);
-            if (!$paiement || $paiement->status !== 'validated') {
+            if (!$paiement || $paiement->status !== 'validé') {
                 return [
                     'success' => false,
                     'message' => 'Le paiement associé n\'est pas validé.'
@@ -239,18 +239,24 @@ class InscriptionWorkflowService
         try {
             DB::beginTransaction();
 
+            // Récupérer la catégorie de frais pour le motif
+            $fraisCategory = \App\Models\ESBTPFraisCategory::find($paiementData['fee_category_id']);
+            $motif = $fraisCategory ? $fraisCategory->name : 'Frais d\'inscription';
+
             // Créer le paiement
             $paiement = ESBTPPaiement::create([
                 'inscription_id' => $inscription->id,
                 'etudiant_id' => $inscription->etudiant_id,
                 'annee_universitaire_id' => $inscription->annee_universitaire_id,
-                'fee_category_id' => $paiementData['fee_category_id'],
+                'type_paiement' => 'inscription', // Type de paiement pour validation d'inscription
+                'frais_category_id' => $paiementData['fee_category_id'],
                 'montant' => $paiementData['montant'],
                 'mode_paiement' => $paiementData['mode_paiement'],
                 'reference_paiement' => $paiementData['reference_paiement'] ?? null,
                 'date_paiement' => $paiementData['date_paiement'],
-                'observations' => $paiementData['observations'] ?? null,
-                'status' => 'validated',
+                'commentaire' => $paiementData['observations'] ?? null,
+                'motif' => $motif,
+                'status' => 'validé',
                 'numero_recu' => $this->genererNumeroRecu(),
                 'created_by' => Auth::id(),
             ]);

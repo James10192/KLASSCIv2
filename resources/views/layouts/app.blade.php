@@ -1286,7 +1286,7 @@
                     </div>
 
                     <!-- Academic Management Section -->
-                    @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire'))
+                    @if(auth()->check() && auth()->user() && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire')))
                         <div class="menu-category">Gestion académique</div>
 
                         <!-- Programs & Classes -->
@@ -1341,7 +1341,7 @@
                     @endif
 
                     <!-- Students Section -->
-                    @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire'))
+                    @if(auth()->check() && auth()->user() && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire')))
                         <div class="menu-category">Étudiants</div>
 
                         <!-- Student Management -->
@@ -1360,7 +1360,7 @@
                                     <div class="menu-icon"><i class="fas fa-user-plus"></i></div>
                                     <div class="menu-text">Nouvelle Inscription</div>
                                 </a>
-                                @if(auth()->user()->hasRole(['superAdmin', 'secretaire', 'coordinateur']))
+                                @if(auth()->check() && auth()->user() && auth()->user()->hasRole(['superAdmin', 'secretaire', 'coordinateur']))
                                 <a href="{{ route('esbtp.reinscription.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.reinscription.*') ? 'active' : '' }}">
                                     <div class="menu-icon"><i class="fas fa-redo"></i></div>
                                     <div class="menu-text">Réinscriptions</div>
@@ -1371,7 +1371,7 @@
                     @endif
 
                     <!-- Coordinateur Section -->
-                    @if(auth()->user()->hasRole('coordinateur'))
+                    @if(auth()->check() && auth()->user() && auth()->user()->hasRole('coordinateur'))
                         <div class="menu-category">Coordination pédagogique</div>
 
                         <!-- Planning & Scheduling -->
@@ -1465,7 +1465,7 @@
                     @endif
 
                     <!-- Teaching Section -->
-                    @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire'))
+                    @if(auth()->check() && auth()->user() && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire')))
                         <div class="menu-category">Enseignement</div>
 
                         <!-- Schedule Management -->
@@ -1495,7 +1495,7 @@
                     @endif
 
                     <!-- Grades & Reports Section -->
-                    @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire'))
+                    @if(auth()->check() && auth()->user() && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire')))
                         <div class="menu-category">Notes & Rapports</div>
 
                         <!-- Grades Management -->
@@ -1527,7 +1527,7 @@
                     @endif
 
                     <!-- Administration Section -->
-                    @if(auth()->user()->hasRole('superAdmin'))
+                    @if(auth()->check() && auth()->user() && auth()->user()->hasRole('superAdmin'))
                         <div class="menu-category">Administration</div>
 
                         <!-- Staff Management -->
@@ -1563,7 +1563,7 @@
                     @endif
 
                     <!-- Attendance Section -->
-                    @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire'))
+                    @if(auth()->check() && auth()->user() && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire')))
                         <div class="menu-category">Présence & Absences</div>
 
                         <!-- Gestion des présences/absences -->
@@ -1598,7 +1598,7 @@
                         </div>
                     @endif
 
-                    @if(auth()->user()->hasRole('teacher'))
+                    @if(auth()->check() && auth()->user() && auth()->user()->hasRole('teacher'))
                         <div class="menu-category">Présence</div>
 
                         <!-- Émargement enseignant -->
@@ -1611,7 +1611,7 @@
                     @endif
 
                     <!-- Messages Section -->
-                    @if(auth()->user()->hasRole('etudiant'))
+                    @if(auth()->check() && auth()->user() && auth()->user()->hasRole('etudiant'))
                         <div class="menu-category">Communication</div>
 
                         <!-- Messages -->
@@ -1624,7 +1624,7 @@
 
                         <!-- Notifications -->
                         <div class="menu-item">
-                            @if(auth()->user()->hasRole('etudiant'))
+                            @if(auth()->check() && auth()->user() && auth()->user()->hasRole('etudiant'))
                                 <a href="{{ route('esbtp.mes-notifications.index') }}" class="menu-link {{ Request::routeIs('esbtp.mes-notifications.*') ? 'active' : '' }}">
                                     <div class="menu-icon"><i class="fas fa-bell"></i></div>
                                     <div class="menu-text">Mes notifications</div>
@@ -1639,7 +1639,7 @@
                     @endif
 
                     <!-- Accounting Section -->
-                    @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire'))
+                    @if(auth()->check() && auth()->user() && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire')))
                         <div class="menu-category">Gestion financière</div>
                         <div class="menu-accordion">
                             <button class="menu-accordion-btn {{ Request::routeIs('esbtp.comptabilite.*') || Request::routeIs('esbtp.frais.*') || Request::routeIs('esbtp.fee-categories.*') || Request::routeIs('esbtp.payment-categories.*') || Request::routeIs('esbtp.fees.*') || Request::routeIs('esbtp.payments.*') ? 'active' : '' }}">
@@ -1686,7 +1686,7 @@
                         @endcan
 
                     <!-- System Section - SuperAdmin Only -->
-                    @if(auth()->user()->hasRole('superAdmin'))
+                    @if(auth()->check() && auth()->user() && auth()->user()->hasRole('superAdmin'))
                         <div class="menu-category">Système</div>
 
                         <!-- System Settings -->
@@ -1870,7 +1870,7 @@
                                 </div>
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
-                                    @if(auth()->user()->hasRole('etudiant'))
+                                    @if(auth()->check() && auth()->user() && auth()->user()->hasRole('etudiant'))
                                         <a class="dropdown-item text-center view-all" href="{{ route('esbtp.mes-messages.index') }}">
                                             <i class="fas fa-envelope-open me-1"></i>
                                             Voir tous les messages

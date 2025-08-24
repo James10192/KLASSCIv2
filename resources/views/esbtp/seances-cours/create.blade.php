@@ -1,8 +1,9 @@
 @extends('layouts.app')
 
-@section('title', 'Ajouter une séance')
+@section('title', 'Ajouter une séance - ESBTP-yAKRO')
 
 @section('styles')
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
 <style>
@@ -49,64 +50,89 @@
 @endsection
 
 @section('content')
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h4 class="card-title">Ajouter une séance à l'emploi du temps</h4>
-                    <p class="card-subtitle mb-0">
-                        Classe: {{ $emploiTemps->classe->name }} |
-                        Filière: {{ $emploiTemps->classe->filiere->name }} |
-                        Niveau: {{ $emploiTemps->classe->niveau->name }}
-                    </p>
+<div class="dashboard-acasi">
+    <div class="main-content">
+        <!-- Header Section -->
+        <div class="dashboard-header">
+            <div class="header-left">
+                <h1><i class="fas fa-plus-circle me-2"></i>Nouvelle Séance de Cours</h1>
+                <p class="header-subtitle">Créer une nouvelle séance pour {{ $emploiTemps->classe->name }}</p>
+            </div>
+            <div class="header-actions">
+                <a href="{{ route('esbtp.emploi-temps.show', $emploiTemps->id) }}" class="btn-acasi secondary">
+                    <i class="fas fa-arrow-left"></i>Retour à l'emploi du temps
+                </a>
+            </div>
+        </div>
+
+        @if ($errors->any())
+            <div class="alert alert-danger border-start border-danger border-4 mb-4">
+                <div class="d-flex">
+                    <div class="me-3">
+                        <i class="fas fa-exclamation-circle fs-4"></i>
+                    </div>
+                    <div>
+                        <h5 class="alert-heading">Erreur de validation</h5>
+                        <ul class="mb-0 ps-3">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <form action="{{ route('esbtp.seances-cours.store') }}" method="POST" id="sessionForm">
-                        @csrf
-                        <input type="hidden" name="emploi_temps_id" value="{{ $emploiTemps->id }}">
+            </div>
+        @endif
+        <form action="{{ route('esbtp.seances-cours.store') }}" method="POST" id="sessionForm">
+            @csrf
+            <input type="hidden" name="emploi_temps_id" value="{{ $emploiTemps->id }}">
 
-                        <!-- Session Type Selection -->
-                        <div class="row mb-4">
-                            <div class="col-12">
-                                <h5 class="mb-3">Type de séance</h5>
-                                <div class="row g-3">
-                                    @foreach($sessionTypes as $type => $label)
-                                    <div class="col-md-3">
-                                        <div class="card session-type-card h-100" data-type="{{ $type }}" onclick="selectSessionType('{{ $type }}')">
-                                            <div class="card-body text-center">
-                                                <div class="mb-3">
-                                                    @switch($type)
-                                                        @case('course')
-                                                            <i class="fas fa-chalkboard-teacher fa-2x" style="color: {{ $defaultColors[$type] }}"></i>
-                                                            @break
-                                                        @case('homework')
-                                                            <i class="fas fa-book fa-2x" style="color: {{ $defaultColors[$type] }}"></i>
-                                                            @break
-                                                        @case('break')
-                                                            <i class="fas fa-coffee fa-2x" style="color: {{ $defaultColors[$type] }}"></i>
-                                                            @break
-                                                        @case('lunch')
-                                                            <i class="fas fa-utensils fa-2x" style="color: {{ $defaultColors[$type] }}"></i>
-                                                            @break
-                                                    @endswitch
-                                                </div>
-                                                <h6 class="mb-2">{{ $label }}</h6>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    @endforeach
-                                </div>
-                                <input type="hidden" name="type" id="sessionType" required>
-                            </div>
+            <div class="form-sections">
+                <!-- Section 1: Type de séance -->
+                <div class="main-card">
+                    <div class="main-card-header">
+                        <div class="main-card-title">
+                            <i class="fas fa-clipboard-list"></i>
+                            Type de séance
                         </div>
+                        <div class="main-card-subtitle">Sélectionnez le type de séance à programmer</div>
+                    </div>
+                    <div class="main-card-body">
+                        <div class="session-types-container">
+                            @foreach($sessionTypes as $type => $label)
+                            <div class="session-type-card" data-type="{{ $type }}" onclick="selectSessionType('{{ $type }}')">
+                                <div class="session-type-icon">
+                                    @if($type === 'course')
+                                        <i class="fas fa-chalkboard-teacher"></i>
+                                    @elseif($type === 'homework')
+                                        <i class="fas fa-clipboard-check"></i>
+                                    @elseif($type === 'break')
+                                        <i class="fas fa-coffee"></i>
+                                    @else
+                                        <i class="fas fa-utensils"></i>
+                                    @endif
+                                </div>
+                                <div class="session-type-label">{{ $label }}</div>
+                            </div>
+                            @endforeach
+                        </div>
+                        <input type="hidden" name="type" id="sessionType" required>
+                    </div>
+                </div>
 
-                        <!-- Common Fields -->
-                        <div class="row">
-                            <!-- Day Selection -->
-                            <div class="col-md-6 mb-3">
-                                <label for="jour" class="form-label">Jour</label>
-                                <select name="jour" id="jour" class="form-select" required>
+                <!-- Section 2: Informations de base -->
+                <div class="main-card">
+                    <div class="main-card-header">
+                        <div class="main-card-title">
+                            <i class="fas fa-calendar-alt"></i>
+                            Informations temporelles
+                        </div>
+                        <div class="main-card-subtitle">Jour, horaires et récurrence</div>
+                    </div>
+                    <div class="main-card-body">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="jour" class="form-label">Jour <span class="text-danger">*</span></label>
+                                <select name="jour" id="jour" class="form-select @error('jour') error @enderror" required>
                                     <option value="">Sélectionner un jour</option>
                                     @foreach($joursSemaine as $value => $label)
                                         <option value="{{ $value }}" {{ old('jour', $request->jour) == $value ? 'selected' : '' }}>
@@ -114,123 +140,264 @@
                                         </option>
                                     @endforeach
                                 </select>
+                                @error('jour')
+                                    <div class="form-error">{{ $message }}</div>
+                                @enderror
                             </div>
 
-                            <!-- Time Selection -->
-                            <div class="col-md-3 mb-3">
-                                <label for="heure_debut" class="form-label">Heure de début</label>
-                                <input type="time" class="form-control" id="heure_debut" name="heure_debut"
-                                    value="{{ old('heure_debut', $request->heure_debut) }}" required>
+                            <div class="form-group">
+                                <label for="heure_debut" class="form-label">Heure de début <span class="text-danger">*</span></label>
+                                <input type="time" class="form-input @error('heure_debut') error @enderror" 
+                                       id="heure_debut" name="heure_debut"
+                                       value="{{ old('heure_debut', $request->heure_debut) }}" required>
+                                @error('heure_debut')
+                                    <div class="form-error">{{ $message }}</div>
+                                @enderror
                             </div>
 
-                            <div class="col-md-3 mb-3">
-                                <label for="heure_fin" class="form-label">Heure de fin</label>
-                                <input type="time" class="form-control" id="heure_fin" name="heure_fin"
-                                    value="{{ old('heure_fin') }}" required>
+                            <div class="form-group">
+                                <label for="heure_fin" class="form-label">Heure de fin <span class="text-danger">*</span></label>
+                                <input type="time" class="form-input @error('heure_fin') error @enderror" 
+                                       id="heure_fin" name="heure_fin"
+                                       value="{{ old('heure_fin') }}" required>
+                                @error('heure_fin')
+                                    <div class="form-error">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Couleur</label>
+                                <div class="color-picker-wrapper">
+                                    <input type="color" name="color" id="color" class="color-picker"
+                                        value="{{ old('color', $defaultColors['course']) }}">
+                                    <span class="color-label" id="colorLabel"></span>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Color and Recurrence -->
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Couleur</label>
-                                <div class="d-flex gap-2">
-                                    <input type="color" name="color" id="color" class="color-picker"
-                                        value="{{ old('color', $defaultColors['course']) }}">
-                                    <span class="ms-2 align-self-center" id="colorLabel"></span>
-                                </div>
-                            </div>
-
-                            <div class="col-md-6 mb-3">
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="is_recurring" name="is_recurring"
-                                        {{ old('is_recurring') ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="is_recurring">Séance récurrente</label>
-                                </div>
+                        <div class="form-options">
+                            <div class="form-check-custom">
+                                <input class="form-check-input" type="checkbox" id="is_recurring" name="is_recurring"
+                                    {{ old('is_recurring') ? 'checked' : '' }}>
+                                <label class="form-check-label" for="is_recurring">
+                                    <i class="fas fa-repeat me-2"></i>Séance récurrente
+                                </label>
                             </div>
                         </div>
 
                         <!-- Recurrence Days -->
-                        <div class="row mb-4" id="recurrenceDays" style="display: none;">
-                            <div class="col-12">
-                                <label class="form-label">Jours de récurrence</label>
-                                <div class="recurrence-days">
-                                    @foreach($joursSemaine as $value => $label)
-                                        <div>
-                                            <input type="checkbox" class="day-checkbox" name="recurrence_days[]"
-                                                id="day_{{ $value }}" value="{{ $value }}"
-                                                {{ in_array($value, old('recurrence_days', [])) ? 'checked' : '' }}>
-                                            <label class="day-label" for="day_{{ $value }}">{{ $label }}</label>
-                                        </div>
-                                    @endforeach
-                                </div>
+                        <div id="recurrenceDays" class="recurrence-section" style="display: none;">
+                            <label class="form-label">Jours de récurrence</label>
+                            <div class="days-selector">
+                                @foreach($joursSemaine as $value => $label)
+                                    <div class="day-option">
+                                        <input type="checkbox" class="day-checkbox" name="recurrence_days[]"
+                                            id="day_{{ $value }}" value="{{ $value }}"
+                                            {{ in_array($value, old('recurrence_days', [])) ? 'checked' : '' }}>
+                                        <label class="day-label" for="day_{{ $value }}">{{ $label }}</label>
+                                    </div>
+                                @endforeach
                             </div>
                         </div>
+                    </div>
+                </div>
 
-                        <!-- Dynamic Fields based on Session Type -->
-                        <div id="courseFields" style="display: none;">
-                            <div class="row">
-                                <div class="col-md-4 mb-3">
-                                    <label for="teacher_id" class="form-label">Enseignant</label>
-                                    <select name="teacher_id" id="teacher_id" class="form-select select2">
-                                        <option value="">Sélectionner un enseignant</option>
-                                        @foreach($teachers as $teacher)
-                                            <option value="{{ $teacher->id }}" {{ old('teacher_id') == $teacher->id ? 'selected' : '' }}>
-                                                {{ $teacher->user->name }}
-                                            </option>
-                                        @endforeach
-                                    </select>
+                <!-- Section 3: Matières et Enseignants -->
+                <div class="main-card" id="courseFields" style="display: none;">
+                    <div class="main-card-header">
+                        <div class="main-card-title">
+                            <i class="fas fa-graduation-cap"></i>
+                            Matière et Enseignant
+                        </div>
+                        <div class="main-card-subtitle">Configuration pédagogique de la séance</div>
+                    </div>
+                    <div class="main-card-body">
+                        @if($planificationData['planifications_configurees'])
+                            <!-- Contexte de la classe -->
+                            <div class="context-card">
+                                <div class="context-header">
+                                    <i class="fas fa-school"></i>
+                                    <span>{{ $emploiTemps->classe->name }}</span>
+                                </div>
+                                <div class="context-stats">
+                                    <div class="stat-item">
+                                        <span class="stat-label">Filière</span>
+                                        <span class="stat-value">{{ $emploiTemps->classe->filiere->name }}</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Niveau</span>
+                                        <span class="stat-value">{{ $emploiTemps->classe->niveau->name }}</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Matières</span>
+                                        <span class="stat-value">{{ $matieres->count() }} configurées</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Volume</span>
+                                        <span class="stat-value">{{ $planificationData['heures_totales'] }}h totales</span>
+                                    </div>
+                                </div>
                             </div>
 
-                                <div class="col-md-4 mb-3">
-                                    <label for="matiere_id" class="form-label">Matière</label>
-                                    <select name="matiere_id" id="matiere_id" class="form-select select2">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="matiere_id" class="form-label">Matière <span class="text-danger">*</span></label>
+                                    <select name="matiere_id" id="matiere_id" class="form-select @error('matiere_id') error @enderror" onchange="updateTeachersForSubject()" required>
                                         <option value="">Sélectionner une matière</option>
                                         @foreach($matieres as $matiere)
-                                            <option value="{{ $matiere->id }}" {{ old('matiere_id') == $matiere->id ? 'selected' : '' }}>
-                                                {{ $matiere->name }}
+                                            <option value="{{ $matiere['matiere']->id }}" 
+                                                    data-heures-restantes="{{ $matiere['heures_restantes'] }}"
+                                                    data-volume-total="{{ $matiere['volume_horaire_total'] }}"
+                                                    data-enseignants="{{ $matiere['enseignants_assignes']->pluck('id')->toJson() }}"
+                                                    {{ old('matiere_id') == $matiere['matiere']->id ? 'selected' : '' }}>
+                                                {{ $matiere['matiere']->name }} 
+                                                ({{ $matiere['heures_restantes'] }}h restantes / {{ $matiere['volume_horaire_total'] }}h)
                                             </option>
                                         @endforeach
                                     </select>
+                                    <div id="matiere-info" class="form-info" style="display: none;">
+                                        <i class="fas fa-clock"></i>
+                                        <span id="heures-restantes-text"></span>
+                                    </div>
+                                    @error('matiere_id')
+                                        <div class="form-error">{{ $message }}</div>
+                                    @enderror
                                 </div>
 
-                                <div class="col-md-4 mb-3">
+                                <div class="form-group">
+                                    <label for="teacher_id" class="form-label">Enseignant assigné <span class="text-danger">*</span></label>
+                                    <select name="teacher_id" id="teacher_id" class="form-select @error('teacher_id') error @enderror" onchange="showTeacherAvailability()" required>
+                                        <option value="">Sélectionner d'abord une matière</option>
+                                    </select>
+                                    <div id="teacher-info" class="form-info" style="display: none;">
+                                        <i class="fas fa-check-circle"></i>
+                                        <span id="teacher-assignment-text"></span>
+                                    </div>
+                                    @error('teacher_id')
+                                        <div class="form-error">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <div class="form-group">
                                     <label for="salle" class="form-label">Salle</label>
-                                    <input type="text" class="form-control" id="salle" name="salle" value="{{ old('salle') }}">
+                                    <input type="text" class="form-input @error('salle') error @enderror" 
+                                           id="salle" name="salle" value="{{ old('salle') }}"
+                                           placeholder="Ex: Salle A101">
+                                    @error('salle')
+                                        <div class="form-error">{{ $message }}</div>
+                                    @enderror
                                 </div>
                             </div>
-                        </div>
 
-                        <div id="homeworkFields" style="display: none;">
-                        <div class="row">
-                                <div class="col-12 mb-3">
-                                    <label for="homework_description" class="form-label">Description du devoir</label>
-                                    <textarea class="form-control" id="homework_description" name="homework_description" rows="3">{{ old('homework_description') }}</textarea>
+                            <!-- Grille de disponibilité de l'enseignant sélectionné -->
+                            <div id="teacher-availability" class="availability-section" style="display: none;">
+                                <div class="availability-header">
+                                    <i class="fas fa-calendar-check"></i>
+                                    <span>Disponibilité de <span id="selected-teacher-name">l'enseignant</span></span>
                                 </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="homework_due_date" class="form-label">Date de remise</label>
-                                    <input type="date" class="form-control" id="homework_due_date" name="homework_due_date"
-                                        value="{{ old('homework_due_date') }}">
+                                
+                                <!-- Légende des couleurs -->
+                                <div class="availability-legend mb-3">
+                                    <h6 class="legend-title"><i class="fas fa-palette me-2"></i>Légende :</h6>
+                                    <div class="legend-items">
+                                        <div class="legend-item">
+                                            <div class="legend-color preferred"></div>
+                                            <span>Préféré</span>
+                                        </div>
+                                        <div class="legend-item">
+                                            <div class="legend-color available"></div>
+                                            <span>Disponible</span>
+                                        </div>
+                                        <div class="legend-item">
+                                            <div class="legend-color unavailable"></div>
+                                            <span>Non disponible</span>
+                                        </div>
+                                        <div class="legend-item">
+                                            <div class="legend-color occupied"></div>
+                                            <span>Occupé (autre séance)</span>
+                                        </div>
+                                        <div class="legend-item">
+                                            <div class="legend-color selected-time"></div>
+                                            <span>Créneaux sélectionnés</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="availability-grid-container">
+                                    <div id="availability-grid" class="teacher-availability-grid"></div>
                                 </div>
                             </div>
-                        </div>
+                        @else
+                            <div class="alert alert-warning">
+                                <div class="d-flex">
+                                    <div class="me-3">
+                                        <i class="fas fa-exclamation-triangle fs-4"></i>
+                                    </div>
+                                    <div>
+                                        <h6>Configuration requise</h6>
+                                        <p class="mb-2">{{ $planificationData['message_configuration'] }}</p>
+                                        @if($planificationData['lien_configuration'])
+                                            <a href="{{ $planificationData['lien_configuration'] }}" class="btn-acasi primary small">
+                                                <i class="fas fa-cog"></i>Configurer maintenant
+                                            </a>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                </div>
 
-                        <div class="row mt-4">
-                            <div class="col-12">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-save me-2"></i>Enregistrer
-                                </button>
-                                <a href="{{ route('esbtp.emploi-temps.show', $emploiTemps->id) }}" class="btn btn-secondary">
-                                    <i class="fas fa-times me-2"></i>Annuler
-                                </a>
+                <!-- Section 4: Informations complémentaires -->
+                <div class="main-card" id="homeworkFields" style="display: none;">
+                    <div class="main-card-header">
+                        <div class="main-card-title">
+                            <i class="fas fa-clipboard-check"></i>
+                            Informations sur le devoir
+                        </div>
+                        <div class="main-card-subtitle">Détails spécifiques au devoir</div>
+                    </div>
+                    <div class="main-card-body">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="homework_description" class="form-label">Description du devoir</label>
+                                <textarea class="form-input @error('homework_description') error @enderror" 
+                                          id="homework_description" name="homework_description" rows="4"
+                                          placeholder="Décrivez le devoir à donner...">{{ old('homework_description') }}</textarea>
+                                @error('homework_description')
+                                    <div class="form-error">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="form-group">
+                                <label for="homework_due_date" class="form-label">Date de remise</label>
+                                <input type="date" class="form-input @error('homework_due_date') error @enderror" 
+                                       id="homework_due_date" name="homework_due_date"
+                                       value="{{ old('homework_due_date') }}">
+                                @error('homework_due_date')
+                                    <div class="form-error">{{ $message }}</div>
+                                @enderror
                             </div>
                         </div>
-                    </form>
+                    </div>
+                </div>
+
+                <!-- Actions du formulaire -->
+                <div class="form-actions">
+                    <button type="submit" class="btn-acasi primary">
+                        <i class="fas fa-save"></i>
+                        Enregistrer la séance
+                    </button>
+                    <a href="{{ route('esbtp.emploi-temps.show', $emploiTemps->id) }}" class="btn-acasi secondary">
+                        <i class="fas fa-times"></i>
+                        Annuler
+                    </a>
                 </div>
             </div>
-        </div>
+        </form>
     </div>
 </div>
+
 @endsection
 
 @push('scripts')
@@ -268,6 +435,11 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('color').addEventListener('input', function(e) {
         document.getElementById('colorLabel').textContent = e.target.value;
     });
+
+    // Écouter les changements d'horaires et de jour pour mettre à jour la grille
+    document.getElementById('heure_debut').addEventListener('change', updateSelectedTimeInGrid);
+    document.getElementById('heure_fin').addEventListener('change', updateSelectedTimeInGrid);
+    document.getElementById('jour').addEventListener('change', updateSelectedTimeInGrid);
 });
 
 function selectSessionType(type) {
@@ -317,6 +489,52 @@ function selectSessionType(type) {
     }
 }
 
+// Fonction pour mettre à jour les créneaux sélectionnés dans la grille
+function updateSelectedTimeInGrid() {
+    const jourSelect = document.getElementById('jour');
+    const heureDebut = document.getElementById('heure_debut');
+    const heureFin = document.getElementById('heure_fin');
+    
+    // Nettoyer les anciennes sélections
+    document.querySelectorAll('.availability-cell.selected-time').forEach(cell => {
+        cell.classList.remove('selected-time');
+    });
+    
+    // Si tous les champs sont remplis, surligner les créneaux
+    if (jourSelect.value && heureDebut.value && heureFin.value) {
+        const selectedDay = parseInt(jourSelect.value);
+        const startHour = parseInt(heureDebut.value.split(':')[0]);
+        const endHour = parseInt(heureFin.value.split(':')[0]);
+        
+        // Mapping jour numérique vers index de colonne dans la grille
+        const dayMapping = {
+            1: 0, // Lundi -> colonne 0
+            2: 1, // Mardi -> colonne 1  
+            3: 2, // Mercredi -> colonne 2
+            4: 3, // Jeudi -> colonne 3
+            5: 4, // Vendredi -> colonne 4
+            6: 5  // Samedi -> colonne 5
+        };
+        
+        const dayColumnIndex = dayMapping[selectedDay];
+        if (dayColumnIndex !== undefined) {
+            // Parcourir chaque ligne d'heure pour surligner les cellules correspondantes
+            for (let hour = startHour; hour < endHour; hour++) {
+                if (hour >= 8 && hour < 18) {
+                    const rowIndex = hour - 8; // 8h = row 0
+                    const timeRows = document.querySelectorAll('.availability-time-row');
+                    if (timeRows[rowIndex]) {
+                        const cells = timeRows[rowIndex].querySelectorAll('.availability-cell');
+                        if (cells[dayColumnIndex]) {
+                            cells[dayColumnIndex].classList.add('selected-time');
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 // Form validation
 document.getElementById('sessionForm').addEventListener('submit', function(e) {
     const type = document.getElementById('sessionType').value;
@@ -333,6 +551,879 @@ document.getElementById('sessionForm').addEventListener('submit', function(e) {
         alert('L\'heure de fin doit être postérieure à l\'heure de début');
         return;
     }
+
+    // Validation de disponibilité de l'enseignant
+    if ((type === 'course' || type === 'homework') && !validateTeacherAvailability()) {
+        e.preventDefault();
+        return;
+    }
 });
+
+// Fonction pour valider la disponibilité de l'enseignant
+function validateTeacherAvailability() {
+    const teacherSelect = document.getElementById('teacher_id');
+    const jourSelect = document.getElementById('jour');
+    const heureDebut = document.getElementById('heure_debut');
+    const heureFin = document.getElementById('heure_fin');
+    
+    if (!teacherSelect.value || !jourSelect.value || !heureDebut.value || !heureFin.value) {
+        return true; // Pas assez d'infos pour valider
+    }
+    
+    const teacherId = teacherSelect.value;
+    const selectedDay = parseInt(jourSelect.value);
+    const startHour = parseInt(heureDebut.value.split(':')[0]);
+    const endHour = parseInt(heureFin.value.split(':')[0]);
+    
+    const availabilityData = @json($availabilityData ?? []);
+    
+    if (!availabilityData[teacherId]) {
+        alert('❌ Aucune disponibilité configurée pour cet enseignant.\n\nVeuillez configurer ses disponibilités avant de programmer cette séance.');
+        return false;
+    }
+    
+    // Mapping jour numérique vers clé jour
+    const dayMapping = {
+        1: 'monday',
+        2: 'tuesday', 
+        3: 'wednesday',
+        4: 'thursday',
+        5: 'friday',
+        6: 'saturday'
+    };
+    
+    const dayKey = dayMapping[selectedDay];
+    if (!dayKey || !availabilityData[teacherId][dayKey]) {
+        alert('❌ L\'enseignant n\'est pas disponible ce jour-là.\n\nVeuillez choisir un autre jour ou un autre enseignant.');
+        return false;
+    }
+    
+    // Vérifier chaque heure du créneau
+    const teacherDayAvailability = availabilityData[teacherId][dayKey];
+    for (let hour = startHour; hour < endHour; hour++) {
+        const hourIndex = hour - 8; // 8h = index 0
+        if (hourIndex >= 0 && hourIndex < teacherDayAvailability.length) {
+            const status = teacherDayAvailability[hourIndex];
+            const jourNoms = {1: 'lundi', 2: 'mardi', 3: 'mercredi', 4: 'jeudi', 5: 'vendredi', 6: 'samedi'};
+            
+            if (status === 'unavailable') {
+                alert(`❌ L'enseignant n'est pas disponible ${jourNoms[selectedDay]} à ${hour}:00.\n\nVeuillez ajuster les horaires ou choisir un autre enseignant.`);
+                return false;
+            } else if (status === 'occupied') {
+                alert(`❌ L'enseignant a déjà une séance programmée ${jourNoms[selectedDay]} à ${hour}:00 dans un autre emploi du temps.\n\nVeuillez choisir un autre créneau.`);
+                return false;
+            }
+        }
+    }
+    
+    return true; // Tout est OK
+}
+
+// Fonction pour mettre à jour les enseignants selon la matière sélectionnée
+function updateTeachersForSubject() {
+    const matiereSelect = document.getElementById('matiere_id');
+    const teacherSelect = document.getElementById('teacher_id');
+    const matiereInfo = document.getElementById('matiere-info');
+    const heuresRestantesText = document.getElementById('heures-restantes-text');
+    
+    // Reset teacher select
+    teacherSelect.innerHTML = '<option value="">Sélectionner un enseignant</option>';
+    
+    if (matiereSelect.value) {
+        const selectedOption = matiereSelect.options[matiereSelect.selectedIndex];
+        const enseignantsIds = JSON.parse(selectedOption.dataset.enseignants || '[]');
+        const heuresRestantes = selectedOption.dataset.heuresRestantes;
+        const volumeTotal = selectedOption.dataset.volumeTotal;
+        
+        // Afficher les informations sur la matière
+        heuresRestantesText.textContent = `${heuresRestantes}h restantes sur ${volumeTotal}h`;
+        matiereInfo.style.display = 'block';
+        
+        // Ajouter les enseignants assignés à cette matière
+        const allTeachers = @json($teachers->keyBy('id'));
+        enseignantsIds.forEach(teacherId => {
+            if (allTeachers[teacherId]) {
+                const teacher = allTeachers[teacherId];
+                const option = new Option(
+                    teacher.user ? teacher.user.name : teacher.matricule, 
+                    teacherId
+                );
+                teacherSelect.add(option);
+            }
+        });
+        
+        if (enseignantsIds.length === 0) {
+            teacherSelect.innerHTML = '<option value="">Aucun enseignant assigné à cette matière</option>';
+        }
+    } else {
+        matiereInfo.style.display = 'none';
+        teacherSelect.innerHTML = '<option value="">Sélectionner d\'abord une matière</option>';
+    }
+    
+    // Reset teacher availability
+    document.getElementById('teacher-availability').style.display = 'none';
+}
+
+// Fonction pour afficher la disponibilité de l'enseignant sélectionné
+function showTeacherAvailability() {
+    const teacherSelect = document.getElementById('teacher_id');
+    const teacherAvailability = document.getElementById('teacher-availability');
+    const selectedTeacherName = document.getElementById('selected-teacher-name');
+    const availabilityGrid = document.getElementById('availability-grid');
+    const teacherInfo = document.getElementById('teacher-info');
+    const teacherAssignmentText = document.getElementById('teacher-assignment-text');
+    
+    if (teacherSelect.value) {
+        const teacherId = teacherSelect.value;
+        const teacherName = teacherSelect.options[teacherSelect.selectedIndex].text;
+        const availabilityData = @json($availabilityData);
+        
+        selectedTeacherName.textContent = teacherName;
+        teacherAssignmentText.textContent = `Enseignant assigné: ${teacherName}`;
+        teacherInfo.style.display = 'block';
+        
+        console.log('🔍 Availability data for teacher', teacherId, ':', availabilityData[teacherId]);
+        
+        if (availabilityData[teacherId]) {
+            // Construire la grille de disponibilité
+            const rawAvailability = availabilityData[teacherId];
+            let gridHtml = '';
+            
+            // Header avec les jours
+            gridHtml += '<div class="availability-header-row">';
+            gridHtml += '<div class="time-header">Heure</div>';
+            const dayHeaders = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+            for (let i = 0; i < dayHeaders.length; i++) {
+                gridHtml += `<div class="day-header">${dayHeaders[i]}</div>`;
+            }
+            gridHtml += '</div>';
+            
+            // Créer les lignes pour chaque heure (8h-18h)
+            for (let hour = 8; hour < 18; hour++) {
+                gridHtml += '<div class="availability-time-row">';
+                gridHtml += `<div class="time-label">${hour}:00</div>`;
+                
+                // Clés des jours dans l'ordre: monday, tuesday, wednesday, thursday, friday, saturday
+                const dayKeys = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+                
+                for (let dayKey of dayKeys) {
+                    let cellClass = 'unavailable';
+                    let cellTitle = 'Non disponible';
+                    
+                    // Le format est: rawAvailability[dayKey][hourIndex] = 'available'/'preferred'/'unavailable'/'occupied'
+                    if (rawAvailability[dayKey]) {
+                        const hourIndex = hour - 8; // 8h = index 0
+                        if (hourIndex >= 0 && hourIndex < rawAvailability[dayKey].length) {
+                            const status = rawAvailability[dayKey][hourIndex];
+                            if (status === 'occupied') {
+                                cellClass = 'occupied';
+                                cellTitle = 'Occupé par une autre séance';
+                            } else if (status === 'preferred') {
+                                cellClass = 'preferred';
+                                cellTitle = 'Préféré';
+                            } else if (status === 'available') {
+                                cellClass = 'available';
+                                cellTitle = 'Disponible';
+                            }
+                        }
+                    }
+                    
+                    gridHtml += `<div class="availability-cell ${cellClass}" title="${cellTitle}"></div>`;
+                }
+                gridHtml += '</div>';
+            }
+            
+            availabilityGrid.innerHTML = gridHtml;
+            teacherAvailability.style.display = 'block';
+            
+            // Mettre à jour les créneaux sélectionnés après construction de la grille
+            setTimeout(updateSelectedTimeInGrid, 100);
+        } else {
+            availabilityGrid.innerHTML = '<div class="no-availability">Aucune disponibilité configurée pour cet enseignant</div>';
+            teacherAvailability.style.display = 'block';
+        }
+    } else {
+        teacherAvailability.style.display = 'none';
+        teacherInfo.style.display = 'none';
+    }
+}
 </script>
+
+<style>
+/* === SECTIONS AVEC ESPACEMENT === */
+.form-sections .main-card {
+    margin-bottom: var(--space-xl);
+}
+
+/* Styles pour les types de séance */
+.session-types-container {
+    display: flex;
+    gap: var(--space-lg);
+    flex-wrap: wrap;
+    justify-content: space-between;
+}
+
+.session-type-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-lg);
+    border: 2px solid rgba(0, 0, 0, 0.1);
+    border-radius: var(--radius-medium);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: var(--surface);
+    flex: 1;
+    min-width: 120px;
+    text-align: center;
+    box-shadow: var(--shadow-card);
+}
+
+.session-type-card:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+}
+
+.session-type-card:hover .session-type-icon,
+.session-type-card:hover .session-type-label {
+    color: white;
+}
+
+.session-type-card.selected {
+    background: var(--primary);
+    border-color: var(--primary);
+}
+
+.session-type-card.selected .session-type-icon,
+.session-type-card.selected .session-type-label {
+    color: white;
+}
+
+.session-type-icon {
+    font-size: 2rem;
+    color: var(--primary);
+    margin-bottom: var(--space-sm);
+    transition: color 0.3s ease;
+}
+
+.session-type-label {
+    font-weight: 600;
+    color: var(--text-primary);
+    transition: color 0.3s ease;
+}
+
+/* === CONTEXTE DE CLASSE - DESIGN MODERNE === */
+.context-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 50%, #f1f5f9 100%);
+    border: 1px solid rgba(30, 58, 138, 0.08);
+    border-radius: var(--radius-medium);
+    padding: var(--space-xl);
+    margin-bottom: var(--space-xl);
+    box-shadow: 0 2px 8px rgba(30, 58, 138, 0.04);
+    position: relative;
+    overflow: hidden;
+}
+
+.context-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 50%, var(--accent-blue) 100%);
+}
+
+.context-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: var(--space-lg);
+    padding-bottom: var(--space-md);
+    border-bottom: 1px solid rgba(30, 58, 138, 0.1);
+}
+
+.context-header i {
+    font-size: 1.5rem;
+    color: var(--primary);
+    margin-right: var(--space-md);
+    padding: var(--space-sm);
+    background: rgba(30, 58, 138, 0.1);
+    border-radius: var(--radius-circle);
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.context-header span {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.context-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: var(--space-lg);
+}
+
+.stat-item {
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(30, 58, 138, 0.06);
+    border-radius: var(--radius-small);
+    padding: var(--space-lg);
+    text-align: center;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.stat-item:hover {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: rgba(30, 58, 138, 0.12);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(30, 58, 138, 0.08);
+}
+
+.stat-label {
+    display: block;
+    font-size: var(--text-small);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-sm);
+    font-weight: 600;
+}
+
+.stat-value {
+    display: block;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+
+/* Couleurs spécifiques par stat */
+.stat-item:nth-child(1) {
+    border-left: 3px solid var(--primary);
+}
+
+.stat-item:nth-child(2) {
+    border-left: 3px solid var(--secondary);
+}
+
+.stat-item:nth-child(3) {
+    border-left: 3px solid var(--accent-blue);
+}
+
+.stat-item:nth-child(4) {
+    border-left: 3px solid var(--success);
+}
+
+/* Styles pour les disponibilités */
+.availability-section {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: #f8f9fa;
+    border-radius: 12px;
+    border: 1px solid #e9ecef;
+}
+
+.availability-header {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 1rem;
+}
+
+.availability-header i {
+    margin-right: 0.5rem;
+    color: var(--success-color);
+}
+
+.teacher-availability-grid {
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    border: 1px solid #dee2e6;
+}
+
+.availability-header-row,
+.availability-time-row {
+    display: grid;
+    grid-template-columns: 60px repeat(6, 1fr);
+    gap: 1px;
+    margin-bottom: 1px;
+}
+
+.time-header,
+.day-header,
+.time-label,
+.availability-cell {
+    padding: 8px;
+    text-align: center;
+    font-size: 0.8rem;
+    border: 1px solid #e9ecef;
+}
+
+.time-header,
+.day-header {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.time-label {
+    background: #f8f9fa;
+    font-weight: 500;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+.availability-cell {
+    height: 32px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.availability-cell.available {
+    background: #10b981;
+    border-color: #059669;
+    color: white;
+}
+
+.availability-cell.available:hover {
+    background: #059669;
+    transform: scale(1.05);
+}
+
+.availability-cell.preferred {
+    background: #3b82f6;
+    border-color: #2563eb;
+    color: white;
+    position: relative;
+}
+
+.availability-cell.preferred::after {
+    content: '⭐';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 10px;
+}
+
+.availability-cell.preferred:hover {
+    background: #2563eb;
+    transform: scale(1.05);
+}
+
+.availability-cell.unavailable {
+    background: #ef4444;
+    border-color: #dc2626;
+    color: white;
+}
+
+.availability-cell.unavailable:hover {
+    background: #dc2626;
+}
+
+.availability-cell.occupied {
+    background: #8b5cf6;
+    border-color: #7c3aed;
+    color: white;
+    position: relative;
+}
+
+.availability-cell.occupied::after {
+    content: '🚫';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 10px;
+    color: white;
+}
+
+.availability-cell.occupied:hover {
+    background: #7c3aed;
+    transform: scale(1.05);
+}
+
+.availability-cell.selected-time {
+    position: relative;
+    animation: pulse 2s infinite;
+}
+
+.availability-cell.selected-time::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(245, 158, 11, 0.6);
+    border: 2px solid #f59e0b;
+    border-radius: inherit;
+    z-index: 1;
+}
+
+.availability-cell.selected-time::after {
+    content: '📅';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 10px;
+    z-index: 2;
+    color: #d97706;
+    font-weight: bold;
+}
+
+.availability-cell.selected-time:hover::before {
+    background: rgba(245, 158, 11, 0.8);
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.8); }
+    70% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+}
+
+.no-availability {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* Styles pour la légende des disponibilités */
+.availability-legend {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.legend-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0.75rem;
+}
+
+.legend-items {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.legend-color {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    border: 1px solid rgba(0,0,0,0.1);
+    position: relative;
+}
+
+.legend-color.preferred {
+    background: #3b82f6;
+    border-color: #2563eb;
+}
+
+.legend-color.preferred::after {
+    content: '⭐';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 8px;
+    color: white;
+}
+
+.legend-color.available {
+    background: #10b981;
+    border-color: #059669;
+}
+
+.legend-color.unavailable {
+    background: #ef4444;
+    border-color: #dc2626;
+}
+
+.legend-color.selected-time {
+    background: #f59e0b;
+    border-color: #d97706;
+    position: relative;
+}
+
+.legend-color.occupied {
+    background: #8b5cf6;
+    border-color: #7c3aed;
+}
+
+.legend-color.occupied::after {
+    content: '🚫';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 8px;
+    color: white;
+}
+
+.legend-color.selected-time::after {
+    content: '📅';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 8px;
+}
+
+.legend-item span {
+    font-size: 0.85rem;
+    color: #495057;
+    font-weight: 500;
+}
+
+/* Sélecteur de jours pour récurrence */
+.days-selector {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.day-option {
+    position: relative;
+}
+
+.day-checkbox {
+    display: none;
+}
+
+.day-label {
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    background: #e9ecef;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.day-checkbox:checked + .day-label {
+    background: var(--primary-color);
+    color: white;
+}
+
+/* Color picker wrapper */
+.color-picker-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.color-picker {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.color-label {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+}
+
+/* === STYLES FORMULAIRES MODERNES === */
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--space-lg);
+}
+
+.form-group {
+    margin-bottom: var(--space-lg);
+}
+
+.form-label {
+    display: block;
+    margin-bottom: var(--space-sm);
+    font-weight: 600;
+    font-size: var(--text-small);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+}
+
+.form-input, .form-select, .form-textarea {
+    width: 100%;
+    padding: var(--space-md);
+    border: 2px solid rgba(0, 0, 0, 0.1);
+    border-radius: var(--radius-small);
+    font-size: var(--text-normal);
+    font-family: inherit;
+    transition: all 0.2s ease;
+    background-color: var(--surface);
+    color: var(--text-primary);
+}
+
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+}
+
+.form-input.error, .form-select.error, .form-textarea.error {
+    border-color: var(--danger);
+}
+
+.form-error {
+    margin-top: var(--space-xs);
+    font-size: var(--text-small);
+    color: var(--danger);
+    font-weight: 500;
+}
+
+.form-info {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-top: var(--space-sm);
+    padding: var(--space-sm);
+    background: rgba(6, 182, 212, 0.1);
+    border-radius: var(--radius-small);
+    font-size: var(--text-small);
+    color: var(--accent-blue);
+}
+
+/* === BOUTONS D'ACTIONS === */
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-md);
+    padding-top: var(--space-lg);
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    margin-top: var(--space-xl);
+}
+
+/* Utiliser les boutons du dashboard-moderne.css */
+.btn-acasi {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--space-sm) var(--space-lg);
+    border: none;
+    border-radius: var(--radius-small);
+    font-size: var(--text-normal);
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    gap: var(--space-xs);
+}
+
+.btn-acasi.primary {
+    background-color: var(--primary);
+    color: white;
+}
+
+.btn-acasi.primary:hover {
+    background-color: var(--secondary);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-elevated);
+}
+
+.btn-acasi.secondary {
+    background-color: transparent;
+    color: var(--primary);
+    border: 1px solid var(--primary);
+}
+
+.btn-acasi.secondary:hover {
+    background-color: var(--primary);
+    color: white;
+}
+
+.recurrence-section {
+    margin-top: var(--space-lg);
+    padding: var(--space-lg);
+    background: rgba(6, 182, 212, 0.05);
+    border-radius: var(--radius-small);
+    border: 1px solid rgba(6, 182, 212, 0.2);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .session-types-container {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .session-type-card {
+        flex-direction: row;
+        justify-content: flex-start;
+        text-align: left;
+        padding: 1rem;
+    }
+    
+    .session-type-icon {
+        margin-right: 1rem;
+        margin-bottom: 0;
+        font-size: 1.5rem;
+    }
+    
+    .context-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .availability-header-row,
+    .availability-time-row {
+        grid-template-columns: 50px repeat(7, 1fr);
+    }
+    
+    .time-label,
+    .availability-cell {
+        padding: 4px;
+        font-size: 0.7rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .session-types-container {
+        gap: 0.5rem;
+    }
+    
+    .session-type-card {
+        padding: 0.75rem;
+        min-width: auto;
+    }
+    
+    .session-type-icon {
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    
+    .session-type-label {
+        font-size: 0.875rem;
+    }
+}
+</style>
 @endpush

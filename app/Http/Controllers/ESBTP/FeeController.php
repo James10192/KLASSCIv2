@@ -33,7 +33,7 @@ class FeeController extends Controller
     {
         $validated = $request->validate([
             'inscription_id' => 'required|exists:esbtp_inscriptions,id',
-            'fee_category_id' => 'required|exists:fee_categories,id',
+            'fee_category_id' => 'required|exists:esbtp_frais_categories,id',
             'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
             'amount' => 'required|numeric|min:0',
             'due_date' => 'required|date',
@@ -72,7 +72,7 @@ class FeeController extends Controller
     {
         $validated = $request->validate([
             'inscription_id' => 'required|exists:esbtp_inscriptions,id',
-            'fee_category_id' => 'required|exists:fee_categories,id',
+            'fee_category_id' => 'required|exists:esbtp_frais_categories,id',
             'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
             'amount' => 'required|numeric|min:0',
             'due_date' => 'required|date',

@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\ESBTP;
 
 use App\Http\Controllers\Controller;
-use App\Models\ESBTPAttendanceCode;
 use App\Models\ESBTPTeacherAttendance;
 use App\Models\ESBTPSeanceCours;
 use App\Models\ESBTPCourse;
@@ -27,13 +26,34 @@ class ESBTPTeacherAttendanceController extends Controller
         $teacherId = $teacherModel ? $teacherModel->id : null;
         $today = \Carbon\Carbon::today()->format('Y-m-d');
 
+        // Récupérer les séances du jour (y compris les séances passées/expirées)
+        $dayOfWeek = \Carbon\Carbon::today()->dayOfWeek; // 0=Dimanche, 1=Lundi, etc.
+        $jourNumero = $dayOfWeek == 0 ? 7 : $dayOfWeek; // Convertir vers notre format
+
         $todaySeances = ESBTPSeanceCours::where('teacher_id', $teacherId)
-            ->whereDate('date_seance', $today)
-            ->with(['matiere', 'classe', 'teacherAttendance'])
+            ->where(function($query) use ($today, $jourNumero) {
+                // Séances avec date_seance aujourd'hui
+                $query->whereDate('date_seance', $today)
+                // OU séances récurrentes pour le jour d'aujourd'hui
+                ->orWhere('jour', $jourNumero);
+            })
+            ->whereHas('emploiTemps', function($query) {
+                $query->where('is_active', true);
+            })
+            ->with(['matiere', 'classe', 'teacherAttendance', 'emploiTemps'])
             ->orderBy('heure_debut')
             ->get();
 
         $settings = config('esbtp.attendance', []);
+
+        // Debug log
+        \Log::info('EmargementController@index', [
+            'user_id' => $user->id,
+            'teacher_id' => $teacherId,
+            'today' => $today,
+            'seances_count' => $todaySeances->count(),
+            'seances_ids' => $todaySeances->pluck('id')->toArray()
+        ]);
 
         return view('esbtp.attendance.mark', [
             'todayCourses' => $todaySeances, // pour compatibilité avec la vue

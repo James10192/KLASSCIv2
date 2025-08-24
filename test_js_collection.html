@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Collection JavaScript</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h1>Test de Collection des Données JavaScript</h1>
+    
+    <!-- Simuler le HTML généré par le contrôleur -->
+    <div class="config-matiere-card">
+        <h3>Résistance des Matériaux</h3>
+        <input type="number" name="volumes[8]" value="10" class="form-control volume-input">
+        <select name="teachers[8][]" class="form-select teacher-select" multiple>
+            <option value="">Sélectionner un professeur</option>
+            <option value="1" selected>Professeur A</option>
+            <option value="2" selected>Professeur B</option>
+        </select>
+    </div>
+    
+    <div class="config-matiere-card">
+        <h3>Mécanique des Sols</h3>
+        <input type="number" name="volumes[9]" value="15" class="form-control volume-input">
+        <select name="teachers[9][]" class="form-select teacher-select" multiple>
+            <option value="">Sélectionner un professeur</option>
+            <option value="1" selected>Professeur A</option>
+            <option value="2">Professeur B</option>
+        </select>
+    </div>
+    
+    <button onclick="testCollection()" class="btn btn-primary">Test Collection</button>
+    
+    <div id="results" style="margin-top: 20px; padding: 20px; background: #f5f5f5; border-radius: 5px;"></div>
+    
+    <script>
+    function testCollection() {
+        const formData = {
+            volumes: {},
+            teachers: {}
+        };
+        
+        console.log("=== TEST COLLECTION ===");
+        
+        // Collecter tous les volumes
+        $('.volume-input').each(function() {
+            const matiereId = $(this).attr('name').match(/volumes\[(\d+)\]/)[1];
+            const volume = parseInt($(this).val()) || 0;
+            formData.volumes[matiereId] = volume;
+            console.log(`Volume collecté - Matière ${matiereId}: ${volume}`);
+        });
+        
+        // Collecter toutes les assignations de professeurs
+        $('.teacher-select').each(function() {
+            const matiereId = $(this).attr('name').match(/teachers\[(\d+)\]/)[1];
+            const selectedTeachers = $(this).val() || [];
+            formData.teachers[matiereId] = selectedTeachers;
+            console.log(`Teachers collectés - Matière ${matiereId}:`, selectedTeachers);
+        });
+        
+        console.log("FormData final:", formData);
+        
+        // Afficher les résultats
+        $('#results').html(`
+            <h3>Résultats de la Collection:</h3>
+            <p><strong>Volumes collectés:</strong></p>
+            <pre>${JSON.stringify(formData.volumes, null, 2)}</pre>
+            <p><strong>Professeurs collectés:</strong></p>
+            <pre>${JSON.stringify(formData.teachers, null, 2)}</pre>
+        `);
+    }
+    </script>
+</body>
+</html>

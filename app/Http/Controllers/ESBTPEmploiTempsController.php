@@ -13,6 +13,8 @@ use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPAnneeUniversitaire;
+use App\Models\ESBTPTeacher;
+use App\Models\ESBTPPlanificationAcademique;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Services\ESBTPPDFService;
@@ -128,35 +130,53 @@ class ESBTPEmploiTempsController extends Controller
             'lien_configuration' => null
         ];
 
-        // Récupérer les planifications académiques pour cette classe
-        $planifications = \App\Models\ESBTPPlanificationAcademique::where('annee_universitaire_id', $annee->id)
-            ->where('filiere_id', $classe->filiere_id)
-            ->where('niveau_etude_id', $classe->niveau_etude_id)
-            ->when($semestre, function($query) use ($semestre) {
-                // Convertir le semestre string en integer si nécessaire
-                if (is_string($semestre)) {
-                    if (strpos($semestre, 'Semestre 1') !== false) {
-                        $semestreInt = 1;
-                    } elseif (strpos($semestre, 'Semestre 2') !== false) {
-                        $semestreInt = 2;
-                    } else {
-                        $semestreInt = null; // Année complète - ne pas filtrer
-                    }
-                } else {
-                    $semestreInt = $semestre;
-                }
-                
-                if ($semestreInt) {
-                    $query->where('semestre', $semestreInt);
-                }
+        // NOUVELLE LOGIQUE : Récupérer uniquement les matières liées à cette combinaison filière/niveau
+        $matieresLiees = ESBTPMatiere::where('is_active', true)
+            ->whereHas('filieres', function($query) use ($classe) {
+                $query->where('esbtp_filieres.id', $classe->filiere_id);
             })
-            ->active()
-            ->with(['matiere', 'enseignantPrincipal'])
+            ->whereHas('niveaux', function($query) use ($classe) {
+                $query->where('esbtp_niveau_etudes.id', $classe->niveau_etude_id);
+            })
             ->get();
+        
+        // Récupérer les planifications pour ces matières liées uniquement
+        $planifications = collect();
+        foreach ($matieresLiees as $matiere) {
+            $planification = \App\Models\ESBTPPlanificationAcademique::where('annee_universitaire_id', $annee->id)
+                ->where('filiere_id', $classe->filiere_id)
+                ->where('niveau_etude_id', $classe->niveau_etude_id)
+                ->where('matiere_id', $matiere->id)
+                ->when($semestre, function($query) use ($semestre) {
+                    // Convertir le semestre string en integer si nécessaire
+                    if (is_string($semestre)) {
+                        if (strpos($semestre, 'Semestre 1') !== false) {
+                            $semestreInt = 1;
+                        } elseif (strpos($semestre, 'Semestre 2') !== false) {
+                            $semestreInt = 2;
+                        } else {
+                            $semestreInt = null; // Année complète - ne pas filtrer
+                        }
+                    } else {
+                        $semestreInt = $semestre;
+                    }
+                    
+                    if ($semestreInt) {
+                        $query->where('semestre', $semestreInt);
+                    }
+                })
+                ->active()
+                ->with(['matiere', 'enseignantPrincipal', 'teachers.user'])
+                ->first();
+            
+            if ($planification) {
+                $planifications->push($planification);
+            }
+        }
 
         if ($planifications->isEmpty()) {
-            // Aucune planification configurée
-            $data['message_configuration'] = "Aucune planification académique n'a été configurée pour cette classe. Veuillez d'abord configurer la planification.";
+            // Aucune planification configurée pour les matières liées
+            $data['message_configuration'] = "Aucune planification académique n'a été configurée pour les matières de cette classe (" . $matieresLiees->count() . " matières disponibles). Veuillez d'abord configurer la planification.";
             // Convertir le semestre string en integer pour l'URL
             $semestreUrl = 1; // Par défaut
             if ($semestre) {
@@ -173,9 +193,8 @@ class ESBTPEmploiTempsController extends Controller
             
             $data['lien_configuration'] = route('esbtp.planning-general.index', [
                 'annee_id' => $annee->id,
-                'filiere_id' => $classe->filiere_id,
-                'niveau_id' => $classe->niveau_etude_id,
-                'semestre' => $semestreUrl
+                'filiere_filter' => $classe->filiere_id,
+                'niveau_filter' => $classe->niveau_etude_id
             ]);
             return $data;
         }
@@ -214,10 +233,23 @@ class ESBTPEmploiTempsController extends Controller
 
             $heuresRestantes = $planification->volume_horaire_total - $heuresUtilisees;
             
+            // Déterminer l'enseignant à afficher (priorité : assignations > principal)
+            $enseignantAffiche = null;
+            if ($planification->teachers && $planification->teachers->count() > 0) {
+                // Utiliser le premier enseignant assigné via la table de liaison
+                $firstTeacher = $planification->teachers->first();
+                $enseignantAffiche = $firstTeacher->user ?? null;
+            } elseif ($planification->enseignantPrincipal) {
+                // Fallback sur l'enseignant principal
+                $enseignantAffiche = $planification->enseignantPrincipal;
+            }
+            
             $matieresPlanifiees->push([
                 'planification_id' => $planification->id,
                 'matiere' => $planification->matiere,
                 'enseignant_principal' => $planification->enseignantPrincipal,
+                'enseignants_assignes' => $planification->teachers,
+                'enseignant_affiche' => $enseignantAffiche,
                 'volume_horaire_total' => $planification->volume_horaire_total,
                 'heures_utilisees' => $heuresUtilisees,
                 'heures_restantes' => max(0, $heuresRestantes),
@@ -670,7 +702,7 @@ class ESBTPEmploiTempsController extends Controller
 
         // Charger les séances avec leurs relations
         $seances = $emploiTemps->seances()
-            ->with(['matiere', 'enseignant'])
+            ->with(['matiere', 'teacher.user'])
             ->where('is_active', true)
             ->orderBy('jour')
             ->orderBy('heure_debut')
@@ -734,15 +766,66 @@ class ESBTPEmploiTempsController extends Controller
     {
         $this->authorize('create', ESBTPSeanceCours::class);
 
-        $matieres = ESBTPMatiere::whereHas('filieres', function($query) use ($emploi_temp) {
-            $query->whereHas('classes', function($q) use ($emploi_temp) {
-                $q->where('id', $emploi_temp->classe_id);
-            });
-        })->get();
+        // NOUVELLE LOGIQUE : Utiliser la même approche que la planification générale
+        // 1. Récupérer les matières réellement liées à cette combinaison filière/niveau
+        $matieresLiees = ESBTPMatiere::where('is_active', true)
+            ->whereHas('filieres', function($query) use ($emploi_temp) {
+                $query->where('esbtp_filieres.id', $emploi_temp->classe->filiere_id);
+            })
+            ->whereHas('niveaux', function($query) use ($emploi_temp) {
+                $query->where('esbtp_niveau_etudes.id', $emploi_temp->classe->niveau_etude_id);
+            })
+            ->with(['filieres', 'niveaux'])
+            ->get();
+        
+        // 2. Pour chaque matière liée, récupérer sa planification académique
+        $matieres = $matieresLiees->map(function ($matiere) use ($emploi_temp) {
+            $planification = ESBTPPlanificationAcademique::where('annee_universitaire_id', $emploi_temp->annee_universitaire_id)
+                ->where('filiere_id', $emploi_temp->classe->filiere_id)
+                ->where('niveau_etude_id', $emploi_temp->classe->niveau_etude_id)
+                ->where('matiere_id', $matiere->id)
+                ->with('enseignantPrincipal')
+                ->first();
+            
+            if ($planification) {
+                $heuresEffectuees = $planification->heures_effectuees ?? 0;
+                $volumeTotal = $planification->volume_horaire_total;
+                $heuresRestantes = max(0, $volumeTotal - $heuresEffectuees);
+                
+                $matiere->volume_info = [
+                    'volume_total' => $volumeTotal,
+                    'heures_effectuees' => $heuresEffectuees,
+                    'heures_restantes' => $heuresRestantes,
+                    'pourcentage_utilise' => $volumeTotal > 0 ? round(($heuresEffectuees / $volumeTotal) * 100, 1) : 0,
+                    'est_complete' => $heuresRestantes <= 0,
+                    'enseignant_principal' => $planification->enseignantPrincipal
+                ];
+            } else {
+                // Matière liée mais pas encore configurée
+                $matiere->volume_info = [
+                    'volume_total' => 0,
+                    'heures_effectuees' => 0,
+                    'heures_restantes' => 0,
+                    'pourcentage_utilise' => 0,
+                    'est_complete' => false,
+                    'non_configuree' => true,
+                    'enseignant_principal' => null
+                ];
+            }
+            
+            return $matiere;
+        });
 
-        $enseignants = User::role('enseignant')->get();
+        // Récupérer les enseignants avec leurs disponibilités
+        $enseignants = ESBTPTeacher::with(['user', 'availabilities'])->get();
+        
+        // Préparer les données de disponibilités pour chaque enseignant
+        $enseignantsAvecDisponibilites = $enseignants->map(function ($enseignant) {
+            $enseignant->availability_data = $this->prepareAvailabilityData($enseignant);
+            return $enseignant;
+        });
 
-        return view('esbtp.emploi-temps.add-session', compact('emploi_temp', 'matieres', 'enseignants'));
+        return view('esbtp.emploi-temps.add-session', compact('emploi_temp', 'matieres', 'enseignantsAvecDisponibilites'));
     }
 
     /**
@@ -770,6 +853,33 @@ class ESBTPEmploiTempsController extends Controller
 
         $validated['emploi_temps_id'] = $emploi_temp->id;
 
+        // Calculer la durée de la séance en heures
+        $heureDebut = \Carbon\Carbon::parse($validated['heure_debut']);
+        $heureFin = \Carbon\Carbon::parse($validated['heure_fin']);
+        $dureeSeance = $heureFin->diffInMinutes($heureDebut) / 60; // Convertir en heures
+        
+        // Vérifier s'il existe une planification académique pour cette matière
+        $planification = ESBTPPlanificationAcademique::where('annee_universitaire_id', $validated['annee_universitaire_id'])
+            ->where('filiere_id', $emploi_temp->classe->filiere_id)
+            ->where('niveau_etude_id', $emploi_temp->classe->niveau_etude_id)
+            ->where('matiere_id', $validated['matiere_id'])
+            ->first();
+        
+        // Vérifier si le volume horaire n'est pas dépassé
+        if ($planification) {
+            $heuresEffectuees = $planification->heures_effectuees ?? 0;
+            $volumeTotal = $planification->volume_horaire_total;
+            
+            if (($heuresEffectuees + $dureeSeance) > $volumeTotal) {
+                return redirect()->back()
+                    ->withInput()
+                    ->withErrors([
+                        'heure_fin' => "Cette séance dépasserait le volume horaire total de la matière. Heures disponibles: " . 
+                                      ($volumeTotal - $heuresEffectuees) . "h sur " . $volumeTotal . "h total."
+                    ]);
+            }
+        }
+
         $seance = new \App\Models\ESBTPSeanceCours();
         $seance->emploi_temps_id = $validated['emploi_temps_id'];
         $seance->classe_id = $validated['classe_id'];
@@ -783,9 +893,26 @@ class ESBTPEmploiTempsController extends Controller
         $seance->annee_universitaire_id = $validated['annee_universitaire_id'];
         $seance->is_active = true;
         $seance->save();
+        
+        // Mettre à jour les heures effectuées dans la planification académique
+        if ($planification) {
+            $planification->heures_effectuees = ($planification->heures_effectuees ?? 0) + $dureeSeance;
+            $planification->derniere_mise_a_jour_heures = now();
+            $planification->save();
+            
+            \Log::info('Volume horaire mis à jour', [
+                'planification_id' => $planification->id,
+                'matiere_id' => $validated['matiere_id'],
+                'duree_seance' => $dureeSeance,
+                'heures_effectuees_avant' => $planification->heures_effectuees - $dureeSeance,
+                'heures_effectuees_apres' => $planification->heures_effectuees,
+                'volume_total' => $planification->volume_horaire_total
+            ]);
+        }
 
         return redirect()->route('esbtp.emploi-temps.show', $validated['emploi_temps_id'])
-            ->with('success', 'Séance ajoutée avec succès.');
+            ->with('success', 'Séance ajoutée avec succès. ' . 
+                   ($planification ? "Volume horaire mis à jour: {$planification->heures_effectuees}h/{$planification->volume_horaire_total}h" : ''));
     }
 
     /**
@@ -984,5 +1111,49 @@ class ESBTPEmploiTempsController extends Controller
             return redirect()->back()
                 ->with('error', 'Une erreur est survenue lors de la génération du PDF.');
         }
+    }
+
+    /**
+     * Prépare les données de disponibilité d'un enseignant pour l'affichage
+     * Format standardisé: $availability[$day][$hourIndex]
+     */
+    private function prepareAvailabilityData($teacher)
+    {
+        // Définition des créneaux horaires (8h-18h = 11 créneaux d'1h)
+        $hours = range(8, 18);
+        $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']; // Pas de dimanche
+        
+        // Initialiser toutes les cases comme indisponibles
+        $availability = [];
+        foreach ($days as $day) {
+            $availability[$day] = array_fill(0, count($hours), 'unavailable');
+        }
+        
+        // Traiter les disponibilités enregistrées
+        foreach ($teacher->availabilities as $avail) {
+            // Mapping jour de semaine (0=Lundi, 1=Mardi, etc.)
+            $dayName = $days[$avail->day_of_week] ?? null;
+            if (!$dayName) continue;
+            
+            // Parser les heures depuis les timestamps
+            if ($avail->start_time instanceof \Carbon\Carbon) {
+                $startHour = $avail->start_time->hour;
+                $endHour = $avail->end_time->hour;
+            } else {
+                // Format TIME ou string
+                $startHour = (int) substr($avail->start_time, 11, 2); // Position 11-12 pour heure
+                $endHour = (int) substr($avail->end_time, 11, 2);
+            }
+            
+            // Décomposer les créneaux multi-heures en créneaux d'1h
+            for ($hour = $startHour; $hour < $endHour; $hour++) {
+                $hourIndex = $hour - 8; // 8h = index 0
+                if ($hourIndex >= 0 && $hourIndex < count($hours)) {
+                    $availability[$dayName][$hourIndex] = $avail->availability_type;
+                }
+            }
+        }
+        
+        return $availability;
     }
 }

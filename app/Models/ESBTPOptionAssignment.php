@@ -28,7 +28,7 @@ class ESBTPOptionAssignment extends Model
      */
     public function option()
     {
-        return $this->belongsTo(ESBTPFraisVariant::class, 'option_id');
+        return $this->belongsTo(ESBTPFraisOption::class, 'option_id');
     }
 
     /**

@@ -3,38 +3,46 @@
 @section('title', 'Modifier la présence')
 
 @section('content')
-<div class="content-wrapper">
-    <div class="page-header">
-        <h3 class="page-title">
-            <span class="page-title-icon bg-gradient-primary text-white me-2">
-                <i class="mdi mdi-calendar-check"></i>
-            </span> Modifier la présence
-        </h3>
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Tableau de bord</a></li>
-                <li class="breadcrumb-item"><a href="{{ route('esbtp.attendances.index') }}">Présences</a></li>
-                <li class="breadcrumb-item active" aria-current="page">Modifier</li>
-            </ol>
-        </nav>
-    </div>
+<div class="dashboard-acasi">
+    <div class="main-content">
+        <!-- Header Section -->
+        <div class="dashboard-header">
+            <div class="header-left">
+                <h1><i class="fas fa-calendar-check me-2"></i>Modifier la présence</h1>
+                <p class="header-subtitle">Modification de la présence de {{ $attendance->etudiant->nom_complet }}</p>
+            </div>
+            <div class="header-actions">
+                <a href="{{ route('esbtp.attendances.show', $attendance) }}" class="btn-acasi secondary me-2">
+                    <i class="fas fa-eye"></i>Voir les détails
+                </a>
+                <a href="{{ route('esbtp.attendances.index') }}" class="btn-acasi primary">
+                    <i class="fas fa-arrow-left"></i>Retour à la liste
+                </a>
+            </div>
+        </div>
 
-    <div class="row">
-        <div class="col-md-8 grid-margin stretch-card">
-            <div class="card">
-                <div class="card-body">
-                    <h4 class="card-title">Modifier la présence de {{ $attendance->etudiant->nom_complet }}</h4>
-
-                    <form action="{{ route('esbtp.attendances.update', $attendance) }}" method="POST">
-                        @csrf
-                        @method('PUT')
-
-                        <div class="form-group row mb-3">
-                            <label class="col-sm-3 col-form-label">Étudiant</label>
-                            <div class="col-sm-9">
-                                <input type="text" class="form-control" value="{{ $attendance->etudiant->nom_complet }}" disabled>
-                            </div>
+        <div class="row">
+            <div class="col-md-8">
+                <div class="main-card">
+                    <div class="main-card-header">
+                        <div class="main-card-title">
+                            <i class="fas fa-edit"></i>
+                            Modifier la présence
                         </div>
+                        <div class="main-card-subtitle">{{ $attendance->etudiant->nom_complet }}</div>
+                    </div>
+                    <div class="main-card-body">
+                        <form action="{{ route('esbtp.attendances.update', $attendance) }}" method="POST">
+                            @csrf
+                            @method('PUT')
+
+                            <div class="form-group-moderne">
+                                <label class="form-label-moderne">
+                                    <i class="fas fa-user"></i>
+                                    Étudiant
+                                </label>
+                                <input type="text" class="form-input-moderne" value="{{ $attendance->etudiant->nom_complet }}" disabled>
+                            </div>
 
                         <div class="form-group row mb-3">
                             <label class="col-sm-3 col-form-label">Classe</label>

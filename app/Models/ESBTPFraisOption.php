@@ -17,12 +17,14 @@ class ESBTPFraisOption extends Model
     protected $table = 'esbtp_frais_options';
 
     protected $fillable = [
-        'configuration_id',
+        'configuration_id',        // NULL pour options globales, ID pour options par classe
+        'frais_category_id',       // Ajouté pour options globales
         'name',
         'description',
         'additional_amount',
         'is_default',
         'is_active',
+        'option_type',             // 'class_based' ou 'global'
         'available_from',
         'available_to',
         'eligibility_conditions',
@@ -49,6 +51,11 @@ class ESBTPFraisOption extends Model
         return $this->belongsTo(ESBTPFraisConfiguration::class, 'configuration_id');
     }
 
+    public function fraisCategory()
+    {
+        return $this->belongsTo(ESBTPFraisCategory::class, 'frais_category_id');
+    }
+
 
     public function createdBy()
     {
@@ -70,7 +77,7 @@ class ESBTPFraisOption extends Model
      */
     public function scopeActive($query)
     {
-        return $query->where('is_active', true);
+        return $query->where('esbtp_frais_options.is_active', true);
     }
 
     public function scopeDefault($query)
@@ -102,8 +109,75 @@ class ESBTPFraisOption extends Model
     }
 
     /**
+     * Scope pour les options globales (non liées à une classe)
+     */
+    public function scopeGlobal($query)
+    {
+        return $query->whereNull('configuration_id')->where('option_type', 'global');
+    }
+
+    /**
+     * Scope pour les options par classe
+     */
+    public function scopeClassBased($query)
+    {
+        return $query->whereNotNull('configuration_id')->where('option_type', 'class_based');
+    }
+
+    /**
+     * Scope pour une catégorie de frais spécifique
+     */
+    public function scopeForFraisCategory($query, $categoryId)
+    {
+        return $query->where('frais_category_id', $categoryId);
+    }
+
+    /**
      * Méthodes métier
      */
+
+    /**
+     * Vérifie si l'option est globale (transport, cantine, etc.)
+     */
+    public function isGlobal()
+    {
+        return $this->configuration_id === null && $this->option_type === 'global';
+    }
+
+    /**
+     * Vérifie si l'option est liée à une classe
+     */
+    public function isClassBased()
+    {
+        return $this->configuration_id !== null && $this->option_type === 'class_based';
+    }
+
+    /**
+     * Obtient le contexte de l'option (classe ou global)
+     */
+    public function getContext()
+    {
+        if ($this->isGlobal()) {
+            return [
+                'type' => 'global',
+                'category' => $this->fraisCategory->name ?? 'N/A',
+                'scope' => 'Tous les étudiants'
+            ];
+        }
+
+        if ($this->isClassBased() && $this->configuration) {
+            return [
+                'type' => 'class_based',
+                'class' => $this->configuration->filiere->name . ' - ' . $this->configuration->niveau->name,
+                'scope' => 'Spécifique à la classe'
+            ];
+        }
+
+        return [
+            'type' => 'unknown',
+            'scope' => 'Non défini'
+        ];
+    }
 
     /**
      * Calcule le prix final en appliquant le modificateur

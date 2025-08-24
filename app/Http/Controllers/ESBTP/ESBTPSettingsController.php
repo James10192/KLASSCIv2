@@ -56,10 +56,40 @@ class ESBTPSettingsController extends Controller
             $updatedSettings = [];
             $errors = [];
 
-            // Traiter les champs de texte
+            // D'abord, traiter toutes les checkboxes (défaut à '0' si décochées)
+            $allCheckboxSettings = Setting::whereIn('key', [
+                'bulletin_show_logo', 'bulletin_show_header', 'bulletin_show_republic_info',
+                'bulletin_show_ministry_info', 'bulletin_show_school_info', 'bulletin_show_cycle_info',
+                'bulletin_show_edition_date', 'bulletin_show_student_info', 'bulletin_show_matricule',
+                'bulletin_show_birth_date', 'bulletin_show_redoublant', 'bulletin_show_subjects_table',
+                'bulletin_show_teachers', 'bulletin_show_absences', 'bulletin_show_statistics',
+                'bulletin_show_signature', 'bulletin_show_attendance_note', 'bulletin_show_council_decision',
+                'bulletin_show_highest_average', 'bulletin_show_lowest_average', 'bulletin_show_class_average',
+                'bulletin_auto_calculate_mention', 'bulletin_show_felicitation', 'bulletin_show_encouragement'
+            ])->get();
+
+            foreach ($allCheckboxSettings as $setting) {
+                $formKey = $setting->key;  // Les champs n'ont pas le préfixe "setting_"
+                $value = $request->has($formKey) ? '1' : '0';
+                
+                $setting->update([
+                    'value' => $value,
+                    'updated_by' => auth()->id()
+                ]);
+                
+                $updatedSettings[] = $setting->key;
+            }
+
+            // Ensuite traiter les autres champs (texte, nombre, etc.)
             foreach ($request->all() as $key => $value) {
                 if (strpos($key, 'setting_') === 0) {
                     $settingKey = str_replace('setting_', '', $key);
+                    
+                    // Skip les checkboxes déjà traitées
+                    if (in_array($settingKey, $allCheckboxSettings->pluck('key')->toArray())) {
+                        continue;
+                    }
+                    
                     $setting = Setting::where('key', $settingKey)->first();
 
                     if ($setting) {

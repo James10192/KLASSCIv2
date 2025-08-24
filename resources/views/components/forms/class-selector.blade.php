@@ -18,9 +18,30 @@
 </div>
 
 <!-- Modal -->
-<div class="modal fade" id="classeSelectorModal" tabindex="-1" aria-labelledby="classeSelectorModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content">
+<div class="modal fade" id="classeSelectorModal" tabindex="-1" aria-labelledby="classeSelectorModalLabel" aria-hidden="true" 
+     style="z-index: 1055 !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important;">
+    <div class="modal-dialog modal-xl" style="
+        position: fixed !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        margin: 0 !important;
+        z-index: 1060 !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        max-width: 90vw !important;
+        max-height: 90vh !important;
+        overflow: auto !important;
+    ">
+        <div class="modal-content" style="
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            z-index: 1061 !important;
+            position: relative !important;
+            border: none !important;
+            border-radius: 8px !important;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3) !important;
+        ">
             <div class="modal-header">
                 <h5 class="modal-title" id="classeSelectorModalLabel">Sélectionner une Classe</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -74,6 +95,142 @@
     </div>
 </div>
 
+<style>
+/* STYLES DRASTIQUES POUR FORCER LE MODAL CLASS-SELECTOR */
+
+/* Z-index très élevé pour être sûr */
+#classeSelectorModal.modal {
+    z-index: 9999 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+#classeSelectorModal .modal-dialog {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    margin: 0 !important;
+    z-index: 10000 !important;
+    max-width: 90vw !important;
+    max-height: 90vh !important;
+    width: auto !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+#classeSelectorModal .modal-content {
+    z-index: 10001 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    position: relative !important;
+}
+
+/* Forcer le backdrop à rester derrière */
+.modal-backdrop {
+    z-index: 1040 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+/* États du modal */
+#classeSelectorModal.modal.show {
+    z-index: 9999 !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+#classeSelectorModal.modal.fade .modal-dialog {
+    transition: none !important;
+    transform: translate(-50%, -50%) !important;
+}
+
+#classeSelectorModal.modal.show .modal-dialog {
+    transform: translate(-50%, -50%) !important;
+}
+
+/* Empêcher tout backdrop-filter sur la page */
+body.modal-open * {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+/* Forcer la visibilité */
+#classeSelectorModal {
+    pointer-events: auto !important;
+}
+
+#classeSelectorModal .modal-dialog {
+    pointer-events: auto !important;
+}
+
+#classeSelectorModal .modal-content {
+    pointer-events: auto !important;
+}
+
+/* Debug - outline pour voir le modal */
+#classeSelectorModal .modal-content {
+    border: 2px solid red !important;
+    background: white !important;
+}
+
+/* === ANTI-CURSEUR ERRATIQUE === */
+/* Désactiver TOUTES les animations sur la page quand le modal est ouvert */
+body.modal-open * {
+    animation: none !important;
+    transition: none !important;
+}
+
+body.modal-open *:hover {
+    transform: none !important;
+    animation: none !important;
+    transition: none !important;
+}
+
+body.modal-open *::before,
+body.modal-open *::after {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+}
+
+/* Forcer l'arrêt de toutes les animations CSS */
+body.modal-open .btn-add-parent,
+body.modal-open .remove-parent,
+body.modal-open .card,
+body.modal-open .parent-item,
+body.modal-open .choices,
+body.modal-open .choices__item,
+body.modal-open .form-check,
+body.modal-open .section-title {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+}
+
+/* Empêcher les pseudo-éléments de bouger */
+body.modal-open .btn-add-parent::before,
+body.modal-open .remove-parent::before,
+body.modal-open .choices__item--selectable::before,
+body.modal-open .section-title::before,
+body.modal-open .section-title::after {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+    content: none !important;
+}
+
+/* Mode sécurité cursor */
+body.modal-open {
+    overflow: hidden !important;
+}
+
+body.modal-open * {
+    cursor: default !important;
+}
+</style>
+
 <script>
     function selectClasse(classeId, classeName) {
         console.log(`Classe sélectionnée : ${classeName} (ID: ${classeId})`);
@@ -84,13 +241,6 @@
         const modal = bootstrap.Modal.getInstance(document.getElementById('classeSelectorModal'));
         modal.hide();
         
-        // Déclencher l'événement change pour charger les frais
-        const classeInput = document.getElementById('classe_id');
-        if (classeInput) {
-            const changeEvent = new Event('change', { bubbles: true });
-            classeInput.dispatchEvent(changeEvent);
-        }
-
         // Mettre à jour l'UI
         const placesInfo = document.getElementById('available-places-info');
         placesInfo.innerHTML = '<div class="spinner-border spinner-border-sm" role="status"><span class="visually-hidden">Loading...</span></div> Vérification des places...';
@@ -123,12 +273,14 @@
                 placesInfo.innerHTML = `<div class="alert alert-danger p-2 mt-2">Erreur lors de la récupération des places.</div>`;
             });
 
-        // Déclencher l'événement de changement de classe pour charger les frais
-        const classeElement = document.getElementById('classe_id');
-        if (classeElement) {
-            const changeEvent = new Event('change');
-            classeElement.dispatchEvent(changeEvent);
-        }
+        // Déclencher l'événement de changement de classe pour charger les frais (UNE SEULE FOIS)
+        setTimeout(() => {
+            const classeElement = document.getElementById('classe_id');
+            if (classeElement) {
+                const changeEvent = new Event('change', { bubbles: true });
+                classeElement.dispatchEvent(changeEvent);
+            }
+        }, 100); // Petit délai pour éviter les conflits
     }
 
     document.addEventListener('DOMContentLoaded', function () {
@@ -209,16 +361,136 @@
     document.getElementById('classeSelectorModal').addEventListener('show.bs.modal', function () {
         console.log('Modal show event triggered');
         loadClasses();
+        
+        // STOPPER TOUTES LES ANIMATIONS pour éviter curseur erratique
+        document.body.style.setProperty('overflow', 'hidden', 'important');
+        
+        // Ajouter classe spéciale pour désactiver animations
+        document.body.classList.add('modal-open-safe');
+        
+        // Désactiver toutes les animations CSS
+        const style = document.createElement('style');
+        style.id = 'anti-cursor-style';
+        style.textContent = `
+            * { 
+                animation: none !important; 
+                transition: none !important; 
+                transform: none !important;
+            }
+            *:hover { 
+                transform: none !important; 
+                animation: none !important; 
+            }
+            *::before, *::after { 
+                animation: none !important; 
+                transition: none !important; 
+                transform: none !important; 
+            }
+        `;
+        document.head.appendChild(style);
     });
 
-    // Also trigger on modal shown (backup)
+    // SOLUTION DRASTIQUE - Forcer le modal au premier plan avec z-index élevé
     document.getElementById('classeSelectorModal').addEventListener('shown.bs.modal', function () {
-        console.log('Modal shown event triggered');
-        // If no classes loaded yet, try again
-        const tableBody = document.getElementById('classes-table-body');
-        if (tableBody.innerHTML.includes('Chargement...')) {
-            loadClasses();
+        console.log('Modal shown - Applying FORCE fixes');
+        
+        const modal = document.getElementById('classeSelectorModal');
+        const modalDialog = modal.querySelector('.modal-dialog');
+        const modalContent = modal.querySelector('.modal-content');
+        
+        // Z-index très élevé pour être sûr d'être au-dessus
+        modal.style.setProperty('z-index', '9999', 'important');
+        modalDialog.style.setProperty('z-index', '10000', 'important');
+        modalContent.style.setProperty('z-index', '10001', 'important');
+        
+        // Centrage parfait en position fixed
+        modalDialog.style.setProperty('position', 'fixed', 'important');
+        modalDialog.style.setProperty('top', '50%', 'important');
+        modalDialog.style.setProperty('left', '50%', 'important');
+        modalDialog.style.setProperty('transform', 'translate(-50%, -50%)', 'important');
+        modalDialog.style.setProperty('margin', '0', 'important');
+        modalDialog.style.setProperty('width', 'auto', 'important');
+        modalDialog.style.setProperty('max-width', '90vw', 'important');
+        modalDialog.style.setProperty('max-height', '90vh', 'important');
+        
+        // Supprimer backdrop-filter
+        modal.style.setProperty('backdrop-filter', 'none', 'important');
+        modal.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
+        modalDialog.style.setProperty('backdrop-filter', 'none', 'important');
+        modalDialog.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
+        modalContent.style.setProperty('backdrop-filter', 'none', 'important');
+        modalContent.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
+        
+        // Forcer le backdrop à rester en arrière
+        const backdrop = document.querySelector('.modal-backdrop');
+        if (backdrop) {
+            backdrop.style.setProperty('z-index', '1040', 'important');
+            backdrop.style.setProperty('backdrop-filter', 'none', 'important');
+            backdrop.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
         }
+        
+        // Rendre le modal cliquable
+        modal.style.setProperty('pointer-events', 'auto', 'important');
+        modalDialog.style.setProperty('pointer-events', 'auto', 'important');
+        modalContent.style.setProperty('pointer-events', 'auto', 'important');
+        
+        console.log('FORCE fixes applied - Modal should be visible and centered');
+    });
+
+    // SOLUTION ALTERNATIVE - Si la première ne marche pas, forcer manuellement
+    document.getElementById('selectClasseBtn').addEventListener('click', function() {
+        console.log('Button clicked - Setting up manual modal fix');
+        
+        // Attendre que Bootstrap ouvre le modal
+        setTimeout(() => {
+            const modal = document.getElementById('classeSelectorModal');
+            const modalDialog = modal.querySelector('.modal-dialog');
+            
+            // Appliquer le fix manuellement après un délai
+            if (modal && modalDialog) {
+                console.log('Applying manual modal fixes...');
+                
+                // Supprimer la classe fade temporairement pour éviter les animations
+                modal.classList.remove('fade');
+                
+                // Appliquer les styles directement
+                modal.style.display = 'block';
+                modal.style.zIndex = '9999';
+                modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
+                
+                modalDialog.style.position = 'fixed';
+                modalDialog.style.top = '50%';
+                modalDialog.style.left = '50%';
+                modalDialog.style.transform = 'translate(-50%, -50%)';
+                modalDialog.style.zIndex = '10000';
+                modalDialog.style.margin = '0';
+                modalDialog.style.width = 'auto';
+                modalDialog.style.maxWidth = '90vw';
+                modalDialog.style.maxHeight = '90vh';
+                
+                // Remettre la classe fade après
+                setTimeout(() => {
+                    modal.classList.add('fade');
+                }, 100);
+            }
+        }, 200);
+    });
+
+    // RÉTABLIR LES ANIMATIONS quand le modal se ferme
+    document.getElementById('classeSelectorModal').addEventListener('hidden.bs.modal', function () {
+        console.log('Modal hidden - Restoring animations');
+        
+        // Retirer la classe spéciale
+        document.body.classList.remove('modal-open-safe');
+        
+        // Supprimer le style anti-cursor
+        const antiCursorStyle = document.getElementById('anti-cursor-style');
+        if (antiCursorStyle) {
+            antiCursorStyle.remove();
+        }
+        
+        // Rétablir le scroll
+        document.body.style.overflow = '';
     });
 
 </script> 

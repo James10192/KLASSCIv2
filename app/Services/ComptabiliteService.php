@@ -554,10 +554,12 @@ class ComptabiliteService
             'inscription_id' => $inscription->id,
             'etudiant_id' => $inscription->etudiant_id,
             'annee_universitaire_id' => $inscription->annee_universitaire_id,
+            'type_paiement' => 'inscription',
             'montant' => $montant,
             'date_paiement' => now(),
-            'methode_paiement' => $methodePaiement,
+            'mode_paiement' => $methodePaiement,
             'reference_paiement' => $reference ?? 'INSCRIPTION-' . $inscription->id,
+            'motif' => 'Frais d\'inscription',
             'status' => 'validé', // Les paiements à l'inscription sont validés d'office
             'created_by' => Auth::id(),
         ]);

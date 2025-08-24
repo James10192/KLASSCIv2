@@ -3,51 +3,55 @@
 @section('title', 'Détails de la présence')
 
 @section('content')
-<div class="content-wrapper">
-    <div class="page-header">
-        <h3 class="page-title">
-            <span class="page-title-icon bg-gradient-primary text-white me-2">
-                <i class="mdi mdi-calendar-check"></i>
-            </span> Détails de la présence
-        </h3>
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Tableau de bord</a></li>
-                <li class="breadcrumb-item"><a href="{{ route('esbtp.attendances.index') }}">Présences</a></li>
-                <li class="breadcrumb-item active" aria-current="page">Détails</li>
-            </ol>
-        </nav>
-    </div>
+<div class="dashboard-acasi">
+    <div class="main-content">
+        <!-- Header Section -->
+        <div class="dashboard-header">
+            <div class="header-left">
+                <h1><i class="fas fa-calendar-check me-2"></i>Détails de la présence</h1>
+                <p class="header-subtitle">Informations sur la présence de {{ $attendance->etudiant->nom_complet }}</p>
+            </div>
+            <div class="header-actions">
+                <a href="{{ route('esbtp.attendances.edit', $attendance) }}" class="btn-acasi warning me-2">
+                    <i class="fas fa-edit"></i>Modifier
+                </a>
+                <a href="{{ route('esbtp.attendances.index') }}" class="btn-acasi primary">
+                    <i class="fas fa-arrow-left"></i>Retour à la liste
+                </a>
+            </div>
+        </div>
 
-    <div class="row">
-        <div class="col-md-8 grid-margin stretch-card">
-            <div class="card">
-                <div class="card-body">
-                    <h4 class="card-title">Informations sur la présence</h4>
-
-                    <div class="d-flex justify-content-end mb-4">
-                        <a href="{{ route('esbtp.attendances.edit', $attendance) }}" class="btn btn-gradient-info btn-sm">
-                            <i class="mdi mdi-pencil"></i> Modifier
-                        </a>
-                        <form action="{{ route('esbtp.attendances.destroy', $attendance) }}" method="POST" class="d-inline ms-2">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="btn btn-gradient-danger btn-sm" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette présence ?')">
-                                <i class="mdi mdi-delete"></i> Supprimer
-                            </button>
-                        </form>
+        <div class="row">
+            <div class="col-md-8">
+                <div class="main-card">
+                    <div class="main-card-header">
+                        <div class="main-card-title">
+                            <i class="fas fa-info-circle"></i>
+                            Informations sur la présence
+                        </div>
                     </div>
+                    <div class="main-card-body">
+                        <div class="d-flex justify-content-end mb-4">
+                            <a href="{{ route('esbtp.attendances.edit', $attendance) }}" class="btn-acasi warning btn-sm me-2">
+                                <i class="fas fa-edit"></i>Modifier
+                            </a>
+                            <form action="{{ route('esbtp.attendances.destroy', $attendance) }}" method="POST" class="d-inline">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn-acasi danger btn-sm" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette présence ?')">
+                                    <i class="fas fa-trash"></i>Supprimer
+                                </button>
+                            </form>
+                        </div>
 
-                    <div class="table-responsive">
-                        <table class="table table-bordered">
-                            <tbody>
-                                <tr>
-                                    <th width="30%">Étudiant</th>
-                                    <td>{{ $attendance->etudiant->nom_complet }}</td>
-                                </tr>
-                                <tr>
-                                    <th>Classe</th>
-                                    <td>{{ $attendance->seanceCours->emploiTemps->classe->name }}</td>
+                        <div class="info-item">
+                            <div class="info-label">Étudiant</div>
+                            <div class="info-value">{{ $attendance->etudiant->nom_complet }}</div>
+                        </div>
+                        
+                        <div class="info-item">
+                            <div class="info-label">Classe</div>
+                            <div class="info-value">{{ $attendance->seanceCours->emploiTemps->classe->name }}</div>
                                 </tr>
                                 <tr>
                                     <th>Matière</th>

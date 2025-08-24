@@ -41,10 +41,11 @@ class ESBTPFraisCategory extends Model
     /**
      * Règles de validation pour cette catégorie (ancien système)
      */
-    public function rules()
-    {
-        return $this->hasMany(ESBTPFraisRule::class, 'frais_category_id');
-    }
+    // Relation supprimée - remplacée par configurations()
+    // public function rules()
+    // {
+    //     return $this->hasMany(ESBTPFraisRule::class, 'frais_category_id');
+    // }
 
     /**
      * Configurations pour cette catégorie (nouveau système)
@@ -71,6 +72,16 @@ class ESBTPFraisCategory extends Model
     }
 
     /**
+     * Options globales directement liées à cette catégorie
+     */
+    public function globalOptions()
+    {
+        return $this->hasMany(ESBTPFraisOption::class, 'frais_category_id')
+            ->where('option_type', 'global')
+            ->whereNull('configuration_id');
+    }
+
+    /**
      * Paiements associés à cette catégorie
      */
     public function paiements()
@@ -81,10 +92,11 @@ class ESBTPFraisCategory extends Model
     /**
      * Variants associés à cette catégorie
      */
-    public function variants()
-    {
-        return $this->hasMany(ESBTPFraisVariant::class, 'frais_category_id');
-    }
+    // Relation supprimée - remplacée par options()
+    // public function variants()
+    // {
+    //     return $this->hasMany(ESBTPFraisVariant::class, 'frais_category_id');
+    // }
 
     /**
      * Variants actifs associés à cette catégorie
@@ -151,13 +163,14 @@ class ESBTPFraisCategory extends Model
     }
 
     /**
-     * Obtient la règle applicable pour une filière/niveau/année donnée
+     * Obtient la configuration applicable pour une filière/niveau/année donnée
      */
     public function getApplicableRule($filiereId, $niveauId, $anneeUniversitaireId = null)
     {
-        $query = $this->rules()
+        $query = $this->configurations()
             ->where('filiere_id', $filiereId)
-            ->where('niveau_id', $niveauId);
+            ->where('niveau_id', $niveauId)
+            ->where('is_active', true);
 
         if ($anneeUniversitaireId) {
             // Priorité à la règle spécifique à l'année

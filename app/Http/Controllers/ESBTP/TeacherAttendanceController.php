@@ -221,15 +221,134 @@ class TeacherAttendanceController extends Controller
         return redirect()->back()->with('success', 'Présence enregistrée avec succès.');
     }
 
-    public function report()
+    public function report(Request $request)
     {
-        $this->authorize('view-attendance-reports');
+        // Autorisation gérée par le middleware de route (teacher|superAdmin)
+        // $this->authorize('view-attendance-reports');
 
-        $attendances = ESBTPTeacherAttendance::with(['teacher', 'course'])
-            ->latest()
-            ->paginate(20);
+        // Récupérer l'année universitaire en cours
+        $anneeEnCours = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        
+        if (!$anneeEnCours) {
+            return redirect()->back()->with('error', 'Aucune année universitaire définie comme courante.');
+        }
 
-        return view('esbtp.teacher-attendance.report', compact('attendances'));
+        // Récupérer toutes les données pour les filtres
+        $teachers = \App\Models\User::role('teacher')->orderBy('name')->get();
+        $matieres = \App\Models\ESBTPMatiere::orderBy('name')->get();
+        $classes = \App\Models\ESBTPClasse::with('filiere', 'niveau')->orderBy('name')->get();
+        
+        // Statistiques globales pour l'année en cours (seulement les cours)
+        $totalSeances = \App\Models\ESBTPSeanceCours::whereHas('emploiTemps', function($q) use ($anneeEnCours) {
+            $q->where('annee_universitaire_id', $anneeEnCours->id);
+        })->where('type', 'course')->count();
+        
+        $totalAttendances = ESBTPTeacherAttendance::whereHas('course.emploiTemps', function($q) use ($anneeEnCours) {
+            $q->where('annee_universitaire_id', $anneeEnCours->id);
+        })->whereHas('course', function($q) {
+            $q->where('type', 'course');
+        })->whereHas('teacher', function($query) {
+            $query->role('teacher');
+        })->count();
+        
+        $attendancesPresent = ESBTPTeacherAttendance::whereHas('course.emploiTemps', function($q) use ($anneeEnCours) {
+            $q->where('annee_universitaire_id', $anneeEnCours->id);
+        })->whereHas('course', function($q) {
+            $q->where('type', 'course');
+        })->whereHas('teacher', function($query) {
+            $query->role('teacher');
+        })->where('status', 'present')->count();
+        
+        $attendancesLate = ESBTPTeacherAttendance::whereHas('course.emploiTemps', function($q) use ($anneeEnCours) {
+            $q->where('annee_universitaire_id', $anneeEnCours->id);
+        })->whereHas('course', function($q) {
+            $q->where('type', 'course');
+        })->whereHas('teacher', function($query) {
+            $query->role('teacher');
+        })->where('status', 'late')->count();
+        
+        $attendancesToday = ESBTPTeacherAttendance::whereHas('course.emploiTemps', function($q) use ($anneeEnCours) {
+            $q->where('annee_universitaire_id', $anneeEnCours->id);
+        })->whereHas('course', function($q) {
+            $q->where('type', 'course');
+        })->whereHas('teacher', function($query) {
+            $query->role('teacher');
+        })->whereDate('created_at', today())->count();
+
+        // Récupérer toutes les séances de cours de l'année avec leur statut d'émargement
+        $seancesQuery = \App\Models\ESBTPSeanceCours::with([
+            'matiere:id,name',
+            'teacher:id,user_id',
+            'teacher.user:id,name,email',
+            'emploiTemps:id,classe_id,titre,annee_universitaire_id,is_active,date_debut,date_fin',
+            'emploiTemps.classe:id,name,filiere_id,niveau_etude_id',
+            'emploiTemps.classe.filiere:id,name',
+            'emploiTemps.classe.niveau:id,name',
+            'teacherAttendances' => function($q) {
+                $q->whereHas('teacher', function($query) {
+                    $query->role('teacher');
+                });
+            }
+        ])
+        ->where('type', 'course') // Filtrer seulement les cours
+        ->whereHas('emploiTemps', function($q) use ($anneeEnCours, $request) {
+            $q->where('annee_universitaire_id', $anneeEnCours->id);
+            
+            // Filtre emploi du temps actifs/tous
+            if ($request->filled('emploi_status') && $request->emploi_status === 'active_only') {
+                $q->where('is_active', true);
+            }
+            // Par défaut, on montre tous les emplois du temps (actifs et inactifs)
+        });
+
+        // Appliquer les filtres
+        if ($request->filled('date')) {
+            $seancesQuery->whereDate('date_seance', $request->date);
+        }
+
+        if ($request->filled('teacher_id')) {
+            $seancesQuery->where('teacher_id', $request->teacher_id);
+        }
+
+        if ($request->filled('matiere_id')) {
+            $seancesQuery->where('matiere_id', $request->matiere_id);
+        }
+
+        if ($request->filled('classe_id')) {
+            $seancesQuery->whereHas('emploiTemps', function($q) use ($request) {
+                $q->where('classe_id', $request->classe_id);
+            });
+        }
+
+        // Filtre par statut d'émargement
+        if ($request->filled('status')) {
+            if ($request->status === 'not_signed') {
+                // Séances sans émargement
+                $seancesQuery->whereDoesntHave('teacherAttendances');
+            } else {
+                // Séances avec émargement du statut demandé
+                $seancesQuery->whereHas('teacherAttendances', function($q) use ($request) {
+                    $q->where('status', $request->status);
+                });
+            }
+        }
+
+        $seances = $seancesQuery->orderBy('date_seance', 'desc')
+                              ->orderBy('heure_debut', 'asc')
+                              ->paginate(20);
+
+        return view('esbtp.teacher-attendance.report', compact(
+            'seances',
+            'teachers', 
+            'matieres',
+            'classes',
+            'anneeEnCours',
+            'totalSeances',
+            'totalAttendances',
+            'attendancesPresent', 
+            'attendancesLate',
+            'attendancesToday'
+        ));
     }
 
     /**
@@ -240,8 +359,15 @@ class TeacherAttendanceController extends Controller
         $user = Auth::user();
         $seance = ESBTPSeanceCours::with(['matiere', 'classe'])->findOrFail($seanceId);
         
+        // Récupérer le modèle enseignant associé à l'utilisateur
+        $teacherModel = \App\Models\ESBTPTeacher::where('user_id', $user->id)->first();
+        if (!$teacherModel) {
+            return redirect()->route('teacher.dashboard')
+                ->with('error', 'Aucun profil enseignant associé à ce compte.');
+        }
+        
         // Vérifier que l'enseignant est assigné à cette séance
-        if ($seance->teacher_id !== $user->id) {
+        if ($seance->teacher_id !== $teacherModel->id) {
             return redirect()->route('teacher.dashboard')
                 ->with('error', 'Vous n\'êtes pas autorisé à accéder à cette séance.');
         }
