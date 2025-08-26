@@ -60,18 +60,92 @@ class ESBTPReinscriptionController extends Controller
     {
         foreach (['passages', 'rattrapages', 'redoublements', 'abandons'] as $categorie) {
             if (isset($resultats[$categorie])) {
-                foreach ($resultats[$categorie] as &$etudiant) {
-                    if (is_object($etudiant) && isset($etudiant->paiements)) {
-                        $etudiant->solde_valide = $etudiant->paiements->where('status', 'validé')->sum('montant');
-                        $etudiant->solde_attente = $etudiant->paiements->where('status', 'en_attente')->sum('montant');
-                        $etudiant->solde_total = $etudiant->solde_valide + $etudiant->solde_attente;
+                foreach ($resultats[$categorie] as &$etudiantData) {
+                    // Récupérer l'étudiant selon le format des données
+                    $etudiant = null;
+                    if (is_array($etudiantData) && isset($etudiantData['etudiant'])) {
+                        $etudiant = $etudiantData['etudiant'];
+                    } else if (is_object($etudiantData)) {
+                        $etudiant = $etudiantData;
+                    }
+                    
+                    if ($etudiant) {
+                        // Récupérer l'inscription active de l'étudiant
+                        $inscription = $etudiant->inscriptions()
+                            ->whereHas('anneeUniversitaire', function($query) {
+                                $query->where('is_current', true);
+                            })
+                            ->with(['paiements' => function($query) {
+                                $query->where('status', 'validé');
+                            }])
+                            ->first();
                         
-                        // Déterminer si l'étudiant peut se réinscrire (solde minimum requis par exemple)
-                        $etudiant->peut_reinscrire = $etudiant->solde_valide >= 200000; // Exemple: 200 000 FCFA minimum
+                        if ($inscription) {
+                            // Calculer le total attendu et payé comme sur la page inscription
+                            $totalAttendu = $this->calculerTotalAttendu($inscription);
+                            $totalPaye = $this->calculerTotalPaye($inscription);
+                            $soldeRestant = $totalAttendu - $totalPaye;
+                            
+                            $etudiant->montant_attendu = $totalAttendu;
+                            $etudiant->montant_paye = $totalPaye;
+                            $etudiant->solde_restant = $soldeRestant;
+                            
+                            // Déterminer si l'étudiant peut se réinscrire
+                            // (si il a payé au moins 50% de ses frais obligatoires)
+                            $etudiant->peut_reinscrire = $soldeRestant <= ($totalAttendu * 0.5);
+                        } else {
+                            // Pas d'inscription active, utiliser les anciennes valeurs par défaut
+                            $etudiant->montant_attendu = 0;
+                            $etudiant->montant_paye = 0;
+                            $etudiant->solde_restant = 0;
+                            $etudiant->peut_reinscrire = false;
+                        }
                     }
                 }
             }
         }
+    }
+    
+    /**
+     * Calculer le total attendu pour une inscription
+     */
+    private function calculerTotalAttendu($inscription)
+    {
+        // Récupérer les catégories de frais obligatoires
+        $mandatoryCategories = \App\Models\ESBTPFraisCategory::where('is_mandatory', true)
+            ->where('is_active', true)
+            ->get();
+        
+        $totalAttendu = 0;
+        
+        foreach ($mandatoryCategories as $category) {
+            $rule = $category->getApplicableRule(
+                $inscription->filiere_id, 
+                $inscription->niveau_id, 
+                $inscription->annee_universitaire_id
+            );
+            
+            $montant = $rule ? $rule->amount : $category->default_amount;
+            $totalAttendu += $montant;
+        }
+        
+        // Ajouter les frais optionnels souscrits
+        $subscriptions = \App\Models\ESBTPFraisSubscription::getActiveSubscriptions($inscription->id);
+        foreach ($subscriptions as $subscription) {
+            $totalAttendu += $subscription->amount;
+        }
+        
+        return $totalAttendu;
+    }
+    
+    /**
+     * Calculer le total payé pour une inscription
+     */
+    private function calculerTotalPaye($inscription)
+    {
+        return $inscription->paiements()
+            ->where('status', 'validé')
+            ->sum('montant');
     }
 
     /**

@@ -65,21 +65,37 @@
                 <td style="text-align: center;">
                     @php
                         $etudiant = $analyse['etudiant'];
-                        $soldeValide = $etudiant->solde_valide ?? 0;
-                        $soldeTotal = $etudiant->solde_total ?? 0;
+                        $montantAttendu = $etudiant->montant_attendu ?? 0;
+                        $montantPaye = $etudiant->montant_paye ?? 0;
+                        $soldeRestant = $etudiant->solde_restant ?? 0;
                         $peutReinscrire = $etudiant->peut_reinscrire ?? false;
                     @endphp
                     
                     <div style="display: flex; flex-direction: column; align-items: center; gap: var(--space-xs);">
-                        <div style="font-size: var(--text-small);">
-                            <span style="font-weight: 600; color: var(--success);">{{ number_format($soldeValide, 0, ',', ' ') }} FCFA</span>
-                            <div style="color: var(--text-secondary); font-size: 10px;">validé</div>
+                        <div style="font-size: var(--text-small); text-align: center;">
+                            <span style="font-weight: 600; color: var(--primary);">{{ number_format($montantAttendu, 0, ',', ' ') }} FCFA</span>
+                            <div style="color: var(--text-secondary); font-size: 10px;">attendu</div>
                         </div>
                         
-                        @if($soldeTotal > $soldeValide)
-                        <div style="font-size: var(--text-small);">
-                            <span style="color: var(--warning);">{{ number_format($soldeTotal - $soldeValide, 0, ',', ' ') }} FCFA</span>
-                            <div style="color: var(--text-secondary); font-size: 10px;">en attente</div>
+                        <div style="font-size: var(--text-small); text-align: center;">
+                            <span style="font-weight: 600; color: var(--success);">{{ number_format($montantPaye, 0, ',', ' ') }} FCFA</span>
+                            <div style="color: var(--text-secondary); font-size: 10px;">payé</div>
+                        </div>
+                        
+                        @if($soldeRestant > 0)
+                        <div style="font-size: var(--text-small); text-align: center;">
+                            <span style="font-weight: 600; color: var(--danger);">{{ number_format($soldeRestant, 0, ',', ' ') }} FCFA</span>
+                            <div style="color: var(--text-secondary); font-size: 10px;">reste à payer</div>
+                        </div>
+                        @elseif($soldeRestant < 0)
+                        <div style="font-size: var(--text-small); text-align: center;">
+                            <span style="font-weight: 600; color: var(--warning);">{{ number_format(abs($soldeRestant), 0, ',', ' ') }} FCFA</span>
+                            <div style="color: var(--text-secondary); font-size: 10px;">trop-perçu</div>
+                        </div>
+                        @else
+                        <div style="font-size: var(--text-small); text-align: center;">
+                            <span style="font-weight: 600; color: var(--success);">Soldé</span>
+                            <div style="color: var(--text-secondary); font-size: 10px;">✓</div>
                         </div>
                         @endif
                         
