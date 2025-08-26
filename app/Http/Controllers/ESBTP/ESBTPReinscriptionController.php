@@ -27,6 +27,16 @@ class ESBTPReinscriptionController extends Controller
         try {
             $resultats = $this->reinscriptionService->getEtudiantsParDecision($anneeAcademique);
             
+            // Ajouter les étudiants qui ont abandonné
+            $abandons = ESBTPEtudiant::where('statut', 'abandon')
+                ->with(['paiements', 'inscriptions.filiere', 'inscriptions.niveauEtude', 'inscriptions.classe'])
+                ->get();
+                
+            $resultats['abandons'] = $abandons;
+            
+            // Calculer les soldes pour tous les étudiants
+            $this->calculerSoldesEtudiants($resultats);
+            
             return view('esbtp.reinscription.index', compact('resultats', 'anneeAcademique'));
         } catch (\Exception $e) {
             // En cas d'erreur, retourner des données vides pour permettre l'affichage de la page
@@ -34,11 +44,87 @@ class ESBTPReinscriptionController extends Controller
                 'passages' => [],
                 'rattrapages' => [],
                 'redoublements' => [],
+                'abandons' => [],
                 'errors' => [['error' => $e->getMessage()]]
             ];
             
             return view('esbtp.reinscription.index', compact('resultats', 'anneeAcademique'))
                 ->withErrors(['error' => 'Erreur lors de l\'analyse: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Calculer les soldes pour tous les étudiants
+     */
+    private function calculerSoldesEtudiants(&$resultats)
+    {
+        foreach (['passages', 'rattrapages', 'redoublements', 'abandons'] as $categorie) {
+            if (isset($resultats[$categorie])) {
+                foreach ($resultats[$categorie] as &$etudiant) {
+                    if (is_object($etudiant) && isset($etudiant->paiements)) {
+                        $etudiant->solde_valide = $etudiant->paiements->where('status', 'validé')->sum('montant');
+                        $etudiant->solde_attente = $etudiant->paiements->where('status', 'en_attente')->sum('montant');
+                        $etudiant->solde_total = $etudiant->solde_valide + $etudiant->solde_attente;
+                        
+                        // Déterminer si l'étudiant peut se réinscrire (solde minimum requis par exemple)
+                        $etudiant->peut_reinscrire = $etudiant->solde_valide >= 200000; // Exemple: 200 000 FCFA minimum
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Marquer un étudiant comme ayant abandonné
+     */
+    public function marquerAbandon(Request $request, $etudiantId)
+    {
+        $request->validate([
+            'motif_abandon' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            $etudiant = ESBTPEtudiant::findOrFail($etudiantId);
+            $etudiant->update([
+                'statut' => 'abandon',
+                'motif_abandon' => $request->motif_abandon,
+                'date_abandon' => now(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Étudiant marqué comme ayant abandonné'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Restaurer un étudiant depuis abandon vers actif
+     */
+    public function restaurerAbandon($etudiantId)
+    {
+        try {
+            $etudiant = ESBTPEtudiant::findOrFail($etudiantId);
+            $etudiant->update([
+                'statut' => 'actif',
+                'motif_abandon' => null,
+                'date_abandon' => null,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Étudiant restauré avec succès'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur: ' . $e->getMessage()
+            ], 500);
         }
     }
 

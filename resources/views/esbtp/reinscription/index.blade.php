@@ -102,8 +102,17 @@
             </div>
 
             <div class="card-moderne kpi-card">
+                <div class="kpi-title">Abandons</div>
+                <div class="kpi-value color-neutral">{{ count($resultats['abandons'] ?? []) }}</div>
+                <div class="kpi-trend negative">
+                    <i class="fas fa-user-times"></i>
+                    <span>Étudiants ayant quitté</span>
+                </div>
+            </div>
+
+            <div class="card-moderne kpi-card">
                 <div class="kpi-title">Non validés</div>
-                <div class="kpi-value color-neutral">{{ count($resultats['errors']) }}</div>
+                <div class="kpi-value color-neutral">{{ count($resultats['errors'] ?? []) }}</div>
                 <div class="kpi-trend">
                     <i class="fas fa-user-clock"></i>
                     <span>Inscriptions en cours</span>
@@ -133,6 +142,14 @@
                             <i class="fas fa-redo"></i> Redoublements ({{ count($resultats['redoublements']) }})
                         </a>
                     </li>
+                    @if(count($resultats['abandons'] ?? []) > 0)
+                    <li class="nav-item" style="border: none;">
+                        <a class="nav-link" id="abandons-tab" data-toggle="tab" href="#abandons" role="tab"
+                           style="border: none; border-radius: var(--radius-small); padding: var(--space-sm) var(--space-md); color: var(--text-secondary); font-weight: 500;">
+                            <i class="fas fa-user-times"></i> Abandons ({{ count($resultats['abandons'] ?? []) }})
+                        </a>
+                    </li>
+                    @endif
                     @if(count($resultats['errors']) > 0)
                     <li class="nav-item" style="border: none;">
                         <a class="nav-link" id="errors-tab" data-toggle="tab" href="#errors" role="tab"
@@ -159,6 +176,70 @@
                 <div class="tab-pane fade" id="redoublements" role="tabpanel">
                     @include('esbtp.reinscription.partials.liste-etudiants', ['etudiants' => $resultats['redoublements'], 'type' => 'redoublement'])
                 </div>
+
+                <!-- Onglet Abandons -->
+                @if(count($resultats['abandons'] ?? []) > 0)
+                <div class="tab-pane fade" id="abandons" role="tabpanel">
+                    <div class="section-title mb-md">
+                        <i class="fas fa-user-times me-2"></i>Étudiants ayant quitté l'établissement
+                    </div>
+                    <div class="table-moderne">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Photo</th>
+                                    <th>Étudiant</th>
+                                    <th>Classe</th>
+                                    <th>Date abandon</th>
+                                    <th>Motif</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($resultats['abandons'] as $etudiant)
+                                <tr>
+                                    <td>
+                                        <img src="{{ $etudiant->photo_url ?? asset('images/default-avatar.png') }}" 
+                                             alt="Photo" 
+                                             style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+                                    </td>
+                                    <td>
+                                        <div style="font-weight: 600;">{{ $etudiant->prenoms }} {{ $etudiant->nom }}</div>
+                                        <div style="font-size: var(--text-small); color: var(--text-secondary);">{{ $etudiant->matricule }}</div>
+                                    </td>
+                                    <td>
+                                        @if($etudiant->inscription)
+                                            <span class="table-badge secondary">{{ $etudiant->inscription->classe->nom ?? 'N/A' }}</span>
+                                        @else
+                                            <span class="table-badge neutral">Non assigné</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <span style="color: var(--text-secondary); font-size: var(--text-small);">
+                                            {{ $etudiant->date_abandon ? \Carbon\Carbon::parse($etudiant->date_abandon)->format('d/m/Y') : 'N/A' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span style="color: var(--text-secondary); font-size: var(--text-small);">
+                                            {{ $etudiant->motif_abandon ?? 'Non précisé' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <button class="btn-acasi small success" 
+                                                    onclick="restaurerEtudiant({{ $etudiant->id }})"
+                                                    title="Restaurer l'étudiant">
+                                                <i class="fas fa-undo"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                @endif
 
                 <!-- Onglet Erreurs -->
                 @if(count($resultats['errors']) > 0)
@@ -239,6 +320,31 @@ function exportResults() {
             console.error('Erreur:', error);
             alert('Erreur lors de l\'export');
         });
+}
+
+function restaurerEtudiant(etudiantId) {
+    if (confirm('Êtes-vous sûr de vouloir restaurer cet étudiant ? Il repassera au statut actif.')) {
+        fetch(`{{ url('esbtp/reinscription') }}/${etudiantId}/restaurer`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload(); // Recharger la page pour voir les changements
+            } else {
+                alert('Erreur: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Erreur lors de la restauration');
+        });
+    }
 }
 </script>
 @endsection

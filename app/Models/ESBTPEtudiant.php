@@ -47,7 +47,9 @@ class ESBTPEtudiant extends Model
         'created_by',
         'updated_by',
         'ville',
-        'commune'
+        'commune',
+        'date_abandon',
+        'motif_abandon'
     ];
 
     /**
@@ -57,6 +59,7 @@ class ESBTPEtudiant extends Model
      */
     protected $casts = [
         'date_naissance' => 'date',
+        'date_abandon' => 'datetime',
         'nombre_enfants' => 'integer',
     ];
 
@@ -294,6 +297,35 @@ class ESBTPEtudiant extends Model
 
         // Mélanger le mot de passe
         return str_shuffle($password);
+    }
+
+    /**
+     * Obtenir l'URL de la photo de profil de l'étudiant
+     *
+     * @return string|null
+     */
+    public function getPhotoUrlAttribute()
+    {
+        if (!$this->photo) {
+            return null;
+        }
+        
+        // Chemins possibles pour la photo (pour compatibilité)
+        $paths = [
+            'photos/etudiants/' . $this->photo,  // Nouveau chemin
+            $this->photo,                        // Ancien chemin direct
+        ];
+        
+        // Vérifier quel chemin existe
+        foreach ($paths as $path) {
+            $fullPath = storage_path('app/public/' . $path);
+            if (file_exists($fullPath)) {
+                return asset('storage/' . $path);
+            }
+        }
+        
+        // Par défaut, retourner le nouveau chemin
+        return asset('storage/photos/etudiants/' . $this->photo);
     }
 
     /**

@@ -289,7 +289,11 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::post('inscriptions/{inscription}/subscribe-optional-fee', [\App\Http\Controllers\ESBTPInscriptionController::class, 'subscribeToOptionalFee'])->name('inscriptions.subscribe-optional-fee');
             Route::post('inscriptions/{inscription}/unsubscribe-optional-fee', [\App\Http\Controllers\ESBTPInscriptionController::class, 'unsubscribeFromOptionalFee'])->name('inscriptions.unsubscribe-optional-fee');
 
-            Route::get('/etudiants/{etudiant}/certificat', [ESBTPStudentController::class, 'genererCertificat'])
+            // Routes pour les certificats de scolarité
+            Route::get('/etudiants/{etudiant}/certificat-preview', [ESBTPEtudiantController::class, 'previewCertificat'])
+                ->name('etudiants.certificat.preview')
+                ->middleware(['permission:view_students']);
+            Route::get('/etudiants/{etudiant}/certificat', [ESBTPEtudiantController::class, 'genererCertificat'])
                 ->name('etudiants.certificat')
                 ->middleware(['permission:view_students']);
 
@@ -361,6 +365,10 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                     Route::put('{id}', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'updateRegle'])->name('update');
                     Route::delete('{id}', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'destroyRegle'])->name('destroy');
                 });
+                
+                // Routes pour la gestion des abandons
+                Route::post('{etudiant}/abandon', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'marquerAbandon'])->name('marquer-abandon');
+                Route::post('{etudiant}/restaurer', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'restaurerAbandon'])->name('restaurer-abandon');
                 
                 // Routes avec paramètres à la FIN
                 Route::get('{etudiant}', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'show'])->name('show');
@@ -614,6 +622,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::put('/paiements/{paiement}', [App\Http\Controllers\ESBTPPaiementController::class, 'update'])->name('paiements.update');
             Route::get('/paiements/{paiement}/valider', [App\Http\Controllers\ESBTPPaiementController::class, 'valider'])->name('paiements.valider');
             Route::post('/paiements/{paiement}/rejeter', [App\Http\Controllers\ESBTPPaiementController::class, 'rejeter'])->name('paiements.rejeter');
+            Route::get('/paiements/{paiement}/preview', [App\Http\Controllers\ESBTPPaiementController::class, 'previewRecu'])->name('paiements.preview');
             Route::get('/paiements/{paiement}/recu', [App\Http\Controllers\ESBTPPaiementController::class, 'genererRecu'])->name('paiements.recu');
             Route::get('/paiements/etudiant/{etudiant}', [App\Http\Controllers\ESBTPPaiementController::class, 'paiementsEtudiant'])->name('paiements.etudiant');
 

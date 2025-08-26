@@ -3,12 +3,14 @@
     <table>
         <thead>
             <tr>
+                <th>Photo</th>
                 <th>Étudiant</th>
                 <th>Classe Actuelle</th>
                 <th class="text-center">Moyenne Générale</th>
                 @if($type === 'rattrapage')
                 <th class="text-center">Matières Échouées</th>
                 @endif
+                <th class="text-center">Solde & Réinscription</th>
                 <th class="text-center">Décision</th>
                 <th class="text-center">Actions</th>
             </tr>
@@ -17,14 +19,14 @@
             @foreach($etudiants as $analyse)
             <tr>
                 <td>
-                    <div style="display: flex; align-items: center; gap: var(--space-md);">
-                        <div style="width: 40px; height: 40px; border-radius: var(--radius-circle); background-color: var(--background); display: flex; align-items: center; justify-content: center;">
-                            <i class="fas fa-user" style="color: var(--text-muted);"></i>
-                        </div>
-                        <div>
-                            <div style="font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-xs);">{{ $analyse['etudiant']->prenoms }} {{ $analyse['etudiant']->nom }}</div>
-                            <div style="font-size: var(--text-small); color: var(--text-secondary);">{{ $analyse['etudiant']->matricule ?? 'N/A' }}</div>
-                        </div>
+                    <img src="{{ $analyse['etudiant']->photo_url ?? asset('images/default-avatar.png') }}" 
+                         alt="Photo" 
+                         style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+                </td>
+                <td>
+                    <div>
+                        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-xs);">{{ $analyse['etudiant']->prenoms }} {{ $analyse['etudiant']->nom }}</div>
+                        <div style="font-size: var(--text-small); color: var(--text-secondary);">{{ $analyse['etudiant']->matricule ?? 'N/A' }}</div>
                     </div>
                 </td>
                 <td>
@@ -61,6 +63,33 @@
                 </td>
                 @endif
                 <td style="text-align: center;">
+                    @php
+                        $etudiant = $analyse['etudiant'];
+                        $soldeValide = $etudiant->solde_valide ?? 0;
+                        $soldeTotal = $etudiant->solde_total ?? 0;
+                        $peutReinscrire = $etudiant->peut_reinscrire ?? false;
+                    @endphp
+                    
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: var(--space-xs);">
+                        <div style="font-size: var(--text-small);">
+                            <span style="font-weight: 600; color: var(--success);">{{ number_format($soldeValide, 0, ',', ' ') }} FCFA</span>
+                            <div style="color: var(--text-secondary); font-size: 10px;">validé</div>
+                        </div>
+                        
+                        @if($soldeTotal > $soldeValide)
+                        <div style="font-size: var(--text-small);">
+                            <span style="color: var(--warning);">{{ number_format($soldeTotal - $soldeValide, 0, ',', ' ') }} FCFA</span>
+                            <div style="color: var(--text-secondary); font-size: 10px;">en attente</div>
+                        </div>
+                        @endif
+                        
+                        <span class="table-badge {{ $peutReinscrire ? 'success' : 'danger' }}" style="font-size: 10px;">
+                            <i class="fas {{ $peutReinscrire ? 'fa-check-circle' : 'fa-times-circle' }}"></i>
+                            {{ $peutReinscrire ? 'Éligible' : 'Non éligible' }}
+                        </span>
+                    </div>
+                </td>
+                <td style="text-align: center;">
                     @switch($analyse['decision'])
                         @case('passage')
                             <span class="table-badge success">
@@ -86,8 +115,12 @@
                             <i class="fas fa-eye"></i>
                         </a>
                         <button type="button" class="btn-table-action success" 
-                                onclick="confirmerReinscription({{ $analyse['etudiant']->id }}, '{{ $analyse['decision'] }}'))" title="Confirmer">
+                                onclick="confirmerReinscription({{ $analyse['etudiant']->id }}, '{{ $analyse['decision'] }}'))" title="Confirmer réinscription">
                             <i class="fas fa-check"></i>
+                        </button>
+                        <button type="button" class="btn-table-action danger" 
+                                onclick="marquerAbandon({{ $analyse['etudiant']->id }})" title="Marquer comme abandon">
+                            <i class="fas fa-user-times"></i>
                         </button>
                     </div>
                 </td>
@@ -111,6 +144,36 @@ function confirmerReinscription(etudiantId, decision) {
     if (confirm(`Êtes-vous sûr de vouloir confirmer cette décision de ${decision} ?`)) {
         // Rediriger vers la page de détails pour finaliser
         window.location.href = `{{ url('esbtp/reinscription') }}/${etudiantId}?annee_academique={{ request('annee_academique') }}`;
+    }
+}
+
+function marquerAbandon(etudiantId) {
+    const motif = prompt('Motif de l\'abandon (optionnel):');
+    
+    if (confirm('Êtes-vous sûr de vouloir marquer cet étudiant comme ayant abandonné ? Cette action peut être annulée.')) {
+        fetch(`{{ url('esbtp/reinscription') }}/${etudiantId}/abandon`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({
+                motif_abandon: motif
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload(); // Recharger la page pour voir les changements
+            } else {
+                alert('Erreur: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Erreur lors de l\'enregistrement de l\'abandon');
+        });
     }
 }
 </script>
