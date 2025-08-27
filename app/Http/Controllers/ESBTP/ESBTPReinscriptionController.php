@@ -27,12 +27,42 @@ class ESBTPReinscriptionController extends Controller
         try {
             $resultats = $this->reinscriptionService->getEtudiantsParDecision($anneeAcademique);
             
-            // Ajouter les étudiants qui ont abandonné
-            $abandons = ESBTPEtudiant::where('statut', 'abandon')
+            // Ajouter les étudiants qui ont abandonné - séparer par type
+            $abandonsAnneeScolaire = ESBTPEtudiant::where('statut', 'abandon')
+                ->where(function($query) {
+                    $query->where('abandon_type', 'annee_scolaire')
+                          ->orWhereNull('abandon_type'); // Les anciens abandons sans type spécifié
+                })
                 ->with(['paiements', 'inscriptions.filiere', 'inscriptions.niveauEtude', 'inscriptions.classe'])
                 ->get();
                 
-            $resultats['abandons'] = $abandons;
+            $abandonsEcole = ESBTPEtudiant::where('statut', 'abandon')
+                ->where('abandon_type', 'ecole')
+                ->with(['paiements', 'inscriptions.filiere', 'inscriptions.niveauEtude', 'inscriptions.classe'])
+                ->get();
+                
+            $resultats['abandons_annee'] = $abandonsAnneeScolaire;
+            $resultats['abandons_ecole'] = $abandonsEcole;
+            
+            // Ajouter les étudiants dont la réinscription a été validée
+            $valides = \App\Models\ESBTPInscription::where('reinscription_status', 'validated')
+                ->with(['etudiant.paiements', 'classe.filiere', 'classe.niveau', 'reinscriptionValidatedBy'])
+                ->get()
+                ->map(function($inscription) {
+                    // Transformer pour correspondre au format attendu par la vue
+                    return [
+                        'etudiant' => $inscription->etudiant,
+                        'inscription' => $inscription,
+                        'classe' => $inscription->classe,
+                        'decision' => $inscription->reinscription_observations ?? 'Validée',
+                        'moyenne_generale' => 0, // Peut être calculé si nécessaire
+                        'matieres_echouees' => [],
+                        'validated_at' => $inscription->reinscription_validated_at,
+                        'validated_by' => $inscription->reinscriptionValidatedBy,
+                    ];
+                });
+                
+            $resultats['valides'] = $valides;
             
             // Calculer les soldes pour tous les étudiants
             $this->calculerSoldesEtudiants($resultats);
@@ -58,7 +88,7 @@ class ESBTPReinscriptionController extends Controller
      */
     private function calculerSoldesEtudiants(&$resultats)
     {
-        foreach (['passages', 'rattrapages', 'redoublements', 'abandons'] as $categorie) {
+        foreach (['passages', 'rattrapages', 'redoublements', 'abandons_annee', 'abandons_ecole', 'valides'] as $categorie) {
             if (isset($resultats[$categorie])) {
                 foreach ($resultats[$categorie] as &$etudiantData) {
                     // Récupérer l'étudiant selon le format des données
@@ -155,6 +185,7 @@ class ESBTPReinscriptionController extends Controller
     {
         $request->validate([
             'motif_abandon' => 'nullable|string|max:500',
+            'abandon_type' => 'required|in:annee_scolaire,ecole',
         ]);
 
         try {
@@ -162,6 +193,7 @@ class ESBTPReinscriptionController extends Controller
             $etudiant->update([
                 'statut' => 'abandon',
                 'motif_abandon' => $request->motif_abandon,
+                'abandon_type' => $request->abandon_type,
                 'date_abandon' => now(),
             ]);
 
@@ -187,6 +219,7 @@ class ESBTPReinscriptionController extends Controller
             $etudiant->update([
                 'statut' => 'actif',
                 'motif_abandon' => null,
+                'abandon_type' => null,
                 'date_abandon' => null,
             ]);
 
@@ -240,6 +273,50 @@ class ESBTPReinscriptionController extends Controller
             return view('esbtp.reinscription.show', compact('analyse', 'classesProposees', 'anneeAcademique'));
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Erreur lors de l\'analyse: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Valider la réinscription d'un étudiant (le déplacer vers "validés")
+     */
+    public function validerReinscription(Request $request, $etudiantId)
+    {
+        $request->validate([
+            'decision' => 'required|in:passage,redoublement,rattrapage',
+            'observations' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            // Trouver l'inscription active de l'étudiant
+            $inscription = \App\Models\ESBTPInscription::whereHas('etudiant', function($query) use ($etudiantId) {
+                $query->where('id', $etudiantId);
+            })
+            ->whereHas('anneeUniversitaire', function($query) {
+                $query->where('is_current', true);
+            })
+            ->first();
+
+            if (!$inscription) {
+                throw new \Exception("Inscription non trouvée pour cet étudiant");
+            }
+
+            // Mettre à jour le statut de réinscription
+            $inscription->update([
+                'reinscription_status' => 'validated',
+                'reinscription_validated_at' => now(),
+                'reinscription_validated_by' => auth()->id(),
+                'reinscription_observations' => $request->decision . ' - ' . ($request->observations ?? 'Réinscription validée')
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Réinscription validée avec succès'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur: ' . $e->getMessage()
+            ], 500);
         }
     }
 

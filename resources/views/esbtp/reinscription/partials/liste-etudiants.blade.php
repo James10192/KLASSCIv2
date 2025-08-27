@@ -130,11 +130,11 @@
                            class="btn-table-action primary" title="Voir détails">
                             <i class="fas fa-eye"></i>
                         </a>
-                        <button type="button" class="btn-table-action success" 
-                                onclick="confirmerReinscription({{ $analyse['etudiant']->id }}, '{{ $analyse['decision'] }}'))" title="Confirmer réinscription">
-                            <i class="fas fa-check"></i>
+                        <button type="button" class="btn-table-action primary" 
+                                onclick="validerReinscription({{ $analyse['etudiant']->id }}, '{{ $analyse['decision'] }}'))" title="Valider réinscription">
+                            <i class="fas fa-check-double"></i>
                         </button>
-                        <button type="button" class="btn-table-action danger" 
+                        <button type="button" class="btn-table-action warning" 
                                 onclick="marquerAbandon({{ $analyse['etudiant']->id }})" title="Marquer comme abandon">
                             <i class="fas fa-user-times"></i>
                         </button>
@@ -164,9 +164,24 @@ function confirmerReinscription(etudiantId, decision) {
 }
 
 function marquerAbandon(etudiantId) {
-    const motif = prompt('Motif de l\'abandon (optionnel):');
+    // Demander le type d'abandon
+    const typeOptions = `
+        <select id="abandon-type" style="width: 100%; padding: 8px; margin: 10px 0;">
+            <option value="">-- Choisir le type d'abandon --</option>
+            <option value="annee_scolaire">Abandon de l'année scolaire (n'a pas soldé, ne vient plus)</option>
+            <option value="ecole">Abandon de l'école (année réussie mais quitte l'établissement)</option>
+        </select>
+    `;
     
-    if (confirm('Êtes-vous sûr de vouloir marquer cet étudiant comme ayant abandonné ? Cette action peut être annulée.')) {
+    const motif = prompt(`Type d'abandon:\n\n${typeOptions.replace(/<[^>]*>/g, '')}\n\nVeuillez préciser le motif de l'abandon:`);
+    
+    if (motif === null) return; // Annulé
+    
+    // Simuler le choix du type (en réalité il faudrait une modal)
+    const typeAbandon = confirm('Type d\'abandon:\n\nOUI = Abandon année scolaire (n\'a pas soldé, ne vient plus)\nNON = Abandon école (année réussie mais quitte l\'établissement)') 
+        ? 'annee_scolaire' : 'ecole';
+    
+    if (confirm(`Confirmer l'abandon de type "${typeAbandon === 'annee_scolaire' ? 'Année scolaire' : 'École'}" ?\n\nMotif: ${motif || 'Non précisé'}`)) {
         fetch(`{{ url('esbtp/reinscription') }}/${etudiantId}/abandon`, {
             method: 'POST',
             headers: {
@@ -174,7 +189,8 @@ function marquerAbandon(etudiantId) {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
             },
             body: JSON.stringify({
-                motif_abandon: motif
+                motif_abandon: motif,
+                abandon_type: typeAbandon
             })
         })
         .then(response => response.json())
@@ -189,6 +205,39 @@ function marquerAbandon(etudiantId) {
         .catch(error => {
             console.error('Erreur:', error);
             alert('Erreur lors de l\'enregistrement de l\'abandon');
+        });
+    }
+}
+
+function validerReinscription(etudiantId, decision) {
+    const observations = prompt(`Valider la réinscription avec décision: ${decision}\n\nObservations (optionnel):`);
+    
+    if (observations === null) return; // Annulé
+    
+    if (confirm(`Confirmer la validation de la réinscription ?\n\nDécision: ${decision}\nObservations: ${observations || 'Aucune'}`)) {
+        fetch(`{{ url('esbtp/reinscription') }}/${etudiantId}/valider`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({
+                decision: decision,
+                observations: observations
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload(); // Recharger la page pour voir les changements
+            } else {
+                alert('Erreur: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Erreur lors de la validation');
         });
     }
 }

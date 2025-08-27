@@ -369,6 +369,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 // Routes pour la gestion des abandons
                 Route::post('{etudiant}/abandon', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'marquerAbandon'])->name('marquer-abandon');
                 Route::post('{etudiant}/restaurer', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'restaurerAbandon'])->name('restaurer-abandon');
+                Route::post('{etudiant}/valider', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'validerReinscription'])->name('valider-reinscription');
                 
                 // Routes avec paramètres à la FIN
                 Route::get('{etudiant}', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'show'])->name('show');

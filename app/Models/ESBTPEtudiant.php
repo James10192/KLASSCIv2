@@ -49,7 +49,8 @@ class ESBTPEtudiant extends Model
         'ville',
         'commune',
         'date_abandon',
-        'motif_abandon'
+        'motif_abandon',
+        'abandon_type'
     ];
 
     /**

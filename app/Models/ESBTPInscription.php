@@ -45,7 +45,11 @@ class ESBTPInscription extends Model
         'date_validation',
         'validated_by',
         'created_by',
-        'updated_by'
+        'updated_by',
+        'reinscription_status',
+        'reinscription_validated_at',
+        'reinscription_validated_by',
+        'reinscription_observations'
     ];
 
     /**
@@ -157,6 +161,16 @@ class ESBTPInscription extends Model
     public function validatedBy()
     {
         return $this->belongsTo(User::class, 'validated_by');
+    }
+
+    /**
+     * Utilisateur qui a validé la réinscription.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function reinscriptionValidatedBy()
+    {
+        return $this->belongsTo(User::class, 'reinscription_validated_by');
     }
 
     /**
