@@ -50,6 +50,27 @@
     margin-top: var(--space-xs);
     text-align: center;
 }
+
+.reinscription-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-lg);
+    margin-bottom: var(--space-xl);
+}
+
+.reinscription-layout > .card-moderne:nth-child(3) {
+    grid-column: 1 / -1; /* La troisième carte (Analyse Académique) prend toute la largeur */
+}
+
+@media (max-width: 768px) {
+    .reinscription-layout {
+        grid-template-columns: 1fr;
+    }
+    
+    .reinscription-layout > .card-moderne:nth-child(3) {
+        grid-column: 1;
+    }
+}
 </style>
 @endsection
 
@@ -89,7 +110,7 @@
             </div>
         @endif
 
-        <div class="reinscription-grid">
+        <div class="reinscription-layout">
             <!-- Informations Étudiant -->
             <div class="card-moderne">
                 <div class="main-card-header">

@@ -222,6 +222,18 @@ class ESBTPReinscriptionController extends Controller
             $analyse = $this->reinscriptionService->analyserSituationEtudiantParInscription($inscription, $anneeAcademique);
             $classesProposees = $this->reinscriptionService->proposerNouvellesClasses($etudiantId, $analyse['decision']);
             
+            // Calculer les soldes financiers pour l'étudiant
+            $etudiant = $analyse['etudiant'];
+            $totalAttendu = $this->calculerTotalAttendu($inscription);
+            $totalPaye = $this->calculerTotalPaye($inscription);
+            $soldeRestant = $totalAttendu - $totalPaye;
+            
+            // Ajouter les informations financières à l'étudiant
+            $etudiant->montant_attendu = $totalAttendu;
+            $etudiant->montant_paye = $totalPaye;
+            $etudiant->solde_restant = $soldeRestant;
+            $etudiant->peut_reinscrire = $soldeRestant <= ($totalAttendu * 0.5);
+            
             // Ajouter l'inscription pour l'accès aux données de classe dans la vue
             $analyse['inscription'] = $inscription;
             
