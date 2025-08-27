@@ -237,8 +237,8 @@
                                 <div>
                                     <div style="font-weight: 600; color: var(--danger); margin-bottom: var(--space-xs);">Réinscription Bloquée</div>
                                     <div style="color: var(--text-primary);">
-                                        L'étudiant doit payer au moins 50% de ses frais ({{ number_format($montantAttendu * 0.5, 0, ',', ' ') }} FCFA) pour pouvoir se réinscrire.
-                                        <br><strong>Montant minimum requis : {{ number_format($montantAttendu * 0.5 - $montantPaye, 0, ',', ' ') }} FCFA</strong>
+                                        L'étudiant doit avoir <strong>tout soldé</strong> (100% de ses frais) pour pouvoir se réinscrire.
+                                        <br><strong>Montant restant à payer : {{ number_format($soldeRestant, 0, ',', ' ') }} FCFA</strong>
                                     </div>
                                 </div>
                             </div>
@@ -252,7 +252,10 @@
                                 <div>
                                     <div style="font-weight: 600; color: var(--success); margin-bottom: var(--space-xs);">Réinscription Autorisée</div>
                                     <div style="color: var(--text-primary);">
-                                        L'étudiant a payé suffisamment pour procéder à sa réinscription ({{ number_format($pourcentsage_paye, 1) }}% des frais).
+                                        L'étudiant a entièrement soldé ses frais et peut procéder à sa réinscription.
+                                        @if($soldeRestant < 0)
+                                            <br><small>Trop-perçu de {{ number_format(abs($soldeRestant), 0, ',', ' ') }} FCFA à traiter.</small>
+                                        @endif
                                     </div>
                                 </div>
                             </div>
@@ -267,12 +270,19 @@
                             <span>{{ number_format($pourcentsage_paye, 1) }}%</span>
                         </div>
                         <div class="progress-bar">
-                            <div class="progress-fill {{ $pourcentsage_paye >= 50 ? 'success' : 'danger' }}" 
+                            <div class="progress-fill {{ $pourcentsage_paye >= 100 ? 'success' : 'danger' }}" 
                                  style="width: {{ min($pourcentsage_paye, 100) }}%"></div>
                         </div>
                         <div class="progress-info">
                             <small style="color: var(--text-secondary);">
-                                Minimum requis pour réinscription : 50% ({{ number_format($montantAttendu * 0.5, 0, ',', ' ') }} FCFA)
+                                Requis pour réinscription : 100% soldé ({{ number_format($montantAttendu, 0, ',', ' ') }} FCFA)
+                                @if($soldeRestant > 0)
+                                    - <strong>Reste {{ number_format($soldeRestant, 0, ',', ' ') }} FCFA</strong>
+                                @elseif($soldeRestant == 0)
+                                    - <strong style="color: var(--success);">✓ Entièrement soldé</strong>
+                                @else
+                                    - <strong style="color: var(--warning);">Trop-perçu de {{ number_format(abs($soldeRestant), 0, ',', ' ') }} FCFA</strong>
+                                @endif
                             </small>
                         </div>
                     </div>

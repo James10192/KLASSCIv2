@@ -91,8 +91,8 @@ class ESBTPReinscriptionController extends Controller
                             $etudiant->solde_restant = $soldeRestant;
                             
                             // Déterminer si l'étudiant peut se réinscrire
-                            // (si il a payé au moins 50% de ses frais obligatoires)
-                            $etudiant->peut_reinscrire = $soldeRestant <= ($totalAttendu * 0.5);
+                            // (seulement si tout est soldé - solde restant = 0 ou négatif)
+                            $etudiant->peut_reinscrire = $soldeRestant <= 0;
                         } else {
                             // Pas d'inscription active, utiliser les anciennes valeurs par défaut
                             $etudiant->montant_attendu = 0;
@@ -232,7 +232,7 @@ class ESBTPReinscriptionController extends Controller
             $etudiant->montant_attendu = $totalAttendu;
             $etudiant->montant_paye = $totalPaye;
             $etudiant->solde_restant = $soldeRestant;
-            $etudiant->peut_reinscrire = $soldeRestant <= ($totalAttendu * 0.5);
+            $etudiant->peut_reinscrire = $soldeRestant <= 0;
             
             // Ajouter l'inscription pour l'accès aux données de classe dans la vue
             $analyse['inscription'] = $inscription;
