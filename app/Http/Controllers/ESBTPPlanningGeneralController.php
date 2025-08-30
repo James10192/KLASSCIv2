@@ -1866,9 +1866,9 @@ class ESBTPPlanningGeneralController extends Controller
             
             // Calculer les heures effectuées via émargements
             $heuresEmargement = $emargements->sum(function($emargement) {
-                if ($emargement->seance) {
-                    return Carbon::parse($emargement->seance->heure_fin)->diffInMinutes(
-                        Carbon::parse($emargement->seance->heure_debut)
+                if ($emargement->course) {
+                    return Carbon::parse($emargement->course->heure_fin)->diffInMinutes(
+                        Carbon::parse($emargement->course->heure_debut)
                     ) / 60;
                 }
                 return 0;
@@ -1904,9 +1904,9 @@ class ESBTPPlanningGeneralController extends Controller
      */
     private function getEmargementsValidesParPlanification($planification, $periodeDebut = null, $periodeFin = null)
     {
-        $query = \App\Models\ESBTPTeacherAttendance::with('seance')
+        $query = \App\Models\ESBTPTeacherAttendance::with('course')
             ->where('status', 'validated')
-            ->whereHas('seance', function($q) use ($planification) {
+            ->whereHas('course', function($q) use ($planification) {
                 $q->where('matiere_id', $planification->matiere_id)
                   ->where('teacher_id', $planification->enseignant_principal_id);
             });
@@ -1935,7 +1935,7 @@ class ESBTPPlanningGeneralController extends Controller
 
         // Filtrer par filière/niveau si spécifié
         if ($filiereId || $niveauId) {
-            $queryBase->whereHas('seance.classe', function($q) use ($filiereId, $niveauId) {
+            $queryBase->whereHas('course.classe', function($q) use ($filiereId, $niveauId) {
                 if ($filiereId) $q->where('filiere_id', $filiereId);
                 if ($niveauId) $q->where('niveau_etude_id', $niveauId);
             });
@@ -2063,12 +2063,12 @@ class ESBTPPlanningGeneralController extends Controller
      */
     private function calculerHeuresTotalesEmargees($query)
     {
-        $emargements = $query->where('status', 'validated')->with('seance')->get();
+        $emargements = $query->where('status', 'validated')->with('course')->get();
         
         return $emargements->sum(function($emargement) {
-            if ($emargement->seance) {
-                return Carbon::parse($emargement->seance->heure_fin)->diffInMinutes(
-                    Carbon::parse($emargement->seance->heure_debut)
+            if ($emargement->course) {
+                return Carbon::parse($emargement->course->heure_fin)->diffInMinutes(
+                    Carbon::parse($emargement->course->heure_debut)
                 ) / 60;
             }
             return 0;

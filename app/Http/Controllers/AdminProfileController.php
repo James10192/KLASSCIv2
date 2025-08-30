@@ -50,17 +50,29 @@ class AdminProfileController extends Controller
             $user = auth()->user();
 
             // Validation des données
-            $request->validate([
-                'name' => 'required|string|max:255',
-                'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
-                'profile_photo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048'
-            ]);
+            // Si c'est un upload de photo uniquement (AJAX), on ne valide que la photo
+            if ($request->ajax() && $request->hasFile('profile_photo') && !$request->has('name')) {
+                $request->validate([
+                    'profile_photo' => 'required|image|mimes:jpg,jpeg,png|max:2048'
+                ]);
+            } else {
+                // Validation complète pour la modification du profil
+                $request->validate([
+                    'name' => 'required|string|max:255',
+                    'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+                    'profile_photo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048'
+                ]);
+            }
 
             \Log::info('Validation passée avec succès');
 
-            // Mise à jour du nom et de l'email
-            $user->name = $request->name;
-            $user->email = $request->email;
+            // Mise à jour du nom et de l'email seulement si fournis
+            if ($request->has('name')) {
+                $user->name = $request->name;
+            }
+            if ($request->has('email')) {
+                $user->email = $request->email;
+            }
 
             // Traitement de la photo de profil
             if ($request->hasFile('profile_photo')) {
