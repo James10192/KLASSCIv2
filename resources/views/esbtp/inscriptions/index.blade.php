@@ -2,24 +2,40 @@
 
 @section('title', 'Gestion des Inscriptions')
 
-@section('content')
-<div class="container-fluid">
-    <!-- Page Heading -->
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Gestion des Inscriptions</h1>
-        @can('inscriptions.create')
-        <a href="{{ route('esbtp.inscriptions.create') }}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
-            <i class="fas fa-plus fa-sm text-white-50"></i> Nouvelle Inscription
-        </a>
-        @endcan
-    </div>
+@section('styles')
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+@endsection
 
-    <!-- Filtres de recherche -->
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Filtrer les inscriptions</h6>
+@section('content')
+<div class="dashboard-acasi">
+    <div class="main-content">
+        <!-- Header Section -->
+        <div class="dashboard-header">
+            <div class="header-left">
+                <h1><i class="fas fa-user-graduate me-2"></i>Gestion des Inscriptions</h1>
+                <p class="header-subtitle">Consultez et gérez toutes les inscriptions de l'établissement</p>
+            </div>
+            <div class="header-actions">
+                <input type="search" class="search-bar" placeholder="Rechercher une inscription...">
+                @can('inscriptions.create')
+                <a href="{{ route('esbtp.inscriptions.create') }}" class="btn-acasi primary">
+                    <i class="fas fa-plus-circle"></i>Nouvelle Inscription
+                </a>
+                @endcan
+            </div>
         </div>
-        <div class="card-body">
+
+        <!-- Section principale des inscriptions -->
+        <div class="main-card">
+            <div class="main-card-header">
+                <div class="main-card-title">
+                    <i class="fas fa-filter"></i>
+                    Filtres de recherche
+                </div>
+                <div class="main-card-subtitle">Filtrer les inscriptions par critères spécifiques</div>
+            </div>
+
+            <div class="main-card-body">
             <form method="GET" action="{{ route('esbtp.inscriptions.index') }}">
                 <div class="row">
                     <div class="col-md-3 mb-3">
@@ -70,67 +86,72 @@
                         </select>
                     </div>
                     <div class="col-md-1 mb-3 d-flex align-items-end">
-                        <button type="submit" class="btn btn-primary">Filtrer</button>
+                        <button type="submit" class="btn-acasi primary">Filtrer</button>
                     </div>
                 </div>
             </form>
+            </div>
         </div>
-    </div>
 
-    <!-- Liste des inscriptions -->
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Liste des inscriptions</h6>
-        </div>
-        <div class="card-body">
-            @if($inscriptions->count() > 0)
-            <div class="table-responsive">
-                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
-                    <thead>
-                        <tr>
-                            <th>N° Inscription</th>
-                            <th>Matricule</th>
-                            <th>Étudiant</th>
-                            <th>Filière</th>
-                            <th>Niveau</th>
-                            <th>Année Universitaire</th>
-                            <th>Statut</th>
-                            <th>Date d'inscription</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
+        <!-- Liste des inscriptions -->
+        <div class="main-card">
+            <div class="main-card-header">
+                <div class="main-card-title">
+                    <i class="fas fa-list"></i>
+                    Liste des inscriptions
+                </div>
+                <div class="main-card-subtitle">Gestion complète de toutes les inscriptions de l'établissement</div>
+            </div>
+
+            <div class="main-card-body">
+                @if($inscriptions->count() > 0)
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th>N° Inscription</th>
+                                <th>Matricule</th>
+                                <th>Étudiant</th>
+                                <th>Filière</th>
+                                <th>Niveau</th>
+                                <th>Année Universitaire</th>
+                                <th>Statut</th>
+                                <th>Date d'inscription</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
                     <tbody>
                         @foreach($inscriptions as $inscription)
                         <tr>
                             <td>{{ $inscription->numero_inscription }}</td>
                             <td>{{ $inscription->etudiant->matricule ?? 'N/A' }}</td>
                             <td>{{ $inscription->etudiant->nom ?? '' }} {{ $inscription->etudiant->prenoms ?? '' }}</td>
-                            <td>{{ $inscription->filiere->nom ?? 'N/A' }}</td>
-                            <td>{{ $inscription->niveau->nom ?? 'N/A' }}</td>
-                            <td>{{ $inscription->anneeUniversitaire->annee_scolaire ?? 'N/A' }}</td>
+                            <td>{{ $inscription->filiere->name ?? ($inscription->filiere->nom ?? 'N/A') }}</td>
+                            <td>{{ $inscription->niveau->name ?? ($inscription->niveau->nom ?? 'N/A') }}</td>
+                            <td>{{ $inscription->anneeUniversitaire->name ?? ($inscription->anneeUniversitaire->annee_scolaire ?? 'N/A') }}</td>
                             <td>
-                                @if($inscription->status == 'pending')
-                                    <span class="badge badge-warning">En attente</span>
-                                @elseif($inscription->status == 'validated')
-                                    <span class="badge badge-success">Validée</span>
+                                @if($inscription->status == 'pending' || $inscription->status == 'en_attente')
+                                    <span class="badge bg-warning text-dark px-3 py-2">En attente</span>
+                                @elseif($inscription->status == 'validated' || $inscription->status == 'active')
+                                    <span class="badge bg-success px-3 py-2">Validée</span>
                                 @elseif($inscription->status == 'cancelled')
-                                    <span class="badge badge-danger">Annulée</span>
+                                    <span class="badge bg-danger px-3 py-2">Annulée</span>
                                 @else
-                                    <span class="badge badge-secondary">{{ $inscription->status }}</span>
+                                    <span class="badge bg-secondary px-3 py-2">{{ ucfirst($inscription->status) }}</span>
                                 @endif
                             </td>
                             <td>{{ $inscription->created_at->format('d/m/Y') }}</td>
                             <td>
-                                <div class="btn-group" role="group">
+                                <div class="d-flex">
                                     @can('inscriptions.view')
-                                    <a href="{{ route('esbtp.inscriptions.show', $inscription->id) }}" class="btn btn-info btn-sm" title="Détails">
+                                    <a href="{{ route('esbtp.inscriptions.show', $inscription->id) }}" class="btn btn-info btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1 me-1" title="Détails">
                                         <i class="fas fa-eye"></i>
                                     </a>
                                     @endcan
                                     
                                     @can('edit inscriptions')
                                     @if($inscription->status == 'pending')
-                                    <a href="{{ route('esbtp.inscriptions.edit', $inscription->id) }}" class="btn btn-primary btn-sm" title="Modifier">
+                                    <a href="{{ route('esbtp.inscriptions.edit', $inscription->id) }}" class="btn btn-primary btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1 me-1" title="Modifier">
                                         <i class="fas fa-edit"></i>
                                     </a>
                                     @endif
@@ -138,7 +159,7 @@
 
                                     @if($inscription->status == 'pending')
                                         @can('valider inscriptions')
-                                        <button type="button" class="btn btn-success btn-sm valider-btn" 
+                                        <button type="button" class="btn btn-success btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1 me-1 valider-btn" 
                                                 data-id="{{ $inscription->id }}" title="Valider l'inscription">
                                             <i class="fas fa-check"></i>
                                         </button>
@@ -151,21 +172,19 @@
 
                                     @if($inscription->status == 'pending')
                                         @can('annuler inscriptions')
-                                        <button type="button" class="btn btn-warning btn-sm annuler-btn" 
-                                                data-id="{{ $inscription->id }}" data-toggle="modal" 
-                                                data-target="#annulerModal{{ $inscription->id }}" title="Annuler l'inscription">
+                                        <button type="button" class="btn btn-warning btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1 me-1 annuler-btn" 
+                                                data-id="{{ $inscription->id }}" data-bs-toggle="modal" 
+                                                data-bs-target="#annulerModal{{ $inscription->id }}" title="Annuler l'inscription">
                                             <i class="fas fa-times"></i>
                                         </button>
                                         
                                         <!-- Modal d'annulation -->
-                                        <div class="modal fade" id="annulerModal{{ $inscription->id }}" tabindex="-1" role="dialog" aria-labelledby="annulerModalLabel" aria-hidden="true">
-                                            <div class="modal-dialog" role="document">
+                                        <div class="modal fade" id="annulerModal{{ $inscription->id }}" tabindex="-1" aria-labelledby="annulerModalLabel" aria-hidden="true">
+                                            <div class="modal-dialog">
                                                 <div class="modal-content">
                                                     <div class="modal-header">
                                                         <h5 class="modal-title" id="annulerModalLabel">Annulation d'inscription</h5>
-                                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                                            <span aria-hidden="true">&times;</span>
-                                                        </button>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                                     </div>
                                                     <div class="modal-body">
                                                         <p>Êtes-vous sûr de vouloir annuler l'inscription de <strong>{{ $inscription->etudiant->nom }} {{ $inscription->etudiant->prenom }}</strong> ?</p>
@@ -178,7 +197,7 @@
                                                             </div>
                                                         </div>
                                                         <div class="modal-footer">
-                                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
+                                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
                                                             <button type="submit" class="btn btn-warning">Confirmer l'annulation</button>
                                                         </div>
                                                     </form>
@@ -189,9 +208,9 @@
                                     @endif
 
                                     @can('delete inscriptions')
-                                    <button type="button" class="btn btn-danger btn-sm delete-btn" 
-                                            data-id="{{ $inscription->id }}" data-toggle="modal" 
-                                            data-target="#deleteModal{{ $inscription->id }}" title="Supprimer">
+                                    <button type="button" class="btn btn-danger btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1 delete-btn" 
+                                            data-id="{{ $inscription->id }}" data-bs-toggle="modal" 
+                                            data-bs-target="#deleteModal{{ $inscription->id }}" title="Supprimer">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                     
@@ -228,14 +247,15 @@
                     </tbody>
                 </table>
             </div>
-            <div class="mt-3">
-                {{ $inscriptions->appends(request()->query())->links() }}
+                <div class="mt-3">
+                    {{ $inscriptions->appends(request()->query())->links() }}
+                </div>
+                @else
+                <div class="alert alert-info">
+                    Aucune inscription ne correspond à vos critères de recherche.
+                </div>
+                @endif
             </div>
-            @else
-            <div class="alert alert-info">
-                Aucune inscription ne correspond à vos critères de recherche.
-            </div>
-            @endif
         </div>
     </div>
 </div>
