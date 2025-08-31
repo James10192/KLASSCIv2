@@ -562,6 +562,9 @@ $(document).ready(function() {
         
         console.log(`📞 DEBUG: Appel loadTabContent("${maxCategory}")`);
         loadTabContent(maxCategory);
+        
+        // Marquer cette catégorie comme chargée
+        loadedTabs[maxCategory] = true;
     } else {
         console.log("⚠️ DEBUG: Aucune catégorie avec des étudiants trouvée");
     }
@@ -578,10 +581,16 @@ $(document).ready(function() {
         const tabPane = $('#' + targetTab);
         const category = tabPane.data('category');
         console.log(`📂 DEBUG: category extraite: "${category}"`);
+        console.log(`💾 DEBUG: loadedTabs status:`, loadedTabs);
+        console.log(`❓ DEBUG: "${category}" déjà chargé?`, loadedTabs[category] || false);
         
         if (category) {
-            console.log(`🚀 DEBUG: Chargement Bootstrap de la catégorie "${category}"`);
-            loadTabContent(category);
+            if (loadedTabs[category]) {
+                console.log(`✅ DEBUG: Catégorie "${category}" déjà en cache, pas de rechargement`);
+            } else {
+                console.log(`🚀 DEBUG: Chargement Bootstrap de la catégorie "${category}"`);
+                loadTabContent(category);
+            }
         }
     });
     
@@ -596,14 +605,37 @@ $(document).ready(function() {
             const tabPane = $('#' + targetTab);
             const category = tabPane.data('category');
             console.log(`📂 DEBUG: category extraite après timeout: "${category}"`);
+            console.log(`💾 DEBUG: loadedTabs status:`, loadedTabs);
+            console.log(`❓ DEBUG: "${category}" déjà chargé?`, loadedTabs[category] || false);
             
             if (category) {
-                console.log(`🚀 DEBUG: Chargement par clic de la catégorie "${category}"`);
-                loadTabContent(category);
+                if (loadedTabs[category]) {
+                    console.log(`✅ DEBUG: Catégorie "${category}" déjà en cache, pas de rechargement`);
+                } else {
+                    console.log(`🚀 DEBUG: Chargement par clic de la catégorie "${category}"`);
+                    loadTabContent(category);
+                }
             }
         }, 100);
     });
 });
+
+// Fonction pour forcer le rechargement d'un onglet (efface le cache)
+function refreshTab(category) {
+    console.log(`🔄 DEBUG: Forcer le rechargement de "${category}"`);
+    loadedTabs[category] = false;
+    
+    // Remettre le spinner et cacher le contenu
+    const tabPane = $(`[data-category="${category}"]`);
+    const loadingSpinner = tabPane.find('.reinscription-spinner');
+    const contentContainer = tabPane.find('.content-container');
+    
+    loadingSpinner.removeClass('hidden');
+    contentContainer.hide().html('');
+    
+    // Recharger
+    loadTabContent(category);
+}
 
 // Fonction principale de chargement lazy
 function loadTabContent(category, page = 1) {
@@ -681,6 +713,7 @@ function loadTabContent(category, page = 1) {
                 console.log(`🔍 DEBUG APRÈS show():`, contentContainer.is(':visible'));
                 loadedTabs[category] = true;
                 currentPage[category] = 1;
+                console.log(`💾 DEBUG: Catégorie "${category}" mise en cache pour éviter les rechargements`);
             } else {
                 console.log(`➕ DEBUG: Ajout page ${page}`);
                 // Pages suivantes : ajouter les lignes au tbody existant
