@@ -22,30 +22,58 @@ class ESBTPReinscriptionController extends Controller
 
     public function index(Request $request)
     {
-        $anneeAcademique = $request->get('annee_academique', date('Y') . '-' . (date('Y') + 1));
+        // Toujours utiliser l'année courante (is_current = true)
+        $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $anneeAcademique = $anneeCourante ? $anneeCourante->name : date('Y') . '-' . (date('Y') + 1);
         
         try {
             $resultats = $this->reinscriptionService->getEtudiantsParDecision($anneeAcademique);
             
-            // Ajouter les étudiants qui ont abandonné - séparer par type
+            // Utiliser l'année courante
+            $anneeUniversitaire = $anneeCourante;
+            
+            // Ajouter les étudiants qui ont abandonné - séparer par type - FILTRÉS PAR ANNÉE COURANTE
             $abandonsAnneeScolaire = ESBTPEtudiant::where('statut', 'abandon')
                 ->where(function($query) {
                     $query->where('abandon_type', 'annee_scolaire')
                           ->orWhereNull('abandon_type'); // Les anciens abandons sans type spécifié
                 })
-                ->with(['paiements', 'inscriptions.filiere', 'inscriptions.niveauEtude', 'inscriptions.classe'])
+                ->whereHas('inscriptions', function($query) use ($anneeUniversitaire) {
+                    if ($anneeUniversitaire) {
+                        $query->where('annee_universitaire_id', $anneeUniversitaire->id);
+                    }
+                })
+                ->with(['paiements', 'inscriptions' => function($query) use ($anneeUniversitaire) {
+                    if ($anneeUniversitaire) {
+                        $query->where('annee_universitaire_id', $anneeUniversitaire->id);
+                    }
+                    $query->with(['filiere', 'niveauEtude', 'classe']);
+                }])
                 ->get();
                 
             $abandonsEcole = ESBTPEtudiant::where('statut', 'abandon')
                 ->where('abandon_type', 'ecole')
-                ->with(['paiements', 'inscriptions.filiere', 'inscriptions.niveauEtude', 'inscriptions.classe'])
+                ->whereHas('inscriptions', function($query) use ($anneeUniversitaire) {
+                    if ($anneeUniversitaire) {
+                        $query->where('annee_universitaire_id', $anneeUniversitaire->id);
+                    }
+                })
+                ->with(['paiements', 'inscriptions' => function($query) use ($anneeUniversitaire) {
+                    if ($anneeUniversitaire) {
+                        $query->where('annee_universitaire_id', $anneeUniversitaire->id);
+                    }
+                    $query->with(['filiere', 'niveauEtude', 'classe']);
+                }])
                 ->get();
                 
             $resultats['abandons_annee'] = $abandonsAnneeScolaire;
             $resultats['abandons_ecole'] = $abandonsEcole;
             
-            // Ajouter les étudiants dont la réinscription a été validée
+            // Ajouter les étudiants dont la réinscription a été validée - FILTRÉS PAR ANNÉE COURANTE
             $valides = \App\Models\ESBTPInscription::where('reinscription_status', 'validated')
+                ->when($anneeUniversitaire, function($query) use ($anneeUniversitaire) {
+                    return $query->where('annee_universitaire_id', $anneeUniversitaire->id);
+                })
                 ->with(['etudiant.paiements', 'classe.filiere', 'classe.niveau', 'reinscriptionValidatedBy'])
                 ->get()
                 ->map(function($inscription) {
@@ -325,20 +353,41 @@ class ESBTPReinscriptionController extends Controller
         $request->validate([
             'nouvelle_classe_id' => 'required|exists:esbtp_classes,id',
             'decision' => 'required|in:passage,redoublement,rattrapage',
-            'observations' => 'nullable|string'
+            'observations' => 'nullable|string',
+            'selected_optionals' => 'nullable|string' // JSON des frais optionnels
         ]);
 
         try {
-            $etudiant = $this->reinscriptionService->effectuerReinscription(
+            // Décoder les frais optionnels sélectionnés
+            $selectedOptionals = [];
+            if ($request->selected_optionals) {
+                $selectedOptionals = json_decode($request->selected_optionals, true) ?: [];
+            }
+
+            \Log::info('Début réinscription avec frais optionnels', [
+                'etudiant_id' => $etudiantId,
+                'nouvelle_classe_id' => $request->nouvelle_classe_id,
+                'decision' => $request->decision,
+                'selected_optionals' => $selectedOptionals
+            ]);
+
+            $nouvelleInscription = $this->reinscriptionService->effectuerReinscription(
                 $etudiantId,
                 $request->nouvelle_classe_id,
                 $request->decision,
-                $request->observations
+                $request->observations,
+                $selectedOptionals
             );
 
-            return redirect()->route('esbtp.reinscription.index')
-                ->with('success', 'Réinscription effectuée avec succès pour ' . $etudiant->nom . ' ' . $etudiant->prenom);
+            return redirect()->route('esbtp.inscriptions.show', $nouvelleInscription->id)
+                ->with('success', 'Réinscription effectuée avec succès ! Nouvelle inscription créée pour l\'année universitaire en cours.');
         } catch (\Exception $e) {
+            \Log::error('Erreur lors de la réinscription', [
+                'etudiant_id' => $etudiantId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return back()->withErrors(['error' => 'Erreur lors de la réinscription: ' . $e->getMessage()]);
         }
     }

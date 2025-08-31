@@ -24,7 +24,7 @@ return new class extends Migration
                 $table->string('type_paiement', 100);
                 $table->decimal('montant', 10, 2);
                 $table->date('date_paiement');
-                $table->date('date_echeance')->nullable()->after('date_paiement');
+                $table->date('date_echeance')->nullable();
                 $table->string('mode_paiement')->comment('Espèces, chèque, virement, etc.');
                 $table->string('numero_transaction')->nullable()->comment('Numéro de chèque, de transaction, etc.');
                 $table->string('reference_paiement')->nullable()->comment('Numéro de chèque, de transaction, etc.');

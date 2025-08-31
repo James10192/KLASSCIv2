@@ -1,34 +1,36 @@
 {
-    "name": "laravel/laravel",
+    "name": "esbtp/esbtp-yakro-v2",
     "type": "project",
-    "description": "The Laravel Framework.",
+    "description": "Système de gestion d'école ESBTP YAKRO - Version 2",
     "keywords": [
-        "framework",
-        "laravel"
+        "laravel",
+        "school-management",
+        "esbtp",
+        "yakro"
     ],
     "license": "MIT",
     "require": {
-        "php": "^7.3|^8.0",
-        "barryvdh/laravel-dompdf": "^2.2",
-        "doctrine/dbal": "^3.9",
-        "fruitcake/laravel-cors": "^2.0",
-        "guzzlehttp/guzzle": "^7.0.1",
-        "jenssegers/agent": "^2.6",
-        "laravel/framework": "^8.75",
-        "laravel/sanctum": "^2.11",
-        "laravel/tinker": "^2.5",
-        "laravel/ui": "^3.4",
-        "maatwebsite/excel": "^1.1",
-        "owen-it/laravel-auditing": "^13.7",
-        "spatie/laravel-permission": "^6.16"
+        "php": "^7.4|^8.0|^8.1|^8.2",
+        "barryvdh/laravel-dompdf": "^2.0",
+        "doctrine/dbal": "^3.0",
+        "fruitcake/laravel-cors": "^3.0",
+        "guzzlehttp/guzzle": "^7.2",
+        "laravel/framework": "^9.0|^10.0",
+        "laravel/sanctum": "^3.0",
+        "laravel/tinker": "^2.7",
+        "laravel/ui": "^4.0",
+        "maatwebsite/excel": "^3.1",
+        "owen-it/laravel-auditing": "^13.0",
+        "spatie/laravel-permission": "^5.0"
     },
     "require-dev": {
-        "facade/ignition": "^2.5",
         "fakerphp/faker": "^1.9.1",
-        "laravel/sail": "^1.0.1",
+        "laravel/pint": "^1.0",
+        "laravel/sail": "^1.18",
         "mockery/mockery": "^1.4.4",
-        "nunomaduro/collision": "^5.10",
-        "phpunit/phpunit": "^9.5.10"
+        "nunomaduro/collision": "^6.0",
+        "phpunit/phpunit": "^9.5.10",
+        "spatie/laravel-ignition": "^1.0"
     },
     "autoload": {
         "psr-4": {
@@ -37,7 +39,6 @@
             "Database\\Seeders\\": "database/seeders/"
         },
         "files": [
-            "app/Helpers/helpers.php",
             "app/helpers.php"
         ]
     },
@@ -69,14 +70,11 @@
     "config": {
         "optimize-autoloader": true,
         "preferred-install": "dist",
-        "sort-packages": true
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
     },
     "minimum-stability": "dev",
-    "prefer-stable": true,
-    "repositories": {
-        "php-mcp-laravel": {
-            "type": "vcs",
-            "url": "https://github.com/php-mcp/laravel"
-        }
-    }
+    "prefer-stable": true
 }

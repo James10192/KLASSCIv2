@@ -9,15 +9,15 @@
             font-family: Arial, sans-serif;
             font-size: {{ $settings['bulletin_font_size'] ?? '11' }}px;
             margin: 0;
-            padding: 20px;
-            background-color: #f5f5f5;
+            padding: 0;
+            background-color: white;
         }
         .container {
             max-width: 800px;
             margin: 0 auto;
             background-color: white;
-            padding: 20px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            padding: 10px;
+            box-shadow: none;
         }
         .header {
             display: flex;

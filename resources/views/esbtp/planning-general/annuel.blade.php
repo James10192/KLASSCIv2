@@ -147,7 +147,7 @@
     .evenement-timeline[data-type="examens"] { --couleur-evenement: #f59e0b; }
     .evenement-timeline[data-type="vacances"] { --couleur-evenement: #6b7280; }
     .evenement-timeline[data-type="reprise"] { --couleur-evenement: #10b981; }
-    .evenement-timeline[data-type="soutenances"] { --couleur-evenement: #8b5cf6; }
+    .evenement-timeline[data-type="soutenances"] { --couleur-evenement: #5e91de; }
     .evenement-timeline[data-type="ceremonie"] { --couleur-evenement: #f59e0b; }
     .evenement-timeline[data-type="fermeture"] { --couleur-evenement: #374151; }
     
@@ -531,7 +531,7 @@
     
     .stat-academique[data-type="total"] { --couleur-stat: #3b82f6; }
     .stat-academique[data-type="examens"] { --couleur-stat: #f59e0b; }
-    .stat-academique[data-type="ceremonies"] { --couleur-stat: #8b5cf6; }
+    .stat-academique[data-type="ceremonies"] { --couleur-stat: #0453cb; }
     .stat-academique[data-type="vacances"] { --couleur-stat: #10b981; }
     
     .legende-academique {
@@ -731,7 +731,7 @@
                 <span>Examens</span>
             </div>
             <div class="legende-item">
-                <div class="legende-couleur" style="background: #8b5cf6;"></div>
+                <div class="legende-couleur" style="background: #0453cb;"></div>
                 <span>Cérémonies</span>
             </div>
             <div class="legende-item">

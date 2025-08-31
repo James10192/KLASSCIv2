@@ -167,8 +167,8 @@ body.modal-open .card:hover {
                                 <i class="fas fa-user"></i>Informations de l'étudiant
                             </div>
                             <div class="text-center mb-4">
-                                @if($inscription->etudiant->photo)
-                                    <img src="{{ asset('storage/'.$inscription->etudiant->photo) }}" alt="Photo de profil" class="rounded-circle img-thumbnail" style="width: 150px; height: 150px; object-fit: cover;">
+                                @if($inscription->etudiant->photo_url)
+                                    <img src="{{ $inscription->etudiant->photo_url }}" alt="Photo de profil" class="rounded-circle img-thumbnail" style="width: 150px; height: 150px; object-fit: cover;">
                                 @else
                                     <div class="bg-light d-flex align-items-center justify-content-center rounded-circle mx-auto" style="width: 150px; height: 150px;">
                                         <i class="fas fa-user fa-5x text-secondary"></i>

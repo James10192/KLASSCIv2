@@ -1038,7 +1038,7 @@ function showTeacherAvailability() {
 }
 
 .availability-cell.occupied {
-    background: #8b5cf6;
+    background: #5e91de;
     border-color: #7c3aed;
     color: white;
     position: relative;
@@ -1173,7 +1173,7 @@ function showTeacherAvailability() {
 }
 
 .legend-color.occupied {
-    background: #8b5cf6;
+    background: #5e91de;
     border-color: #7c3aed;
 }
 

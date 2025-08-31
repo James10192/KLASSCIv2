@@ -601,6 +601,26 @@ class ESBTPPaiementController extends Controller
     }
 
     /**
+     * Prévisualise un reçu de paiement en HTML avant génération PDF.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function previewRecu($id)
+    {
+        $paiement = ESBTPPaiement::with([
+            'etudiant.user',
+            'inscription.anneeUniversitaire',
+            'inscription.filiere',
+            'inscription.niveauEtude',
+            'validatedBy'
+        ])->findOrFail($id);
+
+        // Retourner la vue HTML pour prévisualisation
+        return view('esbtp.paiements.preview', compact('paiement'));
+    }
+
+    /**
      * Génère un reçu de paiement au format PDF.
      *
      * @param  int  $id
@@ -616,14 +636,66 @@ class ESBTPPaiementController extends Controller
             'validatedBy'
         ])->findOrFail($id);
 
-        // Générer le PDF
-        $pdf = PDF::loadView('esbtp.paiements.recu', compact('paiement'));
+        // Récupérer les paramètres depuis les settings comme pour les bulletins
+        $settings = $this->getReceiptSettings();
+
+        // Générer le PDF avec les settings
+        $pdf = PDF::loadView('esbtp.paiements.recu', compact('paiement', 'settings'));
 
         // Définir le nom du fichier
         $filename = 'Recu_' . $paiement->numero_recu . '.pdf';
 
         // Retourner le PDF pour téléchargement
         return $pdf->download($filename);
+    }
+
+    /**
+     * Récupère les paramètres pour les reçus depuis les settings.
+     */
+    public function getReceiptSettings()
+    {
+        $settings = [
+            'school_name' => \App\Helpers\SettingsHelper::get('school_name', 'Ecole Spéciale du Bâtiment et des Travaux Publics'),
+            'school_address' => \App\Helpers\SettingsHelper::get('school_address', 'BP 2541 Yamoussoukro'),
+            'school_phone' => \App\Helpers\SettingsHelper::get('school_phone', '30 64 39 93'),
+            'school_email' => \App\Helpers\SettingsHelper::get('school_email', 'esbtp@aviso.ci'),
+            'show_logo' => \App\Helpers\SettingsHelper::get('receipt_show_logo', '1') === '1',
+        ];
+
+        // Préparer le logo si nécessaire
+        if ($settings['show_logo']) {
+            $logoPath = \App\Helpers\SettingsHelper::get('school_logo');
+            $settings['logo_base64'] = $this->prepareLogoBase64($logoPath);
+        }
+
+        return $settings;
+    }
+
+    /**
+     * Prépare le logo en base64 pour les PDFs.
+     */
+    private function prepareLogoBase64($logoPath)
+    {
+        if (!$logoPath) {
+            return null;
+        }
+
+        // Essayer différents chemins possibles
+        $paths = [
+            storage_path('app/public/' . $logoPath),
+            public_path($logoPath),
+            public_path('images/LOGO-KLASSCI-PNG.png'), // Fallback par défaut
+        ];
+
+        foreach ($paths as $path) {
+            if (file_exists($path)) {
+                $imageData = file_get_contents($path);
+                $extension = pathinfo($path, PATHINFO_EXTENSION);
+                return 'data:image/' . $extension . ';base64,' . base64encode($imageData);
+            }
+        }
+
+        return null;
     }
 
     /**

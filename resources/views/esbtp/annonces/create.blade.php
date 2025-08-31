@@ -2,7 +2,8 @@
 
 @section('title', 'Créer une annonce - ESBTP-yAKRO')
 
-@push('styles')
+@section('styles')
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <!-- Choices.js CSS -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
 
@@ -73,9 +74,12 @@
         border: 1px solid #d1d5db;
         border-radius: 12px;
         box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-        z-index: 1050;
-        overflow: hidden;
+        z-index: 9999 !important;
+        overflow: visible;
         animation: dropdownSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: absolute !important;
+        max-height: 300px;
+        overflow-y: auto;
     }
 
     @keyframes dropdownSlideIn {
@@ -215,21 +219,90 @@
         box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
     }
 
-    /* Style pour les radios personnalisés */
-    .custom-radio {
-        padding: 10px 15px;
-        border-radius: 0.375rem;
-        border: 1px solid #dee2e6;
-        margin-right: 10px;
-        transition: all 0.2s ease;
+    /* Styles ACASI pour les radio buttons */
+    .form-radio-group {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
     }
-    .custom-radio:hover {
-        background-color: rgba(1, 99, 47, 0.05);
-        border-color: var(--esbtp-green);
+    
+    .form-radio-option {
+        display: flex;
+        align-items: center;
+        padding: 16px;
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
+        background: #ffffff;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+        gap: 12px;
     }
-    .custom-radio .form-check-input:checked ~ .form-check-label {
-        color: var(--esbtp-green);
+    
+    .form-radio-option:hover {
+        border-color: #0453cb;
+        background: #f8fafc;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+    }
+    
+    .form-radio-option input[type="radio"] {
+        position: absolute;
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    
+    .form-radio-check {
+        width: 20px;
+        height: 20px;
+        border: 2px solid #d1d5db;
+        border-radius: 50%;
+        position: relative;
+        flex-shrink: 0;
+        transition: all 0.3s ease;
+    }
+    
+    .form-radio-check::after {
+        content: '';
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #0453cb;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(0);
+        transition: transform 0.2s ease;
+    }
+    
+    .form-radio-option input[type="radio"]:checked + .form-radio-check {
+        border-color: #0453cb;
+    }
+    
+    .form-radio-option input[type="radio"]:checked + .form-radio-check::after {
+        transform: translate(-50%, -50%) scale(1);
+    }
+    
+    .form-radio-option input[type="radio"]:checked ~ .form-radio-label {
+        color: #0453cb;
+        font-weight: 600;
+    }
+    
+    .form-radio-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
         font-weight: 500;
+        color: #374151;
+        transition: color 0.3s ease;
+    }
+    
+    .form-radio-label i {
+        font-size: 16px;
+        width: 20px;
+        text-align: center;
     }
 
     /* Style pour les étiquettes */
@@ -264,6 +337,183 @@
         color: #374151 !important;
     }
 
+    /* Styles ACASI pour tous les éléments de formulaire */
+    .form-input, .form-textarea, .form-file, .form-select-single, .form-select-multiple {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
+        background: white;
+        font-size: 14px;
+        color: #374151;
+        font-weight: 500;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .form-select-single, .form-select-multiple {
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+        background-position: right 12px center;
+        background-repeat: no-repeat;
+        background-size: 16px;
+        padding-right: 48px;
+    }
+
+    .form-input:focus, .form-textarea:focus, .form-file:focus, .form-select-single:focus, .form-select-multiple:focus {
+        outline: none;
+        border-color: #0453cb;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        transform: translateY(-1px);
+    }
+
+    .form-input.error, .form-textarea.error, .form-file.error, .form-select-single.error, .form-select-multiple.error {
+        border-color: #ef4444;
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+    }
+
+    .form-input::placeholder, .form-textarea::placeholder {
+        color: #9ca3af;
+        font-weight: 400;
+    }
+
+    .form-textarea {
+        resize: vertical;
+        min-height: 120px;
+        line-height: 1.5;
+    }
+
+    .form-file {
+        padding: 16px;
+        border-style: dashed;
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        cursor: pointer;
+        position: relative;
+    }
+
+    .form-file:hover {
+        border-color: #0453cb;
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 8px;
+        font-size: 14px;
+        display: block;
+    }
+
+    .required {
+        color: #ef4444;
+        margin-left: 4px;
+    }
+
+    .form-help {
+        font-size: 12px;
+        color: #6b7280;
+        margin-top: 6px;
+        font-weight: 400;
+    }
+
+    .error-message {
+        font-size: 12px;
+        color: #ef4444;
+        margin-top: 6px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .error-message::before {
+        content: "⚠";
+        font-size: 14px;
+    }
+
+    /* Styles spécifiques pour choices.js avec ACASI */
+    .choices {
+        position: relative;
+        z-index: 1;
+    }
+
+    .choices .choices__inner {
+        background: white !important;
+        border: 2px solid #e5e7eb !important;
+        border-radius: 12px !important;
+        padding: 8px 12px !important;
+        min-height: 48px !important;
+        transition: all 0.3s ease !important;
+    }
+
+    .choices.is-focused .choices__inner {
+        border-color: #0453cb !important;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
+    }
+
+    .choices.is-open {
+        z-index: 9999 !important;
+    }
+
+    .choices .choices__list--multiple .choices__item {
+        background: #0453cb !important;
+        border-radius: 8px !important;
+        padding: 6px 12px !important;
+        margin: 2px 4px 2px 0 !important;
+        color: white !important;
+        font-size: 13px !important;
+        font-weight: 500 !important;
+        border: none !important;
+    }
+
+    /* Assurer que les conteneurs parents permettent l'overflow */
+    .dashboard-acasi .main-content {
+        overflow: visible !important;
+    }
+
+    .main-card-body {
+        overflow: visible !important;
+        position: relative;
+    }
+
+    .main-card {
+        overflow: visible !important;
+        position: relative;
+    }
+
+    .form-group {
+        overflow: visible !important;
+        position: relative;
+        z-index: 1;
+    }
+
+    /* Spécifiquement pour les conteneurs de sélection */
+    #classes_container, #etudiants_container {
+        overflow: visible !important;
+        z-index: 100;
+        position: relative;
+    }
+
+    /* Assurer que le dropdown Choices.js peut déborder */
+    .choices[data-type*="select-multiple"] {
+        z-index: 1000;
+        position: relative;
+    }
+
+    .choices[data-type*="select-multiple"].is-open {
+        z-index: 10000 !important;
+    }
+
+    /* Container pour éviter les conflits de z-index */
+    .row {
+        position: relative;
+        z-index: 1;
+    }
+
+    .col-lg-8, .col-lg-4 {
+        position: static;
+    }
+
     /* Media queries pour la responsivité */
     @media (max-width: 991.98px) {
         .sticky-top {
@@ -286,381 +536,228 @@
         }
     }
 </style>
-@endpush
+@endsection
 
 @section('content')
-<div class="container-fluid">
-    <div class="row mb-4">
-        <div class="col-12">
-            <!-- En-tête de page avec style moderne -->
-            <div class="card shadow-sm border-0 rounded-lg">
-                <div class="card-body py-3">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h4 class="font-weight-bold text-primary mb-1">
-                                <i class="fas fa-plus-circle me-2"></i>Créer une nouvelle annonce
-                            </h4>
-                            <p class="text-muted mb-0 small">Remplissez le formulaire ci-dessous pour créer une nouvelle annonce.</p>
-                        </div>
-                        <a href="{{ route('esbtp.annonces.index') }}" class="btn btn-outline-primary rounded-pill">
-                        <i class="fas fa-arrow-left me-1"></i>Retour à la liste
-                    </a>
-                    </div>
-                </div>
+<div class="dashboard-acasi">
+    <div class="main-content">
+        <!-- Header Section -->
+        <div class="dashboard-header">
+            <div class="header-left">
+                <h1><i class="fas fa-plus-circle me-2"></i>Créer une annonce</h1>
+                <p class="header-subtitle">Diffusion d'informations aux étudiants et au personnel</p>
+            </div>
+            <div class="header-actions">
+                <a href="{{ route('esbtp.annonces.index') }}" class="btn-acasi secondary">
+                    <i class="fas fa-arrow-left"></i>Retour à la liste
+                </a>
             </div>
         </div>
-    </div>
 
-                    @if ($errors->any())
-        <div class="alert alert-danger alert-dismissible fade show rounded-lg shadow-sm mb-4" role="alert">
-            <div class="d-flex">
-                <div class="me-3">
-                    <i class="fas fa-exclamation-triangle fs-3"></i>
-                </div>
+        @if ($errors->any())
+            <div class="alert-modern error">
+                <i class="fas fa-exclamation-triangle"></i>
                 <div>
-                    <h5 class="alert-heading">Erreur de validation</h5>
-                    <ul class="mb-0 ps-3">
-                                @foreach ($errors->all() as $error)
-                                    <li>{{ $error }}</li>
-                                @endforeach
-                            </ul>
+                    <h4>Erreur de validation</h4>
+                    <ul>
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
                 </div>
             </div>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    @endif
+        @endif
 
-                    <form action="{{ route('esbtp.annonces.store') }}" method="POST" enctype="multipart/form-data">
-                        @csrf
-                        <div class="row">
-            <!-- Informations générales - Colonne principale -->
-            <div class="col-lg-8">
-                <!-- Carte d'informations générales avec style moderne -->
-                <div class="card shadow-sm border-0 rounded-lg mb-4 hover-card">
-                    <div class="card-header bg-white py-3 border-bottom border-light">
-                        <h5 class="mb-0 fw-bold">
-                            <i class="fas fa-info-circle me-2 text-primary"></i>
-                            Informations générales
-                        </h5>
-                                    </div>
-                    <div class="card-body py-4">
-                        <div class="mb-4">
-                                            <label for="titre" class="form-label">Titre de l'annonce <span class="text-danger">*</span></label>
-                            <div class="input-group mb-2">
-                                <span class="input-group-text bg-light border-end-0">
-                                    <i class="fas fa-heading text-primary"></i>
-                                </span>
-                                <input type="text" class="form-control border-start-0 ps-0 @error('titre') is-invalid @enderror"
-                                    id="titre" name="titre" value="{{ old('titre') }}" placeholder="Saisissez un titre clair et concis" required>
-                            </div>
-                                            @error('titre')
-                                <div class="text-danger small mt-1">{{ $message }}</div>
-                                            @enderror
-                            <div class="form-text text-muted small">Le titre doit être court et descriptif (max 255 caractères).</div>
-                                        </div>
-
-                        <div class="mb-4">
-                                            <label for="contenu" class="form-label">Contenu <span class="text-danger">*</span></label>
-                            <div class="input-group mb-2">
-                                <span class="input-group-text bg-light">
-                                    <i class="fas fa-align-left text-primary"></i>
-                                </span>
-                                <textarea class="form-control @error('contenu') is-invalid @enderror"
-                                    id="contenu" name="contenu" rows="8"
-                                    placeholder="Détaillez votre annonce ici..." required>{{ old('contenu') }}</textarea>
-                            </div>
-                                            @error('contenu')
-                                <div class="text-danger small mt-1">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-
-                                        <div class="mb-3">
-                            <label for="piece_jointe" class="form-label d-flex align-items-center">
-                                <i class="fas fa-paperclip me-2 text-primary"></i>
-                                Pièce jointe (optionnel)
-                            </label>
-                            <div class="input-group">
-                                            <input type="file" class="form-control @error('piece_jointe') is-invalid @enderror" id="piece_jointe" name="piece_jointe">
-                                <span class="input-group-text bg-light">
-                                    <i class="fas fa-upload"></i>
-                                </span>
-                            </div>
-                                            @error('piece_jointe')
-                                <div class="text-danger small mt-1">{{ $message }}</div>
-                                            @enderror
-                            <div class="form-text text-muted small">Formats acceptés: PDF, Word, Excel, Images (max 5MB)</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                <!-- Section des destinataires -->
-                <div class="card shadow-sm border-0 rounded-lg mb-4 hover-card">
-                    <div class="card-header bg-white py-3 border-bottom border-light">
-                        <h5 class="mb-0 fw-bold">
-                            <i class="fas fa-users me-2 text-primary"></i>
-                            Destinataires
-                        </h5>
-                                    </div>
-                    <div class="card-body py-4">
-                        <div class="mb-4">
-                            <label class="form-label mb-3">Type de destinataires <span class="text-danger">*</span></label>
-                            <div class="d-flex flex-wrap gap-3">
-                                <div class="form-check custom-radio">
-                                    <input class="form-check-input" type="radio" name="type" id="type_globale"
-                                        value="general" {{ old('type', 'general') == 'general' ? 'checked' : '' }} required>
-                                    <label class="form-check-label" for="type_globale">
-                                        <i class="fas fa-globe me-1 text-primary"></i>
-                                        Tous les étudiants
-                                    </label>
-                                            </div>
-                                <div class="form-check custom-radio">
-                                    <input class="form-check-input" type="radio" name="type" id="type_classe"
-                                        value="classe" {{ old('type') == 'classe' ? 'checked' : '' }} required>
-                                    <label class="form-check-label" for="type_classe">
-                                        <i class="fas fa-chalkboard me-1 text-success"></i>
-                                        Classes spécifiques
-                                    </label>
-                                        </div>
-                                <div class="form-check custom-radio">
-                                    <input class="form-check-input" type="radio" name="type" id="type_etudiant"
-                                        value="etudiant" {{ old('type') == 'etudiant' ? 'checked' : '' }} required>
-                                    <label class="form-check-label" for="type_etudiant">
-                                        <i class="fas fa-user-graduate me-1 text-info"></i>
-                                        Étudiants spécifiques
-                                    </label>
-                                                </div>
-                                            </div>
-                                            @error('type')
-                                <div class="text-danger small mt-1">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-
-                                        <!-- Sélection par classe -->
-                        <div id="classes_container" class="mb-4 bg-light p-3 rounded-3" style="display: none;">
-                            <h6 class="mb-3 text-primary">
-                                <i class="fas fa-filter me-2"></i>
-                                Filtrer les classes
-                            </h6>
-                            <div class="row g-3 mb-3">
-                                <div class="col-md-4 mb-2">
-                                    <div class="input-group input-group-sm">
-                                        <span class="input-group-text bg-white">
-                                            <i class="fas fa-sitemap text-primary"></i>
-                                        </span>
-                                        <select class="form-select shadow-none" id="filiere_filter">
-                                                        <option value="">Toutes les filières</option>
-                                                        @foreach($filieres as $filiere)
-                                                            <option value="{{ $filiere->id }}">{{ $filiere->name }}</option>
-                                                        @endforeach
-                                                    </select>
-                                                </div>
-                                </div>
-                                <div class="col-md-4 mb-2">
-                                    <div class="input-group input-group-sm">
-                                        <span class="input-group-text bg-white">
-                                            <i class="fas fa-layer-group text-primary"></i>
-                                        </span>
-                                        <select class="form-select shadow-none" id="niveau_filter">
-                                                        <option value="">Tous les niveaux</option>
-                                                        @foreach($niveaux as $niveau)
-                                                            <option value="{{ $niveau->id }}">{{ $niveau->name }}</option>
-                                                        @endforeach
-                                                    </select>
-                                                </div>
-                                </div>
-                                <div class="col-md-6 mb-2">
-                                    <button type="button" class="btn btn-sm btn-outline-primary w-100" id="select_all_classes">
-                                        <i class="fas fa-check-double me-1"></i>
-                                        Sélectionner toutes les classes visibles
-                                    </button>
-                                </div>
-                                <div class="col-md-6 mb-2">
-                                    <button type="button" class="btn btn-sm btn-outline-secondary w-100 reset-filters">
-                                        <i class="fas fa-undo me-1"></i>
-                                        Réinitialiser les filtres
-                                    </button>
-                                                </div>
-                                            </div>
-
-                            <label for="classes" class="form-label">Classes destinataires <span class="text-danger">*</span></label>
-                            <select class="form-select choices-multiple @error('classes') is-invalid @enderror"
-                                id="classes" name="classes[]" multiple data-placeholder="Sélectionnez une ou plusieurs classes">
-                                                @foreach($classes as $classe)
-                                                    <option value="{{ $classe->id }}"
-                                                        data-filiere="{{ $classe->filiere_id }}"
-                                                        data-niveau="{{ $classe->niveau_etude_id }}"
-                                                        {{ (old('classes') && in_array($classe->id, old('classes'))) ? 'selected' : '' }}>
-                                                        {{ $classe->name }}
-                                                    </option>
-                                                @endforeach
-                                            </select>
-                                            @error('classes')
-                                                <div class="invalid-feedback">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-
-                                        <!-- Sélection par étudiant -->
-                        <div id="etudiants_container" class="mb-4 bg-light p-3 rounded-3" style="display: none;">
-                            <h6 class="mb-3 text-primary">
-                                <i class="fas fa-filter me-2"></i>
-                                Filtrer les étudiants
-                            </h6>
-                            <div class="row g-3 mb-3">
-                                <div class="col-md-6 mb-2">
-                                    <div class="input-group input-group-sm">
-                                        <span class="input-group-text bg-white">
-                                            <i class="fas fa-chalkboard text-primary"></i>
-                                        </span>
-                                        <select class="form-select shadow-none" id="classe_etudiant_filter">
-                                                        <option value="">Toutes les classes</option>
-                                                        @foreach($classes as $classe)
-                                                            <option value="{{ $classe->id }}">{{ $classe->name }}</option>
-                                                        @endforeach
-                                                    </select>
-                                                </div>
-                                </div>
-                                <div class="col-md-6 mb-2">
-                                    <button type="button" class="btn btn-sm btn-outline-primary w-100" id="select_all_etudiants">
-                                        <i class="fas fa-check-double me-1"></i>
-                                        Sélectionner tous les étudiants visibles
-                                    </button>
-                                </div>
-                                <div class="col-md-6 mb-2">
-                                    <button type="button" class="btn btn-sm btn-outline-secondary w-100 reset-filters">
-                                        <i class="fas fa-undo me-1"></i>
-                                        Réinitialiser les filtres
-                                    </button>
-                                                </div>
-                                            </div>
-
-                            <label for="etudiants" class="form-label">Étudiants destinataires <span class="text-danger">*</span></label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-white">
-                                    <i class="fas fa-user-graduate text-primary"></i>
-                                </span>
-                                <select class="form-select choices-multiple @error('etudiants') is-invalid @enderror"
-                                    id="etudiants" name="etudiants[]" multiple data-placeholder="Sélectionnez un ou plusieurs étudiants">
-                                                @foreach($etudiants as $etudiant)
-                                                    <option value="{{ $etudiant->id }}"
-                                            data-classe="{{ $etudiant->classe ? $etudiant->classe->id : '' }}"
-                                                        {{ (old('etudiants') && in_array($etudiant->id, old('etudiants'))) ? 'selected' : '' }}>
-                                                        {{ $etudiant->nom }} {{ $etudiant->prenoms }}
-                                                    </option>
-                                                @endforeach
-                                            </select>
-                            </div>
-                                            @error('etudiants')
-                                                <div class="invalid-feedback">{{ $message }}</div>
-                                            @enderror
-                            <div class="form-text text-muted small mt-2">
-                                <i class="fas fa-info-circle me-1"></i>
-                                Les notifications seront envoyées à tous les étudiants sélectionnés, qu'ils soient connectés ou non.
-                                        </div>
-                                    </div>
-                                </div>
+        <form action="{{ route('esbtp.annonces.store') }}" method="POST" enctype="multipart/form-data">
+            @csrf
+            <div class="row">
+                <div class="col-lg-8">
+                    <!-- Informations générales -->
+                    <div class="main-card mb-4">
+                        <div class="main-card-header">
+                            <div class="main-card-title">
+                                <i class="fas fa-info-circle"></i>
+                                Informations générales
                             </div>
                         </div>
+                        <div class="main-card-body">
+                            <div class="form-group">
+                                <label for="titre" class="form-label">Titre de l'annonce <span class="required">*</span></label>
+                                <input type="text" id="titre" name="titre" class="form-input @error('titre') error @enderror" 
+                                       value="{{ old('titre') }}" placeholder="Titre clair et concis" required>
+                                @error('titre')
+                                    <div class="error-message">{{ $message }}</div>
+                                @enderror
+                            </div>
 
-            <!-- Colonne latérale pour les options -->
-            <div class="col-lg-4">
-                <div class="sticky-top" style="top: 80px; z-index: 1;">
-                    <!-- Carte des options de publication -->
-                    <div class="card shadow-sm border-0 rounded-lg mb-4 hover-card">
-                        <div class="card-header bg-white py-3 border-bottom border-light">
-                            <h5 class="mb-0 fw-bold">
-                                <i class="fas fa-cog me-2 text-primary"></i>
+                            <div class="form-group">
+                                <label for="contenu" class="form-label">Contenu <span class="required">*</span></label>
+                                <textarea id="contenu" name="contenu" class="form-textarea @error('contenu') error @enderror" 
+                                          rows="6" placeholder="Contenu détaillé de l'annonce..." required>{{ old('contenu') }}</textarea>
+                                @error('contenu')
+                                    <div class="error-message">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="form-group">
+                                <label for="piece_jointe" class="form-label">Pièce jointe (optionnel)</label>
+                                <input type="file" id="piece_jointe" name="piece_jointe" class="form-file @error('piece_jointe') error @enderror">
+                                @error('piece_jointe')
+                                    <div class="error-message">{{ $message }}</div>
+                                @enderror
+                                <div class="form-help">Formats acceptés: PDF, Word, Excel, Images (max 5MB)</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Destinataires -->
+                    <div class="main-card mb-4">
+                        <div class="main-card-header">
+                            <div class="main-card-title">
+                                <i class="fas fa-users"></i>
+                                Destinataires
+                            </div>
+                        </div>
+                        <div class="main-card-body">
+                            <div class="form-group">
+                                <label class="form-label">Type de destinataires <span class="required">*</span></label>
+                                <div class="form-radio-group">
+                                    <label class="form-radio-option">
+                                        <input type="radio" name="type" value="general" 
+                                               {{ old('type', 'general') == 'general' ? 'checked' : '' }} required>
+                                        <span class="form-radio-check"></span>
+                                        <span class="form-radio-label">
+                                            <i class="fas fa-globe"></i>
+                                            Tous les étudiants
+                                        </span>
+                                    </label>
+                                    <label class="form-radio-option">
+                                        <input type="radio" name="type" value="classe" 
+                                               {{ old('type') == 'classe' ? 'checked' : '' }} required>
+                                        <span class="form-radio-check"></span>
+                                        <span class="form-radio-label">
+                                            <i class="fas fa-chalkboard"></i>
+                                            Classes spécifiques
+                                        </span>
+                                    </label>
+                                    <label class="form-radio-option">
+                                        <input type="radio" name="type" value="etudiant" 
+                                               {{ old('type') == 'etudiant' ? 'checked' : '' }} required>
+                                        <span class="form-radio-check"></span>
+                                        <span class="form-radio-label">
+                                            <i class="fas fa-user-graduate"></i>
+                                            Étudiants spécifiques
+                                        </span>
+                                    </label>
+                                </div>
+                                @error('type')
+                                    <div class="error-message">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <!-- Sélection par classe -->
+                            <div id="classes_container" class="form-group" style="display: none;">
+                                <label for="classes" class="form-label">Classes destinataires <span class="required">*</span></label>
+                                <select class="form-select-multiple @error('classes') error @enderror"
+                                    id="classes" name="classes[]" multiple>
+                                    @foreach($classes as $classe)
+                                        <option value="{{ $classe->id }}"
+                                            data-filiere="{{ $classe->filiere_id }}"
+                                            data-niveau="{{ $classe->niveau_etude_id }}"
+                                            {{ (old('classes') && in_array($classe->id, old('classes'))) ? 'selected' : '' }}>
+                                            {{ $classe->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('classes')
+                                    <div class="error-message">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <!-- Sélection par étudiant -->
+                            <div id="etudiants_container" class="form-group" style="display: none;">
+                                <label for="etudiants" class="form-label">Étudiants destinataires <span class="required">*</span></label>
+                                <select class="form-select-multiple @error('etudiants') error @enderror"
+                                    id="etudiants" name="etudiants[]" multiple>
+                                    @foreach($etudiants as $etudiant)
+                                        <option value="{{ $etudiant->id }}"
+                                                data-classe="{{ $etudiant->classe ? $etudiant->classe->id : '' }}"
+                                                {{ (old('etudiants') && in_array($etudiant->id, old('etudiants'))) ? 'selected' : '' }}>
+                                            {{ $etudiant->nom }} {{ $etudiant->prenoms }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('etudiants')
+                                    <div class="error-message">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <!-- Options de publication -->
+                    <div class="main-card mb-4">
+                        <div class="main-card-header">
+                            <div class="main-card-title">
+                                <i class="fas fa-cog"></i>
                                 Options de publication
-                            </h5>
+                            </div>
                         </div>
-                        <div class="card-body py-4">
-                            <div class="mb-4">
-                                <label for="status" class="form-label">Statut de publication <span class="text-danger">*</span></label>
-                                <div class="input-group">
-                                    <span class="input-group-text bg-light">
-                                        <i class="fas fa-toggle-on text-primary"></i>
-                                    </span>
-                                    <select name="is_published" id="status" class="form-select @error('is_published') is-invalid @enderror" required>
-                                        <option value="0" {{ old('is_published') == '0' ? 'selected' : '' }}>Brouillon</option>
-                                        <option value="1" {{ old('is_published') == '1' ? 'selected' : '' }}>Publiée</option>
-                                    </select>
-                                </div>
+                        <div class="main-card-body">
+                            <div class="form-group">
+                                <label for="status" class="form-label">Statut de publication <span class="required">*</span></label>
+                                <select name="is_published" id="status" class="form-select-single @error('is_published') error @enderror" required>
+                                    <option value="0" {{ old('is_published') == '0' ? 'selected' : '' }}>Brouillon</option>
+                                    <option value="1" {{ old('is_published') == '1' ? 'selected' : '' }}>Publiée</option>
+                                </select>
                                 @error('is_published')
-                                    <div class="text-danger small mt-1">{{ $message }}</div>
+                                    <div class="error-message">{{ $message }}</div>
                                 @enderror
-                                <div class="form-text text-muted small">Les annonces en brouillon ne sont pas visibles par les destinataires.</div>
+                                <div class="form-help">Les annonces en brouillon ne sont pas visibles par les destinataires.</div>
                             </div>
 
-                            <div class="mb-4" id="date-publication-container" style="display: none;">
-                                <label for="date_publication" class="form-label">Date de publication</label>
-                                <div class="input-group">
-                                    <span class="input-group-text bg-light">
-                                        <i class="fas fa-calendar-alt text-primary"></i>
-                                    </span>
-                                    <input type="datetime-local" class="form-control @error('date_publication') is-invalid @enderror"
-                                        id="date_publication" name="date_publication"
-                                        value="{{ old('date_publication', now()->format('Y-m-d\TH:i')) }}">
-                                </div>
-                                @error('date_publication')
-                                    <div class="text-danger small mt-1">{{ $message }}</div>
-                                @enderror
-                                <div class="form-text text-muted small">Si non spécifié, la date actuelle sera utilisée.</div>
-                            </div>
-
-                            <div class="mb-4">
-                                <label for="date_expiration" class="form-label">Date d'expiration <span class="text-danger">*</span></label>
-                                <div class="input-group">
-                                    <span class="input-group-text bg-light">
-                                        <i class="fas fa-hourglass-end text-primary"></i>
-                                    </span>
-                                    <input type="datetime-local" class="form-control @error('date_expiration') is-invalid @enderror"
-                                        id="date_expiration" name="date_expiration"
-                                        value="{{ old('date_expiration', now()->addMonths(1)->format('Y-m-d\TH:i')) }}">
-                                </div>
+                            <div class="form-group">
+                                <label for="date_expiration" class="form-label">Date d'expiration <span class="required">*</span></label>
+                                <input type="datetime-local" id="date_expiration" name="date_expiration" 
+                                       class="form-input @error('date_expiration') error @enderror"
+                                       value="{{ old('date_expiration', now()->addMonths(1)->format('Y-m-d\TH:i')) }}">
                                 @error('date_expiration')
-                                    <div class="text-danger small mt-1">{{ $message }}</div>
+                                    <div class="error-message">{{ $message }}</div>
                                 @enderror
-                                <div class="form-text text-muted small">Après cette date, l'annonce ne sera plus visible pour les destinataires.</div>
                             </div>
 
-                            <div class="mb-3">
+                            <div class="form-group">
                                 <label for="priorite" class="form-label">Niveau d'urgence</label>
-                                <div class="input-group">
-                                    <span class="input-group-text bg-light">
-                                        <i class="fas fa-exclamation-circle text-primary"></i>
-                                    </span>
-                                    <select class="form-select @error('priorite') is-invalid @enderror" id="priorite" name="priorite">
-                                        <option value="0" {{ old('priorite') == '0' ? 'selected' : '' }}>Normale</option>
-                                        <option value="1" {{ old('priorite') == '1' ? 'selected' : '' }}>Importante</option>
-                                        <option value="2" {{ old('priorite') == '2' ? 'selected' : '' }}>Urgente</option>
-                                    </select>
-                                </div>
+                                <select id="priorite" name="priorite" class="form-select-single @error('priorite') error @enderror">
+                                    <option value="0" {{ old('priorite') == '0' ? 'selected' : '' }}>Normale</option>
+                                    <option value="1" {{ old('priorite') == '1' ? 'selected' : '' }}>Importante</option>
+                                    <option value="2" {{ old('priorite') == '2' ? 'selected' : '' }}>Urgente</option>
+                                </select>
                                 @error('priorite')
-                                    <div class="text-danger small mt-1">{{ $message }}</div>
+                                    <div class="error-message">{{ $message }}</div>
                                 @enderror
-                                <div class="form-text text-muted small">
-                                    Les annonces urgentes seront mises en évidence pour les destinataires.
-                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Carte d'actions -->
-                    <div class="card shadow-sm border-0 rounded-lg mb-4 hover-card">
-                        <div class="card-body p-4">
-                            <div class="d-grid gap-2">
-                                <button type="submit" class="btn btn-primary py-2">
-                                    <i class="fas fa-save me-2"></i>Enregistrer l'annonce
-                            </button>
-                                <button type="reset" class="btn btn-light py-2">
-                                    <i class="fas fa-undo me-2"></i>Réinitialiser le formulaire
-                            </button>
+                    <!-- Actions -->
+                    <div class="main-card mb-4">
+                        <div class="main-card-body">
+                            <div class="form-actions">
+                                <button type="submit" class="btn-acasi primary">
+                                    <i class="fas fa-save"></i>Enregistrer l'annonce
+                                </button>
+                                <button type="reset" class="btn-acasi secondary">
+                                    <i class="fas fa-undo"></i>Réinitialiser
+                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </form>
+        </form>
+    </div>
 </div>
 @endsection
 
@@ -689,6 +786,9 @@
         duplicateItemsAllowed: false,
         maxItemCount: 50,
         renderChoiceLimit: 20,
+        position: 'bottom',
+        flip: true,
+        allowHTML: true
     };
 
     // Fonction d'initialisation de Choices.js
@@ -896,7 +996,10 @@
                     $('#etudiants_container').slideDown(300);
                 }, 300);
             }
-        }).trigger('change');
+        });
+
+        // Déclencher le changement initial
+        $('input[name="type"]:checked').trigger('change');
 
         // Filtrage amélioré des classes avec Choices.js
         $('#filiere_filter, #niveau_filter').change(function() {

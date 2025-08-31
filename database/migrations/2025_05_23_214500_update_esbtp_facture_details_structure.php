@@ -14,13 +14,15 @@ class UpdateEsbtpFactureDetailsStructure extends Migration
     public function up()
     {
         Schema::table('esbtp_facture_details', function (Blueprint $table) {
-            // Renommer designation en description si elle existe
-            if (Schema::hasColumn('esbtp_facture_details', 'designation')) {
+            // Renommer designation en description si elle existe ET si description n'existe pas déjà
+            if (Schema::hasColumn('esbtp_facture_details', 'designation') && 
+                !Schema::hasColumn('esbtp_facture_details', 'description')) {
                 $table->renameColumn('designation', 'description');
             }
 
-            // Renommer total_ligne en montant si elle existe
-            if (Schema::hasColumn('esbtp_facture_details', 'total_ligne')) {
+            // Renommer total_ligne en montant si elle existe ET si montant n'existe pas déjà
+            if (Schema::hasColumn('esbtp_facture_details', 'total_ligne') && 
+                !Schema::hasColumn('esbtp_facture_details', 'montant')) {
                 $table->renameColumn('total_ligne', 'montant');
             }
 

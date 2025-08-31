@@ -32,7 +32,7 @@ $thematicImages = [
         'elements' => [
             ['type' => 'gradient', 'colors' => ['#e9f1ff', '#cad9ff']],
             ['type' => 'icons', 'icons' => ['chart-line', 'users-cog', 'school', 'clipboard-check']],
-            ['type' => 'abstract', 'count' => 5, 'color' => '#6366f1'],
+            ['type' => 'abstract', 'count' => 5, 'color' => '#0453cb'],
         ]
     ],
     'teacher-image.png' => [
@@ -64,7 +64,7 @@ $thematicImages = [
         'title' => 'KLASSCI',
         'elements' => [
             ['type' => 'gradient', 'colors' => ['#ffffff', '#f8fafc']],
-            ['type' => 'text', 'font_size' => 24, 'font_weight' => 'bold', 'color' => '#6366f1'],
+            ['type' => 'text', 'font_size' => 24, 'font_weight' => 'bold', 'color' => '#0453cb'],
         ]
     ],
     'login_bg.jpg' => [
@@ -85,8 +85,8 @@ $thematicImages = [
         'theme' => 'icon',
         'title' => '',
         'elements' => [
-            ['type' => 'circle', 'color' => '#6366f1', 'opacity' => 0.2],
-            ['type' => 'icon', 'icon' => 'chart-pie', 'color' => '#6366f1', 'size' => 40],
+            ['type' => 'circle', 'color' => '#0453cb', 'opacity' => 0.2],
+            ['type' => 'icon', 'icon' => 'chart-pie', 'color' => '#0453cb', 'size' => 40],
         ]
     ],
     'user-icon.png' => [
@@ -115,8 +115,8 @@ $thematicImages = [
         'theme' => 'badge',
         'title' => 'K',
         'elements' => [
-            ['type' => 'circle', 'color' => '#ffffff', 'border' => '#6366f1'],
-            ['type' => 'text', 'font_size' => 36, 'font_weight' => 'bold', 'color' => '#6366f1'],
+            ['type' => 'circle', 'color' => '#ffffff', 'border' => '#0453cb'],
+            ['type' => 'text', 'font_size' => 36, 'font_weight' => 'bold', 'color' => '#0453cb'],
         ]
     ]
 ];

@@ -135,8 +135,8 @@
                                     <tr @if($pendingInscription) class="table-warning" @endif>
                                         <td>{{ $etudiant->matricule }}</td>
                                         <td class="text-center">
-                                            @if($etudiant->photo)
-                                                <img src="{{ asset('storage/'.$etudiant->photo) }}" alt="Photo" class="img-thumbnail rounded-circle shadow" style="width: 50px; height: 50px; object-fit: cover;">
+                                            @if($etudiant->photo_url)
+                                                <img src="{{ $etudiant->photo_url }}" alt="Photo" class="img-thumbnail rounded-circle shadow" style="width: 50px; height: 50px; object-fit: cover;">
                                             @else
                                                 <div class="bg-light d-flex align-items-center justify-content-center rounded-circle shadow" style="width: 50px; height: 50px;">
                                                     <i class="fas fa-user text-secondary"></i>

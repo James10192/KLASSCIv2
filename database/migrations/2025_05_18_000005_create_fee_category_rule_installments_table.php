@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('fee_category_rule_installments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('fee_category_rule_id')->constrained()->onDelete('cascade');
+            $table->unsignedBigInteger('fee_category_rule_id')->nullable()->comment('References fee_category_rules table - constraint disabled for migration compatibility');
             $table->string('label')->nullable(); // Ex: 1ère tranche, 2e tranche
             $table->integer('offset_days'); // Nombre de jours après la date de référence (rentrée)
             $table->decimal('amount', 12, 2)->nullable(); // Montant fixe (optionnel)

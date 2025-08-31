@@ -135,7 +135,7 @@
                             <i class="fas fa-check-double"></i>
                         </button>
                         <button type="button" class="btn-table-action warning" 
-                                onclick="marquerAbandon({{ $analyse['etudiant']->id }})" title="Marquer comme abandon">
+                                onclick="marquerAbandonModal({{ $analyse['etudiant']->id }})" title="Marquer comme abandon">
                             <i class="fas fa-user-times"></i>
                         </button>
                     </div>

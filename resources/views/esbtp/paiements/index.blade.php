@@ -347,10 +347,25 @@
                                             @endif
                                             
                                             @if($paiement->status == 'validé')
-                                                <a href="{{ route('esbtp.paiements.recu', $paiement->id) }}" 
-                                                   class="btn btn-outline-primary" title="Télécharger le reçu">
-                                                    <i class="fas fa-file-pdf"></i>
-                                                </a>
+                                                <div class="dropdown pdf-dropdown">
+                                                    <button class="btn btn-outline-primary dropdown-toggle" type="button" 
+                                                            id="pdfDropdown{{ $paiement->id }}" data-bs-toggle="dropdown" 
+                                                            aria-expanded="false" title="Options PDF">
+                                                        <i class="fas fa-file-pdf"></i>
+                                                    </button>
+                                                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="pdfDropdown{{ $paiement->id }}">
+                                                        <li>
+                                                            <a class="dropdown-item" href="{{ route('esbtp.paiements.preview', $paiement->id) }}">
+                                                                <i class="fas fa-eye me-1"></i>Prévisualiser
+                                                            </a>
+                                                        </li>
+                                                        <li>
+                                                            <a class="dropdown-item" href="{{ route('esbtp.paiements.recu', $paiement->id) }}">
+                                                                <i class="fas fa-download me-1"></i>Télécharger
+                                                            </a>
+                                                        </li>
+                                                    </ul>
+                                                </div>
                                             @endif
                                         </div>
                                     </td>
@@ -413,6 +428,28 @@
 .btn-group-sm .btn {
     padding: 0.25rem 0.5rem;
     font-size: 0.875rem;
+}
+
+/* Styles pour les dropdowns PDF compacts */
+.pdf-dropdown .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    min-width: auto;
+}
+
+.pdf-dropdown .dropdown-menu {
+    min-width: 140px;
+    font-size: 0.875rem;
+}
+
+.pdf-dropdown .dropdown-item {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+.pdf-dropdown .dropdown-item i {
+    width: 14px;
+    text-align: center;
 }
 </style>
 

@@ -212,7 +212,7 @@
             </div>
 
             <div class="stat-card" onclick="window.location.href='{{ route('esbtp.emploi-temps.index') }}'">
-                <div class="stat-icon" style="background-color: rgba(139, 92, 246, 0.1); color: #8b5cf6;">
+                <div class="stat-icon" style="background-color: rgba(4, 83, 203, 0.1); color: #0453cb;">
                     <i class="fas fa-table"></i>
                 </div>
                 <div class="stat-number">{{ $totalEmploiTemps ?? 0 }}</div>

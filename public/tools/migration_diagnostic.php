@@ -399,9 +399,9 @@ $laravelVersion = getLaravelVersion();
                         <h3 class="font-medium text-green-800">PHP Information</h3>
                         <p class="text-sm text-green-600">View detailed PHP configuration information</p>
                     </a>
-                    <a href="/" class="block p-3 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100">
-                        <h3 class="font-medium text-purple-800">Installation Page</h3>
-                        <p class="text-sm text-purple-600">Return to the main installation page</p>
+                    <a href="/" class="block p-3 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100">
+                        <h3 class="font-medium text-blue-800">Installation Page</h3>
+                        <p class="text-sm text-blue-600">Return to the main installation page</p>
                     </a>
                 </div>
             </div>

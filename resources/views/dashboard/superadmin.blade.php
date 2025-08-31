@@ -330,7 +330,7 @@
                 datasets: [{
                         label: 'Inscriptions',
                     data: monthlyData.map(item => item.inscriptions),
-                        borderColor: '#6366f1',
+                        borderColor: '#0453cb',
                         backgroundColor: 'rgba(99, 102, 241, 0.1)',
                         tension: 0.4,
                         fill: true

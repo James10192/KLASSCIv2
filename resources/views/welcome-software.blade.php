@@ -289,9 +289,9 @@
 
     <style>
         :root {
-            --primary: #6366f1;
-            --primary-dark: #4f46e5;
-            --primary-light: #8b5cf6;
+            --primary: #0453cb;
+            --primary-dark: #0453cb;
+            --primary-light: #5e91de;
             --secondary: #ec4899;
             --secondary-dark: #db2777;
             --success: #22c55e;
@@ -838,8 +838,8 @@
     <!-- LOADER KLASSCI -->
     <div id="klassci-loader" style="position:fixed;z-index:9999;top:0;left:0;width:100vw;height:100vh;background:#fff;display:flex;align-items:center;justify-content:center;transition:opacity 0.5s;">
         <div style="display:flex;flex-direction:column;align-items:center;">
-            <img src="/images/LOGO-KLASSCI-PNG.png" alt="KLASSCI Loader" style="width:110px;height:110px;animation:klassci-pulse 1.2s infinite alternate;filter:drop-shadow(0 4px 16px rgba(99,102,241,0.12));"/>
-            <div style="margin-top:1.5rem;font-weight:600;color:#6366f1;letter-spacing:2px;font-size:1.1rem;">Chargement...</div>
+            <img src="/images/LOGO-KLASSCI-PNG.png" alt="KLASSCI Loader" style="width:110px;height:110px;animation:klassci-pulse 1.2s infinite alternate;filter:drop-shadow(0 4px 16px rgba(4,83,203,0.12));"/>
+            <div style="margin-top:1.5rem;font-weight:600;color:#0453cb;letter-spacing:2px;font-size:1.1rem;">Chargement...</div>
         </div>
     </div>
     <style>
@@ -909,9 +909,9 @@
         <div class="row align-items-center flex-lg-row flex-column-reverse">
           <!-- Texte à gauche -->
           <div class="col-lg-6 text-lg-start text-center">
-            <span class="text-uppercase mb-2 d-inline-block" style="color:#6366f1; font-weight:700; letter-spacing:1px; font-size:1rem;">TOUT-EN-UN</span>
+            <span class="text-uppercase mb-2 d-inline-block" style="color:#0453cb; font-weight:700; letter-spacing:1px; font-size:1rem;">TOUT-EN-UN</span>
             <h1 class="fw-bold mb-3" style="font-size:2.7rem; line-height:1.1; color:#1e293b;">
-              Automatise et simplifie la gestion de votre établissement, conçu pour des <span style="color:#6366f1; text-decoration:underline;">établissements plus efficaces</span>,
+              Automatise et simplifie la gestion de votre établissement, conçu pour des <span style="color:#0453cb; text-decoration:underline;">établissements plus efficaces</span>,
               des équipes plus sereines et des élèves mieux suivis.
             </h1>
             <p class="lead mb-4" style="color:#475569; font-size:1.25rem;">
@@ -929,7 +929,7 @@
             </div>
             <!-- Motif SVG décoratif -->
             <svg style="position:absolute;top:-40px;right:-60px;z-index:0;opacity:0.13;" width="180" height="180" viewBox="0 0 220 220" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="110" cy="110" r="110" fill="#6366f1"/>
+              <circle cx="110" cy="110" r="110" fill="#0453cb"/>
             </svg>
           </div>
         </div>
@@ -1032,7 +1032,7 @@
           </div>
           <!-- FAQ à droite -->
           <div class="col-lg-7">
-            <span class="text-uppercase" style="color:#6366f1; font-weight:700; letter-spacing:1px;">Fonctionnalités Clés
+            <span class="text-uppercase" style="color:#0453cb; font-weight:700; letter-spacing:1px;">Fonctionnalités Clés
             </span>
             <h2 class="fw-bold mb-2" style="font-size:2.1rem; color:#1e293b;">Découvrez les atouts qui font de KLASSCI un logiciel de gestion scolaire intelligent, complet et personnalisable.</h2>
             <div class="faq-accordion-v2">
@@ -1181,7 +1181,7 @@
     <section id="modules" class="py-5" style="background:#fff;">
       <div class="container">
         <div class="text-center mb-5">
-          <span class="text-uppercase" style="color:#6366f1; font-weight:700; letter-spacing:1px;">NOS MODULES CLÉS</span>
+          <span class="text-uppercase" style="color:#0453cb; font-weight:700; letter-spacing:1px;">NOS MODULES CLÉS</span>
           <h2 class="fw-bold" style="font-size:2.2rem; color:#1e293b;">Des modules puissants pour votre établissement</h2>
         </div>
         <div class="row g-4 justify-content-center">
@@ -1253,7 +1253,7 @@
     <!--<section id="pricing" class="py-5" style="background:#f8fafc;">
       <div class="container">
         <div class="text-center mb-5">
-          <span class="text-uppercase" style="color:#6366f1; font-weight:700; letter-spacing:1px;">TARIFS</span>
+          <span class="text-uppercase" style="color:#0453cb; font-weight:700; letter-spacing:1px;">TARIFS</span>
           <h2 class="fw-bold" style="font-size:2.2rem; color:#1e293b;">Choisissez la formule adaptée à votre établissement</h2>
         </div>
         <div class="row g-4 justify-content-center">
@@ -1278,12 +1278,12 @@
           </div>
           <!-- Pro -->
           <!--<div class="col-lg-4 col-md-6">
-            <div class="pricing-card h-100 d-flex flex-column align-items-center position-relative" style="border:2px solid #6366f1; border-radius:1.5rem; box-shadow:0 4px 24px 0 rgba(99,102,241,0.07); background:#fff;">
-              <div style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);background:#6366f1;color:#fff;padding:0.4rem 1.2rem;border-radius:999px;font-size:1rem;font-weight:700;box-shadow:0 2px 8px rgba(99,102,241,0.15);">Le plus populaire</div>
-              <h3 class="fw-bold mt-4 mb-2" style="color:#6366f1; font-size:1.5rem;">Pro</h3>
-              <div class="fw-bold mb-1" style="color:#6366f1; font-size:2.5rem;">3 000 000 XOF</div>
-              <div class="mb-2" style="color:#6366f1; font-size:1.1rem;">1ère année</div>
-              <div class="mb-2" style="color:#6366f1; font-size:1.1rem;">2 400 000 XOF/an ou 240 000 XOF/mois</div>
+            <div class="pricing-card h-100 d-flex flex-column align-items-center position-relative" style="border:2px solid #0453cb; border-radius:1.5rem; box-shadow:0 4px 24px 0 rgba(4,83,203,0.07); background:#fff;">
+              <div style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);background:#0453cb;color:#fff;padding:0.4rem 1.2rem;border-radius:999px;font-size:1rem;font-weight:700;box-shadow:0 2px 8px rgba(4,83,203,0.15);">Le plus populaire</div>
+              <h3 class="fw-bold mt-4 mb-2" style="color:#0453cb; font-size:1.5rem;">Pro</h3>
+              <div class="fw-bold mb-1" style="color:#0453cb; font-size:2.5rem;">3 000 000 XOF</div>
+              <div class="mb-2" style="color:#0453cb; font-size:1.1rem;">1ère année</div>
+              <div class="mb-2" style="color:#0453cb; font-size:1.1rem;">2 400 000 XOF/an ou 240 000 XOF/mois</div>
               <ul class="list-unstyled w-100 px-4 mb-4" style="font-size:1.08rem; color:#334155;">
                 <li class="py-2 border-bottom">Installation sur 9 postes</li>
                 <li class="py-2 border-bottom">Capacité : 3 000 étudiants</li>
@@ -1492,18 +1492,18 @@
     </section>
 
     <!-- CTA Section -->
-    <section class="cta" style="background: linear-gradient(120deg, #6366f1 0%, #0ea5e9 100%); padding: 0; position: relative;">
+    <section class="cta" style="background: linear-gradient(120deg, #0453cb 0%, #0ea5e9 100%); padding: 0; position: relative;">
       <div class="container py-5">
         <div class="row justify-content-center">
           <div class="col-lg-8">
             <div class="cta-card text-center mx-auto p-5" style="background:rgba(255,255,255,0.97); border-radius:2rem; box-shadow:0 8px 32px 0 rgba(80,112,255,0.13); position:relative;">
-              <div class="cta-icon mb-3" style="width:70px; height:70px; background:#6366f1; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto; box-shadow:0 2px 12px 0 rgba(99,102,241,0.10);">
+              <div class="cta-icon mb-3" style="width:70px; height:70px; background:#0453cb; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto; box-shadow:0 2px 12px 0 rgba(4,83,203,0.10);">
                 <i class="fas fa-rocket fa-2x text-white"></i>
               </div>
               <h2 class="fw-bold mb-3" style="font-size:2.3rem; color:#1e293b;">Prêt à transformer votre établissement ?</h2>
               <p class="lead mb-4" style="color:#475569;">Commencer dès maintenant ; Nous contacter. Je veux un design avec des motifs.</p>
               <div class="d-flex flex-wrap justify-content-center gap-3">
-                <a href="#demo" class="btn btn-primary btn-lg px-4 py-2" style="background:linear-gradient(90deg,#6366f1,#7c3aed); color:#fff; font-weight:700; border-radius:999px; font-size:1.15rem; box-shadow:0 4px 16px rgba(99,102,241,0.10);">
+                <a href="#demo" class="btn btn-primary btn-lg px-4 py-2" style="background:linear-gradient(90deg,#0453cb,#5e91de); color:#fff; font-weight:700; border-radius:999px; font-size:1.15rem; box-shadow:0 4px 16px rgba(4,83,203,0.10);">
                   <i class="fas fa-play me-2"></i> Demander une démo
                 </a>
                 <a href="{{ route('login') }}" class="btn btn-outline-primary btn-lg px-4 py-2" style="font-weight:700; border-radius:999px; font-size:1.15rem;">

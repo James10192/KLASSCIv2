@@ -50,6 +50,21 @@
 
     <!-- Styles supplémentaires -->
     <style>
+        /* Variables CSS ACASI pour cohérence */
+        :root {
+            --space-xs: 0.25rem;
+            --space-sm: 0.5rem;
+            --space-md: 1rem;
+            --space-lg: 1.5rem;
+            --space-xl: 2rem;
+            --primary: #0453cb;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --text-muted: #9ca3af;
+        }
         /* Amélioration de la visibilité des éléments de la navbar */
         .navbar-user-name,
         .dropdown-user-name,
@@ -175,19 +190,19 @@
             opacity: 0.6;
         }
 
-        /* === DESIGN MODERNE DROPDOWNS NAVBAR - Inspiré des meilleures apps === */
+        /* === DESIGN MODERNE DROPDOWNS NAVBAR - Style ACASI === */
         .custom-dropdown {
             min-width: 360px !important;
             max-width: 380px !important;
-            border: 1px solid rgba(0, 0, 0, 0.08) !important;
+            border: 1px solid rgba(99, 102, 241, 0.08) !important;
             box-shadow: 
                 0 20px 25px -5px rgba(0, 0, 0, 0.1),
                 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
-            border-radius: 16px !important;
-            padding: 0 !important;
+            border-radius: 20px !important;
+            padding: 8px !important;
             margin-top: 12px !important;
-            background: #ffffff !important;
-            backdrop-filter: blur(10px) !important;
+            background: rgba(255, 255, 255, 0.98) !important;
+            backdrop-filter: blur(20px) !important;
             overflow: hidden !important;
         }
 
@@ -207,18 +222,19 @@
         }
 
         .custom-dropdown .dropdown-header {
-            background: #f8fafc !important;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.03)) !important;
             color: #1e293b !important;
             font-weight: 700;
             font-size: 16px;
             padding: 20px 24px 16px 24px;
             margin: 0;
             border: none;
-            border-bottom: 1px solid rgba(0,0,0,0.06);
+            border-radius: 12px;
+            border-bottom: 1px solid rgba(99, 102, 241, 0.1);
         }
 
         .custom-dropdown .dropdown-header button {
-            color: #6366f1 !important;
+            color: #0453cb !important;
             font-size: 12px !important;
             font-weight: 500 !important;
             text-decoration: none !important;
@@ -246,7 +262,7 @@
             width: 24px;
             height: 24px;
             border-width: 2px;
-            color: #6366f1;
+            color: #0453cb;
         }
 
         .dropdown-empty i {
@@ -270,70 +286,80 @@
         }
 
         .view-all {
-            background: #f1f5f9 !important;
-            color: #475569 !important;
-            font-weight: 500 !important;
+            background: linear-gradient(135deg, rgba(4, 83, 203, 0.05), rgba(94, 145, 222, 0.03)) !important;
+            color: #0453cb !important;
+            font-weight: 600 !important;
             font-size: 14px !important;
             padding: 16px 24px !important;
-            border: none !important;
-            transition: all 0.2s ease !important;
-            margin: 0 !important;
+            border: 1px solid rgba(99, 102, 241, 0.1) !important;
+            border-radius: 12px !important;
+            transition: all 0.3s ease !important;
+            margin: 8px 12px 4px !important;
             text-align: center !important;
-            border-top: 1px solid rgba(0,0,0,0.06) !important;
         }
 
         .view-all:hover {
-            background: #e2e8f0 !important;
-            color: #334155 !important;
+            background: linear-gradient(135deg, rgba(4, 83, 203, 0.1), rgba(94, 145, 222, 0.08)) !important;
+            color: #0453cb !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 6px 20px rgba(4, 83, 203, 0.15) !important;
         }
 
-        /* Notifications specifiques */
+        /* Notifications specifiques - Style ACASI moderne */
         .notification-item-container {
-            border-bottom: 1px solid rgba(0,0,0,0.04);
+            margin: 8px 12px 4px;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            background: white;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
 
         .notification-item-container:last-child {
-            border-bottom: none;
+            margin-bottom: 8px;
         }
 
         .notification-item {
             display: flex !important;
             align-items: flex-start !important;
-            padding: 16px 24px !important;
+            padding: 16px !important;
             border: none !important;
             transition: all 0.15s ease !important;
             cursor: pointer;
             position: relative;
             gap: 12px;
             background: transparent !important;
+            border-radius: 12px;
         }
 
         .notification-item:hover {
             background: #f8fafc !important;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
         .notification-item.unread {
-            background: linear-gradient(90deg, #ddd6fe, #f3f4f6) !important;
-            border-left: 3px solid #6366f1 !important;
+            background: linear-gradient(90deg, rgba(4, 83, 203, 0.05), rgba(255, 255, 255, 1)) !important;
+            border-left: 3px solid #0453cb !important;
         }
 
         .notification-icon {
-            width: 40px !important;
-            height: 40px !important;
-            border-radius: 12px !important;
+            width: 36px !important;
+            height: 36px !important;
+            border-radius: 8px !important;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
+            font-size: 16px;
             flex-shrink: 0;
             margin-right: 0 !important;
+            border: 1px solid rgba(0,0,0,0.1);
         }
 
-        .notification-icon.bg-primary { background: #3b82f6; color: white; }
-        .notification-icon.bg-success { background: #10b981; color: white; }
-        .notification-icon.bg-warning { background: #f59e0b; color: white; }
-        .notification-icon.bg-danger { background: #ef4444; color: white; }
-        .notification-icon.bg-info { background: #06b6d4; color: white; }
+        .notification-icon.bg-primary { background: #3b82f6; color: white; border-color: #2563eb; }
+        .notification-icon.bg-success { background: #10b981; color: white; border-color: #059669; }
+        .notification-icon.bg-warning { background: #f59e0b; color: white; border-color: #d97706; }
+        .notification-icon.bg-danger { background: #ef4444; color: white; border-color: #dc2626; }
+        .notification-icon.bg-info { background: #06b6d4; color: white; border-color: #0891b2; }
 
         .notification-content {
             flex: 1;
@@ -393,20 +419,25 @@
             transform: scale(1.05);
         }
 
-        /* Messages specifiques */
+        /* Messages specifiques - Style ACASI moderne */
         #messages-list .dropdown-item {
-            padding: 16px 24px !important;
-            border-bottom: 1px solid rgba(0,0,0,0.04);
-            background: transparent !important;
-            transition: background 0.15s ease !important;
+            margin: 8px 12px 4px !important;
+            border: 1px solid #e5e7eb !important;
+            border-radius: 12px !important;
+            background: white !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+            padding: 16px !important;
+            transition: all 0.15s ease !important;
         }
 
         #messages-list .dropdown-item:last-child {
-            border-bottom: none;
+            margin-bottom: 8px !important;
         }
 
         #messages-list .dropdown-item:hover {
             background: #f8fafc !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
         }
 
 
@@ -451,45 +482,77 @@
             }
         }
 
-        /* ===== AMÉLIORATION DU SEARCH INPUT ===== */
-        .navbar-search {
-            position: relative;
-            width: 100%;
-            max-width: 400px;
+        /* ===== STYLES NAVBAR MODERNES ACASI ===== */
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
         }
 
-        .navbar-search input {
-            background: rgba(255, 255, 255, 0.95);
-            border: 2px solid rgba(99, 102, 241, 0.1);
+        .search-bar {
+            background: rgba(255, 255, 255, 0.98);
+            border: 2px solid rgba(99, 102, 241, 0.2);
             border-radius: 25px;
-            padding: 12px 20px 12px 45px;
+            padding: 12px 20px;
             font-size: 14px;
             transition: all 0.3s ease;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
             backdrop-filter: blur(10px);
+            min-width: 300px;
         }
 
-        .navbar-search input:focus {
+        .search-bar:focus {
             outline: none;
-            border-color: #6366f1;
-            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.15);
+            border-color: #0453cb;
+            box-shadow: 0 4px 20px rgba(4, 83, 203, 0.15);
             background: rgba(255, 255, 255, 1);
             transform: translateY(-1px);
         }
 
-        .navbar-search-icon {
-            position: absolute;
-            left: 15px;
-            top: 50%;
-            transform: translateY(-50%);
+        .btn-acasi.icon-only {
+            padding: 12px;
+            border-radius: 14px;
+            border: 1px solid rgba(99, 102, 241, 0.25);
+            background: rgba(255, 255, 255, 0.95);
             color: #6b7280;
-            z-index: 10;
-            transition: color 0.3s ease;
+            font-size: 18px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
         }
 
-        .navbar-search input:focus + .navbar-search-icon,
-        .navbar-search:hover .navbar-search-icon {
-            color: #6366f1;
+        .btn-acasi.icon-only:hover {
+            background: linear-gradient(135deg, rgba(4, 83, 203, 0.1), rgba(94, 145, 222, 0.08));
+            color: #0453cb;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.15);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-acasi.profile-btn {
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(99, 102, 241, 0.25);
+            border-radius: 16px;
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .btn-acasi.profile-btn:hover {
+            background: rgba(255, 255, 255, 0.95);
+            border-color: rgba(99, 102, 241, 0.3);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.1);
         }
 
         /* Résultats de recherche */
@@ -553,52 +616,75 @@
         .search-category {
             padding: 8px 16px;
             font-weight: 600;
-            color: #6366f1;
-            background: rgba(99, 102, 241, 0.05);
+            color: #0453cb;
+            background: rgba(4, 83, 203, 0.05);
             font-size: 12px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
         /* ===== AMÉLIORATION DES ACTIONS RAPIDES ===== */
-        .quick-actions-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 8px;
-            padding: 12px;
-            min-width: 280px;
+        /* Dropdown spécifique pour les actions rapides */
+        .quick-actions-dropdown {
+            min-width: 380px !important;
+            max-width: 400px !important;
         }
 
-        .quick-action-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 16px 12px;
-            text-decoration: none;
-            color: inherit;
-            border-radius: 12px;
-            transition: all 0.3s ease;
-            background: rgba(255, 255, 255, 0.5);
-            border: 1px solid rgba(0, 0, 0, 0.05);
+        /* Force la grille 2x2 avec priorité maximale et spécificité élevée */
+        .dropdown-menu.custom-dropdown .quick-actions-grid,
+        .dropdown-menu li .quick-actions-grid,
+        .quick-actions-dropdown #quick-actions-list,
+        ul.dropdown-menu li div#quick-actions-list,
+        .quick-actions-dropdown .quick-actions-grid {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            grid-auto-rows: auto !important;
+            gap: 12px !important;
+            padding: 12px !important;
+            margin: 8px 12px !important;
+            min-width: 320px !important;
+            max-width: 360px !important;
+            width: 320px !important;
+            box-sizing: border-box !important;
+            justify-items: stretch !important;
+            align-items: start !important;
+        }
+
+        .quick-actions-grid .quick-action-item {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            padding: 16px 12px !important;
+            text-decoration: none !important;
+            color: inherit !important;
+            border-radius: 12px !important;
+            transition: all 0.3s ease !important;
+            background: white !important;
+            border: 1px solid #e5e7eb !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+            width: 100% !important;
+            max-width: none !important;
         }
 
         .quick-action-item:hover {
             background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.15);
-            color: #6366f1;
+            box-shadow: 0 8px 25px rgba(4, 83, 203, 0.15);
+            color: #0453cb;
         }
 
         .quick-action-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
             margin-bottom: 8px;
-            font-size: 18px;
+            font-size: 16px;
             transition: all 0.3s ease;
+            border: 1px solid rgba(0,0,0,0.1);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
 
         .quick-action-item:hover .quick-action-icon {
@@ -610,6 +696,10 @@
             font-weight: 500;
             text-align: center;
             line-height: 1.3;
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         /* ===== AMÉLIORATION DE LA SIDEBAR ===== */
@@ -638,7 +728,7 @@
         }
 
         .sidebar-menu::-webkit-scrollbar-thumb {
-            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            background: linear-gradient(135deg, #0453cb, #5e91de);
             border-radius: 10px;
             transition: all 0.3s ease;
         }
@@ -650,7 +740,7 @@
         /* Firefox scrollbar */
         .sidebar-menu {
             scrollbar-width: thin;
-            scrollbar-color: #6366f1 rgba(0, 0, 0, 0.05);
+            scrollbar-color: #0453cb rgba(0, 0, 0, 0.05);
         }
 
         /* ===== EFFETS RESPONSIVE ===== */
@@ -714,11 +804,17 @@
                 display: none !important;
             }
 
+            .quick-actions-dropdown {
+                min-width: 320px !important;
+                max-width: 340px !important;
+            }
+
             .quick-actions-grid {
                 grid-template-columns: repeat(2, 1fr);
-                min-width: 240px;
-                gap: 6px;
+                min-width: 280px;
+                gap: 8px;
                 padding: 8px;
+                margin: 4px 8px;
             }
         }
 
@@ -768,8 +864,8 @@
         }
 
         .navbar-toggle:hover {
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
-            color: #6366f1;
+            background: linear-gradient(135deg, rgba(4, 83, 203, 0.1), rgba(94, 145, 222, 0.1));
+            color: #0453cb;
             transform: scale(1.05);
         }
 
@@ -857,12 +953,12 @@
         }
 
         .notification-item.unread {
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.03));
-            border-left: 4px solid #6366f1;
+            background: linear-gradient(135deg, rgba(4, 83, 203, 0.05), rgba(94, 145, 222, 0.03));
+            border-left: 4px solid #0453cb;
         }
 
         .notification-item:hover {
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.08)) !important;
+            background: linear-gradient(135deg, rgba(4, 83, 203, 0.1), rgba(94, 145, 222, 0.08)) !important;
             transform: translateX(4px) !important;
         }
 
@@ -932,17 +1028,19 @@
         }
 
         .message-avatar {
-            width: 42px;
-            height: 42px;
-            border-radius: 12px;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: linear-gradient(135deg, #22c55e, #16a34a);
+            background: #06b6d4;
             color: white;
             font-size: 16px;
             flex-shrink: 0;
-            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.15);
+            border: 1px solid #0891b2;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin-right: 12px;
         }
 
         .message-avatar img {
@@ -955,6 +1053,37 @@
         .message-content {
             flex: 1;
             min-width: 0;
+        }
+
+        .message-actions {
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            display: flex;
+            align-items: center;
+        }
+
+        .message-item:hover .message-actions {
+            opacity: 1;
+        }
+
+        .message-delete-btn {
+            background: #fee2e2 !important;
+            color: #dc2626 !important;
+            border: none !important;
+            border-radius: 6px !important;
+            width: 28px !important;
+            height: 28px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            font-size: 12px !important;
+            transition: all 0.15s ease;
+        }
+
+        .message-delete-btn:hover {
+            background: #fecaca !important;
+            color: #991b1b !important;
+            transform: scale(1.05);
         }
 
         .message-title {
@@ -1010,7 +1139,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            background: linear-gradient(135deg, #0453cb, #5e91de);
             color: white;
             font-size: 20px;
         }
@@ -1035,7 +1164,7 @@
         /* Lien "Voir tout" */
         .view-all {
             font-weight: 600 !important;
-            color: #6366f1 !important;
+            color: #0453cb !important;
             text-align: center;
             padding: 14px 20px !important;
             margin: 8px 12px 4px !important;
@@ -1045,10 +1174,10 @@
         }
 
         .view-all:hover {
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.08)) !important;
-            color: #4f46e5 !important;
+            background: linear-gradient(135deg, rgba(4, 83, 203, 0.1), rgba(94, 145, 222, 0.08)) !important;
+            color: #0453cb !important;
             transform: translateY(-2px) !important;
-            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.15) !important;
+            box-shadow: 0 6px 20px rgba(4, 83, 203, 0.15) !important;
         }
 
         /* ===== BADGES ET NOTIFICATIONS ===== */
@@ -1087,54 +1216,14 @@
             }
         }
 
-        /* Icônes navbar améliorées */
+        /* Désactivation des anciens styles navbar-icon car remplacés par btn-acasi */
         .navbar-icon {
-            position: relative;
-            background: none;
-            border: none;
-            padding: 12px;
-            border-radius: 14px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            color: #6b7280;
-            font-size: 18px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 48px;
-            height: 48px;
-            margin: 0 4px;
+            /* Styles remplacés par .btn-acasi.icon-only */
         }
 
-        .navbar-icon:hover {
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.08));
-            color: #6366f1;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.15);
-        }
-
-        .navbar-icon:active {
-            transform: translateY(-1px) scale(0.95);
-        }
-
-        /* User navbar amélioré */
+        /* User navbar désactivé car remplacé par btn-acasi.profile-btn */
         .navbar-user {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 8px 16px;
-            border-radius: 16px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            background: rgba(255, 255, 255, 0.5);
-            border: 1px solid rgba(99, 102, 241, 0.08);
-            backdrop-filter: blur(10px);
-            cursor: pointer;
-        }
-
-        .navbar-user:hover {
-            background: rgba(255, 255, 255, 0.8);
-            border-color: rgba(99, 102, 241, 0.15);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.1);
+            /* Styles remplacés par .btn-acasi.profile-btn */
         }
 
         .navbar-avatar {
@@ -1158,7 +1247,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            background: linear-gradient(135deg, #0453cb, #5e91de);
             color: white;
             font-size: 14px;
             font-weight: 600;
@@ -1179,8 +1268,8 @@
 
         /* States pour les dropdowns */
         .dropdown.show .navbar-icon {
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.12));
-            color: #6366f1;
+            background: linear-gradient(135deg, rgba(4, 83, 203, 0.15), rgba(94, 145, 222, 0.12));
+            color: #0453cb;
             transform: translateY(-1px);
         }
 
@@ -1232,7 +1321,7 @@
             width: 1.5rem;
             height: 1.5rem;
             border-width: 2px;
-            border-color: #6366f1;
+            border-color: #0453cb;
             border-right-color: transparent;
         }
 
@@ -1436,6 +1525,14 @@
                             </a>
                         </div>
 
+                        <!-- Communication -->
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.annonces.index') }}" class="menu-link {{ Request::routeIs('esbtp.annonces.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-bullhorn"></i></div>
+                                <div class="menu-text">Annonces</div>
+                            </a>
+                        </div>
+
                         <!-- Evaluations & Grades -->
                         <div class="menu-accordion">
                             <button class="menu-accordion-btn {{ Request::routeIs('esbtp.evaluations.*') || Request::routeIs('esbtp.notes.*') ? 'active' : '' }}">
@@ -1455,13 +1552,6 @@
                             </div>
                         </div>
 
-                        <!-- Announcements -->
-                        <div class="menu-item">
-                            <a href="{{ route('esbtp.annonces.index') }}" class="menu-link {{ Request::routeIs('esbtp.annonces.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-bullhorn"></i></div>
-                                <div class="menu-text">Annonces</div>
-                            </a>
-                        </div>
                     @endif
 
                     <!-- Teaching Section -->
@@ -1673,8 +1763,8 @@
                     @endif
 
                     <!-- Announcements Section -->
-                    @canany(['superAdmin', 'secretaire'])
-                    <div class="menu-category">Annonces</div>
+                    @if(auth()->check() && auth()->user() && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('enseignant') || auth()->user()->hasRole('coordinateur')))
+                    <div class="menu-category">Communication</div>
 
                     <!-- Announcements Management -->
                         <div class="menu-item">
@@ -1683,7 +1773,17 @@
                                 <div class="menu-text">Annonces</div>
                             </a>
                         </div>
-                        @endcan
+                        
+                        @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('coordinateur'))
+                        <!-- Create Announcement -->
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.annonces.create') }}" class="menu-link {{ Request::routeIs('esbtp.annonces.create') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-plus-circle"></i></div>
+                                <div class="menu-text">Créer une annonce</div>
+                            </a>
+                        </div>
+                        @endif
+                    @endif
 
                     <!-- System Section - SuperAdmin Only -->
                     @if(auth()->check() && auth()->user() && auth()->user()->hasRole('superAdmin'))
@@ -1801,11 +1901,8 @@
                     </div>
 
                     <div class="navbar-center d-none d-lg-block">
-                        <div class="navbar-search">
-                            <div class="navbar-search-icon">
-                                <i class="fas fa-search"></i>
-                            </div>
-                            <input type="text" id="global-search" placeholder="Rechercher..." class="form-control" autocomplete="off">
+                        <div class="header-actions">
+                            <input type="search" class="search-bar" id="global-search" placeholder="Rechercher dans l'application..." autocomplete="off">
                             <div id="search-results" class="search-results" style="display: none;"></div>
                         </div>
                     </div>
@@ -1813,7 +1910,7 @@
                     <div class="navbar-right">
                         <!-- Notifications -->
                         <div class="dropdown">
-                            <button class="navbar-icon" type="button" id="notificationsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <button class="btn-acasi icon-only" type="button" id="notificationsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="fas fa-bell"></i>
                                 <span class="navbar-badge" id="notifications-count" style="display: none;">0</span>
                             </button>
@@ -1846,7 +1943,7 @@
 
                         <!-- Messages -->
                         <div class="dropdown">
-                            <button class="navbar-icon" type="button" id="messagesDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <button class="btn-acasi icon-only" type="button" id="messagesDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="fas fa-envelope"></i>
                                 <span class="navbar-badge" id="messages-count" style="display: none;">0</span>
                             </button>
@@ -1887,22 +1984,98 @@
 
                     <!-- Quick Actions -->
                     <div class="dropdown">
-                            <button class="navbar-icon" type="button" id="quickActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <button class="btn-acasi icon-only" type="button" id="quickActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="fas fa-th-large"></i>
                         </button>
-                            <ul class="dropdown-menu dropdown-menu-end custom-dropdown" aria-labelledby="quickActionsDropdown">
+                            <ul class="dropdown-menu dropdown-menu-end custom-dropdown quick-actions-dropdown" aria-labelledby="quickActionsDropdown">
                                 <li>
                                     <h6 class="dropdown-header">Actions rapides</h6>
                                 </li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
                                     <div class="quick-actions-grid" id="quick-actions-list">
-                                        <div class="dropdown-loading">
-                                            <div class="spinner-border spinner-border-sm" role="status">
-                                                <span class="visually-hidden">Chargement...</span>
+                                        @if(auth()->check() && auth()->user() && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire')))
+                                            <a href="{{ route('esbtp.etudiants.create') }}" class="quick-action-item">
+                                                <div class="quick-action-icon" style="background: linear-gradient(135deg, #10b981, #059669); color: white;">
+                                                    <i class="fas fa-user-plus"></i>
+                                                </div>
+                                                <span class="quick-action-text">Nouvel étudiant</span>
+                                            </a>
+                                            <a href="{{ route('esbtp.inscriptions.create') }}" class="quick-action-item">
+                                                <div class="quick-action-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white;">
+                                                    <i class="fas fa-clipboard-check"></i>
+                                                </div>
+                                                <span class="quick-action-text">Nouvelle inscription</span>
+                                            </a>
+                                            <a href="{{ route('esbtp.evaluations.create') }}" class="quick-action-item">
+                                                <div class="quick-action-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white;">
+                                                    <i class="fas fa-plus-circle"></i>
+                                                </div>
+                                                <span class="quick-action-text">Nouvelle évaluation</span>
+                                            </a>
+                                            <a href="{{ route('esbtp.classes.create') }}" class="quick-action-item">
+                                                <div class="quick-action-icon" style="background: linear-gradient(135deg, #0453cb, #5e91de); color: white;">
+                                                    <i class="fas fa-school"></i>
+                                                </div>
+                                                <span class="quick-action-text">Nouvelle classe</span>
+                                            </a>
+                                        @elseif(auth()->check() && auth()->user() && auth()->user()->hasRole('coordinateur'))
+                                            <a href="{{ route('esbtp.emploi-temps.create') }}" class="quick-action-item">
+                                                <div class="quick-action-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white;">
+                                                    <i class="fas fa-calendar-plus"></i>
+                                                </div>
+                                                <span class="quick-action-text">Nouvel emploi du temps</span>
+                                            </a>
+                                            <a href="{{ route('esbtp.evaluations.create') }}" class="quick-action-item">
+                                                <div class="quick-action-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white;">
+                                                    <i class="fas fa-plus-circle"></i>
+                                                </div>
+                                                <span class="quick-action-text">Nouvelle évaluation</span>
+                                            </a>
+                                            <a href="{{ route('esbtp.attendances.index') }}" class="quick-action-item">
+                                                <div class="quick-action-icon" style="background: linear-gradient(135deg, #10b981, #059669); color: white;">
+                                                    <i class="fas fa-clipboard-list"></i>
+                                                </div>
+                                                <span class="quick-action-text">Présences</span>
+                                            </a>
+                                            <a href="{{ route('esbtp.annonces.create') }}" class="quick-action-item">
+                                                <div class="quick-action-icon" style="background: linear-gradient(135deg, #ef4444, #dc2626); color: white;">
+                                                    <i class="fas fa-bullhorn"></i>
+                                                </div>
+                                                <span class="quick-action-text">Nouvelle annonce</span>
+                                            </a>
+                                        @elseif(auth()->check() && auth()->user() && auth()->user()->hasRole('etudiant'))
+                                            <a href="{{ route('esbtp.mes-evaluations.index') }}" class="quick-action-item">
+                                                <div class="quick-action-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white;">
+                                                    <i class="fas fa-clipboard-list"></i>
+                                                </div>
+                                                <span class="quick-action-text">Mes évaluations</span>
+                                            </a>
+                                            <a href="{{ route('esbtp.mes-notes.index') }}" class="quick-action-item">
+                                                <div class="quick-action-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white;">
+                                                    <i class="fas fa-star"></i>
+                                                </div>
+                                                <span class="quick-action-text">Mes notes</span>
+                                            </a>
+                                            <a href="{{ route('esbtp.mon-emploi-temps.index') }}" class="quick-action-item">
+                                                <div class="quick-action-icon" style="background: linear-gradient(135deg, #10b981, #059669); color: white;">
+                                                    <i class="fas fa-calendar-alt"></i>
+                                                </div>
+                                                <span class="quick-action-text">Mon emploi du temps</span>
+                                            </a>
+                                            <a href="{{ route('esbtp.mes-messages.index') }}" class="quick-action-item">
+                                                <div class="quick-action-icon" style="background: linear-gradient(135deg, #0453cb, #5e91de); color: white;">
+                                                    <i class="fas fa-envelope"></i>
+                                                </div>
+                                                <span class="quick-action-text">Mes messages</span>
+                                            </a>
+                                        @else
+                                            <div class="dropdown-empty">
+                                                <i class="fas fa-th-large"></i>
+                                                <div class="dropdown-empty-title">Actions rapides</div>
+                                                <div class="dropdown-empty-text">Aucune action rapide disponible</div>
                                             </div>
-                                            <span class="ms-2">Chargement...</span>
-                                        </div>
+                                        @endif
                                     </div>
                                 </li>
                             </ul>
@@ -1910,7 +2083,7 @@
 
                 <!-- User Profile -->
                 <div class="dropdown ms-2">
-                    <div class="navbar-user" id="profileDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <button class="btn-acasi profile-btn" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                         <div class="navbar-avatar">
                             @if(auth()->check() && auth()->user()->profile_photo_path)
                                 <img src="{{ asset('storage/' . auth()->user()->profile_photo_path) }}" alt="{{ auth()->user()->name }}">
@@ -1923,7 +2096,7 @@
                         <div class="navbar-user-info d-none d-md-block">
                             <div class="navbar-user-name">{{ auth()->check() ? auth()->user()->name : 'Invité' }}</div>
                     </div>
-                    </div>
+                    </button>
                     <ul class="dropdown-menu dropdown-menu-end custom-dropdown" aria-labelledby="profileDropdown">
                         <li>
                             <div class="dropdown-user-details">
@@ -2225,6 +2398,7 @@
             console.log('🔔 Mise à jour notifications:', { notifications, unreadCount });
             const notificationsList = document.getElementById('notifications-list');
             const notificationsCount = document.getElementById('notifications-count');
+            const markAllBtn = document.getElementById('mark-all-notifications-read');
 
             // Mettre à jour le badge avec le vrai count du serveur
             if (unreadCount > 0) {
@@ -2232,6 +2406,19 @@
                 notificationsCount.style.display = 'inline';
             } else {
                 notificationsCount.style.display = 'none';
+            }
+
+            // Mettre à jour le bouton header selon l'état
+            if (markAllBtn) {
+                if (unreadCount > 0) {
+                    markAllBtn.innerHTML = 'Tout marquer comme lu';
+                    markAllBtn.onclick = function() { markAllNotificationsAsRead(); };
+                } else if (notifications.length > 0) {
+                    markAllBtn.innerHTML = 'Tout supprimer';
+                    markAllBtn.onclick = function() { deleteAllNotifications(); };
+                } else {
+                    markAllBtn.style.display = 'none';
+                }
             }
 
             // État vide avec design amélioré
@@ -2277,6 +2464,7 @@
             console.log('💬 Mise à jour messages:', { messages, unreadCount });
             const messagesList = document.getElementById('messages-list');
             const messagesCount = document.getElementById('messages-count');
+            const markAllMessagesBtn = document.getElementById('mark-all-messages-read');
 
             // Mettre à jour le badge
             if (unreadCount > 0) {
@@ -2284,6 +2472,19 @@
                 messagesCount.style.display = 'inline';
             } else {
                 messagesCount.style.display = 'none';
+            }
+
+            // Mettre à jour le bouton header selon l'état
+            if (markAllMessagesBtn) {
+                if (unreadCount > 0) {
+                    markAllMessagesBtn.innerHTML = 'Tout marquer comme lu';
+                    markAllMessagesBtn.onclick = function() { markAllMessagesAsRead(); };
+                } else if (messages.length > 0) {
+                    markAllMessagesBtn.innerHTML = 'Tout supprimer';
+                    markAllMessagesBtn.onclick = function() { deleteAllMessages(); };
+                } else {
+                    markAllMessagesBtn.style.display = 'none';
+                }
             }
 
             // État vide avec design amélioré
@@ -2311,6 +2512,11 @@
                                 <div class="message-text">${escapeHtml(message.message)}</div>
                                 <div class="message-time">${message.time} • ${escapeHtml(message.sender || 'Système')}</div>
                             </div>
+                            <div class="message-actions">
+                                <button class="message-delete-btn" onclick="deleteMessage(${message.id})" title="Supprimer">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
                         </div>
                     </li>
                 `;
@@ -2337,9 +2543,20 @@
 
             let html = '';
             actions.forEach(action => {
+                // Mapping des couleurs vers les backgrounds appropriés
+                const colorMap = {
+                    'primary': 'background: #3b82f6; color: white; border-color: #2563eb;',
+                    'success': 'background: #10b981; color: white; border-color: #059669;',
+                    'warning': 'background: #f59e0b; color: white; border-color: #d97706;',
+                    'danger': 'background: #ef4444; color: white; border-color: #dc2626;',
+                    'info': 'background: #06b6d4; color: white; border-color: #0891b2;',
+                    'secondary': 'background: #6b7280; color: white; border-color: #4b5563;'
+                };
+                const iconStyle = colorMap[action.color] || colorMap['primary'];
+                
                 html += `
                     <a href="${action.url}" class="quick-action-item">
-                        <div class="quick-action-icon text-${action.color}">
+                        <div class="quick-action-icon" style="${iconStyle}">
                             <i class="${action.icon}"></i>
                         </div>
                         <div class="quick-action-text">${escapeHtml(action.title)}</div>
@@ -2624,7 +2841,7 @@
                 event.stopPropagation(); // Empêcher le clic sur le parent
                 
                 if (confirm('Supprimer cette notification ?')) {
-                    fetch(`{{ url('/notifications') }}/${notificationId}/delete`, {
+                    fetch(`{{ url('/navbar/notifications') }}/${notificationId}/delete`, {
                         method: 'DELETE',
                         headers: {
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
@@ -2645,6 +2862,131 @@
                         alert('Erreur lors de la suppression');
                     });
                 }
+            };
+
+            window.deleteMessage = function(messageId) {
+                event.stopPropagation(); // Empêcher le clic sur le parent
+                
+                if (confirm('Supprimer ce message ?')) {
+                    fetch(`{{ url('/navbar/messages') }}/${messageId}/delete`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'Accept': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            console.log('✅ Message supprimé:', messageId);
+                            loadNavbarData(); // Recharger les données
+                        } else {
+                            alert('Erreur lors de la suppression');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('❌ Erreur suppression message:', error);
+                        alert('Erreur lors de la suppression');
+                    });
+                }
+            };
+
+            // Fonctions pour supprimer tout
+            window.deleteAllNotifications = function() {
+                if (confirm('Supprimer toutes les notifications ?')) {
+                    fetch('{{ route("navbar.notifications.delete-all") }}', {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'Accept': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            console.log('✅ Toutes les notifications supprimées');
+                            loadNavbarData(); // Recharger les données
+                        } else {
+                            alert('Erreur lors de la suppression');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('❌ Erreur suppression toutes notifications:', error);
+                        alert('Erreur lors de la suppression');
+                    });
+                }
+            };
+
+            window.deleteAllMessages = function() {
+                if (confirm('Supprimer tous les messages ?')) {
+                    fetch('{{ route("navbar.messages.delete-all") }}', {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'Accept': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            console.log('✅ Tous les messages supprimés');
+                            loadNavbarData(); // Recharger les données
+                        } else {
+                            alert('Erreur lors de la suppression');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('❌ Erreur suppression tous messages:', error);
+                        alert('Erreur lors de la suppression');
+                    });
+                }
+            };
+
+            // Fonctions pour marquer tout comme lu
+            window.markAllNotificationsAsRead = function() {
+                fetch('{{ route("navbar.notifications.mark-all-read") }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('✅ Toutes les notifications marquées comme lues');
+                        loadNavbarData(); // Recharger les données
+                    } else {
+                        alert('Erreur lors du marquage');
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ Erreur marquage toutes notifications:', error);
+                    alert('Erreur lors du marquage');
+                });
+            };
+
+            window.markAllMessagesAsRead = function() {
+                fetch('{{ route("navbar.messages.mark-all-read") }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('✅ Tous les messages marqués comme lus');
+                        loadNavbarData(); // Recharger les données
+                    } else {
+                        alert('Erreur lors du marquage');
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ Erreur marquage tous messages:', error);
+                    alert('Erreur lors du marquage');
+                });
             };
 
             // Marquer les notifications comme vues quand on ouvre le dropdown

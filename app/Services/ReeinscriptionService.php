@@ -8,6 +8,7 @@ use App\Models\ESBTPClasse;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPMatiere;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class ReeinscriptionService
 {
@@ -96,10 +97,16 @@ class ReeinscriptionService
 
     public function getEtudiantsParDecision($anneeAcademique)
     {
-        // Récupérer les étudiants via leurs inscriptions validées
+        // Récupérer l'année académique courante (is_current = true)
+        $anneeUniversitaire = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        
+        // Récupérer les étudiants via leurs inscriptions validées - FILTRÉS PAR ANNÉE COURANTE
         $inscriptions = \App\Models\ESBTPInscription::with(['etudiant', 'classe.niveau', 'classe.filiere'])
             ->whereNotNull('classe_id')
             ->whereNotNull('etudiant_id')
+            ->when($anneeUniversitaire, function($query) use ($anneeUniversitaire) {
+                return $query->where('annee_universitaire_id', $anneeUniversitaire->id);
+            })
             ->get();
         
         $resultat = [
@@ -134,9 +141,12 @@ class ReeinscriptionService
             }
         }
 
-        // Ajouter les étudiants sans inscription validée dans les erreurs
-        $etudiantsSansInscription = ESBTPEtudiant::whereDoesntHave('inscriptions', function($query) {
-            $query->whereNotNull('classe_id');
+        // Ajouter les étudiants sans inscription validée dans les erreurs - FILTRÉS PAR ANNÉE COURANTE
+        $etudiantsSansInscription = ESBTPEtudiant::whereDoesntHave('inscriptions', function($query) use ($anneeUniversitaire) {
+            $query->whereNotNull('classe_id')
+                  ->when($anneeUniversitaire, function($subQuery) use ($anneeUniversitaire) {
+                      return $subQuery->where('annee_universitaire_id', $anneeUniversitaire->id);
+                  });
         })->get();
         
         foreach ($etudiantsSansInscription as $etudiant) {
@@ -165,28 +175,73 @@ class ReeinscriptionService
         return [];
     }
 
-    public function effectuerReinscription($etudiantId, $nouvelleClasseId, $decision, $observations = null)
+    public function effectuerReinscription($etudiantId, $nouvelleClasseId, $decision, $observations = null, $selectedOptionals = [])
     {
-        $etudiant = ESBTPEtudiant::findOrFail($etudiantId);
-        $nouvelleClasse = ESBTPClasse::findOrFail($nouvelleClasseId);
-        
-        // Sauvegarder l'historique
-        $this->sauvegarderHistorique($etudiant, $decision, $observations);
-        
-        // Mettre à jour la classe de l'étudiant
-        $etudiant->update([
-            'classe_id' => $nouvelleClasseId,
-            'statut' => $this->getStatutFromDecision($decision)
-        ]);
-
-        return $etudiant->fresh();
+        \DB::beginTransaction();
+        try {
+            // 1. Vérifications préalables
+            $etudiant = ESBTPEtudiant::findOrFail($etudiantId);
+            
+            if (!$this->peutSeReinscrire($etudiantId)) {
+                throw new \Exception("L'étudiant doit solder tous ses frais avant la réinscription");
+            }
+            
+            // 2. Données de la nouvelle inscription
+            $nouvelleClasse = ESBTPClasse::findOrFail($nouvelleClasseId);
+            $nouvelleAnnee = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+            
+            if (!$nouvelleAnnee) {
+                throw new \Exception("Aucune année universitaire active trouvée");
+            }
+            
+            // 3. Créer nouvelle inscription
+            $nouvelleInscription = \App\Models\ESBTPInscription::create([
+                'etudiant_id' => $etudiantId,
+                'annee_universitaire_id' => $nouvelleAnnee->id,
+                'classe_id' => $nouvelleClasseId,
+                'filiere_id' => $nouvelleClasse->filiere_id,
+                'niveau_id' => $nouvelleClasse->niveau_etude_id,
+                'type_inscription' => 'reinscription',
+                'date_inscription' => now(),
+                'status' => 'active',
+                'workflow_step' => 'inscrit',
+                'observations' => $observations,
+                'created_by' => auth()->id(),
+                'numero_recu' => $this->genererNumeroRecu($nouvelleAnnee, $nouvelleClasse)
+            ]);
+            
+            // 4. Générer nouveaux frais via service existant
+            $inscriptionService = app(\App\Services\ESBTPInscriptionService::class);
+            $generatedFees = $inscriptionService->generateFeesForInscription(
+                $nouvelleInscription, 
+                $selectedOptionals
+            );
+            
+            // 5. Créer facture automatique
+            $this->creerFactureReinscription($nouvelleInscription, $generatedFees);
+            
+            // 6. Mise à jour statut étudiant
+            $etudiant->update([
+                'statut' => $this->getStatutFromDecision($decision)
+            ]);
+            
+            // 7. Historique complet
+            $this->sauvegarderHistoriqueComplet($etudiant, $decision, $observations, $nouvelleInscription, $generatedFees);
+            
+            \DB::commit();
+            return $nouvelleInscription;
+            
+        } catch (\Exception $e) {
+            \DB::rollback();
+            throw $e;
+        }
     }
 
     private function getNotesEtudiant($etudiantId, $anneeAcademique)
     {
-        // Pour l'instant, récupérer toutes les notes de l'étudiant
-        // car nous n'avons pas encore la logique pour mapper l'année académique à l'ID
+        // Récupérer les notes filtrées par année académique (utilise le champ STRING annee_universitaire)
         return ESBTPNote::where('etudiant_id', $etudiantId)
+            ->where('annee_universitaire', $anneeAcademique)
             ->with(['evaluation.matiere', 'matiere'])
             ->get();
     }
@@ -264,15 +319,26 @@ class ReeinscriptionService
             ->get();
     }
 
-    private function sauvegarderHistorique($etudiant, $decision, $observations)
+    private function sauvegarderHistoriqueComplet($etudiant, $decision, $observations, $nouvelleInscription, $generatedFees)
     {
-        // Créer un enregistrement d'historique de réinscription
-        // Vous pourriez créer une table esbtp_historique_reinscriptions
-        \Log::info("Réinscription effectuée", [
+        // Récupérer l'ancienne inscription active
+        $ancienneInscription = $etudiant->inscriptions()
+            ->where('annee_universitaire_id', '!=', $nouvelleInscription->annee_universitaire_id)
+            ->where('status', 'active')
+            ->latest()
+            ->first();
+            
+        \Log::info("Réinscription effectuée avec nouvelle inscription", [
             'etudiant_id' => $etudiant->id,
-            'ancienne_classe' => $etudiant->classe->nom ?? 'N/A',
+            'ancienne_inscription_id' => $ancienneInscription?->id,
+            'ancienne_classe' => $ancienneInscription?->classe?->name ?? 'N/A',
+            'nouvelle_inscription_id' => $nouvelleInscription->id,
+            'nouvelle_classe' => $nouvelleInscription->classe->name,
+            'nouvelle_annee' => $nouvelleInscription->anneeUniversitaire->libelle,
             'decision' => $decision,
             'observations' => $observations,
+            'frais_generes_count' => count($generatedFees),
+            'montant_total_nouveaux_frais' => array_sum(array_column($generatedFees, 'amount')),
             'date' => now()
         ]);
     }
@@ -312,5 +378,88 @@ class ReeinscriptionService
         ]);
 
         return $regle;
+    }
+
+    /**
+     * Vérifier si un étudiant peut se réinscrire (doit être entièrement soldé)
+     */
+    public function peutSeReinscrire($etudiantId): bool
+    {
+        $etudiant = ESBTPEtudiant::findOrFail($etudiantId);
+        $inscriptionActive = $etudiant->inscriptions()
+            ->where('status', 'active')
+            ->latest()
+            ->first();
+        
+        if (!$inscriptionActive) return false;
+        
+        $soldeRestant = $this->calculerSoldeInscription($inscriptionActive);
+        return $soldeRestant <= 0;
+    }
+
+    /**
+     * Calculer le solde restant d'une inscription
+     */
+    private function calculerSoldeInscription($inscription): float
+    {
+        // Utiliser la logique existante de calcul des soldes
+        $montantAttendu = $inscription->paiements()->sum('montant') + 
+                         $inscription->frais_inscription + 
+                         $inscription->montant_scolarite;
+        
+        $montantPaye = $inscription->paiements()
+            ->where('status', 'validated')
+            ->sum('montant');
+            
+        return $montantAttendu - $montantPaye;
+    }
+
+    /**
+     * Générer un numéro de reçu pour la réinscription
+     */
+    private function genererNumeroRecu($annee, $classe): string
+    {
+        $prefix = 'REINSC';
+        $anneeCode = $annee->code ?? date('Y');
+        $numero = str_pad(mt_rand(1, 9999), 4, '0', STR_PAD_LEFT);
+        return "{$prefix}-{$anneeCode}-{$numero}";
+    }
+
+    /**
+     * Créer une facture pour la nouvelle inscription de réinscription
+     */
+    private function creerFactureReinscription($inscription, $generatedFees)
+    {
+        $facture = new \App\Models\ESBTPFacture();
+        $facture->numero = 'FREINSC-' . date('Ymd') . '-' . str_pad($inscription->id, 5, '0', STR_PAD_LEFT);
+        $facture->etudiant_id = $inscription->etudiant_id;
+        $facture->inscription_id = $inscription->id;
+        $facture->annee_universitaire_id = $inscription->annee_universitaire_id;
+        $facture->date_emission = now();
+        $facture->date_echeance = now()->addDays(15);
+        $facture->montant_ht = collect($generatedFees)->sum('amount');
+        $facture->taux_taxe = 0;
+        $facture->montant_taxe = 0;
+        $facture->montant_ttc = $facture->montant_ht + $facture->montant_taxe;
+        $facture->montant_regle = 0;
+        $facture->montant_du = $facture->montant_ttc;
+        $facture->statut = 'émise';
+        $facture->notes = 'Facture générée automatiquement pour réinscription';
+        $facture->createur_id = auth()->id();
+        $facture->save();
+
+        // Générer les détails de la facture
+        foreach ($generatedFees as $fee) {
+            \App\Models\ESBTPFactureDetail::create([
+                'facture_id' => $facture->id,
+                'designation' => $fee['description'],
+                'description' => "Frais de réinscription - " . $fee['description'],
+                'quantite' => 1,
+                'montant' => $fee['amount'],
+                'total_ligne' => $fee['amount'],
+            ]);
+        }
+
+        return $facture;
     }
 }

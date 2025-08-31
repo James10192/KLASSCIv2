@@ -26,11 +26,11 @@
     font-family: Arial, sans-serif;
     font-weight: bold;
     color: white;
-    background-color: #6366f1;
+    background-color: #0453cb;
 }
 
 .placeholder-admin::before {
-    background-color: #6366f1;
+    background-color: #0453cb;
 }
 
 .placeholder-teacher::before {

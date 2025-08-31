@@ -163,6 +163,53 @@
         border-radius: var(--radius-small);
         border-left: 3px solid var(--border);
     }
+    
+    /* Styles pour le dropdown PDF compact sur page show */
+    .pdf-dropdown-show {
+        position: relative;
+        z-index: 1000;
+    }
+    
+    .pdf-dropdown-show .dropdown-menu {
+        min-width: 150px;
+        font-size: 0.9rem;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        border: 1px solid var(--border);
+        position: absolute !important;
+        z-index: 1050;
+        right: 0;
+        left: auto;
+    }
+    
+    .pdf-dropdown-show .dropdown-item {
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+        transition: all 0.2s ease;
+    }
+    
+    .pdf-dropdown-show .dropdown-item:hover {
+        background: rgba(var(--primary-rgb), 0.1);
+        color: var(--primary);
+    }
+    
+    .pdf-dropdown-show .dropdown-item i {
+        width: 16px;
+        text-align: center;
+        margin-right: 0.5rem;
+    }
+    
+    /* Forcer la visibilité du dropdown en surpassant les overflows */
+    .action-buttons {
+        overflow: visible !important;
+    }
+    
+    .payment-header {
+        overflow: visible !important;
+    }
+    
+    .payment-header .text-end {
+        overflow: visible !important;
+    }
 </style>
 @endsection
 
@@ -187,9 +234,25 @@
                             <i class="fas fa-arrow-left me-1"></i>Retour
                         </a>
                         @if($paiement->status == 'validé')
-                        <a href="{{ route('esbtp.paiements.recu', $paiement->id) }}" class="btn-action primary mb-2">
-                            <i class="fas fa-file-pdf me-1"></i>Télécharger le reçu
-                        </a>
+                        <div class="dropdown pdf-dropdown-show mb-2">
+                            <button class="btn-action primary dropdown-toggle" type="button" 
+                                    id="pdfDropdownShow" data-bs-toggle="dropdown" 
+                                    aria-expanded="false">
+                                <i class="fas fa-file-pdf me-1"></i>Reçu PDF
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="pdfDropdownShow">
+                                <li>
+                                    <a class="dropdown-item" href="{{ route('esbtp.paiements.preview', $paiement->id) }}">
+                                        <i class="fas fa-eye me-1"></i>Prévisualiser
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="{{ route('esbtp.paiements.recu', $paiement->id) }}">
+                                        <i class="fas fa-download me-1"></i>Télécharger
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
                         @endif
                     </div>
                 </div>

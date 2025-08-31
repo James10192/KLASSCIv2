@@ -12,7 +12,7 @@ return new class extends Migration
             Schema::create('esbtp_teacher_attendances', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('teacher_id')->constrained('users')->onDelete('cascade');
-                $table->foreignId('course_id')->constrained('esbtp_courses')->onDelete('cascade');
+                $table->foreignId('course_id')->constrained('esbtp_seance_cours')->onDelete('cascade');
                 $table->foreignId('daily_code_id')->constrained('esbtp_daily_codes')->onDelete('cascade');
                 $table->date('date');
                 $table->string('status')->index();

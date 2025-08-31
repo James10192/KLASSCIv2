@@ -1,209 +1,239 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Certificat de Scolarité</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Custom CSS -->
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <title>Certificat de Scolarité - {{ $etudiant->matricule }}</title>
     <style>
-        /* Styles pour le certificat de scolarité */
         body {
             font-family: Arial, sans-serif;
-            line-height: 1.6;
-            margin: 2cm;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: white;
         }
-        .header {
+        
+        .container {
+            width: 100%;
+            max-width: 750px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        /* En-tête moderne */
+        .certificat-header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
+            border-bottom: 3px solid #1e40af;
+            padding-bottom: 15px;
         }
-        .logo {
-            max-width: 150px;
-            margin-bottom: 20px;
+        
+        .certificat-logo {
+            max-width: 80px;
+            margin-bottom: 10px;
         }
-        .title {
-            font-size: 24px;
+        
+        .certificat-school-name {
+            font-size: 16px;
             font-weight: bold;
-            margin-bottom: 30px;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            color: #1e40af;
+        }
+        
+        .certificat-address {
+            font-size: 10px;
+            color: #64748b;
+            margin-bottom: 3px;
+        }
+        
+        /* Séparateur décoratif - Compatible DomPDF */
+        .certificat-divider {
+            height: 4px;
+            background-color: #1e40af;
+            margin: 15px 0;
+            border: none;
+        }
+        
+        /* Titre du certificat - Compatible DomPDF */
+        .certificat-title {
+            font-size: 20px;
+            font-weight: bold;
             text-align: center;
+            border: 3px double #1e40af;
+            padding: 12px;
+            margin: 25px auto;
+            max-width: 85%;
+            background-color: #f8fafc;
+            text-transform: uppercase;
+            color: #1e40af;
+        }
+        
+        /* Contenu principal */
+        .certificat-content {
+            margin: 25px 0;
+            line-height: 1.7;
+            font-size: 12px;
+            text-align: justify;
+        }
+        
+        .certificat-content p {
+            margin-bottom: 12px;
+        }
+        
+        .certificat-highlight {
+            font-weight: bold;
+            color: #1e40af;
             text-decoration: underline;
         }
-        .content {
-            margin-bottom: 30px;
-        }
-        .footer {
-            margin-top: 50px;
-            text-align: right;
-        }
-        .signature {
-            margin-top: 30px;
-        }
-
-        /* En-tête avec logo */
-        .header {
-            display: flex;
-            align-items: flex-start;
-            margin-bottom: 20px;
-        }
-
-        .logo {
-            width: 100px;
-            margin-right: 20px;
-        }
-
-        .header-content {
-            flex: 1;
-        }
-
-        .header-title {
-            color: #00a651;
-            font-weight: bold;
-            text-align: center;
-            font-size: 1.5rem;
-            border-bottom: 2px solid #00a651;
-            padding-bottom: 5px;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-        }
-
-        .contact-info {
-            font-size: 0.8rem;
-            text-align: center;
-        }
-
-        /* Séparateur */
-        .divider {
-            height: 10px;
-            background: repeating-linear-gradient(45deg, #888, #888 10px, #fff 10px, #fff 20px);
-            margin: 15px 0;
-        }
-
-        /* Titre du certificat */
-        .certificate-title {
-            font-size: 2.5rem;
-            font-weight: bold;
-            text-align: center;
-            border: 3px double #000;
-            border-radius: 10px;
-            padding: 10px;
-            margin: 20px auto;
-            max-width: 90%;
-            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
-            background-color: #fff;
-            position: relative;
-            text-transform: uppercase;
-        }
-
-        .certificate-title::before {
-            content: '';
-            position: absolute;
-            top: -5px;
-            left: -5px;
-            right: -5px;
-            bottom: -5px;
-            border: 1px solid #000;
-            border-radius: 15px;
-            z-index: -1;
-            opacity: 0.5;
-        }
-
-        /* Contenu principal */
-        .main-content {
-            line-height: 1.6;
-        }
-
-        /* Tableau */
-        table {
+        
+        /* Footer avec signature - Compatible DomPDF */
+        .certificat-footer {
+            margin-top: 40px;
             width: 100%;
-            border-collapse: collapse;
-            margin: 15px 0;
+            overflow: hidden;
         }
-
-        table, th, td {
-            border: 1px solid black;
-        }
-
-        th, td {
-            padding: 8px;
-            text-align: center;
-        }
-
-        th {
-            background-color: #f8f9fa;
-            font-weight: bold;
-        }
-
-        /* Signature */
-        .signature {
-            text-align: right;
-            margin-top: 20px;
-            padding-right: 50px;
-            position: relative;
-        }
-
-        /* Note de bas de page */
-        .footer-note {
-            font-size: 0.8rem;
+        
+        .certificat-date {
+            float: left;
+            width: 48%;
+            text-align: left;
             font-style: italic;
+            color: #64748b;
+            font-size: 11px;
             margin-top: 30px;
-            border-top: 1px solid #ddd;
-            padding-top: 10px;
         }
-
-        /* Responsive */
-        @media print {
-            body {
-                padding: 0;
-            }
-
-            .container {
-                box-shadow: none;
-                max-width: 100%;
-            }
+        
+        .certificat-signature {
+            float: right;
+            width: 48%;
+            text-align: right;
+            border-top: 2px solid #1e40af;
+            padding-top: 10px;
+            min-height: 60px;
+        }
+        
+        .signature-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #1e40af;
+            font-size: 12px;
+        }
+        
+        .signature-name {
+            color: #64748b;
+            font-style: italic;
+            font-size: 10px;
+        }
+        
+        /* Note de bas de page modernisée */
+        .certificat-note {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 9px;
+            font-style: italic;
+            color: #64748b;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 10px;
+            clear: both;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Header -->
-        <div class="header">
-            <h1>ÉCOLE SUPÉRIEURE DU BÂTIMENT ET DES TRAVAUX PUBLICS</h1>
-            <h2>ESBTP Yamoussoukro</h2>
+        <!-- En-tête -->
+        <div class="certificat-header">
+            @if(isset($settings['show_logo']) && $settings['show_logo'] && isset($settings['logo_base64']))
+                <img src="{{ $settings['logo_base64'] }}" alt="Logo École" class="certificat-logo">
+            @endif
+            
+            <div class="certificat-school-name">{{ $settings['school_name'] ?? 'École Spéciale du Bâtiment et des Travaux Publics' }}</div>
+            
+            @if($settings['school_address'] ?? null)
+                <div class="certificat-address">{{ $settings['school_address'] }}</div>
+            @endif
+            @if(($settings['school_phone'] ?? null) || ($settings['school_email'] ?? null))
+                <div class="certificat-address">
+                    @if($settings['school_phone'] ?? null)Tél: {{ $settings['school_phone'] }}@endif
+                    @if(($settings['school_phone'] ?? null) && ($settings['school_email'] ?? null)) - @endif
+                    @if($settings['school_email'] ?? null)Email: {{ $settings['school_email'] }}@endif
+                </div>
+            @endif
         </div>
 
-        <div class="divider"></div>
+        <!-- Séparateur décoratif -->
+        <div class="certificat-divider"></div>
 
-        <!-- Certificate Title -->
-        <div class="title">
-            CERTIFICAT DE SCOLARITÉ
+        <!-- Titre du certificat -->
+        <div class="certificat-title">
+            Certificat de Scolarité
         </div>
 
-        <!-- Certificate Content -->
-        <div class="content">
-            <p>Je soussigné(e), Directeur de l'École Supérieure du Bâtiment et des Travaux Publics de Yamoussoukro, certifie que :</p>
+        <!-- Contenu principal -->
+        <div class="certificat-content">
+            <p>
+                Je soussigné(e), {{ $settings['director_title'] ?? 'Le Directeur' }} de {{ $settings['school_name'] ?? 'l\'École Spéciale du Bâtiment et des Travaux Publics' }}, certifie que :
+            </p>
 
-            <p>L'étudiant(e) <strong>{{ $etudiant->nom }} {{ $etudiant->prenoms }}</strong></p>
+            <p>
+                L'étudiant(e) <span class="certificat-highlight">{{ $etudiant->nom }} {{ $etudiant->prenoms }}</span>
+            </p>
 
-            <p>Né(e) le <strong>{{ date('d/m/Y', strtotime($etudiant->date_naissance)) }}</strong> à <strong>{{ $etudiant->lieu_naissance }}</strong></p>
+            @if($etudiant->date_naissance)
+            <p>
+                Né(e) le <span class="certificat-highlight">{{ $etudiant->date_naissance->format('d/m/Y') }}</span>
+                @if($etudiant->lieu_naissance) 
+                    à <span class="certificat-highlight">{{ $etudiant->lieu_naissance }}</span>
+                @endif
+            </p>
+            @endif
 
-            <p>Matricule : <strong>{{ $etudiant->matricule }}</strong></p>
+            <p>
+                Matricule : <span class="certificat-highlight">{{ $etudiant->matricule }}</span>
+            </p>
 
-            <p>Est régulièrement inscrit(e) en <strong>{{ $inscription->niveau->nom }}</strong> de la filière <strong>{{ $inscription->filiere->nom }}</strong> pour l'année universitaire <strong>{{ $inscription->anneeUniversitaire->nom }}</strong>.</p>
+            <p>
+                Est régulièrement inscrit(e) en 
+                <span class="certificat-highlight">{{ $inscription->niveauEtude ? $inscription->niveauEtude->name : 'N/A' }}</span> 
+                de la filière 
+                <span class="certificat-highlight">{{ $inscription->filiere ? $inscription->filiere->name : 'N/A' }}</span> 
+                pour l'année universitaire 
+                <span class="certificat-highlight">{{ $inscription->anneeUniversitaire ? ($inscription->anneeUniversitaire->libelle ?: $inscription->anneeUniversitaire->name) : 'N/A' }}</span>.
+            </p>
 
-            <p>Ce certificat est délivré à l'intéressé(e) pour servir et valoir ce que de droit.</p>
+            @if($inscription->classe)
+            <p>
+                Classe : <span class="certificat-highlight">{{ $inscription->classe->name }}</span>
+            </p>
+            @endif
+
+            <p>
+                Ce certificat est délivré à l'intéressé(e) pour servir et valoir ce que de droit.
+            </p>
         </div>
 
-        <div class="footer">
-            <p>Fait à Yamoussoukro, le {{ date('d/m/Y') }}</p>
-
-            <div class="signature">
-                <p>Le Directeur</p>
+        <!-- Footer avec signature -->
+        <div class="certificat-footer">
+            <div class="certificat-date">
+                <p>Fait à {{ $settings['school_city'] ?? 'Yamoussoukro' }}, le {{ now()->format('d/m/Y') }}</p>
             </div>
+
+            <div class="certificat-signature">
+                <div class="signature-title">{{ $settings['director_title'] ?? 'Le Directeur' }}</div>
+                @if($settings['director_name'] ?? null)
+                    <div class="signature-name">{{ $settings['director_name'] }}</div>
+                @endif
+            </div>
+            
+            <!-- Clearfix pour le footer -->
+            <div style="clear: both;"></div>
+        </div>
+
+        <!-- Note de bas de page -->
+        <div class="certificat-note">
+            Ce certificat est un document officiel. Toute falsification constitue un délit passible de poursuites judiciaires.
         </div>
     </div>
-
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

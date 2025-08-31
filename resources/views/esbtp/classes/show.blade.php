@@ -50,7 +50,7 @@
         @endif
 
         <!-- Filtre année académique -->
-        <div class="main-card">
+        <div class="main-card mb-4">
             <div class="main-card-header">
                 <div class="main-card-title">
                     <i class="fas fa-filter"></i>
@@ -58,6 +58,7 @@
                 </div>
                 <div class="main-card-subtitle">Année académique courante</div>
             </div>
+            <div class="main-card-body">
                 <div class="row align-items-end">
                     <div class="col-md-8">
                         <label for="annee_academique" class="form-label text-muted text-uppercase" style="font-size: 12px; font-weight: 600;">Année Académique Courante</label>
@@ -83,7 +84,7 @@
         </div>
 
         <!-- Statistiques KPI -->
-        <div class="kpi-grid">
+        <div class="kpi-grid mb-4">
             <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
                 <div class="kpi-title" style="color: #000; font-weight: 600;">Capacité Total</div>
                 <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ $classe->places_totales }}</div>
@@ -116,7 +117,7 @@
         </div>
 
         <!-- Informations de la classe -->
-        <div class="main-card">
+        <div class="main-card mb-4">
             <div class="main-card-header">
                 <div class="main-card-title">
                     <i class="fas fa-info-circle"></i>
@@ -194,7 +195,7 @@
         </div>
 
         <!-- Matières enseignées -->
-        <div class="main-card">
+        <div class="main-card mb-4">
             <div class="main-card-header">
                 <div class="main-card-title">
                     <i class="fas fa-book"></i>
@@ -241,18 +242,17 @@
                     </div>
                 @else
                     <div class="alert alert-info mb-0">
-                                            Aucune matière associée à cette classe.
-                                            @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire'))
-                                            <a href="{{ route('esbtp.classes.matieres', ['classe' => $classe->id]) }}" class="alert-link">Ajouter des matières</a>
-                                            @endif
-                        <i class="fas fa-book"></i> Aucune matière n'est encore configurée pour cette classe.
+                        <i class="fas fa-book me-2"></i> Aucune matière n'est encore configurée pour cette classe.
+                        @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire'))
+                            <a href="{{ route('esbtp.classes.matieres', ['classe' => $classe->id]) }}" class="alert-link">Ajouter des matières</a>
+                        @endif
                     </div>
                 @endif
             </div>
         </div>
 
         <!-- Liste des étudiants -->
-        <div class="main-card">
+        <div class="main-card mb-4">
             <div class="main-card-header">
                 <div class="main-card-title">
                     <i class="fas fa-users"></i>

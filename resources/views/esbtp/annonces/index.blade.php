@@ -2,333 +2,655 @@
 
 @section('title', 'Gestion des annonces - ESBTP-yAKRO')
 
+@section('styles')
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<style>
+/* Styles spécifiques pour la page des annonces */
+.announcements-page {
+    background: #f8fafc;
+    min-height: 100vh;
+    padding: 0;
+}
+
+.page-header {
+    background: linear-gradient(135deg, #0453cb 0%, #1b64d4 100%);
+    color: white !important;
+    padding: 2rem 0;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.page-header * {
+    color: white !important;
+}
+
+.page-header h1,
+.page-header p,
+.page-header i {
+    color: white !important;
+}
+
+.page-header .container-fluid {
+    max-width: 1200px;
+}
+
+.page-title {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: white !important;
+}
+
+.page-subtitle {
+    font-size: 1rem;
+    opacity: 0.9;
+    margin: 0.5rem 0 0;
+    color: white !important;
+}
+
+.header-actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.btn-modern {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    font-weight: 500;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.btn-modern.primary {
+    background: #0453cb;
+    color: white;
+    box-shadow: 0 2px 4px rgba(4, 83, 203, 0.3);
+}
+
+.btn-modern.primary:hover {
+    background: #1b64d4;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(4, 83, 203, 0.4);
+    color: white;
+}
+
+.btn-modern.secondary {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.btn-modern.secondary:hover {
+    background: rgba(255, 255, 255, 0.3);
+    color: white;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+
+.stat-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: white;
+}
+
+.stat-icon.primary { background: linear-gradient(135deg, #0453cb, #1b64d4); }
+.stat-icon.success { background: linear-gradient(135deg, #10b981, #059669); }
+.stat-icon.warning { background: linear-gradient(135deg, #f59e0b, #d97706); }
+.stat-icon.danger { background: linear-gradient(135deg, #ef4444, #dc2626); }
+
+.stat-content h3 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0;
+    color: #1f2937;
+}
+
+.stat-content p {
+    margin: 0.25rem 0 0;
+    color: #6b7280;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.content-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+}
+
+.card-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    background: #fafbfc;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.card-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.search-container {
+    position: relative;
+    max-width: 300px;
+}
+
+.search-input {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 2.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    background: white;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #0453cb;
+    box-shadow: 0 0 0 3px rgba(4, 83, 203, 0.1);
+}
+
+.search-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+    font-size: 0.9rem;
+}
+
+.table-responsive {
+    overflow-x: auto;
+}
+
+.modern-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.modern-table thead th {
+    background: #f9fafb;
+    padding: 1rem;
+    font-weight: 600;
+    color: #374151;
+    text-align: left;
+    border-bottom: 2px solid #e5e7eb;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.modern-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.modern-table tbody tr:hover {
+    background: #f9fafb;
+}
+
+.modern-table tbody td {
+    padding: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+    vertical-align: middle;
+}
+
+.table-title {
+    font-weight: 600;
+    color: #1f2937;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.status-badge, .priority-badge, .type-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.status-badge.success {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.status-badge.warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.priority-badge.priority-2 {
+    background: #fecaca;
+    color: #991b1b;
+}
+
+.priority-badge.priority-1 {
+    background: #fed7aa;
+    color: #9a3412;
+}
+
+.priority-badge.priority-0 {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+.type-badge {
+    background: #e0e7ff;
+    color: #3730a3;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-action {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    border: none;
+    cursor: pointer;
+    font-size: 0.875rem;
+}
+
+.btn-action.primary {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.btn-action.primary:hover {
+    background: #3b82f6;
+    color: white;
+}
+
+.btn-action.secondary {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.btn-action.secondary:hover {
+    background: #6b7280;
+    color: white;
+}
+
+.btn-action.danger {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.btn-action.danger:hover {
+    background: #ef4444;
+    color: white;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+}
+
+.empty-state i {
+    color: #d1d5db !important;
+    margin-bottom: 1rem;
+}
+
+.empty-state h5 {
+    color: #6b7280;
+    margin-bottom: 0.5rem;
+}
+
+.empty-state p {
+    color: #9ca3af;
+    margin: 0;
+}
+
+.alert-modern {
+    padding: 1rem 1.25rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-weight: 500;
+}
+
+.alert-modern.success {
+    background: #dcfce7;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+
+.alert-modern.error {
+    background: #fecaca;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .page-header {
+        padding: 1.5rem 0;
+    }
+    
+    .page-title {
+        font-size: 1.5rem;
+    }
+    
+    .header-actions {
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: stretch;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .card-header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+    }
+    
+    .search-container {
+        max-width: 100%;
+    }
+    
+    .modern-table {
+        font-size: 0.875rem;
+    }
+    
+    .modern-table thead th,
+    .modern-table tbody td {
+        padding: 0.75rem 0.5rem;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+    }
+}
+</style>
+@endsection
+
 @section('content')
-<div class="container-fluid">
-    <!-- Statistiques en cartes modernes -->
-    <div class="row mb-4">
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card shadow-sm border-0 rounded-lg h-100 border-start border-5 border-primary">
-                <div class="card-body position-relative overflow-hidden py-3">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="text-xs fw-bold text-uppercase mb-1 text-primary">Total des annonces</p>
-                            <h2 class="mb-0 fw-bold text-gray-800">{{ $stats['total'] ?? 0 }}</h2>
-                        </div>
-                        <div class="rounded-circle p-3 bg-primary bg-opacity-10">
-                            <i class="fas fa-bullhorn text-primary fa-2x"></i>
-                        </div>
-                    </div>
+<div class="announcements-page">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="page-title">
+                        <i class="fas fa-bullhorn"></i>
+                        Gestion des annonces
+                    </h1>
+                    <p class="page-subtitle">Communication et informations pour la communauté ESBTP</p>
                 </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card shadow-sm border-0 rounded-lg h-100 border-start border-5 border-success">
-                <div class="card-body position-relative overflow-hidden py-3">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="text-xs fw-bold text-uppercase mb-1 text-success">Annonces publiées</p>
-                            <h2 class="mb-0 fw-bold text-gray-800">{{ $stats['published'] ?? 0 }}</h2>
-                        </div>
-                        <div class="rounded-circle p-3 bg-success bg-opacity-10">
-                            <i class="fas fa-check-circle text-success fa-2x"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card shadow-sm border-0 rounded-lg h-100 border-start border-5 border-warning">
-                <div class="card-body position-relative overflow-hidden py-3">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="text-xs fw-bold text-uppercase mb-1 text-warning">Annonces en attente</p>
-                            <h2 class="mb-0 fw-bold text-gray-800">{{ $stats['pending'] ?? 0 }}</h2>
-                        </div>
-                        <div class="rounded-circle p-3 bg-warning bg-opacity-10">
-                            <i class="fas fa-clock text-warning fa-2x"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card shadow-sm border-0 rounded-lg h-100 border-start border-5 border-danger">
-                <div class="card-body position-relative overflow-hidden py-3">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="text-xs fw-bold text-uppercase mb-1 text-danger">Urgentes</p>
-                            <h2 class="mb-0 fw-bold text-gray-800">{{ $stats['urgent'] ?? 0 }}</h2>
-                        </div>
-                        <div class="rounded-circle p-3 bg-danger bg-opacity-10">
-                            <i class="fas fa-exclamation-circle text-danger fa-2x"></i>
-                        </div>
-                    </div>
+                <div class="header-actions">
+                    <button class="btn-modern secondary" onclick="window.location.reload()">
+                        <i class="fas fa-sync-alt"></i>
+                        Actualiser
+                    </button>
+                    @if(auth()->user()->can('create_annonces'))
+                    <a href="{{ route('esbtp.annonces.create') }}" class="btn-modern primary">
+                        <i class="fas fa-plus"></i>
+                        Nouvelle annonce
+                    </a>
+                    @endif
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Section principale -->
-    <div class="row">
-        <div class="col-12">
-            <!-- Carte principale -->
-            <div class="card shadow-sm border-0 rounded-lg mb-4">
-                <div class="card-header py-3 bg-white border-bottom-0 d-flex justify-content-between align-items-center">
-                    <h5 class="m-0 fw-bold text-primary">
-                        <i class="fas fa-bullhorn me-2"></i>Gestion des annonces
-                    </h5>
-                    <a href="{{ route('esbtp.annonces.create') }}" class="btn btn-primary btn-sm rounded-pill">
-                        <i class="fas fa-plus-circle me-1"></i>Créer une nouvelle annonce
-                    </a>
+    <div class="container-fluid" style="max-width: 1200px;">
+
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon primary">
+                    <i class="fas fa-bullhorn"></i>
                 </div>
-                <div class="card-body">
-                    @if (session('success'))
-                        <div class="alert alert-success alert-dismissible fade show rounded-3" role="alert">
-                            <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    @endif
-
-                    @if (session('error'))
-                        <div class="alert alert-danger alert-dismissible fade show rounded-3" role="alert">
-                            <i class="fas fa-exclamation-circle me-2"></i>{{ session('error') }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    @endif
-
-                    <!-- Filtres modernisés -->
-                    <div class="card shadow-sm border-0 rounded-lg mb-4">
-                        <div class="card-header bg-light p-3 border-0">
-                            <h6 class="mb-0"><i class="fas fa-filter me-2"></i>Filtres</h6>
-                        </div>
-                        <div class="card-body">
-                            <form action="{{ route('esbtp.annonces.index') }}" method="GET" id="filter-form">
-                                <div class="row">
-                                    <div class="col-md-3 mb-3">
-                                        <label for="type" class="form-label small fw-bold">Type d'annonce</label>
-                                        <select class="form-select form-select-sm shadow-none" id="type" name="type">
-                                            <option value="">Tous les types</option>
-                                            <option value="general" {{ request('type') == 'general' ? 'selected' : '' }}>Générale</option>
-                                            <option value="classe" {{ request('type') == 'classe' ? 'selected' : '' }}>Classe</option>
-                                            <option value="filiere" {{ request('type') == 'filiere' ? 'selected' : '' }}>Filière</option>
-                                            <option value="niveau" {{ request('type') == 'niveau' ? 'selected' : '' }}>Niveau d'étude</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-3 mb-3">
-                                        <label for="status" class="form-label small fw-bold">Statut</label>
-                                        <select class="form-select form-select-sm shadow-none" id="status" name="is_published">
-                                            <option value="">Tous les statuts</option>
-                                            <option value="1" {{ request('is_published') == '1' ? 'selected' : '' }}>Publiée</option>
-                                            <option value="0" {{ request('is_published') == '0' ? 'selected' : '' }}>Non publiée</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-3 mb-3">
-                                        <label for="urgent" class="form-label small fw-bold">Priorité</label>
-                                        <select class="form-select form-select-sm shadow-none" id="urgent" name="urgent">
-                                            <option value="">Toutes les priorités</option>
-                                            <option value="1" {{ request('urgent') == '1' ? 'selected' : '' }}>Urgente</option>
-                                            <option value="0" {{ request('urgent') == '0' ? 'selected' : '' }}>Normale</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-3 mb-3">
-                                        <label for="search" class="form-label small fw-bold">Recherche</label>
-                                        <div class="input-group input-group-sm">
-                                            <input type="text" class="form-control shadow-none" id="search" name="search" value="{{ request('search') }}" placeholder="Titre, contenu...">
-                                            <button class="btn btn-primary" type="submit">
-                                                <i class="fas fa-search"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="d-flex justify-content-end mt-2">
-                                    <a href="{{ route('esbtp.annonces.index') }}" class="btn btn-sm btn-outline-secondary me-2 rounded-pill">
-                                        <i class="fas fa-sync-alt me-1"></i>Réinitialiser
-                                    </a>
-                                    <button type="submit" class="btn btn-sm btn-primary rounded-pill">
-                                        <i class="fas fa-filter me-1"></i>Filtrer
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-
-                    <!-- Affichage des annonces en cartes -->
-                    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4 mb-4">
-                        @forelse($annonces as $annonce)
-                            <div class="col">
-                                <div class="card shadow-sm border-0 rounded-lg h-100 annonce-card {{ $annonce->priorite == 2 ? 'border-danger border' : '' }}">
-                                    <div class="card-header border-bottom-0 d-flex justify-content-between align-items-center py-3
-                                        {{ $annonce->priorite == 2 ? 'bg-danger bg-opacity-10' : ($annonce->is_published ? 'bg-success bg-opacity-10' : 'bg-warning bg-opacity-10') }}">
-                                        <h6 class="mb-0 fw-bold text-truncate" style="max-width: 70%;" title="{{ $annonce->titre }}">
-                                            @if($annonce->priorite == 2)
-                                                <i class="fas fa-exclamation-triangle text-danger me-2"></i>
-                                            @elseif($annonce->is_published)
-                                                <i class="fas fa-check-circle text-success me-2"></i>
-                                            @else
-                                                <i class="fas fa-clock text-warning me-2"></i>
-                                            @endif
-                                            {{ $annonce->titre }}
-                                        </h6>
-                                        <div class="badge {{ $annonce->type == 'general' ? 'bg-primary' : ($annonce->type == 'classe' ? 'bg-success' : ($annonce->type == 'filiere' ? 'bg-info' : 'bg-warning')) }} rounded-pill">
-                                            {{ $annonce->type == 'general' ? 'Générale' : ($annonce->type == 'classe' ? 'Classe' : ($annonce->type == 'filiere' ? 'Filière' : 'Niveau')) }}
-                                        </div>
-                                    </div>
-                                    <div class="card-body d-flex flex-column">
-                                        <div class="mb-3">
-                                            <p class="card-text text-truncate-3 text-muted" style="min-height: 3rem">
-                                                {{ Str::limit(strip_tags($annonce->contenu), 120) }}
-                                            </p>
-                                        </div>
-                                        <div class="mt-auto">
-                                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                                <small class="text-muted">
-                                                    <i class="far fa-calendar-alt me-1"></i>
-                                                    {{ date('d/m/Y', strtotime($annonce->created_at)) }}
-                                                </small>
-                                                <div>
-                                                    @if($annonce->is_published)
-                                                        <span class="badge bg-success">Publiée</span>
-                                                    @else
-                                                        <span class="badge bg-secondary">Non publiée</span>
-                                                    @endif
-                                                </div>
-                                            </div>
-
-                                            <div class="d-flex justify-content-between align-items-center mt-3">
-                                                <small class="text-muted">
-                                                    <i class="far fa-user me-1"></i>{{ $annonce->createdBy ? $annonce->createdBy->name : 'Système' }}
-                                                </small>
-                                                <div class="btn-group">
-                                                    <a href="{{ route('esbtp.annonces.show', $annonce) }}" class="btn btn-sm btn-outline-info rounded-start">
-                                                        <i class="fas fa-eye"></i>
-                                                    </a>
-                                                    <a href="{{ route('esbtp.annonces.edit', $annonce) }}" class="btn btn-sm btn-outline-warning">
-                                                        <i class="fas fa-edit"></i>
-                                                    </a>
-                                                    <button type="button" class="btn btn-sm btn-outline-danger rounded-end"
-                                                            onclick="if(confirm('Êtes-vous sûr de vouloir supprimer cette annonce ?')) document.getElementById('delete-form-{{ $annonce->id }}').submit();">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                    <form id="delete-form-{{ $annonce->id }}" action="{{ route('esbtp.annonces.destroy', $annonce) }}" method="POST" style="display: none;">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                    </form>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        @empty
-                            <div class="col-12">
-                                <div class="alert alert-info rounded-3 shadow-sm">
-                                    <i class="fas fa-info-circle me-2"></i>Aucune annonce trouvée.
-                                </div>
-                            </div>
-                        @endforelse
-                    </div>
-
-                    <!-- Pagination -->
-                    <div class="d-flex justify-content-center mt-4">
-                        {{ $annonces->appends(request()->query())->links() }}
-                    </div>
+                <div class="stat-content">
+                    <h3>{{ $stats['total'] ?? 0 }}</h3>
+                    <p>Total des annonces</p>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon success">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ $stats['published'] ?? 0 }}</h3>
+                    <p>Annonces publiées</p>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon warning">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ $stats['pending'] ?? 0 }}</h3>
+                    <p>En attente</p>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon danger">
+                    <i class="fas fa-exclamation-circle"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ $stats['urgent'] ?? 0 }}</h3>
+                    <p>Urgentes</p>
                 </div>
             </div>
         </div>
+
+        @if (session('success'))
+            <div class="alert-modern success">
+                <i class="fas fa-check-circle"></i>
+                <div>{{ session('success') }}</div>
+            </div>
+        @endif
+
+        @if (session('error'))
+            <div class="alert-modern error">
+                <i class="fas fa-exclamation-circle"></i>
+                <div>{{ session('error') }}</div>
+            </div>
+        @endif
+
+        <!-- Contenu principal -->
+        <div class="content-card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <i class="fas fa-list"></i>
+                    Liste des annonces
+                </h2>
+                <div class="search-container">
+                    <input type="text" id="searchInput" class="search-input" placeholder="Rechercher une annonce...">
+                    <i class="fas fa-search search-icon"></i>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="modern-table" id="annoncesTable">
+                        <thead>
+                            <tr>
+                                <th>Titre</th>
+                                <th>Statut</th>
+                                <th>Priorité</th>
+                                <th>Type</th>
+                                <th>Date création</th>
+                                <th>Expiration</th>
+                                <th class="actions-col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($annonces as $annonce)
+                                <tr>
+                                    <td>
+                                        <div class="table-title">
+                                            @if($annonce->priorite == 2)
+                                                <i class="fas fa-exclamation-triangle text-danger me-2"></i>
+                                            @endif
+                                            {{ $annonce->titre }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="status-badge {{ $annonce->is_published ? 'success' : 'warning' }}">
+                                            {{ $annonce->is_published ? 'Publiée' : 'Brouillon' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="priority-badge priority-{{ $annonce->priorite }}">
+                                            {{ $annonce->priorite == 2 ? 'Urgente' : ($annonce->priorite == 1 ? 'Importante' : 'Normale') }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="type-badge">
+                                            {{ $annonce->type == 'general' ? 'Générale' : ucfirst($annonce->type) }}
+                                        </span>
+                                    </td>
+                                    <td>{{ $annonce->created_at->format('d/m/Y H:i') }}</td>
+                                    <td>{{ $annonce->date_expiration ? \Carbon\Carbon::parse($annonce->date_expiration)->format('d/m/Y H:i') : '-' }}</td>
+                                    <td class="actions">
+                                        <div class="action-buttons">
+                                            <a href="{{ route('esbtp.annonces.show', $annonce) }}" class="btn-action primary" title="Voir">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{{ route('esbtp.annonces.edit', $annonce) }}" class="btn-action secondary" title="Modifier">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <button type="button" class="btn-action danger" onclick="deleteAnnonce({{ $annonce->id }})" title="Supprimer">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="text-center py-4">
+                                        <div class="empty-state">
+                                            <i class="fas fa-bullhorn fa-3x text-muted mb-3"></i>
+                                            <h5 class="text-muted">Aucune annonce trouvée</h5>
+                                            <p class="text-muted">Commencez par créer votre première annonce.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                </table>
+        </div>
+        
+        @if($annonces->hasPages())
+            <div class="d-flex justify-content-center mt-4">
+                {{ $annonces->links() }}
+            </div>
+        @endif
+    </div>
+    
     </div>
 </div>
 @endsection
 
-@section('styles')
-<style>
-    /* Style pour les cartes */
-    .annonce-card {
-        transition: all 0.3s ease;
-        overflow: hidden;
-    }
-    .annonce-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important;
-    }
-    .card-header {
-        transition: all 0.3s ease;
-    }
-    .annonce-card:hover .card-header {
-        background-color: rgba(0, 0, 0, 0.02);
-    }
-    .btn-group .btn {
-        transition: all 0.2s ease;
-    }
-    .btn-group .btn:hover {
-        z-index: 5;
-        transform: translateY(-2px);
-    }
+@push('scripts')
+<script>
+// Fonction de recherche en temps réel
+document.getElementById('searchInput').addEventListener('input', function() {
+    const searchTerm = this.value.toLowerCase();
+    const table = document.getElementById('annoncesTable');
+    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
 
-    /* Style pour le texte limité à 3 lignes */
-    .text-truncate-3 {
-        display: -webkit-box;
-        -webkit-line-clamp: 3;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    /* Style pour les badges */
-    .badge {
-        font-weight: 500;
-    }
-
-    /* Style pour les icônes circulaires */
-    .rounded-circle {
-        transition: all 0.3s ease;
-    }
-    .card:hover .rounded-circle {
-        transform: scale(1.1);
-    }
-
-    /* Style pour les boutons d'action */
-    .btn-outline-info, .btn-outline-warning, .btn-outline-danger {
-        border-width: 1px;
-    }
-
-    /* Style pour la pagination */
-    .pagination {
-        gap: 5px;
-    }
-    .page-item .page-link {
-        border-radius: 50%;
-        margin: 0 2px;
-        border: none;
-        color: #6c757d;
-    }
-    .page-item.active .page-link {
-        background-color: var(--esbtp-green);
-        color: white;
-    }
-    .page-link:focus {
-        box-shadow: none;
-    }
-
-    /* Media queries pour la responsivité */
-    @media (max-width: 767.98px) {
-        .row-cols-md-2>* {
-            flex: 0 0 auto;
-            width: 100%;
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const titleCell = row.cells[0];
+        
+        if (titleCell && titleCell.textContent.toLowerCase().includes(searchTerm)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
         }
     }
-</style>
-@endsection
+});
 
-@section('scripts')
-<script>
-    $(document).ready(function() {
-        // Soumission automatique du formulaire lors du changement d'un filtre
-        $('#type, #status, #urgent').change(function() {
-            $('#filter-form').submit();
-        });
-    });
+// Fonction de suppression d'annonce
+function deleteAnnonce(id) {
+    if (confirm('Êtes-vous sûr de vouloir supprimer cette annonce ?')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{{ route("esbtp.annonces.index") }}/' + id;
+        
+        const csrfToken = document.createElement('input');
+        csrfToken.type = 'hidden';
+        csrfToken.name = '_token';
+        csrfToken.value = '{{ csrf_token() }}';
+        
+        const methodField = document.createElement('input');
+        methodField.type = 'hidden';
+        methodField.name = '_method';
+        methodField.value = 'DELETE';
+        
+        form.appendChild(csrfToken);
+        form.appendChild(methodField);
+        document.body.appendChild(form);
+        
+        form.submit();
+    }
+}
 </script>
-@endsection
+@endpush

@@ -440,6 +440,52 @@
             </div>
         </div>
 
+        <!-- Configuration des Nouveaux Frais -->
+        @if($peutReinscrire)
+        <div class="card-moderne mb-lg">
+            <div class="main-card-header">
+                <div class="main-card-title">
+                    <i class="fas fa-money-bill-wave"></i>
+                    Configuration des Frais pour la Nouvelle Inscription
+                </div>
+            </div>
+            <div class="p-lg">
+                <div class="alert alert-info mb-lg">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Information importante :</strong> Une nouvelle inscription sera créée pour l'année universitaire en cours. 
+                    Les frais seront recalculés selon la nouvelle classe sélectionnée.
+                </div>
+
+                <!-- Conteneur dynamique pour les frais -->
+                <div id="fraisContainer">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Chargement des frais...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Sélectionnez d'abord une nouvelle classe pour voir les frais applicables</p>
+                    </div>
+                </div>
+
+                <!-- Résumé des montants -->
+                <div id="resumeMontants" style="display: none;">
+                    <div class="card-moderne mt-lg" style="background: linear-gradient(135deg, rgba(4, 83, 203, 0.05) 0%, rgba(94, 145, 222, 0.05) 100%); border-left: 4px solid var(--primary);">
+                        <div class="p-lg">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-calculator me-2" style="color: var(--primary);"></i>
+                                    Résumé des nouveaux frais
+                                </h6>
+                                <div id="totalMontant" style="font-size: 1.25rem; font-weight: 700; color: var(--primary);">
+                                    Sélectionnez une classe et configurez les frais pour voir le résumé
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endif
+
         <!-- Formulaire de réinscription -->
         <div class="card-moderne">
             <div class="main-card-header" style="background-color: rgba(16, 185, 129, 0.1); border-bottom: 1px solid rgba(16, 185, 129, 0.2);">
@@ -482,6 +528,9 @@
                         </div>
                     </div>
 
+                    <!-- Champ hidden pour les frais optionnels sélectionnés -->
+                    <input type="hidden" name="selected_optionals" id="selectedOptionals" value="{}">
+
                     <div class="form-group-moderne mb-lg">
                         <label for="observations" class="form-label-moderne">Observations</label>
                         <textarea name="observations" id="observations" class="form-textarea-moderne" rows="3" 
@@ -501,4 +550,244 @@
         </div>
     </div>
 </div>
+@endsection
+
+@section('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Charger les frais automatiquement si une classe est pré-sélectionnée
+    const classeSelect = document.getElementById('nouvelle_classe_id');
+    if (classeSelect && classeSelect.value) {
+        loadFraisForReinscription(classeSelect.value);
+    }
+    
+    // Écouter les changements de classe
+    if (classeSelect) {
+        classeSelect.addEventListener('change', function() {
+            if (this.value) {
+                loadFraisForReinscription(this.value);
+            } else {
+                resetFraisContainer();
+            }
+        });
+    }
+});
+
+let isLoadingFrais = false;
+
+function loadFraisForReinscription(classeId) {
+    if (isLoadingFrais) {
+        console.log('Chargement des frais déjà en cours, ignoré');
+        return;
+    }
+    
+    isLoadingFrais = true;
+    
+    const fraisContainer = document.getElementById('fraisContainer');
+    const resumeMontants = document.getElementById('resumeMontants');
+    
+    if (classeId && fraisContainer) {
+        console.log('Chargement des frais pour la classe:', classeId);
+        
+        // Interface de chargement
+        fraisContainer.innerHTML = `
+            <div class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Chargement des frais...</span>
+                </div>
+                <p class="mt-2 text-muted">Chargement des frais pour cette classe...</p>
+            </div>
+        `;
+        
+        if (resumeMontants) resumeMontants.style.display = 'none';
+        
+        // Charger les frais
+        fetch(`/esbtp/inscriptions/frais-by-classe/${classeId}`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Erreur HTTP ! Statut: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Données frais reçues:', data);
+            if (data.success) {
+                displayFraisForReinscription(data.frais);
+                updateResumeMontants();
+            } else {
+                throw new Error(data.message || 'Erreur lors du chargement des frais');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur lors du chargement des frais:', error);
+            fraisContainer.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Erreur lors du chargement des frais: ${error.message}
+                </div>
+            `;
+        })
+        .finally(() => {
+            isLoadingFrais = false;
+        });
+    }
+}
+
+function displayFraisForReinscription(fraisData) {
+    const fraisContainer = document.getElementById('fraisContainer');
+    
+    let html = '<div class="row">';
+    
+    fraisData.forEach(function(category) {
+        html += `
+            <div class="col-md-6 mb-4">
+                <div class="card h-100" style="border-left: 4px solid ${category.is_mandatory ? 'var(--success)' : 'var(--primary)'};">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <h6 class="card-title mb-0">
+                                <i class="${category.icon || 'fas fa-money-bill-wave'} me-2" style="color: ${category.color || 'var(--primary)'};"></i>
+                                ${category.name}
+                            </h6>
+                            <span class="badge ${category.is_mandatory ? 'bg-success' : 'bg-primary'}">
+                                ${category.is_mandatory ? 'Obligatoire' : 'Optionnel'}
+                            </span>
+                        </div>
+                        
+                        <p class="text-muted small mb-3">${category.description || ''}</p>
+        `;
+        
+        if (category.is_mandatory) {
+            // Frais obligatoire - pas de choix
+            html += `
+                        <div class="alert alert-success">
+                            <strong>Montant: ${Number(category.default_amount).toLocaleString('fr-FR')} FCFA</strong>
+                            <br><small>Ce frais sera automatiquement appliqué</small>
+                        </div>
+            `;
+        } else {
+            // Frais optionnel - avec choix
+            html += `
+                        <div class="form-group">
+                            <label for="frais_${category.id}" class="form-label">Sélection:</label>
+                            <select class="form-select frais-optional" id="frais_${category.id}" 
+                                    data-category-id="${category.id}" 
+                                    data-category-name="${category.name}">
+                                <option value="none">Ne pas souscrire</option>
+                                <option value="default" data-amount="${category.default_amount}">
+                                    Souscrire - ${Number(category.default_amount).toLocaleString('fr-FR')} FCFA
+                                </option>
+            `;
+            
+            // Ajouter les options spécifiques si disponibles
+            if (category.options && category.options.length > 0) {
+                category.options.forEach(function(option) {
+                    html += `
+                                <option value="${option.id}" data-amount="${option.amount}">
+                                    ${option.name} - ${Number(option.amount).toLocaleString('fr-FR')} FCFA
+                                </option>
+                    `;
+                });
+            }
+            
+            html += `
+                            </select>
+                        </div>
+            `;
+        }
+        
+        html += `
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    fraisContainer.innerHTML = html;
+    
+    // Ajouter les event listeners pour les frais optionnels
+    document.querySelectorAll('.frais-optional').forEach(function(select) {
+        select.addEventListener('change', updateSelectedOptionals);
+    });
+    
+    // Afficher le résumé
+    document.getElementById('resumeMontants').style.display = 'block';
+    updateResumeMontants();
+}
+
+function updateSelectedOptionals() {
+    const selectedOptionals = {};
+    
+    document.querySelectorAll('.frais-optional').forEach(function(select) {
+        const categoryId = select.dataset.categoryId;
+        const selectedOption = select.options[select.selectedIndex];
+        
+        if (select.value !== 'none') {
+            selectedOptionals[categoryId] = {
+                variant_id: select.value,
+                amount: parseFloat(selectedOption.dataset.amount) || 0,
+                name: selectedOption.text
+            };
+        }
+    });
+    
+    document.getElementById('selectedOptionals').value = JSON.stringify(selectedOptionals);
+    updateResumeMontants();
+}
+
+function updateResumeMontants() {
+    const selectedOptionals = JSON.parse(document.getElementById('selectedOptionals').value || '{}');
+    
+    let totalMandatory = 0;
+    let totalOptional = 0;
+    
+    // Calculer les frais obligatoires (affichés dans l'interface)
+    document.querySelectorAll('.alert-success strong').forEach(function(element) {
+        const text = element.textContent;
+        const match = text.match(/([0-9\s,]+)\s*FCFA/);
+        if (match) {
+            const amount = parseFloat(match[1].replace(/[\s,]/g, ''));
+            totalMandatory += amount;
+        }
+    });
+    
+    // Calculer les frais optionnels sélectionnés
+    Object.values(selectedOptionals).forEach(function(optional) {
+        totalOptional += optional.amount;
+    });
+    
+    const totalGeneral = totalMandatory + totalOptional;
+    
+    document.getElementById('totalMontant').innerHTML = `
+        <div>
+            <div style="font-size: 1rem; color: var(--text-secondary);">
+                Obligatoires: ${totalMandatory.toLocaleString('fr-FR')} FCFA
+                ${totalOptional > 0 ? `+ Optionnels: ${totalOptional.toLocaleString('fr-FR')} FCFA` : ''}
+            </div>
+            <div style="font-size: 1.25rem; color: var(--primary);">
+                Total: ${totalGeneral.toLocaleString('fr-FR')} FCFA
+            </div>
+        </div>
+    `;
+}
+
+function resetFraisContainer() {
+    document.getElementById('fraisContainer').innerHTML = `
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Chargement des frais...</span>
+            </div>
+            <p class="mt-2 text-muted">Sélectionnez d'abord une nouvelle classe pour voir les frais applicables</p>
+        </div>
+    `;
+    document.getElementById('resumeMontants').style.display = 'none';
+    document.getElementById('selectedOptionals').value = '{}';
+}
+</script>
 @endsection

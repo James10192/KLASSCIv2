@@ -2,25 +2,28 @@
 
 @section('title', 'Ajouter un étudiant - ESBTP-yAKRO')
 
+@section('styles')
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+@endsection
+
 @section('content')
-<div class="container-fluid animate-fade-in-up">
-    <div class="row justify-content-center">
-        <div class="col-lg-10 col-md-12">
-            <!-- HEADER PREMIUM -->
-            <div class="bg-gradient-primary rounded-4 p-5 mb-4 d-flex align-items-center justify-content-between gap-4 animate-fade-in-up" style="background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); min-height: 120px;">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="bg-white bg-opacity-25 rounded-circle d-flex align-items-center justify-content-center" style="width:56px;height:56px;">
-                        <i class="fas fa-user-plus fa-2x text-white"></i>
-                    </div>
-                    <div>
-                        <h1 class="h3 fw-bold text-white mb-1">Ajouter un nouvel étudiant</h1>
-                        <div class="text-white-50">Formulaire d'inscription d'un étudiant à l'ESBTP</div>
-                    </div>
-                </div>
-                <a href="{{ route('esbtp.etudiants.index') }}" class="btn btn-lg btn-secondary fw-bold shadow rounded-3 px-4 py-2 d-flex align-items-center gap-2 animate-fade-in-up">
-                    <i class="fas fa-arrow-left"></i> Retour à la liste
+<div class="dashboard-acasi">
+    <div class="main-content">
+        <!-- Header moderne -->
+        <div class="dashboard-header">
+            <div class="header-left">
+                <h1>Ajouter un étudiant</h1>
+                <p class="header-subtitle">Formulaire d'inscription d'un nouvel étudiant à l'ESBTP</p>
+            </div>
+            <div class="header-actions">
+                <a href="{{ route('esbtp.etudiants.index') }}" class="btn-acasi secondary">
+                    <i class="fas fa-arrow-left"></i>Retour à la liste
                 </a>
             </div>
+        </div>
+
+        <div class="card-moderne">
+            <div class="p-lg">
 
             @if ($errors->any())
                 <div class="alert alert-danger d-flex align-items-center glass-alert mb-4">

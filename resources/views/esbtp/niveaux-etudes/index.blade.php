@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Niveaux d\'études - ESBTP-yAKRO')
+@section('title', 'Niveaux d\'études')
 
 @section('content')
 <div class="main-content">
@@ -17,7 +17,7 @@
     </div>
 
     <!-- KPI Cards -->
-    <div class="kpi-grid mb-xl">
+    <div class="kpi-grid mb-4">
         <div class="kpi-card card-moderne" style="background-color: var(--primary);">
             <div style="color: white; text-align: center;">
                 <i class="fas fa-layer-group fa-2x mb-md"></i>
@@ -42,7 +42,7 @@
             </div>
         </div>
 
-        <div class="kpi-card card-moderne" style="background-color: var(--accent-blue);">
+        <div class="kpi-card card-moderne" style="background-color: var(--info);">
             <div style="color: white; text-align: center;">
                 <i class="fas fa-book fa-2x mb-md"></i>
                 <div class="kpi-title" style="color: white;">Total Matières</div>
@@ -71,7 +71,7 @@
     @endif
 
     <!-- Table -->
-    <div class="card-moderne">
+    <div class="card-moderne mb-4">
         <div class="p-lg">
             <div class="section-title mb-lg">Liste des Niveaux d'Études</div>
 

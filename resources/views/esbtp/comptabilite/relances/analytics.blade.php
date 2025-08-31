@@ -270,7 +270,7 @@
             <div class="card metrics-card">
                 <div class="card-header">
                     <h5 class="mb-0">
-                        <i class="fas fa-crystal-ball text-purple me-2"></i>
+                        <i class="fas fa-crystal-ball text-primary me-2"></i>
                         Prédictions et Recommandations
                     </h5>
                 </div>

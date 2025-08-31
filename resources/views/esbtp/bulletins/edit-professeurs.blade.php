@@ -1,115 +1,87 @@
 @extends('layouts.app')
 
-@section('title', 'Édition des professeurs pour le bulletin')
+@section('title', 'Édition des professeurs - ESBTP-yAKRO')
 
 @section('styles')
-<style>
-    .container-edit {
-        padding: 20px;
-    }
-    .matiere-box {
-        border: 1px solid #ccc;
-        border-radius: 5px;
-        padding: 15px;
-        margin-bottom: 15px;
-    }
-    .info-header {
-        background-color: #f8f9fa;
-        padding: 15px;
-        border-radius: 5px;
-        margin-bottom: 20px;
-        border-left: 4px solid #0d6efd;
-    }
-    .section-title {
-        margin-bottom: 15px;
-        padding-bottom: 10px;
-        border-bottom: 1px solid #eee;
-        font-weight: bold;
-    }
-    .action-buttons {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-    .btn-group-options {
-        display: flex;
-        gap: 10px;
-    }
-    .alert-guide {
-        background-color: #f8f9fa;
-        border-left: 4px solid #ffc107;
-        padding: 15px;
-        margin-bottom: 20px;
-        border-radius: 4px;
-    }
-</style>
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 @endsection
 
 @section('content')
-<div class="container-fluid">
-    <!-- Section de débogage -->
-    <div class="card mb-4">
-        <div class="card-header bg-info text-white">
-            <h5 class="mb-0">Informations de débogage</h5>
+<div class="dashboard-acasi">
+    <div class="main-content">
+        <!-- Header Section -->
+        <div class="dashboard-header">
+            <div class="header-left">
+                <h1><i class="fas fa-user-edit me-2"></i>Édition des professeurs</h1>
+                <p class="header-subtitle">Configurez les enseignants pour chaque matière du bulletin</p>
+            </div>
+            <div class="header-actions">
+                <span class="badge bg-primary fs-6">
+                    <i class="fas fa-graduation-cap me-1"></i>
+                    {{ $etudiant->nom }} {{ $etudiant->prenom }}
+                </span>
+            </div>
         </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-6">
-                    <h6>Paramètres de la requête:</h6>
-                    <ul class="list-unstyled">
-                        <li><strong>Étudiant ID:</strong> {{ $etudiant->id ?? 'Non défini' }}</li>
-                        <li><strong>Classe ID:</strong> {{ $classe->id ?? 'Non défini' }}</li>
-                        <li><strong>Période:</strong> {{ $periode ?? 'Non défini' }}</li>
-                        <li><strong>Année Universitaire ID:</strong> {{ $anneeUniversitaire->id ?? 'Non défini' }}</li>
-                    </ul>
+
+        <!-- Statistiques KPI -->
+        <div class="kpi-grid mb-4">
+            <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
+                <div class="kpi-title" style="color: #000; font-weight: 600;">Classe</div>
+                <div class="kpi-value" style="color: var(--primary); font-size: 1.5rem; font-weight: bold;">{{ $classe->libelle ?? $classe->name ?? 'N/A' }}</div>
+                <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
+                    <i class="fas fa-users"></i>
+                    {{ $classe->filiere->nom ?? $classe->filiere->name ?? 'N/A' }}
                 </div>
-                <div class="col-md-6">
-                    <h6>Statistiques:</h6>
-                    <ul class="list-unstyled">
-                        <li><strong>Nombre de résultats généraux:</strong> {{ $resultatsGeneraux->count() ?? 0 }}</li>
-                        <li><strong>Nombre de résultats techniques:</strong> {{ $resultatsTechniques->count() ?? 0 }}</li>
-                        <li><strong>Professeurs configurés:</strong> {{ !empty($professeurs) ? count($professeurs) : 0 }}</li>
-                    </ul>
+            </div>
+            
+            <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
+                <div class="kpi-title" style="color: #000; font-weight: 600;">Matières générales</div>
+                <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ $resultatsGeneraux->count() ?? 0 }}</div>
+                <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
+                    <i class="fas fa-graduation-cap"></i>
+                    Enseignement général
+                </div>
+            </div>
+            
+            <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
+                <div class="kpi-title" style="color: #000; font-weight: 600;">Matières techniques</div>
+                <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ $resultatsTechniques->count() ?? 0 }}</div>
+                <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
+                    <i class="fas fa-tools"></i>
+                    Enseignement technique
+                </div>
+            </div>
+            
+            <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
+                <div class="kpi-title" style="color: #000; font-weight: 600;">Professeurs assignés</div>
+                <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ !empty($professeurs) ? count($professeurs) : 0 }}</div>
+                <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
+                    <i class="fas fa-chalkboard-teacher"></i>
+                    Configurés
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="container-edit">
-        <div class="row mb-4">
-            <div class="col-md-12">
-                <h2>Édition des professeurs pour le bulletin</h2>
-
-                <div class="info-header">
+        <!-- Guide d'utilisation -->
+        <div class="main-card mb-4">
+            <div class="main-card-header">
+                <div class="main-card-title">
+                    <i class="fas fa-lightbulb"></i>
+                    Guide d'utilisation
+                </div>
+            </div>
+            <div class="main-card-body">
+                <div class="alert alert-info mb-0">
                     <div class="row">
                         <div class="col-md-6">
-                            <p class="mb-1"><strong>Étudiant:</strong> {{ $etudiant->nom }} {{ $etudiant->prenom }}</p>
-                            <p class="mb-1"><strong>Classe:</strong> {{ $classe->libelle ?? $classe->name ?? 'N/A' }}</p>
-                            <p class="mb-1"><strong>Filière:</strong> {{ $classe->filiere->nom ?? $classe->filiere->name ?? 'N/A' }}</p>
+                            <p><i class="fas fa-user-plus me-2"></i>Saisissez le nom des enseignants pour chaque matière</p>
+                            <p><i class="fas fa-eye-slash me-2"></i>Les champs vides n'afficheront pas de nom d'enseignant</p>
                         </div>
                         <div class="col-md-6">
-                            <p class="mb-1"><strong>Période:</strong>
-                                @if($periode == 'semestre1')
-                                    Premier Semestre
-                                @elseif($periode == 'semestre2')
-                                    Deuxième Semestre
-                                @else
-                                    Annuel
-                                @endif
-                            </p>
-                            <p class="mb-1"><strong>Année:</strong> {{ $anneeUniversitaire->libelle ?? $anneeUniversitaire->name ?? 'N/A' }}</p>
+                            <p><i class="fas fa-info-circle me-2"></i>Les noms apparaîtront sur le bulletin final</p>
+                            <p><i class="fas fa-save me-2"></i>N'oubliez pas d'enregistrer vos modifications</p>
                         </div>
                     </div>
-                </div>
-
-                <div class="alert-guide">
-                    <h5><i class="fas fa-lightbulb me-2 text-warning"></i>Guide d'utilisation</h5>
-                    <p>Sur cette page, vous pouvez saisir le nom des enseignants pour chaque matière qui apparaîtront sur le bulletin.</p>
-                    <ul>
-                        <li>Remplissez les champs pour les matières dont vous connaissez l'enseignant</li>
-                        <li>Les champs vides n'afficheront pas de nom d'enseignant sur le bulletin</li>
-                        <li>Utilisez les boutons ci-dessous pour enregistrer ou générer le bulletin</li>
-                    </ul>
                 </div>
             </div>
         </div>
@@ -122,94 +94,116 @@
             <input type="hidden" name="annee_universitaire_id" value="{{ $anneeUniversitaire->id }}">
 
             @if(isset($resultatsGeneraux) && $resultatsGeneraux->count() > 0)
-            <div class="matiere-box">
-                <h4 class="section-title">Matières d'enseignement général</h4>
-
-                <div class="row">
-                    @foreach($resultatsGeneraux as $resultat)
-                    <div class="col-md-6 mb-3">
-                        <div class="form-group">
-                            <label for="professeur_{{ $resultat->matiere_id }}">
-                                <strong>{{ $resultat->matiere->name ?? $resultat->matiere->nom ?? 'Matière #'.$resultat->matiere_id }}</strong>
-                            </label>
-                            <input type="text"
-                                   class="form-control"
-                                   id="professeur_{{ $resultat->matiere_id }}"
-                                   name="professeurs[{{ $resultat->matiere_id }}]"
-                                   value="{{ $professeurs[$resultat->matiere_id] ?? '' }}"
-                                   placeholder="Nom du professeur">
-                        </div>
+            <div class="main-card mb-4">
+                <div class="main-card-header">
+                    <div class="main-card-title">
+                        <i class="fas fa-graduation-cap"></i>
+                        Enseignement général
                     </div>
-                    @endforeach
+                    <div class="main-card-subtitle">{{ $resultatsGeneraux->count() }} matière(s) d'enseignement général</div>
+                </div>
+                <div class="main-card-body">
+                    <div class="row g-3">
+                        @foreach($resultatsGeneraux as $resultat)
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="professeur_{{ $resultat->matiere_id }}" class="form-label fw-medium">
+                                    <i class="fas fa-book text-primary me-2"></i>
+                                    {{ $resultat->matiere->name ?? $resultat->matiere->nom ?? 'Matière #'.$resultat->matiere_id }}
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-chalkboard-teacher"></i>
+                                    </span>
+                                    <input type="text"
+                                           class="form-control"
+                                           id="professeur_{{ $resultat->matiere_id }}"
+                                           name="professeurs[{{ $resultat->matiere_id }}]"
+                                           value="{{ $professeurs[$resultat->matiere_id] ?? '' }}"
+                                           placeholder="Nom de l'enseignant">
+                                </div>
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
                 </div>
             </div>
             @endif
 
             @if(isset($resultatsTechniques) && $resultatsTechniques->count() > 0)
-            <div class="matiere-box">
-                <h4 class="section-title">Matières d'enseignement technique</h4>
-
-                <div class="row">
-                    @foreach($resultatsTechniques as $resultat)
-                    <div class="col-md-6 mb-3">
-                        <div class="form-group">
-                            <label for="professeur_{{ $resultat->matiere_id }}">
-                                <strong>{{ $resultat->matiere->name ?? $resultat->matiere->nom ?? 'Matière #'.$resultat->matiere_id }}</strong>
-                            </label>
-                            <input type="text"
-                                   class="form-control"
-                                   id="professeur_{{ $resultat->matiere_id }}"
-                                   name="professeurs[{{ $resultat->matiere_id }}]"
-                                   value="{{ $professeurs[$resultat->matiere_id] ?? '' }}"
-                                   placeholder="Nom du professeur">
-                        </div>
+            <div class="main-card mb-4">
+                <div class="main-card-header">
+                    <div class="main-card-title">
+                        <i class="fas fa-tools"></i>
+                        Enseignement technique
                     </div>
-                    @endforeach
+                    <div class="main-card-subtitle">{{ $resultatsTechniques->count() }} matière(s) d'enseignement technique</div>
+                </div>
+                <div class="main-card-body">
+                    <div class="row g-3">
+                        @foreach($resultatsTechniques as $resultat)
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="professeur_{{ $resultat->matiere_id }}" class="form-label fw-medium">
+                                    <i class="fas fa-cog text-success me-2"></i>
+                                    {{ $resultat->matiere->name ?? $resultat->matiere->nom ?? 'Matière #'.$resultat->matiere_id }}
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-chalkboard-teacher"></i>
+                                    </span>
+                                    <input type="text"
+                                           class="form-control"
+                                           id="professeur_{{ $resultat->matiere_id }}"
+                                           name="professeurs[{{ $resultat->matiere_id }}]"
+                                           value="{{ $professeurs[$resultat->matiere_id] ?? '' }}"
+                                           placeholder="Nom de l'enseignant">
+                                </div>
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
                 </div>
             </div>
             @endif
 
             @if((!isset($resultatsGeneraux) || $resultatsGeneraux->isEmpty()) && (!isset($resultatsTechniques) || $resultatsTechniques->isEmpty()))
-            <div class="alert alert-warning">
-                <i class="fas fa-exclamation-triangle me-2"></i>
-                Aucune matière n'a été configurée pour cet étudiant. Veuillez d'abord configurer les matières.
-            </div>
-            <div class="row mb-3">
-                <div class="col-md-12">
-                    <a href="{{ route('esbtp.bulletins.config-matieres') }}?classe_id={{ $classe->id }}&periode={{ $periode }}&annee_universitaire_id={{ $anneeUniversitaire->id }}&bulletin={{ $etudiant->id }}" class="btn btn-info">
-                        <i class="fas fa-cogs me-1"></i> Configurer les matières
-                    </a>
+            <div class="main-card">
+                <div class="main-card-body">
+                    <div class="alert alert-warning text-center">
+                        <i class="fas fa-exclamation-triangle fa-2x mb-3 d-block"></i>
+                        <h5>Aucune matière configurée</h5>
+                        <p>Veuillez d'abord configurer les matières pour cet étudiant.</p>
+                        <a href="{{ route('esbtp.bulletins.config-matieres') }}?classe_id={{ $classe->id }}&periode={{ $periode }}&annee_universitaire_id={{ $anneeUniversitaire->id }}&bulletin={{ $etudiant->id }}" class="btn-acasi primary">
+                            <i class="fas fa-cogs"></i> Configurer les matières
+                        </a>
+                    </div>
                 </div>
             </div>
             @endif
 
-            <div class="row mt-4">
-                <div class="col-md-12">
-                    <div class="action-buttons">
-                        <a href="{{ route('esbtp.resultats.etudiant', [
-                            'etudiant' => $etudiant->id,
-                            'classe_id' => $classe->id,
-                            'periode' => $periode,
-                            'annee_universitaire_id' => $anneeUniversitaire->id
-                        ]) }}" class="btn btn-secondary">
-                            <i class="fas fa-arrow-left me-1"></i> Retour aux résultats
-                        </a>
-
-                        <div class="btn-group-options">
-                            <button type="submit" class="btn btn-success" name="action" value="edit">
-                                <i class="fas fa-save me-1"></i> Enregistrer et continuer
-                            </button>
-
-                            <!--<button type="submit" class="btn btn-primary" name="action" value="generate">
-                                <i class="fas fa-file-pdf me-1"></i> Générer le bulletin
-                            </button>-->
-                        </div>
-                    </div>
+            <!-- Actions -->
+            <div class="d-flex justify-content-between align-items-center mt-4">
+                <div>
+                    <a href="{{ route('esbtp.resultats.etudiant', [
+                        'etudiant' => $etudiant->id,
+                        'classe_id' => $classe->id,
+                        'periode' => $periode,
+                        'annee_universitaire_id' => $anneeUniversitaire->id
+                    ]) }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-1"></i> Retour aux résultats
+                    </a>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn-acasi success" name="action" value="edit">
+                        <i class="fas fa-save"></i> Enregistrer et continuer
+                    </button>
                 </div>
             </div>
         </form>
     </div>
 </div>
+
 @endsection
 
 @section('scripts')

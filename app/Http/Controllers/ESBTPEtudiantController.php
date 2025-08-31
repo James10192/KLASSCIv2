@@ -339,20 +339,33 @@ class ESBTPEtudiantController extends Controller
      */
     public function show(ESBTPEtudiant $etudiant)
     {
-        // Charger les relations nécessaires
+        // Charger les relations nécessaires avec optimisation
         $etudiant->load([
             'user',
-            'parents',
-            'inscriptions' => function($q) {
-                $q->with(['filiere', 'niveau', 'classe', 'anneeUniversitaire'])
-                  ->orderBy('date_inscription', 'desc');
+            'parents' => function($q) {
+                $q->with('etudiants'); // Pour afficher les autres étudiants du même parent
             },
-            'inscriptions.paiements' => function($q) {
-                $q->orderBy('date_paiement', 'desc');
+            'inscriptions' => function($q) {
+                $q->with(['filiere', 'niveauEtude', 'classe', 'anneeUniversitaire'])
+                  ->orderBy('created_at', 'desc');
+            },
+            'paiements' => function($q) {
+                $q->with(['inscription', 'fraisCategory', 'categorie', 'validatedBy'])
+                  ->orderBy('date_paiement', 'desc');
             }
         ]);
 
-        return view('esbtp.etudiants.show', compact('etudiant'));
+        // Calculer quelques statistiques utiles
+        $statistiques = [
+            'total_paiements' => $etudiant->paiements->sum('montant'),
+            'paiements_valides' => $etudiant->paiements->where('status', 'validé')->sum('montant'),
+            'paiements_en_attente' => $etudiant->paiements->where('status', 'en_attente')->sum('montant'),
+            'nombre_paiements' => $etudiant->paiements->count(),
+            'inscription_active' => $etudiant->inscriptions->where('status', 'active')->first(),
+            'derniere_inscription' => $etudiant->inscriptions->first(),
+        ];
+
+        return view('esbtp.etudiants.show', compact('etudiant', 'statistiques'));
     }
 
     /**
@@ -984,6 +997,38 @@ class ESBTPEtudiantController extends Controller
     }
 
     /**
+     * Prévisualiser un certificat de scolarité pour un étudiant.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function previewCertificat($id)
+    {
+        // Récupérer l'étudiant avec ses inscriptions
+        $etudiant = ESBTPEtudiant::with([
+            'inscriptions.anneeUniversitaire',
+            'inscriptions.classe',
+            'inscriptions.filiere',
+            'inscriptions.niveauEtude',
+        ])->findOrFail($id);
+
+        // Récupérer l'inscription active ou la plus récente
+        $inscription = $etudiant->inscriptions()
+            ->with(['anneeUniversitaire', 'classe', 'filiere', 'niveauEtude'])
+            ->whereHas('anneeUniversitaire', function($query) {
+                $query->where('status', 'active');
+            })
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        if (!$inscription) {
+            return back()->with('error', 'Aucune inscription active trouvée pour cet étudiant.');
+        }
+
+        return view('esbtp.etudiants.certificat-preview', compact('etudiant', 'inscription'));
+    }
+
+    /**
      * Générer un certificat de scolarité pour un étudiant.
      *
      * @param  int  $id
@@ -1002,44 +1047,103 @@ class ESBTPEtudiantController extends Controller
         // Récupérer l'année universitaire en cours
         $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
-        // Récupérer les inscriptions de l'étudiant, triées par année universitaire (la plus récente en premier)
-        $inscriptions = $etudiant->inscriptions()
+        // Récupérer l'inscription active ou la plus récente
+        $inscription = $etudiant->inscriptions()
             ->with(['anneeUniversitaire', 'classe', 'filiere', 'niveauEtude'])
             ->whereHas('anneeUniversitaire', function($query) {
                 $query->where('status', 'active');
             })
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->first();
 
-        // Récupérer les moyennes de l'étudiant pour chaque année
-        $moyennes = [];
-        foreach ($inscriptions as $inscription) {
-            // Récupérer la moyenne de l'étudiant pour cette inscription
-            $moyenne = DB::table('esbtp_bulletins')
-                ->where('etudiant_id', $etudiant->id)
-                ->where('annee_universitaire_id', $inscription->annee_universitaire_id)
-                ->where('semestre', 'Annuel')
-                ->value('moyenne_generale');
-
-            $moyennes[$inscription->annee_universitaire_id] = $moyenne;
+        if (!$inscription) {
+            return back()->with('error', 'Aucune inscription active trouvée pour cet étudiant.');
         }
+
+        // Récupérer les configurations et préparer les settings
+        $settings = $this->getCertificatSettings();
 
         // Préparer les données pour la vue
         $data = [
             'etudiant' => $etudiant,
-            'inscriptions' => $inscriptions,
-            'moyennes' => $moyennes,
+            'inscription' => $inscription,
+            'settings' => $settings,
             'date_generation' => now(),
         ];
 
         // Générer le PDF
         $pdf = Pdf::loadView('esbtp.etudiants.certificat', $data);
 
+        // Configuration PDF pour A4
+        $pdf->setPaper('A4', 'portrait');
+
         // Définir le nom du fichier
-        $filename = 'Certificat_Scolarite_' . $etudiant->matricule . '.pdf';
+        $filename = 'Certificat_Scolarite_' . $etudiant->matricule . '_' . now()->format('Ymd') . '.pdf';
 
         // Retourner le PDF pour téléchargement
         return $pdf->download($filename);
+    }
+
+    /**
+     * Récupère les configurations pour les certificats de scolarité
+     * 
+     * @return array
+     */
+    public function getCertificatSettings()
+    {
+        $settings = [
+            // Informations de l'établissement
+            'school_name' => \App\Helpers\SettingsHelper::get('school_name', 'École Spéciale du Bâtiment et des Travaux Publics'),
+            'school_address' => \App\Helpers\SettingsHelper::get('school_address', 'BP 2541 Yamoussoukro'),
+            'school_phone' => \App\Helpers\SettingsHelper::get('school_phone', '30 64 39 93'),
+            'school_email' => \App\Helpers\SettingsHelper::get('school_email', 'esbtp@aviso.ci'),
+            'school_city' => \App\Helpers\SettingsHelper::get('school_city', 'Yamoussoukro'),
+            'school_country' => \App\Helpers\SettingsHelper::get('school_country', 'Côte d\'Ivoire'),
+            
+            // Responsable
+            'director_name' => \App\Helpers\SettingsHelper::get('director_name', ''),
+            'director_title' => \App\Helpers\SettingsHelper::get('director_title', 'Le Directeur'),
+            
+            // Logo
+            'show_logo' => \App\Helpers\SettingsHelper::get('certificat_show_logo', '1') === '1',
+            'school_logo' => \App\Helpers\SettingsHelper::get('school_logo'),
+        ];
+
+        // Préparer le logo en base64 si activé
+        if ($settings['show_logo'] && $settings['school_logo']) {
+            $settings['logo_base64'] = $this->prepareLogoBase64($settings['school_logo']);
+        }
+
+        return $settings;
+    }
+
+    /**
+     * Prépare le logo en base64 pour les PDFs
+     * 
+     * @param string $logoPath
+     * @return string|null
+     */
+    private function prepareLogoBase64($logoPath)
+    {
+        if (!$logoPath) {
+            return null;
+        }
+
+        $paths = [
+            storage_path('app/public/' . $logoPath),
+            public_path($logoPath),
+            public_path('images/LOGO-KLASSCI-PNG.png'),
+        ];
+
+        foreach ($paths as $path) {
+            if (file_exists($path)) {
+                $imageData = file_get_contents($path);
+                $extension = pathinfo($path, PATHINFO_EXTENSION);
+                return 'data:image/' . $extension . ';base64,' . base64_encode($imageData);
+            }
+        }
+
+        return null;
     }
 
     /**

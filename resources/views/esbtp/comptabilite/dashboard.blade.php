@@ -183,8 +183,8 @@ const encaissementsChart = new Chart(ctx, {
         datasets: [{
             label: 'Encaissements',
             data: @json($dataEncaissements),
-            borderColor: '#6366f1',
-            backgroundColor: 'rgba(99,102,241,0.1)',
+            borderColor: '#0453cb',
+            backgroundColor: 'rgba(4,83,203,0.1)',
             tension: 0.4,
             fill: true
         }]

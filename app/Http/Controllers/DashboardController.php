@@ -260,7 +260,7 @@ class DashboardController extends Controller
 
         // Statistiques par filière avec couleurs pour le graphique
         $filiereStatsRaw = ESBTPFiliere::withCount('inscriptions')->get();
-        $colors = ['#6366f1', '#ec4899', '#22c55e', '#f59e0b', '#ef4444', '#0ea5e9', '#8b5cf6', '#f97316', '#06b6d4', '#84cc16', '#f43f5e', '#6366f1'];
+        $colors = ['#0453cb', '#ec4899', '#22c55e', '#f59e0b', '#ef4444', '#0ea5e9', '#5e91de', '#f97316', '#06b6d4', '#84cc16', '#f43f5e', '#0453cb'];
 
         $data['filiereStats'] = $filiereStatsRaw->map(function($filiere, $index) use ($colors) {
             return [
@@ -676,7 +676,7 @@ class DashboardController extends Controller
 
         // Statistiques par filière avec couleurs pour le graphique
         $filiereStatsRaw = ESBTPFiliere::withCount('inscriptions')->get();
-        $colors = ['#6366f1', '#ec4899', '#22c55e', '#f59e0b', '#ef4444', '#0ea5e9', '#8b5cf6', '#f97316', '#06b6d4', '#84cc16', '#f43f5e', '#6366f1'];
+        $colors = ['#0453cb', '#ec4899', '#22c55e', '#f59e0b', '#ef4444', '#0ea5e9', '#5e91de', '#f97316', '#06b6d4', '#84cc16', '#f43f5e', '#0453cb'];
 
         $filiereStats = $filiereStatsRaw->map(function($filiere, $index) use ($colors) {
             return [
@@ -898,7 +898,7 @@ class DashboardController extends Controller
     private function getRandomColor()
     {
         $colors = [
-            '#6366f1', '#8b5cf6', '#06b6d4', '#10b981',
+            '#0453cb', '#5e91de', '#06b6d4', '#10b981',
             '#f59e0b', '#ef4444', '#ec4899', '#84cc16'
         ];
         return $colors[array_rand($colors)];

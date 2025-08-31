@@ -28,14 +28,14 @@ $tools = [
         'file' => 'php_version_check.php',
         'description' => 'Verify your PHP version and configuration meets requirements',
         'icon' => 'code',
-        'color' => 'indigo'
+        'color' => 'primary'
     ],
     [
         'name' => 'PHP Information',
         'file' => 'phpinfo.php',
         'description' => 'View detailed PHP configuration information',
         'icon' => 'info-circle',
-        'color' => 'purple'
+        'color' => 'info'
     ]
 ];
 
@@ -97,14 +97,14 @@ $serverSoftware = isset($_SERVER['SERVER_SOFTWARE']) ? $_SERVER['SERVER_SOFTWARE
                             </div>
                         </div>
                     </div>
-                    <div class="p-3 bg-purple-50 rounded-lg">
+                    <div class="p-3 bg-blue-50 rounded-lg">
                         <div class="flex items-center">
-                            <div class="bg-purple-100 p-3 rounded-full mr-3">
-                                <i class="fab fa-php text-purple-600 text-xl"></i>
+                            <div class="bg-blue-100 p-3 rounded-full mr-3">
+                                <i class="fab fa-php text-blue-600 text-xl"></i>
                             </div>
                             <div>
-                                <h3 class="font-medium text-purple-800">PHP Version</h3>
-                                <p class="text-purple-600"><?php echo htmlspecialchars($phpVersion); ?></p>
+                                <h3 class="font-medium text-blue-800">PHP Version</h3>
+                                <p class="text-blue-600"><?php echo htmlspecialchars($phpVersion); ?></p>
                             </div>
                         </div>
                     </div>

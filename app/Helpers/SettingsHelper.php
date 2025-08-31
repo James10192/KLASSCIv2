@@ -32,6 +32,27 @@ class SettingsHelper
     }
 
     /**
+     * Récupère tous les paramètres
+     *
+     * @return array
+     */
+    public static function all()
+    {
+        try {
+            $settings = Setting::all();
+            $result = [];
+
+            foreach ($settings as $setting) {
+                $result[$setting->key] = $setting->value;
+            }
+
+            return $result;
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
+    /**
      * Récupère tous les paramètres d'un groupe
      *
      * @param string $group

@@ -157,6 +157,13 @@ Route::middleware(['auth'])->group(function () {
         // Actions sur les notifications
         Route::post('/notifications/{id}/read', [NavbarController::class, 'markNotificationAsRead'])->name('notifications.read');
         Route::post('/notifications/mark-all-read', [NavbarController::class, 'markAllNotificationsAsRead'])->name('notifications.mark-all-read');
+        Route::delete('/notifications/{id}/delete', [NavbarController::class, 'deleteNotification'])->name('notifications.delete');
+        Route::delete('/notifications/delete-all', [NavbarController::class, 'deleteAllNotifications'])->name('notifications.delete-all');
+        
+        // Actions sur les messages
+        Route::post('/messages/mark-all-read', [NavbarController::class, 'markAllMessagesAsRead'])->name('messages.mark-all-read');
+        Route::delete('/messages/{id}/delete', [NavbarController::class, 'deleteMessage'])->name('messages.delete');
+        Route::delete('/messages/delete-all', [NavbarController::class, 'deleteAllMessages'])->name('messages.delete-all');
     });
 
     // Route pour la page des notifications

@@ -28,631 +28,292 @@ echo "=== Script de réparation des permissions ===\n";
 try {
     // Réinitialiser les caches des permissions
     app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
-    echo "✅ Cache des permissions réinitialisé.\n\n";
 
-    // Fonction pour s'assurer qu'une permission existe
-    function ensurePermissionExists($permissionName) {
-        try {
-            $permission = Permission::where('name', $permissionName)->first();
-            if (!$permission) {
-                $permission = Permission::create(['name' => $permissionName, 'guard_name' => 'web']);
-                echo "✅ Permission '{$permissionName}' créée.\n";
-            } else {
-                echo "ℹ️ Permission '{$permissionName}' existe déjà.\n";
-            }
-            return $permission;
-        } catch (\Exception $e) {
-            echo "❌ ERREUR lors de la création de la permission '{$permissionName}': " . $e->getMessage() . "\n";
-            return null;
-        }
-    }
+    echo "✅ Cache des permissions réinitialisé\n";
 
-    // Définir toutes les permissions nécessaires
-    $allPermissions = [
-        // Filières
-        'view_filieres', 'create_filieres', 'edit_filieres', 'delete_filieres',
-
-        // Formations
-        'view_formations', 'create_formations', 'edit_formations', 'delete_formations',
-
-        // Niveaux d'études
-        'view_niveaux_etudes', 'create_niveaux_etudes', 'edit_niveaux_etudes', 'delete_niveaux_etudes',
-
-        // Classes
-        'view_classes', 'create_classe', 'edit_classes', 'delete_classes',
-
+    // Définir les permissions à ajouter/vérifier
+    $permissions = [
+        // Permissions générales
+        'view_dashboard',
+        'access_admin',
+        
         // Étudiants
-        'view_students', 'create_student', 'edit_students', 'delete_students',
-        'view_own_profile',
-
-        // Examens
-        'view_exams', 'create_exam', 'edit_exams', 'delete_exams',
-        'view_own_exams',
-
-        // Matières
-        'view_matieres', 'create_matieres', 'edit_matieres', 'delete_matieres',
-
-        // Notes
-        'view_grades', 'create_grade', 'edit_grades', 'delete_grades',
-        'view_own_grades',
-
-        // Bulletins
-        'view_bulletins', 'generate_bulletin', 'edit_bulletins', 'delete_bulletins',
-        'view_own_bulletin',
-
-        // Emplois du temps
-        'view_timetables', 'create_timetable', 'edit_timetables', 'delete_timetables',
-        'view_own_timetable',
-
-        // Messages
-        'send_messages', 'receive_messages',
-
-        // Présences
-        'view_attendances', 'create_attendance', 'edit_attendances', 'delete_attendances',
-        'view_own_attendances','edit attendances',
-
+        'view_students',
+        'create_students',
+        'edit_students',
+        'delete_students',
+        'view_own_students',
+        
         // Inscriptions
-        'inscriptions.view', 'inscriptions.create', 'inscriptions.edit', 'inscriptions.delete', 'inscriptions.validate',
-
-        // Frais ESBTP
-        'frais.view', 'frais.create', 'frais.edit', 'frais.delete', 'frais.configure',
-
-        // Paiements - Ajout des permissions pour les paiements (ancien format)
-        'view-paiements', 'create-paiements', 'edit-paiements', 'delete-paiements', 'validate-paiements',
-        
-        // Paiements - Nouveau format utilisé par ESBTPPaiementController
-        'paiements.view', 'paiements.create', 'paiements.edit', 'paiements.delete', 'paiements.validate',
-
-        //Comptabilité - Permissions de base
-        'access_comptabilite_module',
-        'view_paiements',
-        'create_paiements',
-        'edit_paiements',
-        'delete_paiements',
-        'view_frais_scolarite',
-        'create_frais_scolarite',
-        'edit_frais_scolarite',
-        'delete_frais_scolarite',
-        'view_depenses',
-        'create_depenses',
-        'edit_depenses',
-        'delete_depenses',
-        'view_salaires',
-        'create_salaires',
-        'edit_salaires',
-        'delete_salaires',
-        'view_bourses',
-        'create_bourses',
-        'edit_bourses',
-        'delete_bourses',
-        'view_reporting_financier',
-        'export_reporting_financier',
-        'view_teacher_dashboard',
-
-        // Comptabilité - Permissions Tâche #1 KLASSCI
-        'comptabilite.dashboard.view',
-        'comptabilite.bons.approve',
-        'comptabilite.config.manage',
-        'comptabilite.reports.export',
-        'comptabilite.relances.send',
-
-        // Sécurité et Audit - Tâche #10 KLASSCI (8 permissions)
-        'security.audit.view',
-        'security.audit.export',
-        'security.audit.delete',
-        'security.users.monitor',
-        'security.events.view',
-        'security.backup.view',
-        'security.backup.create',
-        'security.backup.restore',
-
-        // Comptabilité Granulaire - Tâche #10 KLASSCI (8 permissions)
-        'comptabilite.audit.view',
-        'comptabilite.audit.export',
-        'comptabilite.security.manage',
-        'comptabilite.permissions.manage',
-        'comptabilite.data.encrypt',
-        'comptabilite.data.decrypt',
-        'comptabilite.sensitive.access',
-        'comptabilite.transactions.monitor',
-
-        // Workflow Avancé - Tâche #10 KLASSCI (6 permissions)
-        'workflow.approve.level1',
-        'workflow.approve.level2',
-        'workflow.approve.level3',
-        'workflow.reject.any',
-        'workflow.bypass.approval',
-        'workflow.audit.view',
-
-        // Validation et Reporting - Tâche #10 KLASSCI (9 permissions)
-        'validation.financial.basic',
-        'validation.financial.advanced',
-        'validation.bulk.operations',
-        'validation.emergency.override',
-        'reports.financial.confidential',
-        'reports.audit.complete',
-        'reports.security.incidents',
-        'reports.compliance.klassci',
-
-        // Permissions bons de sortie - Tâche #5 KLASSCI
-        'comptabilite.bons.create',
-        'comptabilite.bons.edit',
-        'comptabilite.bons.view',
-        'comptabilite.bons.pay',
-
-        // Permissions pour les coordinateurs
-        'coordinateurs.view',
-        'coordinateurs.create',
-        'coordinateurs.edit',
-        'coordinateurs.delete',
-        'coordinateurs.show',
-        'coordinateurs.index',
-
-        // Permissions pour les enseignants
-        'enseignants.view',
-        'enseignants.create',
-        'enseignants.edit',
-        'enseignants.delete',
-        'enseignants.show',
-        'enseignants.index',
-        'enseignants.toggleStatus',
-
-        // Permissions pour le personnel unifié
-        'personnel.unified.view',
-        'personnel.unified.index',
-
-        // Permissions pour la gestion générale du personnel
-        'view_coordinateurs',
-        'create_coordinateurs',
-        'edit_coordinateurs',
-        'delete_coordinateurs',
-        'view_enseignants',
-        'create_enseignants',
-        'edit_enseignants',
-        'delete_enseignants',
-        'view_secretaires',
-        'create_secretaires',
-        'edit_secretaires',
-        'delete_secretaires',
-        
-        // Permissions planning général
-        'manage-planning',
-        'view-all-timetables',
-        
-        // Permissions pour les notes et inscriptions (coordinateur)
         'view_inscriptions',
-        'view_notes',
-        'create_notes',
-        'edit_notes',
-        'view_annonces',
-        'create_annonces',
-        'edit_annonces',
-    ];
-
-    echo "Vérification et création des permissions...\n";
-    $createdPermissions = [];
-    foreach ($allPermissions as $permissionName) {
-        $permission = ensurePermissionExists($permissionName);
-        if ($permission) {
-            $createdPermissions[] = $permission;
-        }
-    }
-
-    echo "\nCréation/Vérification des rôles...\n";
-    // Récupérer ou créer le rôle superAdmin
-    $superAdmin = Role::where('name', 'superAdmin')->first();
-    if (!$superAdmin) {
-        $superAdmin = Role::create(['name' => 'superAdmin', 'guard_name' => 'web']);
-        echo "✅ Rôle 'superAdmin' créé.\n";
-    } else {
-        echo "ℹ️ Rôle 'superAdmin' existe déjà.\n";
-    }
-
-    // Récupérer ou créer le rôle secretaire
-    $secretaire = Role::where('name', 'secretaire')->first();
-    if (!$secretaire) {
-        $secretaire = Role::create(['name' => 'secretaire', 'guard_name' => 'web']);
-        echo "✅ Rôle 'secretaire' créé.\n";
-    } else {
-        echo "ℹ️ Rôle 'secretaire' existe déjà.\n";
-    }
-
-    echo "\nAssignation des permissions au rôle superAdmin...\n";
-    foreach ($createdPermissions as $permission) {
-        try {
-            if (!$superAdmin->hasPermissionTo($permission)) {
-                $superAdmin->givePermissionTo($permission);
-                echo "✅ Permission '{$permission->name}' assignée au rôle 'superAdmin'.\n";
-            } else {
-                echo "ℹ️ Le rôle 'superAdmin' a déjà la permission '{$permission->name}'.\n";
-            }
-        } catch (\Exception $e) {
-            echo "❌ ERREUR lors de l'assignation de la permission '{$permission->name}': " . $e->getMessage() . "\n";
-        }
-    }
-
-    echo "\nAssignation des permissions KLASSCI comptabilité au rôle secretaire...\n";
-
-    // Permissions pour secrétaires selon Tâche #10 KLASSCI : Permissions limitées (lecture, approbation niveau 1)
-    $secretaireComptabilitePermissions = [
-        // Permissions de base comptabilité
-        'access_comptabilite_module',
-        'view_paiements', 'create_paiements', 'edit_paiements', 'validate_paiements',
-        'view_depenses', 'create_depenses', 'edit_depenses',
-        'view_frais_scolarite', 'create_frais_scolarite', 'edit_frais_scolarite',
-
-        // Permissions Tâche #1 - accès limité
-        'comptabilite.dashboard.view',
-        'comptabilite.relances.send',
-
-        // Permissions audit - lecture seule
-        'security.audit.view',
-        'comptabilite.audit.view',
-
-        // Workflow - niveau 1 seulement
-        'workflow.approve.level1',
-        'workflow.audit.view',
-
-        // Validation de base
-        'validation.financial.basic',
-
-        // Bons de sortie - création et édition
-        'comptabilite.bons.create',
-        'comptabilite.bons.edit',
-        'comptabilite.bons.view',
-
-        // Frais ESBTP pour secrétaire
-        'frais.view', 'frais.create', 'frais.edit', 'frais.configure',
-
-        // Permissions anciennes format
-        'view-paiements', 'create-paiements', 'edit-paiements', 'validate-paiements',
+        'create_inscriptions',
+        'edit_inscriptions',
+        'approve_inscriptions',
+        'reject_inscriptions',
         
-        // Permissions nouveau format pour ESBTPPaiementController
-        'paiements.view', 'paiements.create', 'paiements.edit', 'paiements.delete', 'paiements.validate'
-    ];
-
-    foreach ($secretaireComptabilitePermissions as $permissionName) {
-        try {
-            $permission = Permission::where('name', $permissionName)->first();
-            if ($permission && !$secretaire->hasPermissionTo($permission)) {
-                $secretaire->givePermissionTo($permission);
-                echo "✅ Permission comptabilité '{$permission->name}' assignée au rôle 'secretaire'.\n";
-            } else if ($permission) {
-                echo "ℹ️ Le rôle 'secretaire' a déjà la permission '{$permission->name}'.\n";
-            } else {
-                echo "⚠️ Permission '{$permissionName}' non trouvée.\n";
-            }
-        } catch (\Exception $e) {
-            echo "❌ ERREUR lors de l'assignation de la permission '{$permissionName}': " . $e->getMessage() . "\n";
-        }
-    }
-
-    // Vérifier les utilisateurs avec le rôle superAdmin
-    echo "\nUtilisateurs avec le rôle superAdmin :\n";
-    $users = User::role('superAdmin')->get();
-    if ($users->count() > 0) {
-        foreach ($users as $user) {
-            echo "- {$user->name} ({$user->email})\n";
-            // Réassigner le rôle pour être sûr
-            if (!$user->hasRole('superAdmin')) {
-                $user->assignRole('superAdmin');
-                echo "  ✅ Rôle 'superAdmin' réassigné.\n";
-            }
-        }
-    } else {
-        echo "⚠️ Aucun utilisateur n'a le rôle superAdmin.\n";
-    }
-
-    echo "\nVérification finale des permissions du rôle superAdmin :\n";
-    $permissions = $superAdmin->permissions;
-    foreach ($permissions as $permission) {
-        echo "- {$permission->name}\n";
-    }
-
-    // Récupérer ou créer le rôle coordinateur
-    $coordinateur = Role::where('name', 'coordinateur')->first();
-    if (!$coordinateur) {
-        $coordinateur = Role::create(['name' => 'coordinateur', 'guard_name' => 'web']);
-        echo "✅ Rôle 'coordinateur' créé.\n";
-    } else {
-        echo "ℹ️ Rôle 'coordinateur' existe déjà.\n";
-    }
-
-    // Permissions spécifiques pour les coordinateurs
-    $coordinateurPermissions = [
-        'view_coordinateurs', 'create_coordinateurs', 'edit_coordinateurs', 'delete_coordinateurs',
-        'view_enseignants', 'create_enseignants', 'edit_enseignants', 'delete_enseignants',
-        'view_students', 'create_student', 'edit_students', 'delete_students',
-        'view_classes', 'create_classe', 'edit_classes', 'delete_classes',
-        'view_attendances', 'create_attendance', 'edit_attendances', 'delete_attendances',
-        'view_timetables', 'create_timetable', 'edit_timetables', 'delete_timetables',
-        'view_exams', 'create_exam', 'edit_exams', 'delete_exams',
-        'view_grades', 'create_grade', 'edit_grades', 'delete_grades',
-        'view_bulletins', 'generate_bulletin', 'edit_bulletins', 'delete_bulletins',
-        'view_matieres', 'create_matieres', 'edit_matieres', 'delete_matieres',
-        'send_messages', 'receive_messages',
-        'coordinateurs.view', 'coordinateurs.create', 'coordinateurs.edit', 'coordinateurs.delete', 'coordinateurs.show', 'coordinateurs.index',
-        'enseignants.view', 'enseignants.create', 'enseignants.edit', 'enseignants.delete', 'enseignants.show', 'enseignants.index', 'enseignants.toggleStatus',
-        'personnel.unified.view', 'personnel.unified.index',
-        // Permissions planning ajoutées pour coordinateur
-        'manage-planning',
-        'view-all-timetables',
-        // Permissions pour les notes et inscriptions
-        'view_inscriptions',
-        'view_notes',
-        'create_notes',
-        'edit_notes',
-        'view_annonces',
-        'create_annonces',
-        'edit_annonces',
-    ];
-
-    echo "\nAssignation des permissions au rôle coordinateur...\n";
-    foreach ($coordinateurPermissions as $permissionName) {
-        try {
-            $permission = Permission::where('name', $permissionName)->first();
-            if ($permission && !$coordinateur->hasPermissionTo($permission)) {
-                $coordinateur->givePermissionTo($permission);
-                echo "✅ Permission '{$permission->name}' assignée au rôle 'coordinateur'.\n";
-            } else if ($permission) {
-                echo "ℹ️ Le rôle 'coordinateur' a déjà la permission '{$permission->name}'.\n";
-            } else {
-                echo "⚠️ Permission '{$permissionName}' non trouvée.\n";
-            }
-        } catch (\Exception $e) {
-            echo "❌ ERREUR lors de l'assignation de la permission '{$permissionName}': " . $e->getMessage() . "\n";
-        }
-    }
-
-    echo "\nVérification finale des permissions du rôle secretaire :\n";
-    $permissions = $secretaire->permissions;
-    foreach ($permissions as $permission) {
-        echo "- {$permission->name}\n";
-    }
-
-    echo "\nVérification finale des permissions du rôle coordinateur :\n";
-    $coordinateurPerms = $coordinateur->permissions;
-    foreach ($coordinateurPerms as $permission) {
-        echo "- {$permission->name}\n";
-    }
-
-    echo "\nNettoyage des caches...\n";
-    \Artisan::call('config:clear');
-    \Artisan::call('cache:clear');
-    \Artisan::call('permission:cache-reset');
-
-    // Créer la permission si elle n'existe pas
-    $permission = Permission::firstOrCreate(['name' => 'edit_timetables']);
-
-    // Récupérer le rôle superAdmin
-    $superAdminRole = Role::where('name', 'superAdmin')->first();
-
-    if ($superAdminRole) {
-        // Assigner la permission au rôle superAdmin
-        $superAdminRole->givePermissionTo($permission);
-        echo "Permission 'edit_timetables' créée et assignée au rôle superAdmin.\n";
-    } else {
-        echo "Le rôle superAdmin n'existe pas.\n";
-    }
-
-    // Récupérer le rôle de secrétaire
-    $secretaireRole = Role::findByName('secretaire');
-
-    if (!$secretaireRole) {
-        echo "Erreur : Le rôle 'secretaire' n'existe pas.\n";
-        exit(1);
-    }
-
-    // Liste des permissions à ajouter
-    $permissionsToAdd = [
-
-
-        // matieres
+        // Classes et filières
+        'view_classes',
+        'create_classes',
+        'edit_classes',
+        'delete_classes',
+        'view_filieres',
+        'create_filieres',
+        'edit_filieres',
+        
+        // Matières
         'view_matieres',
-        // Emplois du temps
-        'view_timetables',
-        'create_timetable',
-        'edit_timetables',
-
+        'create_matieres',
+        'edit_matieres',
+        'delete_matieres',
+        
+        // Notes et évaluations
+        'view_notes',
+        'create_notes',
+        'edit_notes',
+        'view_own_notes',
+        'view_evaluations',
+        'create_evaluations',
+        'edit_evaluations',
+        
         // Bulletins
         'view_bulletins',
-        'generate_bulletin',
-
+        'generate_bulletins',
+        'edit_bulletins',
+        'view_own_bulletin',
+        
         // Présences
-        'edit_attendances',
-        'edit attendances',
-
-
-        // Étudiants
-        'edit_students','view_students', 'create_student',
-
-         // Messages
-         'send_messages', 'receive_messages',
-
-         // Présences
-         'view_attendances', 'create_attendance', 'edit_attendances',
-    ];
-
-    // Vérifier les permissions existantes
-    $existingPermissions = $secretaireRole->permissions->pluck('name')->toArray();
-    echo "Permissions existantes pour le rôle 'secretaire' :\n";
-    foreach ($existingPermissions as $permission) {
-        echo "- $permission\n";
-    }
-
-    // Ajouter les permissions manquantes
-    $addedPermissions = [];
-    foreach ($permissionsToAdd as $permissionName) {
-        if (!in_array($permissionName, $existingPermissions)) {
-            $permission = Permission::findByName($permissionName);
-            if ($permission) {
-                $secretaireRole->givePermissionTo($permission);
-                $addedPermissions[] = $permissionName;
-            } else {
-                echo "Avertissement : La permission '$permissionName' n'existe pas dans la base de données.\n";
-            }
-        } else {
-            echo "La permission '$permissionName' est déjà attribuée au rôle 'secretaire'.\n";
-        }
-    }
-
-    // Afficher les permissions ajoutées
-    if (count($addedPermissions) > 0) {
-        echo "\nPermissions ajoutées au rôle 'secretaire' :\n";
-        foreach ($addedPermissions as $permission) {
-            echo "- $permission\n";
-        }
-    } else {
-        echo "\nAucune nouvelle permission n'a été ajoutée.\n";
-    }
-
-    // Vérifier les permissions après mise à jour
-    $secretaireRole->refresh();
-    $updatedPermissions = $secretaireRole->permissions->pluck('name')->toArray();
-    echo "\nPermissions actuelles pour le rôle 'secretaire' :\n";
-    foreach ($updatedPermissions as $permission) {
-        echo "- $permission\n";
-    }
-
-    echo "\nMise à jour des permissions terminée avec succès.\n";
-
-    // Permissions teacher
-    $teacherPermissions = [
-        'view_teacher_dashboard',
-        'access_teacher_attendance',
-        'access_teacher_grades',
-        'access_teacher_timetable',
         'view_attendances',
-        'create_attendance',
+        'create_attendances',
         'edit_attendances',
-        'view_grades',
-        'create_grade',
-        'edit_grades',
-        'view_timetables',
-        'view_matieres',
+        'view_own_attendances',
+        
+        // Paiements et comptabilité
+        'view_payments',
+        'create_payments',
+        'edit_payments',
+        'view_comptabilite',
+        'manage_comptabilite',
+        
+        // Personnel et enseignants
+        'view_teachers',
+        'create_teachers',
+        'edit_teachers',
+        'view_personnel',
+        'manage_personnel',
+        
+        // Emplois du temps
+        'view_schedules',
+        'create_schedules',
+        'edit_schedules',
+        'view_own_schedule',
+        
+        // Messages et communication
         'send_messages',
         'receive_messages',
-        'view_own_attendance',  // Permission nécessaire pour accéder à /esbtp/teacher/attendance
-        // Ajoute ici toutes les permissions nécessaires à l'enseignant
+        'view_annonces',
+        'create_annonces',
+        'edit_annonces',
+        
+        // Rapports
+        'view_reports',
+        'generate_reports',
+        
+        // Paramètres système
+        'view_settings',
+        'edit_settings',
+        'manage_system',
+        
+        // Permissions spécifiques ESBTP
+        'view_planning_general',
+        'edit_planning_general',
+        'view_resultats',
+        'edit_resultats',
     ];
 
-    // Créer le rôle teacher s'il n'existe pas
-    $teacherRole = Role::firstOrCreate(['name' => 'teacher', 'guard_name' => 'web']);
+    echo "Création/vérification des permissions...\n";
 
-    // Vérifier les permissions existantes
-    $existingTeacherPermissions = $teacherRole->permissions->pluck('name')->toArray();
-    echo "Permissions existantes pour le rôle 'teacher' :\n";
-    foreach ($existingTeacherPermissions as $permission) {
-        echo "- $permission\n";
+    foreach ($permissions as $permissionName) {
+        $permission = Permission::firstOrCreate(['name' => $permissionName]);
+        echo "✓ Permission: $permissionName\n";
     }
 
-    // Ajouter les permissions manquantes
-    $addedTeacherPermissions = [];
-    foreach ($teacherPermissions as $permissionName) {
-        if (!in_array($permissionName, $existingTeacherPermissions)) {
-            $permission = Permission::firstOrCreate(['name' => $permissionName, 'guard_name' => 'web']);
-            $teacherRole->givePermissionTo($permission);
-            $addedTeacherPermissions[] = $permissionName;
-        } else {
-            echo "La permission '$permissionName' est déjà attribuée au rôle 'teacher'.\n";
-        }
+    // Vérifier/créer les rôles
+    $roles = [
+        'superAdmin' => 'Super Administrateur',
+        'admin' => 'Administrateur',
+        'secretaire' => 'Secrétaire',
+        'coordinateur' => 'Coordinateur',
+        'enseignant' => 'Enseignant',
+        'etudiant' => 'Étudiant',
+        'parent' => 'Parent',
+    ];
+
+    echo "\nCréation/vérification des rôles...\n";
+
+    foreach ($roles as $roleName => $roleLabel) {
+        $role = Role::firstOrCreate(['name' => $roleName]);
+        echo "✓ Rôle: $roleName ($roleLabel)\n";
     }
 
-    // Afficher les permissions ajoutées
-    if (count($addedTeacherPermissions) > 0) {
-        echo "\nPermissions ajoutées au rôle 'teacher' :\n";
-        foreach ($addedTeacherPermissions as $permission) {
-            echo "- $permission\n";
-        }
-    } else {
-        echo "\nAucune nouvelle permission n'a été ajoutée au rôle 'teacher'.\n";
-    }
+    // Attribution des permissions aux rôles
+    echo "\nAttribution des permissions aux rôles...\n";
 
-    // Vérifier les permissions après mise à jour
-    $teacherRole->refresh();
-    $updatedTeacherPermissions = $teacherRole->permissions->pluck('name')->toArray();
-    echo "\nPermissions actuelles pour le rôle 'teacher' :\n";
-    foreach ($updatedTeacherPermissions as $permission) {
-        echo "- $permission\n";
-    }
+    // SuperAdmin - Toutes les permissions
+    $superAdminRole = Role::findByName('superAdmin');
+    $superAdminRole->syncPermissions($permissions);
+    echo "✓ SuperAdmin: Toutes les permissions accordées\n";
 
-    // Permission pour la génération de codes d'émargement
-    $generateAttendanceCodes = 'generate-attendance-codes';
-    if (!Permission::where('name', $generateAttendanceCodes)->exists()) {
-        Permission::create(['name' => $generateAttendanceCodes]);
-        echo "Permission 'generate-attendance-codes' créée.\n";
-    }
+    // Secrétaire - Permissions principales
+    $secretaireRole = Role::findByName('secretaire');
+    $secretairePermissions = [
+        'view_dashboard',
+        'access_admin',
+        'view_students', 'create_students', 'edit_students',
+        'view_inscriptions', 'create_inscriptions', 'edit_inscriptions',
+        'view_classes', 'create_classes', 'edit_classes',
+        'view_filieres', 'create_filieres', 'edit_filieres',
+        'view_matieres',
+        'view_notes', 'view_evaluations',
+        'view_bulletins', 'generate_bulletins',
+        'view_attendances', 'create_attendances',
+        'view_payments', 'create_payments', 'edit_payments',
+        'view_comptabilite',
+        'view_teachers', 'create_teachers', 'edit_teachers',
+        'view_personnel', 'manage_personnel',
+        'view_schedules', 'create_schedules', 'edit_schedules',
+        'send_messages', 'receive_messages',
+        'view_annonces', 'create_annonces', 'edit_annonces',
+        'view_reports',
+        'view_planning_general',
+        'view_resultats',
+    ];
+    $secretaireRole->syncPermissions($secretairePermissions);
+    echo "✓ Secrétaire: " . count($secretairePermissions) . " permissions accordées\n";
 
-    // Attribution au superAdmin
-    $superAdminRole = Role::where('name', 'superAdmin')->first();
-    if ($superAdminRole && !$superAdminRole->hasPermissionTo($generateAttendanceCodes)) {
-        $superAdminRole->givePermissionTo($generateAttendanceCodes);
-        echo "Permission 'generate-attendance-codes' attribuée à superAdmin.\n";
-    }
+    // Coordinateur - Permissions de coordination
+    $coordinateurRole = Role::findByName('coordinateur');
+    $coordinateurPermissions = [
+        'view_dashboard',
+        'access_admin',
+        'view_students', 'edit_students',
+        'view_inscriptions', 'approve_inscriptions', 'reject_inscriptions',
+        'view_classes', 'edit_classes',
+        'view_matieres', 'edit_matieres',
+        'view_notes', 'edit_notes',
+        'view_evaluations', 'create_evaluations', 'edit_evaluations',
+        'view_bulletins', 'generate_bulletins',
+        'view_attendances', 'edit_attendances',
+        'view_payments',
+        'view_teachers', 'edit_teachers',
+        'view_schedules', 'edit_schedules',
+        'send_messages', 'receive_messages',
+        'view_annonces', 'create_annonces', 'edit_annonces',
+        'view_reports', 'generate_reports',
+        'view_planning_general', 'edit_planning_general',
+        'view_resultats', 'edit_resultats',
+    ];
+    $coordinateurRole->syncPermissions($coordinateurPermissions);
+    echo "✓ Coordinateur: " . count($coordinateurPermissions) . " permissions accordées\n";
 
-    // (Optionnel) Attribution au secrétaire
-    $secretaireRole = Role::where('name', 'secretaire')->first();
-    if ($secretaireRole && !$secretaireRole->hasPermissionTo($generateAttendanceCodes)) {
-        $secretaireRole->givePermissionTo($generateAttendanceCodes);
-        echo "Permission 'generate-attendance-codes' attribuée à secretaire.\n";
-    }
+    // Enseignant - Permissions d'enseignement
+    $enseignantRole = Role::findByName('enseignant');
+    $enseignantPermissions = [
+        'view_dashboard',
+        'view_own_students',
+        'view_notes', 'create_notes', 'edit_notes', 'view_own_notes',
+        'view_evaluations', 'create_evaluations', 'edit_evaluations',
+        'view_bulletins',
+        'view_attendances', 'create_attendances', 'view_own_attendances',
+        'view_own_schedule',
+        'send_messages', 'receive_messages',
+        'view_annonces',
+    ];
+    $enseignantRole->syncPermissions($enseignantPermissions);
+    echo "✓ Enseignant: " . count($enseignantPermissions) . " permissions accordées\n";
 
-    // Permissions pour le rôle étudiant
+    // Étudiant - Permissions de consultation
+    $etudiantRole = Role::findByName('etudiant');
     $etudiantPermissions = [
+        'view_dashboard',
+        'view_own_notes',
         'view_own_bulletin',
-        'view_own_profile',
-        'view_own_grades',
-        'view_own_timetable',
         'view_own_attendances',
-        'view_own_exams',
-        'view_own_attendance',
+        'view_own_schedule',
+        'receive_messages',
+        'view_annonces',
     ];
+    $etudiantRole->syncPermissions($etudiantPermissions);
+    echo "✓ Étudiant: " . count($etudiantPermissions) . " permissions accordées\n";
 
-    // Créer le rôle etudiant s'il n'existe pas
-    $etudiantRole = Role::firstOrCreate(['name' => 'etudiant', 'guard_name' => 'web']);
+    // Parent - Permissions parentales
+    $parentRole = Role::findByName('parent');
+    $parentPermissions = [
+        'view_dashboard',
+        'view_own_students',
+        'view_own_notes',
+        'view_own_bulletin',
+        'view_own_attendances',
+        'view_own_schedule',
+        'receive_messages',
+        'view_annonces',
+    ];
+    $parentRole->syncPermissions($parentPermissions);
+    echo "✓ Parent: " . count($parentPermissions) . " permissions accordées\n";
 
-    // Vérifier les permissions existantes
-    $existingEtudiantPermissions = $etudiantRole->permissions->pluck('name')->toArray();
-    echo "Permissions existantes pour le rôle 'etudiant' :\n";
-    foreach ($existingEtudiantPermissions as $permission) {
-        echo "- $permission\n";
-    }
-
-    // Ajouter les permissions manquantes
-    $addedEtudiantPermissions = [];
-    foreach ($etudiantPermissions as $permissionName) {
-        $permission = Permission::firstOrCreate(['name' => $permissionName, 'guard_name' => 'web']);
-        if (!in_array($permissionName, $existingEtudiantPermissions)) {
-            $etudiantRole->givePermissionTo($permission);
-            $addedEtudiantPermissions[] = $permissionName;
+    // Vérifier les utilisateurs sans rôle et leur attribuer un rôle par défaut
+    echo "\nVérification des utilisateurs sans rôle...\n";
+    $usersWithoutRole = User::doesntHave('roles')->get();
+    
+    foreach ($usersWithoutRole as $user) {
+        // Attribuer un rôle basé sur l'email ou d'autres critères
+        if (str_contains($user->email, 'admin') || str_contains($user->email, 'superadmin')) {
+            $user->assignRole('superAdmin');
+            echo "✓ {$user->name} ({$user->email}) -> superAdmin\n";
+        } elseif (str_contains($user->email, 'secretaire')) {
+            $user->assignRole('secretaire');
+            echo "✓ {$user->name} ({$user->email}) -> secretaire\n";
+        } elseif (str_contains($user->email, 'enseignant') || str_contains($user->email, 'teacher')) {
+            $user->assignRole('enseignant');
+            echo "✓ {$user->name} ({$user->email}) -> enseignant\n";
         } else {
-            echo "La permission '$permissionName' est déjà attribuée au rôle 'etudiant'.\n";
+            // Par défaut, attribuer le rôle étudiant
+            $user->assignRole('etudiant');
+            echo "✓ {$user->name} ({$user->email}) -> etudiant (par défaut)\n";
         }
     }
 
-    // Afficher les permissions ajoutées
-    if (count($addedEtudiantPermissions) > 0) {
-        echo "\nPermissions ajoutées au rôle 'etudiant' :\n";
-        foreach ($addedEtudiantPermissions as $permission) {
-            echo "- $permission\n";
-        }
-    } else {
-        echo "\nAucune nouvelle permission n'a été ajoutée au rôle 'etudiant'.\n";
+    // Réinitialiser le cache à nouveau
+    app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+
+    echo "\n=== Récapitulatif ===\n";
+    echo "✅ " . count($permissions) . " permissions créées/vérifiées\n";
+    echo "✅ " . count($roles) . " rôles créés/vérifiés\n";
+    echo "✅ Permissions attribuées à tous les rôles\n";
+    echo "✅ " . $usersWithoutRole->count() . " utilisateurs sans rôle traités\n";
+    echo "✅ Cache des permissions réinitialisé\n";
+
+    echo "\n=== Test des permissions ===\n";
+    
+    // Tester quelques permissions importantes
+    $testUsers = User::with('roles')->limit(3)->get();
+    foreach ($testUsers as $user) {
+        $roles = $user->roles->pluck('name')->join(', ');
+        echo "👤 {$user->name} ({$user->email})\n";
+        echo "   Rôles: $roles\n";
+        echo "   Peut voir dashboard: " . ($user->can('view_dashboard') ? '✅' : '❌') . "\n";
+        echo "   Peut voir annonces: " . ($user->can('view_annonces') ? '✅' : '❌') . "\n";
+        echo "\n";
     }
 
-    // Vérifier les permissions après mise à jour
-    $etudiantRole->refresh();
-    $updatedEtudiantPermissions = $etudiantRole->permissions->pluck('name')->toArray();
-    echo "\nPermissions actuelles pour le rôle 'etudiant' :\n";
-    foreach ($updatedEtudiantPermissions as $permission) {
-        echo "- $permission\n";
-    }
-
-} catch (\Exception $e) {
-    echo "\n❌ ERREUR CRITIQUE: " . $e->getMessage() . "\n";
-    echo "Stack trace:\n" . $e->getTraceAsString() . "\n";
+} catch (Exception $e) {
+    echo "❌ ERREUR: " . $e->getMessage() . "\n";
+    echo "Stack trace: " . $e->getTraceAsString() . "\n";
+    
+    echo "\n=== Solutions alternatives ===\n";
+    echo "1. Vérifiez que la base de données est accessible\n";
+    echo "2. Assurez-vous que les tables Spatie Permission existent\n";
+    echo "3. Exécutez: php artisan migrate\n";
+    echo "4. Puis réexécutez ce script\n";
 }
-
-
 
 echo "\n=== Fin du script ===\n";

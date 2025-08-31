@@ -164,12 +164,23 @@ class ESBTPClasse extends Model
     }
 
     /**
-     * Nombre d'étudiants actuellement inscrits dans cette classe.
+     * Nombre d'étudiants actuellement inscrits dans cette classe pour l'année courante.
      *
      * @return int
      */
     public function getNombreEtudiantsAttribute()
     {
+        // Récupérer l'année universitaire courante
+        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        
+        if ($anneeCourante) {
+            return $this->inscriptions()
+                        ->where('status', 'active')
+                        ->where('annee_universitaire_id', $anneeCourante->id)
+                        ->count();
+        }
+        
+        // Fallback si aucune année courante définie
         return $this->inscriptions()->where('status', 'active')->count();
     }
 

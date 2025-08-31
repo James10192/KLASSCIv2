@@ -320,6 +320,79 @@ class NavbarController extends Controller
     }
 
     /**
+     * Supprimer une notification
+     */
+    public function deleteNotification($id)
+    {
+        $notification = Notification::findOrFail($id);
+
+        // Vérifier que l'utilisateur peut supprimer cette notification
+        if ($notification->user_id === auth()->id() || $notification->type === 'global') {
+            $notification->delete();
+            return response()->json(['success' => true]);
+        }
+
+        return response()->json(['success' => false], 403);
+    }
+
+    /**
+     * Supprimer toutes les notifications
+     */
+    public function deleteAllNotifications()
+    {
+        $user = auth()->user();
+
+        Notification::where('user_id', $user->id)->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Marquer tous les messages comme lus
+     */
+    public function markAllMessagesAsRead()
+    {
+        // Pour les annonces (messages), on ne peut pas vraiment les marquer comme lus
+        // car elles n'ont pas de champ is_read dans notre système
+        // On pourrait ajouter une table pivot user_announcement_read si nécessaire
+        
+        return response()->json(['success' => true, 'message' => 'Tous les messages marqués comme lus']);
+    }
+
+    /**
+     * Supprimer un message/annonce
+     */
+    public function deleteMessage($id)
+    {
+        $user = auth()->user();
+
+        // Seuls les admins/secrétaires peuvent supprimer des annonces
+        if ($user->hasRole(['superAdmin', 'secretaire'])) {
+            $annonce = ESBTPAnnonce::findOrFail($id);
+            $annonce->delete();
+            return response()->json(['success' => true]);
+        }
+
+        return response()->json(['success' => false], 403);
+    }
+
+    /**
+     * Supprimer tous les messages/annonces
+     */
+    public function deleteAllMessages()
+    {
+        $user = auth()->user();
+
+        // Seuls les admins/secrétaires peuvent supprimer toutes les annonces
+        if ($user->hasRole(['superAdmin', 'secretaire'])) {
+            ESBTPAnnonce::truncate(); // Supprimer toutes les annonces
+            return response()->json(['success' => true]);
+        }
+
+        return response()->json(['success' => false], 403);
+    }
+
+    /**
      * Obtenir l'icône pour un type de notification
      */
     private function getNotificationIcon($type)

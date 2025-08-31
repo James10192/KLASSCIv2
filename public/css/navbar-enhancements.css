@@ -9,7 +9,7 @@
 
 .navbar-search .form-control {
     background: rgba(255, 255, 255, 0.95);
-    border: 2px solid rgba(99, 102, 241, 0.1);
+    border: 2px solid rgba(4, 83, 203, 0.1);
     border-radius: 12px;
     padding: 12px 20px 12px 45px;
     font-size: 14px;
@@ -23,8 +23,8 @@
 
 .navbar-search .form-control:focus {
     outline: none;
-    border-color: #6366f1;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1),
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(4, 83, 203, 0.1),
         0 10px 15px -3px rgba(0, 0, 0, 0.1);
     background: rgba(255, 255, 255, 1);
     transform: translateY(-1px);
@@ -47,7 +47,7 @@
 }
 
 .navbar-search .form-control:focus + .search-icon {
-    color: #6366f1;
+    color: var(--primary);
 }
 
 /* Search Results Dropdown */
@@ -79,7 +79,7 @@
 }
 
 .search-results .search-result-item:hover {
-    background: rgba(99, 102, 241, 0.05);
+    background: rgba(4, 83, 203, 0.05);
     transform: translateX(4px);
 }
 
@@ -134,7 +134,7 @@
     background: rgba(255, 255, 255, 1);
     transform: translateY(-2px);
     box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
-    color: #6366f1;
+    color: var(--primary);
 }
 
 .navbar-actions .btn .badge {
@@ -189,8 +189,8 @@
 }
 
 .dropdown-item:hover {
-    background: rgba(99, 102, 241, 0.1);
-    color: #6366f1;
+    background: rgba(4, 83, 203, 0.1);
+    color: var(--primary);
     transform: translateX(4px);
 }
 
@@ -212,13 +212,13 @@
 }
 
 .sidebar-menu::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, #6366f1, #4f46e5);
+    background: linear-gradient(180deg, var(--primary), var(--primary-dark));
     border-radius: 3px;
     transition: background 0.3s ease;
 }
 
 .sidebar-menu::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(180deg, #4f46e5, #4338ca);
+    background: linear-gradient(180deg, var(--primary-dark), #4338ca);
 }
 
 /* ===== RESPONSIVE IMPROVEMENTS ===== */

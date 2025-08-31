@@ -20,15 +20,20 @@ class ESBTPClasseController extends Controller
     public function index()
     {
         $user = Auth::user();
+        
+        // Récupérer l'année universitaire courante pour l'affichage
+        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $anneeAcademique = $anneeCourante ? $anneeCourante->name : date('Y') . '-' . (date('Y') + 1);
+        
         $classes = ESBTPClasse::with(['filiere', 'niveau', 'annee'])->get();
 
         // Different view rendering based on user role
         if ($user->hasRole('etudiant')) {
             // For students - read-only view
-            return view('esbtp.classes.student_index', compact('classes'));
+            return view('esbtp.classes.student_index', compact('classes', 'anneeAcademique', 'anneeCourante'));
         } else {
             // For admin and secretary - full functionality view
-            return view('esbtp.classes.index', compact('classes'));
+            return view('esbtp.classes.index', compact('classes', 'anneeAcademique', 'anneeCourante'));
         }
     }
 
@@ -102,15 +107,43 @@ class ESBTPClasseController extends Controller
     public function show(ESBTPClasse $classe)
     {
         $user = Auth::user();
-        $classe->load(['filiere', 'niveau', 'annee', 'matieres', 'etudiants', 'inscriptions', 'emploisDuTemps']);
+        
+        // Récupérer l'année universitaire courante
+        $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        
+        // Charger les relations de base
+        $classe->load(['filiere', 'niveau', 'annee', 'matieres', 'emploisDuTemps']);
+        
+        // Charger les étudiants et inscriptions FILTRÉS par année courante
+        if ($anneeCourante) {
+            $classe->load([
+                'etudiants' => function ($query) use ($anneeCourante) {
+                    $query->whereHas('inscriptions', function ($inscriptionQuery) use ($anneeCourante) {
+                        $inscriptionQuery->where('annee_universitaire_id', $anneeCourante->id)
+                                       ->where('status', 'active');
+                    });
+                },
+                'inscriptions' => function ($query) use ($anneeCourante) {
+                    $query->where('annee_universitaire_id', $anneeCourante->id)
+                          ->where('status', 'active')
+                          ->with('etudiant');
+                }
+            ]);
+        } else {
+            // Si aucune année courante définie, charger normalement (éviter les erreurs)
+            $classe->load(['etudiants', 'inscriptions']);
+        }
+
+        // Préparer l'année académique pour l'affichage
+        $anneeAcademique = $anneeCourante ? $anneeCourante->name : date('Y') . '-' . (date('Y') + 1);
 
         // Different view rendering based on user role
         if ($user->hasRole('etudiant')) {
             // For students - read-only view
-            return view('esbtp.classes.student_show', compact('classe'));
+            return view('esbtp.classes.student_show', compact('classe', 'anneeCourante', 'anneeAcademique'));
         } else {
             // For admin and secretary - full functionality view
-            return view('esbtp.classes.show', compact('classe'));
+            return view('esbtp.classes.show', compact('classe', 'anneeCourante', 'anneeAcademique'));
         }
     }
 

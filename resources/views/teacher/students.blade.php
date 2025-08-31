@@ -273,8 +273,8 @@
                         @endforeach
                     ],
                     backgroundColor: [
-                        '#6366f1', '#ec4899', '#22c55e', '#f59e0b', '#ef4444', '#0ea5e9',
-                        '#8b5cf6', '#14b8a6', '#84cc16', '#a855f7'
+                        '#0453cb', '#ec4899', '#22c55e', '#f59e0b', '#ef4444', '#0ea5e9',
+                        '#5e91de', '#14b8a6', '#84cc16', '#0453cb'
                     ],
                     borderWidth: 1
                 }]

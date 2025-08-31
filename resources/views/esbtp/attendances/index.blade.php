@@ -347,6 +347,177 @@
 
     .timeline-icon.success { background-color: #28a745; }
     .timeline-icon.warning { background-color: #ffc107; }
+
+    /* Styles pour la section Présences par Classe optimisée */
+    .classe-stats-container {
+        max-height: 500px;
+        overflow-y: auto;
+        padding-right: 8px;
+        margin-right: -8px;
+    }
+
+    .classe-stats-container::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .classe-stats-container::-webkit-scrollbar-track {
+        background: #f8f9fa;
+        border-radius: 3px;
+    }
+
+    .classe-stats-container::-webkit-scrollbar-thumb {
+        background: var(--primary);
+        border-radius: 3px;
+        transition: background 0.3s ease;
+    }
+
+    .classe-stats-container::-webkit-scrollbar-thumb:hover {
+        background: var(--secondary);
+    }
+
+    .classe-item {
+        border-radius: var(--radius-small);
+        transition: all 0.3s ease;
+        border: 1px solid transparent;
+        padding: 12px;
+        margin-bottom: 12px;
+        background: rgba(255, 255, 255, 0.7);
+    }
+
+    .classe-item:hover {
+        background: rgba(4, 83, 203, 0.05);
+        border-color: rgba(4, 83, 203, 0.2);
+        transform: translateX(4px);
+        box-shadow: 0 2px 8px rgba(4, 83, 203, 0.1);
+    }
+
+    .classe-item.hidden {
+        display: none !important;
+    }
+
+    .classe-name {
+        color: var(--primary);
+        font-size: 0.95rem;
+    }
+
+    .classe-students {
+        font-size: 0.8rem;
+    }
+
+    .classe-rate {
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    /* Vue compacte */
+    .view-compact .classe-stats-details {
+        display: none !important;
+    }
+
+    .view-compact .classe-stats-compact {
+        display: block !important;
+    }
+
+    .view-compact .classe-item {
+        margin-bottom: 8px;
+        padding: 8px 12px;
+    }
+
+    .view-compact .classe-name {
+        font-size: 0.9rem;
+        margin-bottom: 0;
+    }
+
+    .view-compact .classe-students {
+        font-size: 0.75rem;
+    }
+
+    /* Boutons de contrôle */
+    .btn-group-sm .btn {
+        padding: 4px 8px;
+        font-size: 0.8rem;
+        border-radius: 4px;
+    }
+
+    .btn-group-sm .btn.active {
+        background-color: var(--primary);
+        border-color: var(--primary);
+        color: white;
+    }
+
+    /* Animation pour les éléments qui apparaissent */
+    .classe-item {
+        animation: slideInUp 0.3s ease-out;
+    }
+
+    @keyframes slideInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Badges compacts */
+    .classe-stats-compact .badge {
+        font-size: 0.7rem;
+        padding: 2px 6px;
+    }
+
+    /* Message de recherche */
+    .no-results {
+        padding: 2rem 1rem;
+    }
+
+    /* Pagination */
+    .classe-pagination {
+        border-top: 1px solid rgba(0, 0, 0, 0.1);
+        padding-top: 12px;
+        margin-top: 16px;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .classe-stats-container {
+            max-height: 400px;
+        }
+        
+        .classe-item {
+            padding: 8px;
+        }
+        
+        .classe-stats-details .col-3 {
+            flex: 0 0 50%;
+            max-width: 50%;
+            margin-bottom: 8px;
+        }
+        
+        .classe-stats-details .row {
+            margin-bottom: 8px;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .classe-stats-container {
+            max-height: 350px;
+        }
+        
+        .classe-stats-details .col-3 {
+            flex: 0 0 100%;
+            max-width: 100%;
+            margin-bottom: 4px;
+        }
+        
+        .classe-stats-details .text-center {
+            text-align: left !important;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+    }
     .timeline-icon.info { background-color: #17a2b8; }
     .timeline-icon.danger { background-color: #dc3545; }
 
@@ -658,25 +829,55 @@
         <!-- Statistiques par classe -->
         <div class="col-lg-4">
             <div class="data-card">
-                <h5 class="mb-3">
-                    <i class="fas fa-graduation-cap me-2 text-primary"></i>
-                    Présences par Classe
-                </h5>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0">
+                        <i class="fas fa-graduation-cap me-2 text-primary"></i>
+                        Présences par Classe
+                    </h5>
+                    <div class="d-flex align-items-center gap-2">
+                        <small class="text-muted">{{ count($classeStats ?? []) }} classes</small>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button type="button" class="btn btn-outline-secondary" id="compactViewBtn" title="Vue compacte">
+                                <i class="fas fa-th-list"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary active" id="detailedViewBtn" title="Vue détaillée">
+                                <i class="fas fa-th-large"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Recherche/Filtre -->
+                @if(isset($classeStats) && count($classeStats) > 5)
+                <div class="mb-3">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" class="form-control" id="classSearchInput" placeholder="Rechercher une classe...">
+                        <button class="btn btn-outline-secondary" type="button" id="clearSearchBtn">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                @endif
+                
                 @if(isset($classeStats) && count($classeStats) > 0)
-                    @foreach($classeStats as $classe)
-                        <div class="mb-4">
+                    <!-- Container avec scroll -->
+                    <div class="classe-stats-container" id="classeStatsContainer">
+                        <div class="classe-stats-content" id="classeStatsContent">
+                            @foreach($classeStats as $index => $classe)
+                        <div class="classe-item mb-4" data-classe-name="{{ strtolower($classe['name']) }}" data-index="{{ $index }}">
                             <div class="d-flex justify-content-between align-items-center mb-2">
-                                <div>
-                                    <h6 class="fw-bold mb-1">{{ $classe['name'] }}</h6>
-                                    <small class="text-muted">{{ $classe['total_students'] }} étudiants</small>
+                                <div class="classe-info">
+                                    <h6 class="fw-bold mb-1 classe-name">{{ $classe['name'] }}</h6>
+                                    <small class="text-muted classe-students">{{ $classe['total_students'] }} étudiants</small>
                                 </div>
                                 <div class="text-end">
-                                    <span class="badge bg-primary">{{ $classe['attendance_rate'] }}%</span>
+                                    <span class="badge bg-primary classe-rate">{{ $classe['attendance_rate'] }}%</span>
                                 </div>
                             </div>
                             
                             <!-- Barres de progression pour chaque statut -->
-                            <div class="row g-1 mb-2">
+                            <div class="row g-1 mb-2 classe-stats-details">
                                 <div class="col-3">
                                     <div class="text-center">
                                         <div class="fw-bold text-success">{{ $classe['present'] }}</div>
@@ -703,6 +904,18 @@
                                 </div>
                             </div>
                             
+                            <!-- Vue compacte (cachée par défaut) -->
+                            <div class="classe-stats-compact d-none">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="d-flex gap-3">
+                                        <span class="badge bg-success">{{ $classe['present'] }}P</span>
+                                        <span class="badge bg-danger">{{ $classe['absent'] }}A</span>
+                                        <span class="badge bg-warning">{{ $classe['retard'] }}R</span>
+                                        <span class="badge bg-info">{{ $classe['excuse'] }}E</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
                             <!-- Barre de progression globale -->
                             <div class="progress" style="height: 8px;">
                                 @if($classe['total_attendance'] > 0)
@@ -715,7 +928,26 @@
                                 @endif
                             </div>
                         </div>
-                    @endforeach
+                        @endforeach
+                        </div>
+                        
+                        <!-- Pagination si trop de classes -->
+                        @if(count($classeStats) > 10)
+                        <div class="classe-pagination text-center mt-3" id="classePagination">
+                            <button class="btn btn-sm btn-outline-primary" id="loadMoreClassesBtn">
+                                <i class="fas fa-chevron-down me-1"></i>
+                                Voir plus de classes
+                            </button>
+                        </div>
+                        @endif
+                        
+                        <!-- Message si aucun résultat de recherche -->
+                        <div class="no-results d-none text-center text-muted py-4" id="noSearchResults">
+                            <i class="fas fa-search fa-2x mb-3 opacity-50"></i>
+                            <p>Aucune classe trouvée</p>
+                            <p class="small">Essayez un autre terme de recherche</p>
+                        </div>
+                    </div>
                 @else
                     <div class="text-center text-muted py-4">
                         <i class="fas fa-chart-pie fa-3x mb-3 opacity-50"></i>
@@ -1233,5 +1465,249 @@ function loadRecentActivities() {
     });
 }
 @endif
+
+// Script pour la gestion optimisée des statistiques par classe
+document.addEventListener('DOMContentLoaded', function() {
+    // Éléments du DOM
+    const compactViewBtn = document.getElementById('compactViewBtn');
+    const detailedViewBtn = document.getElementById('detailedViewBtn');
+    const classSearchInput = document.getElementById('classSearchInput');
+    const clearSearchBtn = document.getElementById('clearSearchBtn');
+    const classeStatsContainer = document.getElementById('classeStatsContainer');
+    const classeStatsContent = document.getElementById('classeStatsContent');
+    const loadMoreBtn = document.getElementById('loadMoreClassesBtn');
+    const noSearchResults = document.getElementById('noSearchResults');
+
+    // Variables de configuration
+    let currentView = 'detailed'; // 'detailed' ou 'compact'
+    let visibleItemsCount = 10; // Nombre d'éléments visibles initialement
+    let allItems = [];
+    let filteredItems = [];
+
+    // Initialisation
+    if (classeStatsContent) {
+        allItems = Array.from(classeStatsContent.querySelectorAll('.classe-item'));
+        filteredItems = [...allItems];
+        initializePagination();
+    }
+
+    // Gestion des vues (compacte/détaillée)
+    if (compactViewBtn && detailedViewBtn) {
+        compactViewBtn.addEventListener('click', function() {
+            switchToCompactView();
+        });
+
+        detailedViewBtn.addEventListener('click', function() {
+            switchToDetailedView();
+        });
+    }
+
+    // Gestion de la recherche
+    if (classSearchInput) {
+        classSearchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase().trim();
+            filterClasses(searchTerm);
+        });
+
+        classSearchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+            }
+        });
+    }
+
+    // Bouton de nettoyage de recherche
+    if (clearSearchBtn) {
+        clearSearchBtn.addEventListener('click', function() {
+            classSearchInput.value = '';
+            filterClasses('');
+            classSearchInput.focus();
+        });
+    }
+
+    // Bouton "Voir plus"
+    if (loadMoreBtn) {
+        loadMoreBtn.addEventListener('click', function() {
+            showMoreClasses();
+        });
+    }
+
+    // Fonctions principales
+    function switchToCompactView() {
+        currentView = 'compact';
+        compactViewBtn.classList.add('active');
+        detailedViewBtn.classList.remove('active');
+        
+        if (classeStatsContainer) {
+            classeStatsContainer.classList.add('view-compact');
+        }
+        
+        // Augmenter le nombre d'éléments visibles en mode compact
+        visibleItemsCount = Math.min(20, filteredItems.length);
+        updateVisibility();
+        
+        // Animation douce
+        animateViewChange();
+    }
+
+    function switchToDetailedView() {
+        currentView = 'detailed';
+        detailedViewBtn.classList.add('active');
+        compactViewBtn.classList.remove('active');
+        
+        if (classeStatsContainer) {
+            classeStatsContainer.classList.remove('view-compact');
+        }
+        
+        // Réduire le nombre d'éléments visibles en mode détaillé
+        visibleItemsCount = Math.min(10, filteredItems.length);
+        updateVisibility();
+        
+        // Animation douce
+        animateViewChange();
+    }
+
+    function filterClasses(searchTerm) {
+        if (!searchTerm) {
+            // Afficher tous les éléments
+            filteredItems = [...allItems];
+            hideNoResults();
+        } else {
+            // Filtrer les éléments
+            filteredItems = allItems.filter(item => {
+                const className = item.dataset.classeName || '';
+                const classeNameElement = item.querySelector('.classe-name');
+                const classText = classeNameElement ? classeNameElement.textContent.toLowerCase() : '';
+                
+                return className.includes(searchTerm) || classText.includes(searchTerm);
+            });
+        }
+
+        // Réinitialiser la pagination
+        visibleItemsCount = currentView === 'compact' ? 20 : 10;
+        updateVisibility();
+        
+        // Afficher le message "Aucun résultat" si nécessaire
+        if (filteredItems.length === 0 && searchTerm) {
+            showNoResults();
+        } else {
+            hideNoResults();
+        }
+
+        // Scroll vers le haut du conteneur
+        if (classeStatsContainer) {
+            classeStatsContainer.scrollTop = 0;
+        }
+    }
+
+    function showMoreClasses() {
+        const increment = currentView === 'compact' ? 20 : 10;
+        visibleItemsCount = Math.min(visibleItemsCount + increment, filteredItems.length);
+        updateVisibility();
+
+        // Animation pour les nouveaux éléments
+        const newlyVisibleItems = filteredItems.slice(visibleItemsCount - increment, visibleItemsCount);
+        newlyVisibleItems.forEach((item, index) => {
+            setTimeout(() => {
+                item.style.animation = 'slideInUp 0.3s ease-out';
+            }, index * 50);
+        });
+    }
+
+    function updateVisibility() {
+        // Masquer tous les éléments d'abord
+        allItems.forEach(item => {
+            item.classList.add('hidden');
+        });
+
+        // Afficher les éléments filtrés et visibles
+        const itemsToShow = filteredItems.slice(0, visibleItemsCount);
+        itemsToShow.forEach(item => {
+            item.classList.remove('hidden');
+        });
+
+        // Gérer le bouton "Voir plus"
+        if (loadMoreBtn) {
+            if (visibleItemsCount < filteredItems.length) {
+                loadMoreBtn.style.display = 'block';
+                loadMoreBtn.innerHTML = `
+                    <i class="fas fa-chevron-down me-1"></i>
+                    Voir plus (${filteredItems.length - visibleItemsCount} restantes)
+                `;
+            } else {
+                loadMoreBtn.style.display = 'none';
+            }
+        }
+    }
+
+    function initializePagination() {
+        visibleItemsCount = Math.min(currentView === 'compact' ? 20 : 10, filteredItems.length);
+        updateVisibility();
+    }
+
+    function showNoResults() {
+        if (noSearchResults) {
+            noSearchResults.classList.remove('d-none');
+        }
+        if (loadMoreBtn) {
+            loadMoreBtn.style.display = 'none';
+        }
+    }
+
+    function hideNoResults() {
+        if (noSearchResults) {
+            noSearchResults.classList.add('d-none');
+        }
+    }
+
+    function animateViewChange() {
+        const visibleItems = filteredItems.slice(0, visibleItemsCount);
+        visibleItems.forEach((item, index) => {
+            item.style.animation = 'none';
+            setTimeout(() => {
+                item.style.animation = 'slideInUp 0.3s ease-out';
+            }, index * 20);
+        });
+    }
+
+    // Gestion du redimensionnement de fenêtre
+    let resizeTimer;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            // Ajuster le nombre d'éléments visibles selon la taille d'écran
+            if (window.innerWidth < 768) {
+                if (currentView === 'detailed') {
+                    visibleItemsCount = Math.min(8, filteredItems.length);
+                } else {
+                    visibleItemsCount = Math.min(15, filteredItems.length);
+                }
+                updateVisibility();
+            }
+        }, 250);
+    });
+
+    // Amélioration UX: focus automatique sur la recherche avec Ctrl+K
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+            e.preventDefault();
+            if (classSearchInput) {
+                classSearchInput.focus();
+                classSearchInput.select();
+            }
+        }
+    });
+
+    // Précharger les statistiques au hover pour une meilleure réactivité
+    if (classeStatsContent) {
+        const classeItems = classeStatsContent.querySelectorAll('.classe-item');
+        classeItems.forEach(item => {
+            item.addEventListener('mouseenter', function() {
+                // Petite animation au hover
+                this.style.transition = 'all 0.2s ease';
+            });
+        });
+    }
+});
 </script>
 @endpush

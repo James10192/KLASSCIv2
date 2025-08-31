@@ -24,6 +24,8 @@ class ESBTPEtudiant extends Model
      */
     protected $fillable = [
         'user_id',
+        'classe_id',
+        'annee_universitaire_id',
         'matricule',
         'nom',
         'prenoms',
@@ -35,6 +37,7 @@ class ESBTPEtudiant extends Model
         'nationalite',
         'adresse',
         'telephone',
+        'email',
         'email_personnel',
         'photo',
         'statut',
@@ -432,9 +435,7 @@ class ESBTPEtudiant extends Model
     }
 
     /**
-     * Relation avec la classe (à travers l'inscription active).
-     * Cette relation est ajoutée pour compatibilité avec le code utilisant
-     * la relation 'classe' directement sur l'étudiant.
+     * Relation avec la classe de l'étudiant via son inscription active.
      *
      * @return \Illuminate\Database\Eloquent\Relations\HasOneThrough
      */
@@ -447,9 +448,7 @@ class ESBTPEtudiant extends Model
             'id', // Clé primaire sur la table cible (classes)
             'id', // Clé primaire sur la table source (etudiants)
             'classe_id' // Clé étrangère sur la table intermédiaire (inscriptions)
-        )->whereHas('anneeUniversitaire', function($query) {
-            $query->where('is_current', true);
-        });
+        )->where('esbtp_inscriptions.status', 'active');
     }
 
     /**

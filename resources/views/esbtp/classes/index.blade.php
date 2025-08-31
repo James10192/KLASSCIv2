@@ -44,6 +44,34 @@
             </div>
         @endif
 
+        <!-- Filtre année académique -->
+        <div class="card-moderne mb-lg">
+            <div class="p-lg">
+                <div class="section-title mb-md">
+                    <i class="fas fa-filter me-2"></i>Filtres d'analyse
+                </div>
+                <div style="display: flex; gap: var(--space-md); align-items: end;">
+                    <div style="flex: 1; max-width: 300px;">
+                        <label for="annee_academique" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Année Académique Courante</label>
+                        <select name="annee_academique" id="annee_academique" class="year-selector" style="width: 100%; background-color: #f8f9fa; cursor: not-allowed;" disabled>
+                            <option value="{{ $anneeAcademique }}" selected>
+                                {{ $anneeAcademique }} (Année en cours)
+                            </option>
+                        </select>
+                    </div>
+                    <button type="button" class="btn-acasi secondary" onclick="showYearChangeInfo()" title="Comment changer d'année ?">
+                        <i class="fas fa-info-circle"></i>Changer d'année
+                    </button>
+                </div>
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Les classes sont visibles pour toutes les années, mais les étudiants affichés correspondent à l'année courante.
+                    </small>
+                </div>
+            </div>
+        </div>
+
         <!-- Statistiques KPI -->
         <div class="kpi-grid">
             @php
@@ -246,3 +274,65 @@
 }
 </style>
 @endpush
+
+<!-- Modal pour les instructions de changement d'année -->
+<div class="modal fade" id="yearChangeModal" tabindex="-1" role="dialog" aria-labelledby="yearChangeModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="yearChangeModalLabel">Comment changer l'année académique ?</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="background: none; border: none; font-size: 1.5rem; font-weight: bold; color: #999; cursor: pointer;">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Pour consulter les données d'une autre année :</strong></p>
+                <ol style="padding-left: 20px; line-height: 1.6; margin: 15px 0;">
+                    <li><strong>Aller dans</strong> : Menu → Années Universitaires</li>
+                    <li><strong>Trouver l'année souhaitée</strong> (ex: 2023-2024)</li>
+                    <li><strong>Cliquer sur "Activer"</strong> pour la définir comme année courante</li>
+                    <li><strong>Revenir ici</strong> : Les étudiants affichés dans chaque classe se mettront à jour automatiquement</li>
+                </ol>
+                <hr style="margin: 15px 0;">
+                <p style="color: #6b7280; font-size: 14px;">
+                    <i class="fas fa-info-circle"></i> 
+                    <strong>Note :</strong> Seule une année peut être "courante" à la fois. 
+                    Changer l'année courante affecte l'affichage des étudiants dans toute l'application.
+                </p>
+                <div style="background: #f3f4f6; padding: 12px; border-radius: 6px; margin-top: 15px;">
+                    <strong>Exemple :</strong><br>
+                    • Année courante = 2024-2025 → Voir les étudiants inscrits en 2024-2025<br>
+                    • Année courante = 2023-2024 → Voir les étudiants inscrits en 2023-2024
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="$('#yearChangeModal').modal('hide');">Fermer</button>
+                <a href="{{ route('esbtp.annees-universitaires.index') }}" target="_blank" class="btn btn-primary">
+                    <i class="fas fa-external-link-alt"></i> Aller aux Années
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+function showYearChangeInfo() {
+    $('#yearChangeModal').modal('show');
+}
+
+// Gérer la fermeture de la modal d'info année
+$(document).ready(function() {
+    // Gérer la fermeture avec le bouton X
+    $('#yearChangeModal .close[data-dismiss="modal"]').on('click', function() {
+        $('#yearChangeModal').modal('hide');
+    });
+    
+    // Gérer la fermeture avec le bouton Fermer
+    $('#yearChangeModal button[data-dismiss="modal"]').on('click', function() {
+        $('#yearChangeModal').modal('hide');
+    });
+});
+</script>

@@ -40,7 +40,12 @@
       "Bash(curl:*)",
       "WebFetch(domain:localhost)",
       "WebFetch(domain:localhost)",
-      "WebFetch(domain:fr.scribd.com)"
+      "WebFetch(domain:fr.scribd.com)",
+      "Bash(sed:*)",
+      "Bash(mysql:*)",
+      "Bash(python3:*)",
+      "Bash(timeout:*)",
+      "Bash(rg:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

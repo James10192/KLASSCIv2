@@ -24,7 +24,7 @@ class CreateEsbtpOptionAssignmentsTable extends Migration
             
             // Index et clés étrangères
             $table->index(['option_id', 'filiere_id', 'niveau_id']);
-            $table->foreign('option_id')->references('id')->on('esbtp_frais_variants')->onDelete('cascade');
+            $table->foreign('option_id')->references('id')->on('esbtp_frais_options')->onDelete('cascade');
             $table->foreign('filiere_id')->references('id')->on('esbtp_filieres')->onDelete('cascade');
             $table->foreign('niveau_id')->references('id')->on('esbtp_niveau_etudes')->onDelete('cascade');
             

@@ -155,7 +155,7 @@ class ESBTPInscriptionWorkflowHistory extends Model
             'creation' => 'blue',
             'validation' => 'green',
             'rejet' => 'red',
-            'creation_etudiant' => 'purple',
+            'creation_etudiant' => 'primary',
             'modification' => 'yellow',
             'annulation' => 'red',
             'reactivation' => 'green',

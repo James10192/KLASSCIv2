@@ -404,7 +404,7 @@
         margin-bottom: var(--space-md);
     }
     
-    .action-icon.calendar { background: linear-gradient(135deg, #8b5cf6, #a78bfa); }
+    .action-icon.calendar { background: linear-gradient(135deg, #5e91de, #0453cb); }
     .action-icon.chart { background: linear-gradient(135deg, #06b6d4, #67e8f9); }
     .action-icon.users { background: linear-gradient(135deg, #f59e0b, #fbbf24); }
     .action-icon.settings { background: linear-gradient(135deg, #ef4444, #f87171); }

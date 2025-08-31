@@ -14,16 +14,20 @@ class AlignEsbtpFactureDetailsStructure extends Migration
     public function up()
     {
         Schema::table('esbtp_facture_details', function (Blueprint $table) {
-            // Ajouter la colonne prix_unitaire
-            $table->decimal('prix_unitaire', 10, 2)->after('description');
+            // Ajouter la colonne prix_unitaire si elle n'existe pas
+            if (!Schema::hasColumn('esbtp_facture_details', 'prix_unitaire')) {
+                $table->decimal('prix_unitaire', 10, 2)->after('description');
+            }
 
-            // Renommer designation en description si la colonne existe
-            if (Schema::hasColumn('esbtp_facture_details', 'designation')) {
+            // Renommer designation en description si la colonne existe ET si description n'existe pas déjà
+            if (Schema::hasColumn('esbtp_facture_details', 'designation') && 
+                !Schema::hasColumn('esbtp_facture_details', 'description')) {
                 $table->renameColumn('designation', 'description');
             }
 
-            // Renommer total_ligne en montant si la colonne existe
-            if (Schema::hasColumn('esbtp_facture_details', 'total_ligne')) {
+            // Renommer total_ligne en montant si la colonne existe ET si montant n'existe pas déjà
+            if (Schema::hasColumn('esbtp_facture_details', 'total_ligne') && 
+                !Schema::hasColumn('esbtp_facture_details', 'montant')) {
                 $table->renameColumn('total_ligne', 'montant');
             }
         });

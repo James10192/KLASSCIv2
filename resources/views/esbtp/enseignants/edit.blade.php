@@ -306,7 +306,7 @@
     
     /* Header principal amélioré */
     .main-header {
-        background: linear-gradient(135deg, #1e40af, #3730a3);
+        background: linear-gradient(135deg, #0453cb, #1b64d4);
         color: white;
         padding: var(--space-xl);
         border-radius: var(--radius-large);

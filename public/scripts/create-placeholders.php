@@ -17,7 +17,7 @@ $imagesToCheck = [
         'width' => 800,
         'height' => 600,
         'text' => 'Admin & Directeurs',
-        'bg_color' => '#6366f1',
+        'bg_color' => '#0453cb',
         'text_color' => '#ffffff'
     ],
     'teacher-image.png' => [
@@ -39,7 +39,7 @@ $imagesToCheck = [
         'height' => 70,
         'text' => 'KLASSCI',
         'bg_color' => '#ffffff',
-        'text_color' => '#6366f1'
+        'text_color' => '#0453cb'
     ],
     'login_bg.jpg' => [
         'width' => 1920,

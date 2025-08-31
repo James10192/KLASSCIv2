@@ -191,6 +191,23 @@
     .section-header .section-actions {
         margin-left: auto;
     }
+    
+    .file-upload-area {
+        border: 2px dashed var(--border);
+        border-radius: var(--border-radius);
+        padding: var(--space-md);
+        text-align: center;
+        transition: all 0.3s ease;
+    }
+    
+    .file-upload-area:hover {
+        border-color: var(--primary);
+        background-color: var(--light);
+    }
+    
+    .current-logo {
+        text-align: center;
+    }
 </style>
 @endpush
 
@@ -346,13 +363,38 @@
 
                     <div class="form-group">
                         <label class="form-label-modern">
+                            <i class="fas fa-image text-primary"></i>
+                            Logo de l'établissement
+                        </label>
+                        <div class="file-upload-area">
+                            @if(\App\Helpers\SettingsHelper::get('school_logo', ''))
+                                <div class="current-logo mb-2">
+                                    <img src="{{ asset('storage/' . \App\Helpers\SettingsHelper::get('school_logo', '')) }}" 
+                                         alt="Logo actuel" style="max-height: 80px;" class="img-thumbnail">
+                                    <p class="text-muted small">Logo actuel</p>
+                                </div>
+                            @endif
+                            <input type="file" class="form-control form-control-modern"
+                                   name="setting_school_logo"
+                                   accept="image/*"
+                                   onchange="previewLogo(this)">
+                            <small class="text-muted">Formats acceptés: PNG, JPG, GIF (max 2MB)</small>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">
                             <i class="fas fa-university text-primary"></i>
-                            Nom école personnalisé
+                            Nom pour les bulletins
                         </label>
                         <input type="text" class="form-control form-control-modern"
                                name="bulletin_school_name_custom"
                                value="{{ \App\Helpers\SettingsHelper::get('bulletin_school_name_custom', '') }}"
-                               placeholder="Laissez vide pour utiliser le nom par défaut">
+                               placeholder="Laissez vide pour utiliser le nom de l'établissement">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle"></i>
+                            Ce nom apparaîtra sur les bulletins. Si vide, utilisera le nom de l'établissement défini ci-dessus.
+                        </small>
                     </div>
 
                     <div class="form-group">
@@ -801,6 +843,40 @@ function toggleSectionCheckboxes(sectionId, state) {
     setTimeout(() => {
         section.style.transform = 'scale(1)';
     }, 300);
+}
+
+// Fonction pour prévisualiser le logo avant upload
+function previewLogo(input) {
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        
+        // Vérifier la taille (2MB max)
+        if (file.size > 2 * 1024 * 1024) {
+            alert('Le fichier est trop volumineux (max 2MB)');
+            input.value = '';
+            return;
+        }
+        
+        // Créer une prévisualisation
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            // Trouver ou créer la div de prévisualisation
+            let previewDiv = input.parentNode.querySelector('.logo-preview');
+            if (!previewDiv) {
+                previewDiv = document.createElement('div');
+                previewDiv.className = 'logo-preview mt-2';
+                input.parentNode.insertBefore(previewDiv, input.nextSibling);
+            }
+            
+            previewDiv.innerHTML = `
+                <div class="text-center">
+                    <img src="${e.target.result}" alt="Aperçu" style="max-height: 80px;" class="img-thumbnail">
+                    <p class="text-success small"><i class="fas fa-eye"></i> Aperçu - Cliquez sur Sauvegarder pour confirmer</p>
+                </div>
+            `;
+        };
+        reader.readAsDataURL(file);
+    }
 }
 </script>
 @endpush

@@ -283,8 +283,8 @@
         background-color: rgba(13, 110, 253, 0.1);
     }
 
-    .bg-light-purple {
-        background-color: rgba(111, 66, 193, 0.1);
+    .bg-light-primary {
+        background-color: rgba(4, 83, 203, 0.1);
     }
 
     .hover-shadow:hover {

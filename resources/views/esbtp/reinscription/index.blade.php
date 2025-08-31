@@ -51,24 +51,43 @@
                 <div class="section-title mb-md">
                     <i class="fas fa-filter me-2"></i>Filtres d'analyse
                 </div>
-                <form method="GET" style="display: flex; gap: var(--space-md); align-items: end;">
+                <div style="display: flex; gap: var(--space-md); align-items: end;">
                     <div style="flex: 1; max-width: 300px;">
-                        <label for="annee_academique" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Année Académique</label>
-                        <select name="annee_academique" id="annee_academique" class="year-selector" style="width: 100%;">
-                            <option value="{{ date('Y') . '-' . (date('Y') + 1) }}" 
-                                    {{ $anneeAcademique == date('Y') . '-' . (date('Y') + 1) ? 'selected' : '' }}>
-                                {{ date('Y') . '-' . (date('Y') + 1) }}
-                            </option>
-                            <option value="{{ (date('Y') - 1) . '-' . date('Y') }}" 
-                                    {{ $anneeAcademique == (date('Y') - 1) . '-' . date('Y') ? 'selected' : '' }}>
-                                {{ (date('Y') - 1) . '-' . date('Y') }}
+                        <label for="annee_academique" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Année Académique Courante</label>
+                        <select name="annee_academique" id="annee_academique" class="year-selector" style="width: 100%; background-color: #f8f9fa; cursor: not-allowed;" disabled>
+                            <option value="{{ $anneeAcademique }}" selected>
+                                {{ $anneeAcademique }} (Année en cours)
                             </option>
                         </select>
                     </div>
-                    <button type="submit" class="btn-acasi primary">
-                        <i class="fas fa-search"></i>Analyser
+                    <button type="button" class="btn-acasi secondary" onclick="showYearChangeInfo()" title="Comment changer d'année ?">
+                        <i class="fas fa-info-circle"></i>Changer d'année
                     </button>
-                </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Information sur le nouveau système de réinscription -->
+        <div class="card-moderne mb-lg">
+            <div class="p-lg">
+                <div class="alert alert-info">
+                    <div class="d-flex align-items-start">
+                        <i class="fas fa-info-circle me-3 mt-1" style="color: var(--primary);"></i>
+                        <div>
+                            <h6 class="mb-2" style="color: var(--primary);">Nouveau Système de Réinscription</h6>
+                            <p class="mb-2">
+                                <strong>Principe :</strong> Chaque réinscription crée une <strong>nouvelle inscription</strong> pour la nouvelle année universitaire 
+                                avec recalcul complet des frais selon la nouvelle classe assignée.
+                            </p>
+                            <ul class="mb-0" style="padding-left: 20px;">
+                                <li><strong>Condition requise :</strong> L'étudiant doit être <strong>entièrement soldé</strong> (100%) avant de pouvoir se réinscrire</li>
+                                <li><strong>Historique préservé :</strong> Les anciennes inscriptions restent visibles dans le profil étudiant</li>
+                                <li><strong>Nouveaux frais :</strong> Possibilité de sélectionner de nouveaux frais optionnels lors de la réinscription</li>
+                                <li><strong>Facture automatique :</strong> Une nouvelle facture est générée automatiquement pour la nouvelle inscription</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -261,7 +280,7 @@
                                     <td>
                                         <div class="action-buttons">
                                             <button class="btn-acasi small warning" 
-                                                    onclick="marquerAbandon({{ $analyse['etudiant']->id }})" 
+                                                    onclick="marquerAbandonModal({{ $analyse['etudiant']->id }})" 
                                                     title="Marquer abandon">
                                                 <i class="fas fa-user-times"></i>
                                             </button>
@@ -442,6 +461,80 @@
     </div>
 </div>
 
+<!-- Modal pour les instructions de changement d'année -->
+<div class="modal fade" id="yearChangeModal" tabindex="-1" role="dialog" aria-labelledby="yearChangeModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="yearChangeModalLabel">Comment changer l'année académique ?</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="background: none; border: none; font-size: 1.5rem; font-weight: bold; color: #999; cursor: pointer;">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Pour consulter les données d'une autre année :</strong></p>
+                <ol style="padding-left: 20px; line-height: 1.6; margin: 15px 0;">
+                    <li><strong>Aller dans</strong> : Menu → Années Universitaires</li>
+                    <li><strong>Trouver l'année souhaitée</strong> (ex: 2024-2025)</li>
+                    <li><strong>Cliquer sur "Activer"</strong> pour la définir comme année courante</li>
+                    <li><strong>Revenir ici</strong> : Les données se mettront à jour automatiquement</li>
+                </ol>
+                <hr style="margin: 15px 0;">
+                <p style="color: #6b7280; font-size: 14px;">
+                    <i class="fas fa-info-circle"></i> 
+                    <strong>Note :</strong> Seule une année peut être "courante" à la fois. 
+                    Changer l'année courante affecte toute l'application.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="$('#yearChangeModal').modal('hide');">Fermer</button>
+                <a href="{{ route('esbtp.annees-universitaires.index') }}" target="_blank" class="btn btn-primary">
+                    <i class="fas fa-external-link-alt"></i> Aller aux Années
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal pour choisir le type d'abandon -->
+<div class="modal fade" id="abandonModal" tabindex="-1" role="dialog" aria-labelledby="abandonModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="abandonModalLabel">Marquer l'étudiant comme ayant abandonné</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="background: none; border: none; font-size: 1.5rem; font-weight: bold; color: #999; cursor: pointer;">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="abandonForm">
+                    <div class="form-group">
+                        <label for="abandonType"><strong>Type d'abandon *</strong></label>
+                        <select class="form-control" id="abandonType" name="abandon_type" required>
+                            <option value="">-- Choisir le type d'abandon --</option>
+                            <option value="annee_scolaire">Abandon de l'année scolaire</option>
+                            <option value="ecole">Abandon de l'école</option>
+                        </select>
+                        <small class="form-text text-muted">
+                            <strong>Année scolaire :</strong> L'étudiant n'a pas soldé ses frais, ne vient plus en cours<br>
+                            <strong>École :</strong> L'étudiant a fini son année mais quitte l'établissement
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <label for="motifAbandon">Motif (optionnel)</label>
+                        <textarea class="form-control" id="motifAbandon" name="motif_abandon" rows="3" 
+                                  placeholder="Précisez le motif de l'abandon..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="$('#abandonModal').modal('hide');">Annuler</button>
+                <button type="button" class="btn btn-danger" id="confirmerAbandon">Confirmer l'abandon</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -492,6 +585,75 @@ function exportResults() {
         });
 }
 
+// Variable globale pour stocker l'ID de l'étudiant en cours de traitement
+let currentEtudiantId = null;
+
+function marquerAbandonModal(etudiantId) {
+    currentEtudiantId = etudiantId;
+    $('#abandonModal').modal('show');
+}
+
+// Gestionnaire pour le bouton de confirmation dans la modal
+$(document).ready(function() {
+    $('#confirmerAbandon').on('click', function() {
+        const abandonType = $('#abandonType').val();
+        const motif = $('#motifAbandon').val();
+        
+        if (!abandonType) {
+            alert('Veuillez choisir un type d\'abandon');
+            return;
+        }
+        
+        if (!currentEtudiantId) {
+            alert('Erreur: ID étudiant manquant');
+            return;
+        }
+        
+        // Envoyer la requête AJAX
+        fetch(`{{ url('esbtp/reinscription') }}/${currentEtudiantId}/abandon`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({
+                motif_abandon: motif,
+                abandon_type: abandonType
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            $('#abandonModal').modal('hide');
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('Erreur: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Erreur lors de l\'enregistrement de l\'abandon');
+        });
+    });
+    
+    // Gérer la fermeture de la modal avec le bouton X
+    $('.close[data-dismiss="modal"]').on('click', function() {
+        $('#abandonModal').modal('hide');
+    });
+    
+    // Gérer la fermeture avec le bouton Annuler
+    $('button[data-dismiss="modal"]').on('click', function() {
+        $('#abandonModal').modal('hide');
+    });
+    
+    // Réinitialiser le formulaire quand la modal se ferme
+    $('#abandonModal').on('hidden.bs.modal', function () {
+        $('#abandonForm')[0].reset();
+        currentEtudiantId = null;
+    });
+});
+
 function restaurerEtudiant(etudiantId) {
     if (confirm('Êtes-vous sûr de vouloir restaurer cet étudiant ? Il repassera au statut actif.')) {
         fetch(`{{ url('esbtp/reinscription') }}/${etudiantId}/restaurer`, {
@@ -516,5 +678,24 @@ function restaurerEtudiant(etudiantId) {
         });
     }
 }
+
+function showYearChangeInfo() {
+    $('#yearChangeModal').modal('show');
+}
+
+// Gérer la fermeture de la modal d'info année
+$(document).ready(function() {
+    // Gérer la fermeture avec le bouton X
+    $('#yearChangeModal .close[data-dismiss="modal"]').on('click', function() {
+        $('#yearChangeModal').modal('hide');
+    });
+    
+    // Gérer la fermeture avec le bouton Fermer
+    $('#yearChangeModal button[data-dismiss="modal"]').on('click', function() {
+        $('#yearChangeModal').modal('hide');
+    });
+});
 </script>
+
+
 @endsection

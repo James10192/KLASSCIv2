@@ -95,8 +95,8 @@
     }
 
     .info-card.generator .info-icon {
-        background: rgba(139, 92, 246, 0.1);
-        color: #8b5cf6;
+        background: rgba(4, 83, 203, 0.1);
+        color: #0453cb;
     }
 
     .info-card.type .info-icon {

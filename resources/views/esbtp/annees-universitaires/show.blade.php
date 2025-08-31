@@ -133,7 +133,7 @@
                         </div>
                         
                         @if($anneesUniversitaire->inscriptions->count() > 0)
-                            <div class="d-grid gap-2">
+                            <div class="d-flex justify-content-end">
                                 <a href="{{ route('esbtp.inscriptions.index', ['annee_universitaire_id' => $anneesUniversitaire->id]) }}" class="btn-acasi primary">
                                     <i class="fas fa-list"></i>Voir toutes les inscriptions ({{ $anneesUniversitaire->inscriptions->count() }})
                                 </a>
@@ -165,8 +165,8 @@
                             </p>
                         </div>
                     </div>
-                    <div class="col-md-4 d-flex align-items-center">
-                        <button type="button" class="btn-acasi danger w-100" data-bs-toggle="modal" data-bs-target="#deleteModal" {{ $anneesUniversitaire->inscriptions->count() > 0 ? 'disabled' : '' }}>
+                    <div class="col-md-4 d-flex align-items-center justify-content-end">
+                        <button type="button" class="btn-acasi danger" data-bs-toggle="modal" data-bs-target="#deleteModal" {{ $anneesUniversitaire->inscriptions->count() > 0 ? 'disabled' : '' }}>
                             <i class="fas fa-trash"></i>Supprimer cette année
                         </button>
                     </div>

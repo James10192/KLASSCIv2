@@ -55,9 +55,9 @@ class ESBTPBulletinController extends Controller
             'school_name' => SettingsHelper::get('school_name', 'École Spéciale du Bâtiment et des Travaux Publics'),
             'school_type' => SettingsHelper::get('school_type', 'Enseignement Supérieur Technique'),
             'school_authorization' => SettingsHelper::get('school_authorization_number', ''),
-            'school_address' => SettingsHelper::get('school_address', 'BP 04 BP 1234 Abidjan 04'),
-            'school_phone' => SettingsHelper::get('school_phone', '00 00 00 00'),
-            'school_email' => SettingsHelper::get('school_email', 'contact@esbtp-yakro.com'),
+            'school_address' => SettingsHelper::get('school_address', ''),
+            'school_phone' => SettingsHelper::get('school_phone', ''),
+            'school_email' => SettingsHelper::get('school_email', ''),
             'school_website' => SettingsHelper::get('school_website', ''),
             'school_city' => SettingsHelper::get('school_city', 'Yamoussoukro'),
             'school_country' => SettingsHelper::get('school_country', 'Côte d\'Ivoire'),
@@ -79,7 +79,7 @@ class ESBTPBulletinController extends Controller
             'pdf_footer_text' => SettingsHelper::get('pdf.footer_text', ''),
 
             // Logo
-            'school_logo' => SettingsHelper::get('establishment.logo', 'images/esbtp_logo.png'),
+            'school_logo' => SettingsHelper::get('school_logo', ''),
             
             // Configuration bulletin spécifique
             'bulletin_font_size' => SettingsHelper::get('bulletin_font_size', '11'),
@@ -147,14 +147,24 @@ class ESBTPBulletinController extends Controller
      */
     private function prepareLogoBase64($logoPath)
     {
-        // Essayer d'abord le chemin depuis les settings
-        $fullPath = public_path($logoPath);
-
-        if (file_exists($fullPath)) {
-            $logoType = pathinfo($fullPath, PATHINFO_EXTENSION);
-            $logoData = file_get_contents($fullPath);
-            Log::info('Logo chargé avec succès depuis: ' . $fullPath);
-            return 'data:image/' . $logoType . ';base64,' . base64_encode($logoData);
+        // Essayer d'abord le chemin depuis storage (logos uploadés)
+        if ($logoPath) {
+            $storagePath = storage_path('app/public/' . $logoPath);
+            if (file_exists($storagePath)) {
+                $logoType = pathinfo($storagePath, PATHINFO_EXTENSION);
+                $logoData = file_get_contents($storagePath);
+                Log::info('Logo uploadé chargé avec succès depuis: ' . $storagePath);
+                return 'data:image/' . $logoType . ';base64,' . base64_encode($logoData);
+            }
+            
+            // Essayer aussi dans public/ pour compatibilité
+            $publicPath = public_path($logoPath);
+            if (file_exists($publicPath)) {
+                $logoType = pathinfo($publicPath, PATHINFO_EXTENSION);
+                $logoData = file_get_contents($publicPath);
+                Log::info('Logo public chargé avec succès depuis: ' . $publicPath);
+                return 'data:image/' . $logoType . ';base64,' . base64_encode($logoData);
+            }
         }
 
         // Essayer les chemins alternatifs
@@ -175,7 +185,7 @@ class ESBTPBulletinController extends Controller
             }
         }
 
-        Log::warning('Aucun logo trouvé pour le chemin: ' . $logoPath);
+        Log::warning('Aucun logo trouvé pour le chemin: ' . $logoPath . '. Chemins testés: storage et public + alternatives');
         return null;
     }
 
@@ -818,7 +828,8 @@ class ESBTPBulletinController extends Controller
             $config = $this->getPDFConfig();
 
             // Récupérer tous les paramètres de configuration pour le template pdf-configurable
-            $settings = [
+            $settings = $this->getPDFConfig(); // Utiliser la méthode centralisée
+            /*$settings = [
                 // Configuration de base
                 'bulletin_font_size' => \App\Helpers\SettingsHelper::get('bulletin_font_size', '11'),
                 'bulletin_show_logo' => \App\Helpers\SettingsHelper::get('bulletin_show_logo', '1'),
@@ -891,7 +902,7 @@ class ESBTPBulletinController extends Controller
                 'bulletin_show_signature' => \App\Helpers\SettingsHelper::get('bulletin_show_signature', '1'),
                 'bulletin_show_director_signature' => \App\Helpers\SettingsHelper::get('bulletin_show_director_signature', '1'),
                 'bulletin_show_print_button' => \App\Helpers\SettingsHelper::get('bulletin_show_print_button', '1'),
-            ];
+            ];*/
 
             $data = [
                 'bulletin' => $bulletin,
@@ -2821,6 +2832,49 @@ class ESBTPBulletinController extends Controller
             $classe = ESBTPClasse::with(['filiere', 'niveauEtude'])->findOrFail($request->classe_id);
             $anneeUniversitaire = ESBTPAnneeUniversitaire::findOrFail($request->annee_universitaire_id);
             $periode = 'semestre1'; // Par défaut
+            
+            // Récupérer le bulletin pour obtenir les professeurs configurés
+            $bulletin = ESBTPBulletin::where('etudiant_id', $etudiantId)
+                ->where('classe_id', $request->classe_id)
+                ->where('periode', $periode)
+                ->where('annee_universitaire_id', $request->annee_universitaire_id)
+                ->first();
+
+            // VÉRIFICATION OBLIGATOIRE : S'assurer que la configuration existe
+            if (!$bulletin || !$bulletin->config_matieres || !$bulletin->professeurs) {
+                $configMatieresUrl = route('esbtp.bulletins.config-matieres', [
+                    'classe_id' => $request->classe_id,
+                    'periode' => $periode,
+                    'annee_universitaire_id' => $request->annee_universitaire_id,
+                    'bulletin' => $etudiantId
+                ]);
+                
+                $message = 'Configuration bulletin manquante. ';
+                if (!$bulletin || !$bulletin->config_matieres) {
+                    $message .= 'Veuillez d\'abord configurer les matières et ';
+                }
+                if (!$bulletin || !$bulletin->professeurs) {
+                    $message .= 'les professeurs ';
+                }
+                $message .= 'avant de prévisualiser le bulletin.';
+                
+                return redirect($configMatieresUrl)->with('error', $message);
+            }
+
+            // Vérifier que la configuration n'est pas vide
+            $configMatieres = json_decode($bulletin->config_matieres, true);
+            $professeursConfigures = json_decode($bulletin->professeurs, true);
+            
+            if (empty($configMatieres['generales']) && empty($configMatieres['techniques'])) {
+                $configMatieresUrl = route('esbtp.bulletins.config-matieres', [
+                    'classe_id' => $request->classe_id,
+                    'periode' => $periode,
+                    'annee_universitaire_id' => $request->annee_universitaire_id,
+                    'bulletin' => $etudiantId
+                ]);
+                
+                return redirect($configMatieresUrl)->with('error', 'Aucune matière n\'est configurée pour ce bulletin. Veuillez configurer au moins une matière.');
+            }
 
             // Récupérer seulement les matières qui ont des évaluations avec notes pour cet étudiant
             $notesAvecEvaluations = ESBTPNote::where('etudiant_id', $etudiant->id)
@@ -2833,7 +2887,12 @@ class ESBTPBulletinController extends Controller
 
             // Créer des résultats par matière (comme dans l'ancien système)
             $resultatsParMatiere = [];
-            $professeursParDefaut = $this->getProfesseursParDefaut();
+            
+            // Récupérer les professeurs et configuration matières depuis le bulletin
+            // (On sait maintenant qu'ils existent grâce à la vérification ci-dessus)
+            $professeursConfigures = json_decode($bulletin->professeurs, true) ?: [];
+            $configMatieres = json_decode($bulletin->config_matieres, true) ?: ['generales' => [], 'techniques' => []];
+            
             $professeurs = [];
 
             foreach ($notesAvecEvaluations as $note) {
@@ -2842,6 +2901,17 @@ class ESBTPBulletinController extends Controller
                     $matiereId = $matiere->id;
 
                     if (!isset($resultatsParMatiere[$matiereId])) {
+                        // Déterminer le type de formation selon la configuration du bulletin uniquement
+                        if (in_array($matiereId, $configMatieres['generales'] ?? [])) {
+                            $typeFormation = 'generale';
+                        } elseif (in_array($matiereId, $configMatieres['techniques'] ?? [])) {
+                            $typeFormation = 'technologique_professionnelle';
+                        } else {
+                            // Cette matière n'est pas configurée, on ne devrait pas arriver ici
+                            // grâce aux vérifications précédentes
+                            $typeFormation = 'generale';
+                        }
+                        
                         $resultatsParMatiere[$matiereId] = (object)[
                             'id' => $matiereId,
                             'matiere_id' => $matiereId,
@@ -2851,7 +2921,7 @@ class ESBTPBulletinController extends Controller
                             'coefficient' => $this->getCoefficient($matiere),
                             'rang' => '-',
                             'appreciation' => '',
-                            'type_formation' => $matiere->type_formation ?? 'generale'
+                            'type_formation' => $typeFormation
                         ];
                     }
 
@@ -2860,13 +2930,8 @@ class ESBTPBulletinController extends Controller
                         'coefficient' => $note->evaluation->coefficient
                     ];
 
-                    // Associer le professeur par nom de matière
-                    $matiereName = $matiere->name;
-                    if (isset($professeursParDefaut[$matiereName])) {
-                        $professeurs[$matiereId] = $professeursParDefaut[$matiereName];
-                    } else {
-                        $professeurs[$matiereId] = 'M./Mme';
-                    }
+                    // Utiliser uniquement les professeurs configurés (pas de fallback par défaut)
+                    $professeurs[$matiereId] = $professeursConfigures[$matiereId] ?? '';
                 }
             }
 
@@ -3122,58 +3187,45 @@ class ESBTPBulletinController extends Controller
                 ->where('annee_universitaire_id', $annee_universitaire_id)
                 ->first();
 
-            // VÉRIFICATION 2: Vérifier la configuration des matières
-            $configMatieresExiste = ESBTPConfigMatiere::where([
-                'classe_id' => $classe_id,
-                'periode' => $periode,
-                'annee_universitaire_id' => $annee_universitaire_id
-            ])->exists();
-
-            if (!$configMatieresExiste) {
-                // Rediriger vers la configuration des matières
-                $url = "/esbtp-special/bulletins/config-matieres?" . http_build_query([
-                    'etudiant_id' => $etudiant_id,
+            // VÉRIFICATION OBLIGATOIRE : S'assurer que la configuration bulletin existe
+            if (!$bulletin || !$bulletin->config_matieres || !$bulletin->professeurs) {
+                $configMatieresUrl = route('esbtp.bulletins.config-matieres', [
                     'classe_id' => $classe_id,
                     'periode' => $periode,
-                    'annee_universitaire_id' => $annee_universitaire_id
+                    'annee_universitaire_id' => $annee_universitaire_id,
+                    'bulletin' => $etudiant_id
                 ]);
-                return redirect()->to($url)->with('error', 'La configuration des matières n\'a pas été effectuée. Veuillez d\'abord configurer les matières.');
-            }
-
-            // VÉRIFICATION 3: Vérifier l'existence des professeurs pour le bulletin
-            $professeursManquants = false;
-
-            if ($bulletin) {
-                // Si le bulletin existe, vérifier que la colonne 'professeurs' n'est pas null
-                if ($bulletin->professeurs === null) {
-                    $professeursManquants = true;
+                
+                $message = 'Configuration bulletin manquante pour la génération PDF. ';
+                if (!$bulletin || !$bulletin->config_matieres) {
+                    $message .= 'Veuillez d\'abord configurer les matières et ';
                 }
-            } else {
-                // Si le bulletin n'existe pas, considérer les professeurs comme manquants
-                $professeursManquants = true;
+                if (!$bulletin || !$bulletin->professeurs) {
+                    $message .= 'les professeurs ';
+                }
+                $message .= 'avant de générer le bulletin PDF.';
+                
+                return redirect($configMatieresUrl)->with('error', $message);
             }
 
-            if ($professeursManquants) {
-                // Rediriger vers l'édition des professeurs
-                $url = "/esbtp-special/bulletins/edit-professeurs?" . http_build_query([
-                    'etudiant_id' => $etudiant_id,
+            // Vérifier que la configuration n'est pas vide
+            $configMatieres = json_decode($bulletin->config_matieres, true);
+            $professeursConfigures = json_decode($bulletin->professeurs, true);
+            
+            if (empty($configMatieres['generales']) && empty($configMatieres['techniques'])) {
+                $configMatieresUrl = route('esbtp.bulletins.config-matieres', [
                     'classe_id' => $classe_id,
                     'periode' => $periode,
-                    'annee_universitaire_id' => $annee_universitaire_id
+                    'annee_universitaire_id' => $annee_universitaire_id,
+                    'bulletin' => $etudiant_id
                 ]);
-                return redirect()->to($url)->with('error', 'Les professeurs n\'ont pas été assignés. Veuillez d\'abord assigner les professeurs.');
+                
+                return redirect($configMatieresUrl)->with('error', 'Aucune matière n\'est configurée pour ce bulletin. Veuillez configurer au moins une matière avant la génération PDF.');
             }
 
-            // Si le bulletin n'existe pas, créer un objet temporaire
-            if (!$bulletin) {
-                $bulletin = new \stdClass();
-                $bulletin->etudiant_id = $etudiant_id;
-                $bulletin->classe_id = $classe_id;
-                $bulletin->periode = $periode;
-                $bulletin->annee_universitaire_id = $annee_universitaire_id;
-                $bulletin->rang = 'N/A'; // Initialiser avec une valeur par défaut
-                $bulletin->appreciation = 'N/A'; // Initialiser avec une valeur par défaut
-            }
+            // Les vérifications OBLIGATOIRES ont été faites ci-dessus
+            // Configuration matières et professeurs sont garantis d'exister
+            // Le bulletin existe forcément grâce aux vérifications
 
             // Récupérer les entités liées
             $classe = ESBTPClasse::findOrFail($classe_id);
@@ -3502,7 +3554,8 @@ class ESBTPBulletinController extends Controller
             $noteAssiduite = $this->calculerNoteAssiduite($absencesJustifiees, $absencesNonJustifiees);
 
             // Récupérer tous les paramètres de configuration pour le template pdf-configurable
-            $settings = [
+            $settings = $this->getPDFConfig(); // Utiliser la méthode centralisée
+            /*$settings = [
                 // Configuration de base
                 'bulletin_font_size' => \App\Helpers\SettingsHelper::get('bulletin_font_size', '11'),
                 'bulletin_show_logo' => \App\Helpers\SettingsHelper::get('bulletin_show_logo', '1'),
@@ -3575,7 +3628,7 @@ class ESBTPBulletinController extends Controller
                 'bulletin_show_signature' => \App\Helpers\SettingsHelper::get('bulletin_show_signature', '1'),
                 'bulletin_show_director_signature' => \App\Helpers\SettingsHelper::get('bulletin_show_director_signature', '1'),
                 'bulletin_show_print_button' => \App\Helpers\SettingsHelper::get('bulletin_show_print_button', '1'),
-            ];
+            ];*/
 
             // Préparation des données pour la vue
             $data = [
@@ -3609,6 +3662,7 @@ class ESBTPBulletinController extends Controller
                 'plus_faible_moyenne' => $plusFaibleMoyenne,
                 'moyenne_classe' => $moyenneClasse,
                 'appreciation' => $this->getMention($moyenneGenerale),
+                'logoBase64' => $logoBase64, // Ajouter le logo base64
                 'settings' => $settings, // Ajouter tous les paramètres de configuration
             ];
 
