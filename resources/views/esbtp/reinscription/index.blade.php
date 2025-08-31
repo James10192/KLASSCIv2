@@ -382,7 +382,7 @@
                 <div class="tab-content" id="myTabContent">
                 <!-- Onglet Passages -->
                 <div class="tab-pane fade" id="passages" role="tabpanel" data-category="passages">
-                    <div class="reinscription-spinner hidden">
+                    <div class="reinscription-spinner">
                         <div class="reinscription-spinner-icon">
                             <i class="fas fa-spinner"></i>
                         </div>
@@ -393,7 +393,7 @@
 
                 <!-- Onglet Rattrapages -->
                 <div class="tab-pane fade" id="rattrapages" role="tabpanel" data-category="rattrapages">
-                    <div class="reinscription-spinner hidden">
+                    <div class="reinscription-spinner">
                         <div class="reinscription-spinner-icon">
                             <i class="fas fa-spinner"></i>
                         </div>
@@ -404,7 +404,7 @@
 
                 <!-- Onglet Redoublements -->
                 <div class="tab-pane fade" id="redoublements" role="tabpanel" data-category="redoublements">
-                    <div class="reinscription-spinner hidden">
+                    <div class="reinscription-spinner">
                         <div class="reinscription-spinner-icon">
                             <i class="fas fa-spinner"></i>
                         </div>
@@ -416,7 +416,7 @@
                 <!-- Onglet Validés -->
                 @if(($statistiques['valides'] ?? 0) > 0)
                 <div class="tab-pane fade" id="valides" role="tabpanel" data-category="valides">
-                    <div class="reinscription-spinner hidden">
+                    <div class="reinscription-spinner">
                         <div class="reinscription-spinner-icon">
                             <i class="fas fa-spinner"></i>
                         </div>
@@ -429,7 +429,7 @@
                 <!-- Onglet Abandons Année -->
                 @if(($statistiques['abandons_annee'] ?? 0) > 0)
                 <div class="tab-pane fade" id="abandons-annee" role="tabpanel" data-category="abandons_annee">
-                    <div class="reinscription-spinner hidden">
+                    <div class="reinscription-spinner">
                         <div class="reinscription-spinner-icon">
                             <i class="fas fa-spinner"></i>
                         </div>
@@ -442,7 +442,7 @@
                 <!-- Onglet Abandons École -->
                 @if(($statistiques['abandons_ecole'] ?? 0) > 0)
                 <div class="tab-pane fade" id="abandons-ecole" role="tabpanel" data-category="abandons_ecole">
-                    <div class="reinscription-spinner hidden">
+                    <div class="reinscription-spinner">
                         <div class="reinscription-spinner-icon">
                             <i class="fas fa-spinner"></i>
                         </div>
@@ -455,7 +455,7 @@
                 <!-- Onglet Erreurs -->
                 @if(($statistiques['errors'] ?? 0) > 0)
                 <div class="tab-pane fade" id="errors" role="tabpanel" data-category="errors">
-                    <div class="reinscription-spinner hidden">
+                    <div class="reinscription-spinner">
                         <div class="reinscription-spinner-icon">
                             <i class="fas fa-spinner"></i>
                         </div>
@@ -555,20 +555,53 @@ $(document).ready(function() {
         tabLink.addClass('active');
         tabPane.addClass('show active');
         
+        // Cacher le spinner de cette catégorie car elle va être chargée
+        const maxTabPane = $(`#${maxCategory}`);
+        const maxSpinner = maxTabPane.find('.reinscription-spinner');
+        maxSpinner.addClass('hidden');
+        
         console.log(`📞 DEBUG: Appel loadTabContent("${maxCategory}")`);
         loadTabContent(maxCategory);
     } else {
         console.log("⚠️ DEBUG: Aucune catégorie avec des étudiants trouvée");
     }
     
-    // Gérer les clics sur les onglets
+    // Gérer les clics sur les onglets - Approche multiple pour plus de robustesse
+    console.log(`🔍 DEBUG: Configuration des gestionnaires d'onglets`);
+    
+    // Méthode 1: Bootstrap shown.bs.tab
     $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
-        const targetTab = $(e.target).attr('href').substring(1); // Enlever le #
-        const category = $('#' + targetTab).data('category');
+        console.log(`🔗 DEBUG: Bootstrap shown.bs.tab détecté`);
+        const targetTab = $(e.target).attr('href').substring(1);
+        console.log(`🎯 DEBUG: targetTab: "${targetTab}"`);
         
-        if (category && !loadedTabs[category]) {
+        const tabPane = $('#' + targetTab);
+        const category = tabPane.data('category');
+        console.log(`📂 DEBUG: category extraite: "${category}"`);
+        
+        if (category) {
+            console.log(`🚀 DEBUG: Chargement Bootstrap de la catégorie "${category}"`);
             loadTabContent(category);
         }
+    });
+    
+    // Méthode 2: Clic direct comme fallback
+    $('a[data-toggle="tab"]').on('click', function (e) {
+        console.log(`👆 DEBUG: Clic direct sur onglet détecté`);
+        const targetTab = $(this).attr('href').substring(1);
+        console.log(`🎯 DEBUG: targetTab: "${targetTab}"`);
+        
+        // Attendre un peu que l'onglet soit activé
+        setTimeout(() => {
+            const tabPane = $('#' + targetTab);
+            const category = tabPane.data('category');
+            console.log(`📂 DEBUG: category extraite après timeout: "${category}"`);
+            
+            if (category) {
+                console.log(`🚀 DEBUG: Chargement par clic de la catégorie "${category}"`);
+                loadTabContent(category);
+            }
+        }, 100);
     });
 });
 
