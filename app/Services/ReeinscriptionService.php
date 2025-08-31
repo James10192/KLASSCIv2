@@ -181,25 +181,13 @@ class ReeinscriptionService
             return $statistiques;
         }
         
-        // CORRECTION: Faire le vrai calcul mais optimisé (avec cache potentiel)
-        $inscriptions = \App\Models\ESBTPInscription::with(['etudiant', 'classe.niveau', 'classe.filiere'])
-            ->whereNotNull('classe_id')
-            ->whereNotNull('etudiant_id')
-            ->where('annee_universitaire_id', $anneeUniversitaire->id)
-            ->get();
-            
-        foreach ($inscriptions as $inscription) {
-            if ($inscription->etudiant && $inscription->classe) {
-                try {
-                    $analyse = $this->analyserSituationEtudiantParInscription($inscription, $anneeAcademique);
-                    $statistiques[$analyse['decision']]++;
-                } catch (\Exception $e) {
-                    $statistiques['errors']++;
-                }
-            } else {
-                $statistiques['errors']++;
-            }
-        }
+        // CORRECTION: Utiliser la même logique que getEtudiantsParDecision pour cohérence
+        $resultats = $this->getEtudiantsParDecision($anneeAcademique);
+        
+        $statistiques['passages'] = count($resultats['passages'] ?? []);
+        $statistiques['rattrapages'] = count($resultats['rattrapages'] ?? []);
+        $statistiques['redoublements'] = count($resultats['redoublements'] ?? []);
+        $statistiques['errors'] = count($resultats['errors'] ?? []);
         
         // Compter les réinscriptions validées
         $statistiques['valides'] = \App\Models\ESBTPInscription::where('reinscription_status', 'validated')
