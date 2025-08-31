@@ -7,14 +7,14 @@
     </td>
     <td>
         <div>
-            <div style="font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-xs);">{{ $analyse['etudiant']->prenoms }} {{ $analyse['etudiant']->nom }}</div>
-            <div style="font-size: var(--text-small); color: var(--text-secondary);">{{ $analyse['etudiant']->matricule ?? 'N/A' }}</div>
+            <div style="font-weight: 600; color: #1f2937; margin-bottom: 4px;">{{ $analyse['etudiant']->prenoms }} {{ $analyse['etudiant']->nom }}</div>
+            <div style="font-size: 12px; color: #64748b;">{{ $analyse['etudiant']->matricule ?? 'N/A' }}</div>
         </div>
     </td>
     <td>
         <span class="table-badge primary">{{ $analyse['classe']->name ?? $analyse['inscription']->classe->name ?? 'N/A' }}</span>
         <br>
-        <div style="font-size: var(--text-small); color: var(--text-secondary); margin-top: var(--space-xs);">
+        <div style="font-size: 12px; color: #64748b; margin-top: 4px;">
             {{ $analyse['classe']->niveau->name ?? $analyse['inscription']->classe->niveau->name ?? 'N/A' }} - 
             {{ $analyse['classe']->filiere->name ?? $analyse['inscription']->classe->filiere->name ?? 'N/A' }}
         </div>
@@ -53,31 +53,31 @@
             $peutReinscrire = $etudiant->peut_reinscrire ?? false;
         @endphp
         
-        <div style="display: flex; flex-direction: column; align-items: center; gap: var(--space-xs);">
-            <div style="font-size: var(--text-small); text-align: center;">
-                <span style="font-weight: 600; color: var(--primary);">{{ number_format($montantAttendu, 0, ',', ' ') }} FCFA</span>
-                <div style="color: var(--text-secondary); font-size: 10px;">attendu</div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+            <div style="font-size: 12px; text-align: center;">
+                <span style="font-weight: 600; color: #3b82f6;">{{ number_format($montantAttendu, 0, ',', ' ') }} FCFA</span>
+                <div style="color: #64748b; font-size: 10px;">attendu</div>
             </div>
             
-            <div style="font-size: var(--text-small); text-align: center;">
-                <span style="font-weight: 600; color: var(--success);">{{ number_format($montantPaye, 0, ',', ' ') }} FCFA</span>
-                <div style="color: var(--text-secondary); font-size: 10px;">payé</div>
+            <div style="font-size: 12px; text-align: center;">
+                <span style="font-weight: 600; color: #22c55e;">{{ number_format($montantPaye, 0, ',', ' ') }} FCFA</span>
+                <div style="color: #64748b; font-size: 10px;">payé</div>
             </div>
             
             @if($soldeRestant > 0)
-            <div style="font-size: var(--text-small); text-align: center;">
-                <span style="font-weight: 600; color: var(--danger);">{{ number_format($soldeRestant, 0, ',', ' ') }} FCFA</span>
-                <div style="color: var(--text-secondary); font-size: 10px;">reste à payer</div>
+            <div style="font-size: 12px; text-align: center;">
+                <span style="font-weight: 600; color: #ef4444;">{{ number_format($soldeRestant, 0, ',', ' ') }} FCFA</span>
+                <div style="color: #64748b; font-size: 10px;">reste à payer</div>
             </div>
             @elseif($soldeRestant < 0)
-            <div style="font-size: var(--text-small); text-align: center;">
-                <span style="font-weight: 600; color: var(--warning);">{{ number_format(abs($soldeRestant), 0, ',', ' ') }} FCFA</span>
-                <div style="color: var(--text-secondary); font-size: 10px;">trop-perçu</div>
+            <div style="font-size: 12px; text-align: center;">
+                <span style="font-weight: 600; color: #f59e0b;">{{ number_format(abs($soldeRestant), 0, ',', ' ') }} FCFA</span>
+                <div style="color: #64748b; font-size: 10px;">trop-perçu</div>
             </div>
             @else
-            <div style="font-size: var(--text-small); text-align: center;">
-                <span style="font-weight: 600; color: var(--success);">Soldé</span>
-                <div style="color: var(--text-secondary); font-size: 10px;">✓</div>
+            <div style="font-size: 12px; text-align: center;">
+                <span style="font-weight: 600; color: #22c55e;">Soldé</span>
+                <div style="color: #64748b; font-size: 10px;">✓</div>
             </div>
             @endif
             

@@ -8,11 +8,11 @@
 .table-moderne {
     width: 100%;
     background: white;
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow);
+    border-radius: 8px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     border: 1px solid rgba(0, 0, 0, 0.05);
     overflow: hidden;
-    font-size: var(--text-normal);
+    font-size: 14px;
 }
 
 .table-moderne table {
@@ -22,11 +22,11 @@
 }
 
 .table-moderne thead th {
-    padding: var(--space-md) var(--space-sm);
-    background-color: var(--background);
-    color: var(--text-secondary);
+    padding: 16px 12px;
+    background-color: #f8fafc;
+    color: #64748b;
     font-weight: 600;
-    font-size: var(--text-small);
+    font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     border-bottom: 2px solid rgba(0, 0, 0, 0.05);
@@ -38,21 +38,21 @@
 }
 
 .table-moderne tbody tr:hover {
-    background-color: var(--background);
+    background-color: #f8fafc;
 }
 
 .table-moderne tbody td {
-    padding: var(--space-md) var(--space-sm);
+    padding: 16px 12px;
     vertical-align: middle;
 }
 
 .table-badge {
     display: inline-flex;
     align-items: center;
-    gap: var(--space-xs);
-    padding: var(--space-xs) var(--space-sm);
-    border-radius: var(--radius);
-    font-size: var(--text-small);
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
     font-weight: 600;
     white-space: nowrap;
 }
@@ -79,7 +79,7 @@
 
 .table-actions {
     display: flex;
-    gap: var(--space-xs);
+    gap: 4px;
     justify-content: center;
 }
 
@@ -90,7 +90,7 @@
     width: 32px;
     height: 32px;
     border: none;
-    border-radius: var(--radius);
+    border-radius: 4px;
     cursor: pointer;
     transition: all 0.2s ease;
     text-decoration: none;
