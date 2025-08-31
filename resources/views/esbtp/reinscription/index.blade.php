@@ -584,8 +584,8 @@ function loadTabContent(category, page = 1) {
     // Afficher le spinner si c'est la première page
     if (page === 1) {
         console.log(`🔄 DEBUG: Affichage du spinner pour page 1`);
-        loadingSpinner.css('display', 'flex');
-        contentContainer.css('display', 'none');
+        loadingSpinner.show();
+        contentContainer.hide();
     }
     
     const ajaxUrl = `{{ route('esbtp.reinscription.load-category', ':category') }}`.replace(':category', category);
@@ -609,7 +609,7 @@ function loadTabContent(category, page = 1) {
                 console.log(`🎯 DEBUG: Traitement première page`);
                 // Première page : remplacer le contenu
                 console.log(`🚫 DEBUG: Masquage du spinner`);
-                loadingSpinner.css('display', 'none');
+                loadingSpinner.hide();
                 
                 // CORRECTION: Gérer les catégories vides
                 if (response.total === 0) {
@@ -630,7 +630,7 @@ function loadTabContent(category, page = 1) {
                 }
                 
                 console.log(`👁️ DEBUG: Affichage du contenu`);
-                contentContainer.css('display', 'block');
+                contentContainer.show();
                 loadedTabs[category] = true;
                 currentPage[category] = 1;
             } else {
@@ -689,8 +689,8 @@ function loadTabContent(category, page = 1) {
             
             if (page === 1) {
                 console.log(`🛑 DEBUG: Masquage spinner et affichage erreur`);
-                loadingSpinner.css('display', 'none');
-                contentContainer.html(errorHtml).css('display', 'block');
+                loadingSpinner.hide();
+                contentContainer.html(errorHtml).show();
             }
         }
     });
