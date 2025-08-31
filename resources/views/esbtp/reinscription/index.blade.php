@@ -95,7 +95,7 @@
         <div class="kpi-grid mb-xl">
             <div class="card-moderne kpi-card">
                 <div class="kpi-title">Passages</div>
-                <div class="kpi-value color-success">{{ count($resultats['passages']) }}</div>
+                <div class="kpi-value color-success">{{ $statistiques['passages'] ?? 0 }}</div>
                 <div class="kpi-trend positive">
                     <i class="fas fa-arrow-up"></i>
                     <span>Admis niveau supérieur</span>
@@ -104,7 +104,7 @@
 
             <div class="card-moderne kpi-card">
                 <div class="kpi-title">Rattrapages</div>
-                <div class="kpi-value color-warning">{{ count($resultats['rattrapages']) }}</div>
+                <div class="kpi-value color-warning">{{ $statistiques['rattrapages'] ?? 0 }}</div>
                 <div class="kpi-trend">
                     <i class="fas fa-exclamation-triangle"></i>
                     <span>Session de rattrapage</span>
@@ -113,7 +113,7 @@
 
             <div class="card-moderne kpi-card">
                 <div class="kpi-title">Redoublements</div>
-                <div class="kpi-value color-danger">{{ count($resultats['redoublements']) }}</div>
+                <div class="kpi-value color-danger">{{ $statistiques['redoublements'] ?? 0 }}</div>
                 <div class="kpi-trend negative">
                     <i class="fas fa-redo"></i>
                     <span>Reprise de l'année</span>
@@ -122,7 +122,7 @@
 
             <div class="card-moderne kpi-card">
                 <div class="kpi-title">Abandons Année</div>
-                <div class="kpi-value color-danger">{{ count($resultats['abandons_annee'] ?? []) }}</div>
+                <div class="kpi-value color-danger">{{ $statistiques['abandons_annee'] ?? 0 }}</div>
                 <div class="kpi-trend negative">
                     <i class="fas fa-user-slash"></i>
                     <span>Année abandonnée</span>
@@ -131,7 +131,7 @@
 
             <div class="card-moderne kpi-card">
                 <div class="kpi-title">Abandons École</div>
-                <div class="kpi-value color-neutral">{{ count($resultats['abandons_ecole'] ?? []) }}</div>
+                <div class="kpi-value color-neutral">{{ $statistiques['abandons_ecole'] ?? 0 }}</div>
                 <div class="kpi-trend">
                     <i class="fas fa-graduation-cap"></i>
                     <span>Quittent l'établissement</span>
@@ -140,7 +140,7 @@
 
             <div class="card-moderne kpi-card">
                 <div class="kpi-title">Validés</div>
-                <div class="kpi-value color-success">{{ count($resultats['valides'] ?? []) }}</div>
+                <div class="kpi-value color-success">{{ $statistiques['valides'] ?? 0 }}</div>
                 <div class="kpi-trend positive">
                     <i class="fas fa-check-double"></i>
                     <span>Réinscriptions confirmées</span>
@@ -149,7 +149,7 @@
 
             <div class="card-moderne kpi-card">
                 <div class="kpi-title">Non validés</div>
-                <div class="kpi-value color-neutral">{{ count($resultats['errors'] ?? []) }}</div>
+                <div class="kpi-value color-neutral">{{ $statistiques['errors'] ?? 0 }}</div>
                 <div class="kpi-trend">
                     <i class="fas fa-user-clock"></i>
                     <span>Inscriptions en cours</span>
@@ -164,50 +164,50 @@
                     <li class="nav-item" style="border: none;">
                         <a class="nav-link active" id="passages-tab" data-toggle="tab" href="#passages" role="tab" 
                            style="border: none; border-radius: var(--radius-small); padding: var(--space-sm) var(--space-md); background-color: rgba(16, 185, 129, 0.1); color: var(--success); font-weight: 600;">
-                            <i class="fas fa-arrow-up"></i> Passages ({{ count($resultats['passages']) }})
+                            <i class="fas fa-arrow-up"></i> Passages ({{ $statistiques['passages'] ?? 0 }})
                         </a>
                     </li>
                     <li class="nav-item" style="border: none;">
                         <a class="nav-link" id="rattrapages-tab" data-toggle="tab" href="#rattrapages" role="tab"
                            style="border: none; border-radius: var(--radius-small); padding: var(--space-sm) var(--space-md); color: var(--text-secondary); font-weight: 500;">
-                            <i class="fas fa-exclamation-triangle"></i> Rattrapages ({{ count($resultats['rattrapages']) }})
+                            <i class="fas fa-exclamation-triangle"></i> Rattrapages ({{ $statistiques['rattrapages'] ?? 0 }})
                         </a>
                     </li>
                     <li class="nav-item" style="border: none;">
                         <a class="nav-link" id="redoublements-tab" data-toggle="tab" href="#redoublements" role="tab"
                            style="border: none; border-radius: var(--radius-small); padding: var(--space-sm) var(--space-md); color: var(--text-secondary); font-weight: 500;">
-                            <i class="fas fa-redo"></i> Redoublements ({{ count($resultats['redoublements']) }})
+                            <i class="fas fa-redo"></i> Redoublements ({{ $statistiques['redoublements'] ?? 0 }})
                         </a>
                     </li>
-                    @if(count($resultats['valides'] ?? []) > 0)
+                    @if(($statistiques['valides'] ?? 0) > 0)
                     <li class="nav-item" style="border: none;">
                         <a class="nav-link" id="valides-tab" data-toggle="tab" href="#valides" role="tab"
                            style="border: none; border-radius: var(--radius-small); padding: var(--space-sm) var(--space-md); color: var(--text-secondary); font-weight: 500;">
-                            <i class="fas fa-check-double"></i> Validés ({{ count($resultats['valides'] ?? []) }})
+                            <i class="fas fa-check-double"></i> Validés ({{ $statistiques['valides'] ?? 0 }})
                         </a>
                     </li>
                     @endif
-                    @if(count($resultats['abandons_annee'] ?? []) > 0)
+                    @if(($statistiques['abandons_annee'] ?? 0) > 0)
                     <li class="nav-item" style="border: none;">
                         <a class="nav-link" id="abandons-annee-tab" data-toggle="tab" href="#abandons-annee" role="tab"
                            style="border: none; border-radius: var(--radius-small); padding: var(--space-sm) var(--space-md); color: var(--text-secondary); font-weight: 500;">
-                            <i class="fas fa-user-slash"></i> Abandons Année ({{ count($resultats['abandons_annee'] ?? []) }})
+                            <i class="fas fa-user-slash"></i> Abandons Année ({{ $statistiques['abandons_annee'] ?? 0 }})
                         </a>
                     </li>
                     @endif
-                    @if(count($resultats['abandons_ecole'] ?? []) > 0)
+                    @if(($statistiques['abandons_ecole'] ?? 0) > 0)
                     <li class="nav-item" style="border: none;">
                         <a class="nav-link" id="abandons-ecole-tab" data-toggle="tab" href="#abandons-ecole" role="tab"
                            style="border: none; border-radius: var(--radius-small); padding: var(--space-sm) var(--space-md); color: var(--text-secondary); font-weight: 500;">
-                            <i class="fas fa-graduation-cap"></i> Abandons École ({{ count($resultats['abandons_ecole'] ?? []) }})
+                            <i class="fas fa-graduation-cap"></i> Abandons École ({{ $statistiques['abandons_ecole'] ?? 0 }})
                         </a>
                     </li>
                     @endif
-                    @if(count($resultats['errors']) > 0)
+                    @if(($statistiques['errors'] ?? 0) > 0)
                     <li class="nav-item" style="border: none;">
                         <a class="nav-link" id="errors-tab" data-toggle="tab" href="#errors" role="tab"
                            style="border: none; border-radius: var(--radius-small); padding: var(--space-sm) var(--space-md); color: var(--text-secondary); font-weight: 500;">
-                            <i class="fas fa-user-clock"></i> Non validés ({{ count($resultats['errors']) }})
+                            <i class="fas fa-user-clock"></i> Non validés ({{ $statistiques['errors'] ?? 0 }})
                         </a>
                     </li>
                     @endif
@@ -216,320 +216,108 @@
             <div class="p-lg">
                 <div class="tab-content" id="myTabContent">
                 <!-- Onglet Passages -->
-                <div class="tab-pane fade show active" id="passages" role="tabpanel">
-                    @include('esbtp.reinscription.partials.liste-etudiants', ['etudiants' => $resultats['passages'], 'type' => 'passage'])
+                <div class="tab-pane fade show active" id="passages" role="tabpanel" data-category="passages">
+                    <div class="loading-spinner text-center py-4">
+                        <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
+                        <p class="mt-2 text-muted">Chargement des passages...</p>
+                    </div>
+                    <div class="content-container" style="display: none;"></div>
                 </div>
 
                 <!-- Onglet Rattrapages -->
-                <div class="tab-pane fade" id="rattrapages" role="tabpanel">
-                    @include('esbtp.reinscription.partials.liste-etudiants', ['etudiants' => $resultats['rattrapages'], 'type' => 'rattrapage'])
+                <div class="tab-pane fade" id="rattrapages" role="tabpanel" data-category="rattrapages">
+                    <div class="loading-spinner text-center py-4">
+                        <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
+                        <p class="mt-2 text-muted">Chargement des rattrapages...</p>
+                    </div>
+                    <div class="content-container" style="display: none;"></div>
                 </div>
 
                 <!-- Onglet Redoublements -->
-                <div class="tab-pane fade" id="redoublements" role="tabpanel">
-                    @include('esbtp.reinscription.partials.liste-etudiants', ['etudiants' => $resultats['redoublements'], 'type' => 'redoublement'])
+                <div class="tab-pane fade" id="redoublements" role="tabpanel" data-category="redoublements">
+                    <div class="loading-spinner text-center py-4">
+                        <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
+                        <p class="mt-2 text-muted">Chargement des redoublements...</p>
+                    </div>
+                    <div class="content-container" style="display: none;"></div>
                 </div>
 
                 <!-- Onglet Validés -->
-                @if(count($resultats['valides'] ?? []) > 0)
-                <div class="tab-pane fade" id="valides" role="tabpanel">
-                    <div class="section-title mb-md">
-                        <i class="fas fa-check-double me-2"></i>Réinscriptions validées et confirmées
+                @if(($statistiques['valides'] ?? 0) > 0)
+                <div class="tab-pane fade" id="valides" role="tabpanel" data-category="valides">
+                    <div class="loading-spinner text-center py-4">
+                        <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
+                        <p class="mt-2 text-muted">Chargement des validés...</p>
                     </div>
-                    <div class="table-moderne">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Photo</th>
-                                    <th>Étudiant</th>
-                                    <th>Classe</th>
-                                    <th>Décision</th>
-                                    <th>Validé le</th>
-                                    <th>Validé par</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($resultats['valides'] as $analyse)
-                                <tr>
-                                    <td>
-                                        <img src="{{ $analyse['etudiant']->photo_url ?? asset('images/default-avatar.png') }}" 
-                                             alt="Photo" 
-                                             style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
-                                    </td>
-                                    <td>
-                                        <div style="font-weight: 600;">{{ $analyse['etudiant']->prenoms }} {{ $analyse['etudiant']->nom }}</div>
-                                        <div style="font-size: var(--text-small); color: var(--text-secondary);">{{ $analyse['etudiant']->matricule }}</div>
-                                    </td>
-                                    <td>
-                                        <span class="table-badge primary">{{ $analyse['classe']->nom ?? 'N/A' }}</span>
-                                    </td>
-                                    <td>
-                                        <span class="table-badge success">{{ $analyse['decision'] }}</span>
-                                    </td>
-                                    <td>
-                                        <span style="color: var(--text-secondary); font-size: var(--text-small);">
-                                            {{ $analyse['validated_at'] ? \Carbon\Carbon::parse($analyse['validated_at'])->format('d/m/Y H:i') : 'N/A' }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span style="color: var(--text-secondary); font-size: var(--text-small);">
-                                            {{ $analyse['validated_by']->name ?? 'N/A' }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div class="action-buttons">
-                                            <button class="btn-acasi small warning" 
-                                                    onclick="marquerAbandonModal({{ $analyse['etudiant']->id }})" 
-                                                    title="Marquer abandon">
-                                                <i class="fas fa-user-times"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
+                    <div class="content-container" style="display: none;"></div>
                 </div>
                 @endif
 
-                <!-- Onglet Abandons Année Scolaire -->
-                @if(count($resultats['abandons_annee'] ?? []) > 0)
-                <div class="tab-pane fade" id="abandons-annee" role="tabpanel">
-                    <div class="section-title mb-md">
-                        <i class="fas fa-user-slash me-2"></i>Étudiants ayant abandonné leur année scolaire
+                <!-- Onglet Abandons Année -->
+                @if(($statistiques['abandons_annee'] ?? 0) > 0)
+                <div class="tab-pane fade" id="abandons-annee" role="tabpanel" data-category="abandons_annee">
+                    <div class="loading-spinner text-center py-4">
+                        <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
+                        <p class="mt-2 text-muted">Chargement des abandons année...</p>
                     </div>
-                    <div class="table-moderne">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Photo</th>
-                                    <th>Étudiant</th>
-                                    <th>Classe</th>
-                                    <th>Date abandon</th>
-                                    <th>Motif</th>
-                                    <th>Type</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($resultats['abandons_annee'] as $etudiant)
-                                <tr>
-                                    <td>
-                                        <img src="{{ $etudiant->photo_url ?? asset('images/default-avatar.png') }}" 
-                                             alt="Photo" 
-                                             style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
-                                    </td>
-                                    <td>
-                                        <div style="font-weight: 600;">{{ $etudiant->prenoms }} {{ $etudiant->nom }}</div>
-                                        <div style="font-size: var(--text-small); color: var(--text-secondary);">{{ $etudiant->matricule }}</div>
-                                    </td>
-                                    <td>
-                                        @if($etudiant->inscription)
-                                            <span class="table-badge secondary">{{ $etudiant->inscription->classe->nom ?? 'N/A' }}</span>
-                                        @else
-                                            <span class="table-badge neutral">Non assigné</span>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        <span style="color: var(--text-secondary); font-size: var(--text-small);">
-                                            {{ $etudiant->date_abandon ? \Carbon\Carbon::parse($etudiant->date_abandon)->format('d/m/Y') : 'N/A' }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span style="color: var(--text-secondary); font-size: var(--text-small);">
-                                            {{ $etudiant->motif_abandon ?? 'Non précisé' }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span class="table-badge danger">Abandon année</span>
-                                    </td>
-                                    <td>
-                                        <div class="action-buttons">
-                                            <button class="btn-acasi small success" 
-                                                    onclick="restaurerEtudiant({{ $etudiant->id }})"
-                                                    title="Restaurer l'étudiant">
-                                                <i class="fas fa-undo"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
+                    <div class="content-container" style="display: none;"></div>
                 </div>
                 @endif
 
                 <!-- Onglet Abandons École -->
-                @if(count($resultats['abandons_ecole'] ?? []) > 0)
-                <div class="tab-pane fade" id="abandons-ecole" role="tabpanel">
-                    <div class="section-title mb-md">
-                        <i class="fas fa-graduation-cap me-2"></i>Étudiants quittant l'établissement après réussite
+                @if(($statistiques['abandons_ecole'] ?? 0) > 0)
+                <div class="tab-pane fade" id="abandons-ecole" role="tabpanel" data-category="abandons_ecole">
+                    <div class="loading-spinner text-center py-4">
+                        <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
+                        <p class="mt-2 text-muted">Chargement des abandons école...</p>
                     </div>
-                    <div class="table-moderne">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Photo</th>
-                                    <th>Étudiant</th>
-                                    <th>Classe</th>
-                                    <th>Date abandon</th>
-                                    <th>Motif</th>
-                                    <th>Type</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($resultats['abandons_ecole'] as $etudiant)
-                                <tr>
-                                    <td>
-                                        <img src="{{ $etudiant->photo_url ?? asset('images/default-avatar.png') }}" 
-                                             alt="Photo" 
-                                             style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
-                                    </td>
-                                    <td>
-                                        <div style="font-weight: 600;">{{ $etudiant->prenoms }} {{ $etudiant->nom }}</div>
-                                        <div style="font-size: var(--text-small); color: var(--text-secondary);">{{ $etudiant->matricule }}</div>
-                                    </td>
-                                    <td>
-                                        @if($etudiant->inscription)
-                                            <span class="table-badge secondary">{{ $etudiant->inscription->classe->nom ?? 'N/A' }}</span>
-                                        @else
-                                            <span class="table-badge neutral">Non assigné</span>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        <span style="color: var(--text-secondary); font-size: var(--text-small);">
-                                            {{ $etudiant->date_abandon ? \Carbon\Carbon::parse($etudiant->date_abandon)->format('d/m/Y') : 'N/A' }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span style="color: var(--text-secondary); font-size: var(--text-small);">
-                                            {{ $etudiant->motif_abandon ?? 'Non précisé' }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span class="table-badge neutral">Quitte école</span>
-                                    </td>
-                                    <td>
-                                        <div class="action-buttons">
-                                            <button class="btn-acasi small success" 
-                                                    onclick="restaurerEtudiant({{ $etudiant->id }})"
-                                                    title="Restaurer l'étudiant">
-                                                <i class="fas fa-undo"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
+                    <div class="content-container" style="display: none;"></div>
                 </div>
                 @endif
 
                 <!-- Onglet Erreurs -->
-                @if(count($resultats['errors']) > 0)
-                <div class="tab-pane fade" id="errors" role="tabpanel">
-                    <div class="table-moderne">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Étudiant</th>
-                                    <th>Classe</th>
-                                    <th>Erreur</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($resultats['errors'] as $error)
-                                <tr>
-                                    <td>{{ $error['etudiant']->prenoms }} {{ $error['etudiant']->nom }}</td>
-                                    <td>{{ $error['etudiant']->classe->nom ?? 'N/A' }}</td>
-                                    <td><span class="table-badge danger">{{ $error['error'] }}</span></td>
-                                </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
+                @if(($statistiques['errors'] ?? 0) > 0)
+                <div class="tab-pane fade" id="errors" role="tabpanel" data-category="errors">
+                    <div class="loading-spinner text-center py-4">
+                        <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
+                        <p class="mt-2 text-muted">Chargement des non validés...</p>
                     </div>
+                    <div class="content-container" style="display: none;"></div>
                 </div>
-                    @endif
+                @endif
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal pour les instructions de changement d'année -->
-<div class="modal fade" id="yearChangeModal" tabindex="-1" role="dialog" aria-labelledby="yearChangeModalLabel" aria-hidden="true">
+<!-- Modal pour informations changement d'année -->
+<div class="modal fade" id="yearChangeModal" tabindex="-1" role="dialog">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="yearChangeModalLabel">Comment changer l'année académique ?</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="background: none; border: none; font-size: 1.5rem; font-weight: bold; color: #999; cursor: pointer;">
-                    <span aria-hidden="true">&times;</span>
+                <h5 class="modal-title">Changement d'année académique</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
                 </button>
             </div>
             <div class="modal-body">
-                <p><strong>Pour consulter les données d'une autre année :</strong></p>
-                <ol style="padding-left: 20px; line-height: 1.6; margin: 15px 0;">
-                    <li><strong>Aller dans</strong> : Menu → Années Universitaires</li>
-                    <li><strong>Trouver l'année souhaitée</strong> (ex: 2024-2025)</li>
-                    <li><strong>Cliquer sur "Activer"</strong> pour la définir comme année courante</li>
-                    <li><strong>Revenir ici</strong> : Les données se mettront à jour automatiquement</li>
+                <p><strong>Pour changer d'année académique :</strong></p>
+                <ol>
+                    <li>Accédez au menu <strong>"Gestion" → "Années Universitaires"</strong></li>
+                    <li>Activez l'année souhaitée en cliquant sur <strong>"Définir comme courante"</strong></li>
+                    <li>Revenez sur cette page pour voir les données de la nouvelle année</li>
                 </ol>
-                <hr style="margin: 15px 0;">
-                <p style="color: #6b7280; font-size: 14px;">
-                    <i class="fas fa-info-circle"></i> 
-                    <strong>Note :</strong> Seule une année peut être "courante" à la fois. 
-                    Changer l'année courante affecte toute l'application.
-                </p>
+                <div class="alert alert-info mt-3">
+                    <i class="fas fa-info-circle"></i>
+                    Seule l'année marquée comme "courante" est affichée dans les réinscriptions.
+                </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="$('#yearChangeModal').modal('hide');">Fermer</button>
-                <a href="{{ route('esbtp.annees-universitaires.index') }}" target="_blank" class="btn btn-primary">
-                    <i class="fas fa-external-link-alt"></i> Aller aux Années
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Fermer</button>
+                <a href="{{ route('esbtp.annees-universitaires.index') }}" class="btn btn-primary">
+                    Gérer les Années
                 </a>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal pour choisir le type d'abandon -->
-<div class="modal fade" id="abandonModal" tabindex="-1" role="dialog" aria-labelledby="abandonModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="abandonModalLabel">Marquer l'étudiant comme ayant abandonné</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="background: none; border: none; font-size: 1.5rem; font-weight: bold; color: #999; cursor: pointer;">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <form id="abandonForm">
-                    <div class="form-group">
-                        <label for="abandonType"><strong>Type d'abandon *</strong></label>
-                        <select class="form-control" id="abandonType" name="abandon_type" required>
-                            <option value="">-- Choisir le type d'abandon --</option>
-                            <option value="annee_scolaire">Abandon de l'année scolaire</option>
-                            <option value="ecole">Abandon de l'école</option>
-                        </select>
-                        <small class="form-text text-muted">
-                            <strong>Année scolaire :</strong> L'étudiant n'a pas soldé ses frais, ne vient plus en cours<br>
-                            <strong>École :</strong> L'étudiant a fini son année mais quitte l'établissement
-                        </small>
-                    </div>
-                    <div class="form-group">
-                        <label for="motifAbandon">Motif (optionnel)</label>
-                        <textarea class="form-control" id="motifAbandon" name="motif_abandon" rows="3" 
-                                  placeholder="Précisez le motif de l'abandon..."></textarea>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="$('#abandonModal').modal('hide');">Annuler</button>
-                <button type="button" class="btn btn-danger" id="confirmerAbandon">Confirmer l'abandon</button>
             </div>
         </div>
     </div>
@@ -537,165 +325,200 @@
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
-
 <script>
-// Gestion des onglets
+// Variables pour le système de lazy loading
+let loadedTabs = {};
+let currentPage = {};
+
 $(document).ready(function() {
+    // Charger automatiquement l'onglet actif (passages) au démarrage
+    loadTabContent('passages');
+    
     // Gérer les clics sur les onglets
-    $('a[data-toggle="tab"]').on('click', function (e) {
-        e.preventDefault();
+    $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
+        const targetTab = $(e.target).attr('href').substring(1); // Enlever le #
+        const category = $('#' + targetTab).data('category');
         
-        // Enlever l'état actif de tous les onglets
-        $('a[data-toggle="tab"]').removeClass('active').css({
-            'background-color': 'transparent',
-            'color': 'var(--text-secondary)'
-        });
-        
-        // Ajouter l'état actif à l'onglet cliqué
-        $(this).addClass('active').css({
-            'background-color': 'rgba(30, 58, 138, 0.1)',
-            'color': 'var(--primary)',
-            'font-weight': '600'
-        });
-        
-        // Cacher tous les contenus d'onglets
-        $('.tab-pane').removeClass('show active');
-        
-        // Afficher le contenu de l'onglet cliqué
-        const target = $(this).attr('href');
-        $(target).addClass('show active');
+        if (category && !loadedTabs[category]) {
+            loadTabContent(category);
+        }
     });
 });
 
-function exportResults() {
-    const anneeAcademique = document.getElementById('annee_academique').value;
+// Fonction principale de chargement lazy
+function loadTabContent(category, page = 1) {
+    const tabPane = $(`[data-category="${category}"]`);
+    const loadingSpinner = tabPane.find('.loading-spinner');
+    const contentContainer = tabPane.find('.content-container');
     
-    fetch(`{{ route('esbtp.reinscription.export') }}?annee_academique=${anneeAcademique}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                alert('Erreur: ' + data.error);
+    // Afficher le spinner si c'est la première page
+    if (page === 1) {
+        loadingSpinner.show();
+        contentContainer.hide();
+    }
+    
+    // Faire la requête AJAX
+    $.ajax({
+        url: `{{ route('esbtp.reinscription.load-category', '') }}/${category}`,
+        method: 'GET',
+        data: {
+            page: page,
+            per_page: 50
+        },
+        success: function(response) {
+            if (page === 1) {
+                // Première page : remplacer le contenu
+                contentContainer.html(response.html);
+                loadingSpinner.hide();
+                contentContainer.show();
+                loadedTabs[category] = true;
+                currentPage[category] = 1;
             } else {
-                alert(data.message);
+                // Pages suivantes : ajouter le contenu
+                contentContainer.append(response.html);
             }
-        })
-        .catch(error => {
-            console.error('Erreur:', error);
-            alert('Erreur lors de l\'export');
-        });
+            
+            // Gérer le bouton "Charger plus"
+            const loadMoreBtn = contentContainer.find('.load-more-btn');
+            loadMoreBtn.remove(); // Supprimer l'ancien bouton
+            
+            if (response.has_more) {
+                const nextPage = page + 1;
+                const btnHtml = `
+                    <div class="text-center mt-4 load-more-container">
+                        <button class="btn-acasi secondary load-more-btn" 
+                                onclick="loadMore('${category}', ${nextPage})"
+                                data-category="${category}" data-page="${nextPage}">
+                            <i class="fas fa-plus-circle"></i>
+                            Charger plus (${response.total - (page * 50)} restants)
+                        </button>
+                    </div>
+                `;
+                contentContainer.append(btnHtml);
+            }
+            
+            currentPage[category] = page;
+        },
+        error: function(xhr, status, error) {
+            console.error('Erreur lors du chargement:', error);
+            
+            const errorHtml = `
+                <div class="text-center py-4">
+                    <div class="mb-3">
+                        <i class="fas fa-exclamation-triangle fa-3x text-danger"></i>
+                    </div>
+                    <h5 class="text-danger">Erreur de chargement</h5>
+                    <p class="text-muted">Impossible de charger les données. 
+                        <button class="btn-link" onclick="loadTabContent('${category}')">Réessayer</button>
+                    </p>
+                </div>
+            `;
+            
+            if (page === 1) {
+                loadingSpinner.hide();
+                contentContainer.html(errorHtml).show();
+            }
+        }
+    });
 }
 
-// Variable globale pour stocker l'ID de l'étudiant en cours de traitement
-let currentEtudiantId = null;
-
-function marquerAbandonModal(etudiantId) {
-    currentEtudiantId = etudiantId;
-    $('#abandonModal').modal('show');
+// Fonction pour charger plus d'étudiants
+function loadMore(category, page) {
+    const loadMoreBtn = $(`.load-more-btn[data-category="${category}"]`);
+    const originalText = loadMoreBtn.html();
+    
+    // Afficher un spinner sur le bouton
+    loadMoreBtn.html('<i class="fas fa-spinner fa-spin"></i> Chargement...')
+              .prop('disabled', true);
+    
+    loadTabContent(category, page);
 }
 
-// Gestionnaire pour le bouton de confirmation dans la modal
-$(document).ready(function() {
-    $('#confirmerAbandon').on('click', function() {
-        const abandonType = $('#abandonType').val();
-        const motif = $('#motifAbandon').val();
-        
-        if (!abandonType) {
-            alert('Veuillez choisir un type d\'abandon');
-            return;
-        }
-        
-        if (!currentEtudiantId) {
-            alert('Erreur: ID étudiant manquant');
-            return;
-        }
-        
-        // Envoyer la requête AJAX
-        fetch(`{{ url('esbtp/reinscription') }}/${currentEtudiantId}/abandon`, {
+// Fonctions utilitaires pour les actions sur les étudiants
+function validerReinscription(etudiantId, decision) {
+    const observations = prompt(`Valider la réinscription avec décision: ${decision}\n\nObservations (optionnel):`);
+    
+    if (observations === null) return; // Annulé
+    
+    if (confirm(`Confirmer la validation de la réinscription ?\n\nDécision: ${decision}\nObservations: ${observations || 'Aucune'}`)) {
+        $.ajax({
+            url: `{{ url('esbtp/reinscription') }}/${etudiantId}/valider`,
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
             },
-            body: JSON.stringify({
-                motif_abandon: motif,
-                abandon_type: abandonType
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            $('#abandonModal').modal('hide');
-            if (data.success) {
-                alert(data.message);
-                location.reload();
-            } else {
-                alert('Erreur: ' + data.message);
+            data: JSON.stringify({
+                decision: decision,
+                observations: observations
+            }),
+            success: function(data) {
+                if (data.success) {
+                    alert(data.message);
+                    location.reload(); // Recharger la page pour voir les changements
+                } else {
+                    alert('Erreur: ' + data.message);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Erreur:', error);
+                alert('Erreur lors de la validation');
             }
-        })
-        .catch(error => {
-            console.error('Erreur:', error);
-            alert('Erreur lors de l\'enregistrement de l\'abandon');
-        });
-    });
-    
-    // Gérer la fermeture de la modal avec le bouton X
-    $('.close[data-dismiss="modal"]').on('click', function() {
-        $('#abandonModal').modal('hide');
-    });
-    
-    // Gérer la fermeture avec le bouton Annuler
-    $('button[data-dismiss="modal"]').on('click', function() {
-        $('#abandonModal').modal('hide');
-    });
-    
-    // Réinitialiser le formulaire quand la modal se ferme
-    $('#abandonModal').on('hidden.bs.modal', function () {
-        $('#abandonForm')[0].reset();
-        currentEtudiantId = null;
-    });
-});
-
-function restaurerEtudiant(etudiantId) {
-    if (confirm('Êtes-vous sûr de vouloir restaurer cet étudiant ? Il repassera au statut actif.')) {
-        fetch(`{{ url('esbtp/reinscription') }}/${etudiantId}/restaurer`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
-                location.reload(); // Recharger la page pour voir les changements
-            } else {
-                alert('Erreur: ' + data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Erreur:', error);
-            alert('Erreur lors de la restauration');
         });
     }
+}
+
+function marquerAbandonModal(etudiantId) {
+    const typeAbandon = confirm('Type d\'abandon:\n\nOUI = Abandon année scolaire (n\'a pas soldé, ne vient plus)\nNON = Abandon école (année réussie mais quitte l\'établissement)') 
+        ? 'annee_scolaire' : 'ecole';
+    
+    const motif = prompt('Motif de l\'abandon (optionnel):');
+    if (motif === null) return; // Annulé
+    
+    if (confirm(`Confirmer l'abandon de type "${typeAbandon === 'annee_scolaire' ? 'Année scolaire' : 'École'}" ?\n\nMotif: ${motif || 'Non précisé'}`)) {
+        $.ajax({
+            url: `{{ url('esbtp/reinscription') }}/${etudiantId}/abandon`,
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            },
+            data: JSON.stringify({
+                motif_abandon: motif,
+                abandon_type: typeAbandon
+            }),
+            success: function(data) {
+                if (data.success) {
+                    alert(data.message);
+                    location.reload();
+                } else {
+                    alert('Erreur: ' + data.message);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Erreur:', error);
+                alert('Erreur lors de l\'enregistrement de l\'abandon');
+            }
+        });
+    }
+}
+
+function exportResults() {
+    window.location.href = '{{ route("esbtp.reinscription.export") }}';
 }
 
 function showYearChangeInfo() {
     $('#yearChangeModal').modal('show');
 }
 
-// Gérer la fermeture de la modal d'info année
-$(document).ready(function() {
-    // Gérer la fermeture avec le bouton X
-    $('#yearChangeModal .close[data-dismiss="modal"]').on('click', function() {
-        $('#yearChangeModal').modal('hide');
-    });
-    
-    // Gérer la fermeture avec le bouton Fermer
-    $('#yearChangeModal button[data-dismiss="modal"]').on('click', function() {
-        $('#yearChangeModal').modal('hide');
-    });
+// Gérer la fermeture de la modal
+$('#yearChangeModal .close[data-dismiss="modal"]').on('click', function() {
+    $('#yearChangeModal').modal('hide');
+});
+
+$('#yearChangeModal button[data-dismiss="modal"]').on('click', function() {
+    $('#yearChangeModal').modal('hide');
 });
 </script>
-
 
 @endsection

@@ -27,86 +27,23 @@ class ESBTPReinscriptionController extends Controller
         $anneeAcademique = $anneeCourante ? $anneeCourante->name : date('Y') . '-' . (date('Y') + 1);
         
         try {
-            $resultats = $this->reinscriptionService->getEtudiantsParDecision($anneeAcademique);
+            // OPTIMISATION: Ne charger que les statistiques au départ
+            $statistiques = $this->reinscriptionService->getStatistiquesReinscription($anneeAcademique);
             
-            // Utiliser l'année courante
-            $anneeUniversitaire = $anneeCourante;
-            
-            // Ajouter les étudiants qui ont abandonné - séparer par type - FILTRÉS PAR ANNÉE COURANTE
-            $abandonsAnneeScolaire = ESBTPEtudiant::where('statut', 'abandon')
-                ->where(function($query) {
-                    $query->where('abandon_type', 'annee_scolaire')
-                          ->orWhereNull('abandon_type'); // Les anciens abandons sans type spécifié
-                })
-                ->whereHas('inscriptions', function($query) use ($anneeUniversitaire) {
-                    if ($anneeUniversitaire) {
-                        $query->where('annee_universitaire_id', $anneeUniversitaire->id);
-                    }
-                })
-                ->with(['paiements', 'inscriptions' => function($query) use ($anneeUniversitaire) {
-                    if ($anneeUniversitaire) {
-                        $query->where('annee_universitaire_id', $anneeUniversitaire->id);
-                    }
-                    $query->with(['filiere', 'niveauEtude', 'classe']);
-                }])
-                ->get();
-                
-            $abandonsEcole = ESBTPEtudiant::where('statut', 'abandon')
-                ->where('abandon_type', 'ecole')
-                ->whereHas('inscriptions', function($query) use ($anneeUniversitaire) {
-                    if ($anneeUniversitaire) {
-                        $query->where('annee_universitaire_id', $anneeUniversitaire->id);
-                    }
-                })
-                ->with(['paiements', 'inscriptions' => function($query) use ($anneeUniversitaire) {
-                    if ($anneeUniversitaire) {
-                        $query->where('annee_universitaire_id', $anneeUniversitaire->id);
-                    }
-                    $query->with(['filiere', 'niveauEtude', 'classe']);
-                }])
-                ->get();
-                
-            $resultats['abandons_annee'] = $abandonsAnneeScolaire;
-            $resultats['abandons_ecole'] = $abandonsEcole;
-            
-            // Ajouter les étudiants dont la réinscription a été validée - FILTRÉS PAR ANNÉE COURANTE
-            $valides = \App\Models\ESBTPInscription::where('reinscription_status', 'validated')
-                ->when($anneeUniversitaire, function($query) use ($anneeUniversitaire) {
-                    return $query->where('annee_universitaire_id', $anneeUniversitaire->id);
-                })
-                ->with(['etudiant.paiements', 'classe.filiere', 'classe.niveau', 'reinscriptionValidatedBy'])
-                ->get()
-                ->map(function($inscription) {
-                    // Transformer pour correspondre au format attendu par la vue
-                    return [
-                        'etudiant' => $inscription->etudiant,
-                        'inscription' => $inscription,
-                        'classe' => $inscription->classe,
-                        'decision' => $inscription->reinscription_observations ?? 'Validée',
-                        'moyenne_generale' => 0, // Peut être calculé si nécessaire
-                        'matieres_echouees' => [],
-                        'validated_at' => $inscription->reinscription_validated_at,
-                        'validated_by' => $inscription->reinscriptionValidatedBy,
-                    ];
-                });
-                
-            $resultats['valides'] = $valides;
-            
-            // Calculer les soldes pour tous les étudiants
-            $this->calculerSoldesEtudiants($resultats);
-            
-            return view('esbtp.reinscription.index', compact('resultats', 'anneeAcademique'));
+            return view('esbtp.reinscription.index', compact('statistiques', 'anneeAcademique'));
         } catch (\Exception $e) {
-            // En cas d'erreur, retourner des données vides pour permettre l'affichage de la page
-            $resultats = [
-                'passages' => [],
-                'rattrapages' => [],
-                'redoublements' => [],
-                'abandons' => [],
-                'errors' => [['error' => $e->getMessage()]]
+            // En cas d'erreur, retourner des statistiques vides
+            $statistiques = [
+                'passages' => 0,
+                'rattrapages' => 0, 
+                'redoublements' => 0,
+                'valides' => 0,
+                'abandons_annee' => 0,
+                'abandons_ecole' => 0,
+                'errors' => 0
             ];
             
-            return view('esbtp.reinscription.index', compact('resultats', 'anneeAcademique'))
+            return view('esbtp.reinscription.index', compact('statistiques', 'anneeAcademique'))
                 ->withErrors(['error' => 'Erreur lors de l\'analyse: ' . $e->getMessage()]);
         }
     }
@@ -161,6 +98,50 @@ class ESBTPReinscriptionController extends Controller
                     }
                 }
             }
+        }
+    }
+    
+    /**
+     * Calculer le solde pour un seul étudiant (version optimisée pour lazy loading)
+     */
+    private function calculerSoldeEtudiant(&$etudiantData)
+    {
+        // Récupérer l'étudiant selon le format des données
+        $etudiant = null;
+        if (is_array($etudiantData) && isset($etudiantData['etudiant'])) {
+            $etudiant = $etudiantData['etudiant'];
+        } else if (is_object($etudiantData)) {
+            $etudiant = $etudiantData;
+        }
+        
+        if (!$etudiant) return;
+        
+        // Récupérer l'inscription active de l'étudiant
+        $inscription = $etudiant->inscriptions()
+            ->whereHas('anneeUniversitaire', function($query) {
+                $query->where('is_current', true);
+            })
+            ->with(['paiements' => function($query) {
+                $query->where('status', 'validé');
+            }])
+            ->first();
+        
+        if ($inscription) {
+            // Calculer le total attendu et payé
+            $totalAttendu = $this->calculerTotalAttendu($inscription);
+            $totalPaye = $this->calculerTotalPaye($inscription);
+            $soldeRestant = $totalAttendu - $totalPaye;
+            
+            $etudiant->montant_attendu = $totalAttendu;
+            $etudiant->montant_paye = $totalPaye;
+            $etudiant->solde_restant = $soldeRestant;
+            $etudiant->peut_reinscrire = $soldeRestant <= 0;
+        } else {
+            // Pas d'inscription active
+            $etudiant->montant_attendu = 0;
+            $etudiant->montant_paye = 0;
+            $etudiant->solde_restant = 0;
+            $etudiant->peut_reinscrire = false;
         }
     }
     
@@ -302,6 +283,135 @@ class ESBTPReinscriptionController extends Controller
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Erreur lors de l\'analyse: ' . $e->getMessage()]);
         }
+    }
+
+    /**
+     * Charger une catégorie d'étudiants via AJAX (optimisation lazy loading)
+     */
+    public function loadCategory(Request $request, $category)
+    {
+        $page = $request->get('page', 1);
+        $perPage = $request->get('per_page', 50);
+        
+        $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $anneeAcademique = $anneeCourante ? $anneeCourante->name : date('Y') . '-' . (date('Y') + 1);
+        
+        try {
+            switch ($category) {
+                case 'passages':
+                case 'rattrapages':  
+                case 'redoublements':
+                    $resultats = $this->reinscriptionService->getEtudiantsParDecision($anneeAcademique);
+                    $etudiants = collect($resultats[$category] ?? []);
+                    break;
+                    
+                case 'valides':
+                    $etudiants = $this->getEtudiantsValides($anneeCourante);
+                    break;
+                    
+                case 'abandons_annee':
+                    $etudiants = $this->getEtudiantsAbandons($anneeCourante, 'annee_scolaire');
+                    break;
+                    
+                case 'abandons_ecole':
+                    $etudiants = $this->getEtudiantsAbandons($anneeCourante, 'ecole');
+                    break;
+                    
+                case 'errors':
+                    $resultats = $this->reinscriptionService->getEtudiantsParDecision($anneeAcademique);
+                    $etudiants = collect($resultats['errors'] ?? []);
+                    break;
+                    
+                default:
+                    return response()->json(['error' => 'Catégorie inconnue'], 400);
+            }
+            
+            // Pagination manuelle
+            $total = $etudiants->count();
+            $offset = ($page - 1) * $perPage;
+            $etudiantsPagines = $etudiants->slice($offset, $perPage);
+            
+            // Calculer les soldes pour les étudiants de cette page
+            $etudiantsAvecSoldes = $etudiantsPagines->map(function($etudiant) {
+                if (is_array($etudiant) && isset($etudiant['etudiant'])) {
+                    $this->calculerSoldeEtudiant($etudiant);
+                }
+                return $etudiant;
+            });
+            
+            $html = view('esbtp.reinscription.partials.liste-etudiants', [
+                'etudiants' => $etudiantsAvecSoldes,
+                'type' => $category === 'passages' ? 'passage' : ($category === 'rattrapages' ? 'rattrapage' : 'redoublement')
+            ])->render();
+            
+            return response()->json([
+                'html' => $html,
+                'total' => $total,
+                'current_page' => $page,
+                'per_page' => $perPage,
+                'has_more' => ($page * $perPage) < $total
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+    
+    private function getEtudiantsValides($anneeUniversitaire)
+    {
+        return \App\Models\ESBTPInscription::where('reinscription_status', 'validated')
+            ->when($anneeUniversitaire, function($query) use ($anneeUniversitaire) {
+                return $query->where('annee_universitaire_id', $anneeUniversitaire->id);
+            })
+            ->with(['etudiant.paiements', 'classe.filiere', 'classe.niveau', 'reinscriptionValidatedBy'])
+            ->get()
+            ->map(function($inscription) {
+                return [
+                    'etudiant' => $inscription->etudiant,
+                    'inscription' => $inscription,
+                    'classe' => $inscription->classe,
+                    'decision' => $inscription->reinscription_observations ?? 'Validée',
+                    'moyenne_generale' => 0,
+                    'matieres_echouees' => [],
+                    'validated_at' => $inscription->reinscription_validated_at,
+                    'validated_by' => $inscription->reinscriptionValidatedBy,
+                ];
+            });
+    }
+    
+    private function getEtudiantsAbandons($anneeUniversitaire, $type)
+    {
+        return ESBTPEtudiant::where('statut', 'abandon')
+            ->where(function($query) use ($type) {
+                if ($type === 'annee_scolaire') {
+                    $query->where('abandon_type', 'annee_scolaire')
+                          ->orWhereNull('abandon_type');
+                } else {
+                    $query->where('abandon_type', $type);
+                }
+            })
+            ->whereHas('inscriptions', function($query) use ($anneeUniversitaire) {
+                if ($anneeUniversitaire) {
+                    $query->where('annee_universitaire_id', $anneeUniversitaire->id);
+                }
+            })
+            ->with(['paiements', 'inscriptions' => function($query) use ($anneeUniversitaire) {
+                if ($anneeUniversitaire) {
+                    $query->where('annee_universitaire_id', $anneeUniversitaire->id);
+                }
+                $query->with(['filiere', 'niveauEtude', 'classe']);
+            }])
+            ->get()
+            ->map(function($etudiant) {
+                return [
+                    'etudiant' => $etudiant,
+                    'inscription' => $etudiant->inscriptions->first(),
+                    'classe' => $etudiant->inscriptions->first()?->classe,
+                    'decision' => 'abandon',
+                    'moyenne_generale' => 0,
+                    'matieres_echouees' => [],
+                ];
+            });
     }
 
     /**
