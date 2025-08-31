@@ -128,6 +128,10 @@
     padding: 40px !important;
 }
 
+.reinscription-spinner.hidden {
+    display: none !important;
+}
+
 .reinscription-spinner-icon {
     display: block !important;
     margin-bottom: 20px !important;
@@ -378,7 +382,7 @@
                 <div class="tab-content" id="myTabContent">
                 <!-- Onglet Passages -->
                 <div class="tab-pane fade" id="passages" role="tabpanel" data-category="passages">
-                    <div class="reinscription-spinner">
+                    <div class="reinscription-spinner hidden">
                         <div class="reinscription-spinner-icon">
                             <i class="fas fa-spinner"></i>
                         </div>
@@ -389,7 +393,7 @@
 
                 <!-- Onglet Rattrapages -->
                 <div class="tab-pane fade" id="rattrapages" role="tabpanel" data-category="rattrapages">
-                    <div class="reinscription-spinner">
+                    <div class="reinscription-spinner hidden">
                         <div class="reinscription-spinner-icon">
                             <i class="fas fa-spinner"></i>
                         </div>
@@ -400,7 +404,7 @@
 
                 <!-- Onglet Redoublements -->
                 <div class="tab-pane fade" id="redoublements" role="tabpanel" data-category="redoublements">
-                    <div class="reinscription-spinner">
+                    <div class="reinscription-spinner hidden">
                         <div class="reinscription-spinner-icon">
                             <i class="fas fa-spinner"></i>
                         </div>
@@ -412,7 +416,7 @@
                 <!-- Onglet Validés -->
                 @if(($statistiques['valides'] ?? 0) > 0)
                 <div class="tab-pane fade" id="valides" role="tabpanel" data-category="valides">
-                    <div class="reinscription-spinner">
+                    <div class="reinscription-spinner hidden">
                         <div class="reinscription-spinner-icon">
                             <i class="fas fa-spinner"></i>
                         </div>
@@ -425,7 +429,7 @@
                 <!-- Onglet Abandons Année -->
                 @if(($statistiques['abandons_annee'] ?? 0) > 0)
                 <div class="tab-pane fade" id="abandons-annee" role="tabpanel" data-category="abandons_annee">
-                    <div class="reinscription-spinner">
+                    <div class="reinscription-spinner hidden">
                         <div class="reinscription-spinner-icon">
                             <i class="fas fa-spinner"></i>
                         </div>
@@ -438,7 +442,7 @@
                 <!-- Onglet Abandons École -->
                 @if(($statistiques['abandons_ecole'] ?? 0) > 0)
                 <div class="tab-pane fade" id="abandons-ecole" role="tabpanel" data-category="abandons_ecole">
-                    <div class="reinscription-spinner">
+                    <div class="reinscription-spinner hidden">
                         <div class="reinscription-spinner-icon">
                             <i class="fas fa-spinner"></i>
                         </div>
@@ -451,7 +455,7 @@
                 <!-- Onglet Erreurs -->
                 @if(($statistiques['errors'] ?? 0) > 0)
                 <div class="tab-pane fade" id="errors" role="tabpanel" data-category="errors">
-                    <div class="reinscription-spinner">
+                    <div class="reinscription-spinner hidden">
                         <div class="reinscription-spinner-icon">
                             <i class="fas fa-spinner"></i>
                         </div>
@@ -577,14 +581,21 @@ function loadTabContent(category, page = 1) {
     const contentContainer = tabPane.find('.content-container');
     
     console.log(`🔍 DEBUG: Éléments trouvés:`);
-    console.log(`  - tabPane:`, tabPane.length > 0);
-    console.log(`  - loadingSpinner:`, loadingSpinner.length > 0);
-    console.log(`  - contentContainer:`, contentContainer.length > 0);
+    console.log(`  - tabPane:`, tabPane.length > 0, tabPane);
+    console.log(`  - loadingSpinner:`, loadingSpinner.length > 0, loadingSpinner);
+    console.log(`  - contentContainer:`, contentContainer.length > 0, contentContainer);
+    
+    // DEBUG ULTRA: Vérifier les états avant/après
+    console.log(`🔍 DEBUG ÉTATS AVANT:`);
+    console.log(`  - spinner visible:`, loadingSpinner.is(':visible'));
+    console.log(`  - container visible:`, contentContainer.is(':visible'));
+    console.log(`  - spinner display:`, loadingSpinner.css('display'));
+    console.log(`  - container display:`, contentContainer.css('display'));
     
     // Afficher le spinner si c'est la première page
     if (page === 1) {
         console.log(`🔄 DEBUG: Affichage du spinner pour page 1`);
-        loadingSpinner.show();
+        loadingSpinner.removeClass('hidden');
         contentContainer.hide();
     }
     
@@ -609,7 +620,9 @@ function loadTabContent(category, page = 1) {
                 console.log(`🎯 DEBUG: Traitement première page`);
                 // Première page : remplacer le contenu
                 console.log(`🚫 DEBUG: Masquage du spinner`);
-                loadingSpinner.hide();
+                console.log(`🔍 DEBUG AVANT addClass('hidden'):`, loadingSpinner.hasClass('hidden'));
+                loadingSpinner.addClass('hidden');
+                console.log(`🔍 DEBUG APRÈS addClass('hidden'):`, loadingSpinner.hasClass('hidden'));
                 
                 // CORRECTION: Gérer les catégories vides
                 if (response.total === 0) {
@@ -630,7 +643,9 @@ function loadTabContent(category, page = 1) {
                 }
                 
                 console.log(`👁️ DEBUG: Affichage du contenu`);
+                console.log(`🔍 DEBUG AVANT show():`, contentContainer.is(':visible'));
                 contentContainer.show();
+                console.log(`🔍 DEBUG APRÈS show():`, contentContainer.is(':visible'));
                 loadedTabs[category] = true;
                 currentPage[category] = 1;
             } else {
@@ -689,7 +704,7 @@ function loadTabContent(category, page = 1) {
             
             if (page === 1) {
                 console.log(`🛑 DEBUG: Masquage spinner et affichage erreur`);
-                loadingSpinner.hide();
+                loadingSpinner.addClass('hidden');
                 contentContainer.html(errorHtml).show();
             }
         }
