@@ -7,13 +7,18 @@
 <style>
 .table-moderne {
     width: 100%;
-    border-collapse: collapse;
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    overflow: hidden;
     font-size: var(--text-normal);
 }
 
 .table-moderne table {
     width: 100%;
     border-collapse: collapse;
+    background: white;
 }
 
 .table-moderne thead th {
@@ -108,6 +113,22 @@
 
 .btn-table-action.warning:hover {
     background-color: rgba(245, 158, 11, 0.2);
+}
+
+/* Styles pour spinner - text ne tourne pas */
+.spinner-icon {
+    display: inline-block;
+}
+
+.spinner-text {
+    display: block;
+    animation: none !important;
+    transform: none !important;
+}
+
+.spinner-text p {
+    animation: none !important;
+    transform: none !important;
 }
 
 @media (max-width: 768px) {
@@ -330,9 +351,11 @@
                 <!-- Onglet Passages -->
                 <div class="tab-pane fade" id="passages" role="tabpanel" data-category="passages">
                     <div class="loading-spinner" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; text-align: center;">
-                        <div style="display: flex; flex-direction: column; align-items: center;">
-                            <i class="fas fa-spinner fa-spin fa-2x text-primary mb-3"></i>
-                            <p class="text-muted mb-0" style="animation: none; transform: none;">Chargement des passages...</p>
+                        <div class="spinner-icon" style="margin-bottom: 16px;">
+                            <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
+                        </div>
+                        <div class="spinner-text" style="position: static;">
+                            <p class="text-muted mb-0">Chargement des passages...</p>
                         </div>
                     </div>
                     <div class="content-container" style="display: none;"></div>
@@ -341,9 +364,11 @@
                 <!-- Onglet Rattrapages -->
                 <div class="tab-pane fade" id="rattrapages" role="tabpanel" data-category="rattrapages">
                     <div class="loading-spinner" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; text-align: center;">
-                        <div style="display: flex; flex-direction: column; align-items: center;">
-                            <i class="fas fa-spinner fa-spin fa-2x text-primary mb-3"></i>
-                            <p class="text-muted mb-0" style="animation: none; transform: none;">Chargement des rattrapages...</p>
+                        <div class="spinner-icon" style="margin-bottom: 16px;">
+                            <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
+                        </div>
+                        <div class="spinner-text" style="position: static;">
+                            <p class="text-muted mb-0">Chargement des rattrapages...</p>
                         </div>
                     </div>
                     <div class="content-container" style="display: none;"></div>
@@ -352,9 +377,11 @@
                 <!-- Onglet Redoublements -->
                 <div class="tab-pane fade" id="redoublements" role="tabpanel" data-category="redoublements">
                     <div class="loading-spinner" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; text-align: center;">
-                        <div style="display: flex; flex-direction: column; align-items: center;">
-                            <i class="fas fa-spinner fa-spin fa-2x text-primary mb-3"></i>
-                            <p class="text-muted mb-0" style="animation: none; transform: none;">Chargement des redoublements...</p>
+                        <div class="spinner-icon" style="margin-bottom: 16px;">
+                            <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
+                        </div>
+                        <div class="spinner-text" style="position: static;">
+                            <p class="text-muted mb-0">Chargement des redoublements...</p>
                         </div>
                     </div>
                     <div class="content-container" style="display: none;"></div>
@@ -364,9 +391,11 @@
                 @if(($statistiques['valides'] ?? 0) > 0)
                 <div class="tab-pane fade" id="valides" role="tabpanel" data-category="valides">
                     <div class="loading-spinner" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; text-align: center;">
-                        <div style="display: flex; flex-direction: column; align-items: center;">
-                            <i class="fas fa-spinner fa-spin fa-2x text-primary mb-3"></i>
-                            <p class="text-muted mb-0" style="animation: none; transform: none;">Chargement des validés...</p>
+                        <div class="spinner-icon" style="margin-bottom: 16px;">
+                            <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
+                        </div>
+                        <div class="spinner-text" style="position: static;">
+                            <p class="text-muted mb-0">Chargement des validés...</p>
                         </div>
                     </div>
                     <div class="content-container" style="display: none;"></div>
@@ -377,9 +406,11 @@
                 @if(($statistiques['abandons_annee'] ?? 0) > 0)
                 <div class="tab-pane fade" id="abandons-annee" role="tabpanel" data-category="abandons_annee">
                     <div class="loading-spinner" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; text-align: center;">
-                        <div style="display: flex; flex-direction: column; align-items: center;">
-                            <i class="fas fa-spinner fa-spin fa-2x text-primary mb-3"></i>
-                            <p class="text-muted mb-0" style="animation: none; transform: none;">Chargement des abandons année...</p>
+                        <div class="spinner-icon" style="margin-bottom: 16px;">
+                            <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
+                        </div>
+                        <div class="spinner-text" style="position: static;">
+                            <p class="text-muted mb-0">Chargement des abandons année...</p>
                         </div>
                     </div>
                     <div class="content-container" style="display: none;"></div>
@@ -390,9 +421,11 @@
                 @if(($statistiques['abandons_ecole'] ?? 0) > 0)
                 <div class="tab-pane fade" id="abandons-ecole" role="tabpanel" data-category="abandons_ecole">
                     <div class="loading-spinner" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; text-align: center;">
-                        <div style="display: flex; flex-direction: column; align-items: center;">
-                            <i class="fas fa-spinner fa-spin fa-2x text-primary mb-3"></i>
-                            <p class="text-muted mb-0" style="animation: none; transform: none;">Chargement des abandons école...</p>
+                        <div class="spinner-icon" style="margin-bottom: 16px;">
+                            <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
+                        </div>
+                        <div class="spinner-text" style="position: static;">
+                            <p class="text-muted mb-0">Chargement des abandons école...</p>
                         </div>
                     </div>
                     <div class="content-container" style="display: none;"></div>
@@ -403,9 +436,11 @@
                 @if(($statistiques['errors'] ?? 0) > 0)
                 <div class="tab-pane fade" id="errors" role="tabpanel" data-category="errors">
                     <div class="loading-spinner" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; text-align: center;">
-                        <div style="display: flex; flex-direction: column; align-items: center;">
-                            <i class="fas fa-spinner fa-spin fa-2x text-primary mb-3"></i>
-                            <p class="text-muted mb-0" style="animation: none; transform: none;">Chargement des non validés...</p>
+                        <div class="spinner-icon" style="margin-bottom: 16px;">
+                            <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
+                        </div>
+                        <div class="spinner-text" style="position: static;">
+                            <p class="text-muted mb-0">Chargement des non validés...</p>
                         </div>
                     </div>
                     <div class="content-container" style="display: none;"></div>
