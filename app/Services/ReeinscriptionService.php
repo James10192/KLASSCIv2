@@ -301,11 +301,24 @@ class ReeinscriptionService
 
     private function getClassesNiveauSuperieut($classeActuelle)
     {
-        // Logique pour trouver les classes du niveau supérieur
-        // À adapter selon la structure des niveaux dans votre système
+        // Définir la hiérarchie des niveaux basée sur les codes
+        $hierarchie = ['1A' => 1, '2A' => 2, 'L1' => 3, 'L2' => 4, 'L3' => 5, 'M1' => 6, 'M2' => 7];
+        
+        $niveauActuel = $classeActuelle->niveau->code ?? '';
+        $ordreActuel = $hierarchie[$niveauActuel] ?? 0;
+        
+        // Trouver les codes de niveaux supérieurs
+        $niveauxSuperieurs = array_keys(array_filter($hierarchie, function($ordre) use ($ordreActuel) {
+            return $ordre > $ordreActuel;
+        }));
+        
+        if (empty($niveauxSuperieurs)) {
+            return collect(); // Aucun niveau supérieur
+        }
+        
         return ESBTPClasse::where('filiere_id', $classeActuelle->filiere_id)
-            ->whereHas('niveau', function($query) use ($classeActuelle) {
-                $query->where('ordre', '>', $classeActuelle->niveau->ordre ?? 0);
+            ->whereHas('niveau', function($query) use ($niveauxSuperieurs) {
+                $query->whereIn('code', $niveauxSuperieurs);
             })
             ->with(['niveau', 'filiere'])
             ->get();
