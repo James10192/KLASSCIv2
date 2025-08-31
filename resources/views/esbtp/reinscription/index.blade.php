@@ -331,6 +331,8 @@ let loadedTabs = {};
 let currentPage = {};
 
 $(document).ready(function() {
+    console.log("🚀 DEBUG: Page ready, initialisation du lazy loading");
+    
     // CORRECTION: Charger automatiquement l'onglet avec le plus d'étudiants
     const statistiques = {
         passages: {{ $statistiques['passages'] ?? 0 }},
@@ -342,27 +344,42 @@ $(document).ready(function() {
         errors: {{ $statistiques['errors'] ?? 0 }}
     };
     
+    console.log("📊 DEBUG: Statistiques reçues:", statistiques);
+    
     // Trouver la catégorie avec le plus d'étudiants
     let maxCategory = 'passages';
     let maxCount = 0;
     for (const [category, count] of Object.entries(statistiques)) {
+        console.log(`📈 DEBUG: Catégorie "${category}": ${count} étudiants`);
         if (count > maxCount) {
             maxCount = count;
             maxCategory = category;
         }
     }
     
+    console.log(`🎯 DEBUG: Catégorie principale détectée: "${maxCategory}" avec ${maxCount} étudiants`);
+    
     // Charger cette catégorie au démarrage
     if (maxCount > 0) {
+        console.log(`🔄 DEBUG: Activation de l'onglet "${maxCategory}"`);
+        
         // Activer l'onglet correspondant
         $('a[data-toggle="tab"]').removeClass('active');
         $('.tab-pane').removeClass('show active');
         
-        $(`a[href="#${maxCategory}"]`).addClass('active');
-        $(`#${maxCategory}`).addClass('show active');
+        const tabLink = $(`a[href="#${maxCategory}"]`);
+        const tabPane = $(`#${maxCategory}`);
         
+        console.log(`🔍 DEBUG: Tab link trouvé:`, tabLink.length > 0);
+        console.log(`🔍 DEBUG: Tab pane trouvé:`, tabPane.length > 0);
+        
+        tabLink.addClass('active');
+        tabPane.addClass('show active');
+        
+        console.log(`📞 DEBUG: Appel loadTabContent("${maxCategory}")`);
         loadTabContent(maxCategory);
-        console.log(`Chargement automatique de la catégorie "${maxCategory}" avec ${maxCount} étudiants`);
+    } else {
+        console.log("⚠️ DEBUG: Aucune catégorie avec des étudiants trouvée");
     }
     
     // Gérer les clics sur les onglets
@@ -378,31 +395,49 @@ $(document).ready(function() {
 
 // Fonction principale de chargement lazy
 function loadTabContent(category, page = 1) {
+    console.log(`🔥 DEBUG: loadTabContent("${category}", ${page})`);
+    
     const tabPane = $(`[data-category="${category}"]`);
     const loadingSpinner = tabPane.find('.loading-spinner');
     const contentContainer = tabPane.find('.content-container');
     
+    console.log(`🔍 DEBUG: Éléments trouvés:`);
+    console.log(`  - tabPane:`, tabPane.length > 0);
+    console.log(`  - loadingSpinner:`, loadingSpinner.length > 0);
+    console.log(`  - contentContainer:`, contentContainer.length > 0);
+    
     // Afficher le spinner si c'est la première page
     if (page === 1) {
+        console.log(`🔄 DEBUG: Affichage du spinner pour page 1`);
         loadingSpinner.show();
         contentContainer.hide();
     }
     
+    const ajaxUrl = `{{ route('esbtp.reinscription.load-category', ':category') }}`.replace(':category', category);
+    console.log(`📡 DEBUG: URL AJAX: ${ajaxUrl}`);
+    
     // Faire la requête AJAX
     $.ajax({
-        url: `{{ route('esbtp.reinscription.load-category', '') }}/${category}`,
+        url: ajaxUrl,
         method: 'GET',
         data: {
             page: page,
             per_page: 50
         },
         success: function(response) {
+            console.log(`✅ DEBUG: AJAX Success pour "${category}", page ${page}`);
+            console.log(`📊 DEBUG: Response total:`, response.total);
+            console.log(`📄 DEBUG: Response HTML length:`, response.html ? response.html.length : 0);
+            console.log(`🔄 DEBUG: Response has_more:`, response.has_more);
+            
             if (page === 1) {
+                console.log(`🎯 DEBUG: Traitement première page`);
                 // Première page : remplacer le contenu
                 loadingSpinner.hide();
                 
                 // CORRECTION: Gérer les catégories vides
                 if (response.total === 0) {
+                    console.log(`⚠️ DEBUG: Catégorie vide, affichage message`);
                     const emptyHtml = `
                         <div class="text-center py-5">
                             <div class="mb-3">
@@ -414,13 +449,16 @@ function loadTabContent(category, page = 1) {
                     `;
                     contentContainer.html(emptyHtml);
                 } else {
+                    console.log(`📝 DEBUG: Injection du HTML (${response.html.length} chars)`);
                     contentContainer.html(response.html);
                 }
                 
+                console.log(`👁️ DEBUG: Affichage du contenu`);
                 contentContainer.show();
                 loadedTabs[category] = true;
                 currentPage[category] = 1;
             } else {
+                console.log(`➕ DEBUG: Ajout page ${page}`);
                 // Pages suivantes : ajouter le contenu
                 contentContainer.append(response.html);
             }
@@ -447,7 +485,11 @@ function loadTabContent(category, page = 1) {
             currentPage[category] = page;
         },
         error: function(xhr, status, error) {
-            console.error('Erreur lors du chargement:', error);
+            console.error(`❌ DEBUG: AJAX Error pour "${category}", page ${page}`);
+            console.error(`🔴 DEBUG: Status:`, status);
+            console.error(`🔴 DEBUG: Error:`, error);
+            console.error(`🔴 DEBUG: XHR Status:`, xhr.status);
+            console.error(`🔴 DEBUG: XHR Response:`, xhr.responseText);
             
             const errorHtml = `
                 <div class="text-center py-4">
@@ -458,10 +500,12 @@ function loadTabContent(category, page = 1) {
                     <p class="text-muted">Impossible de charger les données. 
                         <button class="btn-link" onclick="loadTabContent('${category}')">Réessayer</button>
                     </p>
+                    <small class="text-muted">Erreur: ${xhr.status} - ${error}</small>
                 </div>
             `;
             
             if (page === 1) {
+                console.log(`🛑 DEBUG: Masquage spinner et affichage erreur`);
                 loadingSpinner.hide();
                 contentContainer.html(errorHtml).show();
             }
