@@ -162,8 +162,8 @@
             <div class="p-lg" style="border-bottom: 1px solid rgba(0, 0, 0, 0.05);">
                 <ul class="nav nav-tabs" id="myTab" role="tablist" style="border: none; display: flex; gap: var(--space-md);">
                     <li class="nav-item" style="border: none;">
-                        <a class="nav-link active" id="passages-tab" data-toggle="tab" href="#passages" role="tab" 
-                           style="border: none; border-radius: var(--radius-small); padding: var(--space-sm) var(--space-md); background-color: rgba(16, 185, 129, 0.1); color: var(--success); font-weight: 600;">
+                        <a class="nav-link" id="passages-tab" data-toggle="tab" href="#passages" role="tab" 
+                           style="border: none; border-radius: var(--radius-small); padding: var(--space-sm) var(--space-md); color: var(--text-secondary); font-weight: 500;">
                             <i class="fas fa-arrow-up"></i> Passages ({{ $statistiques['passages'] ?? 0 }})
                         </a>
                     </li>
@@ -216,7 +216,7 @@
             <div class="p-lg">
                 <div class="tab-content" id="myTabContent">
                 <!-- Onglet Passages -->
-                <div class="tab-pane fade show active" id="passages" role="tabpanel" data-category="passages">
+                <div class="tab-pane fade" id="passages" role="tabpanel" data-category="passages">
                     <div class="loading-spinner text-center py-4">
                         <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
                         <p class="mt-2 text-muted">Chargement des passages...</p>
@@ -331,8 +331,39 @@ let loadedTabs = {};
 let currentPage = {};
 
 $(document).ready(function() {
-    // Charger automatiquement l'onglet actif (passages) au démarrage
-    loadTabContent('passages');
+    // CORRECTION: Charger automatiquement l'onglet avec le plus d'étudiants
+    const statistiques = {
+        passages: {{ $statistiques['passages'] ?? 0 }},
+        redoublements: {{ $statistiques['redoublements'] ?? 0 }},
+        rattrapages: {{ $statistiques['rattrapages'] ?? 0 }},
+        valides: {{ $statistiques['valides'] ?? 0 }},
+        abandons_annee: {{ $statistiques['abandons_annee'] ?? 0 }},
+        abandons_ecole: {{ $statistiques['abandons_ecole'] ?? 0 }},
+        errors: {{ $statistiques['errors'] ?? 0 }}
+    };
+    
+    // Trouver la catégorie avec le plus d'étudiants
+    let maxCategory = 'passages';
+    let maxCount = 0;
+    for (const [category, count] of Object.entries(statistiques)) {
+        if (count > maxCount) {
+            maxCount = count;
+            maxCategory = category;
+        }
+    }
+    
+    // Charger cette catégorie au démarrage
+    if (maxCount > 0) {
+        // Activer l'onglet correspondant
+        $('a[data-toggle="tab"]').removeClass('active');
+        $('.tab-pane').removeClass('show active');
+        
+        $(`a[href="#${maxCategory}"]`).addClass('active');
+        $(`#${maxCategory}`).addClass('show active');
+        
+        loadTabContent(maxCategory);
+        console.log(`Chargement automatique de la catégorie "${maxCategory}" avec ${maxCount} étudiants`);
+    }
     
     // Gérer les clics sur les onglets
     $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
@@ -368,8 +399,24 @@ function loadTabContent(category, page = 1) {
         success: function(response) {
             if (page === 1) {
                 // Première page : remplacer le contenu
-                contentContainer.html(response.html);
                 loadingSpinner.hide();
+                
+                // CORRECTION: Gérer les catégories vides
+                if (response.total === 0) {
+                    const emptyHtml = `
+                        <div class="text-center py-5">
+                            <div class="mb-3">
+                                <i class="fas fa-info-circle fa-3x text-muted"></i>
+                            </div>
+                            <h5 class="text-muted">Aucun étudiant dans cette catégorie</h5>
+                            <p class="text-muted">Tous les étudiants ont été traités ou il n'y a pas de données pour cette période.</p>
+                        </div>
+                    `;
+                    contentContainer.html(emptyHtml);
+                } else {
+                    contentContainer.html(response.html);
+                }
+                
                 contentContainer.show();
                 loadedTabs[category] = true;
                 currentPage[category] = 1;

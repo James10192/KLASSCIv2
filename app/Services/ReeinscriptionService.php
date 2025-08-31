@@ -181,22 +181,24 @@ class ReeinscriptionService
             return $statistiques;
         }
         
-        // OPTIMISATION: Compter seulement les inscriptions sans analyse complète
-        $totalInscriptions = \App\Models\ESBTPInscription::whereNotNull('classe_id')
+        // CORRECTION: Faire le vrai calcul mais optimisé (avec cache potentiel)
+        $inscriptions = \App\Models\ESBTPInscription::with(['etudiant', 'classe.niveau', 'classe.filiere'])
+            ->whereNotNull('classe_id')
             ->whereNotNull('etudiant_id')
             ->where('annee_universitaire_id', $anneeUniversitaire->id)
-            ->count();
+            ->get();
             
-        // Pour les statistiques, on estime la répartition ou on fait un comptage plus simple
-        // Alternativement, on peut stocker ces stats dans une table dédiée
-        // Pour l'instant, on répartit approximativement les étudiants
-        
-        if ($totalInscriptions > 0) {
-            // Estimation basée sur des moyennes typiques (à ajuster selon les données réelles)
-            $statistiques['passages'] = intval($totalInscriptions * 0.6);     // ~60% passages
-            $statistiques['redoublements'] = intval($totalInscriptions * 0.25); // ~25% redoublements  
-            $statistiques['rattrapages'] = intval($totalInscriptions * 0.1);    // ~10% rattrapages
-            $statistiques['errors'] = $totalInscriptions - ($statistiques['passages'] + $statistiques['redoublements'] + $statistiques['rattrapages']); // Le reste
+        foreach ($inscriptions as $inscription) {
+            if ($inscription->etudiant && $inscription->classe) {
+                try {
+                    $analyse = $this->analyserSituationEtudiantParInscription($inscription, $anneeAcademique);
+                    $statistiques[$analyse['decision']]++;
+                } catch (\Exception $e) {
+                    $statistiques['errors']++;
+                }
+            } else {
+                $statistiques['errors']++;
+            }
         }
         
         // Compter les réinscriptions validées
