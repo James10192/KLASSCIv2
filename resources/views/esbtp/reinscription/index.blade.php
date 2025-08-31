@@ -217,27 +217,27 @@
                 <div class="tab-content" id="myTabContent">
                 <!-- Onglet Passages -->
                 <div class="tab-pane fade" id="passages" role="tabpanel" data-category="passages">
-                    <div class="loading-spinner text-center py-4">
-                        <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
-                        <p class="mt-2 text-muted">Chargement des passages...</p>
+                    <div class="loading-spinner" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; text-align: center;">
+                        <i class="fas fa-spinner fa-spin fa-2x text-primary mb-3"></i>
+                        <p class="text-muted mb-0">Chargement des passages...</p>
                     </div>
                     <div class="content-container" style="display: none;"></div>
                 </div>
 
                 <!-- Onglet Rattrapages -->
                 <div class="tab-pane fade" id="rattrapages" role="tabpanel" data-category="rattrapages">
-                    <div class="loading-spinner text-center py-4">
-                        <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
-                        <p class="mt-2 text-muted">Chargement des rattrapages...</p>
+                    <div class="loading-spinner" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; text-align: center;">
+                        <i class="fas fa-spinner fa-spin fa-2x text-primary mb-3"></i>
+                        <p class="text-muted mb-0">Chargement des rattrapages...</p>
                     </div>
                     <div class="content-container" style="display: none;"></div>
                 </div>
 
                 <!-- Onglet Redoublements -->
                 <div class="tab-pane fade" id="redoublements" role="tabpanel" data-category="redoublements">
-                    <div class="loading-spinner text-center py-4">
-                        <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
-                        <p class="mt-2 text-muted">Chargement des redoublements...</p>
+                    <div class="loading-spinner" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; text-align: center;">
+                        <i class="fas fa-spinner fa-spin fa-2x text-primary mb-3"></i>
+                        <p class="text-muted mb-0">Chargement des redoublements...</p>
                     </div>
                     <div class="content-container" style="display: none;"></div>
                 </div>
@@ -245,9 +245,9 @@
                 <!-- Onglet Validés -->
                 @if(($statistiques['valides'] ?? 0) > 0)
                 <div class="tab-pane fade" id="valides" role="tabpanel" data-category="valides">
-                    <div class="loading-spinner text-center py-4">
-                        <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
-                        <p class="mt-2 text-muted">Chargement des validés...</p>
+                    <div class="loading-spinner" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; text-align: center;">
+                        <i class="fas fa-spinner fa-spin fa-2x text-primary mb-3"></i>
+                        <p class="text-muted mb-0">Chargement des validés...</p>
                     </div>
                     <div class="content-container" style="display: none;"></div>
                 </div>
@@ -256,9 +256,9 @@
                 <!-- Onglet Abandons Année -->
                 @if(($statistiques['abandons_annee'] ?? 0) > 0)
                 <div class="tab-pane fade" id="abandons-annee" role="tabpanel" data-category="abandons_annee">
-                    <div class="loading-spinner text-center py-4">
-                        <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
-                        <p class="mt-2 text-muted">Chargement des abandons année...</p>
+                    <div class="loading-spinner" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; text-align: center;">
+                        <i class="fas fa-spinner fa-spin fa-2x text-primary mb-3"></i>
+                        <p class="text-muted mb-0">Chargement des abandons année...</p>
                     </div>
                     <div class="content-container" style="display: none;"></div>
                 </div>
@@ -267,9 +267,9 @@
                 <!-- Onglet Abandons École -->
                 @if(($statistiques['abandons_ecole'] ?? 0) > 0)
                 <div class="tab-pane fade" id="abandons-ecole" role="tabpanel" data-category="abandons_ecole">
-                    <div class="loading-spinner text-center py-4">
-                        <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
-                        <p class="mt-2 text-muted">Chargement des abandons école...</p>
+                    <div class="loading-spinner" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; text-align: center;">
+                        <i class="fas fa-spinner fa-spin fa-2x text-primary mb-3"></i>
+                        <p class="text-muted mb-0">Chargement des abandons école...</p>
                     </div>
                     <div class="content-container" style="display: none;"></div>
                 </div>
@@ -278,9 +278,9 @@
                 <!-- Onglet Erreurs -->
                 @if(($statistiques['errors'] ?? 0) > 0)
                 <div class="tab-pane fade" id="errors" role="tabpanel" data-category="errors">
-                    <div class="loading-spinner text-center py-4">
-                        <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
-                        <p class="mt-2 text-muted">Chargement des non validés...</p>
+                    <div class="loading-spinner" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; text-align: center;">
+                        <i class="fas fa-spinner fa-spin fa-2x text-primary mb-3"></i>
+                        <p class="text-muted mb-0">Chargement des non validés...</p>
                     </div>
                     <div class="content-container" style="display: none;"></div>
                 </div>
@@ -409,8 +409,8 @@ function loadTabContent(category, page = 1) {
     // Afficher le spinner si c'est la première page
     if (page === 1) {
         console.log(`🔄 DEBUG: Affichage du spinner pour page 1`);
-        loadingSpinner.show();
-        contentContainer.hide();
+        loadingSpinner.css('display', 'flex');
+        contentContainer.css('display', 'none');
     }
     
     const ajaxUrl = `{{ route('esbtp.reinscription.load-category', ':category') }}`.replace(':category', category);
@@ -433,7 +433,8 @@ function loadTabContent(category, page = 1) {
             if (page === 1) {
                 console.log(`🎯 DEBUG: Traitement première page`);
                 // Première page : remplacer le contenu
-                loadingSpinner.hide();
+                console.log(`🚫 DEBUG: Masquage du spinner`);
+                loadingSpinner.css('display', 'none');
                 
                 // CORRECTION: Gérer les catégories vides
                 if (response.total === 0) {
@@ -454,13 +455,20 @@ function loadTabContent(category, page = 1) {
                 }
                 
                 console.log(`👁️ DEBUG: Affichage du contenu`);
-                contentContainer.show();
+                contentContainer.css('display', 'block');
                 loadedTabs[category] = true;
                 currentPage[category] = 1;
             } else {
                 console.log(`➕ DEBUG: Ajout page ${page}`);
-                // Pages suivantes : ajouter le contenu
-                contentContainer.append(response.html);
+                // Pages suivantes : ajouter les lignes au tbody existant
+                const existingTable = contentContainer.find('table tbody');
+                if (existingTable.length > 0) {
+                    console.log(`📝 DEBUG: Ajout des lignes au tbody existant`);
+                    existingTable.append(response.html);
+                } else {
+                    console.log(`⚠️ DEBUG: Pas de tbody trouvé, ajout classique`);
+                    contentContainer.append(response.html);
+                }
             }
             
             // Gérer le bouton "Charger plus"
@@ -506,8 +514,8 @@ function loadTabContent(category, page = 1) {
             
             if (page === 1) {
                 console.log(`🛑 DEBUG: Masquage spinner et affichage erreur`);
-                loadingSpinner.hide();
-                contentContainer.html(errorHtml).show();
+                loadingSpinner.css('display', 'none');
+                contentContainer.html(errorHtml).css('display', 'block');
             }
         }
     });

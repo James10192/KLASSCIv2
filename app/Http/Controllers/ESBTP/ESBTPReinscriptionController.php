@@ -339,10 +339,20 @@ class ESBTPReinscriptionController extends Controller
                 return $etudiant;
             });
             
-            $html = view('esbtp.reinscription.partials.liste-etudiants', [
-                'etudiants' => $etudiantsAvecSoldes,
-                'type' => $category === 'passages' ? 'passage' : ($category === 'rattrapages' ? 'rattrapage' : 'redoublement')
-            ])->render();
+            // CORRECTION: Utiliser different partial selon page 1 ou pages suivantes
+            if ($page === 1) {
+                // Première page : tableau complet avec header
+                $html = view('esbtp.reinscription.partials.liste-etudiants', [
+                    'etudiants' => $etudiantsAvecSoldes,
+                    'type' => $category === 'passages' ? 'passage' : ($category === 'rattrapages' ? 'rattrapage' : 'redoublement')
+                ])->render();
+            } else {
+                // Pages suivantes : seulement les lignes TR
+                $html = view('esbtp.reinscription.partials.lignes-etudiants', [
+                    'etudiants' => $etudiantsAvecSoldes,
+                    'type' => $category === 'passages' ? 'passage' : ($category === 'rattrapages' ? 'rattrapage' : 'redoublement')
+                ])->render();
+            }
             
             return response()->json([
                 'html' => $html,
