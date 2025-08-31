@@ -4,6 +4,118 @@
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<style>
+.table-moderne {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-normal);
+}
+
+.table-moderne table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table-moderne thead th {
+    padding: var(--space-md) var(--space-sm);
+    background-color: var(--background);
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: var(--text-small);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid rgba(0, 0, 0, 0.05);
+}
+
+.table-moderne tbody tr {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+}
+
+.table-moderne tbody tr:hover {
+    background-color: var(--background);
+}
+
+.table-moderne tbody td {
+    padding: var(--space-md) var(--space-sm);
+    vertical-align: middle;
+}
+
+.table-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--radius);
+    font-size: var(--text-small);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.table-badge.primary {
+    background-color: rgba(59, 130, 246, 0.1);
+    color: rgb(59, 130, 246);
+}
+
+.table-badge.success {
+    background-color: rgba(34, 197, 94, 0.1);
+    color: rgb(34, 197, 94);
+}
+
+.table-badge.warning {
+    background-color: rgba(245, 158, 11, 0.1);
+    color: rgb(245, 158, 11);
+}
+
+.table-badge.danger {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: rgb(239, 68, 68);
+}
+
+.table-actions {
+    display: flex;
+    gap: var(--space-xs);
+    justify-content: center;
+}
+
+.btn-table-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    font-size: 14px;
+}
+
+.btn-table-action.primary {
+    background-color: rgba(59, 130, 246, 0.1);
+    color: rgb(59, 130, 246);
+}
+
+.btn-table-action.primary:hover {
+    background-color: rgba(59, 130, 246, 0.2);
+}
+
+.btn-table-action.warning {
+    background-color: rgba(245, 158, 11, 0.1);
+    color: rgb(245, 158, 11);
+}
+
+.btn-table-action.warning:hover {
+    background-color: rgba(245, 158, 11, 0.2);
+}
+
+@media (max-width: 768px) {
+    .table-moderne {
+        min-width: 800px;
+    }
+}
+</style>
 @endsection
 
 @section('content')
@@ -218,8 +330,10 @@
                 <!-- Onglet Passages -->
                 <div class="tab-pane fade" id="passages" role="tabpanel" data-category="passages">
                     <div class="loading-spinner" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; text-align: center;">
-                        <i class="fas fa-spinner fa-spin fa-2x text-primary mb-3"></i>
-                        <p class="text-muted mb-0">Chargement des passages...</p>
+                        <div style="display: flex; flex-direction: column; align-items: center;">
+                            <i class="fas fa-spinner fa-spin fa-2x text-primary mb-3"></i>
+                            <p class="text-muted mb-0" style="animation: none; transform: none;">Chargement des passages...</p>
+                        </div>
                     </div>
                     <div class="content-container" style="display: none;"></div>
                 </div>
@@ -227,8 +341,10 @@
                 <!-- Onglet Rattrapages -->
                 <div class="tab-pane fade" id="rattrapages" role="tabpanel" data-category="rattrapages">
                     <div class="loading-spinner" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; text-align: center;">
-                        <i class="fas fa-spinner fa-spin fa-2x text-primary mb-3"></i>
-                        <p class="text-muted mb-0">Chargement des rattrapages...</p>
+                        <div style="display: flex; flex-direction: column; align-items: center;">
+                            <i class="fas fa-spinner fa-spin fa-2x text-primary mb-3"></i>
+                            <p class="text-muted mb-0" style="animation: none; transform: none;">Chargement des rattrapages...</p>
+                        </div>
                     </div>
                     <div class="content-container" style="display: none;"></div>
                 </div>
@@ -236,8 +352,10 @@
                 <!-- Onglet Redoublements -->
                 <div class="tab-pane fade" id="redoublements" role="tabpanel" data-category="redoublements">
                     <div class="loading-spinner" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; text-align: center;">
-                        <i class="fas fa-spinner fa-spin fa-2x text-primary mb-3"></i>
-                        <p class="text-muted mb-0">Chargement des redoublements...</p>
+                        <div style="display: flex; flex-direction: column; align-items: center;">
+                            <i class="fas fa-spinner fa-spin fa-2x text-primary mb-3"></i>
+                            <p class="text-muted mb-0" style="animation: none; transform: none;">Chargement des redoublements...</p>
+                        </div>
                     </div>
                     <div class="content-container" style="display: none;"></div>
                 </div>
@@ -246,8 +364,10 @@
                 @if(($statistiques['valides'] ?? 0) > 0)
                 <div class="tab-pane fade" id="valides" role="tabpanel" data-category="valides">
                     <div class="loading-spinner" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; text-align: center;">
-                        <i class="fas fa-spinner fa-spin fa-2x text-primary mb-3"></i>
-                        <p class="text-muted mb-0">Chargement des validés...</p>
+                        <div style="display: flex; flex-direction: column; align-items: center;">
+                            <i class="fas fa-spinner fa-spin fa-2x text-primary mb-3"></i>
+                            <p class="text-muted mb-0" style="animation: none; transform: none;">Chargement des validés...</p>
+                        </div>
                     </div>
                     <div class="content-container" style="display: none;"></div>
                 </div>
@@ -257,8 +377,10 @@
                 @if(($statistiques['abandons_annee'] ?? 0) > 0)
                 <div class="tab-pane fade" id="abandons-annee" role="tabpanel" data-category="abandons_annee">
                     <div class="loading-spinner" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; text-align: center;">
-                        <i class="fas fa-spinner fa-spin fa-2x text-primary mb-3"></i>
-                        <p class="text-muted mb-0">Chargement des abandons année...</p>
+                        <div style="display: flex; flex-direction: column; align-items: center;">
+                            <i class="fas fa-spinner fa-spin fa-2x text-primary mb-3"></i>
+                            <p class="text-muted mb-0" style="animation: none; transform: none;">Chargement des abandons année...</p>
+                        </div>
                     </div>
                     <div class="content-container" style="display: none;"></div>
                 </div>
@@ -268,8 +390,10 @@
                 @if(($statistiques['abandons_ecole'] ?? 0) > 0)
                 <div class="tab-pane fade" id="abandons-ecole" role="tabpanel" data-category="abandons_ecole">
                     <div class="loading-spinner" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; text-align: center;">
-                        <i class="fas fa-spinner fa-spin fa-2x text-primary mb-3"></i>
-                        <p class="text-muted mb-0">Chargement des abandons école...</p>
+                        <div style="display: flex; flex-direction: column; align-items: center;">
+                            <i class="fas fa-spinner fa-spin fa-2x text-primary mb-3"></i>
+                            <p class="text-muted mb-0" style="animation: none; transform: none;">Chargement des abandons école...</p>
+                        </div>
                     </div>
                     <div class="content-container" style="display: none;"></div>
                 </div>
@@ -279,8 +403,10 @@
                 @if(($statistiques['errors'] ?? 0) > 0)
                 <div class="tab-pane fade" id="errors" role="tabpanel" data-category="errors">
                     <div class="loading-spinner" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; text-align: center;">
-                        <i class="fas fa-spinner fa-spin fa-2x text-primary mb-3"></i>
-                        <p class="text-muted mb-0">Chargement des non validés...</p>
+                        <div style="display: flex; flex-direction: column; align-items: center;">
+                            <i class="fas fa-spinner fa-spin fa-2x text-primary mb-3"></i>
+                            <p class="text-muted mb-0" style="animation: none; transform: none;">Chargement des non validés...</p>
+                        </div>
                     </div>
                     <div class="content-container" style="display: none;"></div>
                 </div>
