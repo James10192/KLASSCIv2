@@ -30,7 +30,8 @@ class ESBTPReinscriptionController extends Controller
             // OPTIMISATION: Ne charger que les statistiques au départ
             $statistiques = $this->reinscriptionService->getStatistiquesReinscription($anneeAcademique);
             
-            return view('esbtp.reinscription.index', compact('statistiques', 'anneeAcademique'));
+            return view('esbtp.reinscription.index', compact('statistiques', 'anneeAcademique'))
+                ->withErrors(collect());
         } catch (\Exception $e) {
             // En cas d'erreur, retourner des statistiques vides
             $statistiques = [

@@ -115,20 +115,48 @@
     background-color: rgba(245, 158, 11, 0.2);
 }
 
-/* Styles pour spinner - text ne tourne pas */
-.spinner-icon {
-    display: inline-block;
+/* SPINNER ISOLÉ - Force tous les styles */
+.reinscription-spinner {
+    position: relative !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    min-height: 200px !important;
+    text-align: center !important;
+    padding: 40px !important;
 }
 
-.spinner-text {
-    display: block;
-    animation: none !important;
-    transform: none !important;
+.reinscription-spinner-icon {
+    display: block !important;
+    margin-bottom: 20px !important;
+    text-align: center !important;
 }
 
-.spinner-text p {
+.reinscription-spinner-icon i {
+    font-size: 48px !important;
+    color: #3b82f6 !important;
+    animation: reinscription-spin 1s linear infinite !important;
+    transform-origin: center center !important;
+}
+
+.reinscription-spinner-text {
+    display: block !important;
+    position: static !important;
     animation: none !important;
     transform: none !important;
+    color: #64748b !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 14px !important;
+    font-weight: normal !important;
+    text-align: center !important;
+}
+
+@keyframes reinscription-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
 @media (max-width: 768px) {
@@ -350,39 +378,33 @@
                 <div class="tab-content" id="myTabContent">
                 <!-- Onglet Passages -->
                 <div class="tab-pane fade" id="passages" role="tabpanel" data-category="passages">
-                    <div class="loading-spinner" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; text-align: center;">
-                        <div class="spinner-icon" style="margin-bottom: 16px;">
-                            <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
+                    <div class="reinscription-spinner">
+                        <div class="reinscription-spinner-icon">
+                            <i class="fas fa-spinner"></i>
                         </div>
-                        <div class="spinner-text" style="position: static;">
-                            <p class="text-muted mb-0">Chargement des passages...</p>
-                        </div>
+                        <div class="reinscription-spinner-text">Chargement des passages...</div>
                     </div>
                     <div class="content-container" style="display: none;"></div>
                 </div>
 
                 <!-- Onglet Rattrapages -->
                 <div class="tab-pane fade" id="rattrapages" role="tabpanel" data-category="rattrapages">
-                    <div class="loading-spinner" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; text-align: center;">
-                        <div class="spinner-icon" style="margin-bottom: 16px;">
-                            <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
+                    <div class="reinscription-spinner">
+                        <div class="reinscription-spinner-icon">
+                            <i class="fas fa-spinner"></i>
                         </div>
-                        <div class="spinner-text" style="position: static;">
-                            <p class="text-muted mb-0">Chargement des rattrapages...</p>
-                        </div>
+                        <div class="reinscription-spinner-text">Chargement des rattrapages...</div>
                     </div>
                     <div class="content-container" style="display: none;"></div>
                 </div>
 
                 <!-- Onglet Redoublements -->
                 <div class="tab-pane fade" id="redoublements" role="tabpanel" data-category="redoublements">
-                    <div class="loading-spinner" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; text-align: center;">
-                        <div class="spinner-icon" style="margin-bottom: 16px;">
-                            <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
+                    <div class="reinscription-spinner">
+                        <div class="reinscription-spinner-icon">
+                            <i class="fas fa-spinner"></i>
                         </div>
-                        <div class="spinner-text" style="position: static;">
-                            <p class="text-muted mb-0">Chargement des redoublements...</p>
-                        </div>
+                        <div class="reinscription-spinner-text">Chargement des redoublements...</div>
                     </div>
                     <div class="content-container" style="display: none;"></div>
                 </div>
@@ -390,13 +412,11 @@
                 <!-- Onglet Validés -->
                 @if(($statistiques['valides'] ?? 0) > 0)
                 <div class="tab-pane fade" id="valides" role="tabpanel" data-category="valides">
-                    <div class="loading-spinner" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; text-align: center;">
-                        <div class="spinner-icon" style="margin-bottom: 16px;">
-                            <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
+                    <div class="reinscription-spinner">
+                        <div class="reinscription-spinner-icon">
+                            <i class="fas fa-spinner"></i>
                         </div>
-                        <div class="spinner-text" style="position: static;">
-                            <p class="text-muted mb-0">Chargement des validés...</p>
-                        </div>
+                        <div class="reinscription-spinner-text">Chargement des validés...</div>
                     </div>
                     <div class="content-container" style="display: none;"></div>
                 </div>
@@ -405,13 +425,11 @@
                 <!-- Onglet Abandons Année -->
                 @if(($statistiques['abandons_annee'] ?? 0) > 0)
                 <div class="tab-pane fade" id="abandons-annee" role="tabpanel" data-category="abandons_annee">
-                    <div class="loading-spinner" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; text-align: center;">
-                        <div class="spinner-icon" style="margin-bottom: 16px;">
-                            <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
+                    <div class="reinscription-spinner">
+                        <div class="reinscription-spinner-icon">
+                            <i class="fas fa-spinner"></i>
                         </div>
-                        <div class="spinner-text" style="position: static;">
-                            <p class="text-muted mb-0">Chargement des abandons année...</p>
-                        </div>
+                        <div class="reinscription-spinner-text">Chargement des abandons année...</div>
                     </div>
                     <div class="content-container" style="display: none;"></div>
                 </div>
@@ -420,13 +438,11 @@
                 <!-- Onglet Abandons École -->
                 @if(($statistiques['abandons_ecole'] ?? 0) > 0)
                 <div class="tab-pane fade" id="abandons-ecole" role="tabpanel" data-category="abandons_ecole">
-                    <div class="loading-spinner" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; text-align: center;">
-                        <div class="spinner-icon" style="margin-bottom: 16px;">
-                            <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
+                    <div class="reinscription-spinner">
+                        <div class="reinscription-spinner-icon">
+                            <i class="fas fa-spinner"></i>
                         </div>
-                        <div class="spinner-text" style="position: static;">
-                            <p class="text-muted mb-0">Chargement des abandons école...</p>
-                        </div>
+                        <div class="reinscription-spinner-text">Chargement des abandons école...</div>
                     </div>
                     <div class="content-container" style="display: none;"></div>
                 </div>
@@ -435,13 +451,11 @@
                 <!-- Onglet Erreurs -->
                 @if(($statistiques['errors'] ?? 0) > 0)
                 <div class="tab-pane fade" id="errors" role="tabpanel" data-category="errors">
-                    <div class="loading-spinner" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; text-align: center;">
-                        <div class="spinner-icon" style="margin-bottom: 16px;">
-                            <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
+                    <div class="reinscription-spinner">
+                        <div class="reinscription-spinner-icon">
+                            <i class="fas fa-spinner"></i>
                         </div>
-                        <div class="spinner-text" style="position: static;">
-                            <p class="text-muted mb-0">Chargement des non validés...</p>
-                        </div>
+                        <div class="reinscription-spinner-text">Chargement des non validés...</div>
                     </div>
                     <div class="content-container" style="display: none;"></div>
                 </div>
@@ -559,7 +573,7 @@ function loadTabContent(category, page = 1) {
     console.log(`🔥 DEBUG: loadTabContent("${category}", ${page})`);
     
     const tabPane = $(`[data-category="${category}"]`);
-    const loadingSpinner = tabPane.find('.loading-spinner');
+    const loadingSpinner = tabPane.find('.reinscription-spinner');
     const contentContainer = tabPane.find('.content-container');
     
     console.log(`🔍 DEBUG: Éléments trouvés:`);
