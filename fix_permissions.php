@@ -50,6 +50,40 @@ try {
         'edit_inscriptions',
         'approve_inscriptions',
         'reject_inscriptions',
+        // Inscriptions avec syntaxe point
+        'inscriptions.view',
+        'inscriptions.create',
+        'inscriptions.edit',
+        'inscriptions.delete',
+        'inscriptions.validate',
+        
+        // Paiements avec syntaxe point
+        'paiements.view',
+        'paiements.create',
+        'paiements.edit',
+        'paiements.delete',
+        'paiements.validate',
+        
+        // Frais avec syntaxe point
+        'frais.view',
+        'frais.create',
+        'frais.edit',
+        'frais.delete',
+        'frais.configure',
+        
+        // Sécurité et audit
+        'security.audit.view',
+        'security.audit.export',
+        'comptabilite.audit.view',
+        'security.users.monitor',
+        
+        // Cycles avec espaces
+        'view cycles',
+        'create cycles',
+        'edit cycles',
+        'delete cycles',
+        'restore cycles',
+        'force delete cycles',
         
         // Classes et filières
         'view_classes',
@@ -170,6 +204,10 @@ try {
         'access_admin',
         'view_students', 'create_students', 'edit_students',
         'view_inscriptions', 'create_inscriptions', 'edit_inscriptions',
+        'inscriptions.view', 'inscriptions.create', 'inscriptions.edit', 'inscriptions.delete', 'inscriptions.validate',
+        'paiements.view', 'paiements.create', 'paiements.edit', 'paiements.validate',
+        'frais.view', 'frais.create', 'frais.edit', 'frais.configure',
+        'view cycles', 'create cycles', 'edit cycles', 'delete cycles',
         'view_classes', 'create_classes', 'edit_classes',
         'view_filieres', 'create_filieres', 'edit_filieres',
         'view_matieres',
@@ -197,6 +235,10 @@ try {
         'access_admin',
         'view_students', 'edit_students',
         'view_inscriptions', 'approve_inscriptions', 'reject_inscriptions',
+        'inscriptions.view', 'inscriptions.edit', 'inscriptions.validate',
+        'paiements.view',
+        'frais.view',
+        'view cycles', 'edit cycles',
         'view_classes', 'edit_classes',
         'view_matieres', 'edit_matieres',
         'view_notes', 'edit_notes',
