@@ -169,3 +169,192 @@ body.modal-open {
 #classeSelectorModal.modal.show .modal-dialog {
     transform: none !important;
 }
+
+/* FIX ULTRA-SPÉCIFIQUE POUR MODALS DE SUPPRESSION MATIÈRES */
+/* Tous les modals dont l'ID commence par deleteModal */
+[id^="deleteModal"] {
+    z-index: 1070 !important;
+}
+
+[id^="deleteModal"] .modal-backdrop {
+    z-index: 1065 !important;
+}
+
+[id^="deleteModal"] .modal-dialog {
+    z-index: 1075 !important;
+    position: relative !important;
+    margin: 1.75rem auto !important;
+    transform: none !important;
+    transition: none !important;
+}
+
+[id^="deleteModal"] .modal-content {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    transform: none !important;
+    transition: none !important;
+    position: relative !important;
+    z-index: 1 !important;
+}
+
+/* Forcer l'affichage au-dessus de tout */
+[id^="deleteModal"].modal.show {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 1070 !important;
+}
+
+[id^="deleteModal"].modal.fade .modal-dialog {
+    transition: none !important;
+    transform: none !important;
+}
+
+[id^="deleteModal"].modal.show .modal-dialog {
+    transform: none !important;
+}
+
+/* SUPPRESSION TOTALE DES MOUVEMENTS ERRATIQUES */
+/* Désactiver toutes les transitions et transformations sur tous les modals */
+.modal, .modal * {
+    transition: none !important;
+    animation: none !important;
+    transform: none !important;
+}
+
+.modal.fade .modal-dialog {
+    transition: none !important;
+    transform: none !important;
+}
+
+.modal.show .modal-dialog {
+    transition: none !important;
+    transform: none !important;
+}
+
+/* Forcer la position statique pour éviter les mouvements */
+.modal-dialog {
+    position: static !important;
+    transform: none !important;
+    transition: none !important;
+    animation: none !important;
+}
+
+.modal-content {
+    position: relative !important;
+    transform: none !important;
+    transition: none !important;
+    animation: none !important;
+}
+
+/* Désactiver les effets fade complètement */
+.modal.fade {
+    transition: none !important;
+}
+
+.modal.fade.show {
+    opacity: 1 !important;
+}
+
+.modal-backdrop.fade {
+    transition: none !important;
+}
+
+.modal-backdrop.fade.show {
+    opacity: 0.5 !important;
+}
+
+/* DÉSACTIVER TOUS LES EFFETS HOVER SUR LES MODALES */
+/* Empêcher tous les hovers qui causent des mouvements erratiques */
+.modal, .modal *,
+.modal:hover, .modal *:hover,
+.modal:focus, .modal *:focus,
+.modal:active, .modal *:active {
+    transition: none !important;
+    transform: none !important;
+    animation: none !important;
+}
+
+/* Désactiver spécifiquement les hover effects sur modal-dialog et modal-content */
+.modal-dialog:hover,
+.modal-content:hover,
+.modal-header:hover,
+.modal-body:hover,
+.modal-footer:hover {
+    transition: none !important;
+    transform: none !important;
+    animation: none !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2) !important; /* Garder shadow fixe */
+}
+
+/* Empêcher les hover effects sur les boutons dans les modales */
+.modal .btn:hover,
+.modal .btn:focus,
+.modal .btn:active {
+    transition: none !important;
+    transform: none !important;
+    animation: none !important;
+}
+
+/* Désactiver les hover effects sur les éléments de formulaire */
+.modal input:hover,
+.modal input:focus,
+.modal textarea:hover,
+.modal textarea:focus,
+.modal select:hover,
+.modal select:focus {
+    transition: none !important;
+    transform: none !important;
+    animation: none !important;
+}
+
+/* Forcer la stabilité complète - aucun changement au hover */
+.modal-dialog {
+    will-change: auto !important;
+}
+
+.modal-content {
+    will-change: auto !important;
+}
+
+/* Empêcher les effets de survol sur les modals de suppression spécifiquement */
+[id^="deleteModal"]:hover,
+[id^="deleteModal"] *:hover {
+    transition: none !important;
+    transform: none !important;
+    animation: none !important;
+}
+
+/* DÉSACTIVER TOUS LES HOVER EFFECTS QUAND UNE MODALE EST OUVERTE */
+/* Quand body a la classe modal-open, désactiver tous les hovers */
+body.modal-open * {
+    pointer-events: none !important;
+}
+
+/* Mais permettre les interactions dans la modale elle-même */
+body.modal-open .modal,
+body.modal-open .modal * {
+    pointer-events: auto !important;
+}
+
+/* Spécifiquement pour les modales, empêcher tous les changements visuels */
+body.modal-open .modal *:hover,
+body.modal-open .modal *:focus,
+body.modal-open .modal *:active {
+    transition: none !important;
+    transform: none !important;
+    animation: none !important;
+    box-shadow: inherit !important;
+}
+
+/* Empêcher les hover effects sur les éléments de fond quand modal ouvert */
+body.modal-open .card-moderne:hover,
+body.modal-open .btn-acasi:hover,
+body.modal-open .navigation-link:hover,
+body.modal-open .main-card:hover,
+body.modal-open .course-item:hover {
+    transition: none !important;
+    transform: none !important;
+    animation: none !important;
+    box-shadow: inherit !important;
+}

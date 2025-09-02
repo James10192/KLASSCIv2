@@ -163,9 +163,46 @@
     100% { transform: rotate(360deg); }
 }
 
+/* Container pour le contenu des onglets */
+.content-container {
+    width: 100% !important;
+    min-height: 200px;
+}
+
+/* S'assurer que les tab-panes prennent toute la largeur */
+.tab-pane {
+    width: 100% !important;
+}
+
+.tab-content {
+    width: 100% !important;
+}
+
+/* S'assurer que les tables prennent toute la largeur */
+.content-container .table-responsive {
+    width: 100% !important;
+    margin: 0;
+}
+
+.content-container .table-responsive table {
+    width: 100% !important;
+    margin: 0;
+}
+
+/* Correction pour mobile */
 @media (max-width: 768px) {
     .table-moderne {
-        min-width: 800px;
+        min-width: unset;
+        width: 100%;
+    }
+    
+    .content-container {
+        padding: 0 !important;
+    }
+    
+    .table-responsive {
+        border-radius: var(--radius-medium);
+        -webkit-overflow-scrolling: touch;
     }
 }
 </style>
@@ -502,8 +539,62 @@
     </div>
 </div>
 
+<script>
+// LOGS IMMÉDIATS AVANT CHARGEMENT JQUERY (PAGE REINSCRIPTIONS)
+console.log('🟢 DEBUG REINSCRIPTIONS: Script debug DÉBUT');
+console.log('🟢 DEBUG REINSCRIPTIONS: jQuery disponible avant chargement?', typeof $ !== 'undefined');
+</script>
+
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+// LOGS APRÈS JQUERY (PAGE REINSCRIPTIONS)
+console.log('🟢 DEBUG REINSCRIPTIONS: jQuery chargé?', typeof $ !== 'undefined');
+console.log('🟢 DEBUG REINSCRIPTIONS: jQuery version:', typeof $ !== 'undefined' ? $.fn.jquery : 'N/A');
+</script>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+// LOGS APRÈS BOOTSTRAP (PAGE REINSCRIPTIONS)
+console.log('🟢 DEBUG REINSCRIPTIONS: Bootstrap 4.6.2 chargé?', typeof $.fn.modal !== 'undefined');
+console.log('🟢 DEBUG REINSCRIPTIONS: Bootstrap version:', typeof bootstrap !== 'undefined' ? bootstrap : 'N/A');
+
+$(document).ready(function() {
+    console.log('🟢 DEBUG REINSCRIPTIONS: Document ready');
+    
+    // Debug du modal "Changer d'année"
+    const yearChangeModal = $('#yearChangeModal');
+    console.log('🟢 DEBUG REINSCRIPTIONS: Modal changement année trouvé?', yearChangeModal.length > 0);
+    
+    const yearChangeButton = $('button[onclick="showYearChangeInfo()"]');
+    console.log('🟢 DEBUG REINSCRIPTIONS: Bouton changement année trouvé?', yearChangeButton.length > 0);
+    
+    // Debug du bouton "Changer d'année" existant
+    const changeYearBtn = $('button[onclick="showYearChangeInfo()"]');
+    console.log('🟢 DEBUG REINSCRIPTIONS: Bouton "Changer d\'année" trouvé?', changeYearBtn.length > 0);
+    if (changeYearBtn.length > 0) {
+        console.log('🟢 DEBUG REINSCRIPTIONS: Texte du bouton:', changeYearBtn.text().trim());
+        console.log('🟢 DEBUG REINSCRIPTIONS: Attribut onclick:', changeYearBtn.attr('onclick'));
+    }
+    
+    // Intercepter les clics sur le bouton "Changer d'année" 
+    changeYearBtn.on('click', function() {
+        console.log('🖱️ DEBUG REINSCRIPTIONS: Clic détecté sur bouton "Changer d\'année"');
+        console.log('🎯 DEBUG REINSCRIPTIONS: Tentative d\'ouverture du modal #yearChangeModal');
+    });
+    
+    // Écouter les événements du modal
+    $('#yearChangeModal').on('show.bs.modal', function (e) {
+        console.log('🎭 DEBUG REINSCRIPTIONS: Événement show.bs.modal déclenché');
+    });
+    
+    $('#yearChangeModal').on('shown.bs.modal', function (e) {
+        console.log('✅ DEBUG REINSCRIPTIONS: Modal affiché avec succès');
+    });
+});
+</script>
+
 <script>
 // Variables pour le système de lazy loading
 let loadedTabs = {};
@@ -709,8 +800,68 @@ function loadTabContent(category, page = 1) {
                 
                 console.log(`👁️ DEBUG: Affichage du contenu`);
                 console.log(`🔍 DEBUG AVANT show():`, contentContainer.is(':visible'));
+                
+                // FORCE l'affichage avec plusieurs méthodes
                 contentContainer.show();
+                contentContainer.css('display', 'block');
+                contentContainer.css('width', '100%');
+                contentContainer.css('visibility', 'visible');
+                
                 console.log(`🔍 DEBUG APRÈS show():`, contentContainer.is(':visible'));
+                console.log(`🔍 DEBUG CSS display:`, contentContainer.css('display'));
+                console.log(`🔍 DEBUG largeur:`, contentContainer.css('width'));
+                
+                // Vérifier que le contenu a bien été injecté
+                const injectedContent = contentContainer.html();
+                console.log(`📝 DEBUG contenu injecté (taille):`, injectedContent.length);
+                console.log(`🎨 DEBUG contient table-responsive:`, injectedContent.includes('table-responsive'));
+                
+                // Forcer l'affichage de tous les éléments
+                const tableResponsive = contentContainer.find('.table-responsive');
+                const table = contentContainer.find('table');
+                const thead = contentContainer.find('thead');
+                const tbody = contentContainer.find('tbody');
+                
+                console.log(`📋 DEBUG éléments trouvés:`);
+                console.log(`  - table-responsive: ${tableResponsive.length}`);
+                console.log(`  - table: ${table.length}`);
+                console.log(`  - thead: ${thead.length}`);
+                console.log(`  - tbody: ${tbody.length}`);
+                
+                // Forcer l'affichage de chaque élément
+                if (tableResponsive.length > 0) {
+                    console.log(`🔧 Force affichage table-responsive`);
+                    tableResponsive.css({
+                        'display': 'block !important',
+                        'width': '100% !important',
+                        'visibility': 'visible !important'
+                    });
+                }
+                
+                if (table.length > 0) {
+                    console.log(`🔧 Force affichage table`);
+                    table.css({
+                        'display': 'table !important',
+                        'width': '100% !important',
+                        'visibility': 'visible !important'
+                    });
+                }
+                
+                if (thead.length > 0) {
+                    console.log(`🔧 Force affichage thead`);
+                    thead.css({
+                        'display': 'table-header-group !important',
+                        'visibility': 'visible !important'
+                    });
+                }
+                
+                if (tbody.length > 0) {
+                    console.log(`🔧 Force affichage tbody`);
+                    tbody.css({
+                        'display': 'table-row-group !important',
+                        'visibility': 'visible !important'
+                    });
+                }
                 loadedTabs[category] = true;
                 currentPage[category] = 1;
                 console.log(`💾 DEBUG: Catégorie "${category}" mise en cache pour éviter les rechargements`);
@@ -863,7 +1014,84 @@ function exportResults() {
 }
 
 function showYearChangeInfo() {
-    $('#yearChangeModal').modal('show');
+    console.log('🟢 DEBUG REINSCRIPTIONS: Fonction showYearChangeInfo() appelée');
+    console.log('🟢 DEBUG REINSCRIPTIONS: Modal #yearChangeModal existe?', $('#yearChangeModal').length > 0);
+    try {
+        $('#yearChangeModal').modal('show');
+        console.log('✅ DEBUG REINSCRIPTIONS: Commande modal(show) exécutée dans showYearChangeInfo()');
+    } catch (error) {
+        console.error('❌ DEBUG REINSCRIPTIONS: Erreur dans showYearChangeInfo():', error);
+    }
+}
+
+// FONCTION TEST DEBUG TEMPORAIRE
+function testInjection() {
+    console.log('🧪 TEST INJECTION HTML');
+    
+    const testHtml = `
+        <div class="table-responsive" style="width: 100% !important; border: 2px solid red;">
+            <h3 style="color: red; text-align: center;">TEST INJECTION</h3>
+            <table class="table table-hover" style="width: 100% !important; border: 2px solid blue;">
+                <thead style="background-color: #0453cb !important; color: white !important;">
+                    <tr>
+                        <th style="padding: 16px !important;">TEST HEADER 1</th>
+                        <th style="padding: 16px !important;">TEST HEADER 2</th>
+                        <th style="padding: 16px !important;">TEST HEADER 3</th>
+                    </tr>
+                </thead>
+                <tbody style="background-color: white;">
+                    <tr>
+                        <td style="padding: 16px;">TEST DATA 1</td>
+                        <td style="padding: 16px;">TEST DATA 2</td>
+                        <td style="padding: 16px;">TEST DATA 3</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 16px;">TEST DATA 4</td>
+                        <td style="padding: 16px;">TEST DATA 5</td>
+                        <td style="padding: 16px;">TEST DATA 6</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    // Trouver le content-container actif
+    const activeTabPane = $('.tab-pane.active, .tab-pane.show');
+    let targetContainer;
+    
+    if (activeTabPane.length > 0) {
+        targetContainer = activeTabPane.find('.content-container');
+        console.log('🎯 Container actif trouvé:', activeTabPane.attr('id'));
+    } else {
+        // Si pas d'onglet actif, utiliser redoublements
+        targetContainer = $('#redoublements .content-container');
+        console.log('🎯 Utilise container redoublements par défaut');
+    }
+    
+    if (targetContainer.length > 0) {
+        console.log('✅ Container trouvé, injection du HTML test');
+        
+        // Masquer le spinner
+        targetContainer.siblings('.reinscription-spinner').addClass('hidden');
+        
+        // Injecter le HTML test
+        targetContainer.html(testHtml);
+        
+        // Forcer l'affichage
+        targetContainer.show();
+        targetContainer.css({
+            'display': 'block !important',
+            'width': '100% !important',
+            'visibility': 'visible !important'
+        });
+        
+        console.log('✅ HTML test injecté avec succès');
+        alert('HTML TEST injecté! Regardez si la table s\'affiche avec les headers.');
+        
+    } else {
+        console.log('❌ Container non trouvé');
+        alert('Erreur: Container non trouvé');
+    }
 }
 
 // Gérer la fermeture de la modal

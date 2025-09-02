@@ -1,50 +1,69 @@
 @foreach($etudiants as $analyse)
-<tr>
-    <td>
-        <img src="{{ $analyse['etudiant']->photo_url ?? asset('images/default-avatar.png') }}" 
-             alt="Photo" 
-             style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
-    </td>
-    <td>
-        <div>
-            <div style="font-weight: 600; color: #1f2937; margin-bottom: 4px;">{{ $analyse['etudiant']->prenoms }} {{ $analyse['etudiant']->nom }}</div>
-            <div style="font-size: 12px; color: #64748b;">{{ $analyse['etudiant']->matricule ?? 'N/A' }}</div>
+<tr style="border-bottom: 1px solid #f3f4f6;">
+    <td style="padding: 16px;">
+        <div style="display: flex; align-items: center;">
+            <div style="width: 44px; height: 44px; border-radius: 50%; background-color: #0453cb; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; margin-right: 16px;">
+                {{ strtoupper(substr($analyse['etudiant']->prenoms ?? 'N', 0, 1) . substr($analyse['etudiant']->nom ?? 'A', 0, 1)) }}
+            </div>
+            <div>
+                <div style="font-weight: 600; color: #1f2937;">{{ $analyse['etudiant']->prenoms ?? 'N/A' }} {{ $analyse['etudiant']->nom ?? 'N/A' }}</div>
+                <small style="color: #64748b;">{{ $analyse['etudiant']->matricule ?? 'Matricule non disponible' }}</small>
+            </div>
         </div>
     </td>
-    <td>
-        <span class="table-badge primary">{{ $analyse['classe']->name ?? $analyse['inscription']->classe->name ?? 'N/A' }}</span>
-        <br>
-        <div style="font-size: 12px; color: #64748b; margin-top: 4px;">
-            {{ $analyse['classe']->niveau->name ?? $analyse['inscription']->classe->niveau->name ?? 'N/A' }} - 
-            {{ $analyse['classe']->filiere->name ?? $analyse['inscription']->classe->filiere->name ?? 'N/A' }}
-        </div>
+    <td style="padding: 16px;">
+        @if($analyse['classe'] ?? $analyse['inscription']->classe ?? null)
+            <span class="badge success">
+                <i class="fas fa-users"></i>
+                {{ $analyse['classe']->name ?? $analyse['inscription']->classe->name ?? 'N/A' }}
+            </span>
+            <div style="font-weight: 600; color: #1f2937; margin-top: 4px;">
+                {{ $analyse['classe']->niveau->name ?? $analyse['inscription']->classe->niveau->name ?? 'N/A' }}
+            </div>
+            <small style="color: #64748b;">
+                {{ $analyse['classe']->filiere->name ?? $analyse['inscription']->classe->filiere->name ?? 'N/A' }}
+            </small>
+        @else
+            <span class="badge" style="background-color: rgba(107, 114, 128, 0.1); color: #6b7280;">
+                <i class="fas fa-question"></i> Non assignée
+            </span>
+        @endif
     </td>
-    <td style="text-align: center;">
-        <span class="table-badge 
-            @if($analyse['moyenne_generale'] >= 10) success
-            @elseif($analyse['moyenne_generale'] >= 8) warning
-            @else danger
-            @endif">
-            {{ number_format($analyse['moyenne_generale'], 2) }}/20
-        </span>
+    <td style="padding: 16px; text-align: center;">
+        @if($analyse['moyenne_generale'] >= 10)
+            <span class="badge success">
+                <i class="fas fa-check-circle"></i> {{ number_format($analyse['moyenne_generale'], 2) }}/20
+            </span>
+        @elseif($analyse['moyenne_generale'] >= 8)
+            <span class="badge warning">
+                <i class="fas fa-exclamation-triangle"></i> {{ number_format($analyse['moyenne_generale'], 2) }}/20
+            </span>
+        @else
+            <span class="badge danger">
+                <i class="fas fa-times-circle"></i> {{ number_format($analyse['moyenne_generale'], 2) }}/20
+            </span>
+        @endif
     </td>
-    @if($type === 'rattrapage')
-    <td style="text-align: center;">
+    @if($type === 'rattrapages')
+    <td style="padding: 16px; text-align: center;">
         @if(count($analyse['matieres_echouees']) > 0)
-            <div style="display: flex; flex-wrap: wrap; gap: var(--space-xs); justify-content: center;">
+            <div style="display: flex; flex-wrap: wrap; gap: 4px; justify-content: center;">
             @foreach($analyse['matieres_echouees'] as $matiere)
-            <span class="table-badge danger" style="margin-bottom: var(--space-xs);">
+            <span class="badge danger" style="margin-bottom: 4px;">
+                <i class="fas fa-times"></i>
                 {{ $matiere['matiere']->name ?? 'N/A' }}
                 ({{ number_format($matiere['moyenne'], 2) }})
             </span>
             @endforeach
             </div>
         @else
-            <span style="color: var(--text-muted);">Aucune</span>
+            <span class="badge success">
+                <i class="fas fa-check"></i> Aucune
+            </span>
         @endif
     </td>
     @endif
-    <td style="text-align: center;">
+    <td style="padding: 16px; text-align: center;">
         @php
             $etudiant = $analyse['etudiant'];
             $montantAttendu = $etudiant->montant_attendu ?? 0;
@@ -54,70 +73,68 @@
         @endphp
         
         <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
-            <div style="font-size: 12px; text-align: center;">
-                <span style="font-weight: 600; color: #3b82f6;">{{ number_format($montantAttendu, 0, ',', ' ') }} FCFA</span>
-                <div style="color: #64748b; font-size: 10px;">attendu</div>
-            </div>
+            <div style="font-weight: 600; color: #1f2937;">{{ number_format($montantAttendu, 0, ',', ' ') }} FCFA</div>
+            <small style="color: #64748b;">Attendu</small>
             
-            <div style="font-size: 12px; text-align: center;">
-                <span style="font-weight: 600; color: #22c55e;">{{ number_format($montantPaye, 0, ',', ' ') }} FCFA</span>
-                <div style="color: #64748b; font-size: 10px;">payé</div>
-            </div>
+            <div style="font-weight: 600; color: #059669;">{{ number_format($montantPaye, 0, ',', ' ') }} FCFA</div>
+            <small style="color: #64748b;">Payé</small>
             
             @if($soldeRestant > 0)
-            <div style="font-size: 12px; text-align: center;">
-                <span style="font-weight: 600; color: #ef4444;">{{ number_format($soldeRestant, 0, ',', ' ') }} FCFA</span>
-                <div style="color: #64748b; font-size: 10px;">reste à payer</div>
-            </div>
+                <div style="font-weight: 600; color: #dc2626;">{{ number_format($soldeRestant, 0, ',', ' ') }} FCFA</div>
+                <small style="color: #64748b;">Reste</small>
             @elseif($soldeRestant < 0)
-            <div style="font-size: 12px; text-align: center;">
-                <span style="font-weight: 600; color: #f59e0b;">{{ number_format(abs($soldeRestant), 0, ',', ' ') }} FCFA</span>
-                <div style="color: #64748b; font-size: 10px;">trop-perçu</div>
-            </div>
+                <div style="font-weight: 600; color: #f59e0b;">{{ number_format(abs($soldeRestant), 0, ',', ' ') }} FCFA</div>
+                <small style="color: #64748b;">Trop-perçu</small>
             @else
-            <div style="font-size: 12px; text-align: center;">
-                <span style="font-weight: 600; color: #22c55e;">Soldé</span>
-                <div style="color: #64748b; font-size: 10px;">✓</div>
-            </div>
+                <div style="font-weight: 600; color: #059669;">Soldé</div>
+                <small style="color: #64748b;">✓</small>
             @endif
             
-            <span class="table-badge {{ $peutReinscrire ? 'success' : 'danger' }}" style="font-size: 10px;">
-                <i class="fas {{ $peutReinscrire ? 'fa-check-circle' : 'fa-times-circle' }}"></i>
-                {{ $peutReinscrire ? 'Éligible' : 'Non éligible' }}
-            </span>
+            @if($peutReinscrire)
+                <span class="badge success" style="margin-top: 4px;">
+                    <i class="fas fa-check-circle"></i> Éligible
+                </span>
+            @else
+                <span class="badge danger" style="margin-top: 4px;">
+                    <i class="fas fa-times-circle"></i> Non éligible
+                </span>
+            @endif
         </div>
     </td>
-    <td style="text-align: center;">
+    <td style="padding: 16px; text-align: center;">
         @switch($analyse['decision'])
             @case('passage')
-                <span class="table-badge success">
+                <span class="badge success">
                     <i class="fas fa-arrow-up"></i> Passage
                 </span>
                 @break
             @case('rattrapage')
-                <span class="table-badge warning">
+                <span class="badge warning">
                     <i class="fas fa-exclamation-triangle"></i> Rattrapage
                 </span>
                 @break
             @case('redoublement')
-                <span class="table-badge danger">
+                <span class="badge danger">
                     <i class="fas fa-redo"></i> Redoublement
                 </span>
                 @break
         @endswitch
     </td>
-    <td style="text-align: center;">
-        <div class="table-actions">
+    <td style="padding: 16px; text-align: center;">
+        <div style="display: flex; gap: 8px; justify-content: center;">
             <a href="{{ route('esbtp.reinscription.show', $analyse['etudiant']->id) }}?annee_academique={{ request('annee_academique') }}" 
-               class="btn-table-action primary" title="Voir détails">
+               class="btn btn-primary btn-sm" title="Voir détails"
+               style="padding: 8px; border-radius: 6px; min-width: 36px; display: flex; align-items: center; justify-content: center;">
                 <i class="fas fa-eye"></i>
             </a>
-            <button type="button" class="btn-table-action primary" 
-                    onclick="validerReinscription({{ $analyse['etudiant']->id }}, '{{ $analyse['decision'] }}'))" title="Valider réinscription">
+            <button type="button" class="btn btn-success btn-sm" 
+                    onclick="validerReinscription({{ $analyse['etudiant']->id }}, '{{ $analyse['decision'] }}')" title="Valider réinscription"
+                    style="padding: 8px; border-radius: 6px; min-width: 36px; display: flex; align-items: center; justify-content: center;">
                 <i class="fas fa-check-double"></i>
             </button>
-            <button type="button" class="btn-table-action warning" 
-                    onclick="marquerAbandonModal({{ $analyse['etudiant']->id }})" title="Marquer comme abandon">
+            <button type="button" class="btn btn-warning btn-sm" 
+                    onclick="marquerAbandonModal({{ $analyse['etudiant']->id }})" title="Marquer comme abandon"
+                    style="padding: 8px; border-radius: 6px; min-width: 36px; display: flex; align-items: center; justify-content: center;">
                 <i class="fas fa-user-times"></i>
             </button>
         </div>

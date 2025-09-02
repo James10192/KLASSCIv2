@@ -121,12 +121,12 @@ Route::prefix('install')->group(function () {
 });
 
 // Routes d'authentification simplifiées
-Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
-Route::post('/login', [LoginController::class, 'login']);
+Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login')->middleware('guest');
+Route::post('/login', [LoginController::class, 'login'])->middleware('guest');
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
 // Routes d'enregistrement
-Route::get('/register', [RegisterController::class, 'showRegistrationForm'])->name('register');
+Route::get('/register', [RegisterController::class, 'showRegistrationForm'])->name('register')->middleware('guest');
 Route::post('/register', [RegisterController::class, 'register']);
 
 // Routes de réinitialisation de mot de passe
@@ -1005,6 +1005,10 @@ Route::middleware(['auth', 'role:teacher'])->group(function () {
 // });
 
 // API routes for ESBTP
+Route::prefix('api/esbtp')->name('api.esbtp.')->middleware(['auth'])->group(function () {
+    Route::get('matieres/list', [ESBTPMatiereController::class, 'apiList'])->name('matieres.list');
+});
+
 Route::prefix('esbtp/api')->name('esbtp.api.')->middleware(['auth'])->group(function () {
     Route::get('classes/{id}/matieres', [ESBTPClasseController::class, 'getMatieresForApi'])->name('classes.matieres.api');
     Route::get('classes/{id}', [ESBTPClasseController::class, 'getClasseById'])->name('classes.get');
@@ -1517,6 +1521,7 @@ Route::get('/esbtp/classes/{classe}/etudiants', [ESBTPClasseController::class, '
 // Routes spéciales pour la prévisualisation et modification des moyennes
 Route::get('/esbtp-special/bulletins/moyennes-preview', [ESBTPBulletinController::class, 'previewMoyennes'])->name('esbtp.bulletins.moyennes-preview');
 Route::post('/esbtp-special/bulletins/moyennes-update', [ESBTPBulletinController::class, 'updateMoyennes'])->name('esbtp.bulletins.moyennes-update');
+Route::delete('/esbtp-special/bulletins/moyennes-delete', [ESBTPBulletinController::class, 'deleteMoyenne'])->name('esbtp.bulletins.moyennes-delete');
 
 // Routes spéciales pour la configuration des matières et l'édition des professeurs
 Route::get('/esbtp-special/bulletins/config-matieres', [ESBTPBulletinController::class, 'configMatieresTypeFormation'])->name('esbtp.bulletins.config-matieres');

@@ -41,6 +41,34 @@ Cette commande applique une solution complète testée qui :
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
 }
+
+/* CORRECTION DES MOUVEMENTS ERRATIQUES */
+/* Désactiver toutes les transitions et animations sur les modales */
+.modal, .modal * {
+    transition: none !important;
+    animation: none !important;
+    transform: none !important;
+}
+
+/* Désactiver tous les effets hover sur les modales */
+.modal:hover, .modal *:hover,
+.modal:focus, .modal *:focus,
+.modal:active, .modal *:active {
+    transition: none !important;
+    transform: none !important;
+    animation: none !important;
+}
+
+/* Désactiver les interactions sur les éléments de fond quand modal ouvert */
+body.modal-open * {
+    pointer-events: none !important;
+}
+
+/* Mais permettre les interactions dans la modale elle-même */
+body.modal-open .modal,
+body.modal-open .modal * {
+    pointer-events: auto !important;
+}
 ```
 
 ### Inclusion automatique
@@ -48,7 +76,15 @@ Cette commande applique une solution complète testée qui :
 Le fichier CSS sera automatiquement inclus dans les vues qui contiennent des modales :
 - `resources/views/esbtp/inscriptions/show.blade.php`
 - `resources/views/esbtp/enseignants/edit.blade.php`
+- `resources/views/esbtp/matieres/index.blade.php`
 - Toutes les vues avec des modales Bootstrap
+
+**Inclusion dans le template** :
+```php
+@section('styles')
+<link href="{{ asset('css/modal-force-fix.css') }}" rel="stylesheet">
+@endsection
+```
 
 ### Hiérarchie Z-Index préservée
 
@@ -63,6 +99,8 @@ Le fichier CSS sera automatiquement inclus dans les vues qui contiennent des mod
 - ✅ Boutons de modales non-cliquables (overlay transparent)
 - ✅ Backdrop au-dessus du contenu de la modale
 - ✅ Z-index conflicts entre navbar/sidebar et modales
+- ✅ **Mouvements erratiques des modales** au survol de la souris
+- ✅ **Effets hover indésirables** qui déplacent ou transforment les modales
 
 ### Avant (problématique)
 ```css
@@ -108,6 +146,27 @@ Après application, vérifiez :
 2. **Modal visible** : Contenu affiché au centre de l'écran  
 3. **Interactions possibles** : Boutons et formulaires cliquables
 4. **Fermeture correcte** : Backdrop et bouton X fonctionnent
+5. **Pas de mouvements erratiques** : Modal reste stable au survol de la souris
+6. **Éléments de fond désactivés** : Pas d'interactions sur le contenu derrière le modal
+
+## Diagnostic des problèmes de mouvements erratiques
+
+### Symptômes typiques :
+- Modal qui "saute" ou bouge quand on survole avec la souris
+- Effets hover qui se déclenchent sur les éléments du modal
+- Animations ou transitions qui se lancent de façon inattendue
+
+### Causes courantes :
+1. **Effets CSS hover** sur les éléments du modal ou du fond
+2. **Transitions CSS** non désactivées sur les éléments du modal
+3. **Animations CSS** qui continuent à s'exécuter
+4. **Transform ou will-change** qui créent des nouveaux stacking contexts
+
+### Solutions appliquées :
+- Désactivation de toutes les transitions sur `.modal` et ses enfants
+- Suppression des effets hover avec `transition: none !important`
+- Blocage des interactions sur les éléments de fond avec `pointer-events: none`
+- Maintien des interactions uniquement sur le modal avec `pointer-events: auto`
 
 ## Commandes associées
 

@@ -4,10 +4,6 @@
 
 @section('styles')
 <link href="{{ asset('css/dashboard-moderne.css') }}" rel="stylesheet">
-<link href="{{ asset('css/modal-force-fix.css') }}" rel="stylesheet">
-<!-- DataTables CSS -->
-<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
-<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/responsive/2.4.1/css/responsive.bootstrap5.min.css">
 <style>
     .gap-1 {
         gap: 0.25rem !important;
@@ -63,48 +59,6 @@
         display: inline-flex;
         align-items: center;
         gap: 0.25rem;
-    }
-    
-    /* DataTables custom styling */
-    .datatable-footer {
-        background: var(--bg-light, #f8fafc);
-        border-radius: 8px;
-        border: 1px solid var(--border-light, #e5e7eb);
-    }
-    
-    .datatable-info {
-        font-size: 0.875rem;
-        color: var(--text-secondary, #6b7280);
-        font-weight: 500;
-    }
-    
-    .datatable-pagination .paginate_button {
-        padding: 0.5rem 0.75rem !important;
-        margin: 0 0.125rem !important;
-        border-radius: 6px !important;
-        border: 1px solid var(--border-light, #e5e7eb) !important;
-        background: white !important;
-        color: var(--text-primary, #1f2937) !important;
-        font-weight: 500;
-        transition: all 0.2s ease !important;
-    }
-    
-    .datatable-pagination .paginate_button:hover {
-        background: var(--primary, #0453cb) !important;
-        color: white !important;
-        border-color: var(--primary, #0453cb) !important;
-        transform: translateY(-1px);
-    }
-    
-    .datatable-pagination .paginate_button.current {
-        background: var(--primary, #0453cb) !important;
-        color: white !important;
-        border-color: var(--primary, #0453cb) !important;
-    }
-    
-    .datatable-pagination .paginate_button.disabled {
-        opacity: 0.5 !important;
-        cursor: not-allowed !important;
     }
 </style>
 @endsection
@@ -428,48 +382,40 @@
                                                 </a>
                                                 <button type="button" 
                                                         class="btn btn-sm btn-outline-danger" 
-                                                        data-bs-toggle="modal" 
-                                                        data-bs-target="#deleteModal{{ $matiere->id }}"
+                                                        data-toggle="modal" 
+                                                        data-target="#deleteModal{{ $matiere->id }}" 
                                                         title="Supprimer"
                                                         style="padding: 4px 8px; border-radius: 4px;">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             </div>
 
-                                        </td>
-                                    </tr>
-
-                                    <!-- Modal de suppression pour cette matière -->
-                                    <div class="modal fade" id="deleteModal{{ $matiere->id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ $matiere->id }}" aria-hidden="true">
-                                        <div class="modal-dialog">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title" id="deleteModalLabel{{ $matiere->id }}">Confirmation de suppression</h5>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                </div>
-                                                <div class="modal-body">
-                                                    <p>Êtes-vous sûr de vouloir supprimer cette matière ?</p>
-                                                    <p><strong>Nom :</strong> {{ $matiere->name }}</p>
-                                                    <p><strong>Code :</strong> {{ $matiere->code }}</p>
-                                                    
-                                                    <div class="alert alert-warning">
-                                                        <i class="fas fa-exclamation-triangle me-2"></i>
-                                                        <strong>Attention :</strong> Cette action est irréversible !
+                                            <!-- Modal de suppression -->
+                                            <div class="modal fade" id="deleteModal{{ $matiere->id }}" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel{{ $matiere->id }}" aria-hidden="true">
+                                                <div class="modal-dialog" role="document">
+                                                    <div class="modal-content">
+                                                        <div class="modal-header">
+                                                            <h5 class="modal-title" id="deleteModalLabel{{ $matiere->id }}">Confirmation de suppression</h5>
+                                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                                <span aria-hidden="true">&times;</span>
+                                                            </button>
+                                                        </div>
+                                                        <div class="modal-body">
+                                                            Êtes-vous sûr de vouloir supprimer la matière <strong>{{ $matiere->name }}</strong> ?
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
+                                                            <form action="{{ route('esbtp.matieres.destroy', $matiere->id) }}" method="POST">
+                                                                @csrf
+                                                                @method('DELETE')
+                                                                <button type="submit" class="btn btn-danger">Supprimer</button>
+                                                            </form>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                                                    <form action="{{ route('esbtp.matieres.destroy', $matiere->id) }}" method="POST" style="display: inline;">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="btn btn-danger">
-                                                            <i class="fas fa-trash me-1"></i>Supprimer définitivement
-                                                        </button>
-                                                    </form>
-                                                </div>
                                             </div>
-                                        </div>
-                                    </div>
+                                        </td>
+                                    </tr>
                                 @endforeach
                             </tbody>
                 </table>
@@ -631,68 +577,23 @@
         </div>
     </div>
 </div>
-
-
 @endsection
 
-@push('scripts')
-<!-- DataTables JS -->
-<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
-<script src="https://cdn.datatables.net/responsive/2.4.1/js/dataTables.responsive.min.js"></script>
-<script src="https://cdn.datatables.net/responsive/2.4.1/js/responsive.bootstrap5.min.js"></script>
+@section('scripts')
 <script>
-// FONCTION SIMPLE DE CONFIRMATION DE SUPPRESSION
-function confirmDelete(matiereName, deleteUrl) {
-    if (confirm('Êtes-vous sûr de vouloir supprimer la matière "' + matiereName + '" ?\n\nCette action est irréversible.')) {
-        // Créer un formulaire pour faire la suppression
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = deleteUrl;
-        
-        // Ajouter le token CSRF
-        const csrfInput = document.createElement('input');
-        csrfInput.type = 'hidden';
-        csrfInput.name = '_token';
-        csrfInput.value = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-        form.appendChild(csrfInput);
-        
-        // Ajouter la méthode DELETE
-        const methodInput = document.createElement('input');
-        methodInput.type = 'hidden';
-        methodInput.name = '_method';
-        methodInput.value = 'DELETE';
-        form.appendChild(methodInput);
-        
-        // Ajouter au body et soumettre
-        document.body.appendChild(form);
-        form.submit();
-    }
-}
-
-$(document).ready(function() {
+    $(document).ready(function() {
         // Initialisation de DataTables
         var table = $('.datatable').DataTable({
             "responsive": true,
             "autoWidth": false,
-            "dom": 't<"datatable-footer d-flex justify-content-between align-items-center mt-4 p-3"<"datatable-info"i><"datatable-pagination"p>>',
             "language": {
-                "url": "//cdn.datatables.net/plug-ins/1.10.22/i18n/French.json",
-                "info": "Affichage de _START_ à _END_ sur _TOTAL_ matières",
-                "infoEmpty": "Aucune matière à afficher",
-                "infoFiltered": "(filtré de _MAX_ matières au total)"
-            },
-            "pageLength": 10,
-            "lengthChange": false,
-            "drawCallback": function() {
-                updateResultsCount();
+                "url": "//cdn.datatables.net/plug-ins/1.10.22/i18n/French.json"
             }
         });
 
         // Gestion de la barre de recherche
         $('#searchInput').on('input', function() {
             table.search(this.value).draw();
-            updateResultsCount();
         });
 
         // Gestion de la sélection de toutes les cases à cocher
@@ -811,6 +712,9 @@ $(document).ready(function() {
             
             // Appliquer la recherche DataTables
             table.search(searchValue).draw();
+            
+            // Mettre à jour le compteur
+            updateResultsCount();
         });
 
         // Fonction pour appliquer les filtres avancés
@@ -1057,40 +961,28 @@ $(document).ready(function() {
         // Fonction pour charger les liaisons existantes
         function loadExistingLiaisons(matiereId) {
             fetch(`/esbtp/matieres/${matiereId}/liaisons`)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
+                .then(response => response.json())
                 .then(data => {
-                    
-                    // Réinitialiser d'abord toutes les checkboxes
-                    $('.filiere-checkbox, .niveau-checkbox').prop('checked', false);
+                    console.log('Liaisons existantes:', data);
                     
                     // Cocher les filières existantes
-                    if (data.success && data.filieres) {
+                    if (data.filieres) {
                         data.filieres.forEach(filiereId => {
-                            const checkbox = $(`#filiere-${filiereId}`);
-                            checkbox.prop('checked', true);
+                            $(`#filiere-${filiereId}`).prop('checked', true);
                         });
                     }
                     
                     // Cocher les niveaux existants
-                    if (data.success && data.niveaux) {
+                    if (data.niveaux) {
                         data.niveaux.forEach(niveauId => {
-                            const checkbox = $(`#niveau-${niveauId}`);
-                            checkbox.prop('checked', true);
+                            $(`#niveau-${niveauId}`).prop('checked', true);
                         });
                     }
                     
-                    // Forcer la mise à jour de l'aperçu
-                    setTimeout(function() {
-                        updateCombinationsPreview();
-                    }, 200);
+                    updateCombinationsPreview();
                 })
                 .catch(error => {
-                    console.error('❌ ERROR: Erreur lors du chargement des liaisons:', error);
+                    console.error('Erreur lors du chargement des liaisons:', error);
                 });
         }
 
@@ -1166,7 +1058,7 @@ $(document).ready(function() {
             const selectedNiveaux = [];
             
             $('.filiere-checkbox:checked').each(function() {
-                const label = $(this).next('label').find('span.font-semibold.color-dark').text();
+                const label = $(this).next('label').find('strong').text();
                 selectedFilieres.push({
                     id: $(this).val(),
                     name: label
@@ -1174,13 +1066,12 @@ $(document).ready(function() {
             });
             
             $('.niveau-checkbox:checked').each(function() {
-                const label = $(this).next('label').find('span.font-semibold.color-dark').text();
+                const label = $(this).next('label').find('strong').text();
                 selectedNiveaux.push({
                     id: $(this).val(),
                     name: label
                 });
             });
-            
             
             const previewDiv = $('#combinations-preview');
             
@@ -1228,25 +1119,8 @@ $(document).ready(function() {
             });
         }
 
-        // Écouter les changements dans les checkboxes avec plusieurs types d'événements
-        $(document).on('change click input', '.filiere-checkbox, .niveau-checkbox', function() {
-            setTimeout(updateCombinationsPreview, 100); // Petit délai pour s'assurer que l'état est mis à jour
-        });
-        
-        // Appel initial de la fonction d'aperçu lors de l'ouverture du modal
-        $('#configureModal').on('shown.bs.modal', function() {
-            updateCombinationsPreview();
-        });
-        
-        // Test direct au chargement du modal
-        setTimeout(function() {
-        }, 1000);
-        
-        // Test manuel pour debug
-        window.testCombinationsPreview = function() {
-            console.log('🔧 TEST MANUEL: Appel updateCombinationsPreview');
-            updateCombinationsPreview();
-        };
+        // Écouter les changements dans les checkboxes
+        $(document).on('change', '.filiere-checkbox, .niveau-checkbox', updateCombinationsPreview);
 
         // Sauvegarde des liaisons
         $('#save-liaisons-btn').on('click', function() {
@@ -1329,7 +1203,6 @@ $(document).ready(function() {
                 // Désactiver le bouton pendant la sauvegarde
                 saveBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Enregistrement...');
                 
-                
                 fetch(`/esbtp/matieres/${matiereId}/update-liaisons`, {
                     method: 'POST',
                     headers: {
@@ -1341,12 +1214,7 @@ $(document).ready(function() {
                         niveaux: selectedNiveaux
                     })
                 })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
+                .then(response => response.json())
                 .then(data => {
                     if (data.success) {
                         // Fermer le modal
@@ -1355,11 +1223,11 @@ $(document).ready(function() {
                         // Afficher un message de succès
                         const alertDiv = $(`
                             <div class="alert alert-success alert-dismissible fade show" role="alert">
-                                <i class="fas fa-check-circle me-2"></i>${data.message || 'Liaisons mises à jour avec succès !'}
+                                <i class="fas fa-check-circle me-2"></i>${data.message}
                                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                             </div>
                         `);
-                        $('.main-content').prepend(alertDiv);
+                        $('.card-body').prepend(alertDiv);
                         
                         // Recharger la page après 2 secondes
                         setTimeout(() => {
@@ -1381,4 +1249,4 @@ $(document).ready(function() {
         });
     });
 </script>
-@endpush
+@endsection

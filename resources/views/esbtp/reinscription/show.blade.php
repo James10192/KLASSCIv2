@@ -552,32 +552,50 @@
 </div>
 @endsection
 
-@section('scripts')
+@push('scripts')
 <script>
+console.log('🔥 SCRIPT SHOW.BLADE.PHP EXÉCUTÉ!'); // Test immédiat
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Script de frais chargé');
+    
     // Charger les frais automatiquement si une classe est pré-sélectionnée
     const classeSelect = document.getElementById('nouvelle_classe_id');
-    if (classeSelect && classeSelect.value) {
-        loadFraisForReinscription(classeSelect.value);
-    }
     
-    // Écouter les changements de classe
     if (classeSelect) {
+        console.log('✅ Element nouvelle_classe_id trouvé', classeSelect);
+        console.log('📊 Valeur actuelle:', classeSelect.value);
+        
+        if (classeSelect.value) {
+            console.log('🎯 Chargement auto des frais pour classe:', classeSelect.value);
+            loadFraisForReinscription(classeSelect.value);
+        }
+        
+        // Écouter les changements de classe
         classeSelect.addEventListener('change', function() {
+            console.log('🔄 Changement de classe détecté!', this.value);
             if (this.value) {
+                console.log('📞 Appel loadFraisForReinscription avec:', this.value);
                 loadFraisForReinscription(this.value);
             } else {
+                console.log('🔄 Reset container (pas de valeur)');
                 resetFraisContainer();
             }
         });
+        
+        console.log('✅ Event listener ajouté sur nouvelle_classe_id');
+    } else {
+        console.error('❌ ERREUR: Element nouvelle_classe_id NON TROUVÉ!');
+        console.log('📋 Elements select disponibles:', document.querySelectorAll('select'));
     }
 });
 
 let isLoadingFrais = false;
 
 function loadFraisForReinscription(classeId) {
+    console.log('🔥 loadFraisForReinscription appelée avec:', classeId);
+    
     if (isLoadingFrais) {
-        console.log('Chargement des frais déjà en cours, ignoré');
+        console.log('⏳ Chargement des frais déjà en cours, ignoré');
         return;
     }
     
@@ -586,8 +604,13 @@ function loadFraisForReinscription(classeId) {
     const fraisContainer = document.getElementById('fraisContainer');
     const resumeMontants = document.getElementById('resumeMontants');
     
+    console.log('📦 Containers trouvés:', { 
+        fraisContainer: !!fraisContainer, 
+        resumeMontants: !!resumeMontants 
+    });
+    
     if (classeId && fraisContainer) {
-        console.log('Chargement des frais pour la classe:', classeId);
+        console.log('✅ Conditions OK, début chargement pour classe:', classeId);
         
         // Interface de chargement
         fraisContainer.innerHTML = `
@@ -602,22 +625,28 @@ function loadFraisForReinscription(classeId) {
         if (resumeMontants) resumeMontants.style.display = 'none';
         
         // Charger les frais
-        fetch(`/esbtp/inscriptions/frais-by-classe/${classeId}`, {
+        const url = `/esbtp/inscriptions/frais-by-classe/${classeId}`;
+        console.log('📡 Requête AJAX vers:', url);
+        
+        fetch(url, {
             method: 'GET',
             headers: {
                 'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
             }
         })
         .then(response => {
+            console.log('📥 Response reçue, status:', response.status);
             if (!response.ok) {
                 throw new Error(`Erreur HTTP ! Statut: ${response.status}`);
             }
             return response.json();
         })
         .then(data => {
-            console.log('Données frais reçues:', data);
+            console.log('📊 Données frais reçues:', data);
             if (data.success) {
+                console.log('✅ Success=true, affichage des frais, nombre:', data.frais ? data.frais.length : 0);
                 displayFraisForReinscription(data.frais);
                 updateResumeMontants();
             } else {
@@ -625,7 +654,7 @@ function loadFraisForReinscription(classeId) {
             }
         })
         .catch(error => {
-            console.error('Erreur lors du chargement des frais:', error);
+            console.error('❌ Erreur AJAX:', error);
             fraisContainer.innerHTML = `
                 <div class="alert alert-danger">
                     <i class="fas fa-exclamation-triangle me-2"></i>
@@ -634,13 +663,41 @@ function loadFraisForReinscription(classeId) {
             `;
         })
         .finally(() => {
+            console.log('🏁 Requête terminée, isLoadingFrais = false');
             isLoadingFrais = false;
         });
     }
 }
 
 function displayFraisForReinscription(fraisData) {
+    console.log('🎨 displayFraisForReinscription appelée avec:', fraisData);
     const fraisContainer = document.getElementById('fraisContainer');
+    
+    // Vérifier s'il y a des frais configurés
+    if (!fraisData || fraisData.length === 0) {
+        console.log('⚠️ Aucun frais configuré, affichage du message d\'alerte');
+        fraisContainer.innerHTML = `
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Aucun frais configuré</strong>
+                <p class="mb-2">Aucun frais n'est configuré pour cette classe. Vous pouvez procéder à la réinscription sans frais supplémentaires, ou configurez d'abord les frais dans le module de gestion des frais.</p>
+                <div class="mt-3">
+                    <a href="{{ route('esbtp.frais.index') }}" class="btn btn-sm btn-primary" target="_blank">
+                        <i class="fas fa-cog"></i> Configurer les frais
+                    </a>
+                    <button type="button" class="btn btn-sm btn-secondary ms-2" onclick="proceedWithoutFees()">
+                        <i class="fas fa-forward"></i> Continuer sans frais
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // Masquer le résumé des montants
+        const resumeMontants = document.getElementById('resumeMontants');
+        if (resumeMontants) resumeMontants.style.display = 'none';
+        
+        return;
+    }
     
     let html = '<div class="row">';
     
@@ -789,5 +846,43 @@ function resetFraisContainer() {
     document.getElementById('resumeMontants').style.display = 'none';
     document.getElementById('selectedOptionals').value = '{}';
 }
+
+function proceedWithoutFees() {
+    const fraisContainer = document.getElementById('fraisContainer');
+    const resumeMontants = document.getElementById('resumeMontants');
+    
+    // Afficher un message de confirmation
+    fraisContainer.innerHTML = `
+        <div class="alert alert-success">
+            <i class="fas fa-check-circle me-2"></i>
+            <strong>Réinscription sans frais supplémentaires</strong>
+            <p class="mb-0">Vous pouvez maintenant procéder à la réinscription. Aucun frais supplémentaire ne sera appliqué pour cette classe.</p>
+        </div>
+    `;
+    
+    // Afficher un résumé avec 0 FCFA
+    if (resumeMontants) {
+        resumeMontants.innerHTML = `
+            <div class="card-moderne mt-lg" style="background: linear-gradient(135deg, rgba(4, 83, 203, 0.05) 0%, rgba(94, 145, 222, 0.05) 100%); border-left: 4px solid var(--primary);">
+                <div class="p-lg">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">
+                            <i class="fas fa-calculator me-2" style="color: var(--primary);"></i>
+                            Résumé des frais
+                        </h6>
+                        <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary);">
+                            Total: 0 FCFA
+                        </div>
+                    </div>
+                    <p class="text-muted mt-2 mb-0">Aucun frais supplémentaire pour cette réinscription</p>
+                </div>
+            </div>
+        `;
+        resumeMontants.style.display = 'block';
+    }
+    
+    // Mettre à jour le champ hidden pour indiquer qu'aucun frais n'est sélectionné
+    document.getElementById('selectedOptionals').value = '{}';
+}
 </script>
-@endsection
+@endpush

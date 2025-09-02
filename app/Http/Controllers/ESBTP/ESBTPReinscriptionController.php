@@ -340,8 +340,8 @@ class ESBTPReinscriptionController extends Controller
                 return $etudiant;
             });
             
-            // CORRECTION: Utiliser different partial selon page 1 ou pages suivantes
-            if ($page === 1) {
+            // CORRECTION: Utiliser different partial selon page 1 ou pages suivantes  
+            if ((int)$page === 1) {
                 // Première page : tableau complet avec header
                 $html = view('esbtp.reinscription.partials.liste-etudiants', [
                     'etudiants' => $etudiantsAvecSoldes,

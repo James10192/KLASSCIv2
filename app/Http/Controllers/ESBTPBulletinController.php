@@ -3937,7 +3937,8 @@ class ESBTPBulletinController extends Controller
             $notesByMatiere[$matiereId]['notes'][] = $note;
         }
 
-        // Récupérer les résultats existants pour cet étudiant
+        // Récupérer les résultats existants pour cet étudiant (exclure les soft-deleted)
+        // Les soft-deleted doivent être définitivement supprimés avec forceDelete()
         $resultats = \App\Models\ESBTPResultat::where('etudiant_id', $etudiantId)
             ->where('classe_id', $classeId)
             ->where('periode', $periodePourBDD)
@@ -4017,6 +4018,38 @@ class ESBTPBulletinController extends Controller
 
         }
 
+        // NOUVELLE LOGIQUE: Récupérer TOUTES les matières de la classe
+        // même si l'étudiant n'a aucune évaluation/note
+        $toutesLesMatieres = $classe->matieres;
+        
+        // Ajouter les matières de la classe qui n'ont pas encore de résultats
+        foreach ($toutesLesMatieres as $matiere) {
+            if (!isset($resultatsData[$matiere->id])) {
+                // Vérifier si cette matière a des moyennes calculées depuis les évaluations
+                $moyenneCalculee = isset($notesByMatiere[$matiere->id]) ? $notesByMatiere[$matiere->id]['moyenne'] : null;
+                $coefficientCalcule = isset($notesByMatiere[$matiere->id]) ? $notesByMatiere[$matiere->id]['total_coefficients'] : 1;
+                
+                $resultatsData[$matiere->id] = [
+                    'id' => null, // Nouveau résultat à créer
+                    'matiere' => $matiere,
+                    'moyenne' => $moyenneCalculee, // null si pas d'évaluations
+                    'coefficient' => $coefficientCalcule,
+                    'rang' => null,
+                    'appreciation' => null,
+                    'source' => $moyenneCalculee !== null ? 'calculee' : 'manuelle'
+                ];
+            } else {
+                // Marquer la source des résultats existants
+                $moyenneCalculee = isset($notesByMatiere[$matiere->id]) ? $notesByMatiere[$matiere->id]['moyenne'] : null;
+                $resultatsData[$matiere->id]['source'] = $moyenneCalculee !== null ? 'calculee' : 'manuelle';
+            }
+        }
+        
+        // Trier les matières par nom pour un affichage cohérent
+        uasort($resultatsData, function($a, $b) {
+            return strcasecmp($a['matiere']->name, $b['matiere']->name);
+        });
+
         // Afficher la vue de prévisualisation des moyennes
         return view('esbtp.resultats.moyennes-preview', compact(
             'etudiant',
@@ -4050,7 +4083,15 @@ class ESBTPBulletinController extends Controller
             'resultats.*.matiere_id' => 'required|exists:esbtp_matieres,id',
             'resultats.*.moyenne' => 'required|numeric|min:0|max:20',
             'resultats.*.coefficient' => 'required|numeric|min:0',
-            'resultats.*.appreciation' => 'nullable|string|max:255'
+            'resultats.*.appreciation' => 'nullable|string|max:255',
+            // Validation pour les nouvelles matières (optionnelles)
+            'nouvelles_matieres' => 'nullable|array',
+            'nouvelles_matieres.*.matiere_type' => 'required_with:nouvelles_matieres|string|in:existante,nouvelle',
+            'nouvelles_matieres.*.matiere_existante_id' => 'required_if:nouvelles_matieres.*.matiere_type,existante|nullable|exists:esbtp_matieres,id',
+            'nouvelles_matieres.*.nom_nouvelle' => 'required_if:nouvelles_matieres.*.matiere_type,nouvelle|nullable|string|max:255',
+            'nouvelles_matieres.*.moyenne' => 'required_with:nouvelles_matieres|numeric|min:0|max:20',
+            'nouvelles_matieres.*.coefficient' => 'required_with:nouvelles_matieres|numeric|min:0',
+            'nouvelles_matieres.*.appreciation' => 'nullable|string|max:255'
         ]);
 
         $etudiantId = $request->etudiant_id;
@@ -4105,6 +4146,59 @@ class ESBTPBulletinController extends Controller
             ]);
         }
 
+        // NOUVELLE LOGIQUE: Traiter les nouvelles matières ajoutées dynamiquement
+        if ($request->has('nouvelles_matieres') && is_array($request->nouvelles_matieres)) {
+            foreach ($request->nouvelles_matieres as $nouvelleMatiereData) {
+                $matiereType = $nouvelleMatiereData['matiere_type'];
+                $moyenne = $nouvelleMatiereData['moyenne'];
+                $coefficient = $nouvelleMatiereData['coefficient'];
+                $appreciation = $nouvelleMatiereData['appreciation'] ?? null;
+
+                if ($matiereType === 'existante') {
+                    // Utiliser une matière existante
+                    $matiereId = $nouvelleMatiereData['matiere_existante_id'];
+                    $matiere = \App\Models\ESBTPMatiere::findOrFail($matiereId);
+                    
+                    // Associer la matière à la classe si ce n'est pas déjà fait
+                    if (!$classe->matieres->contains($matiere->id)) {
+                        $classe->matieres()->attach($matiere->id);
+                    }
+                } else if ($matiereType === 'nouvelle') {
+                    // Créer une nouvelle matière
+                    $nomMatiere = $nouvelleMatiereData['nom_nouvelle'];
+                    $matiere = \App\Models\ESBTPMatiere::firstOrCreate(
+                        ['name' => $nomMatiere],
+                        [
+                            'code' => strtoupper(substr($nomMatiere, 0, 3)) . '_' . time(),
+                            'description' => 'Matière ajoutée manuellement via le bulletin',
+                            'coefficient' => $coefficient,
+                            'type_formation' => 'generale',
+                            'is_active' => true
+                        ]
+                    );
+
+                    // Associer la matière à la classe
+                    if (!$classe->matieres->contains($matiere->id)) {
+                        $classe->matieres()->attach($matiere->id);
+                    }
+                } else {
+                    continue; // Type invalide, ignorer
+                }
+
+                // Créer le résultat pour cette matière
+                \App\Models\ESBTPResultat::create([
+                    'etudiant_id' => $etudiantId,
+                    'classe_id' => $classeId,
+                    'matiere_id' => $matiere->id,
+                    'periode' => $periodePourBDD,
+                    'annee_universitaire_id' => $anneeUniversitaireId,
+                    'moyenne' => $moyenne,
+                    'coefficient' => $coefficient,
+                    'appreciation' => $appreciation
+                ]);
+            }
+        }
+
         // Rediriger vers la page des résultats de l'étudiant
         return redirect()->route('esbtp.resultats.etudiant', [
             'etudiant' => $etudiantId,
@@ -4112,6 +4206,64 @@ class ESBTPBulletinController extends Controller
             'periode' => $periode, // Utiliser la période originale pour la redirection
             'annee_universitaire_id' => $anneeUniversitaireId
         ])->with('success', 'Les moyennes ont été mises à jour avec succès.');
+    }
+
+    /**
+     * Supprime une moyenne manuelle d'un étudiant
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function deleteMoyenne(Request $request)
+    {
+        // Vérifier les permissions
+        if (!auth()->user()->hasRole('superAdmin') && !auth()->user()->hasRole('secretaire')) {
+            return redirect()->back()->with('error', 'Vous n\'avez pas les permissions nécessaires pour supprimer les moyennes.');
+        }
+
+        $request->validate([
+            'etudiant_id' => 'required|exists:esbtp_etudiants,id',
+            'classe_id' => 'required|exists:esbtp_classes,id',
+            'matiere_id' => 'required|exists:esbtp_matieres,id',
+            'periode' => 'required',
+            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
+        ]);
+
+        $etudiantId = $request->etudiant_id;
+        $classeId = $request->classe_id;
+        $matiereId = $request->matiere_id;
+        $periode = $request->periode;
+        $anneeUniversitaireId = $request->annee_universitaire_id;
+
+        // Normaliser la période
+        $periodePourBDD = in_array($periode, ['semestre1', 'semestre2', 'annuel']) ? $periode : 'semestre1';
+
+        try {
+            // Rechercher le résultat (inclure les soft deletes au cas où)
+            $resultat = \App\Models\ESBTPResultat::withTrashed()->where([
+                'etudiant_id' => $etudiantId,
+                'classe_id' => $classeId,
+                'matiere_id' => $matiereId,
+                'periode' => $periodePourBDD,
+                'annee_universitaire_id' => $anneeUniversitaireId
+            ])->first();
+
+            if ($resultat) {
+                $matiereName = $resultat->matiere->name ?? 'Inconnue';
+                
+                // Utiliser forceDelete() pour supprimer définitivement l'enregistrement
+                // car nous utilisons SoftDeletes mais voulons une suppression permanente
+                $resultat->forceDelete();
+                
+                return redirect()->back()->with('success', "La moyenne de la matière \"{$matiereName}\" a été supprimée définitivement.");
+            } else {
+                return redirect()->back()->with('error', 'Moyenne non trouvée ou déjà supprimée.');
+            }
+
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de la suppression de la moyenne: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Une erreur est survenue lors de la suppression.');
+        }
     }
 
     /**

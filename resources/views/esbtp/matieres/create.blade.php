@@ -33,6 +33,20 @@
         </div>
     @endif
 
+    <!-- Erreurs de validation -->
+    @if($errors->any())
+        <div class="card-moderne mb-lg" style="border-left: 4px solid var(--danger);">
+            <div class="p-lg">
+                <h6 class="text-danger">Erreurs de validation :</h6>
+                <ul class="mb-0 text-danger">
+                    @foreach($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        </div>
+    @endif
+
     <!-- Pre-selection Info Alert -->
     @if(isset($preselectedFiliereId) || isset($preselectedNiveauId))
         <div class="card-moderne mb-lg" style="border-left: 4px solid var(--success);">
@@ -87,11 +101,11 @@
                                             @enderror
                                         </div>
 
-                                        <!-- Nom complet de la matière (nom) -->
+                                        <!-- Nom complet de la matière (name) -->
                                         <div class="mb-3">
-                                            <label for="nom" class="form-label">Nom complet de la matière <span class="text-danger">*</span></label>
-                                            <input type="text" class="form-control @error('nom') is-invalid @enderror" id="nom" name="nom" value="{{ old('nom') }}" required>
-                                            @error('nom')
+                                            <label for="name" class="form-label">Nom complet de la matière <span class="text-danger">*</span></label>
+                                            <input type="text" class="form-control @error('name') is-invalid @enderror" id="name" name="name" value="{{ old('name') }}" required>
+                                            @error('name')
                                                 <div class="invalid-feedback">{{ $message }}</div>
                                             @enderror
                                         </div>
@@ -330,7 +344,7 @@
         });
 
         // Génération automatique du code
-        $('#nom').on('blur', function() {
+        $('#name').on('blur', function() {
             if ($('#code').val() === '') {
                 let name = $(this).val().trim().toUpperCase();
                 if (name) {

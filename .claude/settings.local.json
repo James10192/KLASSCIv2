@@ -1,10 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(/mnt/c/xampp/php/php.exe -r \"\nrequire_once ''vendor/autoload.php'';\n$app = require_once ''bootstrap/app.php'';\n$app->make(''Illuminate\\Contracts\\Console\\Kernel'')->bootstrap();\n\necho ''=== TEST GESTIONNAIRES ONGLETS ===''. PHP_EOL;\n\ntry {\n    $controller = new \\App\\Http\\Controllers\\ESBTP\\ESBTPReinscriptionController(\n        new \\App\\Services\\ReeinscriptionService()\n    );\n    \n    $request = \\Illuminate\\Http\\Request::create(''/esbtp/reinscription'', ''GET'');\n    $response = $controller->index($request);\n    \n    if ($response instanceof \\Illuminate\\View\\View) {\n        $html = $response->render();\n        \n        echo ''✅ Page générée avec gestionnaires d\\''onglets'' . PHP_EOL;\n        \n        // Vérifier la présence des gestionnaires dans le JavaScript\n        if (strpos($html, ''shown.bs.tab'') !== false) {\n            echo ''✅ Gestionnaire Bootstrap shown.bs.tab présent'' . PHP_EOL;\n        }\n        \n        if (strpos($html, ''on(\\''click\\'')'') !== false) {\n            echo ''✅ Gestionnaire clic direct présent'' . PHP_EOL;\n        }\n        \n        if (strpos($html, ''setTimeout'') !== false) {\n            echo ''✅ Timeout pour fallback présent'' . PHP_EOL;\n        }\n        \n        // Vérifier Bootstrap\n        if (strpos($html, ''bootstrap'') !== false) {\n            echo ''✅ Bootstrap inclus dans la page'' . PHP_EOL;\n        } else {\n            echo ''❌ Bootstrap peut être MANQUANT'' . PHP_EOL;\n        }\n        \n        echo PHP_EOL . ''🎯 LOGIQUE ACTUELLE:'' . PHP_EOL;\n        echo ''1. Au chargement: Auto-charge onglet avec plus d\\''étudiants (redoublements)'' . PHP_EOL;\n        echo ''2. Clic onglet: Bootstrap shown.bs.tab OU clic direct'' . PHP_EOL;\n        echo ''3. Extraction category via data-category'' . PHP_EOL;\n        echo ''4. Appel loadTabContent(category)'' . PHP_EOL;\n        echo ''5. AJAX + affichage données'' . PHP_EOL;\n    }\n    \n} catch (\\Exception $e) {\n    echo ''❌ Erreur: '' . $e->getMessage() . PHP_EOL;\n}\n\")"
+      "Bash(/mnt/c/xampp/php/php.exe:*)",
+      "mcp__memory__search_nodes",
+      "mcp__sequential-thinking__sequentialthinking",
+      "Bash(grep:*)"
     ],
     "deny": [],
-    "defaultMode": "acceptEdits",
-    "ask": []
+    "ask": [],
+    "defaultMode": "acceptEdits"
   }
 }
