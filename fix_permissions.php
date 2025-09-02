@@ -77,6 +77,18 @@ try {
         'comptabilite.audit.view',
         'security.users.monitor',
         
+        // Codes d'émargement
+        'generate-attendance-codes',
+        
+        // Planning et emplois du temps
+        'manage-planning',
+        'view-all-timetables',
+        'view_timetables',
+        'create_timetable', 
+        'edit_timetables',
+        'delete_timetables',
+        'view_own_timetable',
+        
         // Cycles avec espaces
         'view cycles',
         'create cycles',
@@ -221,11 +233,13 @@ try {
         'view_notes', 'view_evaluations',
         'view_bulletins', 'generate_bulletins',
         'view_attendances', 'create_attendances',
+        'generate-attendance-codes',
         'view_payments', 'create_payments', 'edit_payments',
         'view_comptabilite',
         'view_teachers', 'create_teachers', 'edit_teachers',
         'view_personnel', 'manage_personnel',
         'view_schedules', 'create_schedules', 'edit_schedules',
+        'manage-planning', 'view-all-timetables', 'view_timetables', 'create_timetable', 'edit_timetables', 'delete_timetables',
         'send_messages', 'receive_messages',
         'view_annonces', 'create_annonces', 'edit_annonces',
         'view_reports',
@@ -252,6 +266,7 @@ try {
         'view_evaluations', 'create_evaluations', 'edit_evaluations',
         'view_bulletins', 'generate_bulletins',
         'view_attendances', 'edit_attendances',
+        'generate-attendance-codes', 'manage-planning', 'view-all-timetables', 'view_timetables', 'edit_timetables',
         'view_payments',
         'view_teachers', 'edit_teachers',
         'view_schedules', 'edit_schedules',

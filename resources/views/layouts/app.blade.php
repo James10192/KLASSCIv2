@@ -1754,10 +1754,10 @@
                                     <span class="menu-dot"></span>
                                     <span>Suivi par Catégorie</span>
                                 </a>
-                                <a href="{{ route('esbtp.comptabilite.configuration') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.configuration.*') ? 'active' : '' }}">
+                                <!--<a href="{{ route('esbtp.comptabilite.configuration') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.configuration.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Configuration</span>
-                                </a>
+                                </a>-->
                             </div>
                         </div>
                     @endif
@@ -1801,10 +1801,10 @@
                                     <span class="menu-dot"></span>
                                     <span>Configuration</span>
                                 </a>
-                                <a href="{{ route('esbtp.logs.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.logs.*') ? 'active' : '' }}">
+                                <!--<a href="{{ route('esbtp.logs.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.logs.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Journaux système</span>
-                                </a>
+                                </a>-->
                             </div>
                         </div>
                     @endif
