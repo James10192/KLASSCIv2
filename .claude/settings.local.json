@@ -4,7 +4,8 @@
       "Bash(/mnt/c/xampp/php/php.exe:*)",
       "mcp__memory__search_nodes",
       "mcp__sequential-thinking__sequentialthinking",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(php artisan:*)"
     ],
     "deny": [],
     "ask": [],

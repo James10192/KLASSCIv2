@@ -94,6 +94,12 @@ try {
         'create_filieres',
         'edit_filieres',
         
+        // Niveaux d'études
+        'view_niveaux_etudes',
+        'create_niveaux_etudes', 
+        'edit_niveaux_etudes',
+        'delete_niveaux_etudes',
+        
         // Matières
         'view_matieres',
         'create_matieres',
@@ -210,6 +216,7 @@ try {
         'view cycles', 'create cycles', 'edit cycles', 'delete cycles',
         'view_classes', 'create_classes', 'edit_classes',
         'view_filieres', 'create_filieres', 'edit_filieres',
+        'view_niveaux_etudes', 'create_niveaux_etudes', 'edit_niveaux_etudes',
         'view_matieres',
         'view_notes', 'view_evaluations',
         'view_bulletins', 'generate_bulletins',
