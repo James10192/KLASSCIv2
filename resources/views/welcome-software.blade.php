@@ -2431,74 +2431,37 @@
     </style>
 
 
-    <!-- Footer Modern -->
-    <footer style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); padding: 4rem 0 2rem 0; position: relative; overflow: hidden;">
-        <!-- Motifs décoratifs -->
-        <div style="position: absolute; top: 0; left: 0; right: 0; height: 100%; background: url('data:image/svg+xml,<svg xmlns=&quot;http://www.w3.org/2000/svg&quot; viewBox=&quot;0 0 100 100&quot;><defs><pattern id=&quot;grid&quot; width=&quot;20&quot; height=&quot;20&quot; patternUnits=&quot;userSpaceOnUse&quot;><path d=&quot;M 20 0 L 0 0 0 20&quot; fill=&quot;none&quot; stroke=&quot;rgba(255,255,255,0.05)&quot; stroke-width=&quot;1&quot;/></pattern></defs><rect width=&quot;100%&quot; height=&quot;100%&quot; fill=&quot;url(%23grid)&quot;/></svg>'); opacity: 0.5;"></div>
-        
-        <div class="container" style="position: relative; z-index: 2; max-width: 1200px;">
+    <!-- Footer Compact -->
+    <footer style="background: #334155; padding: 3rem 0 1.5rem 0; color: white; position: relative;">
+        <div class="container" style="max-width: 1200px;">
             <div class="row">
-                <!-- Logo et description -->
-                <div class="col-lg-4 col-md-6 mb-4">
-                    <div style="margin-bottom: 2rem;">
-                        <h3 style="color: #ffffff; font-weight: 800; font-size: 2rem; margin-bottom: 1rem;">
-                            <i class="fas fa-graduation-cap" style="color: #3b82f6; margin-right: 0.5rem;"></i>
-                            KLASSCI
-                        </h3>
-                        <p style="color: rgba(255,255,255,0.8); font-size: 1rem; line-height: 1.6; margin-bottom: 1.5rem;">
-                            La solution moderne de gestion scolaire pour les établissements d'enseignement supérieur. Transformez votre établissement avec notre technologie innovante.
-                        </p>
-                        <!-- Réseaux sociaux -->
-                        <div style="display: flex; gap: 0.75rem;">
-                            <a href="https://web.facebook.com/profile.php?id=61576039683640" target="_blank" rel="noopener" 
-                               style="background: rgba(255,255,255,0.1); color: #ffffff; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; transition: all 0.3s ease; backdrop-filter: blur(10px);"
-                               onmouseover="this.style.background='#3b82f6'; this.style.transform='translateY(-2px)';"
-                               onmouseout="this.style.background='rgba(255,255,255,0.1)'; this.style.transform='translateY(0)';">
-                                <i class="fab fa-facebook-f"></i>
-                            </a>
-                            <a href="https://www.linkedin.com/company/klassci/?viewAsMember=true" target="_blank" rel="noopener"
-                               style="background: rgba(255,255,255,0.1); color: #ffffff; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; transition: all 0.3s ease; backdrop-filter: blur(10px);"
-                               onmouseover="this.style.background='#0ea5e9'; this.style.transform='translateY(-2px)';"
-                               onmouseout="this.style.background='rgba(255,255,255,0.1)'; this.style.transform='translateY(0)';">
-                                <i class="fab fa-linkedin-in"></i>
-                            </a>
-                            <a href="#" 
-                               style="background: rgba(255,255,255,0.1); color: #ffffff; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; transition: all 0.3s ease; backdrop-filter: blur(10px);"
-                               onmouseover="this.style.background='#1da1f2'; this.style.transform='translateY(-2px)';"
-                               onmouseout="this.style.background='rgba(255,255,255,0.1)'; this.style.transform='translateY(0)';">
-                                <i class="fab fa-twitter"></i>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Section Produit -->
                 <div class="col-lg-2 col-md-6 col-sm-6 mb-4">
-                    <h5 style="color: #3b82f6; font-weight: 700; font-size: 1.1rem; margin-bottom: 1.5rem; font-family: 'Futura Round', sans-serif;">
+                    <h5 style="color: white; font-weight: 700; font-size: 1.1rem; margin-bottom: 1.5rem;">
                         Produit
                     </h5>
                     <ul style="list-style: none; padding: 0; margin: 0;">
-                        <li style="margin-bottom: 0.75rem;">
-                            <a href="#features" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.95rem; transition: color 0.3s ease;"
-                               onmouseover="this.style.color='#3b82f6';" onmouseout="this.style.color='rgba(255,255,255,0.7)';">
+                        <li style="margin-bottom: 0.5rem;">
+                            <a href="#features" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.9rem; transition: color 0.3s ease;"
+                               onmouseover="this.style.color='white';" onmouseout="this.style.color='rgba(255,255,255,0.7)';">
                                 Fonctionnalités
                             </a>
                         </li>
-                        <li style="margin-bottom: 0.75rem;">
-                            <a href="#modules" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.95rem; transition: color 0.3s ease;"
-                               onmouseover="this.style.color='#3b82f6';" onmouseout="this.style.color='rgba(255,255,255,0.7)';">
+                        <li style="margin-bottom: 0.5rem;">
+                            <a href="#modules" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.9rem; transition: color 0.3s ease;"
+                               onmouseover="this.style.color='white';" onmouseout="this.style.color='rgba(255,255,255,0.7)';">
                                 Modules
                             </a>
                         </li>
-                        <li style="margin-bottom: 0.75rem;">
-                            <a href="#pricing" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.95rem; transition: color 0.3s ease;"
-                               onmouseover="this.style.color='#3b82f6';" onmouseout="this.style.color='rgba(255,255,255,0.7)';">
+                        <li style="margin-bottom: 0.5rem;">
+                            <a href="#pricing" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.9rem; transition: color 0.3s ease;"
+                               onmouseover="this.style.color='white';" onmouseout="this.style.color='rgba(255,255,255,0.7)';">
                                 Tarifs
                             </a>
                         </li>
-                        <li style="margin-bottom: 0.75rem;">
-                            <a href="#demo" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.95rem; transition: color 0.3s ease;"
-                               onmouseover="this.style.color='#3b82f6';" onmouseout="this.style.color='rgba(255,255,255,0.7)';">
+                        <li style="margin-bottom: 0.5rem;">
+                            <a href="#demo" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.9rem; transition: color 0.3s ease;"
+                               onmouseover="this.style.color='white';" onmouseout="this.style.color='rgba(255,255,255,0.7)';">
                                 Démo
                             </a>
                         </li>
@@ -2507,31 +2470,31 @@
 
                 <!-- Section Support -->
                 <div class="col-lg-2 col-md-6 col-sm-6 mb-4">
-                    <h5 style="color: #3b82f6; font-weight: 700; font-size: 1.1rem; margin-bottom: 1.5rem; font-family: 'Futura Round', sans-serif;">
+                    <h5 style="color: white; font-weight: 700; font-size: 1.1rem; margin-bottom: 1.5rem;">
                         Support
                     </h5>
                     <ul style="list-style: none; padding: 0; margin: 0;">
-                        <li style="margin-bottom: 0.75rem;">
-                            <a href="#help" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.95rem; transition: color 0.3s ease;"
-                               onmouseover="this.style.color='#3b82f6';" onmouseout="this.style.color='rgba(255,255,255,0.7)';">
+                        <li style="margin-bottom: 0.5rem;">
+                            <a href="#help" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.9rem; transition: color 0.3s ease;"
+                               onmouseover="this.style.color='white';" onmouseout="this.style.color='rgba(255,255,255,0.7)';">
                                 Centre d'aide
                             </a>
                         </li>
-                        <li style="margin-bottom: 0.75rem;">
-                            <a href="#docs" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.95rem; transition: color 0.3s ease;"
-                               onmouseover="this.style.color='#3b82f6';" onmouseout="this.style.color='rgba(255,255,255,0.7)';">
+                        <li style="margin-bottom: 0.5rem;">
+                            <a href="#docs" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.9rem; transition: color 0.3s ease;"
+                               onmouseover="this.style.color='white';" onmouseout="this.style.color='rgba(255,255,255,0.7)';">
                                 Documentation
                             </a>
                         </li>
-                        <li style="margin-bottom: 0.75rem;">
-                            <a href="#contact" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.95rem; transition: color 0.3s ease;"
-                               onmouseover="this.style.color='#3b82f6';" onmouseout="this.style.color='rgba(255,255,255,0.7)';">
+                        <li style="margin-bottom: 0.5rem;">
+                            <a href="#contact" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.9rem; transition: color 0.3s ease;"
+                               onmouseover="this.style.color='white';" onmouseout="this.style.color='rgba(255,255,255,0.7)';">
                                 Contact
                             </a>
                         </li>
-                        <li style="margin-bottom: 0.75rem;">
-                            <a href="#status" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.95rem; transition: color 0.3s ease;"
-                               onmouseover="this.style.color='#3b82f6';" onmouseout="this.style.color='rgba(255,255,255,0.7)';">
+                        <li style="margin-bottom: 0.5rem;">
+                            <a href="#status" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.9rem; transition: color 0.3s ease;"
+                               onmouseover="this.style.color='white';" onmouseout="this.style.color='rgba(255,255,255,0.7)';">
                                 Statut
                             </a>
                         </li>
@@ -2540,31 +2503,31 @@
 
                 <!-- Section Entreprise -->
                 <div class="col-lg-2 col-md-6 col-sm-6 mb-4">
-                    <h5 style="color: #3b82f6; font-weight: 700; font-size: 1.1rem; margin-bottom: 1.5rem; font-family: 'Futura Round', sans-serif;">
+                    <h5 style="color: white; font-weight: 700; font-size: 1.1rem; margin-bottom: 1.5rem;">
                         Entreprise
                     </h5>
                     <ul style="list-style: none; padding: 0; margin: 0;">
-                        <li style="margin-bottom: 0.75rem;">
-                            <a href="#about" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.95rem; transition: color 0.3s ease;"
-                               onmouseover="this.style.color='#3b82f6';" onmouseout="this.style.color='rgba(255,255,255,0.7)';">
+                        <li style="margin-bottom: 0.5rem;">
+                            <a href="#about" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.9rem; transition: color 0.3s ease;"
+                               onmouseover="this.style.color='white';" onmouseout="this.style.color='rgba(255,255,255,0.7)';">
                                 À propos
                             </a>
                         </li>
-                        <li style="margin-bottom: 0.75rem;">
-                            <a href="#careers" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.95rem; transition: color 0.3s ease;"
-                               onmouseover="this.style.color='#3b82f6';" onmouseout="this.style.color='rgba(255,255,255,0.7)';">
+                        <li style="margin-bottom: 0.5rem;">
+                            <a href="#careers" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.9rem; transition: color 0.3s ease;"
+                               onmouseover="this.style.color='white';" onmouseout="this.style.color='rgba(255,255,255,0.7)';">
                                 Carrières
                             </a>
                         </li>
-                        <li style="margin-bottom: 0.75rem;">
-                            <a href="#press" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.95rem; transition: color 0.3s ease;"
-                               onmouseover="this.style.color='#3b82f6';" onmouseout="this.style.color='rgba(255,255,255,0.7)';">
+                        <li style="margin-bottom: 0.5rem;">
+                            <a href="#press" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.9rem; transition: color 0.3s ease;"
+                               onmouseover="this.style.color='white';" onmouseout="this.style.color='rgba(255,255,255,0.7)';">
                                 Presse
                             </a>
                         </li>
-                        <li style="margin-bottom: 0.75rem;">
-                            <a href="#partners" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.95rem; transition: color 0.3s ease;"
-                               onmouseover="this.style.color='#3b82f6';" onmouseout="this.style.color='rgba(255,255,255,0.7)';">
+                        <li style="margin-bottom: 0.5rem;">
+                            <a href="#partners" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.9rem; transition: color 0.3s ease;"
+                               onmouseover="this.style.color='white';" onmouseout="this.style.color='rgba(255,255,255,0.7)';">
                                 Partenaires
                             </a>
                         </li>
@@ -2573,56 +2536,112 @@
 
                 <!-- Section Légal -->
                 <div class="col-lg-2 col-md-6 col-sm-6 mb-4">
-                    <h5 style="color: #3b82f6; font-weight: 700; font-size: 1.1rem; margin-bottom: 1.5rem; font-family: 'Futura Round', sans-serif;">
+                    <h5 style="color: white; font-weight: 700; font-size: 1.1rem; margin-bottom: 1.5rem;">
                         Légal
                     </h5>
                     <ul style="list-style: none; padding: 0; margin: 0;">
-                        <li style="margin-bottom: 0.75rem;">
-                            <a href="#privacy" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.95rem; transition: color 0.3s ease;"
-                               onmouseover="this.style.color='#3b82f6';" onmouseout="this.style.color='rgba(255,255,255,0.7)';">
+                        <li style="margin-bottom: 0.5rem;">
+                            <a href="#privacy" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.9rem; transition: color 0.3s ease;"
+                               onmouseover="this.style.color='white';" onmouseout="this.style.color='rgba(255,255,255,0.7)';">
                                 Confidentialité
                             </a>
                         </li>
-                        <li style="margin-bottom: 0.75rem;">
-                            <a href="#terms" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.95rem; transition: color 0.3s ease;"
-                               onmouseover="this.style.color='#3b82f6';" onmouseout="this.style.color='rgba(255,255,255,0.7)';">
+                        <li style="margin-bottom: 0.5rem;">
+                            <a href="#terms" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.9rem; transition: color 0.3s ease;"
+                               onmouseover="this.style.color='white';" onmouseout="this.style.color='rgba(255,255,255,0.7)';">
                                 Conditions
                             </a>
                         </li>
-                        <li style="margin-bottom: 0.75rem;">
-                            <a href="#security" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.95rem; transition: color 0.3s ease;"
-                               onmouseover="this.style.color='#3b82f6';" onmouseout="this.style.color='rgba(255,255,255,0.7)';">
+                        <li style="margin-bottom: 0.5rem;">
+                            <a href="#security" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.9rem; transition: color 0.3s ease;"
+                               onmouseover="this.style.color='white';" onmouseout="this.style.color='rgba(255,255,255,0.7)';">
                                 Sécurité
                             </a>
                         </li>
-                        <li style="margin-bottom: 0.75rem;">
-                            <a href="#cookies" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.95rem; transition: color 0.3s ease;"
-                               onmouseover="this.style.color='#3b82f6';" onmouseout="this.style.color='rgba(255,255,255,0.7)';">
+                        <li style="margin-bottom: 0.5rem;">
+                            <a href="#cookies" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.9rem; transition: color 0.3s ease;"
+                               onmouseover="this.style.color='white';" onmouseout="this.style.color='rgba(255,255,255,0.7)';">
                                 Cookies
                             </a>
                         </li>
                     </ul>
                 </div>
-            </div>
 
-            <!-- Ligne de séparation -->
-            <div style="border-top: 1px solid rgba(255,255,255,0.1); margin: 3rem 0 2rem 0; padding-top: 2rem;">
-                <div class="row align-items-center">
-                    <div class="col-md-6">
-                        <p style="color: rgba(255,255,255,0.6); margin: 0; font-size: 0.9rem;">
-                            &copy; 2025 KLASSCI. Tous les droits sont réservés à ADC.
-                        </p>
-                    </div>
-                    <div class="col-md-6 text-md-end">
-                        <p style="color: rgba(255,255,255,0.6); margin: 0; font-size: 0.9rem;">
-                            Développé avec ❤️ pour l'éducation africaine.
-                        </p>
+                <!-- Section KLASSCI + Contactez-nous -->
+                <div class="col-lg-4 col-md-12 mb-4">
+                    <div class="row">
+                        <!-- KLASSCI -->
+                        <div class="col-md-6">
+                            <h5 style="color: white; font-weight: 800; font-size: 1.2rem; margin-bottom: 1rem; letter-spacing: 1px;">
+                                KLASSCI
+                            </h5>
+                            <p style="color: rgba(255,255,255,0.7); font-size: 0.9rem; line-height: 1.5; margin-bottom: 1.5rem;">
+                                La solution moderne de gestion scolaire pour les établissements d'enseignement supérieur.
+                            </p>
+                            
+                            <!-- Réseaux sociaux -->
+                            <div style="display: flex; gap: 0.75rem;">
+                                <a href="https://web.facebook.com/profile.php?id=61576039683640" target="_blank" rel="noopener" 
+                                   style="background: rgba(255,255,255,0.1); color: white; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; transition: all 0.3s ease;"
+                                   onmouseover="this.style.background='#3b82f6';" onmouseout="this.style.background='rgba(255,255,255,0.1)';">
+                                    <i class="fab fa-facebook-f"></i>
+                                </a>
+                                <a href="https://www.linkedin.com/company/klassci/?viewAsMember=true" target="_blank" rel="noopener"
+                                   style="background: rgba(255,255,255,0.1); color: white; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; transition: all 0.3s ease;"
+                                   onmouseover="this.style.background='#0ea5e9';" onmouseout="this.style.background='rgba(255,255,255,0.1)';">
+                                    <i class="fab fa-linkedin-in"></i>
+                                </a>
+                                <a href="#" 
+                                   style="background: rgba(255,255,255,0.1); color: white; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; transition: all 0.3s ease;"
+                                   onmouseover="this.style.background='#1da1f2';" onmouseout="this.style.background='rgba(255,255,255,0.1)';">
+                                    <i class="fab fa-twitter"></i>
+                                </a>
+                                <a href="#" 
+                                   style="background: rgba(255,255,255,0.1); color: white; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; transition: all 0.3s ease;"
+                                   onmouseover="this.style.background='#25d366';" onmouseout="this.style.background='rgba(255,255,255,0.1)';">
+                                    <i class="fab fa-whatsapp"></i>
+                                </a>
+                            </div>
+                        </div>
+                        
+                        <!-- Contactez-nous -->
+                        <div class="col-md-6">
+                            <h5 style="color: white; font-weight: 700; font-size: 1.1rem; margin-bottom: 1.5rem;">
+                                Contactez-nous
+                            </h5>
+                            
+                            <!-- Icônes de contact -->
+                            <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
+                                <a href="tel:+2252732797523" 
+                                   style="background: rgba(255,255,255,0.1); color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; transition: all 0.3s ease;"
+                                   onmouseover="this.style.background='#22c55e';" onmouseout="this.style.background='rgba(255,255,255,0.1)';">
+                                    <i class="fas fa-phone"></i>
+                                </a>
+                                <a href="mailto:klassci@africandigitconsulting.com" 
+                                   style="background: rgba(255,255,255,0.1); color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; transition: all 0.3s ease;"
+                                   onmouseover="this.style.background='#ef4444';" onmouseout="this.style.background='rgba(255,255,255,0.1)';">
+                                    <i class="fas fa-envelope"></i>
+                                </a>
+                                <a href="#" 
+                                   style="background: rgba(255,255,255,0.1); color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; transition: all 0.3s ease;"
+                                   onmouseover="this.style.background='#6366f1';" onmouseout="this.style.background='rgba(255,255,255,0.1)';">
+                                    <i class="fas fa-globe"></i>
+                                </a>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
+
+            <!-- Copyright -->
+            <div style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 2rem; padding-top: 1.5rem; text-align: center;">
+                <p style="color: rgba(255,255,255,0.6); margin: 0; font-size: 0.85rem;">
+                    © 2025 KLASSCI. Tous droits réservés. Développé avec ❤️ pour l'éducation.
+                </p>
+            </div>
         </div>
 
-        <!-- Chatbox flottant -->
+        <!-- Chatbox flottant récupéré -->
         <div id="chatbox" style="position: fixed; bottom: 20px; right: 20px; z-index: 1000;">
             <!-- Bouton chat -->
             <button id="chatButton" onclick="toggleChat()" 
