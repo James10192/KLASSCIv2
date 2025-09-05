@@ -1369,10 +1369,10 @@
         </div>
         
         <!-- Image tablette pleine largeur -->
-        <div style="width: 100%; margin-left: 0; margin-top: 0.5rem; padding: 0; overflow-x: hidden;">
-          <div class="hero-tablet-container" style="position: relative; text-align: center; padding: 0; margin: 0;">
+        <div class="hero-tablet-section" style="width: 100%; margin-top: 2rem; padding: 0; overflow: hidden;">
+          <div class="hero-tablet-container" style="position: relative; text-align: center; width: 100%;">
             <img src="/images/Images landingPage/Sans titre - 2_Plan de travail 1.png" alt="KLASSCI Dashboard" 
-                 style="width: 100%; height: auto; display: block; margin: 0; padding: 0; border-radius: 0;">
+                 class="hero-tablet-img" style="width: 100%; height: auto; display: block; margin: 0; border-radius: 0; transform: scale(1.1);">
           </div>
         </div>
       </div>
@@ -1451,6 +1451,16 @@
                 left: 50% !important;
                 top: 50% !important;
                 transform: translate(-50%, -50%) !important;
+              }
+
+              .hero-tablet-img {
+                transform: scale(1.05) !important;
+                margin-bottom: 1rem !important;
+              }
+
+              .hero-tablet-section {
+                margin-top: 1rem !important;
+                padding: 0 10px !important;
               }
               .col-lg-8.col-md-8 {
                 padding-left: 1rem !important;
