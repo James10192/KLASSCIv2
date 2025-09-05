@@ -483,6 +483,17 @@
       box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
     }
 
+    /* Style de base pour le slogan */
+    .hero-slogan {
+      font-size: clamp(1rem, 4vw, 2.5rem) !important;
+      padding: 0 0.5rem !important;
+      line-height: 1.3 !important;
+      word-break: break-word !important;
+      display: block !important;
+      width: 100% !important;
+      text-align: center !important;
+    }
+
     /* Styles pour le nouveau design */
     .btn-commencer:hover {
       background: linear-gradient(135deg, #e55a2b 0%, #e8851a 100%) !important;
@@ -623,11 +634,19 @@
         padding: 1rem 0 !important;
       }
       
-      .hero-slogan {
+      .hero-slogan,
+      .col-lg-8 .hero-slogan,
+      section.hero-section .hero-slogan,
+      #home .hero-slogan,
+      p.hero-slogan {
         font-size: 1rem !important;
         padding: 0 0.5rem !important;
         margin-bottom: 0.5rem !important;
         line-height: 1.2 !important;
+        width: 100% !important;
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
       }
       
       .hero-title {
@@ -680,13 +699,20 @@
         flex: 0 0 100% !important;
       }
       
-      .hero-slogan {
+      .hero-slogan,
+      .col-lg-8 .hero-slogan,
+      section.hero-section .hero-slogan,
+      #home .hero-slogan,
+      p.hero-slogan {
         font-size: 0.9rem !important;
         padding: 0 0.25rem !important;
         text-align: center !important;
         margin-bottom: 0.4rem !important;
         width: 100% !important;
         display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        overflow: visible !important;
       }
       
       .hero-title {
@@ -734,10 +760,19 @@
         padding-right: 0.125rem !important;
       }
       
-      .hero-slogan {
+      .hero-slogan,
+      .col-lg-8 .hero-slogan,
+      section.hero-section .hero-slogan,
+      #home .hero-slogan,
+      p.hero-slogan {
         font-size: 0.85rem !important;
         padding: 0 0.125rem !important;
         margin-bottom: 0.3rem !important;
+        width: 100% !important;
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        overflow: visible !important;
       }
       
       .hero-title {
@@ -1525,7 +1560,7 @@
         <div class="row justify-content-center text-center">
           <div class="col-lg-8">
             <!-- Slogan avec police Merry Christmas -->
-            <p class="hero-slogan" style="font-family: 'Dancing Script', cursive; font-size: clamp(1rem, 4vw, 2.5rem); color: #2d3748; margin-bottom: 1rem; font-weight: 600; padding: 0 0.5rem; line-height: 1.3; word-break: break-word;">
+            <p class="hero-slogan" style="font-family: 'Dancing Script', cursive; color: #2d3748; margin-bottom: 1rem; font-weight: 600;">
               Plus simple la vie à l'école !
             </p>
             
