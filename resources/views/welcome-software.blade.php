@@ -293,14 +293,6 @@
         box-shadow: 0 2px 8px rgba(107, 114, 128, 0.15);
       }
       
-      .navbar-collapse .mobile-login-btn i {
-        color: #6B7280;
-        transition: color 0.2s ease;
-      }
-      
-      .navbar-collapse .mobile-login-btn:hover i {
-        color: #4B5563;
-      }
     }
     
     /* Tablette styles */
@@ -1566,7 +1558,6 @@
                 </ul>
                 <!-- Bouton mobile dans le menu déroulant -->
                 <a href="{{ route('login') }}" class="mobile-login-btn d-lg-none">
-                    <i class="fas fa-sign-in-alt me-2"></i>
                     Se connecter
                 </a>
             </div>
