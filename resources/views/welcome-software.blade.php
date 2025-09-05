@@ -657,12 +657,36 @@
       .container {
         padding-left: 0.25rem !important;
         padding-right: 0.25rem !important;
+        max-width: 100% !important;
+      }
+      
+      .hero-section {
+        padding: 0.5rem 0 !important;
+        min-height: auto !important;
+        overflow-x: hidden !important;
+        width: 100% !important;
+      }
+      
+      .row {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+      }
+      
+      .col-lg-8 {
+        padding-left: 0.25rem !important;
+        padding-right: 0.25rem !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        flex: 0 0 100% !important;
       }
       
       .hero-slogan {
         font-size: 0.9rem !important;
         padding: 0 0.25rem !important;
         text-align: center !important;
+        margin-bottom: 0.4rem !important;
+        width: 100% !important;
+        display: block !important;
       }
       
       .hero-title {
@@ -670,6 +694,9 @@
         padding: 0 0.25rem !important;
         text-align: center !important;
         line-height: 1.1 !important;
+        margin-bottom: 0.6rem !important;
+        width: 100% !important;
+        display: block !important;
       }
       
       .hero-description {
@@ -677,11 +704,59 @@
         padding: 0 0.5rem !important;
         text-align: center !important;
         line-height: 1.25 !important;
+        margin-bottom: 1.2rem !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        display: block !important;
       }
       
       .btn-commencer {
         padding: 0.5rem 1rem !important;
         font-size: 0.8rem !important;
+        display: block !important;
+        margin: 0 auto !important;
+      }
+    }
+
+    /* Corrections pour écrans très très petits */
+    @media (max-width: 320px) {
+      .container {
+        padding-left: 0.125rem !important;
+        padding-right: 0.125rem !important;
+      }
+      
+      .hero-section {
+        padding: 0.25rem 0 !important;
+      }
+      
+      .col-lg-8 {
+        padding-left: 0.125rem !important;
+        padding-right: 0.125rem !important;
+      }
+      
+      .hero-slogan {
+        font-size: 0.85rem !important;
+        padding: 0 0.125rem !important;
+        margin-bottom: 0.3rem !important;
+      }
+      
+      .hero-title {
+        font-size: clamp(0.9rem, 10vw, 1.3rem) !important;
+        padding: 0 0.125rem !important;
+        margin-bottom: 0.5rem !important;
+        line-height: 1.05 !important;
+      }
+      
+      .hero-description {
+        font-size: 0.75rem !important;
+        padding: 0 0.25rem !important;
+        margin-bottom: 1rem !important;
+        line-height: 1.2 !important;
+      }
+      
+      .btn-commencer {
+        padding: 0.4rem 0.8rem !important;
+        font-size: 0.75rem !important;
       }
     }
 
