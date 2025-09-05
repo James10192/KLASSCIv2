@@ -216,11 +216,12 @@
         left: 0;
         right: 0;
         background: white;
-        border-top: 1px solid #e1e5e9;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        border-top: 1px solid #F3F4F6;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+        border-radius: 0 0 20px 20px;
         flex-direction: column;
         align-items: stretch;
-        padding: 1rem;
+        padding: 1.5rem 1.25rem;
         justify-self: auto;
         z-index: 1000;
         display: none;
@@ -248,34 +249,57 @@
       
       .navbar-nav .nav-link {
         margin: 0;
-        padding: 0.75rem 0;
-        border-bottom: 1px solid #f7fafc;
-        color: #2D3748 !important;
-        font-weight: 400;
+        padding: 1rem 0;
+        border-bottom: 1px solid #F3F4F6;
+        color: #374151 !important;
+        font-weight: 500;
+        font-size: 1rem;
+        font-family: 'Futura Round', 'Inter', sans-serif;
+        transition: all 0.2s ease;
       }
       
       .navbar-nav .nav-link:hover {
-        background-color: #f7fafc;
-        color: var(--primary-blue) !important;
+        background-color: #F9FAFB;
+        color: #6366F1 !important;
+        padding-left: 0.5rem;
       }
       
-      /* Bouton dans le menu mobile */
+      .navbar-nav .nav-item:last-child .nav-link {
+        border-bottom: none;
+      }
+      
+      /* Bouton dans le menu mobile - Design moderne */
       .navbar-collapse .mobile-login-btn {
         width: 100%;
-        background: var(--primary-blue);
-        color: white !important;
-        border: none;
+        background: #F9FAFB !important;
+        color: #6B7280 !important;
+        border: 2px solid #E5E7EB !important;
         padding: 0.875rem 1rem;
-        border-radius: 8px;
+        border-radius: 25px;
         font-weight: 500;
         text-align: center;
-        margin-top: 0.5rem;
+        margin-top: 1rem;
+        font-family: 'Futura Round', 'Inter', sans-serif !important;
+        font-size: 0.95rem;
+        text-decoration: none !important;
+        transition: all 0.2s ease;
+        display: block;
       }
       
       .navbar-collapse .mobile-login-btn:hover {
-        background: #4338ca;
+        background: #E5E7EB !important;
+        color: #4B5563 !important;
         transform: none;
-        box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
+        box-shadow: 0 2px 8px rgba(107, 114, 128, 0.15);
+      }
+      
+      .navbar-collapse .mobile-login-btn i {
+        color: #6B7280;
+        transition: color 0.2s ease;
+      }
+      
+      .navbar-collapse .mobile-login-btn:hover i {
+        color: #4B5563;
       }
     }
     
