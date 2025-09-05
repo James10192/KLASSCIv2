@@ -1271,7 +1271,7 @@
     <!-- LOADER KLASSCI -->
     <div id="klassci-loader" style="position:fixed;z-index:9999;top:0;left:0;width:100%;height:100vh;background:#fff;display:flex;align-items:center;justify-content:center;transition:opacity 0.5s;">
         <div style="display:flex;flex-direction:column;align-items:center;">
-            <img src="/images/LOGO-KLASSCI-PNG.png" alt="KLASSCI Loader" style="width:110px;height:110px;animation:klassci-pulse 1.2s infinite alternate;filter:drop-shadow(0 4px 16px rgba(99,102,241,0.12));"/>
+            <img src="/images/Images landingPage/logo_klassci.png" alt="KLASSCI Loader" style="width:110px;height:110px;animation:klassci-pulse 1.2s infinite alternate;filter:drop-shadow(0 4px 16px rgba(99,102,241,0.12));"/>
             <div style="margin-top:1.5rem;font-weight:600;color:#6366f1;letter-spacing:2px;font-size:1.1rem;">Chargement...</div>
         </div>
     </div>
@@ -1379,78 +1379,125 @@
     </section>
 
     <!-- Section CRM - Design exact reproduction -->
-    <section style="background: #f8f9fa; padding: 2rem 0 5rem 0; position: relative; overflow-x: hidden; width: 100%; max-width: 100%;">
-      <div class="container-fluid" style="overflow-x: hidden; max-width: 100%; width: 100%;">
-        <!-- Titre principal avec style exact -->
-        <div style="text-align: center; margin-bottom: -6rem;">
-          <h2 class="mobile-title-contrast" style="font-family: 'Futura Round', sans-serif; font-size: clamp(2rem, 4vw, 2.8rem); color: #1a202c; line-height: 1.3; margin-bottom: 2rem; max-width: 800px; margin-left: auto; margin-right: auto; font-weight: 400; text-align: center;">
+    <section style="padding: 5rem 0; background: #f8f9fa; position: relative;">
+      <style>
+        .crm-section .text-center { 
+          text-align: center !important;
+          padding-bottom: 0 !important; 
+          margin-bottom: 2rem !important; 
+        }
+        .crm-section h2 { 
+          margin: 0 auto !important; 
+          padding: 0 1rem !important; 
+          text-align: center !important;
+          margin-bottom: 0 !important; 
+        }
+        .crm-section .row { margin-top: 1rem !important; }
+      </style>
+      <div class="container crm-section" style="max-width: 100%;">
+        <!-- Titre centré -->
+        <div class="text-center" style="max-width: 800px; margin: 0 auto 2rem auto;">
+          <h2 style="font-family: 'Futura Round', sans-serif; font-size: clamp(2rem, 4vw, 2.8rem); font-weight: 400; 
+                    color: #1a202c; margin: 0; padding: 0 1rem; text-align: center;">
             Découvrez pourquoi KLASSCI est le <span style="font-weight: 800;">CRM éducatif le plus complet</span>, pensé pour la <span style="font-weight: 800;">performance et l'efficacité pédagogique</span>.
           </h2>
         </div>
-
-        <!-- Layout exact : Chapeau tout à gauche + Palette centre + Fonctionnalités -->
-        <div class="row align-items-center" style="min-height: 1000px; margin: 0; width: 100%; overflow-x: hidden;">
+        
+        <!-- Contenu de la section -->
+        <div class="row align-items-center">
           <!-- Version mobile : titre et toque adaptés -->
           <style>
             @media (max-width: 768px) {
-              .mobile-toque-container {
-                height: 400px !important;
-                min-height: 400px !important;
+              .crm-section {
+                padding: 0 1rem !important;
               }
-              .mobile-toque-img {
-                width: 90% !important;
+              .crm-section .text-center {
+                margin-bottom: 2rem !important;
+              }
+              .crm-section h2 {
+                font-size: clamp(1.5rem, 5vw, 2.2rem) !important;
+                line-height: 1.3 !important;
+                padding: 0 0.5rem !important;
+              }
+              .col-lg-4.col-md-4 {
+                width: 100% !important;
+                max-width: 100% !important;
+                text-align: center !important;
+                display: flex !important;
+                justify-content: center !important;
+                align-items: center !important;
+                padding: 1rem !important;
+                margin: 0 !important;
+              }
+              .mobile-toque-container {
                 height: 350px !important;
-                margin-left: 0 !important;
-                max-width: 90% !important;
+                min-height: 350px !important;
+                margin: 0 auto !important;
+                padding: 0 !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                width: 100% !important;
+                position: relative !important;
+              }
+              img.mobile-toque-img {
+                width: 280px !important;
+                height: 300px !important;
+                margin: 0 auto !important;
+                max-width: none !important;
+                object-fit: contain !important;
+                display: block !important;
+                position: absolute !important;
+                left: 50% !important;
+                top: 50% !important;
+                transform: translate(-50%, -50%) !important;
+              }
+              .col-lg-8.col-md-8 {
+                padding-left: 1rem !important;
+                padding-right: 1rem !important;
+                max-width: 100% !important;
+              }
+              .col-md-6 {
+                padding: 0 0.5rem !important;
+                margin-bottom: 1.5rem !important;
               }
               .mobile-text-contrast {
                 color: #1a202c !important;
-                font-weight: 700 !important;
-                text-shadow: 1px 1px 2px rgba(255,255,255,0.8) !important;
-                background-color: rgba(255,255,255,0.9) !important;
-                padding: 2px 4px !important;
-                border-radius: 3px !important;
-              }
-              .mobile-section-height {
-                min-height: 800px !important;
+                font-weight: 600 !important;
+                font-size: 0.85rem !important;
+                line-height: 1.4 !important;
               }
               .mobile-title-contrast {
-                color: #1a202c !important;
+                color: #1E4FC4 !important;
                 font-weight: 700 !important;
-                text-shadow: 1px 1px 3px rgba(255,255,255,0.9) !important;
-                background-color: rgba(255,255,255,0.95) !important;
-                padding: 4px 8px !important;
-                border-radius: 4px !important;
-                display: inline !important;
+                font-size: 0.95rem !important;
+                margin-bottom: 0.75rem !important;
               }
-              body, html {
-                overflow-x: hidden !important;
-                max-width: 100% !important;
-                width: 100% !important;
+            }
+            
+            @media (min-width: 769px) and (max-width: 1024px) {
+              .mobile-toque-container {
+                height: 350px !important;
+                min-height: 350px !important;
               }
-              .container-fluid {
-                overflow-x: hidden !important;
-                max-width: 100% !important;
-                width: 100% !important;
-              }
-              .row {
-                margin: 0 !important;
-                overflow-x: hidden !important;
-                max-width: 100% !important;
+              .mobile-toque-img {
+                width: 90% !important;
+                height: 300px !important;
+                max-width: 90% !important;
               }
             }
           </style>
           <!-- Chapeau de diplômé complètement à gauche -->
-          <div class="col-lg-4 col-md-4" style="padding: 0; margin: 0; overflow: hidden; max-width: 33.33%;">
-            <div class="mobile-toque-container" style="display: flex; align-items: center; justify-content: center; height: 1000px; width: 100%; position: relative; z-index: 2;">
+          <div class="col-lg-4 col-md-4" style="padding: 0; margin: 0; overflow: visible; max-width: 33.33%;">
+            <div class="mobile-toque-container" style="display: flex; align-items: center; justify-content: center; height: 400px; width: 100%; position: relative; z-index: 2;">
               <img src="/images/Images landingPage/Sans titre - 2-06.png" alt="Chapeau de diplômé" 
-                   class="mobile-toque-img" style="width: 100%; height: 950px; object-fit: contain; filter: drop-shadow(0 15px 35px rgba(0, 0, 0, 0.2)); margin-left: 0;">
+                   class="mobile-toque-img" style="width: 100%; height: 350px; object-fit: contain; filter: drop-shadow(0 15px 35px rgba(0, 0, 0, 0.2)); margin: 0 auto; display: block;">
             </div>
           </div>
 
           <!-- Fonctionnalités avec cercles exacts -->
           <div class="col-lg-8 col-md-8" style="padding-left: 2rem; max-width: 66.66%; overflow-x: hidden;">
-            <div class="row">
+            <div class="row" style="gap: 1rem 0;">
               <!-- Fonctionnalité 1 -->
               <div class="col-md-6 mb-4">
                 <div style="display: flex; align-items: flex-start; gap: 1rem;">
@@ -2432,7 +2479,7 @@
 
 
     <!-- Footer Compact -->
-    <footer style="background: #334155; padding: 3rem 0 1.5rem 0; color: white; position: relative;">
+    <footer style="background: #1a202c; padding: 3rem 0 1.5rem 0; color: white; position: relative;">
         <div class="container" style="max-width: 1200px;">
             <div class="row">
                 <!-- Section Produit -->
@@ -2641,68 +2688,210 @@
             </div>
         </div>
 
-        <!-- Chatbox flottant récupéré -->
+        <!-- Chatbox Éducatif Flottant -->
         <div id="chatbox" style="position: fixed; bottom: 20px; right: 20px; z-index: 1000;">
-            <!-- Bouton chat -->
-            <button id="chatButton" onclick="toggleChat()" 
-                    style="width: 60px; height: 60px; border-radius: 50%; border: none; 
-                           background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); 
-                           color: white; font-size: 1.5rem; cursor: pointer; 
-                           box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4); 
-                           transition: all 0.3s ease; display: flex; align-items: center; justify-content: center;"
-                    onmouseover="this.style.transform='scale(1.1)'; this.style.boxShadow='0 6px 30px rgba(59, 130, 246, 0.6)';"
-                    onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 20px rgba(59, 130, 246, 0.4)';">
-                <i class="fas fa-comments"></i>
-            </button>
-
-            <!-- Fenêtre de chat -->
-            <div id="chatWindow" style="display: none; width: 320px; height: 450px; 
-                                      background: white; border-radius: 12px; box-shadow: 0 10px 50px rgba(0, 0, 0, 0.2); 
-                                      position: absolute; bottom: 70px; right: 0; 
-                                      flex-direction: column; border: 1px solid rgba(0,0,0,0.1);">
-                <!-- En-tête du chat -->
-                <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); 
-                           color: white; padding: 1rem; border-radius: 12px 12px 0 0; 
-                           display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <h6 style="margin: 0; font-weight: 600;">Support KLASSCI</h6>
-                        <small style="opacity: 0.9;">En ligne maintenant</small>
+            <!-- Bouton chat avec robot éducatif -->
+            <div id="chatButton" onclick="toggleChat()" 
+                 style="width: 80px; height: 100px; cursor: pointer; 
+                        transition: all 0.3s ease; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;"
+                 onmouseover="this.style.transform='scale(1.1)';"
+                 onmouseout="this.style.transform='scale(1)';">
+                
+                <!-- Bulle "Besoin d'aide ?" simple -->
+                <div id="helpBubble" style="background: #a5b4fc; color: white; 
+                                          border-radius: 20px; padding: 8px 12px; margin-bottom: 8px; 
+                                          font-size: 12px; font-weight: 500;
+                                          white-space: nowrap; position: relative;">
+                    Besoin d'aide ?
+                    <!-- Petite flèche -->
+                    <div style="position: absolute; bottom: -4px; left: 20px; 
+                               width: 0; height: 0; 
+                               border-left: 4px solid transparent; 
+                               border-right: 4px solid transparent; 
+                               border-top: 4px solid #a5b4fc;"></div>
+                </div>
+                
+                <!-- Robot avec design de référence exact -->
+                <div style="position: relative; display: flex; flex-direction: column; align-items: center;">
+                    <!-- Chapeau de graduation BLEU FONCÉ comme la référence -->
+                    <div style="width: 45px; height: 8px; background: #1e3a8a; 
+                               border-radius: 2px; margin-bottom: 1px; box-shadow: 0 1px 3px rgba(0,0,0,0.2);"></div>
+                    <div style="width: 25px; height: 6px; background: #1e3a8a; 
+                               border-radius: 50%; margin-bottom: 3px;"></div>
+                    <!-- Petit pompon/tassel -->
+                    <div style="position: absolute; top: 0; right: 8px; width: 2px; height: 12px; 
+                               background: #1e3a8a; transform: rotate(20deg);"></div>
+                    
+                    <!-- Corps du robot ARRONDI comme la référence -->
+                    <div style="width: 50px; height: 50px; background: #e5e7eb; 
+                               border-radius: 50%; border: 3px solid #9ca3af;
+                               display: flex; flex-direction: column; align-items: center; justify-content: center;
+                               position: relative; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        
+                        <!-- Yeux CYAN comme la référence -->
+                        <div style="display: flex; gap: 8px; margin-bottom: 6px;">
+                            <div style="width: 5px; height: 5px; background: #06b6d4; border-radius: 50%;"></div>
+                            <div style="width: 5px; height: 5px; background: #06b6d4; border-radius: 50%;"></div>
+                        </div>
+                        
+                        <!-- Bouche souriante -->
+                        <div style="width: 10px; height: 5px; border-bottom: 2px solid #06b6d4; 
+                                   border-radius: 0 0 10px 10px;"></div>
                     </div>
-                    <button onclick="toggleChat()" style="background: none; border: none; color: white; font-size: 1.2rem; cursor: pointer;">
+                </div>
+            </div>
+
+            <!-- Fenêtre de chat éducative -->
+            <div id="chatWindow" style="display: none; width: 340px; height: 480px; 
+                                      background: white; border-radius: 16px; box-shadow: 0 15px 60px rgba(0, 0, 0, 0.25); 
+                                      position: absolute; bottom: 120px; right: 0; 
+                                      flex-direction: column; border: 3px solid #6366f1; overflow: hidden;">
+                <!-- En-tête du chat éducatif -->
+                <div style="background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%); 
+                           color: white; padding: 1.2rem 1rem; 
+                           display: flex; justify-content: space-between; align-items: center;
+                           position: relative; overflow: hidden;">
+                    <!-- Motif éducatif en arrière-plan -->
+                    <div style="position: absolute; top: -10px; right: -10px; 
+                               width: 40px; height: 40px; border: 2px solid rgba(255,255,255,0.2); 
+                               border-radius: 50%; opacity: 0.6;"></div>
+                    <div style="position: absolute; bottom: -15px; left: -15px; 
+                               width: 50px; height: 50px; border: 2px solid rgba(255,255,255,0.15); 
+                               border-radius: 50%; opacity: 0.4;"></div>
+                    
+                    <div style="display: flex; align-items: center; gap: 0.75rem; position: relative; z-index: 2;">
+                        <!-- Mini robot dans l'en-tête -->
+                        <div style="width: 32px; height: 32px; background: rgba(255,255,255,0.15); 
+                                   border-radius: 8px; display: flex; align-items: center; justify-content: center;
+                                   border: 2px solid rgba(255,255,255,0.3);">
+                            <div style="display: flex; gap: 3px; flex-direction: column; align-items: center;">
+                                <div style="display: flex; gap: 2px;">
+                                    <div style="width: 2px; height: 2px; background: #22d3ee; border-radius: 50%;"></div>
+                                    <div style="width: 2px; height: 2px; background: #22d3ee; border-radius: 50%;"></div>
+                                </div>
+                                <div style="width: 4px; height: 1px; background: #22d3ee; border-radius: 1px;"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <h6 style="margin: 0; font-weight: 700; font-size: 1rem;">Assistant KLASSCI</h6>
+                            <small style="opacity: 0.85; font-size: 0.8rem;">🎓 Votre conseiller éducatif</small>
+                        </div>
+                    </div>
+                    <button onclick="toggleChat()" style="background: rgba(255,255,255,0.15); border: 2px solid rgba(255,255,255,0.3); 
+                                                          color: white; font-size: 1rem; cursor: pointer; border-radius: 6px;
+                                                          width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+                                                          transition: background 0.2s;"
+                            onmouseover="this.style.background='rgba(255,255,255,0.25)';"
+                            onmouseout="this.style.background='rgba(255,255,255,0.15)';">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
 
-                <!-- Messages du chat -->
-                <div style="flex: 1; padding: 1rem; overflow-y: auto; background: #f8fafc;">
-                    <div style="background: #3b82f6; color: white; padding: 0.75rem 1rem; 
-                               border-radius: 18px 18px 18px 4px; margin-bottom: 1rem; max-width: 80%;">
-                        Bonjour ! 👋 Comment puis-je vous aider aujourd'hui ?
+                <!-- Messages du chat éducatifs -->
+                <div style="flex: 1; padding: 1.2rem; overflow-y: auto; 
+                           background: linear-gradient(145deg, #f8fafc 0%, #f1f5f9 100%);
+                           position: relative;">
+                    <!-- Motifs éducatifs subtils -->
+                    <div style="position: absolute; top: 10px; right: 10px; 
+                               width: 20px; height: 20px; border: 1px solid rgba(99,102,241,0.1); 
+                               border-radius: 50%; opacity: 0.3;"></div>
+                    <div style="position: absolute; bottom: 10px; left: 10px; 
+                               width: 15px; height: 15px; border: 1px solid rgba(99,102,241,0.1); 
+                               border-radius: 50%; opacity: 0.2;"></div>
+                    
+                    <!-- Message d'accueil du robot -->
+                    <div style="display: flex; align-items: flex-start; margin-bottom: 1.2rem;">
+                        <div style="width: 24px; height: 24px; background: #6366f1; border-radius: 6px; 
+                                   display: flex; align-items: center; justify-content: center; margin-right: 0.75rem;
+                                   flex-shrink: 0; box-shadow: 0 2px 8px rgba(99,102,241,0.3);">
+                            <div style="width: 3px; height: 3px; background: white; border-radius: 50%;"></div>
+                        </div>
+                        <div style="background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%); color: white; 
+                                   padding: 0.9rem 1.1rem; border-radius: 16px 16px 16px 4px; 
+                                   max-width: 75%; box-shadow: 0 3px 12px rgba(99,102,241,0.2);
+                                   font-size: 0.9rem; line-height: 1.4;">
+                            Bonjour ! 🎓 Je suis votre assistant éducatif KLASSCI.<br>
+                            Comment puis-je vous accompagner dans votre transformation numérique ?
+                        </div>
                     </div>
-                    <div style="background: #e2e8f0; color: #334155; padding: 0.75rem 1rem; 
-                               border-radius: 18px 18px 4px 18px; margin-bottom: 1rem; max-width: 80%; margin-left: auto;">
-                        Je souhaite avoir une démonstration de KLASSCI
+                    
+                    <!-- Message utilisateur -->
+                    <div style="display: flex; align-items: flex-start; justify-content: flex-end; margin-bottom: 1.2rem;">
+                        <div style="background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%); color: #334155; 
+                                   padding: 0.9rem 1.1rem; border-radius: 16px 16px 4px 16px; 
+                                   max-width: 75%; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                                   font-size: 0.9rem; line-height: 1.4;">
+                            Je souhaite découvrir KLASSCI pour mon établissement
+                        </div>
+                        <div style="width: 24px; height: 24px; background: #cbd5e1; border-radius: 6px; 
+                                   display: flex; align-items: center; justify-content: center; margin-left: 0.75rem;
+                                   flex-shrink: 0;">
+                            <i class="fas fa-user" style="font-size: 0.7rem; color: #64748b;"></i>
+                        </div>
                     </div>
-                    <div style="background: #3b82f6; color: white; padding: 0.75rem 1rem; 
-                               border-radius: 18px 18px 18px 4px; margin-bottom: 1rem; max-width: 80%;">
-                        Parfait ! Je vous contacte dans les 24h pour organiser une démonstration personnalisée. 
-                        Pouvez-vous me donner votre email ?
+                    
+                    <!-- Réponse du robot -->
+                    <div style="display: flex; align-items: flex-start; margin-bottom: 1rem;">
+                        <div style="width: 24px; height: 24px; background: #22d3ee; border-radius: 6px; 
+                                   display: flex; align-items: center; justify-content: center; margin-right: 0.75rem;
+                                   flex-shrink: 0; box-shadow: 0 2px 8px rgba(34,211,238,0.3);">
+                            <div style="width: 3px; height: 3px; background: white; border-radius: 50%;"></div>
+                        </div>
+                        <div style="background: linear-gradient(135deg, #22d3ee 0%, #06b6d4 100%); color: white; 
+                                   padding: 0.9rem 1.1rem; border-radius: 16px 16px 16px 4px; 
+                                   max-width: 78%; box-shadow: 0 3px 12px rgba(34,211,238,0.2);
+                                   font-size: 0.9rem; line-height: 1.4;">
+                            Excellente idée ! 🚀 KLASSCI transforme la gestion scolaire avec des solutions intelligentes.<br><br>
+                            <strong>Puis-je connaître :</strong><br>
+                            • Le type d'établissement ?<br>
+                            • Le nombre d'étudiants ?<br><br>
+                            Je vous proposerai la solution adaptée ! 📚
+                        </div>
                     </div>
                 </div>
 
-                <!-- Zone de saisie -->
-                <div style="padding: 1rem; border-top: 1px solid #e2e8f0; background: white; border-radius: 0 0 12px 12px;">
-                    <div style="display: flex; gap: 0.5rem; align-items: center;">
-                        <input type="text" placeholder="Tapez votre message..." 
-                               style="flex: 1; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; 
-                                      border-radius: 20px; outline: none; font-size: 0.9rem;"
-                               onkeypress="if(event.key==='Enter') sendMessage()">
+                <!-- Zone de saisie éducative -->
+                <div style="padding: 1.2rem; border-top: 2px solid #e0e7ff; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-radius: 0 0 12px 12px; position: relative;">
+                    <!-- Motif éducatif subtil en arrière-plan -->
+                    <div style="position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, #6366f1 0%, #22d3ee 100%);"></div>
+                    
+                    <div style="display: flex; gap: 0.75rem; align-items: center;">
+                        <!-- Icône éducative -->
+                        <div style="width: 32px; height: 32px; background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); 
+                                   border-radius: 8px; display: flex; align-items: center; justify-content: center; 
+                                   flex-shrink: 0; border: 1px solid #e0e7ff;">
+                            <i class="fas fa-graduation-cap" style="color: #6366f1; font-size: 0.8rem;"></i>
+                        </div>
+                        
+                        <input type="text" placeholder="Posez votre question sur KLASSCI..." 
+                               style="flex: 1; padding: 0.75rem 1rem; border: 2px solid #e0e7ff; 
+                                      border-radius: 24px; outline: none; font-size: 0.9rem; 
+                                      background: white; color: #1e293b; transition: all 0.3s ease;
+                                      box-shadow: 0 2px 8px rgba(99,102,241,0.06);"
+                               onkeypress="if(event.key==='Enter') sendMessage()"
+                               onfocus="this.style.borderColor='#6366f1'; this.style.boxShadow='0 4px 16px rgba(99,102,241,0.15)';"
+                               onblur="this.style.borderColor='#e0e7ff'; this.style.boxShadow='0 2px 8px rgba(99,102,241,0.06)';">
+                        
+                        <!-- Bouton d'envoi éducatif -->
                         <button onclick="sendMessage()" 
-                                style="background: #3b82f6; color: white; border: none; 
-                                       border-radius: 50%; width: 36px; height: 36px; 
-                                       cursor: pointer; display: flex; align-items: center; justify-content: center;">
-                            <i class="fas fa-paper-plane"></i>
+                                style="background: linear-gradient(135deg, #6366f1 0%, #7c3aed 100%); color: white; border: none; 
+                                       border-radius: 50%; width: 42px; height: 42px; 
+                                       cursor: pointer; display: flex; align-items: center; justify-content: center;
+                                       box-shadow: 0 4px 16px rgba(99,102,241,0.25); transition: all 0.3s ease;
+                                       position: relative; flex-shrink: 0;"
+                                onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(99,102,241,0.35)';"
+                                onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 16px rgba(99,102,241,0.25)';">
+                            <i class="fas fa-paper-plane" style="font-size: 0.85rem; transform: translateX(1px);"></i>
+                            <!-- Petit effet de graduation sur le bouton -->
+                            <div style="position: absolute; top: -2px; right: -2px; width: 8px; height: 8px; 
+                                       background: #22d3ee; border-radius: 50%; opacity: 0.8;"></div>
                         </button>
+                    </div>
+                    
+                    <!-- Indicateur de statut -->
+                    <div style="margin-top: 0.75rem; display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; color: #64748b;">
+                        <div style="width: 6px; height: 6px; background: #22d3ee; border-radius: 50%; animation: pulse 2s infinite;"></div>
+                        <span>Assistant éducatif en ligne</span>
                     </div>
                 </div>
             </div>
@@ -2712,14 +2901,20 @@
     <script>
         function toggleChat() {
             const chatWindow = document.getElementById('chatWindow');
-            const chatButton = document.getElementById('chatButton');
+            const helpBubble = document.getElementById('helpBubble');
             
             if (chatWindow.style.display === 'none' || chatWindow.style.display === '') {
+                // Ouvrir le chatbox directement
                 chatWindow.style.display = 'flex';
-                chatButton.innerHTML = '<i class="fas fa-times"></i>';
+                if (helpBubble) {
+                    helpBubble.style.display = 'none';
+                }
             } else {
+                // Fermer le chatbox
                 chatWindow.style.display = 'none';
-                chatButton.innerHTML = '<i class="fas fa-comments"></i>';
+                if (helpBubble) {
+                    helpBubble.style.display = 'block';
+                }
             }
         }
 
@@ -2731,9 +2926,9 @@
                 console.log('Message envoyé:', message);
                 input.value = '';
                 
-                // Simulation d'une réponse automatique
+                // Simulation d'une réponse automatique éducative
                 setTimeout(() => {
-                    alert('Merci pour votre message ! Notre équipe vous contactera bientôt.');
+                    alert('📚 Merci pour votre question ! Notre assistant éducatif KLASSCI vous répondra très bientôt avec des informations personnalisées pour votre établissement.');
                 }, 1000);
             }
         }
@@ -2744,8 +2939,7 @@
             const chatWindow = document.getElementById('chatWindow');
             
             if (!chatbox.contains(event.target) && chatWindow.style.display === 'flex') {
-                chatWindow.style.display = 'none';
-                document.getElementById('chatButton').innerHTML = '<i class="fas fa-comments"></i>';
+                toggleChat(); // Utiliser la fonction toggle pour restaurer le robot
             }
         });
     </script>
@@ -2753,6 +2947,23 @@
     @keyframes pulseBtn {
       0% { box-shadow: 0 0 0 0 rgba(99,102,241,0.15); transform: scale(1); }
       100% { box-shadow: 0 0 16px 8px rgba(99,102,241,0.10); transform: scale(1.04); }
+    }
+    
+    @keyframes pulse {
+      0% { opacity: 0.6; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.1); }
+      100% { opacity: 0.6; transform: scale(1); }
+    }
+    
+    @keyframes glow {
+      0% { box-shadow: 0 0 8px #22d3ee; opacity: 0.8; }
+      100% { box-shadow: 0 0 16px #22d3ee; opacity: 1; }
+    }
+    
+    @keyframes bounce {
+      0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+      40% { transform: translateY(-8px); }
+      60% { transform: translateY(-4px); }
     }
     .premium-cta-btn {
       background: linear-gradient(90deg,#6366f1,#7c3aed) !important;
