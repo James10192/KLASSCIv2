@@ -522,9 +522,10 @@
       }
       
       .hero-section {
-        padding: 2rem 0 0 0 !important;
+        padding: 6rem 0 0 0 !important;
         margin-top: 0 !important;
         overflow-x: hidden !important;
+        padding-top: 6rem !important;
       }
       
       .hero-slogan {
@@ -582,8 +583,9 @@
       }
       
       .hero-section {
-        padding: 1.5rem 0 !important;
+        padding: 5rem 0 0 0 !important;
         overflow-x: hidden !important;
+        padding-top: 5rem !important;
       }
       
       .hero-content {
@@ -631,7 +633,8 @@
       }
       
       .hero-section {
-        padding: 1rem 0 !important;
+        padding: 4rem 0 0 0 !important;
+        padding-top: 4rem !important;
       }
       
       .hero-slogan,
@@ -680,7 +683,8 @@
       }
       
       .hero-section {
-        padding: 0.5rem 0 !important;
+        padding: 3.5rem 0 0 0 !important;
+        padding-top: 3.5rem !important;
         min-height: auto !important;
         overflow-x: hidden !important;
         width: 100% !important;
@@ -752,7 +756,8 @@
       }
       
       .hero-section {
-        padding: 0.25rem 0 !important;
+        padding: 3rem 0 0 0 !important;
+        padding-top: 3rem !important;
       }
       
       .col-lg-8 {
