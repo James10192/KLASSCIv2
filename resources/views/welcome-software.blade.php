@@ -511,24 +511,33 @@
       }
       
       .hero-section {
-        padding: 1rem 0 0 0 !important;
-        padding-top: 1rem !important;
+        padding: 2rem 0 0 0 !important;
+        margin-top: 0 !important;
+        overflow-x: hidden !important;
       }
       
       .hero-slogan {
-        font-size: 1.5rem !important;
-        margin-bottom: 0.5rem !important;
+        font-size: 1.3rem !important;
+        margin-bottom: 0.8rem !important;
+        padding: 0 1rem !important;
+        line-height: 1.4 !important;
       }
       
       .hero-title {
-        font-size: clamp(1.8rem, 5vw, 2.2rem) !important;
-        margin-bottom: 1rem !important;
+        font-size: clamp(1.5rem, 6vw, 2rem) !important;
+        margin-bottom: 1.2rem !important;
+        padding: 0 1rem !important;
+        line-height: 1.3 !important;
+        word-wrap: break-word !important;
       }
       
       .hero-description {
-        font-size: 1rem !important;
-        padding: 0 1rem;
+        font-size: 0.95rem !important;
+        padding: 0 1.5rem !important;
         margin-bottom: 2rem !important;
+        line-height: 1.5 !important;
+        word-wrap: break-word !important;
+        max-width: 100% !important;
       }
       
       .btn-commencer {
@@ -556,16 +565,38 @@
     /* Corrections spécifiques pour très petits écrans */
     @media (max-width: 480px) {
       .container {
-        padding-left: 1rem;
-        padding-right: 1rem;
+        padding-left: 0.75rem !important;
+        padding-right: 0.75rem !important;
+        max-width: 100% !important;
       }
       
       .hero-section {
-        padding: 1.5rem 0;
+        padding: 1.5rem 0 !important;
+        overflow-x: hidden !important;
       }
       
       .hero-content {
-        padding: 0 0.5rem;
+        padding: 0 !important;
+        width: 100% !important;
+      }
+      
+      .hero-slogan {
+        font-size: 1.1rem !important;
+        padding: 0 0.75rem !important;
+        margin-bottom: 0.6rem !important;
+      }
+      
+      .hero-title {
+        font-size: clamp(1.3rem, 7vw, 1.8rem) !important;
+        padding: 0 0.75rem !important;
+        margin-bottom: 1rem !important;
+      }
+      
+      .hero-description {
+        font-size: 0.9rem !important;
+        padding: 0 1rem !important;
+        margin-bottom: 1.8rem !important;
+        line-height: 1.4 !important;
       }
       
       .navbar {
