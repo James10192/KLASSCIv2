@@ -1450,18 +1450,18 @@
         <div class="row justify-content-center text-center">
           <div class="col-lg-8">
             <!-- Slogan avec police Merry Christmas -->
-            <p class="hero-slogan" style="font-family: 'Dancing Script', cursive; font-size: 2.5rem; color: #2d3748; margin-bottom: 1rem; font-weight: 600;">
+            <p class="hero-slogan" style="font-family: 'Dancing Script', cursive; font-size: clamp(1rem, 4vw, 2.5rem); color: #2d3748; margin-bottom: 1rem; font-weight: 600; padding: 0 0.5rem; line-height: 1.3; word-break: break-word;">
               Plus simple la vie à l'école !
             </p>
             
             <!-- Titre principal -->
-            <h1 class="hero-title" style="font-family: 'Futura Round', 'Inter', sans-serif; font-size: clamp(2.5rem, 5vw, 4rem); font-weight: 700; color: #1a202c; line-height: 1.2; margin-bottom: 2rem;">
+            <h1 class="hero-title" style="font-family: 'Futura Round', 'Inter', sans-serif; font-size: clamp(1.3rem, 6vw, 4rem); font-weight: 700; color: #1a202c; line-height: 1.2; margin-bottom: 2rem; padding: 0 0.5rem; word-break: break-word;">
               Un clic pour tout piloter,<br>
               de l'administratif à la pédagogie.
             </h1>
             
             <!-- Description -->
-            <p class="hero-description" style="font-size: 1.25rem; color: #4a5568; max-width: 700px; margin: 0 auto 3rem; line-height: 1.6;">
+            <p class="hero-description" style="font-size: clamp(0.85rem, 3vw, 1.25rem); color: #4a5568; max-width: 700px; margin: 0 auto 3rem; line-height: 1.6; padding: 0 1rem; word-break: break-word;">
               Simplifiez l'essentiel de vos tâches pédagogiques et administratives, et visualisez en un seul clic l'état global de la gestion de votre établissement.
             </p>
             
