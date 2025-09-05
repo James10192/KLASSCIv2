@@ -612,6 +612,79 @@
       }
     }
 
+    /* Corrections spécifiques pour écrans extra-petits */
+    @media (max-width: 400px) {
+      .container {
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+      }
+      
+      .hero-section {
+        padding: 1rem 0 !important;
+      }
+      
+      .hero-slogan {
+        font-size: 1rem !important;
+        padding: 0 0.5rem !important;
+        margin-bottom: 0.5rem !important;
+        line-height: 1.2 !important;
+      }
+      
+      .hero-title {
+        font-size: clamp(1.1rem, 8vw, 1.6rem) !important;
+        padding: 0 0.5rem !important;
+        margin-bottom: 0.8rem !important;
+        line-height: 1.2 !important;
+        word-break: break-word !important;
+      }
+      
+      .hero-description {
+        font-size: 0.85rem !important;
+        padding: 0 0.8rem !important;
+        margin-bottom: 1.5rem !important;
+        line-height: 1.3 !important;
+        word-break: break-word !important;
+      }
+      
+      .btn-commencer {
+        padding: 0.6rem 1.2rem !important;
+        font-size: 0.85rem !important;
+      }
+    }
+
+    /* Corrections pour écrans ultra-petits */
+    @media (max-width: 360px) {
+      .container {
+        padding-left: 0.25rem !important;
+        padding-right: 0.25rem !important;
+      }
+      
+      .hero-slogan {
+        font-size: 0.9rem !important;
+        padding: 0 0.25rem !important;
+        text-align: center !important;
+      }
+      
+      .hero-title {
+        font-size: clamp(1rem, 9vw, 1.4rem) !important;
+        padding: 0 0.25rem !important;
+        text-align: center !important;
+        line-height: 1.1 !important;
+      }
+      
+      .hero-description {
+        font-size: 0.8rem !important;
+        padding: 0 0.5rem !important;
+        text-align: center !important;
+        line-height: 1.25 !important;
+      }
+      
+      .btn-commencer {
+        padding: 0.5rem 1rem !important;
+        font-size: 0.8rem !important;
+      }
+    }
+
     /* Footer moderne */
     .footer, .klassci-footer {
       background: var(--text-primary);
