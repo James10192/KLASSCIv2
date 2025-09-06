@@ -2262,11 +2262,71 @@
     </section>
 
     <!-- Section Partenaire 0 FCFA -->
-    <section style="padding: 0; margin: 0; width: 100%; display: block; height: 1020px;">
+    <section class="partnership-section" style="padding: 0; margin: 0; width: 100%; display: block; min-height: 600px; height: auto; overflow: hidden;">
       <img src="/images/Images landingPage/Sans titre - 2-02.png" 
            alt="Dashboard KLASSCI - 0 FCFA" 
-           style="width: 100%; height: 100%; object-fit: fill; display: block; margin: 0; padding: 0;">
+           class="partnership-image"
+           style="width: 100%; height: auto; min-height: 600px; object-fit: cover; object-position: center; display: block; margin: 0; padding: 0;">
     </section>
+
+    <!-- Styles pour la section partenaire -->
+    <style>
+      .partnership-section {
+        position: relative;
+      }
+      
+      .partnership-image {
+        max-width: 100%;
+        vertical-align: top;
+      }
+      
+      /* Responsive pour différentes tailles d'écran */
+      @media (min-width: 1200px) {
+        .partnership-section {
+          min-height: 700px;
+        }
+        .partnership-image {
+          min-height: 700px;
+        }
+      }
+      
+      @media (max-width: 1199px) and (min-width: 992px) {
+        .partnership-section {
+          min-height: 600px;
+        }
+        .partnership-image {
+          min-height: 600px;
+        }
+      }
+      
+      @media (max-width: 991px) and (min-width: 768px) {
+        .partnership-section {
+          min-height: 500px;
+        }
+        .partnership-image {
+          min-height: 500px;
+        }
+      }
+      
+      @media (max-width: 767px) {
+        .partnership-section {
+          min-height: 400px;
+        }
+        .partnership-image {
+          min-height: 400px;
+          object-position: center top;
+        }
+      }
+      
+      @media (max-width: 480px) {
+        .partnership-section {
+          min-height: 350px;
+        }
+        .partnership-image {
+          min-height: 350px;
+        }
+      }
+    </style>
 
     <!-- Section Témoignage -->
     <section style="padding: 5rem 0; background: #f8f9fa; position: relative;">
