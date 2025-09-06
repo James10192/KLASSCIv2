@@ -2474,11 +2474,71 @@
     </section>
 
     <!-- Section Image CTA -->
-    <section style="padding: 0; margin: 0; width: 100%; display: block; height: 720px;">
+    <section class="cta-image-section" style="padding: 0; margin: 0; width: 100%; display: block; min-height: 600px; height: auto; overflow: hidden;">
       <img src="/images/Images landingPage/Sans titre - 2-03.png" 
            alt="CTA Transform KLASSCI" 
-           style="width: 100%; height: 100%; object-fit: fill; display: block; margin: 0; padding: 0;">
+           class="cta-transform-image"
+           style="width: 100%; height: auto; min-height: 600px; object-fit: cover; object-position: center; display: block; margin: 0; padding: 0;">
     </section>
+
+    <!-- Styles pour la section CTA Transform -->
+    <style>
+      .cta-image-section {
+        position: relative;
+      }
+      
+      .cta-transform-image {
+        max-width: 100%;
+        vertical-align: top;
+      }
+      
+      /* Responsive pour différentes tailles d'écran */
+      @media (min-width: 1200px) {
+        .cta-image-section {
+          min-height: 700px;
+        }
+        .cta-transform-image {
+          min-height: 700px;
+        }
+      }
+      
+      @media (max-width: 1199px) and (min-width: 992px) {
+        .cta-image-section {
+          min-height: 600px;
+        }
+        .cta-transform-image {
+          min-height: 600px;
+        }
+      }
+      
+      @media (max-width: 991px) and (min-width: 768px) {
+        .cta-image-section {
+          min-height: 500px;
+        }
+        .cta-transform-image {
+          min-height: 500px;
+        }
+      }
+      
+      @media (max-width: 767px) {
+        .cta-image-section {
+          min-height: 400px;
+        }
+        .cta-transform-image {
+          min-height: 400px;
+          object-position: center top;
+        }
+      }
+      
+      @media (max-width: 480px) {
+        .cta-image-section {
+          min-height: 350px;
+        }
+        .cta-transform-image {
+          min-height: 350px;
+        }
+      }
+    </style>
 
     <!-- Section CTA -->
     <section style="background: #ffffff; padding: 6rem 0; position: relative;">
