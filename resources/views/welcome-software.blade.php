@@ -87,7 +87,7 @@
     .navbar {
       background: var(--bg-white) !important;
       border-bottom: 1px solid #e1e5e9;
-      padding: 0.25rem 0;
+      padding: 0.125rem 0;
       position: sticky;
       top: 0;
       z-index: 1000;
@@ -530,11 +530,11 @@
     /* Responsive Hero Section */
     @media (max-width: 768px) {
       .navbar {
-        padding: 0.25rem 0;
+        padding: 0.125rem 0;
       }
       
       .navbar-brand img {
-        height: 70px !important;
+        height: 50px !important;
       }
       
       .hero-section {
@@ -1535,7 +1535,7 @@
     <nav class="navbar navbar-expand-lg">
         <div class="container">
             <a class="navbar-brand" href="#home" style="text-decoration: none;">
-                <img src="/images/Images landingPage/logo_klassci.png" alt="KLASSCI" style="height: 100px; width: auto;">
+                <img src="/images/Images landingPage/logo_klassci.png" alt="KLASSCI" style="height: 60px; width: auto;">
             </a>
 
             <div class="collapse navbar-collapse" id="navbarNav">
