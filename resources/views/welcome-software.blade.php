@@ -1674,9 +1674,9 @@
             </p>
             
             <!-- Titre principal -->
-            <h1 class="hero-title scroll-animate scroll-animate-delay-1" style="font-family: 'Futura Round', 'Inter', sans-serif; font-size: clamp(1.3rem, 6vw, 4rem); font-weight: 700; color: #1a202c; line-height: 1.2; margin-bottom: 2.5rem; padding: 0 0.5rem; word-break: break-word;">
+            <h1 class="hero-title scroll-animate scroll-animate-delay-1" style="font-family: 'Futura Round', 'Inter', sans-serif; font-size: clamp(1.2rem, 5.5vw, 3.5rem); font-weight: 700; color: #1a202c; line-height: 1.2; margin-bottom: 2.5rem; padding: 0 0.5rem; text-align: center;">
               Un clic pour tout piloter,<br>
-              de l'administratif à la pédagogie.
+              <span>de l'administratif à la pédagogie.</span>
             </h1>
             
             <!-- Description -->
@@ -1692,10 +1692,10 @@
         </div>
         
         <!-- Image tablette pleine largeur -->
-        <div class="hero-tablet-section scroll-animate-scale scroll-animate-delay-4" style="width: 100%; margin-top: 3rem; padding: 0; overflow: hidden;">
-          <div class="hero-tablet-container" style="position: relative; text-align: center; width: 100%;">
+        <div class="hero-tablet-section scroll-animate-scale scroll-animate-delay-4" style="width: 100%; margin-top: 3rem; padding: 0; overflow: hidden; display: flex; justify-content: center; align-items: center;">
+          <div class="hero-tablet-container" style="position: relative; text-align: center; width: 100%; display: flex; justify-content: center;">
             <img src="/images/Images landingPage/Sans titre - 2_Plan de travail 1.png" alt="KLASSCI Dashboard" 
-                 class="hero-tablet-img" style="width: 100%; height: auto; display: block; margin: 0; border-radius: 0; transform: scale(1.1);">
+                 class="hero-tablet-img" style="width: 100%; height: auto; display: block; margin: 0 auto; border-radius: 0; transform: scale(1.4); max-width: 90%; mask: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.3) 15%, rgba(0,0,0,1) 25%, rgba(0,0,0,1) 100%); -webkit-mask: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.3) 15%, rgba(0,0,0,1) 25%, rgba(0,0,0,1) 100%);">
           </div>
         </div>
       </div>
@@ -1824,11 +1824,10 @@
               
               .crm-feature-content p {
                 color: #666;
-                font-size: 0.85rem;
+                font-size: 0.95rem;
                 line-height: 1.5;
                 margin: 0;
-                text-align: justify;
-                hyphens: auto;
+                text-align: left;
               }
               
               /* Image du chapeau selon design de référence */
