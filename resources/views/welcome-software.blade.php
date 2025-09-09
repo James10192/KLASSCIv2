@@ -1750,7 +1750,7 @@
               
               /* Colonne gauche : image du chapeau */
               .crm-left-column {
-                flex: 0 0 350px;
+                flex: 0 0 400px;
                 display: flex;
                 justify-content: center;
                 align-items: center;
@@ -1820,10 +1820,10 @@
                 margin: 0;
               }
               
-              /* Image du chapeau dans sa colonne */
+              /* Image du chapeau PLUS GRANDE */
               .crm-graduation-img {
-                width: 300px;
-                height: 300px;
+                width: 380px;
+                height: 380px;
                 object-fit: contain;
                 filter: drop-shadow(0 10px 25px rgba(0, 0, 0, 0.1));
                 opacity: 1;
@@ -1852,6 +1852,11 @@
                 .crm-title h2 {
                   text-align: center;
                   font-size: clamp(1.5rem, 5vw, 2rem) !important;
+                  white-space: normal !important;
+                }
+                
+                .crm-title h2 span {
+                  white-space: normal !important;
                 }
                 
                 .crm-features-grid {
@@ -1867,23 +1872,23 @@
               
               @media (min-width: 769px) and (max-width: 1024px) {
                 .crm-left-column {
-                  flex: 0 0 280px;
+                  flex: 0 0 350px;
                 }
                 
                 .crm-graduation-img {
-                  width: 250px;
-                  height: 250px;
+                  width: 320px;
+                  height: 320px;
                 }
               }
               
               @media (min-width: 1200px) {
                 .crm-left-column {
-                  flex: 0 0 400px;
+                  flex: 0 0 450px;
                 }
                 
                 .crm-graduation-img {
-                  width: 350px;
-                  height: 350px;
+                  width: 420px;
+                  height: 420px;
                 }
               }
           </style>
@@ -1898,12 +1903,12 @@
               
               <!-- Colonne droite : Titre + 6 points -->
               <div class="crm-right-column scroll-animate-right">
-                <!-- Titre sur 2 lignes -->
+                <!-- Titre sur 2 lignes exactes -->
                 <div class="crm-title">
-                  <h2 style="font-family: 'Futura Round', sans-serif; font-size: clamp(1.8rem, 3.5vw, 2.5rem); font-weight: 400; 
-                            color: #1a202c; margin: 0; line-height: 1.2; text-align: left;">
-                    Découvrez pourquoi KLASSCI est le <span style="font-weight: 800;">CRM éducatif le plus complet,</span><br>
-                    pensé pour la <span style="font-weight: 800;">performance et l'efficacité pédagogique.</span>
+                  <h2 style="font-family: 'Futura Round', sans-serif; font-size: clamp(1.8rem, 3.5vw, 2.2rem); font-weight: 400; 
+                            color: #1a202c; margin: 0; line-height: 1.2; text-align: left; white-space: nowrap;">
+                    <span style="display: block;">Découvrez pourquoi KLASSCI est le <span style="font-weight: 800;">CRM éducatif le plus complet,</span></span>
+                    <span style="display: block;">pensé pour la <span style="font-weight: 800;">performance et l'efficacité pédagogique.</span></span>
                   </h2>
                 </div>
                 
