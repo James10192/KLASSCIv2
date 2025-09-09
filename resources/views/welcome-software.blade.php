@@ -1825,9 +1825,10 @@
               .crm-feature-content p {
                 color: #666;
                 font-size: 0.95rem;
-                line-height: 1.5;
+                line-height: 1.6;
                 margin: 0;
                 text-align: left;
+                word-wrap: break-word;
               }
               
               /* Image du chapeau selon design de référence */
@@ -2036,9 +2037,9 @@
     <section style="padding: 5rem 0; background: linear-gradient(180deg, #ffffff 0%, #f0f4ff 100%); position: relative;">
       <div class="container" style="max-width: 100%;">
         <!-- Titre centré -->
-        <div class="text-center mb-5 scroll-animate" style="max-width: 800px; margin: 0 auto 4rem auto;">
+        <div class="text-center mb-5 scroll-animate" style="max-width: 800px; margin: 0 auto 5rem auto;">
           <h2 style="font-family: 'Futura Round', sans-serif; font-size: clamp(2rem, 4vw, 2.8rem); font-weight: 400; 
-                    color: #1a202c; margin-bottom: 2.5rem; line-height: 1.3;">
+                    color: #1a202c; margin-bottom: 3.5rem; line-height: 1.3;">
             Des modules<br>
             <span style="font-weight: 800;">au cœur de la performance</span><br>
             <span style="font-weight: 400;">de votre établissement.</span>
@@ -2238,12 +2239,12 @@
     <section style="padding: 5rem 0; background: white; position: relative;">
       <div class="container" style="max-width: 100%;">
         <!-- Titre centré -->
-        <div class="text-center mb-5 scroll-animate" style="max-width: 800px; margin: 0 auto;">
+        <div class="text-center mb-5 scroll-animate" style="max-width: 800px; margin: 0 auto 5rem auto;">
           <h2 style="font-family: 'Futura Round', sans-serif; font-size: clamp(2rem, 4vw, 2.8rem); font-weight: 400; 
                     color: #1a202c; margin-bottom: 2rem; line-height: 1.3;">
             Choisissez votre <span style="font-weight: 800;">pack</span>
           </h2>
-          <p style="font-size: 1.1rem; color: #666; margin: 0; line-height: 1.6;">
+          <p style="font-size: 1.1rem; color: #666; margin: 0 0 1rem 0; line-height: 1.6;">
             Choisissez votre pack et faites de KLASSCI votre atout.
           </p>
         </div>
