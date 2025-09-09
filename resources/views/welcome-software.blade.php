@@ -15,8 +15,58 @@
     <!-- Polices personnalisées -->
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.cdnfonts.com/css/futura-round" rel="stylesheet">
-    <!-- AOS Animation Library -->
-    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <!-- Custom Scroll Animations -->
+    <style>
+    /* Animation classes for scroll effects */
+    .scroll-animate {
+        opacity: 0.2;
+        transform: translateY(60px);
+        transition: all 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+    
+    .scroll-animate.is-visible {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    
+    .scroll-animate-left {
+        opacity: 0.2;
+        transform: translateX(-60px);
+        transition: all 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+    
+    .scroll-animate-left.is-visible {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    
+    .scroll-animate-right {
+        opacity: 0.2;
+        transform: translateX(60px);
+        transition: all 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+    
+    .scroll-animate-right.is-visible {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    
+    .scroll-animate-scale {
+        opacity: 0.2;
+        transform: scale(0.7);
+        transition: all 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+    
+    .scroll-animate-scale.is-visible {
+        opacity: 1;
+        transform: scale(1);
+    }
+    
+    .scroll-animate-delay-1 { transition-delay: 0.1s; }
+    .scroll-animate-delay-2 { transition-delay: 0.2s; }
+    .scroll-animate-delay-3 { transition-delay: 0.3s; }
+    .scroll-animate-delay-4 { transition-delay: 0.4s; }
+    </style>
 
     <!-- ======= DESIGN SYSTEM HOSTINGER MODERNE ======= -->
     <style>
@@ -73,6 +123,45 @@
       background: var(--bg-white);
       margin: 0;
       padding: 0;
+      overflow-x: hidden;
+    }
+    
+    html {
+      overflow-x: hidden;
+    }
+    
+    /* Protection supplémentaire pour mobile */
+    @media (max-width: 768px) {
+      body {
+        overflow-x: hidden !important;
+        max-width: 100vw !important;
+      }
+      
+      * {
+        max-width: 100% !important;
+      }
+      
+      /* Correction spécifique pour les sections full-width */
+      section[style*="100vw"] {
+        width: 100% !important;
+        left: auto !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+      }
+      
+      img[style*="100vw"] {
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+      
+      /* Ajuster les hauteurs minimales sur mobile */
+      img[style*="min-height: 600px"] {
+        min-height: 300px !important;
+      }
+      
+      section[style*="min-height: 600px"] {
+        min-height: 300px !important;
+      }
     }
 
     /* Container moderne */
@@ -1051,7 +1140,7 @@
 
         /* ============= Features Section ============= */
         .features {
-            padding: 5rem 0;
+            padding: 3rem 0;
             background: white;
         }
 
@@ -1580,30 +1669,30 @@
         <div class="row justify-content-center text-center">
           <div class="col-lg-8">
             <!-- Slogan avec police Merry Christmas -->
-            <p class="hero-slogan" style="font-family: 'Dancing Script', cursive; color: #2d3748; margin-bottom: 1rem; font-weight: 600;">
+            <p class="hero-slogan scroll-animate" style="font-family: 'Dancing Script', cursive; color: #2d3748; margin-bottom: 2rem; font-weight: 600;">
               Plus simple la vie à l'école !
             </p>
             
             <!-- Titre principal -->
-            <h1 class="hero-title" style="font-family: 'Futura Round', 'Inter', sans-serif; font-size: clamp(1.3rem, 6vw, 4rem); font-weight: 700; color: #1a202c; line-height: 1.2; margin-bottom: 2rem; padding: 0 0.5rem; word-break: break-word;">
+            <h1 class="hero-title scroll-animate scroll-animate-delay-1" style="font-family: 'Futura Round', 'Inter', sans-serif; font-size: clamp(1.3rem, 6vw, 4rem); font-weight: 700; color: #1a202c; line-height: 1.2; margin-bottom: 2.5rem; padding: 0 0.5rem; word-break: break-word;">
               Un clic pour tout piloter,<br>
               de l'administratif à la pédagogie.
             </h1>
             
             <!-- Description -->
-            <p class="hero-description" style="font-size: clamp(0.85rem, 3vw, 1.25rem); color: #4a5568; max-width: 700px; margin: 0 auto 3rem; line-height: 1.6; padding: 0 1rem; word-break: break-word;">
+            <p class="hero-description scroll-animate scroll-animate-delay-2" style="font-size: clamp(0.85rem, 3vw, 1.25rem); color: #4a5568; max-width: 700px; margin: 0 auto 3.5rem; line-height: 1.6; padding: 0 1rem; word-break: break-word;">
               Simplifiez l'essentiel de vos tâches pédagogiques et administratives, et visualisez en un seul clic l'état global de la gestion de votre établissement.
             </p>
             
             <!-- Bouton Commencer -->
-            <button class="btn-commencer" style="background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%); color: white; border: none; padding: 0.75rem 2rem; font-size: 1rem; font-weight: 600; border-radius: 25px; box-shadow: 0 4px 15px rgba(255, 107, 53, 0.3); transition: all 0.3s ease; cursor: pointer; font-family: 'Futura Round', 'Inter', sans-serif;">
+            <button class="btn-commencer scroll-animate scroll-animate-delay-3" style="background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%); color: white; border: none; padding: 0.75rem 2rem; font-size: 1rem; font-weight: 600; border-radius: 25px; box-shadow: 0 4px 15px rgba(255, 107, 53, 0.3); transition: all 0.3s ease; cursor: pointer; font-family: 'Futura Round', 'Inter', sans-serif;">
               Commencer
             </button>
           </div>
         </div>
         
         <!-- Image tablette pleine largeur -->
-        <div class="hero-tablet-section" style="width: 100%; margin-top: 2rem; padding: 0; overflow: hidden;">
+        <div class="hero-tablet-section scroll-animate-scale scroll-animate-delay-4" style="width: 100%; margin-top: 3rem; padding: 0; overflow: hidden;">
           <div class="hero-tablet-container" style="position: relative; text-align: center; width: 100%;">
             <img src="/images/Images landingPage/Sans titre - 2_Plan de travail 1.png" alt="KLASSCI Dashboard" 
                  class="hero-tablet-img" style="width: 100%; height: auto; display: block; margin: 0; border-radius: 0; transform: scale(1.1);">
@@ -1627,12 +1716,28 @@
           margin-bottom: 0 !important; 
         }
         .crm-section .row { margin-top: 1rem !important; }
+        
+        /* Réduction de l'espacement sur desktop pour compenser l'image plus grande */
+        @media (min-width: 1025px) {
+          .crm-section .crm-title-section {
+            margin-bottom: 1.5rem !important;
+          }
+          .crm-section .row {
+            margin-top: 0 !important;
+          }
+        }
+        
+        @media (min-width: 1200px) {
+          .crm-section .crm-title-section {
+            margin-bottom: 1rem !important;
+          }
+        }
       </style>
       <div class="container crm-section" style="max-width: 100%;">
         <!-- Titre centré -->
-        <div class="text-center" style="max-width: 800px; margin: 0 auto 2rem auto;">
+        <div class="text-center scroll-animate crm-title-section" style="max-width: 800px; margin: 0 auto 3rem auto;">
           <h2 style="font-family: 'Futura Round', sans-serif; font-size: clamp(2rem, 4vw, 2.8rem); font-weight: 400; 
-                    color: #1a202c; margin: 0; padding: 0 1rem; text-align: center;">
+                    color: #1a202c; margin: 0; padding: 0 1rem; text-align: center; margin-bottom: 1.5rem;">
             Découvrez pourquoi KLASSCI est le <span style="font-weight: 800;">CRM éducatif le plus complet</span>, pensé pour la <span style="font-weight: 800;">performance et l'efficacité pédagogique</span>.
           </h2>
         </div>
@@ -1664,10 +1769,10 @@
                 margin: 0 !important;
               }
               .mobile-toque-container {
-                height: 350px !important;
-                min-height: 350px !important;
+                height: 280px !important;
+                min-height: 280px !important;
                 margin: 0 auto !important;
-                padding: 0 !important;
+                padding: 5px !important;
                 display: flex !important;
                 align-items: center !important;
                 justify-content: center !important;
@@ -1675,16 +1780,16 @@
                 position: relative !important;
               }
               img.mobile-toque-img {
-                width: 280px !important;
-                height: 300px !important;
+                width: 95vw !important;
+                height: 270px !important;
                 margin: 0 auto !important;
-                max-width: none !important;
+                max-width: 450px !important;
                 object-fit: contain !important;
                 display: block !important;
-                position: absolute !important;
-                left: 50% !important;
-                top: 50% !important;
-                transform: translate(-50%, -50%) !important;
+                position: relative !important;
+                left: auto !important;
+                top: auto !important;
+                transform: none !important;
               }
 
               .hero-tablet-img {
@@ -1721,26 +1826,59 @@
             
             @media (min-width: 769px) and (max-width: 1024px) {
               .mobile-toque-container {
-                height: 350px !important;
-                min-height: 350px !important;
+                height: 320px !important;
+                min-height: 320px !important;
+                padding: 8px !important;
               }
               .mobile-toque-img {
                 width: 90% !important;
                 height: 300px !important;
-                max-width: 90% !important;
+                max-width: 500px !important;
+                position: relative !important;
+                transform: none !important;
+              }
+            }
+            
+            /* Règles spécifiques pour desktop (grands écrans) */
+            @media (min-width: 1025px) {
+              .col-lg-4 .mobile-toque-container {
+                height: 500px !important;
+                min-height: 500px !important;
+                padding: 15px !important;
+              }
+              .col-lg-4 .mobile-toque-img {
+                width: 100% !important;
+                height: 470px !important;
+                max-width: none !important;
+                position: relative !important;
+                transform: none !important;
+              }
+            }
+            
+            /* Pour les très grands écrans */
+            @media (min-width: 1200px) {
+              .col-lg-4 .mobile-toque-container {
+                height: 550px !important;
+                min-height: 550px !important;
+                padding: 20px !important;
+              }
+              .col-lg-4 .mobile-toque-img {
+                width: 100% !important;
+                height: 510px !important;
+                max-width: none !important;
               }
             }
           </style>
           <!-- Chapeau de diplômé complètement à gauche -->
-          <div class="col-lg-4 col-md-4" style="padding: 0; margin: 0; overflow: visible; max-width: 33.33%;">
-            <div class="mobile-toque-container" style="display: flex; align-items: center; justify-content: center; height: 400px; width: 100%; position: relative; z-index: 2;">
+          <div class="col-lg-4 col-md-4 scroll-animate-left" style="padding: 0; margin: 0; overflow: visible; max-width: 33.33%;">
+            <div class="mobile-toque-container" style="display: flex; align-items: center; justify-content: center; height: 280px; width: 100%; position: relative; z-index: 2; padding: 5px;">
               <img src="/images/Images landingPage/Sans titre - 2-06.png" alt="Chapeau de diplômé" 
-                   class="mobile-toque-img" style="width: 100%; height: 350px; object-fit: contain; filter: drop-shadow(0 15px 35px rgba(0, 0, 0, 0.2)); margin: 0 auto; display: block;">
+                   class="mobile-toque-img" style="width: 95%; max-width: 450px; height: 270px; object-fit: contain; filter: drop-shadow(0 15px 35px rgba(0, 0, 0, 0.2)); margin: 0 auto; display: block;">
             </div>
           </div>
 
           <!-- Fonctionnalités avec cercles exacts -->
-          <div class="col-lg-8 col-md-8" style="padding-left: 2rem; max-width: 66.66%; overflow-x: hidden;">
+          <div class="col-lg-8 col-md-8 scroll-animate-right" style="padding-left: 2rem; max-width: 66.66%; overflow-x: hidden;">
             <div class="row" style="gap: 1rem 0;">
               <!-- Fonctionnalité 1 -->
               <div class="col-md-6 mb-4">
@@ -1817,9 +1955,9 @@
     <section style="padding: 5rem 0; background: linear-gradient(180deg, #ffffff 0%, #f0f4ff 100%); position: relative;">
       <div class="container" style="max-width: 100%;">
         <!-- Titre centré -->
-        <div class="text-center mb-5" style="max-width: 800px; margin: 0 auto;">
+        <div class="text-center mb-5 scroll-animate" style="max-width: 800px; margin: 0 auto 4rem auto;">
           <h2 style="font-family: 'Futura Round', sans-serif; font-size: clamp(2rem, 4vw, 2.8rem); font-weight: 400; 
-                    color: #1a202c; margin-bottom: 2rem; line-height: 1.3;">
+                    color: #1a202c; margin-bottom: 2.5rem; line-height: 1.3;">
             Des modules<br>
             <span style="font-weight: 800;">au cœur de la performance</span><br>
             <span style="font-weight: 400;">de votre établissement.</span>
@@ -1831,7 +1969,7 @@
                    gap: 2rem; max-width: 1200px; margin: 0 auto;">
           
           <!-- Module 1: Gestion Académique - Card pleine -->
-          <div style="background: #5B8DEF; 
+          <div class="scroll-animate scroll-animate-delay-1" style="background: #5B8DEF; 
                      border-radius: 35px; padding: 2rem; text-align: left; 
                      box-shadow: 0 8px 25px rgba(91, 141, 239, 0.3); 
                      position: relative;">
@@ -1859,7 +1997,7 @@
           </div>
 
           <!-- Module 2: Évaluations & Notes - Card outline -->
-          <div style="background: white; 
+          <div class="scroll-animate scroll-animate-delay-2" style="background: white; 
                      border-radius: 35px; padding: 2rem; text-align: left; 
                      box-shadow: 0 8px 25px rgba(91, 141, 239, 0.15); 
                      position: relative;">
@@ -1887,7 +2025,7 @@
           </div>
 
           <!-- Module 3: Planning & Emplois du Temps - Card pleine -->
-          <div style="background: #5B8DEF; 
+          <div class="scroll-animate scroll-animate-delay-3" style="background: #5B8DEF; 
                      border-radius: 35px; padding: 2rem; text-align: left; 
                      box-shadow: 0 8px 25px rgba(91, 141, 239, 0.3); 
                      position: relative;">
@@ -1914,7 +2052,7 @@
           </div>
 
           <!-- Module 4: Communication - Card outline -->
-          <div style="background: white; 
+          <div class="scroll-animate scroll-animate-delay-1" style="background: white; 
                      border-radius: 35px; padding: 2rem; text-align: left; 
                      box-shadow: 0 8px 25px rgba(91, 141, 239, 0.15); 
                      position: relative;">
@@ -1942,7 +2080,7 @@
           </div>
 
           <!-- Module 5: Gestion Comptable - Card pleine -->
-          <div style="background: #5B8DEF; 
+          <div class="scroll-animate scroll-animate-delay-2" style="background: #5B8DEF; 
                      border-radius: 35px; padding: 2rem; text-align: left; 
                      box-shadow: 0 8px 25px rgba(91, 141, 239, 0.3); 
                      position: relative;">
@@ -1969,7 +2107,7 @@
           </div>
 
           <!-- Module 6: Personnalisation & Évolutivité - Card outline -->
-          <div style="background: white; 
+          <div class="scroll-animate scroll-animate-delay-3" style="background: white; 
                      border-radius: 35px; padding: 2rem; text-align: left; 
                      box-shadow: 0 8px 25px rgba(91, 141, 239, 0.15); 
                      position: relative;">
@@ -2019,7 +2157,7 @@
     <section style="padding: 5rem 0; background: white; position: relative;">
       <div class="container" style="max-width: 100%;">
         <!-- Titre centré -->
-        <div class="text-center mb-5" style="max-width: 800px; margin: 0 auto;">
+        <div class="text-center mb-5 scroll-animate" style="max-width: 800px; margin: 0 auto;">
           <h2 style="font-family: 'Futura Round', sans-serif; font-size: clamp(2rem, 4vw, 2.8rem); font-weight: 400; 
                     color: #1a202c; margin-bottom: 2rem; line-height: 1.3;">
             Choisissez votre <span style="font-weight: 800;">pack</span>
@@ -2034,7 +2172,7 @@
                    gap: 2rem; max-width: 1200px; margin: 0 auto;">
           
           <!-- Plan Essentiel -->
-          <div style="background: #f8f9ff; 
+          <div class="scroll-animate-left" style="background: #f8f9ff; 
                      border-radius: 20px; padding: 2.5rem 2rem; text-align: left; 
                      box-shadow: 0 4px 20px rgba(59, 130, 246, 0.1); 
                      position: relative;">
@@ -2262,22 +2400,51 @@
     </section>
 
     <!-- Section Partenaire 0 FCFA -->
-    <section class="partnership-section" style="padding: 0; margin: 0; width: 100%; display: block; min-height: 600px; height: auto; overflow: hidden;">
+    <section class="partnership-section scroll-animate-scale" style="padding: 0; margin: 0; width: 100%; display: block; min-height: 600px; height: auto; overflow: hidden;">
       <img src="/images/Images landingPage/Sans titre - 2-02.png" 
            alt="Dashboard KLASSCI - 0 FCFA" 
            class="partnership-image"
-           style="width: 100%; height: auto; min-height: 600px; object-fit: cover; object-position: center; display: block; margin: 0; padding: 0;">
+           style="width: 100%; height: auto; min-height: 600px; object-fit: cover; object-position: center; display: block; margin: 0; padding: 0; max-width: 100vw;">
     </section>
 
     <!-- Styles pour la section partenaire -->
     <style>
       .partnership-section {
         position: relative;
+        width: 100vw !important;
+        left: 50% !important;
+        right: 50% !important;
+        margin-left: -50vw !important;
+        margin-right: -50vw !important;
+        padding: 0 !important;
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
       }
       
       .partnership-image {
-        max-width: 100%;
+        width: 100vw !important;
+        max-width: none !important;
         vertical-align: top;
+        display: block !important;
+      }
+      
+      /* Corrections pour mobile */
+      @media (max-width: 768px) {
+        .partnership-section {
+          width: 100% !important;
+          left: auto !important;
+          right: auto !important;
+          margin-left: 0 !important;
+          margin-right: 0 !important;
+          overflow: hidden !important;
+        }
+        
+        .partnership-image {
+          width: 100% !important;
+          max-width: 100% !important;
+          object-fit: cover !important;
+          object-position: center !important;
+        }
       }
       
       /* Responsive pour différentes tailles d'écran */
@@ -2422,11 +2589,11 @@
       <div class="container" style="max-width: 1200px;">
         <div class="row align-items-center">
           <!-- Titre et liste à gauche -->
-          <div class="col-lg-6 col-md-12">
+          <div class="col-lg-6 col-md-12 scroll-animate-left">
             <div style="padding-right: 3rem;">
               <!-- Titre sur deux lignes -->
               <h2 style="font-family: 'Futura Round', 'Inter', sans-serif; font-size: clamp(2.2rem, 4vw, 3.2rem); 
-                         font-weight: 700; color: #2563eb; margin-bottom: 3rem; line-height: 1.2; white-space: nowrap;">
+                         font-weight: 700; color: #2563eb; margin-bottom: 3.5rem; line-height: 1.2; white-space: nowrap;">
                 Support client disponible<br>
                 24h/24 et 7j/7
               </h2>
@@ -2462,7 +2629,7 @@
           </div>
           
           <!-- Image des bulles de chat -->
-          <div class="col-lg-6 col-md-12">
+          <div class="col-lg-6 col-md-12 scroll-animate-right">
             <div style="text-align: center; padding: 2rem 0;">
               <img src="/images/Images landingPage/bulles.png" 
                    alt="Bulles de chat support KLASSCI" 
@@ -2474,22 +2641,51 @@
     </section>
 
     <!-- Section Image CTA -->
-    <section class="cta-image-section" style="padding: 0; margin: 0; width: 100%; display: block; min-height: 600px; height: auto; overflow: hidden;">
+    <section class="cta-image-section scroll-animate-scale" style="padding: 0; margin: 0; width: 100%; display: block; min-height: 600px; height: auto; overflow: hidden;">
       <img src="/images/Images landingPage/Sans titre - 2-03.png" 
            alt="CTA Transform KLASSCI" 
            class="cta-transform-image"
-           style="width: 100%; height: auto; min-height: 600px; object-fit: cover; object-position: center; display: block; margin: 0; padding: 0;">
+           style="width: 100%; height: auto; min-height: 600px; object-fit: cover; object-position: center; display: block; margin: 0; padding: 0; max-width: 100vw;">
     </section>
 
     <!-- Styles pour la section CTA Transform -->
     <style>
       .cta-image-section {
         position: relative;
+        width: 100vw !important;
+        left: 50% !important;
+        right: 50% !important;
+        margin-left: -50vw !important;
+        margin-right: -50vw !important;
+        padding: 0 !important;
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
       }
       
       .cta-transform-image {
-        max-width: 100%;
+        width: 100vw !important;
+        max-width: none !important;
         vertical-align: top;
+        display: block !important;
+      }
+      
+      /* Corrections pour mobile */
+      @media (max-width: 768px) {
+        .cta-image-section {
+          width: 100% !important;
+          left: auto !important;
+          right: auto !important;
+          margin-left: 0 !important;
+          margin-right: 0 !important;
+          overflow: hidden !important;
+        }
+        
+        .cta-transform-image {
+          width: 100% !important;
+          max-width: 100% !important;
+          object-fit: cover !important;
+          object-position: center !important;
+        }
       }
       
       /* Responsive pour différentes tailles d'écran */
@@ -2541,11 +2737,11 @@
     </style>
 
     <!-- Section CTA -->
-    <section style="background: #ffffff; padding: 6rem 0; position: relative;">
+    <section style="background: #ffffff; padding: 4rem 0; position: relative;">
       <div class="container">
         <div class="row">
           <!-- Titre et boutons à gauche -->
-          <div class="col-lg-7 col-md-12">
+          <div class="col-lg-7 col-md-12 scroll-animate-left">
             <!-- Titre principal -->
             <h2 style="font-family: 'Futura Round', 'Inter', sans-serif; 
                        font-size: clamp(2.5rem, 5vw, 3.6rem); 
@@ -2629,77 +2825,6 @@
     </style>
 
 
-    <!-- Features Section -->
-    <!-- <section id="features" class="features">
-        <div class="container">
-            <div class="row mb-5">
-                <div class="col-lg-8 mx-auto text-center" data-aos="fade-up">
-                    <h2 class="display-5 fw-bold mb-3">Fonctionnalités Clés</h2>
-                    <p class="lead text-muted" style="font-size:1.2rem; color:#6b7280; font-weight:500;">
-                        Découvrez les atouts qui font de KLASSCI un logiciel de gestion scolaire intelligent, complet et personnalisable.
-                    </p>
-                </div>
-            </div>
-            <div class="row g-4">
-                <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="100">
-                    <div class="feature-card h-100">
-                        <div class="feature-icon"><i class="fas fa-robot"></i></div>
-                        <h4>Digitalisation & automatisation des évaluations</h4>
-                        <p>Automatisez la création, la distribution et la correction des évaluations. Gagnez du temps et réduisez les erreurs grâce à des processus 100 % numériques.</p>
-                    </div>
-                </div>
-                <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="150">
-                    <div class="feature-card h-100">
-                        <div class="feature-icon"><i class="fas fa-file-alt"></i></div>
-                        <h4>Édition intelligente des bulletins de notes</h4>
-                        <p>Générez des bulletins personnalisés en un clic, avec calcul automatique des moyennes, appréciations et export PDF pour chaque élève.</p>
-                    </div>
-                </div>
-                <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="200">
-                    <div class="feature-card h-100">
-                        <div class="feature-icon"><i class="fas fa-calendar-check"></i></div>
-                        <h4>Programmation automatique des emplois du temps</h4>
-                        <p>Créez des emplois du temps optimisés en tenant compte des disponibilités, des salles et des contraintes pédagogiques. Modifications et notifications instantanées.</p>
-                    </div>
-                </div>
-                <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="250">
-                    <div class="feature-card h-100">
-                        <div class="feature-icon"><i class="fas fa-coins"></i></div>
-                        <h4>Calcul simplifié des salaires des professeurs vacataires</h4>
-                        <p>Calculez automatiquement les salaires en fonction des heures effectuées, des absences et des taux horaires. Export facile pour la comptabilité.</p>
-                    </div>
-                </div>
-                <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="300">
-                    <div class="feature-card h-100">
-                        <div class="feature-icon"><i class="fas fa-user-check"></i></div>
-                        <h4>Suivi des présences et absences en temps réel</h4>
-                        <p>Enregistrez les présences en un clic, visualisez les absences et retards, et générez des rapports détaillés pour un meilleur suivi des élèves.</p>
-                    </div>
-                </div>
-                <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="350">
-                    <div class="feature-card h-100">
-                        <div class="feature-icon"><i class="fas fa-calculator"></i></div>
-                        <h4>Gestion comptable intégrée</h4>
-                        <p>Suivez les paiements, gérez la facturation, les relances et obtenez une vision claire de la situation financière de l'établissement.</p>
-                    </div>
-                </div>
-                <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="400">
-                    <div class="feature-card h-100">
-                        <div class="feature-icon"><i class="fas fa-users-cog"></i></div>
-                        <h4>Suivi parental autonome et personnalisé, accessible partout</h4>
-                        <p>Offrez aux parents un accès sécurisé à l'évolution scolaire de leur enfant : notes, absences, messages, bulletins, accessible sur tous supports.</p>
-                    </div>
-                </div>
-                <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="450">
-                    <div class="feature-card h-100">
-                        <div class="feature-icon"><i class="fas fa-sliders-h"></i></div>
-                        <h4>Personnalisable & évolutif</h4>
-                        <p>KLASSCI s'adapte à vos besoins spécifiques : modules activables, interface personnalisable, évolutions régulières selon vos retours.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section> -->
 
 
 
@@ -3347,14 +3472,90 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
-
     <script>
-        // Initialize AOS
-        AOS.init({
-            duration: 800,
-            easing: 'ease-in-out',
-            once: true
+        // Variable globale pour l'observer
+        let scrollAnimationObserver = null;
+        
+        // Intersection Observer pour les animations de scroll
+        function initScrollAnimations() {
+            // Nettoyer l'observer précédent s'il existe
+            if (scrollAnimationObserver) {
+                scrollAnimationObserver.disconnect();
+            }
+            
+            // Réinitialiser toutes les animations
+            const allAnimatedElements = document.querySelectorAll(
+                '.scroll-animate, .scroll-animate-left, .scroll-animate-right, .scroll-animate-scale'
+            );
+            
+            allAnimatedElements.forEach(el => {
+                el.classList.remove('is-visible');
+            });
+
+            // Configuration pour les animations
+            const observerOptions = {
+                threshold: 0.1,
+                rootMargin: '0px 0px -20px 0px'
+            };
+
+            scrollAnimationObserver = new IntersectionObserver(function(entries) {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        // Petit délai pour voir l'animation
+                        setTimeout(() => {
+                            entry.target.classList.add('is-visible');
+                        }, 50);
+                    } else {
+                        // Retirer l'animation quand l'élément sort du viewport pour qu'elle puisse se rejouer
+                        entry.target.classList.remove('is-visible');
+                    }
+                });
+            }, observerOptions);
+
+            // Observer tous les éléments avec les classes d'animation
+            const elementsToAnimate = document.querySelectorAll(
+                '.scroll-animate, .scroll-animate-left, .scroll-animate-right, .scroll-animate-scale'
+            );
+
+            elementsToAnimate.forEach((el, index) => {
+                // Observer tous les éléments
+                scrollAnimationObserver.observe(el);
+                
+                // Pour les éléments déjà visibles, animer après un délai
+                setTimeout(() => {
+                    const rect = el.getBoundingClientRect();
+                    const isVisible = rect.top >= 0 && rect.top <= window.innerHeight - 50;
+                    
+                    if (isVisible) {
+                        el.classList.add('is-visible');
+                    }
+                }, index * 100 + 200);
+            });
+        }
+
+        // Fonction pour forcer le redémarrage des animations
+        function resetAndStartAnimations() {
+            setTimeout(() => {
+                initScrollAnimations();
+            }, 50);
+        }
+
+        // Initialiser au chargement
+        document.addEventListener('DOMContentLoaded', resetAndStartAnimations);
+        
+        // Réinitialiser lors des retours de cache
+        window.addEventListener('pageshow', function(event) {
+            resetAndStartAnimations();
+        });
+        
+        // Réinitialiser lors du focus de la fenêtre (quand on revient sur l'onglet)
+        window.addEventListener('focus', function() {
+            setTimeout(resetAndStartAnimations, 100);
+        });
+        
+        // Réinitialiser après le chargement complet
+        window.addEventListener('load', function() {
+            setTimeout(resetAndStartAnimations, 200);
         });
 
 
@@ -3386,32 +3587,6 @@
             }
         });
         
-        // Intersection Observer pour les animations au scroll
-        const observerOptions = {
-            threshold: 0.1,
-            rootMargin: '0px 0px -50px 0px'
-        };
-        
-        const observer = new IntersectionObserver(function(entries) {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('animate-in');
-                } else {
-                    entry.target.classList.remove('animate-in');
-                }
-            });
-        }, observerOptions);
-        
-        // Observer les éléments à animer
-        document.addEventListener('DOMContentLoaded', function() {
-            const elementsToAnimate = document.querySelectorAll('.hero-content, .dashboard-content-side, .dashboard-image-side');
-            elementsToAnimate.forEach(el => {
-                observer.observe(el);
-                el.style.opacity = '0';
-                el.style.transform = 'translateY(30px)';
-                el.style.transition = 'all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-            });
-        });
 
         // Smooth scrolling for anchor links
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
