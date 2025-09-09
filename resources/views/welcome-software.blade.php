@@ -1702,7 +1702,7 @@
     </section>
 
     <!-- Section CRM - Design exact reproduction -->
-    <section style="padding: 5rem 0; background: #f8f9fa; position: relative;">
+    <section style="padding: 5rem 0; background: linear-gradient(180deg, #e8f2ff 0%, #f0f6ff 100%); position: relative;">
       <style>
         .crm-section .text-center { 
           text-align: center !important;
@@ -1734,219 +1734,237 @@
         }
       </style>
       <div class="container crm-section" style="max-width: 100%;">
-        <!-- Titre centré -->
-        <div class="text-center scroll-animate crm-title-section" style="max-width: 800px; margin: 0 auto 3rem auto;">
-          <h2 style="font-family: 'Futura Round', sans-serif; font-size: clamp(2rem, 4vw, 2.8rem); font-weight: 400; 
-                    color: #1a202c; margin: 0; padding: 0 1rem; text-align: center; margin-bottom: 1.5rem;">
-            Découvrez pourquoi KLASSCI est le <span style="font-weight: 800;">CRM éducatif le plus complet</span>, pensé pour la <span style="font-weight: 800;">performance et l'efficacité pédagogique</span>.
-          </h2>
-        </div>
-        
-        <!-- Contenu de la section -->
-        <div class="row align-items-center">
-          <!-- Version mobile : titre et toque adaptés -->
-          <style>
-            @media (max-width: 768px) {
-              .crm-section {
-                padding: 0 1rem !important;
+        <!-- Structure 2 colonnes : chapeau gauche | titre+6points droite -->
+        <div class="container-fluid">
+          <div class="row justify-content-center align-items-center">
+            <!-- Styles pour layout 2 colonnes -->
+            <style>
+              /* Layout 2 colonnes : chapeau gauche | titre+6points droite */
+              .crm-two-columns {
+                display: flex;
+                align-items: center;
+                max-width: 1200px;
+                margin: 0 auto;
+                gap: 3rem;
               }
-              .crm-section .text-center {
-                margin-bottom: 2rem !important;
+              
+              /* Colonne gauche : image du chapeau */
+              .crm-left-column {
+                flex: 0 0 350px;
+                display: flex;
+                justify-content: center;
+                align-items: center;
               }
-              .crm-section h2 {
-                font-size: clamp(1.5rem, 5vw, 2.2rem) !important;
-                line-height: 1.3 !important;
-                padding: 0 0.5rem !important;
+              
+              /* Colonne droite : titre + 6 points */
+              .crm-right-column {
+                flex: 1;
               }
-              .col-lg-4.col-md-4 {
-                width: 100% !important;
-                max-width: 100% !important;
-                text-align: center !important;
-                display: flex !important;
-                justify-content: center !important;
-                align-items: center !important;
-                padding: 1rem !important;
-                margin: 0 !important;
+              
+              /* Titre dans la colonne droite */
+              .crm-title {
+                margin-bottom: 2.5rem;
               }
-              .mobile-toque-container {
-                height: 280px !important;
-                min-height: 280px !important;
-                margin: 0 auto !important;
-                padding: 5px !important;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-                width: 100% !important;
-                position: relative !important;
+              
+              /* Grille des 6 points */
+              .crm-features-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 2rem 2.5rem;
               }
-              img.mobile-toque-img {
-                width: 95vw !important;
-                height: 270px !important;
-                margin: 0 auto !important;
-                max-width: 450px !important;
-                object-fit: contain !important;
-                display: block !important;
-                position: relative !important;
-                left: auto !important;
-                top: auto !important;
-                transform: none !important;
+              
+              .crm-feature-item {
+                display: flex;
+                align-items: flex-start;
+                gap: 1.2rem;
+                padding: 1rem 0;
+                background: transparent;
+                transition: all 0.3s ease;
+                min-height: 100px;
               }
-
-              .hero-tablet-img {
-                transform: scale(1.05) !important;
-                margin-bottom: 1rem !important;
+              
+              .crm-feature-item:hover {
+                background: transparent;
+                transform: translateY(-2px);
               }
-
-              .hero-tablet-section {
-                margin-top: 1rem !important;
-                padding: 0 10px !important;
+              
+              .crm-feature-number {
+                background: transparent;
+                color: #1E4FC4;
+                width: 40px;
+                height: 40px;
+                border: 2px solid #1E4FC4;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: 700;
+                font-size: 1rem;
+                flex-shrink: 0;
               }
-              .col-lg-8.col-md-8 {
-                padding-left: 1rem !important;
-                padding-right: 1rem !important;
-                max-width: 100% !important;
+              
+              .crm-feature-content h5 {
+                color: #1E4FC4;
+                font-weight: 700;
+                font-size: 1rem;
+                margin-bottom: 0.5rem;
+                font-family: 'Futura Round', sans-serif;
+                text-transform: uppercase;
+                line-height: 1.2;
               }
-              .col-md-6 {
-                padding: 0 0.5rem !important;
-                margin-bottom: 1.5rem !important;
+              
+              .crm-feature-content p {
+                color: #666;
+                font-size: 0.85rem;
+                line-height: 1.4;
+                margin: 0;
               }
-              .mobile-text-contrast {
-                color: #1a202c !important;
-                font-weight: 600 !important;
-                font-size: 0.85rem !important;
-                line-height: 1.4 !important;
+              
+              /* Image du chapeau dans sa colonne */
+              .crm-graduation-img {
+                width: 300px;
+                height: 300px;
+                object-fit: contain;
+                filter: drop-shadow(0 10px 25px rgba(0, 0, 0, 0.1));
+                opacity: 1;
               }
-              .mobile-title-contrast {
-                color: #1E4FC4 !important;
-                font-weight: 700 !important;
-                font-size: 0.95rem !important;
-                margin-bottom: 0.75rem !important;
+              
+              @media (max-width: 768px) {
+                .crm-two-columns {
+                  flex-direction: column;
+                  gap: 2rem;
+                  text-align: center;
+                }
+                
+                .crm-left-column {
+                  flex: none;
+                  order: 1;
+                }
+                
+                .crm-right-column {
+                  order: 2;
+                }
+                
+                .crm-title {
+                  margin-bottom: 2rem;
+                }
+                
+                .crm-title h2 {
+                  text-align: center;
+                  font-size: clamp(1.5rem, 5vw, 2rem) !important;
+                }
+                
+                .crm-features-grid {
+                  grid-template-columns: 1fr;
+                  gap: 1.5rem;
+                }
+                
+                .crm-graduation-img {
+                  width: 150px;
+                  height: 150px;
+                }
               }
-            }
-            
-            @media (min-width: 769px) and (max-width: 1024px) {
-              .mobile-toque-container {
-                height: 320px !important;
-                min-height: 320px !important;
-                padding: 8px !important;
+              
+              @media (min-width: 769px) and (max-width: 1024px) {
+                .crm-left-column {
+                  flex: 0 0 280px;
+                }
+                
+                .crm-graduation-img {
+                  width: 250px;
+                  height: 250px;
+                }
               }
-              .mobile-toque-img {
-                width: 90% !important;
-                height: 300px !important;
-                max-width: 500px !important;
-                position: relative !important;
-                transform: none !important;
+              
+              @media (min-width: 1200px) {
+                .crm-left-column {
+                  flex: 0 0 400px;
+                }
+                
+                .crm-graduation-img {
+                  width: 350px;
+                  height: 350px;
+                }
               }
-            }
-            
-            /* Règles spécifiques pour desktop (grands écrans) */
-            @media (min-width: 1025px) {
-              .col-lg-4 .mobile-toque-container {
-                height: 500px !important;
-                min-height: 500px !important;
-                padding: 15px !important;
-              }
-              .col-lg-4 .mobile-toque-img {
-                width: 100% !important;
-                height: 470px !important;
-                max-width: none !important;
-                position: relative !important;
-                transform: none !important;
-              }
-            }
-            
-            /* Pour les très grands écrans */
-            @media (min-width: 1200px) {
-              .col-lg-4 .mobile-toque-container {
-                height: 550px !important;
-                min-height: 550px !important;
-                padding: 20px !important;
-              }
-              .col-lg-4 .mobile-toque-img {
-                width: 100% !important;
-                height: 510px !important;
-                max-width: none !important;
-              }
-            }
           </style>
-          <!-- Chapeau de diplômé complètement à gauche -->
-          <div class="col-lg-4 col-md-4 scroll-animate-left" style="padding: 0; margin: 0; overflow: visible; max-width: 33.33%;">
-            <div class="mobile-toque-container" style="display: flex; align-items: center; justify-content: center; height: 280px; width: 100%; position: relative; z-index: 2; padding: 5px;">
-              <img src="/images/Images landingPage/Sans titre - 2-06.png" alt="Chapeau de diplômé" 
-                   class="mobile-toque-img" style="width: 95%; max-width: 450px; height: 270px; object-fit: contain; filter: drop-shadow(0 15px 35px rgba(0, 0, 0, 0.2)); margin: 0 auto; display: block;">
+            <!-- Layout 2 colonnes : chapeau gauche | titre+6points droite -->
+            <div class="crm-two-columns">
+              <!-- Colonne gauche : Image du chapeau -->
+              <div class="crm-left-column scroll-animate-left">
+                <img src="/images/Images landingPage/Sans titre - 2-06.png" 
+                     alt="Chapeau de diplômé" 
+                     class="crm-graduation-img">
+              </div>
+              
+              <!-- Colonne droite : Titre + 6 points -->
+              <div class="crm-right-column scroll-animate-right">
+                <!-- Titre sur 2 lignes -->
+                <div class="crm-title">
+                  <h2 style="font-family: 'Futura Round', sans-serif; font-size: clamp(1.8rem, 3.5vw, 2.5rem); font-weight: 400; 
+                            color: #1a202c; margin: 0; line-height: 1.2; text-align: left;">
+                    Découvrez pourquoi KLASSCI est le <span style="font-weight: 800;">CRM éducatif le plus complet,</span><br>
+                    pensé pour la <span style="font-weight: 800;">performance et l'efficacité pédagogique.</span>
+                  </h2>
+                </div>
+                
+                <!-- Grille des 6 points -->
+                <div class="crm-features-grid">
+                <!-- Fonctionnalité 1 -->
+                <div class="crm-feature-item">
+                  <div class="crm-feature-number">1</div>
+                  <div class="crm-feature-content">
+                    <h5>DIGITALISER LES INSCRIPTIONS</h5>
+                    <p>Via un processus simple, organisé et automatisé le suivi des inscriptions.</p>
+                  </div>
+                </div>
+
+                <!-- Fonctionnalité 2 -->
+                <div class="crm-feature-item">
+                  <div class="crm-feature-number">2</div>
+                  <div class="crm-feature-content">
+                    <h5>CRÉATION DE DOSSIER NUMÉRIQUE</h5>
+                    <p>Centralise les informations des étudiants, les ordonnées, les archives et donne un meilleur suivi et une disponibilité constante au dossier.</p>
+                  </div>
+                </div>
+
+                <!-- Fonctionnalité 3 -->
+                <div class="crm-feature-item">
+                  <div class="crm-feature-number">3</div>
+                  <div class="crm-feature-content">
+                    <h5>PROGRAMMATION AUTOMATIQUE DES EMPLOIS DU TEMPS</h5>
+                    <p>Créez des emplois du temps optimisés en tenant compte des disponibilités, des salles et des contraintes pédagogiques. Modifications et notifications instantanées.</p>
+                  </div>
+                </div>
+
+                <!-- Fonctionnalité 4 -->
+                <div class="crm-feature-item">
+                  <div class="crm-feature-number">4</div>
+                  <div class="crm-feature-content">
+                    <h5>ASSURER LA TRAÇABILITÉ DU TRAVAIL ENSEIGNANT</h5>
+                    <p>Calcul de manière automatique et sécurisé le nombre d'heures effectuées par les professeurs vacataires et titulaires.</p>
+                  </div>
+                </div>
+
+                <!-- Fonctionnalité 5 -->
+                <div class="crm-feature-item">
+                  <div class="crm-feature-number">5</div>
+                  <div class="crm-feature-content">
+                    <h5>SUIVI DES PRÉSENCES ET ABSENCES EN TEMPS RÉEL</h5>
+                    <p>Enregistrez les présences en un clic, visualisez les absences et retards, et générez des rapports détaillés pour un meilleur suivi des élèves.</p>
+                  </div>
+                </div>
+
+                <!-- Fonctionnalité 6 -->
+                <div class="crm-feature-item">
+                  <div class="crm-feature-number">6</div>
+                  <div class="crm-feature-content">
+                    <h5>GESTION COMPTABLE INTÉGRÉE</h5>
+                    <p>Suivez les paiements, gérez la facturation, les relances et obtenez une vision claire de la situation financière de l'établissement.</p>
+                  </div>
+                </div>
+                </div>
+              </div>
             </div>
-          </div>
-
-          <!-- Fonctionnalités avec cercles exacts -->
-          <div class="col-lg-8 col-md-8 scroll-animate-right" style="padding-left: 2rem; max-width: 66.66%; overflow-x: hidden;">
-            <div class="row" style="gap: 1rem 0;">
-              <!-- Fonctionnalité 1 -->
-              <div class="col-md-6 mb-4">
-                <div style="display: flex; align-items: flex-start; gap: 1rem;">
-                  <div style="background: transparent; color: #1E4FC4; width: 32px; height: 32px; border: 2px solid #1E4FC4; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; flex-shrink: 0;">1</div>
-                  <div>
-                    <h5 class="mobile-title-contrast" style="color: #1E4FC4; font-weight: 700; font-size: 1.1rem; margin-bottom: 0.5rem; font-family: 'Futura Round', sans-serif; text-transform: uppercase;">DIGITALISER LES INSCRIPTIONS</h5>
-                    <p class="mobile-text-contrast" style="color: #666; font-size: 0.9rem; line-height: 1.5; margin: 0;">Via un processus simple, organisé et automatisé le suivi des inscriptions.</p>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Fonctionnalité 2 -->
-              <div class="col-md-6 mb-4">
-                <div style="display: flex; align-items: flex-start; gap: 1rem;">
-                  <div style="background: transparent; color: #1E4FC4; width: 32px; height: 32px; border: 2px solid #1E4FC4; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; flex-shrink: 0;">2</div>
-                  <div>
-                    <h5 class="mobile-title-contrast" style="color: #1E4FC4; font-weight: 700; font-size: 1.1rem; margin-bottom: 0.5rem; font-family: 'Futura Round', sans-serif; text-transform: uppercase;">CRÉATION DE DOSSIER NUMÉRIQUE</h5>
-                    <p class="mobile-text-contrast" style="color: #666; font-size: 0.9rem; line-height: 1.5; margin: 0;">Centralise les informations des étudiants, les ordonnées, les archives et donne un meilleur suivi et une disponibilité constante au dossier.</p>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Fonctionnalité 3 -->
-              <div class="col-md-6 mb-4">
-                <div style="display: flex; align-items: flex-start; gap: 1rem;">
-                  <div style="background: transparent; color: #1E4FC4; width: 32px; height: 32px; border: 2px solid #1E4FC4; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; flex-shrink: 0;">3</div>
-                  <div>
-                    <h5 class="mobile-text-contrast" style="color: #1E4FC4; font-weight: 700; font-size: 1.1rem; margin-bottom: 0.5rem; font-family: 'Futura Round', sans-serif; text-transform: uppercase;">PROGRAMMATION AUTOMATIQUE DES EMPLOIS DU TEMPS</h5>
-                    <p class="mobile-text-contrast" style="color: #666; font-size: 0.9rem; line-height: 1.5; margin: 0;">Créez des emplois du temps optimisés en tenant compte des disponibilités, des salles et des contraintes pédagogiques. Modifications et notifications instantanées.</p>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Fonctionnalité 4 -->
-              <div class="col-md-6 mb-4">
-                <div style="display: flex; align-items: flex-start; gap: 1rem;">
-                  <div style="background: transparent; color: #1E4FC4; width: 32px; height: 32px; border: 2px solid #1E4FC4; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; flex-shrink: 0;">4</div>
-                  <div>
-                    <h5 class="mobile-text-contrast" style="color: #1E4FC4; font-weight: 700; font-size: 1.1rem; margin-bottom: 0.5rem; font-family: 'Futura Round', sans-serif; text-transform: uppercase;">ASSURER LA TRAÇABILITÉ DU TRAVAIL ENSEIGNANT</h5>
-                    <p class="mobile-text-contrast" style="color: #666; font-size: 0.9rem; line-height: 1.5; margin: 0;">Calcul de manière automatique et sécurisé le nombre d'heures effectuées par les professeurs vacataires et titulaires.</p>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Fonctionnalité 5 -->
-              <div class="col-md-6 mb-4">
-                <div style="display: flex; align-items: flex-start; gap: 1rem;">
-                  <div style="background: transparent; color: #1E4FC4; width: 32px; height: 32px; border: 2px solid #1E4FC4; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; flex-shrink: 0;">5</div>
-                  <div>
-                    <h5 class="mobile-text-contrast" style="color: #1E4FC4; font-weight: 700; font-size: 1.1rem; margin-bottom: 0.5rem; font-family: 'Futura Round', sans-serif; text-transform: uppercase;">SUIVI DES PRÉSENCES ET ABSENCES EN TEMPS RÉEL</h5>
-                    <p class="mobile-text-contrast" style="color: #666; font-size: 0.9rem; line-height: 1.5; margin: 0;">Enregistrez les présences en un clic, visualisez les absences et retards, et générez des rapports détaillés pour un meilleur suivi des élèves.</p>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Fonctionnalité 6 -->
-              <div class="col-md-6 mb-4">
-                <div style="display: flex; align-items: flex-start; gap: 1rem;">
-                  <div style="background: transparent; color: #1E4FC4; width: 32px; height: 32px; border: 2px solid #1E4FC4; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; flex-shrink: 0;">6</div>
-                  <div>
-                    <h5 class="mobile-text-contrast" style="color: #1E4FC4; font-weight: 700; font-size: 1.1rem; margin-bottom: 0.5rem; font-family: 'Futura Round', sans-serif; text-transform: uppercase;">GESTION COMPTABLE INTÉGRÉE</h5>
-                    <p class="mobile-text-contrast" style="color: #666; font-size: 0.9rem; line-height: 1.5; margin: 0;">Suivez les paiements, gérez la facturation, les relances et obtenez une vision claire de la situation financière de l'établissement.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </section>
