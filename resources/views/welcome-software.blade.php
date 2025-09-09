@@ -1739,31 +1739,40 @@
           <div class="row justify-content-center align-items-center">
             <!-- Styles pour layout 2 colonnes -->
             <style>
-              /* Layout 2 colonnes : chapeau gauche | titre+6points droite */
+              /* Layout 2 colonnes équilibrées : chapeau gauche | titre+6points droite */
               .crm-two-columns {
                 display: flex;
                 align-items: center;
-                max-width: 1200px;
+                max-width: 1400px;
                 margin: 0 auto;
-                gap: 3rem;
+                gap: 2rem;
+                padding: 0 2rem;
               }
               
-              /* Colonne gauche : image du chapeau */
+              /* Colonne gauche : image du chapeau (40% de l'espace) */
               .crm-left-column {
-                flex: 0 0 400px;
+                flex: 0 0 40%;
                 display: flex;
                 justify-content: center;
                 align-items: center;
+                max-width: 500px;
               }
               
-              /* Colonne droite : titre + 6 points */
+              /* Colonne droite : titre + 6 points (60% de l'espace) */
               .crm-right-column {
                 flex: 1;
+                max-width: 60%;
+                padding-left: 1rem;
               }
               
               /* Titre dans la colonne droite */
               .crm-title {
                 margin-bottom: 2.5rem;
+              }
+              
+              /* Image mobile cachée par défaut */
+              .crm-mobile-image {
+                display: none;
               }
               
               /* Grille des 6 points */
@@ -1816,79 +1825,121 @@
               .crm-feature-content p {
                 color: #666;
                 font-size: 0.85rem;
-                line-height: 1.4;
+                line-height: 1.5;
                 margin: 0;
+                text-align: justify;
+                hyphens: auto;
               }
               
-              /* Image du chapeau PLUS GRANDE */
+              /* Image du chapeau selon design de référence */
               .crm-graduation-img {
-                width: 380px;
-                height: 380px;
+                width: 100%;
+                max-width: 550px;
+                height: 720px;
                 object-fit: contain;
                 filter: drop-shadow(0 10px 25px rgba(0, 0, 0, 0.1));
                 opacity: 1;
               }
               
+              /* Responsivité mobile complète */
               @media (max-width: 768px) {
                 .crm-two-columns {
                   flex-direction: column;
-                  gap: 2rem;
-                  text-align: center;
+                  gap: 0;
+                  padding: 0 1rem;
+                  max-width: 100%;
                 }
                 
+                /* Cacher l'image de la colonne gauche sur mobile */
                 .crm-left-column {
-                  flex: none;
-                  order: 1;
+                  display: none;
+                }
+                
+                /* Afficher l'image dans la colonne droite juste après le titre */
+                .crm-mobile-image {
+                  display: flex !important;
+                  justify-content: center;
+                  margin: 0;
+                  padding: 0;
                 }
                 
                 .crm-right-column {
-                  order: 2;
+                  order: 0;
+                  max-width: 100%;
+                  padding-left: 0;
                 }
                 
                 .crm-title {
-                  margin-bottom: 2rem;
+                  margin-bottom: 1rem;
                 }
                 
                 .crm-title h2 {
                   text-align: center;
-                  font-size: clamp(1.5rem, 5vw, 2rem) !important;
+                  font-size: clamp(1.4rem, 4.5vw, 1.8rem) !important;
                   white-space: normal !important;
+                  line-height: 1.3 !important;
                 }
                 
                 .crm-title h2 span {
                   white-space: normal !important;
+                  display: inline !important;
                 }
                 
                 .crm-features-grid {
                   grid-template-columns: 1fr;
                   gap: 1.5rem;
+                  max-width: 100%;
+                  text-align: left;
                 }
                 
-                .crm-graduation-img {
-                  width: 150px;
-                  height: 150px;
+                .crm-mobile-image .crm-graduation-img {
+                  width: 380px;
+                  height: 430px;
+                  max-width: 380px;
                 }
               }
               
+              /* Responsivité tablet */
               @media (min-width: 769px) and (max-width: 1024px) {
+                .crm-two-columns {
+                  max-width: 1200px;
+                  gap: 1.5rem;
+                  padding: 0 1.5rem;
+                }
+                
                 .crm-left-column {
-                  flex: 0 0 350px;
+                  flex: 0 0 38%;
+                  max-width: 400px;
+                }
+                
+                .crm-right-column {
+                  max-width: 62%;
+                  padding-left: 0.5rem;
                 }
                 
                 .crm-graduation-img {
-                  width: 320px;
-                  height: 320px;
+                  max-width: 450px;
+                  height: 540px;
+                }
+                
+                .crm-title h2 {
+                  font-size: clamp(1.6rem, 3vw, 2rem) !important;
                 }
               }
               
+              /* Responsivité desktop large */
               @media (min-width: 1200px) {
+                .crm-two-columns {
+                  max-width: 1500px;
+                }
+                
                 .crm-left-column {
-                  flex: 0 0 450px;
+                  max-width: 550px;
                 }
                 
                 .crm-graduation-img {
-                  width: 420px;
-                  height: 420px;
+                  max-width: 500px;
+                  height: 580px;
                 }
               }
           </style>
@@ -1903,13 +1954,21 @@
               
               <!-- Colonne droite : Titre + 6 points -->
               <div class="crm-right-column scroll-animate-right">
-                <!-- Titre sur 2 lignes exactes -->
+                <!-- Titre sur 3 lignes pour un meilleur affichage -->
                 <div class="crm-title">
                   <h2 style="font-family: 'Futura Round', sans-serif; font-size: clamp(1.8rem, 3.5vw, 2.2rem); font-weight: 400; 
-                            color: #1a202c; margin: 0; line-height: 1.2; text-align: left; white-space: nowrap;">
-                    <span style="display: block;">Découvrez pourquoi KLASSCI est le <span style="font-weight: 800;">CRM éducatif le plus complet,</span></span>
+                            color: #1a202c; margin: 0; line-height: 1.2; text-align: left;">
+                    <span style="display: block;">Découvrez pourquoi KLASSCI est le</span>
+                    <span style="display: block;"><span style="font-weight: 800;">CRM éducatif le plus complet,</span></span>
                     <span style="display: block;">pensé pour la <span style="font-weight: 800;">performance et l'efficacité pédagogique.</span></span>
                   </h2>
+                </div>
+                
+                <!-- Image du chapeau pour mobile uniquement (juste après le titre) -->
+                <div class="crm-mobile-image" style="display: none;">
+                  <img src="/images/Images landingPage/Sans titre - 2-06.png" 
+                       alt="Chapeau de diplômé" 
+                       class="crm-graduation-img">
                 </div>
                 
                 <!-- Grille des 6 points -->
