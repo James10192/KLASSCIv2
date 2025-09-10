@@ -348,7 +348,7 @@
             color: var(--gray-400);
             font-size: 1.1rem;
             z-index: 5;
-            margin-top: 1.8rem;
+            pointer-events: none;
         }
         
         .form-check {
@@ -559,7 +559,7 @@
                 
                 <div class="stats-row">
                     <div class="stat-item">
-                        <span class="stat-number">500+</span>
+                        <span class="stat-number">5+</span>
                         <div class="stat-label">Écoles</div>
                     </div>
                     <div class="stat-item">
