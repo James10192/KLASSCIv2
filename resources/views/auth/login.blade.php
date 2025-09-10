@@ -583,7 +583,7 @@
                         <div class="stat-label">Écoles</div>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-number">50k+</span>
+                        <span class="stat-number">5k+</span>
                         <div class="stat-label">Étudiants</div>
                     </div>
                     <div class="stat-item">
