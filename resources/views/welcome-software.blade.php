@@ -75,10 +75,11 @@
     }
 
     :root {
-      /* Couleurs primaires KLASSCI */
-      --primary-blue: #1E4FC4;
-      --primary-blue-dark: #1840A0;
-      --primary-blue-light: #4F7FE7;
+      /* Couleurs primaires KLASSCI - Nouvelle palette */
+      --primary-blue: #0453cb;
+      --primary-blue-dark: #1b64d4;
+      --primary-blue-light: #5e91de;
+      --accent-gold: #FFD600;
       
       /* Couleurs neutres modernes */
       --text-primary: #1A1A1A;
@@ -92,14 +93,14 @@
       --bg-gray-200: #E5E7EB;
       
       /* Borders */
-      --border-color: #E5E7EB;
-      --border-light: #F3F4F6;
+      --border-color: #E3EAF6;
+      --border-light: #F0F6FF;
       
-      /* Shadows */
-      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-      --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      /* Shadows - Teinte bleue moderne */
+      --shadow-sm: 0 1px 2px 0 rgba(4, 83, 203, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(4, 83, 203, 0.1), 0 2px 4px -1px rgba(4, 83, 203, 0.06);
+      --shadow-lg: 0 8px 32px rgba(4, 83, 203, 0.12);
+      --shadow-xl: 0 20px 25px -5px rgba(4, 83, 203, 0.1), 0 10px 10px -5px rgba(4, 83, 203, 0.04);
       
       /* Success/Accent colors */
       --success: #10B981;
@@ -174,13 +175,16 @@
 
     /* Navigation exactement style Hostinger */
     .navbar {
-      background: var(--bg-white) !important;
-      border-bottom: 1px solid #e1e5e9;
-      padding: 0.125rem 0;
+      background: rgba(255, 255, 255, 0.95) !important;
+      border-bottom: 1px solid var(--border-color);
+      padding: 0.5rem 0;
       position: sticky;
       top: 0;
       z-index: 1000;
       min-height: auto;
+      backdrop-filter: blur(20px);
+      box-shadow: var(--shadow-lg);
+      transition: all 0.3s ease;
     }
 
     .navbar .container {
@@ -527,14 +531,26 @@
 
     /* Hero Section exactement style Hostinger */
     .hero-section {
-      background: #ffffff;
+      background: linear-gradient(135deg, #e8f2ff 0%, #f0f6ff 50%, #ffffff 100%);
       padding: 8rem 0 0 0;
       min-height: auto;
-      overflow: visible;
+      overflow: hidden;
       position: relative;
       display: flex;
       align-items: flex-start;
       padding-top: 8rem;
+    }
+    
+    .hero-section::before {
+      content: '';
+      position: absolute;
+      top: -30%;
+      right: -30%;
+      width: 60%;
+      height: 60%;
+      background: radial-gradient(circle, rgba(4, 83, 203, 0.03) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
     }
 
     .hero-content {
@@ -951,7 +967,7 @@
     .form-control:focus, input:focus, textarea:focus, select:focus {
       outline: none;
       border-color: var(--primary-blue);
-      box-shadow: 0 0 0 3px rgba(30, 79, 196, 0.1);
+      box-shadow: 0 0 0 3px rgba(4, 83, 203, 0.1);
     }
 
     .form-label, label {
@@ -1684,7 +1700,7 @@
             </p>
             
             <!-- Bouton Commencer -->
-            <button class="btn-commencer scroll-animate scroll-animate-delay-3" style="background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%); color: white; border: none; padding: 0.75rem 2rem; font-size: 1rem; font-weight: 600; border-radius: 25px; box-shadow: 0 4px 15px rgba(255, 107, 53, 0.3); transition: all 0.3s ease; cursor: pointer; font-family: 'Futura Round', 'Inter', sans-serif;">
+            <button class="btn-commencer scroll-animate scroll-animate-delay-3" style="background: linear-gradient(135deg, #0453cb 0%, #1b64d4 60%, #5e91de 100%); color: white; border: none; padding: 0.75rem 2rem; font-size: 1rem; font-weight: 600; border-radius: 25px; box-shadow: 0 4px 20px rgba(4, 83, 203, 0.3); transition: all 0.3s ease; cursor: pointer; font-family: 'Futura Round', 'Inter', sans-serif;">
               Commencer
             </button>
           </div>
@@ -2261,7 +2277,7 @@
                      border-radius: 20px; padding: 2.5rem 2rem; text-align: left; 
                      box-shadow: 0 4px 20px rgba(59, 130, 246, 0.1); 
                      position: relative;">
-            <h3 style="color: #ff6b35; font-weight: 800; font-size: 2.2rem; margin-bottom: 2rem; font-family: 'Futura Round', sans-serif; text-align: center;">
+            <h3 style="color: var(--primary-blue); font-weight: 800; font-size: 2.2rem; margin-bottom: 2rem; font-family: 'Futura Round', sans-serif; text-align: center; text-shadow: 0 2px 4px rgba(4, 83, 203, 0.1);">
               Essentiel
             </h3>
             
@@ -2320,9 +2336,10 @@
           </div>
 
           <!-- Plan Pro (Recommandé) -->
-          <div style="background: #ffd4c4; 
+          <div style="background: linear-gradient(135deg, #e8f2ff 0%, #f0f6ff 100%); 
                      border-radius: 20px; padding: 2.5rem 2rem; text-align: left; 
-                     box-shadow: 0 8px 30px rgba(255, 107, 53, 0.3); 
+                     box-shadow: 0 20px 60px rgba(4, 83, 203, 0.15); 
+                     border: 2px solid rgba(4, 83, 203, 0.1);
                      position: relative;
                      transform: scale(1.05);
                      z-index: 2;">
@@ -2334,7 +2351,7 @@
                        border: 3px solid transparent; border-top: 3px solid #3b82f6; border-right: 3px solid #3b82f6; 
                        border-radius: 25px;"></div>
             
-            <h3 style="color: #ff6b35; font-weight: 800; font-size: 2.2rem; margin-bottom: 2rem; font-family: 'Futura Round', sans-serif; text-align: center;">
+            <h3 style="color: var(--primary-blue); font-weight: 800; font-size: 2.2rem; margin-bottom: 2rem; font-family: 'Futura Round', sans-serif; text-align: center; text-shadow: 0 2px 4px rgba(4, 83, 203, 0.1);">
               Pro
             </h3>
             
@@ -2401,7 +2418,7 @@
                      border-radius: 20px; padding: 2.5rem 2rem; text-align: left; 
                      box-shadow: 0 4px 20px rgba(59, 130, 246, 0.1); 
                      position: relative;">
-            <h3 style="color: #ff6b35; font-weight: 800; font-size: 2.2rem; margin-bottom: 2rem; font-family: 'Futura Round', sans-serif; text-align: center;">
+            <h3 style="color: var(--primary-blue); font-weight: 800; font-size: 2.2rem; margin-bottom: 2rem; font-family: 'Futura Round', sans-serif; text-align: center; text-shadow: 0 2px 4px rgba(4, 83, 203, 0.1);">
               Elite
             </h3>
             
@@ -2847,7 +2864,7 @@
                                       display: inline-block; 
                                       transition: all 0.3s ease; 
                                       border: none;
-                                      box-shadow: 0 4px 15px rgba(255, 107, 53, 0.3);
+                                      box-shadow: 0 4px 20px rgba(4, 83, 203, 0.3);
                                       font-family: 'Futura Round', 'Inter', sans-serif;"
                  onmouseover="this.style.background='#e55a2b'; this.style.transform='translateY(-2px)';"
                  onmouseout="this.style.background='#ff6b35'; this.style.transform='translateY(0)';">

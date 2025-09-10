@@ -156,7 +156,7 @@
     <div class="login-main">
         <!-- Colonne gauche -->
         <div class="login-left">
-            <img src="{{ asset('images/LOGO-KLASSCI-PNG.png') }}" alt="KLASSCI Logo" class="login-logo">
+            <img src="{{ asset('images/Images landingPage/logo_klassci.png') }}" alt="KLASSCI Logo" class="login-logo">
             <div style="max-width: 420px; width: 100%; text-align: left;">
                 <h1 class="login-accent" style="font-size:2.2rem;line-height:1.2;">
                     Un clic, <span>une gestion simplifiée</span>
