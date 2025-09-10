@@ -1596,7 +1596,6 @@
     <div id="klassci-loader" style="position:fixed;z-index:9999;top:0;left:0;width:100%;height:100vh;background:#fff;display:flex;align-items:center;justify-content:center;transition:opacity 0.5s;">
         <div style="display:flex;flex-direction:column;align-items:center;">
             <img src="/images/Images landingPage/logo_klassci.png" alt="KLASSCI Loader" style="width:110px;height:110px;animation:klassci-pulse 1.2s infinite alternate;filter:drop-shadow(0 4px 16px rgba(99,102,241,0.12));"/>
-            <div style="margin-top:1.5rem;font-weight:600;color:#6366f1;letter-spacing:2px;font-size:1.1rem;">Chargement...</div>
         </div>
     </div>
     <style>
@@ -1893,9 +1892,13 @@
                 }
                 
                 .crm-mobile-image .crm-graduation-img {
-                  width: 380px;
-                  height: 430px;
-                  max-width: 380px;
+                  width: 100%;
+                  height: 350px;
+                  max-width: 350px;
+                  object-fit: contain;
+                  object-position: center;
+                  margin: 0 auto;
+                  display: block;
                 }
               }
               
@@ -2642,11 +2645,11 @@
           <div class="col-lg-6 col-md-12">
             <div style="padding-left: 2rem;">
               <!-- Titre -->
-              <h2 style="font-family: 'Futura Round', 'Inter', sans-serif; font-size: clamp(2.5rem, 5vw, 3.5rem); 
-                         font-weight: 700; color: #2563eb; margin-bottom: 2rem; line-height: 1.2;">
-                Sécurité
+              <h2 style="font-family: 'Futura Round', 'Inter', sans-serif; font-size: clamp(2rem, 4vw, 2.8rem); 
+                         font-weight: 400; color: #2563eb; margin-bottom: 2rem; line-height: 1.3;">
+                <span style="font-weight: 800;">Sécurité</span>
                 <br>
-                <span style="font-weight: 600; font-size: 44px;">et confiance totales.</span>
+                <span style="font-weight: 800;">et confiance totales.</span>
               </h2>
               
               <!-- Paragraphe 1 -->
@@ -2672,41 +2675,37 @@
         <div class="row align-items-center">
           <!-- Titre et liste à gauche -->
           <div class="col-lg-6 col-md-12 scroll-animate-left">
-            <div style="padding-right: 3rem;">
+            <div style="padding-right: 2rem;">
               <!-- Titre sur deux lignes -->
-              <h2 style="font-family: 'Futura Round', 'Inter', sans-serif; font-size: clamp(2.2rem, 4vw, 3.2rem); 
-                         font-weight: 700; color: #2563eb; margin-bottom: 3.5rem; line-height: 1.2; white-space: nowrap;">
-                Support client disponible<br>
-                24h/24 et 7j/7
+              <h2 style="font-family: 'Futura Round', 'Inter', sans-serif; font-size: clamp(2rem, 4vw, 2.8rem); 
+                         font-weight: 400; color: #2563eb; margin-bottom: 2rem; line-height: 1.3;">
+                <span style="font-weight: 800;">Support client disponible</span><br>
+                <span style="font-weight: 800;">24h/24 et 7j/7</span>
               </h2>
               
-              <!-- Liste des avantages -->
-              <ul style="list-style: none; padding: 0; margin: 0;">
-                <li style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
-                           font-size: 1.1rem; color: #4a5568; margin-bottom: 2rem; line-height: 1.6; 
-                           position: relative; padding-left: 25px;">
-                  <span style="position: absolute; left: 0; top: 0.2rem; color: #2563eb; font-weight: bold; font-size: 1.2rem;">•</span>
-                  Accédez à des informations fiables à tout moment grâce à notre chatbot.
-                </li>
-                <li style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
-                           font-size: 1.1rem; color: #4a5568; margin-bottom: 2rem; line-height: 1.6; 
-                           position: relative; padding-left: 25px;">
-                  <span style="position: absolute; left: 0; top: 0.2rem; color: #2563eb; font-weight: bold; font-size: 1.2rem;">•</span>
-                  Échangez directement avec notre service client par email, WhatsApp ou Telegram.
-                </li>
-                <li style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
-                           font-size: 1.1rem; color: #4a5568; margin-bottom: 2rem; line-height: 1.6; 
-                           position: relative; padding-left: 25px;">
-                  <span style="position: absolute; left: 0; top: 0.2rem; color: #2563eb; font-weight: bold; font-size: 1.2rem;">•</span>
-                  Nos agents maîtrisent parfaitement le français et l'anglais, pour une communication fluide.
-                </li>
-                <li style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
-                           font-size: 1.1rem; color: #4a5568; margin-bottom: 0; line-height: 1.6; 
-                           position: relative; padding-left: 25px;">
-                  <span style="position: absolute; left: 0; top: 0.2rem; color: #2563eb; font-weight: bold; font-size: 1.2rem;">•</span>
-                  Temps d'attente minimal : une réponse en moins de 2 minutes dans la majorité des cas.
-                </li>
-              </ul>
+              <!-- Paragraphe 1 -->
+              <p style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
+                        font-size: 1.1rem; color: #4a5568; margin-bottom: 0.8rem; line-height: 1.6;">
+                • Accédez à des informations fiables à tout moment grâce à notre chatbot.
+              </p>
+              
+              <!-- Paragraphe 2 -->
+              <p style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
+                        font-size: 1.1rem; color: #4a5568; margin-bottom: 0.8rem; line-height: 1.6;">
+                • Échangez directement avec notre service client par email, WhatsApp ou Telegram.
+              </p>
+              
+              <!-- Paragraphe 3 -->
+              <p style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
+                        font-size: 1.1rem; color: #4a5568; margin-bottom: 0.8rem; line-height: 1.6;">
+                • Nos agents maîtrisent parfaitement le français et l'anglais, pour une communication fluide.
+              </p>
+              
+              <!-- Paragraphe 4 -->
+              <p style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segue UI', sans-serif; 
+                        font-size: 1.1rem; color: #4a5568; margin-bottom: 0; line-height: 1.6;">
+                • Temps d'attente minimal : une réponse en moins de 2 minutes dans la majorité des cas.
+              </p>
             </div>
           </div>
           
@@ -2925,6 +2924,14 @@
           gap: 1.5rem !important;
           margin-top: 1rem !important;
         }
+        
+        /* Uniformiser le padding des sections Sécurité et Support client sur mobile */
+        section div[style*="padding-left: 2rem"],
+        section div[style*="padding-right: 2rem"] {
+          padding-left: 1rem !important;
+          padding-right: 1rem !important;
+        }
+      }
       }
     </style>
 
