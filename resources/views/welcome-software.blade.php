@@ -2629,7 +2629,7 @@
     </section>
 
     <!-- Section Sécurité -->
-    <section style="padding: 5rem 0; background: #f5f5f7; position: relative;">
+    <section style="padding: 5rem 0; background: linear-gradient(180deg, #e8f2ff 0%, #f0f6ff 100%); position: relative;">
       <div class="container">
         <div class="row align-items-center">
           <!-- Image sécurité à gauche -->
@@ -2930,6 +2930,24 @@
         section div[style*="padding-right: 2rem"] {
           padding-left: 1rem !important;
           padding-right: 1rem !important;
+        }
+        
+        /* Correction section témoignage sur mobile */
+        section div[style*="padding-left: 3rem"] {
+          padding-left: 1rem !important;
+          padding-right: 1rem !important;
+        }
+        
+        /* Améliorer l'espacement des éléments témoignage sur mobile */
+        blockquote {
+          margin-bottom: 1rem !important;
+          font-size: 1rem !important;
+        }
+        
+        /* Ajuster le lien "Lire plus" sur mobile */
+        a[style*="margin-bottom: 1rem"] {
+          margin-bottom: 1.5rem !important;
+          display: block !important;
         }
       }
       }
