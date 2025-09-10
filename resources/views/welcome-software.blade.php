@@ -2258,7 +2258,7 @@
                      border-radius: 20px; padding: 2.5rem 2rem; text-align: left; 
                      box-shadow: 0 4px 20px rgba(59, 130, 246, 0.1); 
                      position: relative;">
-            <h3 style="color: #ff6b35; font-weight: 800; font-size: 2rem; margin-bottom: 2rem; font-family: 'Futura Round', sans-serif; text-align: center;">
+            <h3 style="color: #ff6b35; font-weight: 800; font-size: 2.2rem; margin-bottom: 2rem; font-family: 'Futura Round', sans-serif; text-align: center;">
               Essentiel
             </h3>
             
@@ -2317,7 +2317,7 @@
           </div>
 
           <!-- Plan Pro (Recommandé) -->
-          <div style="background: #ff9a7a; 
+          <div style="background: #ffd4c4; 
                      border-radius: 20px; padding: 2.5rem 2rem; text-align: left; 
                      box-shadow: 0 8px 30px rgba(255, 107, 53, 0.3); 
                      position: relative;
@@ -2331,7 +2331,7 @@
                        border: 3px solid transparent; border-top: 3px solid #3b82f6; border-right: 3px solid #3b82f6; 
                        border-radius: 25px;"></div>
             
-            <h3 style="color: #ff6b35; font-weight: 800; font-size: 2rem; margin-bottom: 2rem; font-family: 'Futura Round', sans-serif; text-align: center;">
+            <h3 style="color: #ff6b35; font-weight: 800; font-size: 2.2rem; margin-bottom: 2rem; font-family: 'Futura Round', sans-serif; text-align: center;">
               Pro
             </h3>
             
@@ -2398,7 +2398,7 @@
                      border-radius: 20px; padding: 2.5rem 2rem; text-align: left; 
                      box-shadow: 0 4px 20px rgba(59, 130, 246, 0.1); 
                      position: relative;">
-            <h3 style="color: #ff6b35; font-weight: 800; font-size: 2rem; margin-bottom: 2rem; font-family: 'Futura Round', sans-serif; text-align: center;">
+            <h3 style="color: #ff6b35; font-weight: 800; font-size: 2.2rem; margin-bottom: 2rem; font-family: 'Futura Round', sans-serif; text-align: center;">
               Elite
             </h3>
             
