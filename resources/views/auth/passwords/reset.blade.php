@@ -374,8 +374,15 @@
         /* Footer */
         .login-footer {
             text-align: center;
-            color: rgba(255, 255, 255, 0.8);
+            color: var(--gray-700);
             font-size: 0.85rem;
+            font-weight: 500;
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+            background: rgba(255, 255, 255, 0.1);
+            padding: 0.5rem;
+            border-radius: 8px;
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
             margin-top: 1.5rem;
         }
         
@@ -416,7 +423,13 @@
             
             .form-section {
                 padding: 2rem 1.5rem;
-                background: rgba(255, 255, 255, 0.3);
+                background: rgba(255, 255, 255, 0.4);
+            }
+            
+            .login-footer {
+                background: rgba(255, 255, 255, 0.2);
+                color: var(--gray-800);
+                text-shadow: 0 1px 3px rgba(255, 255, 255, 1);
             }
             
             .floating-elements,
