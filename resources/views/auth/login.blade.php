@@ -42,7 +42,13 @@
         
         body {
             font-family: 'Poppins', 'Inter', sans-serif;
-            background: linear-gradient(135deg, var(--klassci-blue) 0%, var(--klassci-blue-dark) 50%, var(--klassci-orange) 100%);
+            background: 
+                linear-gradient(135deg, rgba(46, 94, 170, 0.85) 0%, rgba(30, 74, 140, 0.9) 50%, rgba(255, 107, 53, 0.85) 100%),
+                url('{{ asset('images/Images landingPage/Sans titre - 2-03.png') }}');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -112,20 +118,22 @@
             75% { transform: translateY(-20px) rotate(-5deg); }
         }
         
-        /* Container principal avec effet d'élévation */
+        /* Container principal avec effet glassmorphism avancé */
         .main-container {
             position: relative;
             z-index: 10;
             display: flex;
-            background: rgba(255, 255, 255, 0.98);
-            border-radius: 24px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 32px;
             box-shadow: 
-                0 25px 50px -12px rgba(0, 0, 0, 0.4),
-                0 0 0 1px rgba(255, 255, 255, 0.1),
-                inset 0 1px 0 rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(20px);
+                0 32px 64px -12px rgba(0, 0, 0, 0.4),
+                0 0 0 1px rgba(255, 255, 255, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
             overflow: hidden;
-            max-width: 900px;
+            max-width: 950px;
             width: 100%;
             margin: 2rem;
             animation: slideIn 0.8s ease-out;
@@ -136,10 +144,11 @@
             to { transform: translateY(0) scale(1); opacity: 1; }
         }
         
-        /* Section gauche - Visuel éducatif */
+        /* Section gauche - Visuel éducatif avec glassmorphism */
         .visual-section {
             flex: 1;
-            background: linear-gradient(135deg, var(--klassci-blue) 0%, var(--klassci-blue-light) 100%);
+            background: 
+                linear-gradient(135deg, rgba(46, 94, 170, 0.3) 0%, rgba(74, 123, 200, 0.2) 100%);
             padding: 3rem;
             display: flex;
             flex-direction: column;
@@ -148,6 +157,9 @@
             text-align: center;
             position: relative;
             overflow: hidden;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
         }
         
         .visual-section::before {
@@ -235,13 +247,29 @@
             margin-top: 0.25rem;
         }
         
-        /* Section droite - Formulaire de connexion */
+        /* Section droite - Formulaire de connexion avec glassmorphism intense */
         .login-section {
             flex: 1;
             padding: 3rem;
             display: flex;
             flex-direction: column;
             justify-content: center;
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+        }
+        
+        .login-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+            pointer-events: none;
         }
         
         /* Logo KLASSCI */
@@ -289,19 +317,27 @@
         .form-control {
             width: 100%;
             padding: 1rem 1rem 1rem 3rem;
-            border: 2px solid var(--gray-200);
+            border: 1px solid rgba(255, 255, 255, 0.3);
             border-radius: 16px;
             font-size: 1rem;
             transition: all 0.3s ease;
-            background: var(--white);
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
             position: relative;
+            color: var(--gray-800);
+        }
+        
+        .form-control::placeholder {
+            color: rgba(51, 65, 85, 0.6);
         }
         
         .form-control:focus {
             outline: none;
-            border-color: var(--klassci-blue);
-            box-shadow: 0 0 0 3px rgba(46, 94, 170, 0.1);
+            border-color: rgba(46, 94, 170, 0.5);
+            box-shadow: 0 0 0 3px rgba(46, 94, 170, 0.15), 0 8px 32px rgba(46, 94, 170, 0.15);
             transform: translateY(-1px);
+            background: rgba(255, 255, 255, 0.3);
         }
         
         .input-icon {
@@ -347,11 +383,12 @@
             color: var(--klassci-blue);
         }
         
-        /* Bouton de connexion */
+        /* Bouton de connexion avec glassmorphism */
         .btn-login {
             width: 100%;
-            background: linear-gradient(135deg, var(--klassci-blue) 0%, var(--klassci-blue-dark) 100%);
-            border: none;
+            background: 
+                linear-gradient(135deg, rgba(46, 94, 170, 0.9) 0%, rgba(30, 74, 140, 0.9) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 16px;
             padding: 1rem;
             font-size: 1.1rem;
@@ -359,7 +396,11 @@
             color: white;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 8px 25px rgba(46, 94, 170, 0.3);
+            box-shadow: 
+                0 8px 32px rgba(46, 94, 170, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
             position: relative;
             overflow: hidden;
             margin-bottom: 1.5rem;
@@ -382,7 +423,11 @@
         
         .btn-login:hover {
             transform: translateY(-2px);
-            box-shadow: 0 12px 35px rgba(46, 94, 170, 0.4);
+            box-shadow: 
+                0 12px 40px rgba(46, 94, 170, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            background: 
+                linear-gradient(135deg, rgba(46, 94, 170, 1) 0%, rgba(30, 74, 140, 1) 100%);
         }
         
         .btn-login:active {
@@ -398,15 +443,24 @@
         
         /* Responsive */
         @media (max-width: 768px) {
+            body {
+                background-attachment: scroll;
+            }
+            
             .main-container {
                 flex-direction: column;
                 margin: 1rem;
                 max-width: 100%;
+                background: rgba(255, 255, 255, 0.2);
+                backdrop-filter: blur(30px);
+                -webkit-backdrop-filter: blur(30px);
             }
             
             .visual-section {
                 padding: 2rem;
-                min-height: 300px;
+                min-height: 280px;
+                border-right: none;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             }
             
             .visual-title {
@@ -434,6 +488,7 @@
             
             .login-section {
                 padding: 2rem;
+                background: rgba(255, 255, 255, 0.3);
             }
             
             .login-title {
