@@ -304,12 +304,12 @@
 </div>
 
 <!-- Modal pour les instructions de changement d'année -->
-<div class="modal fade" id="yearChangeModal" tabindex="-1" role="dialog" aria-labelledby="yearChangeModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
+<div class="modal fade" id="yearChangeModal" tabindex="-1" aria-labelledby="yearChangeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="yearChangeModalLabel">Comment changer l'année académique ?</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="background: none; border: none; font-size: 1.5rem; font-weight: bold; color: #999; cursor: pointer;">
+                <button type="button" class="close btn-close" aria-label="Close" style="background: none; border: none; font-size: 1.5rem; font-weight: bold; color: #999; cursor: pointer;">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
@@ -433,30 +433,83 @@
 </style>
 @endpush
 
-@section('scripts')
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
-
+@push('scripts')
 <script>
 function showYearChangeInfo() {
-    $('#yearChangeModal').modal('show');
+    console.log('Tentative ouverture modal');
+    
+    // Essayer avec différentes méthodes Bootstrap
+    if (typeof bootstrap !== 'undefined') {
+        // Bootstrap 5
+        const modal = new bootstrap.Modal(document.getElementById('yearChangeModal'));
+        modal.show();
+    } else if (typeof $ !== 'undefined' && $.fn.modal) {
+        // Bootstrap 4 avec jQuery
+        $('#yearChangeModal').modal('show');
+    } else {
+        // Fallback - afficher directement
+        const modal = document.getElementById('yearChangeModal');
+        if (modal) {
+            modal.style.display = 'block';
+            modal.classList.add('show');
+            document.body.classList.add('modal-open');
+            
+            // Ajouter backdrop
+            const backdrop = document.createElement('div');
+            backdrop.className = 'modal-backdrop fade show';
+            backdrop.id = 'modal-backdrop';
+            document.body.appendChild(backdrop);
+        }
+    }
 }
 
-// Gérer la fermeture de la modal d'info année
-$(document).ready(function() {
-    // Gérer la fermeture avec le bouton X
-    $('#yearChangeModal .close[data-dismiss="modal"]').on('click', function() {
-        $('#yearChangeModal').modal('hide');
-    });
-});</script>
+// Fermer le modal manuellement si nécessaire
+function closeYearModal() {
+    const modal = document.getElementById('yearChangeModal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('show');
+        document.body.classList.remove('modal-open');
+        
+        // Supprimer backdrop
+        const backdrop = document.getElementById('modal-backdrop');
+        if (backdrop) {
+            backdrop.remove();
+        }
+    }
+}
 
-<script>
-    $(document).ready(function() {
-        // Initialiser les menus déroulants avec select2
-        $('#filiere, #niveau, #annee, #status').select2({
-            placeholder: 'Sélectionnez une option',
-            allowClear: true
+// Gérer les événements de fermeture
+document.addEventListener('DOMContentLoaded', function() {
+    // Fermeture avec X
+    const closeButton = document.querySelector('#yearChangeModal .close');
+    if (closeButton) {
+        closeButton.addEventListener('click', closeYearModal);
+    }
+    
+    // Fermeture avec bouton Fermer
+    const cancelButton = document.querySelector('#yearChangeModal .btn-secondary');
+    if (cancelButton) {
+        cancelButton.addEventListener('click', closeYearModal);
+    }
+    
+    // Fermeture en cliquant sur le backdrop
+    const modal = document.getElementById('yearChangeModal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeYearModal();
+            }
         });
+    }
+});
+
+$(document).ready(function() {
+    // Initialiser les menus déroulants avec select2
+    $('#filiere, #niveau, #annee, #status').select2({
+        placeholder: 'Sélectionnez une option',
+        allowClear: true
     });
+});
 </script>
-@endsection 
+@endpush 
