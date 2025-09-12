@@ -32,10 +32,10 @@
         <div class="kpi-grid">
             <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
                 <div class="kpi-title" style="color: #000; font-weight: 600;">Total Étudiants</div>
-                <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ isset($etudiants) ? $etudiants->count() : 0 }}</div>
+                <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ $totalEtudiants ?? 0 }}</div>
                 <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
                     <i class="fas fa-users"></i>
-                    Tous les étudiants
+                    Chargement via lazy loading
                 </div>
             </div>
             
@@ -198,153 +198,46 @@
             </div>
 
             <div class="main-card-body">
-                @if(isset($etudiants) && $etudiants->count() > 0)
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="bg-light">
-                                <tr>
-                                    <th width="40">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" id="select-all">
-                                        </div>
-                                    </th>
-                                    <th>Matricule</th>
-                                    <th>Nom et prénom</th>
-                                    @if(!isset($classe))
-                                    <th>Classe</th>
-                                    @endif
-                                    <th>Moyenne</th>
-                                    <th>Rang</th>
-                                    <th>Statut</th>
-                                    <th width="200">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($etudiants as $etudiant)
-                                    <tr>
-                                        <td>
-                                            <div class="form-check">
-                                                <input class="form-check-input student-checkbox" type="checkbox" value="{{ $etudiant->id }}">
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <span class="fw-medium">{{ $etudiant->matricule }}</span>
-                                        </td>
-                                        <td>
-                                            <div class="d-flex align-items-center">
-                                                <div class="user-avatar me-2">
-                                                    <i class="fas fa-user-graduate"></i>
-                                                </div>
-                                                <div>
-                                                    <div class="fw-semibold">{{ $etudiant->nom }} {{ $etudiant->prenoms }}</div>
-                                                    <small class="text-muted">{{ $etudiant->email ?? 'Pas d\'email' }}</small>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        @if(!isset($classe))
-                                        <td>
-                                            @php
-                                                $inscription = $etudiant->inscriptions->where('annee_universitaire_id', $annee_id)->first();
-                                                $etudiantClasse = $inscription ? $inscription->classe : null;
-                                            @endphp
-                                            <span class="badge bg-light text-dark border">
-                                                {{ $etudiantClasse ? $etudiantClasse->name : 'N/A' }}
-                                            </span>
-                                        </td>
-                                        @endif
-                                        <td>
-                                            @if(isset($moyennes[$etudiant->id]))
-                                                @php
-                                                    $moyenne = $moyennes[$etudiant->id];
-                                                    $badgeClass = $moyenne >= 16 ? 'success' : ($moyenne >= 14 ? 'info' : ($moyenne >= 12 ? 'warning' : ($moyenne >= 10 ? 'primary' : 'danger')));
-                                                @endphp
-                                                <span class="badge bg-{{ $badgeClass }} fs-6">
-                                                    {{ number_format($moyenne, 2) }}/20
-                                                </span>
-                                            @else
-                                                <span class="badge bg-secondary">N/A</span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            @if(isset($rangs[$etudiant->id]))
-                                                <div class="d-flex align-items-center">
-                                                    @php
-                                                        $rang = $rangs[$etudiant->id];
-                                                        $iconClass = $rang == 1 ? 'fa-trophy text-warning' : ($rang <= 3 ? 'fa-medal text-info' : 'fa-hashtag text-muted');
-                                                    @endphp
-                                                    <i class="fas {{ $iconClass }} me-2"></i>
-                                                    <span class="fw-bold">{{ $rang }}<sup>{{ $rang == 1 ? 'er' : 'ème' }}</sup></span>
-                                                    <small class="text-muted ms-1">/ {{ count($rangs) }}</small>
-                                                </div>
-                                            @else
-                                                <span class="badge bg-secondary">N/A</span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            @if(isset($moyennes[$etudiant->id]))
-                                                @if($moyennes[$etudiant->id] >= 10)
-                                                    <span class="badge bg-success">
-                                                        <i class="fas fa-check me-1"></i>Admis
-                                                    </span>
-                                                @else
-                                                    <span class="badge bg-danger">
-                                                        <i class="fas fa-times me-1"></i>Échec
-                                                    </span>
-                                                @endif
-                                            @else
-                                                <span class="badge bg-secondary">
-                                                    <i class="fas fa-question me-1"></i>Non évalué
-                                                </span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            @php
-                                                $inscription = $etudiant->inscriptions->where('annee_universitaire_id', $annee_id)->first();
-                                                $studentClasseId = $inscription ? $inscription->classe_id : null;
-                                                $actualClasseId = $classe_id ?? $studentClasseId;
-                                            @endphp
-                                            <div class="btn-group btn-group-sm">
-                                                <a href="{{ route('esbtp.resultats.etudiant', ['etudiant' => $etudiant->id, 'classe_id' => $actualClasseId, 'annee_universitaire_id' => $annee_id, 'periode' => $semestre]) }}" class="btn btn-sm btn-info" title="Voir détails">
-                                                    <i class="fas fa-chart-line"></i>
-                                                </a>
-                                                @if(isset($bulletins[$etudiant->id]))
-                                                    <a href="{{ route('esbtp.bulletins.show', $bulletins[$etudiant->id]) }}" class="btn btn-sm btn-secondary" title="Voir bulletin">
-                                                        <i class="fas fa-file-alt"></i>
-                                                    </a>
-                                                    <a href="{{ route('esbtp.bulletins.pdf-params', ['bulletin' => $etudiant->id, 'classe_id' => $actualClasseId, 'periode' => $semestre, 'annee_universitaire_id' => $annee_id]) }}" class="btn btn-sm btn-danger" target="_blank" title="Télécharger PDF">
-                                                        <i class="fas fa-file-pdf"></i>
-                                                    </a>
-                                                @else
-                                                    <button class="btn btn-sm btn-outline-secondary" disabled title="Bulletin non généré">
-                                                        <i class="fas fa-exclamation-triangle"></i>
-                                                    </button>
-                                                @endif
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
+                {{-- Nouveau système lazy loading --}}
+                @if(isset($classe_id) || isset($annee_universitaire_id))
+                    {{-- Spinner de chargement initial --}}
+                    <div class="loading-spinner text-center py-5" id="initial-spinner">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Chargement...</span>
+                        </div>
+                        <div class="mt-3">
+                            <h5 class="text-muted">Chargement des résultats</h5>
+                            <p class="text-muted">Récupération des données étudiants...</p>
+                        </div>
                     </div>
 
-                    @if(isset($notes) && $notes->isEmpty())
-                        <div class="alert alert-warning mt-4">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            <strong>Aucune note trouvée.</strong> Vérifiez que :
-                            <ul class="mb-0 mt-2">
-                                <li>Les évaluations sont bien créées pour cette période</li>
-                                <li>Les notes sont saisies et liées aux évaluations</li>
-                                <li>Les coefficients des évaluations sont > 0</li>
-                            </ul>
-                        </div>
-                    @endif
-                @elseif(isset($classe))
-                    <div class="text-center py-5">
-                        <i class="fas fa-user-graduate fa-3x text-muted mb-3"></i>
-                        <h5 class="text-muted">Aucun étudiant trouvé</h5>
-                        <p class="text-muted">Aucun étudiant trouvé pour cette classe et cette période.</p>
+                    {{-- Container pour le contenu lazy-loadé --}}
+                    <div class="content-container" id="results-container" style="display: none;">
+                        {{-- Le contenu sera injecté ici par JavaScript --}}
+                    </div>
+
+                    {{-- Message d'erreur en cas d'échec --}}
+                    <div class="error-state text-center py-5" id="error-state" style="display: none;">
+                        <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                        <h5 class="text-muted">Erreur de chargement</h5>
+                        <p class="text-muted">Une erreur est survenue lors du chargement des résultats.</p>
+                        <button class="btn btn-primary" onclick="reloadResults()">
+                            <i class="fas fa-refresh me-1"></i>Réessayer
+                        </button>
+                    </div>
+
+                    {{-- Avertissement si aucune note --}}
+                    <div class="alert alert-warning mt-4" id="no-notes-warning" style="display: none;">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Aucune note trouvée.</strong> Vérifiez que :
+                        <ul class="mb-0 mt-2">
+                            <li>Les évaluations sont bien créées pour cette période</li>
+                            <li>Les notes sont saisies et liées aux évaluations</li>
+                            <li>Les coefficients des évaluations sont > 0</li>
+                        </ul>
                     </div>
                 @else
+                    {{-- État initial : sélection de critères --}}
                     <div class="text-center py-5">
                         <i class="fas fa-filter fa-3x text-muted mb-3"></i>
                         <h5 class="text-muted">Sélectionnez vos critères</h5>
@@ -369,16 +262,9 @@ $(document).ready(function() {
         console.log('Select2 not available, skipping initialization');
     }
 
-    // Handle bulk selection
-    $('#select-all').change(function() {
-        $('.student-checkbox').prop('checked', $(this).prop('checked'));
-    });
-
-    $('.student-checkbox').change(function() {
-        const totalCheckboxes = $('.student-checkbox').length;
-        const checkedCheckboxes = $('.student-checkbox:checked').length;
-        $('#select-all').prop('checked', totalCheckboxes === checkedCheckboxes);
-    });
+    // Variables pour le lazy loading
+    let currentPage = 1;
+    let isLoading = false;
 
     // Auto-select academic year when class is selected
     $('#classe_id').change(function() {
@@ -401,19 +287,145 @@ $(document).ready(function() {
         }
     });
 
-    // Search functionality
-    $('.search-bar').on('input', function() {
-        const searchTerm = $(this).val().toLowerCase();
-        $('tbody tr').each(function() {
-            const studentName = $(this).find('td:nth-child(3) .fw-semibold').text().toLowerCase();
-            const matricule = $(this).find('td:nth-child(2)').text().toLowerCase();
-            
-            if (studentName.includes(searchTerm) || matricule.includes(searchTerm)) {
-                $(this).show();
-            } else {
-                $(this).hide();
+    // Fonction pour charger les étudiants (lazy loading)
+    function loadEtudiants(page = 1) {
+        if (isLoading) return;
+        
+        const classe_id = '{{ $classe_id ?? '' }}';
+        const semestre = '{{ $semestre ?? '' }}';
+        const annee_universitaire_id = '{{ $annee_universitaire_id ?? '' }}';
+        const include_all_statuses = {{ isset($include_all_statuses) && $include_all_statuses ? 'true' : 'false' }};
+
+        // Si pas de critères suffisants, ne pas charger
+        if (!classe_id && !annee_universitaire_id) {
+            return;
+        }
+
+        isLoading = true;
+        
+        const ajaxUrl = '{{ route("esbtp.resultats.load-etudiants") }}';
+        
+        $.ajax({
+            url: ajaxUrl,
+            method: 'GET',
+            data: {
+                page: page,
+                per_page: 50,
+                classe_id: classe_id,
+                semestre: semestre,
+                annee_universitaire_id: annee_universitaire_id,
+                include_all_statuses: include_all_statuses
+            },
+            success: function(response) {
+                $('#initial-spinner').hide();
+                $('#error-state').hide();
+                
+                if (page === 1) {
+                    // Page 1: Remplacer tout le contenu
+                    $('#results-container').html(response.html);
+                } else {
+                    // Pages suivantes: Ajouter les TR au tableau existant
+                    const newRows = $(response.html);
+                    $('#results-container tbody').append(newRows);
+                }
+                
+                $('#results-container').show();
+                
+                // Mettre à jour le bouton "Charger plus"
+                updateLoadMoreButton(response);
+                
+                // Réinitialiser les event handlers pour les nouveaux éléments
+                initializeEventHandlers();
+                
+                isLoading = false;
+                
+                console.log(`Page ${page} chargée: ${response.loaded_count} étudiants (${response.total} au total)`);
+            },
+            error: function(xhr, status, error) {
+                console.error('Erreur AJAX:', error);
+                showErrorState();
+                isLoading = false;
             }
         });
+    }
+
+    // Fonction pour mettre à jour le bouton "Charger plus"
+    function updateLoadMoreButton(response) {
+        // Supprimer l'ancien bouton
+        $('#results-container .load-more-container').remove();
+        
+        if (response.has_more) {
+            const nextPage = response.current_page + 1;
+            const loadMoreHtml = `
+                <div class="load-more-container" style="text-align: center; margin: 20px 0;">
+                    <button class="btn btn-primary" onclick="loadMore(${nextPage})" style="padding: 12px 24px; border-radius: 8px;">
+                        <i class="fas fa-plus"></i> Charger plus d'étudiants (${response.loaded_count}/${response.total})
+                    </button>
+                </div>
+            `;
+            $('#results-container').append(loadMoreHtml);
+        }
+    }
+
+    // Fonction pour charger plus d'étudiants
+    window.loadMore = function(nextPage) {
+        currentPage = nextPage;
+        loadEtudiants(nextPage);
+    };
+
+    // Fonction pour afficher l'état d'erreur
+    function showErrorState() {
+        $('#initial-spinner').hide();
+        $('#results-container').hide();
+        $('#error-state').show();
+    }
+
+    // Fonction pour recharger les résultats
+    window.reloadResults = function() {
+        $('#error-state').hide();
+        $('#initial-spinner').show();
+        currentPage = 1;
+        loadEtudiants(1);
+    };
+
+    // Fonction pour initialiser les event handlers sur les nouveaux éléments
+    function initializeEventHandlers() {
+        // Handle bulk selection
+        $('#select-all').off('change').on('change', function() {
+            $('.student-checkbox').prop('checked', $(this).prop('checked'));
+        });
+
+        $('.student-checkbox').off('change').on('change', function() {
+            const totalCheckboxes = $('.student-checkbox').length;
+            const checkedCheckboxes = $('.student-checkbox:checked').length;
+            $('#select-all').prop('checked', totalCheckboxes === checkedCheckboxes);
+        });
+
+        // Search functionality
+        $('.search-bar').off('input').on('input', function() {
+            const searchTerm = $(this).val().toLowerCase();
+            $('#results-container tbody tr').each(function() {
+                const studentName = $(this).find('td:nth-child(3) .fw-semibold').text().toLowerCase();
+                const matricule = $(this).find('td:nth-child(2)').text().toLowerCase();
+                
+                if (studentName.includes(searchTerm) || matricule.includes(searchTerm)) {
+                    $(this).show();
+                } else {
+                    $(this).hide();
+                }
+            });
+        });
+    }
+
+    // Chargement initial automatique si des critères sont présents
+    @if(isset($classe_id) || isset($annee_universitaire_id))
+        loadEtudiants(1);
+    @endif
+
+    // Rechargement lors du changement des filtres
+    $('.filter-form').on('submit', function() {
+        // Le rechargement se fera via le submit normal du formulaire
+        // Le nouveau lazy loading s'activera sur la nouvelle page
     });
 });
 </script>

@@ -1449,170 +1449,33 @@ class ESBTPBulletinController extends Controller
             $classe = $classeObj; // Alias for view compatibility
         }
 
-        // Get students and notes
-        $etudiants = []; // Renamed from $students for view compatibility
-        $notes = collect([]); // Initialize as collection to work with isEmpty() in view
-        $moyennes = []; // For storing student averages
-        $rangs = []; // For storing student ranks
-        $bulletins = []; // For storing student bulletins
-
-        if ($classe_id) {
-            // Get students through inscriptions for the selected class and year
-            $studentsQuery = ESBTPEtudiant::whereHas('inscriptions', function ($query) use ($classe_id, $annee_universitaire_id, $include_all_statuses) {
-                $query->where('classe_id', $classe_id)
-                    ->where('annee_universitaire_id', $annee_universitaire_id);
-
-                // CORRECTION : Inversion de la logique du filtre
-                if (!$include_all_statuses) {
-                    $query->where('status', 'active');
-                }
-            })
-            ->with(['user', 'inscriptions.classe.filiere', 'inscriptions.classe.niveau'])
-            ->orderBy('nom')
-            ->orderBy('prenoms');
-
-            $etudiants = $studentsQuery->get();
-
-            Log::info('Étudiants récupérés pour la classe', [
+        // OPTIMISATION LAZY LOADING: Ne plus charger automatiquement tous les étudiants
+        // Les étudiants seront chargés via AJAX par petits groupes pour optimiser les performances
+        
+        // Calculer seulement les KPIs généraux pour l'affichage initial
+        $totalEtudiants = 0;
+        $moyenneGenerale = null;
+        $tauxReussite = null;
+        $totalBulletins = 0;
+        
+        // Calculer rapidement le nombre total d'étudiants sans charger toutes les données
+        if ($classe_id || $annee_universitaire_id) {
+            $studentsCountQuery = $this->buildEtudiantsQuery($classe_id, $annee_universitaire_id, $include_all_statuses);
+            $totalEtudiants = $studentsCountQuery->count();
+            
+            Log::info('KPIs calculés pour l\'affichage initial', [
+                'total_etudiants' => $totalEtudiants,
                 'classe_id' => $classe_id,
-                'annee_universitaire_id' => $annee_universitaire_id,
-                'etudiants_count' => $etudiants->count(),
-                'include_all_statuses' => $include_all_statuses
+                'annee_universitaire_id' => $annee_universitaire_id
             ]);
-
-            // If we have students, also get their notes
-            if ($etudiants->count() > 0) {
-                $student_ids = $etudiants->pluck('id')->toArray();
-
-                // Modification pour inclure toutes les notes quand "Toutes les périodes" est sélectionné
-                $notesQuery = ESBTPNote::whereIn('etudiant_id', $student_ids)
-                    ->with(['etudiant', 'etudiant.user', 'evaluation', 'evaluation.classe', 'evaluation.matiere']);
-
-                // Si un semestre est spécifié, filtrer par ce semestre
-                if ($semestre) {
-                    $notesQuery->whereHas('evaluation', function ($query) use ($semestre) {
-                        $query->where('periode', 'like', 'semestre'.$semestre.'%');
-                    });
-                }
-
-                $notes = $notesQuery->get();
-
-                Log::info('Notes récupérées pour les étudiants', [
-                    'etudiants_count' => $etudiants->count(),
-                    'notes_count' => $notes->count(),
-                    'semestre' => $semestre ? $semestre : 'Toutes les périodes'
-                ]);
-
-                // Calculate moyennes and ranks using the same logic as resultatEtudiant
-                $this->calculateStudentStatsFixed($etudiants, $notes, $moyennes, $rangs);
-
-                // Get bulletins
-                $this->getStudentBulletins($etudiants, $classe_id, $annee_universitaire_id, $semestre, $bulletins);
-            }
-        } else if ($annee_universitaire_id) {
-            // If no class selected but academic year is set, get all students enrolled in that year
-            $studentsQuery = ESBTPEtudiant::whereHas('inscriptions', function ($query) use ($annee_universitaire_id, $include_all_statuses) {
-                $query->where('annee_universitaire_id', $annee_universitaire_id);
-
-                // CORRECTION: Si include_all_statuses = false, alors filtrer sur 'active' uniquement
-                if (!$include_all_statuses) {
-                    $query->where('status', 'active');
-                }
-            })
-            ->with(['user', 'inscriptions' => function ($query) use ($annee_universitaire_id) {
-                $query->where('annee_universitaire_id', $annee_universitaire_id);
-            }])
-            ->orderBy('nom')
-            ->orderBy('prenoms');
-
-            $etudiants = $studentsQuery->get();
-
-            \Log::info('Étudiants récupérés par année', [
-                'annee_universitaire_id' => $annee_universitaire_id,
-                'etudiants_count' => $etudiants->count(),
-                'include_all_statuses' => $include_all_statuses
-            ]);
-
-            // If we have students, get their notes
-            if ($etudiants->count() > 0) {
-                $student_ids = $etudiants->pluck('id')->toArray();
-
-                // Modification pour inclure toutes les notes quand "Toutes les périodes" est sélectionné
-                $notesQuery = ESBTPNote::whereIn('etudiant_id', $student_ids)
-                    ->whereHas('evaluation', function ($query) use ($annee_universitaire_id) {
-                        $query->where('annee_universitaire_id', $annee_universitaire_id);
-                    })
-                    ->with(['etudiant', 'etudiant.user', 'evaluation', 'evaluation.classe', 'evaluation.matiere']);
-
-                // Si un semestre est spécifié, filtrer par ce semestre
-                if ($semestre) {
-                    $notesQuery->whereHas('evaluation', function ($query) use ($semestre) {
-                        $query->where('periode', 'like', 'semestre'.$semestre.'%');
-                    });
-                }
-
-                $notes = $notesQuery->get();
-
-                \Log::info('Notes récupérées par année', [
-                    'annee_id' => $annee_universitaire_id,
-                    'notes_count' => $notes->count(),
-                    'semestre' => $semestre ? $semestre : 'Toutes les périodes'
-                ]);
-
-                // Calculate moyennes and ranks using the same logic as resultatEtudiant
-                $this->calculateStudentStatsFixed($etudiants, $notes, $moyennes, $rangs);
-
-                // Get bulletins - we don't have a specific class so use individual student inscriptions
-                $this->getStudentBulletins($etudiants, null, $annee_universitaire_id, $semestre, $bulletins);
-            }
-        } else {
-            // If no filters are applied, get all active students
-            $studentsQuery = ESBTPEtudiant::whereHas('inscriptions', function ($query) use ($include_all_statuses) {
-                // Ne filtrer sur le statut 'active' que si include_all_statuses est false
-                if (!$include_all_statuses) {
-                $query->where('status', 'active');
-                }
-            })
-            ->with(['user', 'inscriptions'])
-            ->orderBy('nom')
-            ->orderBy('prenoms');
-
-            $etudiants = $studentsQuery->get();
-
-            \Log::info('Étudiants récupérés sans filtres', [
-                'etudiants_count' => $etudiants->count(),
-                'include_all_statuses' => $include_all_statuses
-            ]);
-
-            // If we have students, get their notes
-            if ($etudiants->count() > 0) {
-                $student_ids = $etudiants->pluck('id')->toArray();
-
-                // Modification pour inclure toutes les notes quand "Toutes les périodes" est sélectionné
-                $notesQuery = ESBTPNote::whereIn('etudiant_id', $student_ids)
-                    ->with(['etudiant', 'etudiant.user', 'evaluation', 'evaluation.classe', 'evaluation.matiere']);
-
-                // Si un semestre est spécifié, filtrer par ce semestre
-                if ($semestre) {
-                    $notesQuery->whereHas('evaluation', function ($query) use ($semestre) {
-                        $query->where('periode', 'like', 'semestre'.$semestre.'%');
-                    });
-                }
-
-                $notes = $notesQuery->get();
-
-                \Log::info('Notes récupérées sans filtres', [
-                    'notes_count' => $notes->count(),
-                    'semestre' => $semestre ? $semestre : 'Toutes les périodes'
-                ]);
-
-                // Calculate moyennes and ranks using the same logic as resultatEtudiant
-                $this->calculateStudentStatsFixed($etudiants, $notes, $moyennes, $rangs);
-
-                // Get bulletins - we don't have a specific class so use individual student inscriptions
-                $this->getStudentBulletins($etudiants, null, $annee_universitaire_id, $semestre, $bulletins);
-            }
         }
+
+        // Variables minimales pour la compatibilité de la vue
+        $etudiants = collect(); // Collection vide pour la compatibilité
+        $notes = collect([]); // Initialize as collection to work with isEmpty() in view
+        $moyennes = []; // Empty for initial load
+        $rangs = []; // Empty for initial load  
+        $bulletins = []; // Empty for initial load
 
         // Les moyennes et rangs sont maintenant calculés uniquement à partir de vraies données
         
@@ -1634,8 +1497,166 @@ class ESBTPBulletinController extends Controller
             'notes',
             'moyennes',
             'rangs',
-            'bulletins'
+            'bulletins',
+            'totalEtudiants',
+            'include_all_statuses'
         ));
+    }
+
+    /**
+     * Load students with lazy loading pagination for AJAX requests
+     */
+    public function loadEtudiants(Request $request)
+    {
+        $page = $request->get('page', 1);
+        $perPage = $request->get('per_page', 50);
+        $classe_id = $request->get('classe_id');
+        $semestre = $request->get('semestre');
+        $annee_universitaire_id = $request->get('annee_universitaire_id');
+        $include_all_statuses = $request->get('include_all_statuses', true);
+
+        try {
+            // Get students query based on the same logic as resultats method
+            $studentsQuery = $this->buildEtudiantsQuery($classe_id, $annee_universitaire_id, $include_all_statuses);
+            
+            // Calculate total before pagination
+            $total = $studentsQuery->count();
+            
+            // Apply pagination
+            $etudiants = $studentsQuery->skip(($page - 1) * $perPage)->take($perPage)->get();
+            
+            // Calculate moyennes, rangs, etc. for these students
+            $moyennes = [];
+            $rangs = [];
+            $bulletins = [];
+            $notes = collect([]);
+            
+            if ($etudiants->count() > 0) {
+                $student_ids = $etudiants->pluck('id')->toArray();
+                
+                // Get notes for these students
+                $notesQuery = ESBTPNote::whereIn('etudiant_id', $student_ids)
+                    ->with(['etudiant', 'etudiant.user', 'evaluation', 'evaluation.classe', 'evaluation.matiere']);
+
+                if ($classe_id) {
+                    $notesQuery->whereHas('evaluation', function ($query) use ($classe_id) {
+                        $query->where('classe_id', $classe_id);
+                    });
+                }
+
+                if ($annee_universitaire_id) {
+                    $notesQuery->whereHas('evaluation', function ($query) use ($annee_universitaire_id) {
+                        $query->where('annee_universitaire_id', $annee_universitaire_id);
+                    });
+                }
+
+                if ($semestre) {
+                    $notesQuery->whereHas('evaluation', function ($query) use ($semestre) {
+                        $query->where('periode', 'like', 'semestre'.$semestre.'%');
+                    });
+                }
+
+                $notes = $notesQuery->get();
+                
+                // Calculate stats for these students
+                $this->calculateStudentStatsFixed($etudiants, $notes, $moyennes, $rangs);
+                
+                // Get bulletins
+                $this->getStudentBulletins($etudiants, $classe_id, $annee_universitaire_id, $semestre, $bulletins);
+            }
+
+            // Determine which template to use
+            if ((int)$page === 1) {
+                // Page 1: Full table structure with headers
+                $html = view('esbtp.resultats.partials.liste-etudiants', [
+                    'etudiants' => $etudiants,
+                    'moyennes' => $moyennes,
+                    'rangs' => $rangs,
+                    'bulletins' => $bulletins,
+                    'classe' => $classe_id ? ESBTPClasse::find($classe_id) : null,
+                    'annee_id' => $annee_universitaire_id
+                ])->render();
+            } else {
+                // Pages suivantes: Seulement les lignes TR
+                $html = view('esbtp.resultats.partials.lignes-etudiants', [
+                    'etudiants' => $etudiants,
+                    'moyennes' => $moyennes,
+                    'rangs' => $rangs,
+                    'bulletins' => $bulletins,
+                    'classe' => $classe_id ? ESBTPClasse::find($classe_id) : null,
+                    'annee_id' => $annee_universitaire_id
+                ])->render();
+            }
+
+            $hasMore = ($page * $perPage) < $total;
+
+            return response()->json([
+                'html' => $html,
+                'total' => $total,
+                'current_page' => (int)$page,
+                'has_more' => $hasMore,
+                'loaded_count' => $etudiants->count()
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors du chargement lazy des étudiants', [
+                'error' => $e->getMessage(),
+                'page' => $page,
+                'classe_id' => $classe_id
+            ]);
+
+            return response()->json([
+                'error' => 'Erreur lors du chargement des étudiants',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Build the students query based on filters (extracted from resultats method)
+     */
+    private function buildEtudiantsQuery($classe_id, $annee_universitaire_id, $include_all_statuses)
+    {
+        if ($classe_id) {
+            // Get students through inscriptions for the selected class and year
+            return ESBTPEtudiant::whereHas('inscriptions', function ($query) use ($classe_id, $annee_universitaire_id, $include_all_statuses) {
+                $query->where('classe_id', $classe_id)
+                    ->where('annee_universitaire_id', $annee_universitaire_id);
+
+                if (!$include_all_statuses) {
+                    $query->where('status', 'active');
+                }
+            })
+            ->with(['user', 'inscriptions.classe.filiere', 'inscriptions.classe.niveau'])
+            ->orderBy('nom')
+            ->orderBy('prenoms');
+
+        } else if ($annee_universitaire_id) {
+            // If no class selected but academic year is set, get all students enrolled in that year
+            return ESBTPEtudiant::whereHas('inscriptions', function ($query) use ($annee_universitaire_id, $include_all_statuses) {
+                $query->where('annee_universitaire_id', $annee_universitaire_id);
+
+                if (!$include_all_statuses) {
+                    $query->where('status', 'active');
+                }
+            })
+            ->with(['user', 'inscriptions' => function ($query) use ($annee_universitaire_id) {
+                $query->where('annee_universitaire_id', $annee_universitaire_id);
+            }])
+            ->orderBy('nom')
+            ->orderBy('prenoms');
+
+        } else {
+            // If no filters are applied, get all students
+            return ESBTPEtudiant::whereHas('inscriptions', function ($query) use ($include_all_statuses) {
+                if (!$include_all_statuses) {
+                    $query->where('status', 'active');
+                }
+            })
+            ->with(['user', 'inscriptions'])
+            ->orderBy('nom')
+            ->orderBy('prenoms');
+        }
     }
 
     /**

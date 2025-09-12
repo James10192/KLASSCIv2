@@ -531,6 +531,11 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->name('resultats.etudiant.preview')
                 ->middleware(['permission:view_own_bulletin|view_bulletins']);
                 
+            // Route AJAX pour le lazy loading des étudiants sur la page résultats
+            Route::get('resultats/load-etudiants', [ESBTPBulletinController::class, 'loadEtudiants'])
+                ->name('resultats.load-etudiants')
+                ->middleware(['permission:view_own_bulletin|view_bulletins']);
+                
             Route::get('bulletins/configuration', [ESBTPBulletinController::class, 'configuration'])
                 ->name('bulletins.configuration')
                 ->middleware(['permission:edit_bulletins']);

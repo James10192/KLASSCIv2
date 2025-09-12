@@ -5,7 +5,9 @@
       "mcp__memory__search_nodes",
       "mcp__sequential-thinking__sequentialthinking",
       "Bash(grep:*)",
-      "Bash(php artisan:*)"
+      "Bash(php artisan:*)",
+      "Bash(git add:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": [],
