@@ -341,6 +341,9 @@
                 <a href="{{ route('esbtp.emploi-temps.index') }}" class="btn-acasi secondary">
                     <i class="fas fa-arrow-left"></i>Retour à la liste
                 </a>
+                <a href="{{ route('esbtp.emploi-temps.preview', ['emploi_temp' => $emploiTemps->id]) }}" class="btn-acasi info" target="_blank">
+                    <i class="fas fa-eye"></i>Prévisualiser PDF
+                </a>
                 <a href="{{ route('esbtp.emploi-temps.export-pdf', ['emploi_temp' => $emploiTemps->id]) }}" class="btn-acasi danger" target="_blank">
                     <i class="fas fa-file-pdf"></i>Générer PDF
                 </a>

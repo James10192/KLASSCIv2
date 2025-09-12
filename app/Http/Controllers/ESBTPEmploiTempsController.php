@@ -18,6 +18,7 @@ use App\Models\ESBTPPlanificationAcademique;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Services\ESBTPPDFService;
+use App\Helpers\SettingsHelper;
 
 class ESBTPEmploiTempsController extends Controller
 {
@@ -1110,6 +1111,148 @@ class ESBTPEmploiTempsController extends Controller
 
             return redirect()->back()
                 ->with('error', 'Une erreur est survenue lors de la génération du PDF.');
+        }
+    }
+
+    /**
+     * Récupère les configurations depuis les settings pour les PDF
+     */
+    private function getPDFConfig()
+    {
+        return [
+            // Informations de l'établissement
+            'school_name' => SettingsHelper::get('school_name', 'École Spéciale du Bâtiment et des Travaux Publics'),
+            'school_type' => SettingsHelper::get('school_type', 'Enseignement Supérieur Technique'),
+            'school_authorization' => SettingsHelper::get('school_authorization_number', ''),
+            'school_address' => SettingsHelper::get('school_address', ''),
+            'school_phone' => SettingsHelper::get('school_phone', ''),
+            'school_email' => SettingsHelper::get('school_email', ''),
+            'school_website' => SettingsHelper::get('school_website', ''),
+            'school_city' => SettingsHelper::get('school_city', 'Yamoussoukro'),
+            'school_country' => SettingsHelper::get('school_country', 'Côte d\'Ivoire'),
+            'director_name' => SettingsHelper::get('director_name', ''),
+            'director_title' => SettingsHelper::get('director_title', 'Directeur'),
+            'school_logo' => SettingsHelper::get('school_logo', ''),
+
+            // Configuration PDF
+            'pdf_margin_top' => SettingsHelper::get('pdf.margin_top', 15),
+            'pdf_margin_bottom' => SettingsHelper::get('pdf.margin_bottom', 15),
+            'pdf_margin_left' => SettingsHelper::get('pdf.margin_left', 10),
+            'pdf_margin_right' => SettingsHelper::get('pdf.margin_right', 10),
+            
+            // Configuration spécifique emploi du temps
+            'timetable_show_logo' => SettingsHelper::get('timetable_show_logo', '1'),
+            'timetable_show_header' => SettingsHelper::get('timetable_show_header', '1'),
+            'timetable_show_stats' => SettingsHelper::get('timetable_show_stats', '1'),
+        ];
+    }
+
+    /**
+     * Prépare le logo en base64 pour l'inclusion dans les PDF
+     */
+    private function prepareLogoBase64($logoPath)
+    {
+        if (empty($logoPath)) {
+            return null;
+        }
+
+        // Priorité 1: Vérifier dans storage/app/public/ (logos uploadés)
+        $storagePath = storage_path('app/public/' . $logoPath);
+        if (file_exists($storagePath)) {
+            $logoType = pathinfo($storagePath, PATHINFO_EXTENSION);
+            $logoData = file_get_contents($storagePath);
+            return 'data:image/' . $logoType . ';base64,' . base64_encode($logoData);
+        }
+
+        // Priorité 2: Vérifier dans public/ (compatibilité)
+        $publicPath = public_path($logoPath);
+        if (file_exists($publicPath)) {
+            $logoType = pathinfo($publicPath, PATHINFO_EXTENSION);
+            $logoData = file_get_contents($publicPath);
+            return 'data:image/' . $logoType . ';base64,' . base64_encode($logoData);
+        }
+
+        return null;
+    }
+
+    /**
+     * Prévisualise l'emploi du temps avant génération PDF
+     */
+    public function previewEmploiTemps($id)
+    {
+        try {
+            $emploiTemps = ESBTPEmploiTemps::with([
+                'seances.matiere',
+                'classe',
+                'classe.filiere',
+                'classe.niveau',
+                'annee'
+            ])->findOrFail($id);
+
+            // Récupérer la configuration PDF
+            $config = $this->getPDFConfig();
+            $settings = $config; // Utiliser la même structure que les bulletins
+            
+            // Préparer le logo en base64
+            $logoBase64 = $this->prepareLogoBase64($config['school_logo']);
+
+            // Grouper les séances par jour
+            $seancesParJour = $emploiTemps->getSeancesParJour();
+
+            // Récupérer les heures de début et de fin pour l'affichage
+            $heuresDebut = [];
+            $heuresFin = [];
+            for ($heure = 8; $heure < 18; $heure++) {
+                $heuresDebut[] = sprintf('%02d:00', $heure);
+                $heuresFin[] = sprintf('%02d:00', $heure + 1);
+            }
+
+            // Noms des jours pour l'affichage
+            $joursNoms = [
+                1 => 'Lundi',
+                2 => 'Mardi',
+                3 => 'Mercredi',
+                4 => 'Jeudi',
+                5 => 'Vendredi',
+                6 => 'Samedi',
+            ];
+
+            // Créer les variables $timeSlots et $days pour la vue
+            $timeSlots = $heuresDebut;
+            $days = array_keys($joursNoms);
+
+            // Calcul des statistiques par matière
+            $matiereStats = [];
+            foreach ($emploiTemps->seances as $seance) {
+                $matiereName = $seance->matiere ? $seance->matiere->name : 'Non définie';
+                if (!isset($matiereStats[$matiereName])) {
+                    $matiereStats[$matiereName] = 0;
+                }
+                $matiereStats[$matiereName]++;
+            }
+
+            return view('esbtp.emploi-temps.preview-pdf', [
+                'emploiTemps' => $emploiTemps,
+                'seances' => $emploiTemps->seances,
+                'seancesParJour' => $seancesParJour,
+                'heuresDebut' => $heuresDebut,
+                'heuresFin' => $heuresFin,
+                'joursNoms' => $joursNoms,
+                'timeSlots' => $timeSlots,
+                'days' => $days,
+                'matiereStats' => $matiereStats,
+                'logoBase64' => $logoBase64,
+                'settings' => $settings,
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de la prévisualisation de l\'emploi du temps', [
+                'error' => $e->getMessage(),
+                'emploi_temps_id' => $id
+            ]);
+
+            return redirect()->back()
+                ->with('error', 'Une erreur est survenue lors de la prévisualisation.');
         }
     }
 

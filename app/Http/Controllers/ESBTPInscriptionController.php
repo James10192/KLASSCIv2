@@ -95,12 +95,13 @@ class ESBTPInscriptionController extends Controller
             }
         }
 
-        if ($status) {
+        if ($status && $status !== 'all') {
             $query->where('status', $status);
         }
 
         // Récupérer les inscriptions paginées
         $inscriptions = $query->latest()->paginate(15);
+        
 
         // Récupérer les listes pour les filtres
         $filieres = ESBTPFiliere::where('is_active', true)->get();

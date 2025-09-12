@@ -488,6 +488,11 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->name('emploi-temps.export-pdf')
                 ->middleware(['permission:view_timetables']);
 
+            // Route pour prévisualiser l'emploi du temps avant génération PDF
+            Route::get('emploi-temps/{emploi_temp}/preview', [ESBTPEmploiTempsController::class, 'previewEmploiTemps'])
+                ->name('emploi-temps.preview')
+                ->middleware(['permission:view_timetables']);
+
             // Routes pour la gestion des séances d'emploi du temps
             Route::get('emploi-temps/{emploi_temp}/add-session', [ESBTPEmploiTempsController::class, 'addSession'])
                 ->name('emploi-temps.add-session')
