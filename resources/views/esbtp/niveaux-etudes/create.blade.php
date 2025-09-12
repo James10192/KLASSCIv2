@@ -102,6 +102,7 @@
                             style="border: 2px solid #e5e7eb; border-radius: var(--radius-medium); padding: var(--space-md); font-size: var(--text-normal); transition: all 0.3s ease; background: var(--surface);">
                         <option value="">-- Sélectionner un type --</option>
                         <option value="BTS" {{ old('type') == 'BTS' ? 'selected' : '' }}>BTS</option>
+                        <option value="Bachelor" {{ old('type') == 'Bachelor' ? 'selected' : '' }}>Bachelor</option>
                         <option value="Licence" {{ old('type') == 'Licence' ? 'selected' : '' }}>Licence</option>
                         <option value="Master" {{ old('type') == 'Master' ? 'selected' : '' }}>Master</option>
                         <option value="Doctorat" {{ old('type') == 'Doctorat' ? 'selected' : '' }}>Doctorat</option>
