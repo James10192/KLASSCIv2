@@ -1106,8 +1106,21 @@ class ESBTPEmploiTempsController extends Controller
         } catch (\Exception $e) {
             \Log::error('Erreur lors de la génération du PDF de l\'emploi du temps', [
                 'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
                 'emploi_temps_id' => $id
             ]);
+
+            // Pour debug - afficher l'erreur complète temporairement
+            if (config('app.debug')) {
+                return response()->json([
+                    'error' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString()
+                ], 500);
+            }
 
             return redirect()->back()
                 ->with('error', 'Une erreur est survenue lors de la génération du PDF.');

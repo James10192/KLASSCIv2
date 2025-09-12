@@ -10,6 +10,7 @@ use App\Models\ESBTPResultatMatiere;
 use App\Models\ESBTPEmploiTemps;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
+use App\Services\NumberToWords;
 
 class ESBTPPDFService
 {
@@ -180,14 +181,23 @@ class ESBTPPDFService
      */
     public function genererEmploiTempsPDF(ESBTPEmploiTemps $emploiTemps)
     {
-        // Charger les séances pour cet emploi du temps
-        $emploiTemps->load([
-            'seances.matiere',
-            'classe',
-            'classe.filiere',
-            'classe.niveau',
-            'annee'
-        ]);
+        try {
+            // Augmenter le timeout pour éviter les erreurs de génération
+            set_time_limit(300); // 5 minutes
+            ini_set('memory_limit', '512M');
+            
+            \Log::info('PDF Generation - Starting emploi temps PDF generation', ['id' => $emploiTemps->id]);
+            
+            // Charger les séances pour cet emploi du temps
+            $emploiTemps->load([
+                'seances.matiere',
+                'classe',
+                'classe.filiere',
+                'classe.niveau',
+                'annee'
+            ]);
+            
+            \Log::info('PDF Generation - Relations loaded successfully');
 
         // Grouper les séances par jour
         $seancesParJour = $emploiTemps->getSeancesParJour();
@@ -224,22 +234,38 @@ class ESBTPPDFService
             $matiereStats[$matiereName]++;
         }
 
-        $data = [
-            'emploiTemps' => $emploiTemps,
-            'seances' => $emploiTemps->seances,
-            'seancesParJour' => $seancesParJour,
-            'heuresDebut' => $heuresDebut,
-            'heuresFin' => $heuresFin,
-            'joursNoms' => $joursNoms,
-            'matiereStats' => $matiereStats,
-            'timeSlots' => $timeSlots,
-            'days' => $days,
-            'date_edition' => Carbon::now()->locale('fr')->isoFormat('LL')
-        ];
+            $data = [
+                'emploiTemps' => $emploiTemps,
+                'seances' => $emploiTemps->seances,
+                'seancesParJour' => $seancesParJour,
+                'heuresDebut' => $heuresDebut,
+                'heuresFin' => $heuresFin,
+                'joursNoms' => $joursNoms,
+                'matiereStats' => $matiereStats,
+                'timeSlots' => $timeSlots,
+                'days' => $days,
+                'date_edition' => Carbon::now()->locale('fr')->isoFormat('LL')
+            ];
 
-        $pdf = PDF::loadView('pdf.emploi_temps', $data);
-        $pdf->setPaper('A4', 'landscape');
+            \Log::info('PDF Generation - Data prepared successfully', ['data_keys' => array_keys($data)]);
 
-        return $pdf;
+            // Utiliser un template PDF simplifié pour éviter les timeouts
+            \Log::info('PDF Generation - About to load view');
+            $pdf = PDF::loadView('pdf.emploi-temps-simple', $data);
+            \Log::info('PDF Generation - View loaded successfully');
+            
+            $pdf->setPaper('A4', 'landscape');
+            \Log::info('PDF Generation - Paper format set successfully');
+
+            return $pdf;
+        } catch (\Exception $e) {
+            \Log::error('PDF Generation - Error occurred', [
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
+        }
     }
 }

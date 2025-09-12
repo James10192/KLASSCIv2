@@ -1,530 +1,482 @@
+@if(!isset($date_edition))
+@extends('layouts.app')
+
+@section('title', 'Prévisualisation Emploi du Temps - ' . ($emploiTemps->classe->name ?? 'Non défini'))
+
+@section('styles')
+@else
 <!DOCTYPE html>
-<html lang="fr">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prévisualisation PDF - Emploi du temps {{ $emploiTemps->classe->name ?? 'Non défini' }}</title>
-    <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: white;
-            color: #333;
+    <meta charset="utf-8">
+    <title>Emploi du Temps - {{ $emploiTemps->classe->name ?? 'Non défini' }}</title>
+@endif
+@if(!isset($date_edition))
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+@else
+<!-- Mode PDF - Pas de liens externes -->
+@endif
+<style>
+    /* Variables CSS pour compatibilité */
+    :root {
+        --primary: #1e3a8a;
+        --secondary: #3b82f6;
+        --success: #10b981;
+        --danger: #ef4444;
+        --warning: #f59e0b;
+        --surface: #f8fafc;
+        --border: #e2e8f0;
+        --text-primary: #1f2937;
+        --text-secondary: #6b7280;
+        --space-sm: 0.5rem;
+        --space-md: 1rem;
+        --space-lg: 1.5rem;
+        --space-xl: 2rem;
+        --radius-small: 0.25rem;
+        --radius-medium: 0.5rem;
+        --radius-large: 0.75rem;
+        --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    }
+    
+    .preview-container {
+        max-width: 100%;
+        margin: 0;
+        background: white;
+        padding: var(--space-sm);
+    }
+    
+    .preview-toolbar {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-medium);
+        padding: var(--space-md);
+        margin-bottom: var(--space-lg);
+        display: flex;
+        justify-content: between;
+        align-items: center;
+        gap: var(--space-md);
+    }
+    
+    .preview-actions {
+        display: flex;
+        gap: var(--space-sm);
+        margin-left: auto;
+    }
+    
+    .preview-content {
+        border: 1px solid #ddd;
+        border-radius: var(--radius-medium);
+        box-shadow: var(--shadow-card);
+        padding: var(--space-lg);
+        background: white;
+        min-height: 600px;
+    }
+    
+    /* Styles pour l'emploi du temps - format paysage minimal */
+    .timetable-document {
+        font-family: DejaVu Sans, Arial, sans-serif;
+        font-size: 12px;
+        line-height: 1.4;
+        color: #333;
+    }
+    
+    /* Force toutes les polices pour PDF */
+    @if(isset($date_edition))
+    * {
+        font-family: DejaVu Sans, Arial, sans-serif !important;
+    }
+    @endif
+    
+    /* En-tête minimal avec logo et nom école */
+    .minimal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: var(--space-lg);
+        padding: var(--space-md);
+        background: #1e3a8a;
+        color: white;
+        border-radius: var(--radius-medium);
+        box-shadow: var(--shadow-card);
+    }
+    
+    .header-left {
+        display: flex;
+        align-items: center;
+        gap: var(--space-md);
+    }
+    
+    .school-logo {
+        width: 50px;
+        height: 50px;
+        border-radius: var(--radius-small);
+        object-fit: cover;
+        background: white;
+        padding: 4px;
+    }
+    
+    .school-info h1 {
+        font-size: 18px;
+        font-weight: bold;
+        margin: 0 0 2px 0;
+        color: white;
+    }
+    
+    .school-address {
+        font-size: 12px;
+        opacity: 0.9;
+        margin: 0;
+    }
+    
+    .header-title {
+        font-size: 24px;
+        font-weight: bold;
+        color: white;
+        margin: 0;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .header-info {
+        font-size: 14px;
+        display: flex;
+        gap: var(--space-md);
+        flex-direction: column;
+        align-items: flex-end;
+    }
+    
+    .info-badge {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        padding: 6px 12px;
+        border-radius: var(--radius-small);
+        font-size: 12px;
+        font-weight: 500;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+
+    /* Table emploi du temps - format paysage optimisé avec styles table-moderne */
+    .table-moderne {
+        min-width: 1000px;
+        width: 100%;
+        font-size: 11px;
+    }
+
+    .timetable {
+        min-width: 1000px;
+    }
+
+    .timetable th, .timetable td {
+        height: 70px;
+        position: relative;
+        padding: 6px;
+        text-align: center;
+        vertical-align: middle;
+    }
+
+    .timetable th {
+        height: 45px;
+        font-size: 12px;
+    }
+
+    .time-column {
+        width: 100px;
+        font-weight: bold;
+        background-color: var(--surface);
+        font-size: 11px;
+        color: var(--text-primary);
+        writing-mode: horizontal-tb;
+    }
+
+    /* Session cells - format compact paysage */
+    .session-cell {
+        padding: 4px;
+        border-radius: var(--radius-small);
+        font-size: 10px;
+        color: #fff;
+        height: calc(100% - 8px);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        margin: 1px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        line-height: 1.2;
+    }
+
+    .session-matiere {
+        font-weight: bold;
+        font-size: 11px;
+        margin-bottom: 2px;
+        text-align: center;
+    }
+
+    .session-enseignant {
+        font-size: 9px;
+        opacity: 0.9;
+        margin-bottom: 1px;
+        text-align: center;
+    }
+
+    .session-details {
+        font-size: 8px;
+        opacity: 0.8;
+        text-align: center;
+    }
+
+    /* Couleurs simplifiées pour PDF - pas de gradients */
+    .session-cours { background: #1e3a8a; color: white; }
+    .session-td { background: #10b981; color: white; }
+    .session-tp { background: #6b7280; color: white; }
+    .session-examen { background: #ef4444; color: white; }
+    .session-autre { background: #f59e0b; color: #1f2937; }
+    .session-pause { background: #9ca3af; color: white; }
+    .session-dejeuner { background: #f97316; color: #1f2937; }
+    
+    /* Styles table-moderne intégrés pour PDF */
+    .table-moderne {
+        overflow-x: auto;
+        border-radius: var(--radius-medium);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        background: white;
+    }
+    
+    .table-moderne table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+    }
+    
+    .table-moderne thead tr {
+        background: #1e3a8a;
+        color: white;
+    }
+    
+    .table-moderne th {
+        padding: var(--space-lg) var(--space-md);
+        text-align: left;
+        font-weight: 600;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .table-moderne th.text-center {
+        text-align: center;
+    }
+    
+    .table-moderne tbody tr {
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    
+    .table-moderne td {
+        padding: var(--space-lg) var(--space-md);
+        vertical-align: middle;
+    }
+
+    @media (max-width: 768px) {
+        .timetable-container {
+            margin-bottom: 20px;
         }
         
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background-color: white;
-        }
-
-        /* En-tête PDF configurable (comme bulletins) */
-        .pdf-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
-            margin-bottom: 30px;
-            border-radius: 10px;
-        }
-
-        .logo-section {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 20px;
-        }
-
-        .logo {
-            max-width: 80px;
-            max-height: 80px;
-            border-radius: 10px;
-            margin-right: 20px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-        }
-
-        .school-info h1 {
-            margin: 0 0 10px 0;
-            font-size: 28px;
-            font-weight: bold;
-        }
-
-        .school-info p {
-            margin: 5px 0;
-            font-size: 14px;
-            opacity: 0.9;
-        }
-
-        .timetable-info {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 20px;
-            border-radius: 10px;
-            margin-top: 20px;
-        }
-
-        .timetable-info h2 {
-            margin: 0 0 15px 0;
-            font-size: 24px;
-            text-align: center;
-        }
-
-        .info-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            text-align: left;
-        }
-
-        .info-item {
-            display: flex;
-            align-items: center;
-            background: rgba(255, 255, 255, 0.1);
-            padding: 10px;
-            border-radius: 5px;
-        }
-
-        .info-label {
-            font-weight: bold;
-            margin-right: 10px;
-            min-width: 80px;
-        }
-
-        /* Notice de prévisualisation */
-        .preview-notice {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-            padding: 15px;
-            text-align: center;
-            font-weight: bold;
-            font-size: 16px;
-            margin-bottom: 30px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        /* Table emploi du temps - MÊMES STYLES que show */
-        .timetable-container {
-            overflow-x: auto;
-            margin-bottom: 30px;
-        }
-
-        .timetable {
-            width: 100%;
-            min-width: 900px;
-            border-collapse: collapse;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-
-        .timetable th, .timetable td {
-            min-width: 150px;
-            height: 60px;
-            position: relative;
-            border: 1px solid #dee2e6;
-            padding: 8px;
-            text-align: center;
-            vertical-align: middle;
-        }
-
-        .timetable th {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            font-weight: bold;
-            font-size: 14px;
-        }
-
-        .time-column {
-            width: 80px;
-            font-weight: bold;
-            background-color: #f8f9fa;
-            font-size: 12px;
-        }
-
-        /* Session cells - EXACTEMENT comme show */
-        .session-cell {
-            padding: 5px;
-            border-radius: 4px;
-            font-size: 0.85rem;
-            color: #fff;
-            height: calc(100% - 10px);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-
-        .session-matiere {
-            font-weight: bold;
-            font-size: 0.9rem;
-            margin-bottom: 2px;
-        }
-
-        .session-enseignant {
-            font-size: 0.8rem;
-            opacity: 0.9;
-            margin-bottom: 2px;
-        }
-
-        .session-details {
-            font-size: 0.75rem;
-            opacity: 0.8;
-        }
-
-        /* MÊMES COULEURS que show */
-        .session-cours {
-            background-color: #667eea;
-        }
-
-        .session-td {
-            background-color: #10b981;
-        }
-
-        .session-tp {
-            background-color: #6b7280;
-        }
-
-        .session-examen {
-            background-color: #ef4444;
-        }
-
-        .session-autre {
-            background-color: #f59e0b;
-            color: #1f2937 !important;
-        }
-
-        .session-pause {
-            background-color: #9ca3af;
-        }
-
-        .session-dejeuner {
-            background-color: #f97316;
-            color: #1f2937 !important;
-        }
-
-        /* Statistiques */
-        .stats-section {
-            margin: 30px 0;
-            padding: 20px;
-            background-color: #f8f9fa;
-            border-radius: 10px;
-        }
-
-        .stats-title {
-            font-size: 20px;
-            font-weight: bold;
-            margin-bottom: 20px;
-            color: #495057;
-            text-align: center;
-        }
-
         .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
+            grid-template-columns: 1fr;
         }
-
-        .stat-card {
-            background: white;
-            border-radius: 10px;
-            padding: 20px;
-            text-align: center;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            border-left: 4px solid #667eea;
-        }
-
-        .stat-number {
-            font-size: 24px;
-            font-weight: bold;
-            color: #667eea;
-            margin-bottom: 5px;
-        }
-
-        .stat-label {
-            font-size: 14px;
-            color: #6c757d;
-        }
-
-        /* Légende */
+        
         .legend {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 15px;
-            margin: 20px 0;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 10px;
-        }
-
-        .legend-item {
-            display: flex;
+            flex-direction: column;
             align-items: center;
-            font-size: 14px;
-            font-weight: 500;
         }
-
-        .legend-color {
-            width: 20px;
-            height: 15px;
-            border-radius: 3px;
-            margin-right: 8px;
-        }
-
-        /* Actions de navigation */
-        .actions-section {
-            padding: 30px 0;
+        
+        .logo-section {
+            flex-direction: column;
             text-align: center;
-            border-top: 1px solid #dee2e6;
-            margin-top: 30px;
         }
+        
+        .logo {
+            margin: 0 0 15px 0;
+        }
+    }
+    
+    @media print {
+        .preview-toolbar {
+            display: none;
+        }
+        
+        .preview-content {
+            border: none;
+            box-shadow: none;
+        }
+        
+        .timetable-document {
+            padding: 0;
+        }
+    }
+</style>
+@if(!isset($date_edition))
+@endsection
 
-        .btn {
-            display: inline-block;
-            padding: 12px 24px;
-            margin: 0 10px 10px 0;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: 500;
-            font-size: 14px;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .btn-success {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-        }
-
-        .btn-secondary {
-            background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
-            color: white;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        }
-
-        @media (max-width: 768px) {
-            body {
-                padding: 10px;
-            }
-            
-            .timetable-container {
-                margin-bottom: 20px;
-            }
-            
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .legend {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-        }
-
-        @media print {
-            .actions-section {
-                display: none;
-            }
-            
-            .preview-notice {
-                display: none;
-            }
-        }
-    </style>
+@section('content')
+@else
 </head>
 <body>
-    <div class="container">
-        <!-- En-tête PDF configurable -->
-        @if($settings['timetable_show_header'] ?? true)
-        <div class="pdf-header">
-            <div class="logo-section">
-                @if($logoBase64 && ($settings['timetable_show_logo'] ?? true))
-                    <img src="{{ $logoBase64 }}" alt="Logo" class="logo">
-                @endif
-                <div class="school-info">
-                    <h1>{{ $settings['school_name'] ?? 'École Spéciale du Bâtiment et des Travaux Publics' }}</h1>
-                    <p>{{ $settings['school_type'] ?? 'Enseignement Supérieur Technique' }}</p>
-                    @if($settings['school_address'])
-                        <p>{{ $settings['school_address'] }}</p>
-                    @endif
-                    @if($settings['school_city'])
-                        <p>{{ $settings['school_city'] }} - {{ $settings['school_country'] ?? 'Côte d\'Ivoire' }}</p>
-                    @endif
+@endif
+<div class="dashboard-acasi">
+    <div class="main-content">
+        <div class="preview-container">
+            <!-- Barre d'outils de prévisualisation (masquée pour PDF) -->
+            @if(!isset($date_edition))
+            <div class="preview-toolbar">
+                <div class="toolbar-info">
+                    <h4 class="mb-0">
+                        <i class="fas fa-calendar-alt me-2"></i>
+                        Prévisualisation Emploi du Temps
+                    </h4>
+                    <small class="text-muted">{{ $emploiTemps->classe->name ?? 'Non définie' }} - {{ $emploiTemps->annee->name ?? 'Non définie' }}</small>
+                </div>
+                
+                <div class="preview-actions">
+                    <a href="{{ route('esbtp.emploi-temps.show', $emploiTemps->id) }}" class="btn-acasi secondary">
+                        <i class="fas fa-arrow-left me-1"></i>Retour
+                    </a>
+                    
+                    <a href="{{ route('esbtp.emploi-temps.export-pdf', $emploiTemps->id) }}" class="btn-acasi success">
+                        <i class="fas fa-file-pdf me-1"></i>Générer PDF
+                    </a>
+                    
+                    <button onclick="window.print()" class="btn-acasi info">
+                        <i class="fas fa-print me-1"></i>Imprimer
+                    </button>
                 </div>
             </div>
-            
-            <div class="timetable-info">
-                <h2>EMPLOI DU TEMPS</h2>
-                <div class="info-grid">
-                    <div class="info-item">
-                        <span class="info-label">Classe :</span>
-                        <span>{{ $emploiTemps->classe->name ?? 'Non définie' }}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Filière :</span>
-                        <span>{{ $emploiTemps->classe->filiere->name ?? 'Non définie' }}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Niveau :</span>
-                        <span>{{ $emploiTemps->classe->niveau->name ?? 'Non défini' }}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Année :</span>
-                        <span>{{ $emploiTemps->annee->name ?? 'Non définie' }}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Effectif :</span>
-                        <span>{{ $emploiTemps->classe->etudiants_count ?? 0 }} étudiants</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Édité le :</span>
-                        <span>{{ now()->format('d/m/Y à H:i') }}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        @endif
-
-        <!-- Notice de prévisualisation -->
-        <div class="preview-notice">
-            📋 PRÉVISUALISATION PDF - Aperçu de l'emploi du temps avant génération du fichier final
-        </div>
-
-        <!-- Légende des couleurs -->
-        <div class="legend">
-            <div class="legend-item">
-                <div class="legend-color session-cours"></div>
-                <span>Cours magistraux</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color session-td"></div>
-                <span>Travaux dirigés</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color session-tp"></div>
-                <span>Travaux pratiques</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color session-examen"></div>
-                <span>Examens</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color session-pause"></div>
-                <span>Pauses</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color session-dejeuner"></div>
-                <span>Déjeuner</span>
-            </div>
-        </div>
-
-        <!-- Tableau emploi du temps -->
-        <div class="timetable-container">
-            <table class="timetable">
-                <thead>
-                    <tr>
-                        <th class="time-column">Heure</th>
-                        <th>Lundi</th>
-                        <th>Mardi</th>
-                        <th>Mercredi</th>
-                        <th>Jeudi</th>
-                        <th>Vendredi</th>
-                        <th>Samedi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($timeSlots as $timeIndex => $time)
-                        <tr>
-                            <td class="time-column">{{ $time }}</td>
-                            @foreach($days as $dayIndex => $day)
-                                <td>
-                                    @if(isset($seancesParJour[$dayIndex + 1][$timeIndex]))
-                                        @php
-                                            $seance = $seancesParJour[$dayIndex + 1][$timeIndex];
-                                            $typeClass = 'session-' . strtolower($seance->type ?? 'autre');
-                                        @endphp
-                                        <div class="session-cell {{ $typeClass }}">
-                                            <div class="session-matiere">
-                                                {{ $seance->matiere->name ?? 'Matière' }}
-                                            </div>
-                                            <div class="session-enseignant">
-                                                {{ $seance->enseignant_nom ?? 'Enseignant' }}
-                                            </div>
-                                            <div class="session-details">
-                                                {{ ucfirst($seance->type ?? 'Cours') }}
-                                                @if($seance->salle)
-                                                    - {{ $seance->salle }}
-                                                @endif
-                                            </div>
-                                        </div>
-                                    @endif
-                                </td>
-                            @endforeach
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Statistiques -->
-        @if($settings['timetable_show_stats'] ?? true)
-        <div class="stats-section">
-            <h3 class="stats-title">📊 Statistiques de l'emploi du temps</h3>
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-number">{{ count($seances) }}</div>
-                    <div class="stat-label">Total séances</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">{{ count($matiereStats) }}</div>
-                    <div class="stat-label">Matières différentes</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">{{ count($timeSlots) }}</div>
-                    <div class="stat-label">Créneaux horaires</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">6</div>
-                    <div class="stat-label">Jours de cours</div>
-                </div>
-            </div>
-            
-            @if(!empty($matiereStats))
-                <h4 style="margin-top: 30px; margin-bottom: 15px; color: #495057; text-align: center;">Répartition par matière</h4>
-                <div class="stats-grid">
-                    @foreach($matiereStats as $matiere => $count)
-                        <div class="stat-card">
-                            <div class="stat-number">{{ $count }}</div>
-                            <div class="stat-label">{{ $matiere }}</div>
-                        </div>
-                    @endforeach
-                </div>
             @endif
-        </div>
-        @endif
 
-        <!-- Actions -->
-        <div class="actions-section">
-            <h3 style="margin-bottom: 20px; color: #495057;">Actions disponibles</h3>
-            <a href="{{ route('esbtp.emploi-temps.show', $emploiTemps->id) }}" class="btn btn-secondary">
-                ⬅️ Retour à l'emploi du temps
-            </a>
-            <a href="{{ route('esbtp.emploi-temps.export-pdf', $emploiTemps->id) }}" class="btn btn-success">
-                📥 Télécharger PDF
-            </a>
-            <a href="{{ route('esbtp.emploi-temps.edit', $emploiTemps->id) }}" class="btn btn-primary">
-                ✏️ Modifier l'emploi du temps
-            </a>
+            <!-- Contenu de l'emploi du temps -->
+            <div class="preview-content">
+                <div class="timetable-document">
+                    @php
+                        use App\Helpers\SettingsHelper;
+                        $schoolName = SettingsHelper::get('school_name', 'École Spéciale du Bâtiment et des Travaux Publics');
+                        $schoolAddress = SettingsHelper::get('school_address', 'BP 2541 Yamoussoukro');
+                        $schoolCity = SettingsHelper::get('school_city', 'Yamoussoukro');
+                        $showLogo = SettingsHelper::get('timetable_show_logo', '1') === '1';
+                        $logoPath = SettingsHelper::get('school_logo');
+                        
+                        $logoBase64 = null;
+                        if ($showLogo && $logoPath) {
+                            $paths = [
+                                storage_path('app/public/' . $logoPath),
+                                public_path($logoPath),
+                                public_path('images/LOGO-KLASSCI-PNG.png'),
+                            ];
+                            
+                            foreach ($paths as $path) {
+                                if (file_exists($path)) {
+                                    $imageData = file_get_contents($path);
+                                    $extension = pathinfo($path, PATHINFO_EXTENSION);
+                                    $logoBase64 = 'data:image/' . $extension . ';base64,' . base64_encode($imageData);
+                                    break;
+                                }
+                            }
+                        }
+                    @endphp
+
+                    <!-- En-tête avec logo et infos école -->
+                    <div class="minimal-header">
+                        <div class="header-left">
+                            @if($logoBase64)
+                                <img src="{{ $logoBase64 }}" alt="Logo École" class="school-logo">
+                            @endif
+                            <div class="school-info">
+                                <h1>{{ $schoolName }}</h1>
+                                @if($schoolAddress || $schoolCity)
+                                    <p class="school-address">
+                                        @if($schoolAddress){{ $schoolAddress }}@endif
+                                        @if($schoolAddress && $schoolCity) - @endif
+                                        @if($schoolCity){{ $schoolCity }}@endif
+                                    </p>
+                                @endif
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h2 class="header-title">EMPLOI DU TEMPS</h2>
+                        </div>
+                        
+                        <div class="header-info">
+                            <span class="info-badge">{{ $emploiTemps->classe->name ?? 'Classe non définie' }}</span>
+                            <span class="info-badge">{{ $emploiTemps->annee->name ?? 'Période non définie' }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Tableau emploi du temps -->
+                    <div class="table-moderne">
+                        <table class="timetable">
+                            <thead>
+                                <tr>
+                                    <th class="time-column text-center">Heure</th>
+                                    <th class="text-center">Lundi</th>
+                                    <th class="text-center">Mardi</th>
+                                    <th class="text-center">Mercredi</th>
+                                    <th class="text-center">Jeudi</th>
+                                    <th class="text-center">Vendredi</th>
+                                    <th class="text-center">Samedi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($timeSlots as $timeIndex => $time)
+                                    <tr>
+                                        <td class="time-column">{{ $time }}</td>
+                                        @foreach($days as $dayIndex => $day)
+                                            <td>
+                                                @if(isset($seancesParJour[$dayIndex + 1][$timeIndex]))
+                                                    @php
+                                                        $seance = $seancesParJour[$dayIndex + 1][$timeIndex];
+                                                        $typeClass = 'session-' . strtolower($seance->type ?? 'autre');
+                                                    @endphp
+                                                    <div class="session-cell {{ $typeClass }}">
+                                                        <div class="session-matiere">
+                                                            {{ $seance->matiere->name ?? 'Matière' }}
+                                                        </div>
+                                                        <div class="session-enseignant">
+                                                            {{ $seance->enseignant_nom ?? 'Enseignant' }}
+                                                        </div>
+                                                        <div class="session-details">
+                                                            {{ ucfirst($seance->type ?? 'Cours') }}
+                                                            @if($seance->salle)
+                                                                - {{ $seance->salle }}
+                                                            @endif
+                                                        </div>
+                                                    </div>
+                                                @endif
+                                            </td>
+                                        @endforeach
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
+</div>
+@if(!isset($date_edition))
+@endsection
+
+@push('scripts')
+<script>
+// Gérer l'impression
+window.addEventListener('beforeprint', function() {
+    document.body.classList.add('printing');
+});
+
+window.addEventListener('afterprint', function() {
+    document.body.classList.remove('printing');
+});
+</script>
+@endpush
+@else
 </body>
 </html>
+@endif
