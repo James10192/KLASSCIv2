@@ -4,6 +4,82 @@
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<style>
+/* SPINNER ISOLÉ POUR RESULTATS - Force tous les styles */
+.resultats-spinner {
+    position: relative !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    min-height: 200px !important;
+    text-align: center !important;
+    padding: 40px !important;
+}
+
+.resultats-spinner.hidden {
+    display: none !important;
+}
+
+.resultats-spinner-icon {
+    display: block !important;
+    margin-bottom: 20px !important;
+    text-align: center !important;
+}
+
+.resultats-spinner-icon i {
+    font-size: 48px !important;
+    color: #3b82f6 !important;
+    animation: resultats-spin 1s linear infinite !important;
+    transform-origin: center center !important;
+}
+
+.resultats-spinner-text {
+    display: block !important;
+    position: static !important;
+    animation: none !important;
+    transform: none !important;
+    color: #64748b !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 14px !important;
+    font-weight: normal !important;
+    text-align: center !important;
+}
+
+@keyframes resultats-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Container pour le contenu */
+.content-container {
+    width: 100% !important;
+    min-height: 200px;
+}
+
+/* S'assurer que les tables prennent toute la largeur */
+.content-container .table-responsive {
+    width: 100% !important;
+    margin: 0;
+}
+
+.content-container .table-responsive table {
+    width: 100% !important;
+    margin: 0;
+}
+
+/* État d'erreur */
+.error-state {
+    width: 100% !important;
+    min-height: 200px;
+}
+
+.error-state.hidden {
+    display: none !important;
+}
+</style>
 @endsection
 
 @section('content')
@@ -200,15 +276,12 @@
             <div class="main-card-body">
                 {{-- Nouveau système lazy loading --}}
                 @if(isset($classe_id) || isset($annee_universitaire_id))
-                    {{-- Spinner de chargement initial --}}
-                    <div class="loading-spinner text-center py-5" id="initial-spinner">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Chargement...</span>
+                    {{-- Spinner de chargement initial avec structure identique aux reinscriptions --}}
+                    <div class="resultats-spinner" id="initial-spinner">
+                        <div class="resultats-spinner-icon">
+                            <i class="fas fa-spinner"></i>
                         </div>
-                        <div class="mt-3">
-                            <h5 class="text-muted">Chargement des résultats</h5>
-                            <p class="text-muted">Récupération des données étudiants...</p>
-                        </div>
+                        <div class="resultats-spinner-text">Chargement des résultats...</div>
                     </div>
 
                     {{-- Container pour le contenu lazy-loadé --}}
@@ -217,7 +290,7 @@
                     </div>
 
                     {{-- Message d'erreur en cas d'échec --}}
-                    <div class="error-state text-center py-5" id="error-state" style="display: none;">
+                    <div class="error-state text-center py-5 hidden" id="error-state">
                         <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
                         <h5 class="text-muted">Erreur de chargement</h5>
                         <p class="text-muted">Une erreur est survenue lors du chargement des résultats.</p>
@@ -317,19 +390,39 @@ $(document).ready(function() {
                 include_all_statuses: include_all_statuses
             },
             success: function(response) {
-                $('#initial-spinner').hide();
-                $('#error-state').hide();
+                // Masquer le spinner avec la même méthode que les reinscriptions
+                $('#initial-spinner').addClass('hidden');
+                $('#error-state').addClass('hidden');
                 
                 if (page === 1) {
                     // Page 1: Remplacer tout le contenu
-                    $('#results-container').html(response.html);
+                    if (response.total === 0) {
+                        const emptyHtml = `
+                            <div class="text-center py-5">
+                                <div class="mb-3">
+                                    <i class="fas fa-info-circle fa-3x text-muted"></i>
+                                </div>
+                                <h5 class="text-muted">Aucun étudiant trouvé</h5>
+                                <p class="text-muted">Aucun étudiant ne correspond aux critères sélectionnés.</p>
+                            </div>
+                        `;
+                        $('#results-container').html(emptyHtml);
+                    } else {
+                        $('#results-container').html(response.html);
+                    }
                 } else {
                     // Pages suivantes: Ajouter les TR au tableau existant
                     const newRows = $(response.html);
                     $('#results-container tbody').append(newRows);
                 }
                 
+                // Forcer l'affichage du container avec la même approche que reinscriptions
                 $('#results-container').show();
+                $('#results-container').css({
+                    'display': 'block !important',
+                    'width': '100% !important',
+                    'visibility': 'visible !important'
+                });
                 
                 // Mettre à jour le bouton "Charger plus"
                 updateLoadMoreButton(response);
@@ -375,15 +468,15 @@ $(document).ready(function() {
 
     // Fonction pour afficher l'état d'erreur
     function showErrorState() {
-        $('#initial-spinner').hide();
+        $('#initial-spinner').addClass('hidden');
         $('#results-container').hide();
-        $('#error-state').show();
+        $('#error-state').removeClass('hidden');
     }
 
     // Fonction pour recharger les résultats
     window.reloadResults = function() {
-        $('#error-state').hide();
-        $('#initial-spinner').show();
+        $('#error-state').addClass('hidden');
+        $('#initial-spinner').removeClass('hidden');
         currentPage = 1;
         loadEtudiants(1);
     };
