@@ -322,6 +322,34 @@
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-city text-primary"></i>
+                            Ville
+                        </label>
+                        <input type="text" class="form-control form-control-modern @error('setting_school_city') is-invalid @enderror"
+                               name="setting_school_city"
+                               value="{{ old('setting_school_city', \App\Helpers\SettingsHelper::get('school_city', '')) }}"
+                               placeholder="Ex: Yamoussoukro">
+                        @error('setting_school_city')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-flag text-primary"></i>
+                            Pays
+                        </label>
+                        <input type="text" class="form-control form-control-modern @error('setting_school_country') is-invalid @enderror"
+                               name="setting_school_country"
+                               value="{{ old('setting_school_country', \App\Helpers\SettingsHelper::get('school_country', '')) }}"
+                               placeholder="Ex: Côte d'Ivoire">
+                        @error('setting_school_country')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
                 </div>
             </div>
 
