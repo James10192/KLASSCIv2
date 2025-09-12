@@ -1614,14 +1614,9 @@ class ESBTPBulletinController extends Controller
             }
         }
 
-        // DEBUG: Forcer des moyennes de test si aucune n'a été calculée
-        if (empty($moyennes) && !empty($etudiants)) {
-            \Log::emergency('FORCING TEST MOYENNES - calculateStudentStatsFixed pas appelée ou échouée');
-            $moyennes = [15 => 8.33, 2 => 5.00, 7 => 0.00]; // IDs des étudiants avec notes
-            $rangs = [15 => 1, 2 => 2, 7 => 3];
-        }
+        // Les moyennes et rangs sont maintenant calculés uniquement à partir de vraies données
         
-        \Log::emergency('FINAL CHECK - etudiants: ' . count($etudiants) . ', moyennes: ' . count($moyennes) . ', notes: ' . count($notes));
+        \Log::info('Résultats calculés - etudiants: ' . count($etudiants) . ', moyennes: ' . count($moyennes) . ', notes: ' . count($notes));
 
         return view('esbtp.resultats.index', compact(
             'classes',
@@ -1709,8 +1704,7 @@ class ESBTPBulletinController extends Controller
      */
     private function calculateStudentStatsFixed($etudiants, $notes, &$moyennes, &$rangs)
     {
-        \Log::emergency('=== CALCULATESTUDENTSTATSFIXED APPELÉE ===');
-        \Log::emergency('Étudiants: ' . count($etudiants) . ', Notes: ' . count($notes));
+        \Log::info('Calcul des statistiques étudiants - Étudiants: ' . count($etudiants) . ', Notes: ' . count($notes));
         \Log::info('Début du calcul des moyennes (logique corrigée) pour ' . count($etudiants) . ' étudiants avec ' . count($notes) . ' notes');
 
         // Group notes by student and matière - using the same logic as resultatEtudiant
