@@ -488,6 +488,14 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->name('emploi-temps.export-pdf')
                 ->middleware(['permission:view_timetables']);
 
+            // Routes pour la gestion des séances d'emploi du temps
+            Route::get('emploi-temps/{emploi_temp}/add-session', [ESBTPEmploiTempsController::class, 'addSession'])
+                ->name('emploi-temps.add-session')
+                ->middleware(['permission:edit_timetables']);
+            Route::post('emploi-temps/{emploi_temp}/store-session', [ESBTPEmploiTempsController::class, 'storeSession'])
+                ->name('emploi-temps.store-session')
+                ->middleware(['permission:edit_timetables']);
+
             // Routes pour les emplois du temps standards (TimetableController)
             Route::resource('timetables', TimetableController::class)
                 ->middleware(['permission:view_timetables|create_timetable|edit_timetables|delete_timetables']);
@@ -819,11 +827,6 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             // Route de suppression des emplois du temps - Handled by resource route
         });
 
-        // Emploi du temps routes
-        Route::get('/emploi-temps/{emploi_temp}/add-session', [ESBTPEmploiTempsController::class, 'addSession'])
-            ->name('esbtp.emploi-temps.add-session');
-        Route::post('/emploi-temps/{emploi_temp}/store-session', [ESBTPEmploiTempsController::class, 'storeSession'])
-            ->name('esbtp.emploi-temps.store-session');
 
         // Teachers routes
         Route::resource('teachers', TeacherAdminController::class);
