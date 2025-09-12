@@ -338,6 +338,7 @@ $(document).ready(function() {
     // Variables pour le lazy loading
     let currentPage = 1;
     let isLoading = false;
+    let totalLoadedStudents = 0; // Compteur du nombre total d'étudiants déjà chargés
 
     // Auto-select academic year when class is selected
     $('#classe_id').change(function() {
@@ -374,6 +375,11 @@ $(document).ready(function() {
             return;
         }
 
+        // Réinitialiser le compteur pour la première page
+        if (page === 1) {
+            totalLoadedStudents = 0;
+        }
+
         isLoading = true;
         
         const ajaxUrl = '{{ route("esbtp.resultats.load-etudiants") }}';
@@ -407,13 +413,16 @@ $(document).ready(function() {
                             </div>
                         `;
                         $('#results-container').html(emptyHtml);
+                        totalLoadedStudents = 0;
                     } else {
                         $('#results-container').html(response.html);
+                        totalLoadedStudents = response.loaded_count; // Initialiser le compteur
                     }
                 } else {
                     // Pages suivantes: Ajouter les TR au tableau existant
                     const newRows = $(response.html);
                     $('#results-container tbody').append(newRows);
+                    totalLoadedStudents += response.loaded_count; // Ajouter au compteur
                 }
                 
                 // Forcer l'affichage du container avec la même approche que reinscriptions
@@ -449,10 +458,11 @@ $(document).ready(function() {
         
         if (response.has_more) {
             const nextPage = response.current_page + 1;
+            const remainingStudents = response.total - totalLoadedStudents;
             const loadMoreHtml = `
                 <div class="load-more-container" style="text-align: center; margin: 20px 0;">
                     <button class="btn btn-primary" onclick="loadMore(${nextPage})" style="padding: 12px 24px; border-radius: 8px;">
-                        <i class="fas fa-plus"></i> Charger plus d'étudiants (${response.loaded_count}/${response.total})
+                        <i class="fas fa-plus"></i> Charger plus d'étudiants (${totalLoadedStudents}/${response.total} - ${remainingStudents} restants)
                     </button>
                 </div>
             `;
@@ -478,6 +488,7 @@ $(document).ready(function() {
         $('#error-state').addClass('hidden');
         $('#initial-spinner').removeClass('hidden');
         currentPage = 1;
+        totalLoadedStudents = 0; // Réinitialiser le compteur
         loadEtudiants(1);
     };
 
