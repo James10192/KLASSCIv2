@@ -31,7 +31,13 @@
                     </div>
                     <div class="info-item">
                         <label>Année</label>
-                        <span>{{ isset($anneeUniversitaire) ? $anneeUniversitaire->name : 'N/A' }}</span>
+                        <span>
+                            @if(isset($anneeUniversitaire))
+                                {{ $anneeUniversitaire->annee_debut }}-{{ $anneeUniversitaire->annee_fin }}
+                            @else
+                                N/A
+                            @endif
+                        </span>
                     </div>
                 </div>
             </div>

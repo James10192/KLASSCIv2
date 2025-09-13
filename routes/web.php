@@ -535,7 +535,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->name('resultats.etudiant')
                 ->middleware(['permission:view_own_bulletin|view_bulletins']);
             
-            Route::get('resultats/etudiant/{etudiant}/preview', [ESBTPBulletinController::class, 'previewBulletinEtudiant'])
+            Route::get('resultats/etudiant/{etudiant}/preview', [ESBTPBulletinController::class, 'previewBulletinEtudiantNew'])
                 ->name('resultats.etudiant.preview')
                 ->middleware(['permission:view_own_bulletin|view_bulletins']);
                 
@@ -791,6 +791,10 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
             Route::get('/mon-bulletin', [ESBTPBulletinController::class, 'studentBulletins'])
                 ->name('mon-bulletin.index')
+                ->middleware(['permission:view_own_bulletin|view_bulletins']);
+
+            Route::get('/mon-bulletin/{bulletinId}', [ESBTPBulletinController::class, 'showStudentBulletin'])
+                ->name('mon-bulletin.show')
                 ->middleware(['permission:view_own_bulletin|view_bulletins']);
 
             // Route pour accéder à la page des absences
@@ -1528,7 +1532,7 @@ Route::get('/debug-permissions', function () {
 
 // Routes spéciales pour le workflow des bulletins (copiées exactement du GitHub)
 // Route spéciale pour la génération de PDF de bulletins - placée ici pour éviter les conflits
-Route::get('/esbtp-special/bulletins-pdf', [ESBTPBulletinController::class, 'genererPDFParParams'])->name('esbtp.bulletins.pdf-params');
+Route::get('/esbtp-special/bulletins-pdf', [ESBTPBulletinController::class, 'genererPDFParParamsUnified'])->name('esbtp.bulletins.pdf-params');
 
 // Route pour prévisualiser le bulletin avant génération PDF
 Route::get('/esbtp/bulletins/preview', [ESBTPBulletinController::class, 'previewBulletin'])->name('esbtp.bulletins.preview');

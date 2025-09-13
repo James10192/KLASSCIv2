@@ -39,10 +39,12 @@ use App\Helpers\SettingsHelper;
 class ESBTPBulletinController extends Controller
 {
     protected $absenceService;
+    protected $bulletinService;
 
-    public function __construct(ESBTPAbsenceService $absenceService)
+    public function __construct(ESBTPAbsenceService $absenceService, \App\Services\BulletinService $bulletinService)
     {
         $this->absenceService = $absenceService;
+        $this->bulletinService = $bulletinService;
     }
 
     /**
@@ -2185,65 +2187,83 @@ class ESBTPBulletinController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // Pour chaque bulletin, récupérer les résultats correspondants
+        // Pour chaque bulletin, calculer les données via le BulletinService si nécessaire
         foreach ($bulletins as $bulletin) {
-            // Récupérer les résultats de l'étudiant pour cette période
-            $resultats = ESBTPResultat::where([
-                'etudiant_id' => $etudiant->id,
-                'classe_id' => $bulletin->classe_id,
-                'periode' => $bulletin->periode,
-                'annee_universitaire_id' => $bulletin->annee_universitaire_id
-            ])->get();
+            try {
+                // Utiliser le BulletinService pour obtenir les vraies données
+                $donnees = $this->bulletinService->genererDonneesBulletin(
+                    $etudiant->id,
+                    $bulletin->classe_id,
+                    $bulletin->annee_universitaire_id,
+                    $bulletin->periode
+                );
 
-            // Calculer la moyenne générale
-            $sommePoints = 0;
-            $sommeCoefficients = 0;
+                $bulletin->moyenne_generale = $donnees['moyenneAvecAssiduite'];
+                $bulletin->rang = $donnees['rang'];
+                $bulletin->effectif_classe = $donnees['effectif'];
+                $bulletin->mention = $donnees['appreciation'];
 
-            foreach ($resultats as $resultat) {
-                $sommePoints += $resultat->moyenne * $resultat->coefficient;
-                $sommeCoefficients += $resultat->coefficient;
-            }
-
-            $moyenneGenerale = $sommeCoefficients > 0 ? $sommePoints / $sommeCoefficients : 0;
-            $bulletin->moyenne_generale = round($moyenneGenerale, 2);
-
-            // Calculer le rang de l'étudiant
-            $autresResultats = ESBTPResultat::where([
-                'classe_id' => $bulletin->classe_id,
-                'periode' => $bulletin->periode,
-                'annee_universitaire_id' => $bulletin->annee_universitaire_id
-            ])
-            ->select('etudiant_id')
-            ->selectRaw('SUM(moyenne * coefficient) / SUM(coefficient) as moyenne_generale')
-            ->groupBy('etudiant_id')
-            ->orderByDesc('moyenne_generale')
-            ->get();
-
-            $rang = 1;
-            foreach ($autresResultats as $autre) {
-                if ($autre->etudiant_id == $etudiant->id) {
-                    $bulletin->rang = $rang;
-                    break;
-                }
-                $rang++;
-            }
-            $bulletin->effectif_classe = $autresResultats->count();
-
-            // Déterminer la mention
-            if ($moyenneGenerale >= 16) {
-                $bulletin->mention = 'Très Bien';
-            } elseif ($moyenneGenerale >= 14) {
-                $bulletin->mention = 'Bien';
-            } elseif ($moyenneGenerale >= 12) {
-                $bulletin->mention = 'Assez Bien';
-            } elseif ($moyenneGenerale >= 10) {
-                $bulletin->mention = 'Passable';
-            } else {
-                $bulletin->mention = 'Insuffisant';
+            } catch (\Exception $e) {
+                // Si le bulletin n'est pas encore configuré, on garde les données par défaut
+                $bulletin->moyenne_generale = null;
+                $bulletin->rang = null;
+                $bulletin->effectif_classe = null;
+                $bulletin->mention = 'Non disponible';
             }
         }
 
-        return view('etudiants.bulletins', compact('bulletins', 'etudiant'));
+        return view('esbtp.bulletins.mon-bulletin', compact('bulletins', 'etudiant'));
+    }
+
+    /**
+     * Affiche un bulletin spécifique de l'étudiant connecté
+     */
+    public function showStudentBulletin($bulletinId)
+    {
+        $user = Auth::user();
+        $etudiant = ESBTPEtudiant::where('user_id', $user->id)->first();
+
+        if (!$etudiant) {
+            return redirect()->route('dashboard')->with('error', 'Profil étudiant non trouvé.');
+        }
+
+        // Récupérer le bulletin en s'assurant qu'il appartient à l'étudiant connecté
+        $bulletin = ESBTPBulletin::where('id', $bulletinId)
+            ->where('etudiant_id', $etudiant->id)
+            ->with(['classe', 'anneeUniversitaire'])
+            ->first();
+
+        if (!$bulletin) {
+            return redirect()->route('mon-bulletin.index')->with('error', 'Bulletin non trouvé ou non autorisé.');
+        }
+
+        try {
+            // Utiliser le BulletinService unifié pour générer les données
+            $donnees = $this->bulletinService->genererDonneesBulletin(
+                $etudiant->id,
+                $bulletin->classe_id,
+                $bulletin->annee_universitaire_id,
+                $bulletin->periode
+            );
+
+            // Ajouter le logo pour l'affichage
+            $config = $this->getPDFConfig();
+            $logoBase64 = $this->prepareLogoBase64($config['school_logo']);
+            $donnees['logoBase64'] = $logoBase64;
+
+            // Utiliser exactement le même template que la preview admin
+            return view('esbtp.bulletins.pdf-configurable', $donnees);
+
+        } catch (\Exception $e) {
+            // Gestion des erreurs de configuration
+            if (str_contains($e->getMessage(), 'Configuration bulletin manquante')) {
+                return redirect()->route('mon-bulletin.index')
+                    ->with('error', 'Ce bulletin n\'est pas encore configuré ou disponible.');
+            }
+            
+            return redirect()->route('mon-bulletin.index')
+                ->with('error', 'Erreur lors de l\'affichage du bulletin : ' . $e->getMessage());
+        }
     }
 
     /**
@@ -2550,6 +2570,8 @@ class ESBTPBulletinController extends Controller
 
         $classe_id = $inscription->classe_id ?? $request->classe_id ?? null;
         $classe = $classe_id ? ESBTPClasse::with('filiere')->find($classe_id) : null;
+        // Get the academic year object for display
+        $anneeUniversitaire = ESBTPAnneeUniversitaire::find($annee_universitaire_id);
         // Get all active classes for the filter dropdown
         $classes = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
         $anneesUniversitaires = ESBTPAnneeUniversitaire::orderBy('annee_debut', 'desc')->get();
@@ -2683,6 +2705,65 @@ class ESBTPBulletinController extends Controller
         // Calculate the overall moyenne générale
         $moyenneGenerale = $countValidMatieres > 0 ? $moyenneGenerale / $countValidMatieres : 0;
 
+        // NOUVELLE LOGIQUE: Intégrer les moyennes manuelles depuis esbtp_resultats (même logique que previewMoyennes)
+        $resultats = \App\Models\ESBTPResultat::where('etudiant_id', $id)
+            ->when($classe_id, function($query) use ($classe_id) {
+                return $query->where('classe_id', $classe_id);
+            })
+            ->when($periode, function($query) use ($periode) {
+                return $query->where('periode', $periode);
+            })
+            ->when($annee_universitaire_id, function($query) use ($annee_universitaire_id) {
+                return $query->where('annee_universitaire_id', $annee_universitaire_id);
+            })
+            ->with('matiere')
+            ->get();
+
+        // Intégrer les moyennes manuelles (elles l'emportent sur les calculées - priorité Manuel)
+        $moyenneGeneraleRecalculee = 0;
+        $countMatieresFinales = 0;
+        
+        foreach ($resultats as $resultat) {
+            if (!$resultat->matiere) continue;
+            
+            $matiere_id = $resultat->matiere_id;
+            
+            // Si la matière n'existe pas encore dans notesByMatiere, la créer
+            if (!isset($notesByMatiere[$matiere_id])) {
+                $notesByMatiere[$matiere_id] = [
+                    'matiere' => $resultat->matiere,
+                    'notes' => [],
+                    'calculations' => [],
+                    'total_points' => 0,
+                    'total_coefficients' => $resultat->coefficient,
+                    'moyenne' => 0
+                ];
+            }
+            
+            // Les moyennes manuelles écrasent toujours les calculées
+            $notesByMatiere[$matiere_id]['moyenne'] = $resultat->moyenne;
+            $notesByMatiere[$matiere_id]['source'] = 'manuelle';
+            $notesByMatiere[$matiere_id]['total_coefficients'] = $resultat->coefficient;
+        }
+        
+        // Marquer les moyennes calculées qui n'ont pas été écrasées
+        foreach ($notesByMatiere as $matiere_id => &$matiereData) {
+            if (!isset($matiereData['source'])) {
+                $matiereData['source'] = 'calculee';
+            }
+        }
+        
+        // Recalculer la moyenne générale avec toutes les matières (Auto + Manuel)
+        $moyenneGeneraleRecalculee = 0;
+        $countMatieresFinales = 0;
+        foreach ($notesByMatiere as $matiere_id => $matiereData) {
+            if ($matiereData['moyenne'] > 0) {
+                $moyenneGeneraleRecalculee += $matiereData['moyenne'];
+                $countMatieresFinales++;
+            }
+        }
+        $moyenneGenerale = $countMatieresFinales > 0 ? $moyenneGeneraleRecalculee / $countMatieresFinales : 0;
+
         \Log::info('Student Result Calculations', [
             'student_id' => $id,
             'matieres_count' => count($notesByMatiere),
@@ -2693,6 +2774,7 @@ class ESBTPBulletinController extends Controller
         return view('esbtp.resultats.etudiant', compact(
             'etudiant',
             'classe',
+            'anneeUniversitaire',
             'notes',
             'notesByMatiere',
             'moyenneGenerale',
@@ -2736,6 +2818,12 @@ class ESBTPBulletinController extends Controller
             $classe = ESBTPClasse::with(['filiere', 'niveauEtude'])->findOrFail($request->classe);
             $anneeUniversitaire = ESBTPAnneeUniversitaire::findOrFail($request->annee);
 
+            // Essayer de récupérer un bulletin existant pour avoir les configurations
+            $bulletin = ESBTPBulletin::where('etudiant_id', $etudiant->id)
+                ->where('classe_id', $classe->id)
+                ->where('annee_universitaire_id', $anneeUniversitaire->id)
+                ->first();
+
             // Récupérer les matières de la classe via la relation pivot
             $matieres = $classe->matieres()
                 ->where('esbtp_matieres.is_active', true)
@@ -2769,8 +2857,8 @@ class ESBTPBulletinController extends Controller
                 $notesParEvaluation[$evaluationId] = $note->note;
             }
 
-            // Calculer les moyennes par matière avec pondération
-            $moyennesMatiere = [];
+            // Calculer les moyennes par matière avec pondération (automatiques)
+            $moyennesAutomatiques = [];
             foreach ($matieres as $matiere) {
                 if (isset($evaluationsParMatiere[$matiere->id])) {
                     $evaluationsMatiere = $evaluationsParMatiere[$matiere->id];
@@ -2784,15 +2872,49 @@ class ESBTPBulletinController extends Controller
                         }
                     }
                     
-                    $moyennesMatiere[$matiere->id] = $totalCoeffs > 0 ? $totalPoints / $totalCoeffs : 0;
+                    $moyennesAutomatiques[$matiere->id] = $totalCoeffs > 0 ? $totalPoints / $totalCoeffs : 0;
                 } else {
-                    $moyennesMatiere[$matiere->id] = 0;
+                    $moyennesAutomatiques[$matiere->id] = 0;
                 }
             }
 
-            // Préparer le logo
+            // NOUVELLE LOGIQUE: Intégrer les moyennes manuelles (priorité Manuel l'emporte)
+            $resultats = \App\Models\ESBTPResultat::where('etudiant_id', $etudiant->id)
+                ->where('classe_id', $classe->id)
+                ->where('annee_universitaire_id', $anneeUniversitaire->id)
+                ->with('matiere')
+                ->get();
+
+            // Commencer avec les moyennes automatiques
+            $moyennesMatiere = $moyennesAutomatiques;
+            
+            // Écraser avec les moyennes manuelles (elles l'emportent toujours)
+            foreach ($resultats as $resultat) {
+                if ($resultat->matiere) {
+                    $moyennesMatiere[$resultat->matiere_id] = $resultat->moyenne;
+                }
+            }
+
+            // Récupérer les configurations si le bulletin existe
+            $configMatieres = [];
+            $professeurs = [];
+            if ($bulletin) {
+                $configMatieres = json_decode($bulletin->config_matieres, true) ?: [];
+                $professeurs = json_decode($bulletin->professeurs, true) ?: [];
+            }
+
+            // Préparer le logo et configuration PDF
             $logoBase64 = null;
             $config = $this->getPDFConfig();
+            $schoolInfo = [
+                'name' => $config['school_name'],
+                'address' => $config['school_address'],
+                'phone' => $config['school_phone'],
+                'email' => $config['school_email'],
+                'city' => $config['school_city'],
+                'country' => $config['school_country'],
+                'logo' => null
+            ];
             if (!empty($config['school_logo'])) {
                 $logoPath = $config['school_logo'];
                 $fullPath = public_path($logoPath);
@@ -2801,6 +2923,7 @@ class ESBTPBulletinController extends Controller
                     $logoType = pathinfo($fullPath, PATHINFO_EXTENSION);
                     $logoData = file_get_contents($fullPath);
                     $logoBase64 = base64_encode($logoData);
+                    $schoolInfo['logo'] = $config['school_logo'];
                 }
             }
 
@@ -2816,6 +2939,11 @@ class ESBTPBulletinController extends Controller
                 'evaluationsParMatiere',
                 'notesParEvaluation',
                 'moyennesMatiere',
+                'configMatieres',
+                'professeurs',
+                'bulletin',
+                'config',
+                'schoolInfo',
                 'logoBase64',
                 'totalEtudiants'
             ));
@@ -2829,7 +2957,51 @@ class ESBTPBulletinController extends Controller
     /**
      * Prévisualise le bulletin depuis la page résultats étudiant
      */
-    public function previewBulletinEtudiant(Request $request, $etudiantId)
+    public function previewBulletinEtudiantNew(Request $request, $etudiantId)
+    {
+        try {
+            // Validation des paramètres
+            $validator = Validator::make($request->all(), [
+                'classe_id' => 'required|exists:esbtp_classes,id',
+                'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id'
+            ]);
+
+            if ($validator->fails()) {
+                return redirect()->back()->withErrors($validator)->withInput();
+            }
+
+            // Utiliser le service pour générer les données
+            $donnees = $this->bulletinService->genererDonneesBulletin(
+                $etudiantId,
+                $request->classe_id,
+                $request->annee_universitaire_id,
+                'semestre1'
+            );
+
+            // Préparer le logo
+            $config = $this->getPDFConfig();
+            $logoBase64 = $this->prepareLogoBase64($config['school_logo']);
+            $donnees['logoBase64'] = $logoBase64;
+
+            return view('esbtp.bulletins.pdf-configurable', $donnees);
+
+        } catch (\Exception $e) {
+            if (str_contains($e->getMessage(), 'Configuration bulletin manquante')) {
+                $configMatieresUrl = route('esbtp.bulletins.config-matieres', [
+                    'classe_id' => $request->classe_id,
+                    'periode' => 'semestre1',
+                    'annee_universitaire_id' => $request->annee_universitaire_id,
+                    'bulletin' => $etudiantId
+                ]);
+                
+                return redirect($configMatieresUrl)->with('error', $e->getMessage());
+            }
+            
+            return redirect()->back()->with('error', 'Erreur lors de la génération de la preview : ' . $e->getMessage());
+        }
+    }
+
+    public function previewBulletinEtudiantOld(Request $request, $etudiantId)
     {
         try {
             // Validation des paramètres
@@ -2950,7 +3122,7 @@ class ESBTPBulletinController extends Controller
                 }
             }
 
-            // Calculer les moyennes pondérées pour chaque matière
+            // Calculer les moyennes pondérées pour chaque matière (automatiques)
             foreach ($resultatsParMatiere as $matiereId => $resultat) {
                 $totalPoints = 0;
                 $totalCoeffs = 0;
@@ -2962,6 +3134,56 @@ class ESBTPBulletinController extends Controller
                 
                 $resultat->moyenne = $totalCoeffs > 0 ? $totalPoints / $totalCoeffs : 0;
                 $resultat->appreciation = $this->getAppreciation($resultat->moyenne);
+            }
+
+            // NOUVELLE LOGIQUE: Intégrer les moyennes manuelles (priorité Manuel l'emporte)
+            $resultats = \App\Models\ESBTPResultat::where('etudiant_id', $etudiantId)
+                ->where('classe_id', $request->classe_id)
+                ->where('annee_universitaire_id', $request->annee_universitaire_id)
+                ->with('matiere')
+                ->get();
+
+            // Ajouter les matières qui ont seulement des moyennes manuelles (sans évaluations)
+            foreach ($resultats as $resultatManuel) {
+                $matiereId = $resultatManuel->matiere_id;
+                
+                if ($resultatManuel->matiere) {
+                    // Si la matière n'existe pas encore dans les résultats, l'ajouter
+                    if (!isset($resultatsParMatiere[$matiereId])) {
+                        // Déterminer le type selon la configuration du bulletin
+                        if (in_array($matiereId, $configMatieres['generales'] ?? [])) {
+                            $typeFormation = 'generale';
+                        } elseif (in_array($matiereId, $configMatieres['techniques'] ?? [])) {
+                            $typeFormation = 'technologique_professionnelle';
+                        } else {
+                            $typeFormation = 'generale'; // Par défaut
+                        }
+                        
+                        $resultatsParMatiere[$matiereId] = (object)[
+                            'id' => $matiereId,
+                            'matiere_id' => $matiereId,
+                            'matiere' => $resultatManuel->matiere,
+                            'notes' => [],
+                            'moyenne' => $resultatManuel->moyenne,
+                            'coefficient' => $resultatManuel->coefficient ?: $this->getCoefficient($resultatManuel->matiere),
+                            'rang' => '-',
+                            'appreciation' => $resultatManuel->appreciation ?: $this->getAppreciation($resultatManuel->moyenne),
+                            'type_formation' => $typeFormation
+                        ];
+                        
+                        // Configurer le professeur si disponible
+                        if (!isset($professeurs[$matiereId])) {
+                            $professeurs[$matiereId] = $professeursConfigures[$matiereId] ?? '';
+                        }
+                    } else {
+                        // Écraser avec les moyennes manuelles (elles l'emportent toujours)
+                        $resultatsParMatiere[$matiereId]->moyenne = $resultatManuel->moyenne;
+                        $resultatsParMatiere[$matiereId]->appreciation = $resultatManuel->appreciation ?: $this->getAppreciation($resultatManuel->moyenne);
+                        if ($resultatManuel->coefficient) {
+                            $resultatsParMatiere[$matiereId]->coefficient = $resultatManuel->coefficient;
+                        }
+                    }
+                }
             }
 
             // Séparer par type d'enseignement
@@ -3153,6 +3375,72 @@ class ESBTPBulletinController extends Controller
         }
     }
     
+    public function genererPDFParParamsUnified(Request $request)
+    {
+        try {
+            // Vérifier que l'utilisateur est autorisé
+            if (!Auth::check() || !Auth::user()->hasRole('superAdmin')) {
+                return redirect()->route('dashboard')->with('error', 'Accès non autorisé. Seul un SuperAdmin peut générer des bulletins.');
+            }
+
+            // Récupérer les paramètres
+            $classe_id = $request->classe_id;
+            $etudiant_id = $request->etudiant_id ?? $request->bulletin;
+            $periode = $request->periode ?? 'semestre1';
+            $annee_universitaire_id = $request->annee_universitaire_id;
+
+            // Utiliser le BulletinService unifié pour générer les données
+            $donnees = $this->bulletinService->genererDonneesBulletin(
+                $etudiant_id,
+                $classe_id,
+                $annee_universitaire_id,
+                $periode
+            );
+
+            // Ajouter le logo pour le PDF
+            $config = $this->getPDFConfig();
+            $logoBase64 = $this->prepareLogoBase64($config['school_logo']);
+            $donnees['logoBase64'] = $logoBase64;
+            
+            // Indiquer que c'est un export PDF pour cacher les éléments web
+            $donnees['isPdfExport'] = true;
+
+            // Générer le PDF avec le template unifié
+            $pdf = PDF::loadView('esbtp.bulletins.pdf-configurable', $donnees);
+            $pdf->setPaper('a4', 'portrait');
+            $pdf->setOptions([
+                'dpi' => 150, 
+                'defaultFont' => 'DejaVu Sans',
+                'isPhpEnabled' => true,
+                'chroot' => public_path()
+            ]);
+
+            // Nom du fichier PDF
+            $filename = 'bulletin_' .
+                        ($donnees['etudiant']->matricule ?? 'unknown') . '_' .
+                        ($donnees['classe']->code ?? 'unknown') . '_' .
+                        $periode . '_' .
+                        ($donnees['anneeUniversitaire']->libelle ?? 'unknown') . '.pdf';
+
+            return $pdf->download($filename);
+
+        } catch (\Exception $e) {
+            // Gestion des erreurs de configuration
+            if (str_contains($e->getMessage(), 'Configuration bulletin manquante')) {
+                $configMatieresUrl = route('esbtp.bulletins.config-matieres', [
+                    'classe_id' => $request->classe_id,
+                    'periode' => $request->periode ?? 'semestre1',
+                    'annee_universitaire_id' => $request->annee_universitaire_id,
+                    'bulletin' => $request->etudiant_id ?? $request->bulletin
+                ]);
+                
+                return redirect($configMatieresUrl)->with('error', $e->getMessage());
+            }
+            
+            return back()->with('error', 'Erreur lors de la génération du PDF : ' . $e->getMessage());
+        }
+    }
+
     public function genererPDFParParams(Request $request)
     {
         try {
@@ -3165,7 +3453,7 @@ class ESBTPBulletinController extends Controller
             $classe_id = $request->classe_id;
             // Récupérer etudiant_id soit depuis etudiant_id, soit depuis bulletin
             $etudiant_id = $request->etudiant_id ?? $request->bulletin;
-            $periode = $request->periode;
+            $periode = $request->periode ?? 'semestre1';
             $annee_universitaire_id = $request->annee_universitaire_id;
 
             // Journaliser les paramètres pour le débogage
@@ -4089,25 +4377,42 @@ class ESBTPBulletinController extends Controller
             return redirect()->back()->with('error', 'Vous n\'avez pas les permissions nécessaires pour modifier les moyennes.');
         }
 
+        // Validation basique des paramètres requis
         $request->validate([
             'etudiant_id' => 'required|exists:esbtp_etudiants,id',
             'classe_id' => 'required|exists:esbtp_classes,id',
             'periode' => 'required',
             'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
-            'resultats' => 'required|array',
-            'resultats.*.matiere_id' => 'required|exists:esbtp_matieres,id',
-            'resultats.*.moyenne' => 'required|numeric|min:0|max:20',
-            'resultats.*.coefficient' => 'required|numeric|min:0',
-            'resultats.*.appreciation' => 'nullable|string|max:255',
-            // Validation pour les nouvelles matières (optionnelles)
-            'nouvelles_matieres' => 'nullable|array',
-            'nouvelles_matieres.*.matiere_type' => 'required_with:nouvelles_matieres|string|in:existante,nouvelle',
-            'nouvelles_matieres.*.matiere_existante_id' => 'required_if:nouvelles_matieres.*.matiere_type,existante|nullable|exists:esbtp_matieres,id',
-            'nouvelles_matieres.*.nom_nouvelle' => 'required_if:nouvelles_matieres.*.matiere_type,nouvelle|nullable|string|max:255',
-            'nouvelles_matieres.*.moyenne' => 'required_with:nouvelles_matieres|numeric|min:0|max:20',
-            'nouvelles_matieres.*.coefficient' => 'required_with:nouvelles_matieres|numeric|min:0',
-            'nouvelles_matieres.*.appreciation' => 'nullable|string|max:255'
         ]);
+
+        // Validation conditionnelle: au moins l'un des deux doit être présent
+        if (!$request->has('resultats') && !$request->has('nouvelles_matieres')) {
+            return redirect()->back()->with('error', 'Aucune donnée à traiter. Veuillez modifier au moins une moyenne ou ajouter une nouvelle matière.');
+        }
+
+        // Validation des résultats existants si présents
+        if ($request->has('resultats') && is_array($request->resultats)) {
+            $request->validate([
+                'resultats' => 'array',
+                'resultats.*.matiere_id' => 'required|exists:esbtp_matieres,id',
+                'resultats.*.moyenne' => 'required|numeric|min:0|max:20',
+                'resultats.*.coefficient' => 'required|numeric|min:0',
+                'resultats.*.appreciation' => 'nullable|string|max:255',
+            ]);
+        }
+
+        // Validation des nouvelles matières si présentes
+        if ($request->has('nouvelles_matieres') && is_array($request->nouvelles_matieres)) {
+            $request->validate([
+                'nouvelles_matieres' => 'array',
+                'nouvelles_matieres.*.matiere_type' => 'required|string|in:existante,nouvelle',
+                'nouvelles_matieres.*.matiere_existante_id' => 'required_if:nouvelles_matieres.*.matiere_type,existante|nullable|exists:esbtp_matieres,id',
+                'nouvelles_matieres.*.nom_nouvelle' => 'required_if:nouvelles_matieres.*.matiere_type,nouvelle|nullable|string|max:255',
+                'nouvelles_matieres.*.moyenne' => 'required|numeric|min:0|max:20',
+                'nouvelles_matieres.*.coefficient' => 'required|numeric|min:0',
+                'nouvelles_matieres.*.appreciation' => 'nullable|string|max:255'
+            ]);
+        }
 
         $etudiantId = $request->etudiant_id;
         $classeId = $request->classe_id;
@@ -4127,8 +4432,9 @@ class ESBTPBulletinController extends Controller
         $classe = \App\Models\ESBTPClasse::findOrFail($classeId);
         $anneeUniversitaire = \App\Models\ESBTPAnneeUniversitaire::findOrFail($anneeUniversitaireId);
 
-        // Traiter chaque résultat
-        foreach ($request->resultats as $resultatData) {
+        // Traiter chaque résultat (si présents)
+        if ($request->has('resultats') && is_array($request->resultats)) {
+            foreach ($request->resultats as $resultatData) {
             $matiereId = $resultatData['matiere_id'];
             $moyenne = $resultatData['moyenne'];
             $coefficient = $resultatData['coefficient'];
@@ -4159,6 +4465,7 @@ class ESBTPBulletinController extends Controller
                 'coefficient' => $coefficient,
                 'appreciation' => $appreciation
             ]);
+            }
         }
 
         // NOUVELLE LOGIQUE: Traiter les nouvelles matières ajoutées dynamiquement
@@ -5070,49 +5377,33 @@ class ESBTPBulletinController extends Controller
         $moyennes = [];
 
         foreach ($etudiants as $etudiant) {
-            // Récupérer les matières avec évaluations pour cet étudiant
-            $notesAvecEvaluations = ESBTPNote::where('etudiant_id', $etudiant->id)
-                ->whereHas('evaluation', function($q) use ($classeId, $anneeUniversitaireId) {
-                    $q->where('classe_id', $classeId)
-                      ->where('annee_universitaire_id', $anneeUniversitaireId);
-                })
-                ->with(['evaluation.matiere'])
+            // Récupérer les moyennes manuelles pour cet étudiant
+            $resultatsManuelsSeulement = \App\Models\ESBTPResultat::where('etudiant_id', $etudiant->id)
+                ->where('classe_id', $classeId)
+                ->where('annee_universitaire_id', $anneeUniversitaireId)
+                ->with('matiere')
                 ->get();
 
-            if ($notesAvecEvaluations->isEmpty()) {
-                continue; // Ignorer les étudiants sans notes
+            // Si aucune moyenne manuelle, utiliser la méthode de calcul pour cet étudiant
+            if ($resultatsManuelsSeulement->isEmpty()) {
+                // Calculer comme avant
+                $notesAvecEvaluations = ESBTPNote::where('etudiant_id', $etudiant->id)
+                    ->whereHas('evaluation', function($q) use ($classeId, $anneeUniversitaireId) {
+                        $q->where('classe_id', $classeId)
+                          ->where('annee_universitaire_id', $anneeUniversitaireId);
+                    })
+                    ->with(['evaluation.matiere'])
+                    ->get();
+
+                if ($notesAvecEvaluations->isEmpty()) {
+                    continue; // Ignorer les étudiants sans notes ni moyennes manuelles
+                }
             }
 
-            // Calculer la moyenne de cet étudiant
-            $resultatsParMatiere = [];
+            // Calculer la moyenne globale de cet étudiant
+            $moyenneEtudiant = $this->calculerMoyenneGlobaleEtudiant($etudiant->id, $classeId, $anneeUniversitaireId);
             
-            foreach ($notesAvecEvaluations->groupBy('evaluation.matiere_id') as $matiereId => $notes) {
-                $matiere = $notes->first()->evaluation->matiere;
-                if (!$matiere) continue;
-
-                // Calculer la moyenne pondérée pour cette matière
-                $totalPoints = 0;
-                $totalCoefficients = 0;
-
-                foreach ($notes as $note) {
-                    $totalPoints += $note->note * $note->evaluation->coefficient;
-                    $totalCoefficients += $note->evaluation->coefficient;
-                }
-
-                if ($totalCoefficients > 0) {
-                    $moyenneMatiere = $totalPoints / $totalCoefficients;
-                    
-                    $resultatsParMatiere[] = (object)[
-                        'moyenne' => $moyenneMatiere,
-                        'coefficient' => $this->getCoefficient($matiere),
-                        'type_formation' => $matiere->type_formation ?? 'generale'
-                    ];
-                }
-            }
-
-            // Calculer la moyenne globale de l'étudiant
-            if (!empty($resultatsParMatiere)) {
-                $moyenneEtudiant = $this->calculerMoyennePonderee(collect($resultatsParMatiere));
+            if ($moyenneEtudiant > 0) {
                 $moyennes[] = $moyenneEtudiant;
             }
         }
@@ -5130,6 +5421,106 @@ class ESBTPBulletinController extends Controller
             'plus_faible_moyenne' => min($moyennes),
             'moyenne_classe' => array_sum($moyennes) / count($moyennes)
         ];
+    }
+
+    /**
+     * Calculer la moyenne globale d'un étudiant (utilisé pour les statistiques)
+     */
+    private function calculerMoyenneGlobaleEtudiant($etudiantId, $classeId, $anneeUniversitaireId)
+    {
+        // Récupérer le bulletin pour la configuration
+        $bulletin = ESBTPBulletin::where('etudiant_id', $etudiantId)
+            ->where('classe_id', $classeId)
+            ->where('periode', 'semestre1')
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->first();
+
+        if (!$bulletin || !$bulletin->config_matieres) {
+            return 0; // Pas de configuration
+        }
+
+        $configMatieres = json_decode($bulletin->config_matieres, true);
+        
+        // Récupérer les notes avec évaluations
+        $notesAvecEvaluations = ESBTPNote::where('etudiant_id', $etudiantId)
+            ->with(['evaluation.matiere'])
+            ->whereHas('evaluation', function($q) use ($anneeUniversitaireId) {
+                $q->where('annee_universitaire_id', $anneeUniversitaireId)
+                  ->where('status', '!=', 'cancelled');
+            })
+            ->get();
+
+        $resultatsParMatiere = [];
+
+        // Calculer les moyennes automatiques
+        foreach ($notesAvecEvaluations as $note) {
+            if ($note->evaluation && $note->evaluation->matiere) {
+                $matiere = $note->evaluation->matiere;
+                $matiereId = $matiere->id;
+
+                if (!isset($resultatsParMatiere[$matiereId])) {
+                    $resultatsParMatiere[$matiereId] = (object)[
+                        'matiere_id' => $matiereId,
+                        'matiere' => $matiere,
+                        'notes' => [],
+                        'moyenne' => 0,
+                        'coefficient' => $this->getCoefficient($matiere),
+                    ];
+                }
+
+                $resultatsParMatiere[$matiereId]->notes[] = [
+                    'note' => $note->note,
+                    'coefficient' => $note->evaluation->coefficient
+                ];
+            }
+        }
+
+        // Calculer les moyennes pondérées
+        foreach ($resultatsParMatiere as $matiereId => $resultat) {
+            $totalPoints = 0;
+            $totalCoeffs = 0;
+            
+            foreach ($resultat->notes as $noteData) {
+                $totalPoints += $noteData['note'] * $noteData['coefficient'];
+                $totalCoeffs += $noteData['coefficient'];
+            }
+            
+            $resultat->moyenne = $totalCoeffs > 0 ? $totalPoints / $totalCoeffs : 0;
+        }
+
+        // Intégrer les moyennes manuelles (elles l'emportent)
+        $resultatsManuelle = \App\Models\ESBTPResultat::where('etudiant_id', $etudiantId)
+            ->where('classe_id', $classeId)
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->with('matiere')
+            ->get();
+
+        foreach ($resultatsManuelle as $resultatManuel) {
+            $matiereId = $resultatManuel->matiere_id;
+            
+            if ($resultatManuel->matiere) {
+                if (!isset($resultatsParMatiere[$matiereId])) {
+                    $resultatsParMatiere[$matiereId] = (object)[
+                        'matiere_id' => $matiereId,
+                        'matiere' => $resultatManuel->matiere,
+                        'moyenne' => $resultatManuel->moyenne,
+                        'coefficient' => $resultatManuel->coefficient ?: $this->getCoefficient($resultatManuel->matiere),
+                    ];
+                } else {
+                    $resultatsParMatiere[$matiereId]->moyenne = $resultatManuel->moyenne;
+                    if ($resultatManuel->coefficient) {
+                        $resultatsParMatiere[$matiereId]->coefficient = $resultatManuel->coefficient;
+                    }
+                }
+            }
+        }
+
+        // Calculer la moyenne globale pondérée
+        if (empty($resultatsParMatiere)) {
+            return 0;
+        }
+
+        return $this->calculerMoyennePonderee(collect($resultatsParMatiere));
     }
 
     /**

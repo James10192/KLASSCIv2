@@ -33,6 +33,22 @@
                                         </div>
                                         <div class="subject-info">
                                             <div class="subject-name">{{ $matiereData['matiere']->name }}</div>
+                                            <div class="d-flex align-items-center gap-2 mt-1">
+                                                @if($matiereData['matiere']->code)
+                                                    <small class="text-muted">{{ $matiereData['matiere']->code }}</small>
+                                                @endif
+                                                @if(isset($matiereData['source']))
+                                                    @if($matiereData['source'] == 'calculee')
+                                                        <span class="badge bg-success bg-opacity-10 text-success" style="font-size: 0.7rem;">
+                                                            <i class="fas fa-calculator me-1"></i>Auto
+                                                        </span>
+                                                    @else
+                                                        <span class="badge bg-warning bg-opacity-10 text-warning" style="font-size: 0.7rem;">
+                                                            <i class="fas fa-edit me-1"></i>Manuel
+                                                        </span>
+                                                    @endif
+                                                @endif
+                                            </div>
                                         </div>
                                     </div>
                                 </td>

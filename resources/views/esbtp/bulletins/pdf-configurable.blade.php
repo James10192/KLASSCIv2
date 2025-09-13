@@ -5,35 +5,53 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bulletin de Notes - {{ $etudiant->nom }} {{ $etudiant->prenoms ?? $etudiant->prenom }}</title>
     <style>
+        /* CSS compatible DomPDF et navigateur */
         body {
-            font-family: Arial, sans-serif;
+            font-family: DejaVu Sans, Arial, sans-serif;
             font-size: {{ $settings['bulletin_font_size'] ?? '11' }}px;
             margin: 0;
             padding: 0;
             background-color: white;
+            line-height: 1.2;
         }
         .container {
+            width: 100%;
             max-width: 800px;
             margin: 0 auto;
             background-color: white;
             padding: 10px;
-            box-shadow: none;
         }
+        
+        /* Reset pour éviter les conflits DomPDF */
+        * {
+            box-sizing: border-box;
+        }
+        
+        /* Version table pour header (compatible DomPDF) */
         .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
+            width: 100%;
             margin-bottom: 20px;
             border-bottom: 2px solid #000;
             padding-bottom: 10px;
         }
+        .header-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        .header-table td {
+            border: none;
+            padding: 5px;
+            vertical-align: top;
+            word-wrap: break-word;
+        }
         .header-left, .header-right {
-            flex: 1;
+            width: 25%;
             font-size: 10px;
             line-height: 1.2;
         }
         .header-center {
-            flex: 2;
+            width: 50%;
             text-align: center;
         }
         .logo {
@@ -55,27 +73,37 @@
             text-decoration: underline;
             margin-bottom: 5px;
         }
+        /* Version table pour student-info (compatible DomPDF) */
         .student-info {
-            display: flex;
-            justify-content: space-between;
+            width: 100%;
             margin-bottom: 20px;
             background-color: #f9f9f9;
-            padding: 10px;
             border: 1px solid #ddd;
         }
+        .student-info-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        .student-info-table td {
+            border: none;
+            padding: 8px;
+            vertical-align: top;
+            word-wrap: break-word;
+        }
         .info-group {
-            flex: 1;
+            width: 50%;
         }
         .info-row {
-            display: flex;
             margin-bottom: 5px;
         }
         .info-label {
             font-weight: bold;
+            display: inline-block;
             width: 120px;
         }
         .info-value {
-            flex: 1;
+            display: inline;
         }
         table {
             width: 100%;
@@ -112,34 +140,49 @@
             width: 100%;
             margin-bottom: 15px;
         }
+        /* Version table pour results-container (compatible DomPDF) */
         .results-container {
-            display: flex;
-            justify-content: space-between;
+            width: 100%;
             margin-bottom: 20px;
         }
-        .results-left, .results-right {
-            flex: 1;
-            margin-right: 10px;
+        .results-container-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .results-container-table td {
+            border: none;
+            padding: 0;
+            vertical-align: top;
+        }
+        .results-left {
+            width: 50%;
+            padding-right: 5px;
         }
         .results-right {
-            margin-right: 0;
-            margin-left: 10px;
+            width: 50%;
+            padding-left: 5px;
         }
         .results-table, .stats-table {
             width: 100%;
             font-size: 10px;
         }
+        /* Version table pour mention-box (compatible DomPDF) */
         .mention-box {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            width: 100%;
             margin-bottom: 5px;
-            padding: 2px 5px;
             border: 1px solid #ccc;
             font-size: 9px;
         }
+        .mention-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .mention-table td {
+            border: none;
+            padding: 2px 5px;
+        }
         .mention-label {
-            flex: 1;
+            text-align: left;
         }
         .mention-value {
             width: 20px;
@@ -179,6 +222,63 @@
             border-radius: 4px;
             cursor: pointer;
         }
+        /* Mode PDF simulation pour preview */
+        .pdf-mode body {
+            margin: 0;
+            padding: 0;
+            background-color: white;
+            font-family: DejaVu Sans, Arial, sans-serif;
+        }
+        .pdf-mode .container {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto;
+            padding: 20mm;
+            box-sizing: border-box;
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+        }
+
+        @if($isPdfExport ?? false)
+        /* Styles spécifiques pour l'export PDF - Approche simplifiée et éprouvée */
+        @page {
+            margin: 20mm 15mm !important;
+        }
+        
+        html {
+            margin: 0;
+            padding: 0;
+        }
+        
+        body.pdf-export {
+            margin: 0;
+            padding: 0;
+            background-color: white;
+            font-family: DejaVu Sans, Arial, sans-serif;
+            font-size: {{ $settings['bulletin_font_size'] ?? '11' }}px;
+        }
+        
+        body.pdf-export .container {
+            width: 100%;
+            max-width: none;
+            margin: 0 auto;
+            padding: 0;
+            background-color: white;
+        }
+        
+        /* Reset spécifique pour PDF */
+        body.pdf-export th, 
+        body.pdf-export td, 
+        body.pdf-export p, 
+        body.pdf-export div, 
+        body.pdf-export h1, 
+        body.pdf-export h2, 
+        body.pdf-export h3 {
+            margin: 0;
+            padding: 2px;
+        }
+        @endif
+        
         @media print {
             body {
                 margin: 0;
@@ -187,105 +287,138 @@
             }
             .container {
                 box-shadow: none;
+                width: 100%;
+                max-width: none;
             }
-            .print-button {
-                display: none;
+            .print-button, .pdf-toggle {
+                display: none !important;
             }
+        }
+        
+        /* Bouton de simulation PDF */
+        .pdf-toggle {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background-color: #28a745;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            z-index: 1000;
+            font-size: 12px;
+        }
+        .pdf-toggle:hover {
+            background-color: #218838;
         }
     </style>
 </head>
-<body>
+<body @if($isPdfExport ?? false)class="pdf-export"@endif>
+    <!-- Bouton pour basculer en mode PDF preview (seulement pour preview web) -->
+    @unless($isPdfExport ?? false)
+    <button class="pdf-toggle" onclick="togglePDFMode()" id="pdfToggle">Mode PDF</button>
+    @endunless
+    
     <div class="container">
         @if(($settings['bulletin_show_header'] ?? '1') == '1')
         <div class="header">
-            <div class="header-left">
-                @if(($settings['bulletin_show_republic_info'] ?? '1') == '1')
-                <div>{{ $settings['bulletin_republic_text'] ?? 'République de Côte d\'Ivoire' }}</div>
-                <div>{{ $settings['bulletin_union_text'] ?? 'Union-Discipline-Travail' }}</div>
-                @endif
-                @if(($settings['bulletin_show_ministry_info'] ?? '1') == '1')
-                <div>{{ $settings['bulletin_ministry_text'] ?? 'Ministère de l\'Enseignement Supérieur' }}</div>
-                <div>et de la Recherche Scientifique</div>
-                @endif
-            </div>
-            <div class="header-center">
-                @if(($settings['bulletin_show_logo'] ?? '1') == '1' && isset($logoBase64) && $logoBase64)
-                <img src="{{ $logoBase64 }}" alt="Logo ESBTP" class="logo">
-                @endif
-                @if(($settings['bulletin_show_school_info'] ?? '1') == '1')
-                <div class="school-name">
-                    {{ $settings['bulletin_school_name_custom'] ?: $settings['school_name'] }}
-                </div>
-                <div class="school-address">{{ $settings['school_address'] }} • Tel: {{ $settings['school_phone'] }} • {{ $settings['school_email'] }}</div>
-                @endif
-            </div>
-            <div class="header-right">
-                <div class="title">BULLETIN DE NOTES</div>
-                <div>
-                    @if($periode == 'semestre1')
-                        PREMIER SEMESTRE
-                    @elseif($periode == 'semestre2')
-                        DEUXIÈME SEMESTRE
-                    @else
-                        ANNUEL
-                    @endif
-                </div>
-                @if(($settings['bulletin_show_edition_date'] ?? '1') == '1')
-                <div>Édition du: {{ $date_edition }}</div>
-                @endif
-                @if(($settings['bulletin_show_cycle_info'] ?? '1') == '1')
-                <div>Cycle: {{ $settings['bulletin_cycle_text'] ?? 'Brevet de Technicien Supérieur' }}</div>
-                <div>{{ $settings['bulletin_cycle_abbreviation'] ?? 'BTS' }}</div>
-                @endif
-                <div>Année Scolaire: {{ $anneeUniversitaire->libelle ?? $anneeUniversitaire->name ?? '2022-2023' }}</div>
-            </div>
+            <table class="header-table">
+                <tr>
+                    <td class="header-left">
+                        @if(($settings['bulletin_show_republic_info'] ?? '1') == '1')
+                        <div>{{ $settings['bulletin_republic_text'] ?? 'République de Côte d\'Ivoire' }}</div>
+                        <div>{{ $settings['bulletin_union_text'] ?? 'Union-Discipline-Travail' }}</div>
+                        @endif
+                        @if(($settings['bulletin_show_ministry_info'] ?? '1') == '1')
+                        <div>{{ $settings['bulletin_ministry_text'] ?? 'Ministère de l\'Enseignement Supérieur' }}</div>
+                        <div>et de la Recherche Scientifique</div>
+                        @endif
+                    </td>
+                    <td class="header-center">
+                        @if(($settings['bulletin_show_logo'] ?? '1') == '1' && isset($logoBase64) && $logoBase64)
+                        <img src="{{ $logoBase64 }}" alt="Logo ESBTP" class="logo">
+                        @endif
+                        @if(($settings['bulletin_show_school_info'] ?? '1') == '1')
+                        <div class="school-name">
+                            {{ $settings['bulletin_school_name_custom'] ?: $settings['school_name'] }}
+                        </div>
+                        <div class="school-address">{{ $settings['school_address'] }} • Tel: {{ $settings['school_phone'] }} • {{ $settings['school_email'] }}</div>
+                        @endif
+                    </td>
+                    <td class="header-right">
+                        <div class="title">BULLETIN DE NOTES</div>
+                        <div>
+                            @if($periode == 'semestre1')
+                                PREMIER SEMESTRE
+                            @elseif($periode == 'semestre2')
+                                DEUXIÈME SEMESTRE
+                            @else
+                                ANNUEL
+                            @endif
+                        </div>
+                        @if(($settings['bulletin_show_edition_date'] ?? '1') == '1')
+                        <div>Édition du: {{ $date_edition }}</div>
+                        @endif
+                        @if(($settings['bulletin_show_cycle_info'] ?? '1') == '1')
+                        <div>Cycle: {{ $settings['bulletin_cycle_text'] ?? 'Brevet de Technicien Supérieur' }}</div>
+                        <div>{{ $settings['bulletin_cycle_abbreviation'] ?? 'BTS' }}</div>
+                        @endif
+                        <div>Année Scolaire: {{ $anneeUniversitaire->annee_debut }}-{{ $anneeUniversitaire->annee_fin }}</div>
+                    </td>
+                </tr>
+            </table>
         </div>
         @endif
 
         @if(($settings['bulletin_show_student_info'] ?? '1') == '1')
         <div class="student-info">
-            <div class="info-group">
-                @if(($settings['bulletin_show_matricule'] ?? '1') == '1')
-                <div class="info-row">
-                    <div class="info-label">Matricule :</div>
-                    <div class="info-value">{{ $etudiant->matricule }}</div>
-                </div>
-                @endif
-                <div class="info-row">
-                    <div class="info-label">Nom et Prénoms :</div>
-                    <div class="info-value">{{ $etudiant->nom }} {{ $etudiant->prenoms ?? $etudiant->prenom }}</div>
-                </div>
-                @if(($settings['bulletin_show_birth_date'] ?? '1') == '1')
-                <div class="info-row">
-                    <div class="info-label">Date de Naissance :</div>
-                    <div class="info-value">{{ \Carbon\Carbon::parse($etudiant->date_naissance)->format('d/m/Y') }}</div>
-                </div>
-                @endif
-                @if(($settings['bulletin_show_redoublant'] ?? '1') == '1')
-                <div class="info-row">
-                    <div class="info-label">Redoublant :</div>
-                    <div class="info-value">{{ $etudiant->inscriptions->first()->is_redoublant ?? false ? 'Oui' : 'Non' }}</div>
-                </div>
-                @endif
-            </div>
-            <div class="info-group">
-                @if(($settings['bulletin_show_class_info'] ?? '1') == '1')
-                <div class="info-row">
-                    <div class="info-label">Classe :</div>
-                    <div class="info-value">{{ $classe->libelle ?? $classe->name }}</div>
-                </div>
-                <div class="info-row">
-                    <div class="info-label">Année d'étude :</div>
-                    <div class="info-value">{{ $classe->niveau->libelle ?? $classe->niveau->name ?? ($classe->annee ?? 'N/A') }}</div>
-                </div>
-                @endif
-                @if(($settings['bulletin_show_effectif'] ?? '1') == '1')
-                <div class="info-row">
-                    <div class="info-label">Effectif :</div>
-                    <div class="info-value">{{ $effectif }}</div>
-                </div>
-                @endif
-            </div>
+            <table class="student-info-table">
+                <tr>
+                    <td class="info-group">
+                        @if(($settings['bulletin_show_matricule'] ?? '1') == '1')
+                        <div class="info-row">
+                            <span class="info-label">Matricule :</span>
+                            <span class="info-value">{{ $etudiant->matricule }}</span>
+                        </div>
+                        @endif
+                        <div class="info-row">
+                            <span class="info-label">Nom et Prénoms :</span>
+                            <span class="info-value">{{ $etudiant->nom }} {{ $etudiant->prenoms ?? $etudiant->prenom }}</span>
+                        </div>
+                        @if(($settings['bulletin_show_birth_date'] ?? '1') == '1')
+                        <div class="info-row">
+                            <span class="info-label">Date de Naissance :</span>
+                            <span class="info-value">{{ \Carbon\Carbon::parse($etudiant->date_naissance)->format('d/m/Y') }}</span>
+                        </div>
+                        @endif
+                        @if(($settings['bulletin_show_redoublant'] ?? '1') == '1')
+                        <div class="info-row">
+                            <span class="info-label">Redoublant :</span>
+                            <span class="info-value">{{ $etudiant->inscriptions->first()->is_redoublant ?? false ? 'Oui' : 'Non' }}</span>
+                        </div>
+                        @endif
+                    </td>
+                    <td class="info-group">
+                        @if(($settings['bulletin_show_class_info'] ?? '1') == '1')
+                        <div class="info-row">
+                            <span class="info-label">Classe :</span>
+                            <span class="info-value">{{ $classe->libelle ?? $classe->name }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Année d'étude :</span>
+                            <span class="info-value">{{ $classe->niveau->libelle ?? $classe->niveau->name ?? ($classe->annee ?? 'N/A') }}</span>
+                        </div>
+                        @endif
+                        @if(($settings['bulletin_show_effectif'] ?? '1') == '1')
+                        <div class="info-row">
+                            <span class="info-label">Effectif :</span>
+                            <span class="info-value">{{ $effectif }}</span>
+                        </div>
+                        @endif
+                    </td>
+                </tr>
+            </table>
         </div>
         @endif
 
@@ -394,7 +527,9 @@
 
         @if(($settings['bulletin_show_results_section'] ?? '1') == '1')
         <div class="results-container">
-            <div class="results-left">
+            <table class="results-container-table">
+                <tr>
+                    <td class="results-left">
                 <table class="results-table">
                     <thead>
                         <tr class="section-header">
@@ -443,67 +578,77 @@
                 <div style="margin-top: 15px;">
                     @if(($settings['bulletin_show_felicitation'] ?? '1') == '1')
                     <div class="mention-box">
-                        <div class="mention-label">Félicitation</div>
-                        <div class="mention-value">
+                        <table class="mention-table"><tr>
+                            <td class="mention-label">Félicitation</td>
+                            <td class="mention-value">
                             @php
                                 $felicitationThreshold = floatval($settings['bulletin_felicitation_threshold'] ?? 16);
                                 $isChecked = ($settings['bulletin_auto_calculate_mention'] ?? '1') == '1' ? ($moyenneGlobale >= $felicitationThreshold) : false;
                             @endphp
                             <input type="checkbox" {{ $isChecked ? 'checked' : '' }}>
-                        </div>
+                        </td>
+                        </tr></table>
                     </div>
                     @endif
                     @if(($settings['bulletin_show_encouragement'] ?? '1') == '1')
                     <div class="mention-box">
-                        <div class="mention-label">Encouragement</div>
-                        <div class="mention-value">
+                        <table class="mention-table"><tr>
+                            <td class="mention-label">Encouragement</td>
+                            <td class="mention-value">
                             @php
                                 $encouragementThreshold = floatval($settings['bulletin_encouragement_threshold'] ?? 14);
                                 $felicitationThreshold = floatval($settings['bulletin_felicitation_threshold'] ?? 16);
                                 $isChecked = ($settings['bulletin_auto_calculate_mention'] ?? '1') == '1' ? ($moyenneGlobale >= $encouragementThreshold && $moyenneGlobale < $felicitationThreshold) : false;
                             @endphp
                             <input type="checkbox" {{ $isChecked ? 'checked' : '' }}>
-                        </div>
+                        </td>
+                        </tr></table>
                     </div>
                     @endif
                     @if(($settings['bulletin_show_honor_roll'] ?? '1') == '1')
                     <div class="mention-box">
-                        <div class="mention-label">Tableau d'honneur</div>
-                        <div class="mention-value">
+                        <table class="mention-table"><tr>
+                            <td class="mention-label">Tableau d'honneur</td>
+                            <td class="mention-value">
                             @php
                                 $honorRollThreshold = floatval($settings['bulletin_honor_roll_threshold'] ?? 12);
                                 $encouragementThreshold = floatval($settings['bulletin_encouragement_threshold'] ?? 14);
                                 $isChecked = ($settings['bulletin_auto_calculate_mention'] ?? '1') == '1' ? ($moyenneGlobale >= $honorRollThreshold && $moyenneGlobale < $encouragementThreshold) : false;
                             @endphp
                             <input type="checkbox" {{ $isChecked ? 'checked' : '' }}>
-                        </div>
+                        </td>
+                        </tr></table>
                     </div>
                     @endif
                     @if(($settings['bulletin_show_work_warning'] ?? '1') == '1')
                     <div class="mention-box">
-                        <div class="mention-label">Avertissement (Travail)</div>
-                        <div class="mention-value">
+                        <table class="mention-table"><tr>
+                            <td class="mention-label">Avertissement (Travail)</td>
+                            <td class="mention-value">
                             @php
                                 $workWarningThreshold = floatval($settings['bulletin_work_warning_threshold'] ?? 8);
                                 $isChecked = ($settings['bulletin_auto_calculate_mention'] ?? '1') == '1' ? ($moyenneGlobale >= $workWarningThreshold && $moyenneGlobale < 10) : false;
                             @endphp
                             <input type="checkbox" {{ $isChecked ? 'checked' : '' }}>
-                        </div>
+                        </td>
+                        </tr></table>
                     </div>
                     @endif
                     @if(($settings['bulletin_show_conduct_blame'] ?? '1') == '1')
                     <div class="mention-box">
-                        <div class="mention-label">Blâme (Conduite)</div>
-                        <div class="mention-value">
+                        <table class="mention-table"><tr>
+                            <td class="mention-label">Blâme (Conduite)</td>
+                            <td class="mention-value">
                             <input type="checkbox">
-                        </div>
+                        </td>
+                        </tr></table>
                     </div>
                     @endif
                 </div>
                 @endif
-            </div>
-            @if(($settings['bulletin_show_statistics'] ?? '1') == '1')
-            <div class="results-right">
+                    </td>
+                    @if(($settings['bulletin_show_statistics'] ?? '1') == '1')
+                    <td class="results-right">
                 <table class="stats-table">
                     <thead>
                         <tr class="section-header">
@@ -531,8 +676,10 @@
                         @endif
                     </tbody>
                 </table>
-            </div>
-            @endif
+                    </td>
+                    @endif
+                </tr>
+            </table>
         </div>
         @endif
 
@@ -558,5 +705,29 @@
 
         {{-- Bouton d'impression supprimé car le fichier est déjà un PDF généré --}}
     </div>
+
+    @unless($isPdfExport ?? false)
+    <script>
+        function togglePDFMode() {
+            const body = document.body;
+            const button = document.getElementById('pdfToggle');
+            
+            if (body.classList.contains('pdf-mode')) {
+                body.classList.remove('pdf-mode');
+                button.textContent = 'Mode PDF';
+                button.style.backgroundColor = '#28a745';
+            } else {
+                body.classList.add('pdf-mode');
+                button.textContent = 'Mode Web';
+                button.style.backgroundColor = '#dc3545';
+            }
+        }
+
+        // Auto-basculer en mode PDF si le paramètre est présent dans l'URL
+        if (window.location.search.includes('preview=pdf')) {
+            togglePDFMode();
+        }
+    </script>
+    @endunless
 </body>
 </html>

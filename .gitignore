@@ -15,7 +15,6 @@ yarn-error.log
 /.vscode
 /ESBTP-yAKROv3
 # Database files
-/database/
 *Seeder.php
 
 # Added by Claude Task Master
