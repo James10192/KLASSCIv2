@@ -7,6 +7,8 @@ use App\Models\ESBTPFraisConfiguration;
 use App\Models\ESBTPFraisOption;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPClasse;
+use App\Models\ESBTPFiliere;
+use App\Models\ESBTPNiveauEtude;
 use Illuminate\Support\Collection;
 
 /**
@@ -239,11 +241,11 @@ class FraisManagementService
      */
     private function getTotalClassCount(): int
     {
-        // Cette méthode devrait être adaptée selon votre structure de données
-        // Pour l'instant, on fait une estimation basée sur les configurations existantes
-        return ESBTPFraisConfiguration::select('filiere_id', 'niveau_id')
-            ->distinct()
-            ->count();
+        // Compter le nombre de combinaisons théoriques possibles : filières actives × niveaux actifs
+        $filieres = \App\Models\ESBTPFiliere::where('is_active', true)->count();
+        $niveaux = \App\Models\ESBTPNiveauEtude::where('is_active', true)->count();
+        
+        return $filieres * $niveaux;
     }
 
     /**

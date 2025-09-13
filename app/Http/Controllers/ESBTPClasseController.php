@@ -428,20 +428,32 @@ class ESBTPClasseController extends Controller
     {
         try {
             \Log::info("Début de getAvailablePlaces pour la classe ID: {$id}");
-            $classe = ESBTPClasse::withCount('inscriptions')->find($id);
+            
+            // Trouver l'année universitaire active
+            $anneeActive = \App\Models\ESBTPAnneeUniversitaire::where('is_active', true)->first();
+            if (!$anneeActive) {
+                \Log::error("Aucune année universitaire active trouvée");
+                return response()->json(['error' => 'Aucune année universitaire active.'], 400);
+            }
+
+            $classe = ESBTPClasse::find($id);
 
             if (!$classe) {
                 \Log::error("Classe non trouvée pour l'ID: {$id}");
                 return response()->json(['error' => 'Classe non trouvée.'], 404);
             }
             
-            \Log::info("Classe trouvée: " . json_encode($classe->toArray()));
+            \Log::info("Classe trouvée: {$classe->name}");
 
             $capacity = $classe->places_totales ?? 0;
             \Log::info("Capacité (places_totales) lue: {$capacity}");
 
-            $inscriptions_count = $classe->inscriptions_count ?? 0;
-            \Log::info("Nombre d'inscriptions: {$inscriptions_count}");
+            // Compter seulement les inscriptions de l'année universitaire active
+            $inscriptions_count = $classe->inscriptions()
+                ->where('annee_universitaire_id', $anneeActive->id)
+                ->where('status', '!=', 'annulée')
+                ->count();
+            \Log::info("Nombre d'inscriptions pour l'année active {$anneeActive->name}: {$inscriptions_count}");
 
             $availablePlaces = $capacity - $inscriptions_count;
             \Log::info("Calcul des places disponibles: {$capacity} - {$inscriptions_count} = {$availablePlaces}");

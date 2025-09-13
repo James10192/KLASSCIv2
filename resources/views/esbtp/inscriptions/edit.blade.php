@@ -1,8 +1,9 @@
 @extends('layouts.app')
 
-@section('title', 'Modifier l\'inscription')
+@section('title', 'Modifier l\'inscription - ' . $inscription->etudiant->nom . ' ' . $inscription->etudiant->prenoms)
 
-@push('styles')
+@section('styles')
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
     .select2-container {
         width: 100% !important;
@@ -18,29 +19,33 @@
         height: 36px !important;
     }
 </style>
-@endpush
+@endsection
 
 @section('content')
-<div class="container-fluid">
-    <!-- Page Heading -->
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Modifier l'inscription</h1>
-        <div>
-            <a href="{{ route('esbtp.inscriptions.show', $inscription->id) }}" class="btn btn-info btn-sm me-2">
-                <i class="fas fa-eye fa-sm text-white-50 me-1"></i> Voir les détails
-            </a>
-            <a href="{{ route('esbtp.inscriptions.index') }}" class="btn btn-secondary btn-sm">
-                <i class="fas fa-arrow-left fa-sm text-white-50 me-1"></i> Retour à la liste
-            </a>
+<div class="dashboard-acasi">
+    <div class="main-content">
+        <!-- Header moderne -->
+        <div class="dashboard-header">
+            <div class="header-left">
+                <h1>{{ $inscription->etudiant->nom }} {{ $inscription->etudiant->prenoms }}</h1>
+                <p class="header-subtitle">Modification de l'inscription - Matricule: {{ $inscription->etudiant->matricule }}</p>
+            </div>
+            <div class="header-actions">
+                <a href="{{ route('esbtp.inscriptions.show', $inscription->id) }}" class="btn-acasi info me-2">
+                    <i class="fas fa-eye"></i>Voir les détails
+                </a>
+                <a href="{{ route('esbtp.inscriptions.index') }}" class="btn-acasi secondary">
+                    <i class="fas fa-arrow-left"></i>Retour à la liste
+                </a>
+            </div>
         </div>
-    </div>
 
-    <!-- Formulaire de modification d'inscription -->
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Formulaire de modification</h6>
-        </div>
-        <div class="card-body">
+        <!-- Formulaire de modification d'inscription -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Modifier l'inscription</h6>
+            </div>
+            <div class="card-body">
             <form method="POST" action="{{ route('esbtp.inscriptions.update', $inscription->id) }}">
                 @csrf
                 @method('PUT')
@@ -48,20 +53,6 @@
                 @if(session('info'))
                     <div class="alert alert-info alert-dismissible fade show" role="alert">
                         {{ session('info') }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                @endif
-
-                @if(session('success'))
-                    <div class="alert alert-success alert-dismissible fade show" role="alert">
-                        {{ session('success') }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                @endif
-
-                @if(session('error'))
-                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                        {{ session('error') }}
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 @endif
@@ -141,39 +132,57 @@
                 </div>
 
                 <div class="row mb-3">
-                    <div class="col-md-4">
-                        <div class="form-group">
-                            <label for="filiere_id">Filière <span class="text-danger">*</span></label>
-                            <select class="form-control @error('filiere_id') is-invalid @enderror" id="filiere_id" name="filiere_id" required>
-                                <option value="">Sélectionner une filière</option>
-                                @foreach($filieres as $filiere)
-                                    <option value="{{ $filiere->id }}" {{ old('filiere_id', $inscription->filiere_id) == $filiere->id ? 'selected' : '' }}>
-                                        {{ $filiere->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('filiere_id')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                    @if($inscription->status === 'en_attente')
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="filiere_id">Filière <span class="text-danger">*</span></label>
+                                <select class="form-control @error('filiere_id') is-invalid @enderror" id="filiere_id" name="filiere_id" required>
+                                    <option value="">Sélectionner une filière</option>
+                                    @foreach($filieres as $filiere)
+                                        <option value="{{ $filiere->id }}" {{ old('filiere_id', $inscription->filiere_id) == $filiere->id ? 'selected' : '' }}>
+                                            {{ $filiere->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('filiere_id')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="col-md-4">
-                        <div class="form-group">
-                            <label for="niveau_id">Niveau d'études <span class="text-danger">*</span></label>
-                            <select class="form-control @error('niveau_id') is-invalid @enderror" id="niveau_id" name="niveau_id" required>
-                                <option value="">Sélectionner un niveau</option>
-                                @foreach($niveaux as $niveau)
-                                    <option value="{{ $niveau->id }}" {{ old('niveau_id', $inscription->niveau_id) == $niveau->id ? 'selected' : '' }}>
-                                        {{ $niveau->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('niveau_id')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="niveau_id">Niveau d'études <span class="text-danger">*</span></label>
+                                <select class="form-control @error('niveau_id') is-invalid @enderror" id="niveau_id" name="niveau_id" required>
+                                    <option value="">Sélectionner un niveau</option>
+                                    @foreach($niveaux as $niveau)
+                                        <option value="{{ $niveau->id }}" {{ old('niveau_id', $inscription->niveau_id) == $niveau->id ? 'selected' : '' }}>
+                                            {{ $niveau->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('niveau_id')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
                         </div>
-                    </div>
+                    @else
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label class="form-label">Filière</label>
+                                <input type="text" class="form-control" value="{{ $inscription->filiere->name }}" disabled>
+                                <div class="alert alert-warning mt-2">La filière ne peut plus être modifiée après validation de l'inscription.</div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label class="form-label">Niveau d'études</label>
+                                <input type="text" class="form-control" value="{{ $inscription->niveau->name }}" disabled>
+                                <div class="alert alert-warning mt-2">Le niveau ne peut plus être modifié après validation de l'inscription.</div>
+                            </div>
+                        </div>
+                    @endif
 
                     @if($inscription->status === 'en_attente')
                         <div class="col-md-4">
@@ -304,13 +313,16 @@
 
                 <div class="row">
                     <div class="col-md-12 text-end">
-                        <button type="button" class="btn btn-secondary me-2" onclick="history.back()">Annuler</button>
+                        <button type="button" class="btn btn-secondary me-2" onclick="history.back()">
+                            <i class="fas fa-times me-1"></i>Annuler
+                        </button>
                         <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save me-1"></i> Enregistrer les modifications
+                            <i class="fas fa-save me-1"></i>Enregistrer les modifications
                         </button>
                     </div>
                 </div>
             </form>
+            </div>
         </div>
     </div>
 </div>
