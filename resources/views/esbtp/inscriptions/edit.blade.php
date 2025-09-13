@@ -201,6 +201,26 @@
                 </div>
 
                 <div class="row mb-3">
+                    <div class="col-md-12">
+                        <div class="form-group">
+                            <label for="affectation_status">Statut d'affectation</label>
+                            <select class="form-control @error('affectation_status') is-invalid @enderror" id="affectation_status" name="affectation_status">
+                                <option value="">-- Sélectionner le statut --</option>
+                                <option value="affecté" {{ old('affectation_status', $inscription->affectation_status) == 'affecté' ? 'selected' : '' }}>Affecté</option>
+                                <option value="réaffecté" {{ old('affectation_status', $inscription->affectation_status) == 'réaffecté' ? 'selected' : '' }}>Réaffecté</option>
+                                <option value="non_affecté" {{ old('affectation_status', $inscription->affectation_status) == 'non_affecté' ? 'selected' : '' }}>Non affecté</option>
+                            </select>
+                            <div class="form-text text-muted">
+                                Le statut d'affectation détermine les frais de scolarité selon les subventions gouvernementales ivoiriennes.
+                            </div>
+                            @error('affectation_status')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
                     <div class="col-md-6">
                         <div class="form-group">
                             <label for="frais_inscription">Frais d'inscription <span class="text-danger">*</span></label>

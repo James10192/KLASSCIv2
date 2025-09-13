@@ -109,11 +109,11 @@ body.modal-open .card:hover {
                     @endif
                 @endcan
                 
-                @if($inscription->status === 'en_attente')
+                @can('inscriptions.edit')
                     <a href="{{ route('esbtp.inscriptions.edit', $inscription) }}" class="btn-acasi secondary me-2">
                         <i class="fas fa-edit"></i>Modifier
                     </a>
-                @endif
+                @endcan
                 
                 <a href="{{ route('esbtp.etudiants.show', $inscription->etudiant) }}" class="btn-acasi primary me-2">
                     <i class="fas fa-user"></i>Voir l'étudiant
@@ -378,6 +378,34 @@ body.modal-open .card:hover {
                                         <tr>
                                             <th>Année universitaire</th>
                                             <td>{{ $inscription->anneeUniversitaire->name }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Statut d'affectation</th>
+                                            <td>
+                                                @if($inscription->affectation_status)
+                                                    @switch($inscription->affectation_status)
+                                                        @case('affecté')
+                                                            <span class="badge bg-success">
+                                                                <i class="fas fa-check-circle me-1"></i>Affecté
+                                                            </span>
+                                                            @break
+                                                        @case('réaffecté')
+                                                            <span class="badge bg-warning">
+                                                                <i class="fas fa-exchange-alt me-1"></i>Réaffecté
+                                                            </span>
+                                                            @break
+                                                        @case('non_affecté')
+                                                            <span class="badge bg-danger">
+                                                                <i class="fas fa-times-circle me-1"></i>Non affecté
+                                                            </span>
+                                                            @break
+                                                        @default
+                                                            <span class="badge bg-secondary">{{ $inscription->affectation_status }}</span>
+                                                    @endswitch
+                                                @else
+                                                    <span class="text-muted">Non renseigné</span>
+                                                @endif
+                                            </td>
                                         </tr>
                                     </table>
                                 </div>

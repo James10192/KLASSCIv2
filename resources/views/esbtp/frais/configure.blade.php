@@ -738,6 +738,40 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
     
+    // Fonction pour copier un montant sur tous les statuts
+    window.copyToAll = function(categoryId, sourceField) {
+        const sourceInput = document.getElementById(`${sourceField}_${categoryId}`);
+        if (!sourceInput || !sourceInput.value) {
+            alert('Veuillez d\'abord saisir le montant source');
+            return;
+        }
+        
+        const value = sourceInput.value;
+        const fields = ['amount_affecte', 'amount_reaffecte', 'amount_non_affecte'];
+        
+        fields.forEach(field => {
+            const input = document.getElementById(`${field}_${categoryId}`);
+            if (input) {
+                input.value = value;
+                // Animation visuelle
+                input.style.backgroundColor = '#e6fffa';
+                setTimeout(() => {
+                    input.style.backgroundColor = '';
+                }, 500);
+            }
+        });
+        
+        // Feedback visuel
+        const btn = event.target.closest('button');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i> Copié!';
+        btn.classList.add('btn-success');
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.classList.remove('btn-success');
+        }, 1500);
+    };
+
     // Gestionnaire de sauvegarde
     document.getElementById('saveConfigurationBtn').addEventListener('click', function() {
         const form = document.getElementById('configurationForm');

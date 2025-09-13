@@ -608,7 +608,12 @@ class ESBTPFraisController extends Controller
             'filiere_id' => 'required|exists:esbtp_filieres,id',
             'niveau_id' => 'required|exists:esbtp_niveau_etudes,id',
             'categories' => 'required|array',
-            'categories.*.amount' => 'required|numeric|min:0',
+            // Rétrocompatibilité avec l'ancien champ amount
+            'categories.*.amount' => 'nullable|numeric|min:0',
+            // Nouveaux champs pour les statuts d'affectation
+            'categories.*.amount_affecte' => 'nullable|numeric|min:0',
+            'categories.*.amount_reaffecte' => 'nullable|numeric|min:0',
+            'categories.*.amount_non_affecte' => 'nullable|numeric|min:0',
             'categories.*.deadline_days' => 'required|integer|min:1|max:365',
             'categories.*.installments_allowed' => 'boolean',
             'categories.*.max_installments' => 'nullable|integer|min:1|max:12',
@@ -642,7 +647,31 @@ class ESBTPFraisController extends Controller
                     continue;
                 }
 
-                // Créer ou mettre à jour la configuration unifiée
+                // Calculer le montant principal pour la rétrocompatibilité
+                $mainAmount = 0;
+                
+                // Priorité 1: ancien champ amount (rétrocompatibilité)
+                if (!empty($categoryData['amount'])) {
+                    $mainAmount = $categoryData['amount'];
+                }
+                // Priorité 2: nouveaux champs (ordre de préférence)
+                elseif (!empty($categoryData['amount_affecte'])) {
+                    $mainAmount = $categoryData['amount_affecte'];
+                }
+                elseif (!empty($categoryData['amount_reaffecte'])) {
+                    $mainAmount = $categoryData['amount_reaffecte'];
+                }
+                elseif (!empty($categoryData['amount_non_affecte'])) {
+                    $mainAmount = $categoryData['amount_non_affecte'];
+                }
+                
+                // Validation : au moins un montant doit être défini
+                if ($mainAmount <= 0) {
+                    Log::warning("Aucun montant défini pour la catégorie {$categoryId}", $categoryData);
+                    continue; // Ignorer cette catégorie si aucun montant n'est défini
+                }
+
+                // Créer ou mettre à jour la configuration unifiée avec les montants différenciés
                 ESBTPFraisConfiguration::updateOrCreate(
                     [
                         'frais_category_id' => $categoryId,
@@ -651,7 +680,10 @@ class ESBTPFraisController extends Controller
                         'annee_universitaire_id' => null,
                     ],
                     [
-                        'amount' => $categoryData['amount'],
+                        'amount' => $mainAmount, // Montant principal pour rétrocompatibilité
+                        'amount_affecte' => $categoryData['amount_affecte'] ?? null,
+                        'amount_reaffecte' => $categoryData['amount_reaffecte'] ?? null,
+                        'amount_non_affecte' => $categoryData['amount_non_affecte'] ?? null,
                         'payment_deadline_days' => $categoryData['deadline_days'],
                         'installments_allowed' => $categoryData['installments_allowed'] ?? false,
                         'max_installments' => $categoryData['max_installments'] ?? 1,

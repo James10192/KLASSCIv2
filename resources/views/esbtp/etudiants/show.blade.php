@@ -373,6 +373,37 @@
                                                         </div>
                                                     </div>
                                                     
+                                                    <div class="row mb-3">
+                                                        <div class="col-sm-6">
+                                                            <strong>Statut d'affectation:</strong><br>
+                                                            @if($inscription->affectation_status)
+                                                                @switch($inscription->affectation_status)
+                                                                    @case('affecté')
+                                                                        <span class="badge bg-success">
+                                                                            <i class="fas fa-check-circle me-1"></i>Affecté
+                                                                        </span>
+                                                                        @break
+                                                                    @case('réaffecté')
+                                                                        <span class="badge bg-warning">
+                                                                            <i class="fas fa-exchange-alt me-1"></i>Réaffecté
+                                                                        </span>
+                                                                        @break
+                                                                    @case('non_affecté')
+                                                                        <span class="badge bg-danger">
+                                                                            <i class="fas fa-times-circle me-1"></i>Non affecté
+                                                                        </span>
+                                                                        @break
+                                                                    @default
+                                                                        <span class="badge bg-secondary">{{ $inscription->affectation_status }}</span>
+                                                                @endswitch
+                                                            @else
+                                                                <span class="text-muted">Non renseigné</span>
+                                                            @endif
+                                                        </div>
+                                                        <div class="col-sm-6">
+                                                        </div>
+                                                    </div>
+                                                    
                                                     <div class="d-flex justify-content-between align-items-center">
                                                         <div>
                                                             @if($inscription->status == 'active')

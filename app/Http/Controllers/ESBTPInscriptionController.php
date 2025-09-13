@@ -635,6 +635,7 @@ class ESBTPInscriptionController extends Controller
             'frais_inscription' => 'required|numeric|min:0',
             'observations' => 'nullable|string',
             'status' => 'required|in:en_attente,active,annulée,terminée',
+            'affectation_status' => 'nullable|in:affecté,réaffecté,non_affecté',
         ]);
 
         if ($validator->fails()) {
@@ -666,6 +667,7 @@ class ESBTPInscriptionController extends Controller
             $inscription->montant_scolarite = $data['montant_scolarite'];
             $inscription->frais_inscription = $data['frais_inscription'];
             $inscription->observations = $data['observations'];
+            $inscription->affectation_status = $data['affectation_status'] ?? null;
 
             // Mettre à jour le statut et les champs associés
             $nouveauStatut = $data['status'];
@@ -1407,10 +1409,11 @@ class ESBTPInscriptionController extends Controller
      * Récupérer les frais applicables pour une classe donnée
      * Architecture corrigée utilisant ESBTPFraisOption avec distinction class-based vs global
      */
-    public function getFraisByClasse($classeId)
+    public function getFraisByClasse($classeId, Request $request)
     {
         try {
             $classe = ESBTPClasse::with(['filiere', 'niveau', 'annee'])->findOrFail($classeId);
+            $affectationStatus = $request->get('affectation_status', 'affecté');
             
             \Log::info('getFraisByClasse appelé', [
                 'classe_id' => $classeId,
@@ -1451,10 +1454,13 @@ class ESBTPInscriptionController extends Controller
                         ->first();
                     
                     if ($configuration) {
-                        $defaultAmount = $configuration->amount;
+                        $defaultAmount = $configuration->getMontantByStatus($affectationStatus);
                         $isConfigured = true;
                         $configurationType = 'configuration';
-                        \Log::info("Configuration trouvée pour catégorie {$category->name}", ['amount' => $configuration->amount]);
+                        \Log::info("Configuration trouvée pour catégorie {$category->name}", [
+                            'affectation_status' => $affectationStatus, 
+                            'amount' => $defaultAmount
+                        ]);
                     }
                     
                     // 2. Chercher des variants/options class-based pour cette catégorie
@@ -1502,7 +1508,8 @@ class ESBTPInscriptionController extends Controller
                     'is_configured' => $isConfigured,
                     'configuration_type' => $configurationType,
                     'category_default_amount' => $category->default_amount,
-                    'category_type' => $category->category_type ?? 'academic'
+                    'category_type' => $category->category_type ?? 'academic',
+                    'affectation_status' => $affectationStatus // Pour le debug
                 ];
             }
             

@@ -23,28 +23,116 @@
             </div>
         </div>
 
-        <!-- Configuration du montant -->
+        <!-- Configuration des montants par statut d'affectation -->
         <div class="form-group-moderne">
-            <label class="form-label-moderne" for="amount_{{ $category->id }}">
-                <i class="fas fa-coins me-1"></i>Montant (FCFA)
+            <label class="form-label-moderne">
+                <i class="fas fa-coins me-1"></i>Montants selon le statut d'affectation (FCFA)
             </label>
-            <div style="position: relative;">
-                <input type="number" 
-                       id="amount_{{ $category->id }}" 
-                       name="categories[{{ $category->id }}][amount]" 
-                       class="form-input-moderne" 
-                       value="{{ number_format($currentAmount, 0, '', '') }}"
-                       min="0" 
-                       step="1000"
-                       placeholder="Saisir le montant"
-                       style="padding-right: 80px;">
-                <div style="position: absolute; right: var(--space-md); top: 50%; transform: translateY(-50%); font-size: var(--text-small); color: var(--text-secondary); font-weight: 600;">
-                    FCFA
+            <div style="font-size: var(--text-small); color: var(--text-muted); margin-bottom: var(--space-md);">
+                <i class="fas fa-info-circle me-1"></i>
+                Configurez des tarifs différents selon le statut d'affectation gouvernementale (MESRS)
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-md);">
+                <!-- Étudiants Affectés -->
+                <div class="card-moderne" style="border-left: 4px solid var(--success); padding: var(--space-md);">
+                    <div style="display: flex; align-items: center; margin-bottom: var(--space-sm);">
+                        <div style="width: 24px; height: 24px; background: var(--success); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: var(--space-sm);">
+                            <i class="fas fa-check" style="color: white; font-size: 12px;"></i>
+                        </div>
+                        <div style="font-weight: 600; color: var(--success); font-size: var(--text-small);">
+                            AFFECTÉS
+                        </div>
+                    </div>
+                    <div style="position: relative; margin-bottom: var(--space-sm);">
+                        <input type="number" 
+                               id="amount_affecte_{{ $category->id }}" 
+                               name="categories[{{ $category->id }}][amount_affecte]" 
+                               class="form-input-moderne" 
+                               value="{{ $existingConfig && $existingConfig->amount_affecte ? number_format($existingConfig->amount_affecte, 0, '', '') : '' }}"
+                               min="0" 
+                               step="1000"
+                               placeholder="Montant affectés"
+                               style="padding-right: 60px; font-size: var(--text-small);">
+                        <div style="position: absolute; right: var(--space-sm); top: 50%; transform: translateY(-50%); font-size: 10px; color: var(--text-secondary); font-weight: 600;">
+                            FCFA
+                        </div>
+                    </div>
+                    <div style="font-size: 10px; color: var(--text-muted);">
+                        Subvention étatique possible
+                    </div>
+                </div>
+
+                <!-- Étudiants Réaffectés -->
+                <div class="card-moderne" style="border-left: 4px solid var(--warning); padding: var(--space-md);">
+                    <div style="display: flex; align-items: center; margin-bottom: var(--space-sm);">
+                        <div style="width: 24px; height: 24px; background: var(--warning); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: var(--space-sm);">
+                            <i class="fas fa-sync-alt" style="color: white; font-size: 12px;"></i>
+                        </div>
+                        <div style="font-weight: 600; color: var(--warning); font-size: var(--text-small);">
+                            RÉAFFECTÉS
+                        </div>
+                    </div>
+                    <div style="position: relative; margin-bottom: var(--space-sm);">
+                        <input type="number" 
+                               id="amount_reaffecte_{{ $category->id }}" 
+                               name="categories[{{ $category->id }}][amount_reaffecte]" 
+                               class="form-input-moderne" 
+                               value="{{ $existingConfig && $existingConfig->amount_reaffecte ? number_format($existingConfig->amount_reaffecte, 0, '', '') : '' }}"
+                               min="0" 
+                               step="1000"
+                               placeholder="Montant réaffectés"
+                               style="padding-right: 60px; font-size: var(--text-small);">
+                        <div style="position: absolute; right: var(--space-sm); top: 50%; transform: translateY(-50%); font-size: 10px; color: var(--text-secondary); font-weight: 600;">
+                            FCFA
+                        </div>
+                    </div>
+                    <div style="font-size: 10px; color: var(--text-muted);">
+                        Subvention maintenue après réaffectation
+                    </div>
+                </div>
+
+                <!-- Étudiants Non Affectés -->
+                <div class="card-moderne" style="border-left: 4px solid var(--danger); padding: var(--space-md);">
+                    <div style="display: flex; align-items: center; margin-bottom: var(--space-sm);">
+                        <div style="width: 24px; height: 24px; background: var(--danger); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: var(--space-sm);">
+                            <i class="fas fa-times" style="color: white; font-size: 12px;"></i>
+                        </div>
+                        <div style="font-weight: 600; color: var(--danger); font-size: var(--text-small);">
+                            NON AFFECTÉS
+                        </div>
+                    </div>
+                    <div style="position: relative; margin-bottom: var(--space-sm);">
+                        <input type="number" 
+                               id="amount_non_affecte_{{ $category->id }}" 
+                               name="categories[{{ $category->id }}][amount_non_affecte]" 
+                               class="form-input-moderne" 
+                               value="{{ $existingConfig && $existingConfig->amount_non_affecte ? number_format($existingConfig->amount_non_affecte, 0, '', '') : '' }}"
+                               min="0" 
+                               step="1000"
+                               placeholder="Montant non affectés"
+                               style="padding-right: 60px; font-size: var(--text-small);">
+                        <div style="position: absolute; right: var(--space-sm); top: 50%; transform: translateY(-50%); font-size: 10px; color: var(--text-secondary); font-weight: 600;">
+                            FCFA
+                        </div>
+                    </div>
+                    <div style="font-size: 10px; color: var(--text-muted);">
+                        Tarif complet sans subvention
+                    </div>
                 </div>
             </div>
-            <div style="font-size: var(--text-small); color: var(--text-muted); margin-top: var(--space-xs);">
-                <i class="fas fa-info-circle me-1"></i>
-                Montant par défaut: {{ number_format($category->default_amount, 0, '', ' ') }} FCFA
+            
+            <!-- Actions rapides -->
+            <div style="display: flex; gap: var(--space-sm); margin-top: var(--space-md);">
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="copyToAll({{ $category->id }}, 'amount_affecte')" title="Copier le montant Affectés sur tous">
+                    <i class="fas fa-copy"></i> Copier Affectés
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-warning" onclick="copyToAll({{ $category->id }}, 'amount_reaffecte')" title="Copier le montant Réaffectés sur tous">
+                    <i class="fas fa-copy"></i> Copier Réaffectés
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="copyToAll({{ $category->id }}, 'amount_non_affecte')" title="Copier le montant Non Affectés sur tous">
+                    <i class="fas fa-copy"></i> Copier Non Aff.
+                </button>
             </div>
         </div>
 

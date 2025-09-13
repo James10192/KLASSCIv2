@@ -22,6 +22,9 @@ class ESBTPFraisConfiguration extends Model
         'niveau_id', 
         'annee_universitaire_id',
         'amount',
+        'amount_affecte',    // Nouveau: montant pour étudiants affectés
+        'amount_reaffecte',  // Nouveau: montant pour étudiants réaffectés
+        'amount_non_affecte', // Nouveau: montant pour étudiants non affectés
         'payment_deadline_days',
         'installments_allowed',
         'max_installments',
@@ -42,6 +45,9 @@ class ESBTPFraisConfiguration extends Model
 
     protected $casts = [
         'amount' => 'decimal:2',
+        'amount_affecte' => 'decimal:2',
+        'amount_reaffecte' => 'decimal:2',
+        'amount_non_affecte' => 'decimal:2',
         'payment_deadline_days' => 'integer',
         'installments_allowed' => 'boolean',
         'max_installments' => 'integer',
@@ -285,6 +291,48 @@ class ESBTPFraisConfiguration extends Model
             'early_discount' => $this->early_payment_discount > 0 ? $this->early_payment_discount . '%' : 'Non',
             'sibling_discount' => $this->sibling_discount_enabled ? 'Oui' : 'Non',
             'seasonal_adjustments' => !empty($this->seasonal_adjustments) ? 'Oui' : 'Non',
+        ];
+    }
+
+    /**
+     * Récupère le montant selon le statut d'affectation.
+     *
+     * @param string $affectationStatus
+     * @return float
+     */
+    public function getMontantByStatus($affectationStatus)
+    {
+        return match($affectationStatus) {
+            'affecté' => $this->amount_affecte ?? $this->amount,
+            'réaffecté' => $this->amount_reaffecte ?? $this->amount,
+            'non_affecté' => $this->amount_non_affecte ?? $this->amount,
+            default => $this->amount
+        };
+    }
+
+    /**
+     * Vérifie si des montants différenciés sont configurés.
+     *
+     * @return bool
+     */
+    public function hasDifferentiatedAmounts()
+    {
+        return $this->amount_affecte !== null || 
+               $this->amount_reaffecte !== null || 
+               $this->amount_non_affecte !== null;
+    }
+
+    /**
+     * Retourne tous les montants configurés par statut.
+     *
+     * @return array
+     */
+    public function getAllAmounts()
+    {
+        return [
+            'affecté' => $this->amount_affecte ?? $this->amount,
+            'réaffecté' => $this->amount_reaffecte ?? $this->amount,
+            'non_affecté' => $this->amount_non_affecte ?? $this->amount,
         ];
     }
 

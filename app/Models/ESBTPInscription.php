@@ -29,6 +29,7 @@ class ESBTPInscription extends Model
         'niveau_id',
         'classe_id',
         'classe_alternative_id',
+        'affectation_status', // Nouveau: statut d'affectation (affecté, réaffecté, non_affecté)
         'date_inscription',
         'type_inscription', // Première inscription, réinscription, etc.
         'status', // active, annulée, etc.
@@ -65,6 +66,7 @@ class ESBTPInscription extends Model
         'montant_scolarite' => 'float',
         'frais_inscription' => 'float',
         'comptabilite_activee' => 'boolean',
+        'affectation_status' => 'string',
     ];
 
     /**
@@ -385,6 +387,39 @@ class ESBTPInscription extends Model
     public function scopeComptabiliteActivee($query)
     {
         return $query->where('comptabilite_activee', true);
+    }
+
+    /**
+     * Scope pour filtrer les étudiants affectés.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeAffectes($query)
+    {
+        return $query->where('affectation_status', 'affecté');
+    }
+
+    /**
+     * Scope pour filtrer les étudiants réaffectés.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeReaffectes($query)
+    {
+        return $query->where('affectation_status', 'réaffecté');
+    }
+
+    /**
+     * Scope pour filtrer les étudiants non affectés.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeNonAffectes($query)
+    {
+        return $query->where('affectation_status', 'non_affecté');
     }
 
     /**

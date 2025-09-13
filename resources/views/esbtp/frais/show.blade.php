@@ -339,20 +339,65 @@
                                 </span>
                             </div>
                             
-                            <!-- Détails de configuration -->
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); margin-bottom: var(--space-md);">
-                                <div style="text-align: center; padding: var(--space-sm); background: rgba(30, 58, 138, 0.1); border-radius: var(--radius-small);">
-                                    <div style="font-size: var(--amount-medium); font-weight: 700; color: var(--primary);">
-                                        {{ number_format($config->amount, 0, ',', ' ') }} F CFA
-                                    </div>
-                                    <div style="font-size: var(--text-small); color: var(--primary); font-weight: 600;">Montant</div>
+                            <!-- Montants par statut d'affectation -->
+                            <div style="margin-bottom: var(--space-md);">
+                                <div style="font-weight: 600; color: var(--text-secondary); margin-bottom: var(--space-sm); font-size: var(--text-small);">
+                                    <i class="fas fa-coins me-1"></i>Tarifs selon le statut d'affectation MESRS
                                 </div>
-                                <div style="text-align: center; padding: var(--space-sm); background: rgba(245, 158, 11, 0.1); border-radius: var(--radius-small);">
-                                    <div style="font-size: var(--amount-medium); font-weight: 700; color: var(--warning);">
-                                        {{ $config->payment_deadline_days }} jours
+                                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-sm);">
+                                    <!-- Affectés -->
+                                    <div style="text-align: center; padding: var(--space-sm); background: rgba(16, 185, 129, 0.1); border-radius: var(--radius-small); border-left: 3px solid var(--success);">
+                                        <div style="display: flex; align-items: center; justify-content: center; margin-bottom: var(--space-xs);">
+                                            <div style="width: 16px; height: 16px; background: var(--success); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: var(--space-xs);">
+                                                <i class="fas fa-check" style="color: white; font-size: 8px;"></i>
+                                            </div>
+                                            <div style="font-size: 10px; font-weight: 600; color: var(--success);">AFFECTÉS</div>
+                                        </div>
+                                        <div style="font-size: var(--text-normal); font-weight: 700; color: var(--success);">
+                                            {{ number_format($config->amount_affecte ?? $config->amount, 0, ',', ' ') }}
+                                        </div>
+                                        <div style="font-size: 9px; color: var(--success); font-weight: 600;">FCFA</div>
+                                        <div style="font-size: 8px; color: var(--text-muted); margin-top: 2px;">Subvention possible</div>
                                     </div>
-                                    <div style="font-size: var(--text-small); color: var(--warning); font-weight: 600;">Délai</div>
+
+                                    <!-- Réaffectés -->
+                                    <div style="text-align: center; padding: var(--space-sm); background: rgba(245, 158, 11, 0.1); border-radius: var(--radius-small); border-left: 3px solid var(--warning);">
+                                        <div style="display: flex; align-items: center; justify-content: center; margin-bottom: var(--space-xs);">
+                                            <div style="width: 16px; height: 16px; background: var(--warning); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: var(--space-xs);">
+                                                <i class="fas fa-sync-alt" style="color: white; font-size: 8px;"></i>
+                                            </div>
+                                            <div style="font-size: 10px; font-weight: 600; color: var(--warning);">RÉAFFECTÉS</div>
+                                        </div>
+                                        <div style="font-size: var(--text-normal); font-weight: 700; color: var(--warning);">
+                                            {{ number_format($config->amount_reaffecte ?? $config->amount, 0, ',', ' ') }}
+                                        </div>
+                                        <div style="font-size: 9px; color: var(--warning); font-weight: 600;">FCFA</div>
+                                        <div style="font-size: 8px; color: var(--text-muted); margin-top: 2px;">Subvention maintenue</div>
+                                    </div>
+
+                                    <!-- Non Affectés -->
+                                    <div style="text-align: center; padding: var(--space-sm); background: rgba(239, 68, 68, 0.1); border-radius: var(--radius-small); border-left: 3px solid var(--danger);">
+                                        <div style="display: flex; align-items: center; justify-content: center; margin-bottom: var(--space-xs);">
+                                            <div style="width: 16px; height: 16px; background: var(--danger); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: var(--space-xs);">
+                                                <i class="fas fa-times" style="color: white; font-size: 8px;"></i>
+                                            </div>
+                                            <div style="font-size: 10px; font-weight: 600; color: var(--danger);">NON AFFECTÉS</div>
+                                        </div>
+                                        <div style="font-size: var(--text-normal); font-weight: 700; color: var(--danger);">
+                                            {{ number_format($config->amount_non_affecte ?? $config->amount, 0, ',', ' ') }}
+                                        </div>
+                                        <div style="font-size: 9px; color: var(--danger); font-weight: 600;">FCFA</div>
+                                        <div style="font-size: 8px; color: var(--text-muted); margin-top: 2px;">Tarif complet</div>
+                                    </div>
                                 </div>
+                            </div>
+
+                            <!-- Délai de paiement -->
+                            <div style="text-align: center; padding: var(--space-sm); background: rgba(59, 130, 246, 0.1); border-radius: var(--radius-small); margin-bottom: var(--space-md);">
+                                <div style="font-size: var(--amount-medium); font-weight: 700; color: var(--accent-blue);">
+                                    {{ $config->payment_deadline_days }} jours
+                                </div>
+                                <div style="font-size: var(--text-small); color: var(--accent-blue); font-weight: 600;">Délai de paiement</div>
                             </div>
                             
                             <!-- Informations supplémentaires -->

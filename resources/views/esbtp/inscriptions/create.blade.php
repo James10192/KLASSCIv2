@@ -815,6 +815,73 @@
                         </div>
                     </div>
 
+                    <!-- Statut d'affectation MESRS -->
+                    <div class="row mt-4">
+                        <div class="col-md-12 mb-3">
+                            <h6 class="section-subtitle">
+                                <i class="fas fa-university me-2" style="color: #667eea;"></i>
+                                Statut d'affectation gouvernementale
+                            </h6>
+                            <div class="alert alert-info" style="border-left: 4px solid #667eea;">
+                                <div class="d-flex align-items-start">
+                                    <i class="fas fa-info-circle me-2 mt-1" style="color: #667eea;"></i>
+                                    <div>
+                                        <strong>Statut d'affectation MESRS :</strong> Précisez le statut d'affectation de l'étudiant selon le système gouvernemental ivoirien.
+                                        <br><small class="text-muted">Ce statut détermine la prise en charge étatique et les frais applicables.</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label class="form-label fw-bold">
+                                    <i class="fas fa-check-circle me-1" style="color: #28a745;"></i>
+                                    Statut d'affectation
+                                </label>
+                                <select class="form-select @error('affectation_status') is-invalid @enderror" 
+                                        name="affectation_status" 
+                                        id="affectation_status" 
+                                        required 
+                                        onchange="updateAffectationInfo()">
+                                    <option value="">Sélectionnez le statut d'affectation</option>
+                                    <option value="affecté" {{ old('affectation_status') == 'affecté' ? 'selected' : '' }}>
+                                        Affecté
+                                    </option>
+                                    <option value="réaffecté" {{ old('affectation_status') == 'réaffecté' ? 'selected' : '' }}>
+                                        Réaffecté
+                                    </option>
+                                    <option value="non_affecté" {{ old('affectation_status') == 'non_affecté' ? 'selected' : '' }}>
+                                        Non affecté
+                                    </option>
+                                </select>
+                                @error('affectation_status')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                                <div class="form-text text-muted">
+                                    <i class="fas fa-lightbulb me-1"></i>
+                                    Le statut influence les frais applicables selon la prise en charge étatique
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <!-- Information contextuelle sur le statut sélectionné -->
+                            <div id="affectation-info" class="card border-0" style="background: rgba(255, 255, 255, 0.8); min-height: 120px;">
+                                <div class="card-body">
+                                    <h6 class="card-title text-muted">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        Information sur le statut
+                                    </h6>
+                                    <p class="card-text text-muted small">
+                                        Sélectionnez un statut d'affectation pour voir les détails.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Informations du parent -->
                     <div class="row mt-5">
                         <div class="col-md-12 mb-4">
@@ -1338,8 +1405,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 `;
                 
-                // Charger les frais
-                fetch(`/esbtp/inscriptions/frais-by-classe/${classeId}`, {
+                // Récupérer le statut d'affectation sélectionné
+                const affectationStatus = document.getElementById('affectation_status')?.value || 'affecté';
+                
+                // Charger les frais avec le statut d'affectation
+                fetch(`/esbtp/inscriptions/frais-by-classe/${classeId}?affectation_status=${encodeURIComponent(affectationStatus)}`, {
                     method: 'GET',
                     headers: {
                         'Accept': 'application/json',
@@ -1788,6 +1858,121 @@ document.addEventListener('DOMContentLoaded', function() {
             updateResumeFrais();
         }
     });
+    
+    // Fonction pour mettre à jour les informations sur le statut d'affectation
+    window.updateAffectationInfo = function() {
+        const select = document.getElementById('affectation_status');
+        const infoDiv = document.getElementById('affectation-info');
+        const value = select.value;
+        
+        let content = '';
+        
+        switch(value) {
+            case 'affecté':
+                content = `
+                    <div class="card-body">
+                        <h6 class="card-title text-success">
+                            <i class="fas fa-check-circle me-1"></i>
+                            Étudiant Affecté par l'État
+                        </h6>
+                        <div class="text-success small mb-2">
+                            <strong>Plateforme :</strong> bac.mesrs-ci.net
+                        </div>
+                        <p class="card-text small text-muted mb-1">
+                            • Affectation officielle par le MESRS après le BAC
+                        </p>
+                        <p class="card-text small text-muted mb-1">
+                            • Éligible à une subvention étatique
+                        </p>
+                        <p class="card-text small text-success">
+                            <i class="fas fa-coins me-1"></i>
+                            <strong>Frais réduits applicables</strong>
+                        </p>
+                    </div>
+                `;
+                break;
+            case 'réaffecté':
+                content = `
+                    <div class="card-body">
+                        <h6 class="card-title text-warning">
+                            <i class="fas fa-sync-alt me-1"></i>
+                            Étudiant Réaffecté par la DOB
+                        </h6>
+                        <div class="text-warning small mb-2">
+                            <strong>Organisme :</strong> Direction de l'Orientation et des Bourses
+                        </div>
+                        <p class="card-text small text-muted mb-1">
+                            • Initialement affecté dans un autre établissement
+                        </p>
+                        <p class="card-text small text-muted mb-1">
+                            • Réaffectation officielle après demande
+                        </p>
+                        <p class="card-text small text-warning">
+                            <i class="fas fa-coins me-1"></i>
+                            <strong>Subvention étatique maintenue</strong>
+                        </p>
+                    </div>
+                `;
+                break;
+            case 'non_affecté':
+                content = `
+                    <div class="card-body">
+                        <h6 class="card-title text-danger">
+                            <i class="fas fa-times-circle me-1"></i>
+                            Étudiant Non Affecté
+                        </h6>
+                        <div class="text-danger small mb-2">
+                            <strong>Statut :</strong> Inscription directe
+                        </div>
+                        <p class="card-text small text-muted mb-1">
+                            • Non retenu dans le système public d'affectation
+                        </p>
+                        <p class="card-text small text-muted mb-1">
+                            • Inscription directe dans l'établissement
+                        </p>
+                        <p class="card-text small text-danger">
+                            <i class="fas fa-exclamation-triangle me-1"></i>
+                            <strong>Tarif complet sans subvention</strong>
+                        </p>
+                    </div>
+                `;
+                break;
+            default:
+                content = `
+                    <div class="card-body">
+                        <h6 class="card-title text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Information sur le statut
+                        </h6>
+                        <p class="card-text text-muted small">
+                            Sélectionnez un statut d'affectation pour voir les détails.
+                        </p>
+                    </div>
+                `;
+        }
+        
+        infoDiv.innerHTML = content;
+        
+        // Recharger les frais si une classe est déjà sélectionnée
+        if (value && document.getElementById('classe_id') && document.getElementById('classe_id').value) {
+            loadFraisForClasse();
+        }
+    };
+    
+    // Fonction pour recharger les frais selon la classe et le statut d'affectation
+    window.loadFraisForClasse = function() {
+        const classeSelect = document.getElementById('classe_id');
+        const affectationSelect = document.getElementById('affectation_status');
+        
+        if (!classeSelect || !classeSelect.value) {
+            console.log('Aucune classe sélectionnée pour recharger les frais');
+            return;
+        }
+        
+        // Déclencher l'événement change sur la classe pour recharger les frais
+        const changeEvent = new Event('change', { bubbles: true });
+        classeSelect.dispatchEvent(changeEvent);
+    };
 });
 </script>
 @endpush
