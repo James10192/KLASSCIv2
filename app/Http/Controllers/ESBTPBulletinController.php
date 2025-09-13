@@ -55,13 +55,10 @@ class ESBTPBulletinController extends Controller
         return [
             // Informations de l'établissement
             'school_name' => SettingsHelper::get('school_name', 'École Spéciale du Bâtiment et des Travaux Publics'),
-            'school_type' => SettingsHelper::get('school_type', 'Enseignement Supérieur Technique'),
-            'school_authorization' => SettingsHelper::get('school_authorization_number', ''),
             'school_address' => SettingsHelper::get('school_address', ''),
             'school_phone' => SettingsHelper::get('school_phone', ''),
             'school_email' => SettingsHelper::get('school_email', ''),
             'school_website' => SettingsHelper::get('school_website', ''),
-            'school_city' => SettingsHelper::get('school_city', 'Yamoussoukro'),
             'school_country' => SettingsHelper::get('school_country', 'Côte d\'Ivoire'),
             'director_name' => SettingsHelper::get('director_name', ''),
             'director_title' => SettingsHelper::get('director_title', 'Directeur'),
@@ -110,9 +107,9 @@ class ESBTPBulletinController extends Controller
             // Tableau des matières
             'bulletin_show_subjects_table' => SettingsHelper::get('bulletin_show_subjects_table', '1'),
             'bulletin_show_subject_average' => SettingsHelper::get('bulletin_show_subject_average', '1'),
-            'bulletin_show_subject_coefficients' => SettingsHelper::get('bulletin_show_subject_coefficients', '1'),
+            'bulletin_show_coefficient' => SettingsHelper::get('bulletin_show_coefficient', '1'),
             'bulletin_show_teachers' => SettingsHelper::get('bulletin_show_teachers', '1'),
-            'bulletin_show_appreciation' => SettingsHelper::get('bulletin_show_appreciation', '1'),
+            'bulletin_show_appreciations' => SettingsHelper::get('bulletin_show_appreciations', '1'),
             
             // Moyennes et statistiques
             'bulletin_show_general_average' => SettingsHelper::get('bulletin_show_general_average', '1'),
@@ -122,7 +119,6 @@ class ESBTPBulletinController extends Controller
             'bulletin_show_class_size' => SettingsHelper::get('bulletin_show_class_size', '1'),
             'bulletin_show_attendance' => SettingsHelper::get('bulletin_show_attendance', '1'),
             'bulletin_show_attendance_note' => SettingsHelper::get('bulletin_show_attendance_note', '1'),
-            'bulletin_show_conduct_note' => SettingsHelper::get('bulletin_show_conduct_note', '1'),
             'bulletin_show_highest_average' => SettingsHelper::get('bulletin_show_highest_average', '1'),
             'bulletin_show_lowest_average' => SettingsHelper::get('bulletin_show_lowest_average', '1'),
             'bulletin_show_class_average' => SettingsHelper::get('bulletin_show_class_average', '1'),
@@ -131,16 +127,6 @@ class ESBTPBulletinController extends Controller
             // Signatures et validation
             'bulletin_show_signatures' => SettingsHelper::get('bulletin_show_signatures', '1'),
             'bulletin_show_director_signature' => SettingsHelper::get('bulletin_show_director_signature', '1'),
-            'bulletin_show_teacher_signature' => SettingsHelper::get('bulletin_show_teacher_signature', '1'),
-            'bulletin_show_parent_signature' => SettingsHelper::get('bulletin_show_parent_signature', '1'),
-            'bulletin_signature_text' => SettingsHelper::get('bulletin_signature_text', 'Le Directeur'),
-            
-            // Styles et apparence
-            'bulletin_table_border_style' => SettingsHelper::get('bulletin_table_border_style', 'solid'),
-            'bulletin_header_background_color' => SettingsHelper::get('bulletin_header_background_color', '#f8f9fa'),
-            'bulletin_text_color' => SettingsHelper::get('bulletin_text_color', '#000000'),
-            'bulletin_show_watermark' => SettingsHelper::get('bulletin_show_watermark', '0'),
-            'bulletin_watermark_text' => SettingsHelper::get('bulletin_watermark_text', 'CONFIDENTIEL'),
         ];
     }
 
@@ -5539,22 +5525,17 @@ class ESBTPBulletinController extends Controller
     public function saveConfiguration(Request $request)
     {
         try {
-            // Récupérer tous les paramètres de bulletin
-            $bulletinSettings = $request->only([
-                'bulletin_font_size',
+            \Log::info('Début de sauvegarde configuration', ['data' => $request->all()]);
+            
+            // Liste des paramètres checkbox (qui doivent être gérés différemment)
+            $checkboxFields = [
                 'bulletin_show_logo',
-                'bulletin_school_name_custom',
                 'bulletin_show_header',
                 'bulletin_show_republic_info',
-                'bulletin_republic_text',
-                'bulletin_union_text',
                 'bulletin_show_ministry_info',
-                'bulletin_ministry_text',
                 'bulletin_show_school_info',
                 'bulletin_show_edition_date',
                 'bulletin_show_cycle_info',
-                'bulletin_cycle_text',
-                'bulletin_cycle_abbreviation',
                 'bulletin_show_student_info',
                 'bulletin_show_matricule',
                 'bulletin_show_birth_date',
@@ -5563,9 +5544,9 @@ class ESBTPBulletinController extends Controller
                 'bulletin_show_effectif',
                 'bulletin_show_subjects_table',
                 'bulletin_show_subject_average',
-                'bulletin_show_subject_coefficients',
+                'bulletin_show_coefficient',
                 'bulletin_show_teachers',
-                'bulletin_show_appreciation',
+                'bulletin_show_appreciations',
                 'bulletin_show_general_average',
                 'bulletin_show_technical_average',
                 'bulletin_show_global_average',
@@ -5573,33 +5554,43 @@ class ESBTPBulletinController extends Controller
                 'bulletin_show_class_size',
                 'bulletin_show_attendance',
                 'bulletin_show_attendance_note',
-                'bulletin_show_conduct_note',
                 'bulletin_show_highest_average',
                 'bulletin_show_lowest_average',
                 'bulletin_show_class_average',
                 'bulletin_show_council_decision',
                 'bulletin_show_signatures',
-                'bulletin_show_director_signature',
-                'bulletin_show_teacher_signature',
-                'bulletin_show_parent_signature',
-                'bulletin_signature_text',
-                'bulletin_table_border_style',
-                'bulletin_header_background_color',
-                'bulletin_text_color',
-                'bulletin_show_watermark',
-                'bulletin_watermark_text'
+                'bulletin_show_director_signature'
+            ];
+
+            // Liste de tous les paramètres de bulletin
+            $allBulletinFields = array_merge($checkboxFields, [
+                'bulletin_font_size',
+                'bulletin_school_name_custom',
+                'bulletin_republic_text',
+                'bulletin_union_text',
+                'bulletin_ministry_text',
+                'bulletin_cycle_text',
+                'bulletin_cycle_abbreviation',
+                'bulletin_table_border_style'
             ]);
+
+            // Récupérer tous les paramètres de bulletin avec gestion des checkboxes
+            $bulletinSettings = $request->only($allBulletinFields);
+            
+            // Gérer les checkboxes décochées (les définir à '0' si non présentes)
+            foreach ($checkboxFields as $field) {
+                $bulletinSettings[$field] = $request->has($field) ? '1' : '0';
+            }
+            
+            \Log::info('Paramètres bulletin après traitement checkboxes', ['settings' => $bulletinSettings]);
 
             // Récupérer les paramètres d'établissement
             $establishmentSettings = $request->only([
                 'school_name',
-                'school_type',
-                'school_authorization',
                 'school_address',
                 'school_phone',
                 'school_email',
                 'school_website',
-                'school_city',
                 'school_country',
                 'director_name',
                 'director_title'
@@ -5607,19 +5598,23 @@ class ESBTPBulletinController extends Controller
 
             // Sauvegarder les paramètres de bulletin
             foreach ($bulletinSettings as $key => $value) {
-                SettingsHelper::set($key, $value);
+                SettingsHelper::setOrCreate($key, $value ?? '', 'bulletin');
             }
 
             // Sauvegarder les paramètres d'établissement avec préfixe
             foreach ($establishmentSettings as $key => $value) {
-                SettingsHelper::set("establishment.{$key}", $value);
+                SettingsHelper::setOrCreate("establishment.{$key}", $value ?? '', 'establishment');
             }
 
             return redirect()->back()->with('success', 'Configuration sauvegardée avec succès.');
 
         } catch (\Exception $e) {
-            \Log::error('Erreur lors de la sauvegarde de la configuration: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Erreur lors de la sauvegarde de la configuration.');
+            \Log::error('Erreur lors de la sauvegarde de la configuration: ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return redirect()->back()->with('error', 'Erreur lors de la sauvegarde de la configuration: ' . $e->getMessage());
         }
     }
 

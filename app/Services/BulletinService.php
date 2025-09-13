@@ -9,6 +9,7 @@ use App\Models\ESBTPBulletin;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
 use App\Services\ESBTP\ESBTPAbsenceService;
+use App\Helpers\SettingsHelper;
 use Illuminate\Support\Collection;
 
 class BulletinService
@@ -186,7 +187,9 @@ class BulletinService
             $anneeUniversitaire->date_debut, 
             $anneeUniversitaire->date_fin
         );
-        $noteAssiduite = $this->calculerNoteAssiduite($absences['justifiees'], $absences['non_justifiees']);
+        // Calculer la note d'assiduité seulement si l'affichage est activé
+        $afficherNoteAssiduite = SettingsHelper::get('bulletin_show_attendance_note', '1') === '1';
+        $noteAssiduite = $afficherNoteAssiduite ? $this->calculerNoteAssiduite($absences['justifiees'], $absences['non_justifiees']) : 0;
         $moyenneAvecAssiduite = $moyenneGlobale + $noteAssiduite;
 
         // Rang de l'étudiant (simplifié)
@@ -337,14 +340,9 @@ class BulletinService
                 // Calculer la moyenne globale de cet étudiant
                 $moyenneEtudiant = $this->calculerMoyenneGlobaleEtudiant($etudiant->id, $classeId, $anneeUniversitaireId);
                 
-                // Seulement inclure les étudiants qui ont une moyenne valide (configuration bulletin)
-                if ($moyenneEtudiant <= 0) {
-                    continue; // Ignorer les étudiants sans configuration ou moyenne invalide
-                }
-                
-                // Ajouter la note d'assiduité si configurée
-                $includeAssiduite = \App\Helpers\SettingsHelper::get('bulletin_include_attendance_in_stats', '1');
-                if ($includeAssiduite == '1') {
+                // Ajouter la note d'assiduité seulement si l'affichage est activé
+                $afficherNoteAssiduite = SettingsHelper::get('bulletin_show_attendance_note', '1') === '1';
+                if ($afficherNoteAssiduite) {
                     // Récupérer l'année universitaire pour les dates
                     $anneeUniv = \App\Models\ESBTPAnneeUniversitaire::find($anneeUniversitaireId);
                     $absencesEtudiant = $this->absenceService->calculerDetailAbsences(
@@ -355,6 +353,11 @@ class BulletinService
                     );
                     $noteAssiduite = $this->calculerNoteAssiduite($absencesEtudiant['justifiees'], $absencesEtudiant['non_justifiees']);
                     $moyenneEtudiant += $noteAssiduite;
+                }
+                
+                // Inclure l'étudiant dans les statistiques seulement s'il a une moyenne > 0 OU une note d'assiduité
+                if ($moyenneEtudiant <= 0 && !$afficherNoteAssiduite) {
+                    continue; // Ignorer seulement si pas de moyenne ET pas de note d'assiduité
                 }
                 
                 $moyennes[] = $moyenneEtudiant;

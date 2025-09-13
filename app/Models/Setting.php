@@ -358,4 +358,55 @@ class Setting extends Model
             }
         });
     }
+
+    /**
+     * Définit un paramètre ou le crée s'il n'existe pas
+     *
+     * @param string $key
+     * @param mixed $value
+     * @param string $group
+     * @param string $type
+     * @return bool
+     */
+    public static function setOrCreate($key, $value, $group = 'general', $type = 'string')
+    {
+        try {
+            $setting = static::updateOrCreate(
+                ['key' => $key],
+                [
+                    'value' => $value,
+                    'group' => $group,
+                    'type' => $type,
+                    'is_active' => true,
+                    'updated_by' => auth()->id()
+                ]
+            );
+
+            // Vider le cache (avec gestion d'erreur)
+            try {
+                Cache::forget("setting_{$key}");
+                Cache::forget("settings_group_{$group}");
+            } catch (\Exception $e) {
+                // Ignorer les erreurs de cache
+            }
+
+            Log::info("Configuration mise à jour ou créée", [
+                'key' => $key,
+                'value' => $value,
+                'group' => $group,
+                'user_id' => auth()->id(),
+                'action' => $setting->wasRecentlyCreated ? 'created' : 'updated'
+            ]);
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error("Erreur lors de la création/mise à jour de la configuration '{$key}'", [
+                'error' => $e->getMessage(),
+                'key' => $key,
+                'value' => $value,
+                'group' => $group
+            ]);
+            return false;
+        }
+    }
 }

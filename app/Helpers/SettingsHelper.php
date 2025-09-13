@@ -32,6 +32,20 @@ class SettingsHelper
     }
 
     /**
+     * Définit un paramètre ou le crée s'il n'existe pas
+     *
+     * @param string $key
+     * @param mixed $value
+     * @param string $group
+     * @param string $type
+     * @return bool
+     */
+    public static function setOrCreate($key, $value, $group = 'general', $type = 'string')
+    {
+        return Setting::setOrCreate($key, $value, $group, $type);
+    }
+
+    /**
      * Récupère tous les paramètres
      *
      * @return array

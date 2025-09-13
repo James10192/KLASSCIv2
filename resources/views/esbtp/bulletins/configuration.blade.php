@@ -102,35 +102,11 @@
                 </div>
                 
                 <div class="row">
-                    <div class="col-md-6">
-                        <div class="form-group mb-3">
-                            <label for="school_type" class="form-label">Type d'enseignement</label>
-                            <input type="text" class="form-control" id="school_type" name="school_type" 
-                                   value="{{ $settings['school_type'] ?? '' }}">
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="form-group mb-3">
-                            <label for="school_authorization" class="form-label">Numéro d'autorisation</label>
-                            <input type="text" class="form-control" id="school_authorization" name="school_authorization" 
-                                   value="{{ $settings['school_authorization'] ?? '' }}">
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="row">
                     <div class="col-md-8">
                         <div class="form-group mb-3">
                             <label for="school_address" class="form-label">Adresse</label>
                             <input type="text" class="form-control" id="school_address" name="school_address" 
                                    value="{{ $settings['school_address'] ?? '' }}">
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="form-group mb-3">
-                            <label for="school_city" class="form-label">Ville</label>
-                            <input type="text" class="form-control" id="school_city" name="school_city" 
-                                   value="{{ $settings['school_city'] ?? '' }}">
                         </div>
                     </div>
                 </div>
@@ -307,9 +283,9 @@
                 <div class="row">
                     <div class="col-md-6">
                         <div class="form-check mb-3">
-                            <input class="form-check-input" type="checkbox" id="bulletin_show_subject_coefficients" name="bulletin_show_subject_coefficients" value="1" 
-                                   {{ ($settings['bulletin_show_subject_coefficients'] ?? '1') == '1' ? 'checked' : '' }}>
-                            <label class="form-check-label" for="bulletin_show_subject_coefficients">
+                            <input class="form-check-input" type="checkbox" id="bulletin_show_coefficient" name="bulletin_show_coefficient" value="1" 
+                                   {{ ($settings['bulletin_show_coefficient'] ?? '1') == '1' ? 'checked' : '' }}>
+                            <label class="form-check-label" for="bulletin_show_coefficient">
                                 Afficher les coefficients
                             </label>
                         </div>
@@ -326,9 +302,9 @@
                 </div>
                 
                 <div class="form-check mb-3">
-                    <input class="form-check-input" type="checkbox" id="bulletin_show_appreciation" name="bulletin_show_appreciation" value="1" 
-                           {{ ($settings['bulletin_show_appreciation'] ?? '1') == '1' ? 'checked' : '' }}>
-                    <label class="form-check-label" for="bulletin_show_appreciation">
+                    <input class="form-check-input" type="checkbox" id="bulletin_show_appreciations" name="bulletin_show_appreciations" value="1" 
+                           {{ ($settings['bulletin_show_appreciations'] ?? '1') == '1' ? 'checked' : '' }}>
+                    <label class="form-check-label" for="bulletin_show_appreciations">
                         Afficher les appréciations
                     </label>
                 </div>
@@ -402,15 +378,6 @@
                             </label>
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="form-check mb-3">
-                            <input class="form-check-input" type="checkbox" id="bulletin_show_conduct_note" name="bulletin_show_conduct_note" value="1" 
-                                   {{ ($settings['bulletin_show_conduct_note'] ?? '1') == '1' ? 'checked' : '' }}>
-                            <label class="form-check-label" for="bulletin_show_conduct_note">
-                                Afficher la note de conduite
-                            </label>
-                        </div>
-                    </div>
                 </div>
                 
                 <div class="row">
@@ -477,30 +444,6 @@
                             </label>
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="form-check mb-3">
-                            <input class="form-check-input" type="checkbox" id="bulletin_show_teacher_signature" name="bulletin_show_teacher_signature" value="1" 
-                                   {{ ($settings['bulletin_show_teacher_signature'] ?? '1') == '1' ? 'checked' : '' }}>
-                            <label class="form-check-label" for="bulletin_show_teacher_signature">
-                                Signature du professeur
-                            </label>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="form-check mb-3">
-                            <input class="form-check-input" type="checkbox" id="bulletin_show_parent_signature" name="bulletin_show_parent_signature" value="1" 
-                                   {{ ($settings['bulletin_show_parent_signature'] ?? '1') == '1' ? 'checked' : '' }}>
-                            <label class="form-check-label" for="bulletin_show_parent_signature">
-                                Signature du parent/tuteur
-                            </label>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="form-group mb-3">
-                    <label for="bulletin_signature_text" class="form-label">Texte de signature personnalisé</label>
-                    <input type="text" class="form-control" id="bulletin_signature_text" name="bulletin_signature_text" 
-                           value="{{ $settings['bulletin_signature_text'] ?? '' }}" placeholder="Ex: Le Directeur">
                 </div>
             </div>
 
@@ -525,40 +468,8 @@
                             </select>
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="form-group mb-3">
-                            <label for="bulletin_header_background_color" class="form-label">Couleur de fond en-tête</label>
-                            <input type="color" class="form-control color-input" id="bulletin_header_background_color" name="bulletin_header_background_color" 
-                                   value="{{ $settings['bulletin_header_background_color'] ?? '#f8f9fa' }}">
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="form-group mb-3">
-                            <label for="bulletin_text_color" class="form-label">Couleur du texte</label>
-                            <input type="color" class="form-control color-input" id="bulletin_text_color" name="bulletin_text_color" 
-                                   value="{{ $settings['bulletin_text_color'] ?? '#000000' }}">
-                        </div>
-                    </div>
                 </div>
                 
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="form-check mb-3">
-                            <input class="form-check-input" type="checkbox" id="bulletin_show_watermark" name="bulletin_show_watermark" value="1" 
-                                   {{ ($settings['bulletin_show_watermark'] ?? '0') == '1' ? 'checked' : '' }}>
-                            <label class="form-check-label" for="bulletin_show_watermark">
-                                Afficher un filigrane
-                            </label>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="form-group mb-3">
-                            <label for="bulletin_watermark_text" class="form-label">Texte du filigrane</label>
-                            <input type="text" class="form-control" id="bulletin_watermark_text" name="bulletin_watermark_text" 
-                                   value="{{ $settings['bulletin_watermark_text'] ?? '' }}" placeholder="CONFIDENTIEL">
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <!-- Boutons d'action -->
