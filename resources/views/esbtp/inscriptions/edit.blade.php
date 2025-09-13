@@ -167,6 +167,10 @@
                             </div>
                         </div>
                     @else
+                        <!-- Champs hidden pour conserver les valeurs non modifiables -->
+                        <input type="hidden" name="filiere_id" value="{{ $inscription->filiere_id }}">
+                        <input type="hidden" name="niveau_id" value="{{ $inscription->niveau_id }}">
+                        
                         <div class="col-md-4">
                             <div class="form-group">
                                 <label class="form-label">Filière</label>
@@ -199,6 +203,9 @@
                             </div>
                         </div>
                     @else
+                        <!-- Champ hidden pour conserver la valeur de la classe -->
+                        <input type="hidden" name="classe_id" value="{{ $inscription->classe_id }}">
+                        
                         <div class="col-md-4">
                             <div class="form-group">
                                 <label class="form-label">Classe</label>
