@@ -1004,7 +1004,7 @@ class ESBTPEtudiantController extends Controller
      */
     public function previewCertificat($id)
     {
-        // Récupérer l'étudiant avec ses inscriptions
+        // Récupérer l'étudiant avec toutes ses inscriptions
         $etudiant = ESBTPEtudiant::with([
             'inscriptions.anneeUniversitaire',
             'inscriptions.classe',
@@ -1012,20 +1012,24 @@ class ESBTPEtudiantController extends Controller
             'inscriptions.niveauEtude',
         ])->findOrFail($id);
 
-        // Récupérer l'inscription active ou la plus récente
-        $inscription = $etudiant->inscriptions()
+        // Récupérer toutes les inscriptions ordonnées par année
+        $inscriptions = $etudiant->inscriptions()
             ->with(['anneeUniversitaire', 'classe', 'filiere', 'niveauEtude'])
-            ->whereHas('anneeUniversitaire', function($query) {
-                $query->where('status', 'active');
-            })
-            ->orderBy('created_at', 'desc')
-            ->first();
+            ->orderBy('annee_universitaire_id', 'asc')
+            ->get();
 
-        if (!$inscription) {
-            return back()->with('error', 'Aucune inscription active trouvée pour cet étudiant.');
+        if ($inscriptions->isEmpty()) {
+            return back()->with('error', 'Aucune inscription trouvée pour cet étudiant.');
         }
 
-        return view('esbtp.etudiants.certificat-preview', compact('etudiant', 'inscription'));
+        // Récupérer les paramètres de l'école
+        $settings = \App\Helpers\SettingsHelper::getSchoolInfo();
+
+        return view('esbtp.etudiants.certificat-preview', [
+            'etudiant' => $etudiant,
+            'inscriptions' => $inscriptions,
+            'settings' => $settings
+        ]);
     }
 
     /**
@@ -1036,52 +1040,60 @@ class ESBTPEtudiantController extends Controller
      */
     public function genererCertificat($id)
     {
-        // Récupérer l'étudiant avec ses inscriptions
-        $etudiant = ESBTPEtudiant::with([
-            'inscriptions.anneeUniversitaire',
-            'inscriptions.classe',
-            'inscriptions.filiere',
-            'inscriptions.niveauEtude',
-        ])->findOrFail($id);
+        try {
+            // Récupérer l'étudiant avec toutes ses inscriptions
+            $etudiant = ESBTPEtudiant::with([
+                'inscriptions.anneeUniversitaire',
+                'inscriptions.classe',
+                'inscriptions.filiere',
+                'inscriptions.niveauEtude',
+            ])->findOrFail($id);
 
-        // Récupérer l'année universitaire en cours
-        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+            // Récupérer toutes les inscriptions ordonnées par année
+            $inscriptions = $etudiant->inscriptions()
+                ->with(['anneeUniversitaire', 'classe', 'filiere', 'niveauEtude'])
+                ->orderBy('annee_universitaire_id', 'asc')
+                ->get();
 
-        // Récupérer l'inscription active ou la plus récente
-        $inscription = $etudiant->inscriptions()
-            ->with(['anneeUniversitaire', 'classe', 'filiere', 'niveauEtude'])
-            ->whereHas('anneeUniversitaire', function($query) {
-                $query->where('status', 'active');
-            })
-            ->orderBy('created_at', 'desc')
-            ->first();
+            if ($inscriptions->isEmpty()) {
+                return back()->with('error', 'Aucune inscription trouvée pour cet étudiant.');
+            }
 
-        if (!$inscription) {
-            return back()->with('error', 'Aucune inscription active trouvée pour cet étudiant.');
+            // Récupérer les paramètres de l'école
+            $settings = \App\Helpers\SettingsHelper::getSchoolInfo();
+
+            // Générer le PDF
+            $pdf = Pdf::loadView('esbtp.etudiants.certificat', [
+                'etudiant' => $etudiant,
+                'inscriptions' => $inscriptions,
+                'settings' => $settings
+            ]);
+
+            // Configuration du PDF
+            $pdf->setPaper('A4', 'portrait');
+            $pdf->setOptions([
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled' => true,
+                'defaultFont' => 'DejaVu Sans',
+                'margin-top' => 10,
+                'margin-right' => 10,
+                'margin-bottom' => 15,
+                'margin-left' => 10,
+            ]);
+
+            // Nom du fichier
+            $filename = 'certificat_scolarite_' . strtolower($etudiant->nom) . '_' . strtolower($etudiant->prenom) . '_' . date('Y-m-d') . '.pdf';
+
+            return $pdf->download($filename);
+            
+        } catch (\Exception $e) {
+            \Log::error('Erreur génération certificat scolarité: ' . $e->getMessage(), [
+                'etudiant_id' => $id,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return back()->with('error', 'Erreur lors de la génération du certificat: ' . $e->getMessage());
         }
-
-        // Récupérer les configurations et préparer les settings
-        $settings = $this->getCertificatSettings();
-
-        // Préparer les données pour la vue
-        $data = [
-            'etudiant' => $etudiant,
-            'inscription' => $inscription,
-            'settings' => $settings,
-            'date_generation' => now(),
-        ];
-
-        // Générer le PDF
-        $pdf = Pdf::loadView('esbtp.etudiants.certificat', $data);
-
-        // Configuration PDF pour A4
-        $pdf->setPaper('A4', 'portrait');
-
-        // Définir le nom du fichier
-        $filename = 'Certificat_Scolarite_' . $etudiant->matricule . '_' . now()->format('Ymd') . '.pdf';
-
-        // Retourner le PDF pour téléchargement
-        return $pdf->download($filename);
     }
 
     /**
@@ -1542,6 +1554,102 @@ class ESBTPEtudiantController extends Controller
                 'error' => 'Erreur lors de la récupération des soldes',
                 'message' => $e->getMessage()
             ], 500);
+        }
+    }
+
+    /**
+     * Prévisualiser une attestation de fréquentation pour un étudiant.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function previewAttestationFrequentation($id)
+    {
+        // Récupérer l'étudiant avec ses inscriptions
+        $etudiant = ESBTPEtudiant::with([
+            'inscriptions.anneeUniversitaire',
+            'inscriptions.classe',
+            'inscriptions.filiere',
+            'inscriptions.niveauEtude',
+        ])->findOrFail($id);
+
+        // Récupérer l'inscription la plus récente ou active
+        $inscription = $etudiant->inscriptions()
+            ->with(['anneeUniversitaire', 'classe', 'filiere', 'niveauEtude'])
+            ->orderBy('annee_universitaire_id', 'desc')
+            ->first();
+
+        if (!$inscription) {
+            return back()->with('error', 'Aucune inscription trouvée pour cet étudiant.');
+        }
+
+        return view('esbtp.etudiants.attestation-frequentation-preview', [
+            'etudiant' => $etudiant,
+            'inscription' => $inscription
+        ]);
+    }
+
+    /**
+     * Générer une attestation de fréquentation pour un étudiant.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function genererAttestationFrequentation($id)
+    {
+        try {
+            // Récupérer l'étudiant avec ses inscriptions
+            $etudiant = ESBTPEtudiant::with([
+                'inscriptions.anneeUniversitaire',
+                'inscriptions.classe',
+                'inscriptions.filiere',
+                'inscriptions.niveauEtude',
+            ])->findOrFail($id);
+
+            // Récupérer l'inscription la plus récente ou active
+            $inscription = $etudiant->inscriptions()
+                ->with(['anneeUniversitaire', 'classe', 'filiere', 'niveauEtude'])
+                ->orderBy('annee_universitaire_id', 'desc')
+                ->first();
+
+            if (!$inscription) {
+                return back()->with('error', 'Aucune inscription trouvée pour cet étudiant.');
+            }
+
+            // Récupérer les paramètres de l'école
+            $settings = \App\Helpers\SettingsHelper::getSchoolInfo();
+
+            // Générer le PDF
+            $pdf = Pdf::loadView('esbtp.etudiants.attestation-frequentation', [
+                'etudiant' => $etudiant,
+                'inscription' => $inscription,
+                'settings' => $settings
+            ]);
+
+            // Configuration du PDF
+            $pdf->setPaper('A4', 'portrait');
+            $pdf->setOptions([
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled' => true,
+                'defaultFont' => 'DejaVu Sans',
+                'margin-top' => 10,
+                'margin-right' => 10,
+                'margin-bottom' => 15,
+                'margin-left' => 10,
+            ]);
+
+            // Nom du fichier
+            $filename = 'attestation_frequentation_' . strtolower($etudiant->nom) . '_' . strtolower($etudiant->prenom) . '_' . date('Y-m-d') . '.pdf';
+
+            return $pdf->download($filename);
+            
+        } catch (\Exception $e) {
+            \Log::error('Erreur génération attestation fréquentation: ' . $e->getMessage(), [
+                'etudiant_id' => $id,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return back()->with('error', 'Erreur lors de la génération de l\'attestation: ' . $e->getMessage());
         }
     }
 }

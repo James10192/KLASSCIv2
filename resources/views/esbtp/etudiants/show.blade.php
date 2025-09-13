@@ -35,6 +35,13 @@
                         <li><a class="dropdown-item" href="{{ route('esbtp.etudiants.certificat', ['etudiant' => $etudiant->id]) }}" target="_blank">
                             <i class="fas fa-download me-1"></i>Télécharger Certificat
                         </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{{ route('esbtp.etudiants.attestation-frequentation.preview', ['etudiant' => $etudiant->id]) }}">
+                            <i class="fas fa-eye me-1"></i>Prévisualiser Attestation
+                        </a></li>
+                        <li><a class="dropdown-item" href="{{ route('esbtp.etudiants.attestation-frequentation', ['etudiant' => $etudiant->id]) }}" target="_blank">
+                            <i class="fas fa-download me-1"></i>Télécharger Attestation
+                        </a></li>
                         @if($etudiant->paiements->where('status', 'validé')->count() > 0)
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{{ route('esbtp.paiements.index') }}?etudiant={{ $etudiant->id }}">

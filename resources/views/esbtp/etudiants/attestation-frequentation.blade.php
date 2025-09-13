@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-    <title>Certificat de Scolarité - {{ $etudiant->matricule }}</title>
+    <title>Attestation de Fréquentation - {{ $etudiant->matricule }}</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -87,6 +87,44 @@
             color: #1e40af;
             text-decoration: underline;
         }
+
+        /* Informations étudiant en bloc */
+        .student-info {
+            margin: 20px 0;
+            line-height: 1.8;
+        }
+
+        .student-details {
+            margin: 15px 0;
+            padding: 10px;
+            background-color: #f8fafc;
+            border-left: 4px solid #1e40af;
+        }
+
+        .detail-row {
+            margin-bottom: 8px;
+            display: table;
+            width: 100%;
+        }
+
+        .detail-label {
+            display: table-cell;
+            width: 30%;
+            font-weight: bold;
+            vertical-align: top;
+        }
+
+        .detail-value {
+            display: table-cell;
+            width: 70%;
+            vertical-align: top;
+        }
+
+        .status-options {
+            margin: 15px 0;
+            font-style: italic;
+            font-size: 11px;
+        }
         
         /* Footer avec signature - Compatible DomPDF */
         .certificat-footer {
@@ -125,6 +163,15 @@
             color: #64748b;
             font-style: italic;
             font-size: 10px;
+            margin-top: 20px;
+        }
+
+        .signature-note {
+            font-size: 9px;
+            font-style: italic;
+            color: #64748b;
+            margin-top: 10px;
+            text-align: center;
         }
         
         /* Note de bas de page modernisée */
@@ -167,101 +214,77 @@
 
         <!-- Titre du certificat -->
         <div class="certificat-title">
-            Certificat de Scolarité
+            Attestation de Fréquentation
         </div>
 
         <!-- Contenu principal -->
         <div class="certificat-content">
             <p>
-                Je soussigné(e), {{ $settings['director_title'] ?? 'Le Directeur' }} de {{ $settings['name'] ?? 'l\'École Spéciale du Bâtiment et des Travaux Publics' }}, certifie que :
+                Je soussigné(e), {{ $settings['director_title'] ?? 'La Directrice des Etudes' }} de {{ $settings['name'] ?? 'l\'École Spéciale du Bâtiment et des Travaux Publics (ESBTP)' }}, atteste que :
             </p>
 
-            <p>
-                L'étudiant(e) <span class="certificat-highlight">{{ $etudiant->nom }} {{ $etudiant->prenoms }}</span>
-            </p>
+            <div class="student-info">
+                <p>
+                    {{ $etudiant->sexe === 'F' ? 'Mme, M., Mlle' : 'M.' }} <span class="certificat-highlight">{{ strtoupper($etudiant->nom) }} {{ strtoupper($etudiant->prenom) }}</span>
+                </p>
 
-            @if($etudiant->date_naissance)
-            <p>
-                Né(e) le <span class="certificat-highlight">{{ $etudiant->date_naissance->format('d/m/Y') }}</span>
-                @if($etudiant->lieu_naissance) 
-                    à <span class="certificat-highlight">{{ $etudiant->lieu_naissance }}</span>
+                @if($etudiant->date_naissance)
+                <p>
+                    Né(e) le <span class="certificat-highlight">{{ $etudiant->date_naissance->format('d/m/Y') }}</span>
+                    @if($etudiant->lieu_naissance) 
+                        à <span class="certificat-highlight">{{ strtoupper($etudiant->lieu_naissance) }}</span>
+                    @endif
+                </p>
                 @endif
-            </p>
-            @endif
-
-            <p>
-                Matricule : <span class="certificat-highlight">{{ $etudiant->matricule }}</span>
-            </p>
-
-            <p>
-                Est régulièrement inscrit(e) sur le registre des effectifs de l'année académique :
-            </p>
-
-            <!-- Tableau des inscriptions -->
-            <div style="margin: 15px 0;">
-                <table style="width: 100%; border-collapse: collapse; border: 2px solid #1e40af; font-size: 11px;">
-                    <thead>
-                        <tr style="background-color: #f8fafc;">
-                            <th style="border: 1px solid #1e40af; padding: 8px; text-align: center; font-weight: bold;">Année scolaire</th>
-                            <th style="border: 1px solid #1e40af; padding: 8px; text-align: center; font-weight: bold;">Classe suivie</th>
-                            <th style="border: 1px solid #1e40af; padding: 8px; text-align: center; font-weight: bold;">Filière</th>
-                            <th style="border: 1px solid #1e40af; padding: 8px; text-align: center; font-weight: bold;">Moyenne/20</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($inscriptions as $inscription)
-                        <tr>
-                            <td style="border: 1px solid #1e40af; padding: 8px; text-align: center;">
-                                @php
-                                    $anneeText = $inscription->anneeUniversitaire->nom ?? $inscription->anneeUniversitaire->libelle ?? 'Non renseigné';
-                                    // Extraire seulement l'année au format 2024-2025
-                                    if (preg_match('/(\d{4}-\d{4})/', $anneeText, $matches)) {
-                                        echo $matches[1];
-                                    } else {
-                                        echo $anneeText;
-                                    }
-                                @endphp
-                            </td>
-                            <td style="border: 1px solid #1e40af; padding: 8px; text-align: center;">
-                                {{ $inscription->classe->name ?? ($inscription->niveauEtude->name ?? 'Non renseigné') }}
-                            </td>
-                            <td style="border: 1px solid #1e40af; padding: 8px; text-align: center;">
-                                {{ strtoupper($inscription->filiere->name ?? 'Non renseigné') }}
-                            </td>
-                            <td style="border: 1px solid #1e40af; padding: 8px; text-align: center;">
-                                @if($inscription->moyenne_generale)
-                                    {{ number_format($inscription->moyenne_generale, 2) }}
-                                @else
-                                    <!-- Moyenne vide pour l'année en cours -->
-                                @endif
-                            </td>
-                        </tr>
-                        @empty
-                        <tr>
-                            <td colspan="4" style="border: 1px solid #1e40af; padding: 8px; text-align: center;">Aucune inscription trouvée</td>
-                        </tr>
-                        @endforelse
-                    </tbody>
-                </table>
             </div>
 
-            <p style="font-style: italic; margin: 12px 0;">
-                Suivant l'horaire du programme complet.
+            <p>
+                Est régulièrement inscrit(e) au titre de l'année scolaire <span class="certificat-highlight">
+                @php
+                    $anneeText = $inscription->anneeUniversitaire->nom ?? $inscription->anneeUniversitaire->libelle ?? '2024-2025';
+                    if (preg_match('/(\d{4}-\d{4})/', $anneeText, $matches)) {
+                        echo $matches[1];
+                    } else {
+                        echo $anneeText;
+                    }
+                @endphp
+                </span>
             </p>
 
+            <div class="student-details">
+                <div class="detail-row">
+                    <div class="detail-label">En classe de :</div>
+                    <div class="detail-value">{{ $inscription->classe->name ?? ($inscription->niveauEtude->name ?? 'Non renseigné') }}</div>
+                </div>
+
+                <div class="detail-row">
+                    <div class="detail-label">Filière :</div>
+                    <div class="detail-value">{{ strtoupper($inscription->filiere->name ?? 'Non renseigné') }}</div>
+                </div>
+
+                <div class="detail-row">
+                    <div class="detail-label">Sous le numéro Matricule :</div>
+                    <div class="detail-value">{{ $etudiant->numero_etudiant ?? $etudiant->matricule }}</div>
+                </div>
+            </div>
+
+            <div class="status-options">
+                <p><strong>Statut* :</strong> Affecté / Non affecté &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <strong>Boursier* :</strong> Oui / Non</p>
+            </div>
+
             <p>
-                Ce certificat est délivré à l'intéressé(e) pour servir et valoir ce que de droit.
+                En foi de quoi, la présente attestation lui est délivrée pour servir et valoir ce que de droit.
             </p>
         </div>
 
         <!-- Footer avec signature -->
         <div class="certificat-footer">
             <div class="certificat-date">
-                <p>Fait à {{ $settings['city'] ?? 'Yamoussoukro' }}, le 13/09/2025</p>
+                <p>Fait à {{ $settings['city'] ?? 'Yamoussoukro' }}, le {{ now()->format('d/m/Y') }}</p>
             </div>
 
             <div class="certificat-signature">
-                <div class="signature-title">{{ $settings['director_title'] ?? 'Le Directeur' }}</div>
+                <div class="signature-title">{{ $settings['director_title'] ?? 'La Directrice des Etudes' }}</div>
                 @if($settings['director_name'] ?? null)
                     <div class="signature-name">{{ $settings['director_name'] }}</div>
                 @endif
@@ -271,9 +294,13 @@
             <div style="clear: both;"></div>
         </div>
 
+        <div class="signature-note">
+            *Rayer la mention inutile
+        </div>
+
         <!-- Note de bas de page -->
         <div class="certificat-note">
-            Ce certificat est un document officiel. Toute falsification constitue un délit passible de poursuites judiciaires.
+            Ce document est un certificat officiel. Toute falsification constitue un délit passible de poursuites judiciaires.
         </div>
     </div>
 </body>

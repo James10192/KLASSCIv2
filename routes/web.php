@@ -304,6 +304,14 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->name('etudiants.certificat')
                 ->middleware(['permission:view_students']);
 
+            // Routes pour les attestations de fréquentation
+            Route::get('/etudiants/{etudiant}/attestation-frequentation-preview', [ESBTPEtudiantController::class, 'previewAttestationFrequentation'])
+                ->name('etudiants.attestation-frequentation.preview')
+                ->middleware(['permission:view_students']);
+            Route::get('/etudiants/{etudiant}/attestation-frequentation', [ESBTPEtudiantController::class, 'genererAttestationFrequentation'])
+                ->name('etudiants.attestation-frequentation')
+                ->middleware(['permission:view_students']);
+
             // Routes pour les rôles et permissions
             Route::resource('roles', \App\Http\Controllers\ESBTP\RoleController::class);
 

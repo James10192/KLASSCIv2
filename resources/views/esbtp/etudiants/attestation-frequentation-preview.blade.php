@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Prévisualisation Certificat - ' . $etudiant->nom . ' ' . $etudiant->prenoms)
+@section('title', 'Prévisualisation Attestation de Fréquentation - ' . $etudiant->nom . ' ' . $etudiant->prenoms)
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
@@ -38,7 +38,7 @@
         min-height: 800px;
     }
     
-    /* Styles pour le certificat - similaires au PDF mais adaptés pour l'affichage HTML */
+    /* Styles pour l'attestation - similaires au certificat */
     .certificat-document {
         font-family: Arial, sans-serif;
         font-size: 14px;
@@ -132,6 +132,47 @@
         color: var(--primary);
         text-decoration: underline;
     }
+
+    .student-info {
+        margin: 20px 0;
+        line-height: 1.8;
+    }
+
+    .student-details {
+        margin: 15px 0;
+        padding: 15px;
+        background-color: #f8fafc;
+        border-left: 4px solid var(--primary);
+        border-radius: var(--radius-small);
+    }
+
+    .detail-row {
+        margin-bottom: 10px;
+        display: flex;
+        align-items: flex-start;
+    }
+
+    .detail-label {
+        font-weight: bold;
+        min-width: 200px;
+        color: var(--primary);
+    }
+
+    .detail-value {
+        flex: 1;
+        color: var(--text);
+    }
+
+    .status-options {
+        margin: 15px 0;
+        font-style: italic;
+        font-size: 14px;
+        background-color: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: var(--radius-small);
+        padding: 10px;
+        text-align: center;
+    }
     
     .certificat-footer {
         margin-top: 50px;
@@ -164,6 +205,15 @@
     .signature-name {
         color: var(--text-secondary);
         font-style: italic;
+        margin-top: 20px;
+    }
+
+    .signature-note {
+        text-align: center;
+        font-size: 12px;
+        font-style: italic;
+        color: var(--text-secondary);
+        margin: 15px 0;
     }
     
     .certificat-note {
@@ -202,7 +252,7 @@
                 <div class="toolbar-info">
                     <h4 class="mb-0">
                         <i class="fas fa-eye me-2"></i>
-                        Prévisualisation Certificat de Scolarité
+                        Prévisualisation Attestation de Fréquentation
                     </h4>
                     <small class="text-muted">{{ $etudiant->nom }} {{ $etudiant->prenoms }} - {{ $etudiant->matricule }}</small>
                 </div>
@@ -212,7 +262,7 @@
                         <i class="fas fa-arrow-left me-1"></i>Retour
                     </a>
                     
-                    <a href="{{ route('esbtp.etudiants.certificat', $etudiant->id) }}" class="btn-acasi success">
+                    <a href="{{ route('esbtp.etudiants.attestation-frequentation', $etudiant->id) }}" class="btn-acasi success">
                         <i class="fas fa-file-pdf me-1"></i>Générer PDF
                     </a>
                     
@@ -222,7 +272,7 @@
                 </div>
             </div>
 
-            <!-- Contenu du certificat -->
+            <!-- Contenu de l'attestation -->
             <div class="preview-content">
                 <div class="certificat-document">
                     @php
@@ -233,7 +283,7 @@
                         $schoolEmail = SettingsHelper::get('school_email', 'esbtp@aviso.ci');
                         $schoolCity = SettingsHelper::get('school_city', 'Yamoussoukro');
                         $directorName = SettingsHelper::get('director_name', '');
-                        $directorTitle = SettingsHelper::get('director_title', 'Le Directeur');
+                        $directorTitle = SettingsHelper::get('director_title', 'La Directrice des Etudes');
                         $showLogo = SettingsHelper::get('certificat_show_logo', '1') === '1';
                         $logoPath = SettingsHelper::get('school_logo');
                         
@@ -279,99 +329,75 @@
                     <!-- Séparateur décoratif -->
                     <div class="certificat-divider"></div>
 
-                    <!-- Titre du certificat -->
+                    <!-- Titre -->
                     <div class="certificat-title">
-                        Certificat de Scolarité
+                        Attestation de Fréquentation
                     </div>
 
                     <!-- Contenu principal -->
                     <div class="certificat-content">
                         <p>
-                            Je soussigné(e), {{ $directorTitle }} de {{ $schoolName }}, certifie que :
+                            Je soussigné(e), {{ $directorTitle }} de {{ $schoolName }}, atteste que :
                         </p>
 
-                        <p>
-                            L'étudiant(e) <span class="certificat-highlight">{{ $etudiant->nom }} {{ $etudiant->prenoms }}</span>
-                        </p>
+                        <div class="student-info">
+                            <p>
+                                {{ $etudiant->sexe === 'F' ? 'Mme, M., Mlle' : 'M.' }} <span class="certificat-highlight">{{ strtoupper($etudiant->nom) }} {{ strtoupper($etudiant->prenoms) }}</span>
+                            </p>
 
-                        @if($etudiant->date_naissance)
-                        <p>
-                            Né(e) le <span class="certificat-highlight">{{ $etudiant->date_naissance->format('d/m/Y') }}</span>
-                            @if($etudiant->lieu_naissance) 
-                                à <span class="certificat-highlight">{{ $etudiant->lieu_naissance }}</span>
+                            @if($etudiant->date_naissance)
+                            <p>
+                                Né(e) le <span class="certificat-highlight">{{ $etudiant->date_naissance->format('d/m/Y') }}</span>
+                                @if($etudiant->lieu_naissance) 
+                                    à <span class="certificat-highlight">{{ strtoupper($etudiant->lieu_naissance) }}</span>
+                                @endif
+                            </p>
                             @endif
-                        </p>
-                        @endif
-
-                        <p>
-                            Matricule : <span class="certificat-highlight">{{ $etudiant->matricule }}</span>
-                        </p>
-
-                        <p>
-                            Est régulièrement inscrit(e) sur le registre des effectifs de l'année académique :
-                        </p>
-
-                        <!-- Tableau des inscriptions -->
-                        <div style="margin: 20px 0;">
-                            <table style="width: 100%; border-collapse: collapse; border: 2px solid var(--primary); font-size: 14px;">
-                                <thead>
-                                    <tr style="background-color: #f8fafc;">
-                                        <th style="border: 1px solid var(--primary); padding: 8px; text-align: center; font-weight: bold;">Année scolaire</th>
-                                        <th style="border: 1px solid var(--primary); padding: 8px; text-align: center; font-weight: bold;">Classe suivie</th>
-                                        <th style="border: 1px solid var(--primary); padding: 8px; text-align: center; font-weight: bold;">Filière</th>
-                                        <th style="border: 1px solid var(--primary); padding: 8px; text-align: center; font-weight: bold;">Moyenne/20</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @forelse($inscriptions as $inscription)
-                                    <tr>
-                                        <td style="border: 1px solid var(--primary); padding: 8px; text-align: center;">
-                                            @php
-                                                $anneeText = $inscription->anneeUniversitaire->nom ?? $inscription->anneeUniversitaire->libelle ?? 'Non renseigné';
-                                                // Extraire seulement l'année au format 2024-2025
-                                                if (preg_match('/(\d{4}-\d{4})/', $anneeText, $matches)) {
-                                                    echo $matches[1];
-                                                } else {
-                                                    echo $anneeText;
-                                                }
-                                            @endphp
-                                        </td>
-                                        <td style="border: 1px solid var(--primary); padding: 8px; text-align: center;">
-                                            {{ $inscription->classe->name ?? ($inscription->niveauEtude->name ?? 'Non renseigné') }}
-                                        </td>
-                                        <td style="border: 1px solid var(--primary); padding: 8px; text-align: center;">
-                                            {{ strtoupper($inscription->filiere->name ?? 'Non renseigné') }}
-                                        </td>
-                                        <td style="border: 1px solid var(--primary); padding: 8px; text-align: center;">
-                                            @if($inscription->moyenne_generale)
-                                                {{ number_format($inscription->moyenne_generale, 2) }}
-                                            @else
-                                                <!-- Moyenne vide pour l'année en cours -->
-                                            @endif
-                                        </td>
-                                    </tr>
-                                    @empty
-                                    <tr>
-                                        <td colspan="4" style="border: 1px solid var(--primary); padding: 8px; text-align: center;">Aucune inscription trouvée</td>
-                                    </tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
                         </div>
 
-                        <p style="font-style: italic; margin: 15px 0;">
-                            Suivant l'horaire du programme complet.
+                        <p>
+                            Est régulièrement inscrit(e) au titre de l'année scolaire <span class="certificat-highlight">
+                            @php
+                                $anneeText = $inscription->anneeUniversitaire->nom ?? $inscription->anneeUniversitaire->libelle ?? '2024-2025';
+                                if (preg_match('/(\d{4}-\d{4})/', $anneeText, $matches)) {
+                                    echo $matches[1];
+                                } else {
+                                    echo $anneeText;
+                                }
+                            @endphp
+                            </span>
                         </p>
 
+                        <div class="student-details">
+                            <div class="detail-row">
+                                <div class="detail-label">En classe de :</div>
+                                <div class="detail-value">{{ $inscription->classe->name ?? ($inscription->niveauEtude->name ?? 'Non renseigné') }}</div>
+                            </div>
+
+                            <div class="detail-row">
+                                <div class="detail-label">Filière :</div>
+                                <div class="detail-value">{{ strtoupper($inscription->filiere->name ?? 'Non renseigné') }}</div>
+                            </div>
+
+                            <div class="detail-row">
+                                <div class="detail-label">Sous le numéro Matricule :</div>
+                                <div class="detail-value">{{ $etudiant->numero_etudiant ?? $etudiant->matricule }}</div>
+                            </div>
+                        </div>
+
+                        <div class="status-options">
+                            <p><strong>Statut* :</strong> Affecté / Non affecté &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <strong>Boursier* :</strong> Oui / Non</p>
+                        </div>
+
                         <p>
-                            Ce certificat est délivré à l'intéressé(e) pour servir et valoir ce que de droit.
+                            En foi de quoi, la présente attestation lui est délivrée pour servir et valoir ce que de droit.
                         </p>
                     </div>
 
                     <!-- Footer avec signature -->
                     <div class="certificat-footer">
                         <div class="certificat-date">
-                            <p>Fait à {{ $schoolCity }}, le 13/09/2025</p>
+                            <p>Fait à {{ $schoolCity }}, le {{ now()->format('d/m/Y') }}</p>
                         </div>
 
                         <div class="certificat-signature">
@@ -382,9 +408,13 @@
                         </div>
                     </div>
 
+                    <div class="signature-note">
+                        *Rayer la mention inutile
+                    </div>
+
                     <!-- Note de bas de page -->
                     <div class="certificat-note">
-                        Ce certificat est un document officiel. Toute falsification constitue un délit passible de poursuites judiciaires.
+                        Ce document est un certificat officiel. Toute falsification constitue un délit passible de poursuites judiciaires.
                     </div>
                 </div>
             </div>
