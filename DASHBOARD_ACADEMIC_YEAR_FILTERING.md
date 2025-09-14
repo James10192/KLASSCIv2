@@ -18,16 +18,32 @@
 - Maintien du filtrage via les inscriptions pour les étudiants
 
 ### 3. ✅ Correction des espacements KPI
-**Problème** : Espacement insuffisant entre icône, nombre et titre dans les cartes KPI de la page personnel unified.
+**Problème** : Espacement insuffisant et déséquilibré entre icône, nombre et titre dans les cartes KPI de la page personnel unified. Les éléments semblaient "coincés" avec mauvaise répartition de l'espace.
 
-**Solution** :
+**Solution complète** :
 ```css
+.stat-card {
+    min-height: 140px;              /* Hauteur minimale uniforme */
+    display: flex;                  /* Layout flexbox */
+    flex-direction: column;         /* Direction verticale */
+    justify-content: space-between; /* Répartition équilibrée */
+}
+
+.stat-card .icon {
+    margin: 0 auto var(--space-sm); /* Réduction marge pour équilibre */
+    flex-shrink: 0;                 /* Empêche la compression */
+}
+
 .stat-value {
-    line-height: 1.2;           /* Ajout pour meilleur espacement */
+    flex-grow: 1;                   /* Occupe l'espace central disponible */
+    display: flex;                  /* Centrage parfait du nombre */
+    align-items: center;            /* Centrage vertical */
+    justify-content: center;        /* Centrage horizontal */
+    line-height: 1.2;              /* Amélioration lisibilité */
 }
 
 .stat-label {
-    margin-top: var(--space-xs); /* Ajout d'espace au-dessus */
+    flex-shrink: 0;                 /* Empêche la compression */
 }
 ```
 

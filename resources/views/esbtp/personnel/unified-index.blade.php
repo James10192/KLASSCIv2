@@ -163,6 +163,10 @@
         box-shadow: var(--shadow-card);
         border: 1px solid var(--border);
         transition: all 0.3s ease;
+        min-height: 140px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
     }
     
     .stat-card:hover {
@@ -177,9 +181,10 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        margin: 0 auto var(--space-md);
+        margin: 0 auto var(--space-sm);
         font-size: 1.5rem;
         color: white;
+        flex-shrink: 0;
     }
     
     .stat-card.coordinateurs .icon { background: var(--primary); }
@@ -191,8 +196,11 @@
         font-size: var(--amount-large);
         font-weight: 700;
         color: var(--text-primary);
-        margin-bottom: var(--space-xs);
         line-height: 1.2;
+        flex-grow: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .stat-label {
@@ -201,7 +209,7 @@
         text-transform: uppercase;
         letter-spacing: 0.5px;
         font-weight: 600;
-        margin-top: var(--space-xs);
+        flex-shrink: 0;
     }
     
     .personnel-actions {
