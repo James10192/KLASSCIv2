@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "mcp__sequential-thinking__sequentialthinking",
-      "Bash(php artisan:*)"
+      "Bash(php artisan:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": [],

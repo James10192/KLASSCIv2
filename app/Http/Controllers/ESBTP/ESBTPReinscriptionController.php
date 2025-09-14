@@ -279,7 +279,12 @@ class ESBTPReinscriptionController extends Controller
             $etudiant->montant_attendu = $totalAttendu;
             $etudiant->montant_paye = $totalPaye;
             $etudiant->solde_restant = $soldeRestant;
-            $etudiant->peut_reinscrire = $soldeRestant <= 0;
+
+            // Logique d'éligibilité selon le rôle
+            $isSuperAdmin = auth()->user() && auth()->user()->isSuperAdmin();
+            $etudiant->peut_reinscrire = $soldeRestant <= 0 || $isSuperAdmin;
+            $etudiant->reliquat_possible = $isSuperAdmin && $soldeRestant > 0;
+            $etudiant->reliquat_montant = $isSuperAdmin ? max(0, $soldeRestant) : 0;
             
             // Ajouter l'inscription pour l'accès aux données de classe dans la vue
             $analyse['inscription'] = $inscription;
@@ -288,6 +293,100 @@ class ESBTPReinscriptionController extends Controller
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Erreur lors de l\'analyse: ' . $e->getMessage()]);
         }
+    }
+
+    /**
+     * Afficher la page de finalisation de réinscription
+     */
+    public function create($etudiantId, Request $request)
+    {
+        $anneeAcademique = $request->get('annee_academique', date('Y') . '-' . (date('Y') + 1));
+
+        try {
+            // Récupérer l'analyse de l'étudiant (même logique que show)
+            $inscription = \App\Models\ESBTPInscription::whereNotNull('classe_id')
+                ->whereHas('etudiant', function($query) use ($etudiantId) {
+                    $query->where('id', $etudiantId);
+                })
+                ->with(['etudiant', 'classe.niveau', 'classe.filiere'])
+                ->first();
+
+            if (!$inscription) {
+                throw new \Exception("Aucune inscription avec classe trouvée pour cet étudiant");
+            }
+
+            $analyse = $this->reinscriptionService->analyserSituationEtudiantParInscription($inscription, $anneeAcademique);
+            $classesProposees = $this->reinscriptionService->proposerNouvellesClasses($etudiantId, $analyse['decision']);
+
+            // Calculer les informations financières
+            $etudiant = $analyse['etudiant'];
+            $totalAttendu = $this->calculerTotalAttendu($inscription);
+            $totalPaye = $this->calculerTotalPaye($inscription);
+            $soldeRestant = $totalAttendu - $totalPaye;
+
+            // Ajouter les informations financières et de rôle
+            $isSuperAdmin = auth()->user() && auth()->user()->isSuperAdmin();
+            $etudiant->montant_attendu = $totalAttendu;
+            $etudiant->montant_paye = $totalPaye;
+            $etudiant->solde_restant = $soldeRestant;
+            $etudiant->peut_reinscrire = $soldeRestant <= 0 || $isSuperAdmin;
+            $etudiant->reliquat_possible = $isSuperAdmin && $soldeRestant > 0;
+            $etudiant->reliquat_montant = $isSuperAdmin ? max(0, $soldeRestant) : 0;
+
+            // Récupérer les détails des frais non soldés pour le reliquat
+            $fraisNonSoldes = [];
+            if ($isSuperAdmin && $soldeRestant > 0) {
+                $fraisNonSoldes = $this->calculerFraisNonSoldes($inscription);
+            }
+
+            $analyse['inscription'] = $inscription;
+
+            return view('esbtp.reinscription.create', compact(
+                'analyse',
+                'classesProposees',
+                'anneeAcademique',
+                'fraisNonSoldes',
+                'isSuperAdmin'
+            ));
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Erreur lors de l\'analyse: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Calculer les frais non soldés pour le reliquat
+     */
+    private function calculerFraisNonSoldes($inscription)
+    {
+        // Récupérer toutes les souscriptions de frais de cette inscription
+        $subscriptions = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
+            ->where('is_active', true)
+            ->with(['fraisCategory'])
+            ->get();
+
+        $fraisNonSoldes = [];
+        $totalPaye = $this->calculerTotalPaye($inscription);
+
+        foreach ($subscriptions as $subscription) {
+            $montantAttendu = $subscription->amount;
+
+            // Pour simplifier, on considère que les paiements sont répartis proportionnellement
+            // Une logique plus complexe pourrait être implémentée selon les besoins
+            $paiementPourCeFrais = ($montantAttendu / $this->calculerTotalAttendu($inscription)) * $totalPaye;
+            $soldeRestant = $montantAttendu - $paiementPourCeFrais;
+
+            if ($soldeRestant > 0.01) { // Éviter les erreurs d'arrondi
+                $fraisNonSoldes[] = [
+                    'subscription' => $subscription,
+                    'category_name' => $subscription->fraisCategory->name ?? 'Frais inconnu',
+                    'montant_attendu' => $montantAttendu,
+                    'montant_paye' => $paiementPourCeFrais,
+                    'solde_restant' => $soldeRestant
+                ];
+            }
+        }
+
+        return $fraisNonSoldes;
     }
 
     /**

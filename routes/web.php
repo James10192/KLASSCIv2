@@ -389,7 +389,10 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 
                 // Route AJAX pour lazy loading des catégories
                 Route::get('load-category/{category}', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'loadCategory'])->name('load-category');
-                
+
+                // Route pour la page de finalisation de réinscription
+                Route::get('{etudiant}/finaliser', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'create'])->name('create');
+
                 // Routes avec paramètres à la FIN
                 Route::get('{etudiant}', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'show'])->name('show');
                 Route::put('{etudiant}', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'update'])->name('update');
