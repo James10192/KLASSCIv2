@@ -554,8 +554,31 @@ class ESBTPClasseController extends Controller
             // Rechercher la configuration matricule pour ce niveau
             $currentEtablissementId = \App\Models\ESBTPSystemSetting::getCurrentEtablissementId();
 
+            // Mapper le type de niveau vers le code de configuration matricule
+            $niveauType = $classe->niveau->type ?? null;
+            $configCode = null;
+
+            if ($niveauType) {
+                $configCode = strtoupper($niveauType); // BTS, Licence, Master, etc.
+
+                // Normaliser certains types si nécessaire
+                if (strtolower($niveauType) === 'licence') {
+                    $configCode = 'LICENCE';
+                } elseif (strtolower($niveauType) === 'bts') {
+                    $configCode = 'BTS';
+                }
+            }
+
+            if (!$configCode) {
+                return response()->json([
+                    'success' => true,
+                    'niveau_config' => null,
+                    'message' => 'Type de niveau non défini pour cette classe'
+                ]);
+            }
+
             $matriculeConfig = \App\Models\ESBTPMatriculeConfig::where('etablissement_id', $currentEtablissementId)
-                ->where('niveau_etude_code', $classe->niveau->code ?? strtoupper($classe->niveau->name))
+                ->where('niveau_etude_code', $configCode)
                 ->where('is_active', true)
                 ->first();
 
