@@ -247,27 +247,86 @@
             </div>
         @endif
 
-        <!-- Filtre année académique -->
+        <!-- Filtres de réinscription -->
         <div class="card-moderne mb-lg">
             <div class="p-lg">
                 <div class="section-title mb-md">
-                    <i class="fas fa-filter me-2"></i>Filtres d'analyse
+                    <i class="fas fa-filter me-2"></i>Filtres de réinscription
                 </div>
-                <div style="display: flex; gap: var(--space-md); align-items: end;">
-                    <div style="flex: 1; max-width: 300px;">
-                        <label for="annee_academique" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Année Académique Courante</label>
-                        <select name="annee_academique" id="annee_academique" class="year-selector" style="width: 100%; background-color: #f8f9fa; cursor: not-allowed;" disabled>
-                            <option value="{{ $anneeAcademique }}" selected>
-                                {{ $anneeAcademique }} (Année en cours)
-                            </option>
-                        </select>
+                <form method="GET" action="{{ route('esbtp.reinscription.index') }}" id="reinscriptionFiltersForm">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-md); margin-bottom: var(--space-md);">
+                        <!-- Recherche -->
+                        <div>
+                            <label for="search" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Recherche</label>
+                            <input type="text" name="search" id="search" value="{{ request('search') }}" placeholder="Nom, matricule..." class="form-control" style="width: 100%;">
+                        </div>
+                        
+                        
+                        <!-- Filière -->
+                        <div>
+                            <label for="filiere_id" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Filière</label>
+                            <select name="filiere_id" id="filiere_id" class="form-control" style="width: 100%;">
+                                <option value="">Toutes les filières</option>
+                                @foreach($filieres as $filiere)
+                                    <option value="{{ $filiere->id }}" {{ request('filiere_id') == $filiere->id ? 'selected' : '' }}>
+                                        {{ $filiere->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        
+                        <!-- Niveau -->
+                        <div>
+                            <label for="niveau_id" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Niveau</label>
+                            <select name="niveau_id" id="niveau_id" class="form-control" style="width: 100%;">
+                                <option value="">Tous les niveaux</option>
+                                @foreach($niveaux as $niveau)
+                                    <option value="{{ $niveau->id }}" {{ request('niveau_id') == $niveau->id ? 'selected' : '' }}>
+                                        {{ $niveau->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        
+                        <!-- Statut de réinscription -->
+                        <div>
+                            <label for="statut_reinscription" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Statut</label>
+                            <select name="statut_reinscription" id="statut_reinscription" class="form-control" style="width: 100%;">
+                                <option value="">Tous les statuts</option>
+                                <option value="passage" {{ request('statut_reinscription') == 'passage' ? 'selected' : '' }}>Passage</option>
+                                <option value="rattrapage" {{ request('statut_reinscription') == 'rattrapage' ? 'selected' : '' }}>Rattrapage</option>
+                                <option value="redoublement" {{ request('statut_reinscription') == 'redoublement' ? 'selected' : '' }}>Redoublement</option>
+                                <option value="abandon" {{ request('statut_reinscription') == 'abandon' ? 'selected' : '' }}>Abandon</option>
+                                <option value="valide" {{ request('statut_reinscription') == 'valide' ? 'selected' : '' }}>Validé</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Statut paiement -->
+                        <div>
+                            <label for="statut_paiement" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Paiement</label>
+                            <select name="statut_paiement" id="statut_paiement" class="form-control" style="width: 100%;">
+                                <option value="">Tous</option>
+                                <option value="solde" {{ request('statut_paiement') == 'solde' ? 'selected' : '' }}>Soldé</option>
+                                <option value="impaye" {{ request('statut_paiement') == 'impaye' ? 'selected' : '' }}>Impayé</option>
+                            </select>
+                        </div>
                     </div>
-                    <button type="button" class="btn-acasi secondary" onclick="showYearChangeInfo()" title="Comment changer d'année ?">
-                        <i class="fas fa-info-circle"></i>Changer d'année
-                    </button>
-                </div>
+                    
+                    <div style="display: flex; gap: var(--space-md); align-items: center;">
+                        <button type="submit" class="btn-acasi primary">
+                            <i class="fas fa-search me-1"></i>Filtrer
+                        </button>
+                        <a href="{{ route('esbtp.reinscription.index') }}" class="btn-acasi secondary">
+                            <i class="fas fa-times me-1"></i>Réinitialiser
+                        </a>
+                        <div style="margin-left: auto; font-size: var(--text-small); color: var(--text-muted);">
+                            <i class="fas fa-calendar me-1"></i>Année: {{ $anneeAcademique }}
+                        </div>
+                    </div>
+                </form>
             </div>
         </div>
+
 
         <!-- Information sur le nouveau système de réinscription -->
         <div class="card-moderne mb-lg">

@@ -26,11 +26,15 @@ class ESBTPReinscriptionController extends Controller
         $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
         $anneeAcademique = $anneeCourante ? $anneeCourante->name : date('Y') . '-' . (date('Y') + 1);
         
+        // Données pour les filtres
+        $filieres = \App\Models\ESBTPFiliere::where('is_active', true)->get();
+        $niveaux = \App\Models\ESBTPNiveauEtude::where('is_active', true)->get();
+        
         try {
             // OPTIMISATION: Ne charger que les statistiques au départ
             $statistiques = $this->reinscriptionService->getStatistiquesReinscription($anneeAcademique);
             
-            return view('esbtp.reinscription.index', compact('statistiques', 'anneeAcademique'))
+            return view('esbtp.reinscription.index', compact('statistiques', 'anneeAcademique', 'filieres', 'niveaux'))
                 ->withErrors(collect());
         } catch (\Exception $e) {
             // En cas d'erreur, retourner des statistiques vides
@@ -44,7 +48,7 @@ class ESBTPReinscriptionController extends Controller
                 'errors' => 0
             ];
             
-            return view('esbtp.reinscription.index', compact('statistiques', 'anneeAcademique'))
+            return view('esbtp.reinscription.index', compact('statistiques', 'anneeAcademique', 'filieres', 'niveaux'))
                 ->withErrors(['error' => 'Erreur lors de l\'analyse: ' . $e->getMessage()]);
         }
     }
@@ -294,8 +298,10 @@ class ESBTPReinscriptionController extends Controller
         $page = $request->get('page', 1);
         $perPage = $request->get('per_page', 50);
         
+        // Déterminer l'année à utiliser (filtrée ou courante)
         $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
         $anneeAcademique = $anneeCourante ? $anneeCourante->name : date('Y') . '-' . (date('Y') + 1);
+        
         
         try {
             switch ($category) {
@@ -326,6 +332,9 @@ class ESBTPReinscriptionController extends Controller
                 default:
                     return response()->json(['error' => 'Catégorie inconnue'], 400);
             }
+            
+            // Appliquer les filtres sur la collection d'étudiants
+            $etudiants = $this->applyFiltersToEtudiants($etudiants, $request);
             
             // Pagination manuelle
             $total = $etudiants->count();
@@ -582,6 +591,80 @@ class ESBTPReinscriptionController extends Controller
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Erreur lors de la suppression: ' . $e->getMessage()]);
         }
+    }
+
+    /**
+     * Appliquer les filtres sur une collection d'étudiants
+     */
+    private function applyFiltersToEtudiants($etudiants, Request $request)
+    {
+        if ($request->filled('search')) {
+            $search = strtolower($request->search);
+            $etudiants = $etudiants->filter(function($item) use ($search) {
+                $etudiant = is_array($item) && isset($item['etudiant']) ? $item['etudiant'] : $item;
+                
+                if (!$etudiant || !is_object($etudiant)) return false;
+                
+                $nom = strtolower($etudiant->nom ?? '');
+                $prenoms = strtolower($etudiant->prenoms ?? '');
+                $matricule = strtolower($etudiant->matricule ?? '');
+                
+                return str_contains($nom, $search) || 
+                       str_contains($prenoms, $search) || 
+                       str_contains($matricule, $search);
+            });
+        }
+        
+        if ($request->filled('filiere_id')) {
+            $etudiants = $etudiants->filter(function($item) use ($request) {
+                $inscription = null;
+                if (is_array($item) && isset($item['inscription'])) {
+                    $inscription = $item['inscription'];
+                } elseif (is_array($item) && isset($item['etudiant'])) {
+                    $etudiant = $item['etudiant'];
+                    $inscription = $etudiant->inscriptions()->with(['filiere'])->first();
+                }
+                
+                return $inscription && $inscription->filiere_id == $request->filiere_id;
+            });
+        }
+        
+        if ($request->filled('niveau_id')) {
+            $etudiants = $etudiants->filter(function($item) use ($request) {
+                $inscription = null;
+                if (is_array($item) && isset($item['inscription'])) {
+                    $inscription = $item['inscription'];
+                } elseif (is_array($item) && isset($item['etudiant'])) {
+                    $etudiant = $item['etudiant'];
+                    $inscription = $etudiant->inscriptions()->with(['niveau'])->first();
+                }
+                
+                return $inscription && $inscription->niveau_id == $request->niveau_id;
+            });
+        }
+        
+        if ($request->filled('statut_paiement')) {
+            $etudiants = $etudiants->filter(function($item) use ($request) {
+                $etudiant = is_array($item) && isset($item['etudiant']) ? $item['etudiant'] : $item;
+                
+                if (!$etudiant || !is_object($etudiant)) return false;
+                
+                // Calculer le solde si pas déjà fait
+                if (!isset($etudiant->solde_restant)) {
+                    $this->calculerSoldeEtudiant($item);
+                }
+                
+                if ($request->statut_paiement === 'solde') {
+                    return $etudiant->solde_restant <= 0;
+                } elseif ($request->statut_paiement === 'impaye') {
+                    return $etudiant->solde_restant > 0;
+                }
+                
+                return true;
+            });
+        }
+        
+        return $etudiants;
     }
 
     public function exportResults(Request $request)

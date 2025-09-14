@@ -44,31 +44,80 @@
             </div>
         @endif
 
-        <!-- Filtre année académique -->
+        <!-- Filtres avancés -->
         <div class="card-moderne mb-lg">
             <div class="p-lg">
                 <div class="section-title mb-md">
-                    <i class="fas fa-filter me-2"></i>Filtres d'analyse
+                    <i class="fas fa-filter me-2"></i>Filtres de recherche
                 </div>
-                <div style="display: flex; gap: var(--space-md); align-items: end;">
-                    <div style="flex: 1; max-width: 300px;">
-                        <label for="annee_academique" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Année Académique Courante</label>
-                        <select name="annee_academique" id="annee_academique" class="year-selector" style="width: 100%; background-color: #f8f9fa; cursor: not-allowed;" disabled>
-                            <option value="{{ $anneeAcademique }}" selected>
-                                {{ $anneeAcademique }} (Année en cours)
-                            </option>
-                        </select>
+                <form method="GET" action="{{ route('esbtp.classes.index') }}" id="filtersForm">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-md); margin-bottom: var(--space-md);">
+                        <!-- Recherche générale -->
+                        <div>
+                            <label for="search" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Recherche</label>
+                            <input type="text" name="search" id="search" value="{{ request('search') }}" placeholder="Nom ou code de classe..." class="form-control" style="width: 100%;">
+                        </div>
+                        
+                        <!-- Filière -->
+                        <div>
+                            <label for="filiere_id" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Filière</label>
+                            <select name="filiere_id" id="filiere_id" class="form-control" style="width: 100%;">
+                                <option value="">Toutes les filières</option>
+                                @foreach($filieres as $filiere)
+                                    <option value="{{ $filiere->id }}" {{ request('filiere_id') == $filiere->id ? 'selected' : '' }}>
+                                        {{ $filiere->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        
+                        <!-- Niveau -->
+                        <div>
+                            <label for="niveau_id" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Niveau</label>
+                            <select name="niveau_id" id="niveau_id" class="form-control" style="width: 100%;">
+                                <option value="">Tous les niveaux</option>
+                                @foreach($niveaux as $niveau)
+                                    <option value="{{ $niveau->id }}" {{ request('niveau_id') == $niveau->id ? 'selected' : '' }}>
+                                        {{ $niveau->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        
+                        
+                        <!-- Statut -->
+                        <div>
+                            <label for="statut" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Statut</label>
+                            <select name="statut" id="statut" class="form-control" style="width: 100%;">
+                                <option value="">Tous les statuts</option>
+                                <option value="active" {{ request('statut') == 'active' ? 'selected' : '' }}>Actives</option>
+                                <option value="inactive" {{ request('statut') == 'inactive' ? 'selected' : '' }}>Inactives</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Capacité -->
+                        <div>
+                            <label for="capacite" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Capacité</label>
+                            <select name="capacite" id="capacite" class="form-control" style="width: 100%;">
+                                <option value="">Toutes</option>
+                                <option value="disponible" {{ request('capacite') == 'disponible' ? 'selected' : '' }}>Disponibles</option>
+                                <option value="pleine" {{ request('capacite') == 'pleine' ? 'selected' : '' }}>Pleines</option>
+                            </select>
+                        </div>
                     </div>
-                    <button type="button" class="btn-acasi secondary" onclick="showYearChangeInfo()" title="Comment changer d'année ?">
-                        <i class="fas fa-info-circle"></i>Changer d'année
-                    </button>
-                </div>
-                <div class="mt-3">
-                    <small class="text-muted">
-                        <i class="fas fa-info-circle me-1"></i>
-                        Les classes sont visibles pour toutes les années, mais les étudiants affichés correspondent à l'année courante.
-                    </small>
-                </div>
+                    
+                    <div style="display: flex; gap: var(--space-md); align-items: center;">
+                        <button type="submit" class="btn-acasi primary">
+                            <i class="fas fa-search me-1"></i>Filtrer
+                        </button>
+                        <a href="{{ route('esbtp.classes.index') }}" class="btn-acasi secondary">
+                            <i class="fas fa-times me-1"></i>Réinitialiser
+                        </a>
+                        <div style="margin-left: auto; font-size: var(--text-small); color: var(--text-muted);">
+                            <i class="fas fa-list me-1"></i>{{ $classes->count() }} classe(s) trouvée(s)
+                        </div>
+                    </div>
+                </form>
             </div>
         </div>
 

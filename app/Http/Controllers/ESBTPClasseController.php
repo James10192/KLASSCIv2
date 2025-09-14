@@ -17,7 +17,7 @@ class ESBTPClasseController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
         
@@ -25,15 +25,53 @@ class ESBTPClasseController extends Controller
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
         $anneeAcademique = $anneeCourante ? $anneeCourante->name : date('Y') . '-' . (date('Y') + 1);
         
-        $classes = ESBTPClasse::with(['filiere', 'niveau', 'annee'])->get();
+        // Construction de la requête avec filtres
+        $query = ESBTPClasse::with(['filiere', 'niveau', 'annee']);
+        
+        // Filtres disponibles
+        if ($request->filled('filiere_id')) {
+            $query->where('filiere_id', $request->filiere_id);
+        }
+        
+        if ($request->filled('niveau_id')) {
+            $query->where('niveau_etude_id', $request->niveau_id);
+        }
+        
+        
+        if ($request->filled('statut')) {
+            $query->where('is_active', $request->statut === 'active');
+        }
+        
+        if ($request->filled('capacite')) {
+            if ($request->capacite === 'disponible') {
+                $query->whereRaw('places_totales > (SELECT COUNT(*) FROM esbtp_inscriptions WHERE esbtp_inscriptions.classe_id = esbtp_classes.id AND esbtp_inscriptions.status != "annulée")');
+            } elseif ($request->capacite === 'pleine') {
+                $query->whereRaw('places_totales <= (SELECT COUNT(*) FROM esbtp_inscriptions WHERE esbtp_inscriptions.classe_id = esbtp_classes.id AND esbtp_inscriptions.status != "annulée")');
+            }
+        }
+        
+        // Recherche par nom ou code
+        if ($request->filled('search')) {
+            $search = '%' . $request->search . '%';
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', $search)
+                  ->orWhere('code', 'like', $search);
+            });
+        }
+        
+        $classes = $query->get();
+        
+        // Données pour les filtres
+        $filieres = ESBTPFiliere::where('is_active', true)->get();
+        $niveaux = ESBTPNiveauEtude::where('is_active', true)->get();
 
         // Different view rendering based on user role
         if ($user->hasRole('etudiant')) {
             // For students - read-only view
-            return view('esbtp.classes.student_index', compact('classes', 'anneeAcademique', 'anneeCourante'));
+            return view('esbtp.classes.student_index', compact('classes', 'anneeAcademique', 'anneeCourante', 'filieres', 'niveaux'));
         } else {
             // For admin and secretary - full functionality view
-            return view('esbtp.classes.index', compact('classes', 'anneeAcademique', 'anneeCourante'));
+            return view('esbtp.classes.index', compact('classes', 'anneeAcademique', 'anneeCourante', 'filieres', 'niveaux'));
         }
     }
 
