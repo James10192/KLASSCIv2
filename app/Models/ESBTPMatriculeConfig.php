@@ -32,6 +32,8 @@ class ESBTPMatriculeConfig extends Model
         'exemple' => 'array'
     ];
 
+    protected $appends = ['exemples_generes'];
+
     /**
      * Générer un matricule selon la configuration
      *
@@ -122,6 +124,16 @@ class ESBTPMatriculeConfig extends Model
         ];
 
         return $exemples;
+    }
+
+    /**
+     * Accesseur pour les exemples générés automatiquement
+     *
+     * @return array
+     */
+    public function getExemplesGeneresAttribute()
+    {
+        return $this->genererExemples();
     }
 
     /**
