@@ -96,12 +96,34 @@ class DashboardController extends Controller
             'totalUsers' => User::count()
         ];
 
-        // Inscriptions en attente - SuperAdmin peut voir toutes les inscriptions
-        $data['pendingInscriptionsCount'] = \App\Models\ESBTPInscription::where('status', 'pending')->count();
+        // Récupérer l'année universitaire en cours
+        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
-        // Étudiants
-        $data['totalStudents'] = ESBTPEtudiant::count();
-        $data['recentStudents'] = ESBTPEtudiant::orderBy('created_at', 'desc')->take(5)->get();
+        // Inscriptions en attente - SuperAdmin peut voir toutes les inscriptions (filtré par année en cours)
+        if ($anneeEnCours) {
+            $data['pendingInscriptionsCount'] = \App\Models\ESBTPInscription::where('status', 'pending')
+                ->where('annee_universitaire_id', $anneeEnCours->id)->count();
+        } else {
+            $data['pendingInscriptionsCount'] = \App\Models\ESBTPInscription::where('status', 'pending')->count();
+        }
+
+        // Étudiants (filtré par année en cours)
+        if ($anneeEnCours) {
+            $data['totalStudents'] = ESBTPInscription::where('annee_universitaire_id', $anneeEnCours->id)
+                ->where('status', 'active')
+                ->count();
+            $data['recentStudents'] = ESBTPInscription::with(['etudiant'])
+                ->where('annee_universitaire_id', $anneeEnCours->id)
+                ->orderBy('created_at', 'desc')
+                ->take(5)
+                ->get()
+                ->map(function($inscription) {
+                    return $inscription->etudiant;
+                });
+        } else {
+            $data['totalStudents'] = ESBTPEtudiant::count();
+            $data['recentStudents'] = ESBTPEtudiant::orderBy('created_at', 'desc')->take(5)->get();
+        }
 
         // Filières
         try {
@@ -119,7 +141,7 @@ class DashboardController extends Controller
             $data['totalNiveaux'] = 0;
         }
 
-        // Classes
+        // Classes (pas de filtrage par année)
         try {
             $data['totalClasses'] = ESBTPClasse::count();
         } catch (\Exception $e) {
@@ -140,13 +162,26 @@ class DashboardController extends Controller
             $data['totalTeachers'] = 0;
         }
 
-        // Examens
+        // Examens (filtré par année en cours)
         try {
-            $data['totalExamens'] = ESBTPEvaluation::count();
-            $data['recentExamens'] = ESBTPEvaluation::with(['classe', 'matiere'])
-                ->orderBy('created_at', 'desc')
-                ->take(5)
-                ->get();
+            if ($anneeEnCours) {
+                $data['totalExamens'] = ESBTPEvaluation::whereHas('classe', function($q) use ($anneeEnCours) {
+                    $q->where('annee_universitaire_id', $anneeEnCours->id);
+                })->count();
+                $data['recentExamens'] = ESBTPEvaluation::with(['classe', 'matiere'])
+                    ->whereHas('classe', function($q) use ($anneeEnCours) {
+                        $q->where('annee_universitaire_id', $anneeEnCours->id);
+                    })
+                    ->orderBy('created_at', 'desc')
+                    ->take(5)
+                    ->get();
+            } else {
+                $data['totalExamens'] = ESBTPEvaluation::count();
+                $data['recentExamens'] = ESBTPEvaluation::with(['classe', 'matiere'])
+                    ->orderBy('created_at', 'desc')
+                    ->take(5)
+                    ->get();
+            }
         } catch (\Exception $e) {
             $data['totalExamens'] = 0;
             $data['recentExamens'] = collect();
@@ -168,19 +203,36 @@ class DashboardController extends Controller
             $data['totalNotes'] = 0;
         }
 
-        // Présences
+        // Présences (filtré par année en cours)
         try {
-            $data['totalPresences'] = ESBTPAttendance::count();
-            $data['todayAttendances'] = ESBTPAttendance::whereDate('date', today())->count();
+            if ($anneeEnCours) {
+                $data['totalPresences'] = ESBTPAttendance::whereHas('etudiant.inscriptions', function($q) use ($anneeEnCours) {
+                    $q->where('annee_universitaire_id', $anneeEnCours->id)
+                      ->where('status', 'active');
+                })->count();
+                $data['todayAttendances'] = ESBTPAttendance::whereHas('etudiant.inscriptions', function($q) use ($anneeEnCours) {
+                    $q->where('annee_universitaire_id', $anneeEnCours->id)
+                      ->where('status', 'active');
+                })->whereDate('date', today())->count();
+            } else {
+                $data['totalPresences'] = ESBTPAttendance::count();
+                $data['todayAttendances'] = ESBTPAttendance::whereDate('date', today())->count();
+            }
         } catch (\Exception $e) {
             $data['totalPresences'] = 0;
             $data['todayAttendances'] = 0;
         }
 
-        // Emplois du temps
+        // Emplois du temps (filtré par année en cours)
         try {
-            $data['totalEmploiTemps'] = ESBTPEmploiTemps::count();
-            $data['activeEmploiTemps'] = ESBTPEmploiTemps::where('is_active', true)->count();
+            if ($anneeEnCours) {
+                $data['totalEmploiTemps'] = ESBTPEmploiTemps::where('annee_universitaire_id', $anneeEnCours->id)->count();
+                $data['activeEmploiTemps'] = ESBTPEmploiTemps::where('annee_universitaire_id', $anneeEnCours->id)
+                    ->where('is_active', true)->count();
+            } else {
+                $data['totalEmploiTemps'] = ESBTPEmploiTemps::count();
+                $data['activeEmploiTemps'] = ESBTPEmploiTemps::where('is_active', true)->count();
+            }
         } catch (\Exception $e) {
             $data['totalEmploiTemps'] = 0;
             $data['activeEmploiTemps'] = 0;
@@ -224,27 +276,50 @@ class DashboardController extends Controller
             $data['recentNotifications'] = collect();
         }
 
-        // Inscriptions récentes (vraies données)
+        // Inscriptions récentes (vraies données) (filtré par année en cours)
         try {
-            $data['recentInscriptions'] = ESBTPInscription::with([
-                'etudiant',
-                'classe.filiere',
-                'etudiant.classe.filiere'
-            ])
-                ->orderBy('created_at', 'desc')
-                ->limit(5)
-                ->get();
+            if ($anneeEnCours) {
+                $data['recentInscriptions'] = ESBTPInscription::with([
+                    'etudiant',
+                    'classe.filiere',
+                    'etudiant.classe.filiere'
+                ])
+                    ->where('annee_universitaire_id', $anneeEnCours->id)
+                    ->orderBy('created_at', 'desc')
+                    ->limit(5)
+                    ->get();
+            } else {
+                $data['recentInscriptions'] = ESBTPInscription::with([
+                    'etudiant',
+                    'classe.filiere',
+                    'etudiant.classe.filiere'
+                ])
+                    ->orderBy('created_at', 'desc')
+                    ->limit(5)
+                    ->get();
+            }
         } catch (\Exception $e) {
             $data['recentInscriptions'] = collect();
         }
 
-        // Examens à venir (vraies données)
+        // Examens à venir (vraies données) (filtré par année en cours)
         try {
-            $data['upcomingExams'] = ESBTPEvaluation::with(['matiere', 'classe'])
-                ->where('date_evaluation', '>=', now())
-                ->orderBy('date_evaluation', 'asc')
-                ->limit(5)
-                ->get();
+            if ($anneeEnCours) {
+                $data['upcomingExams'] = ESBTPEvaluation::with(['matiere', 'classe'])
+                    ->whereHas('classe', function($q) use ($anneeEnCours) {
+                        $q->where('annee_universitaire_id', $anneeEnCours->id);
+                    })
+                    ->where('date_evaluation', '>=', now())
+                    ->orderBy('date_evaluation', 'asc')
+                    ->limit(5)
+                    ->get();
+            } else {
+                $data['upcomingExams'] = ESBTPEvaluation::with(['matiere', 'classe'])
+                    ->where('date_evaluation', '>=', now())
+                    ->orderBy('date_evaluation', 'asc')
+                    ->limit(5)
+                    ->get();
+            }
         } catch (\Exception $e) {
             $data['upcomingExams'] = collect();
         }
@@ -258,8 +333,14 @@ class DashboardController extends Controller
             $data['recentAnnouncements'] = collect();
         }
 
-        // Statistiques par filière avec couleurs pour le graphique
-        $filiereStatsRaw = ESBTPFiliere::withCount('inscriptions')->get();
+        // Statistiques par filière avec couleurs pour le graphique (filtré par année en cours)
+        if ($anneeEnCours) {
+            $filiereStatsRaw = ESBTPFiliere::withCount(['inscriptions' => function($query) use ($anneeEnCours) {
+                $query->where('annee_universitaire_id', $anneeEnCours->id);
+            }])->get();
+        } else {
+            $filiereStatsRaw = ESBTPFiliere::withCount('inscriptions')->get();
+        }
         $colors = ['#0453cb', '#ec4899', '#22c55e', '#f59e0b', '#ef4444', '#0ea5e9', '#5e91de', '#f97316', '#06b6d4', '#84cc16', '#f43f5e', '#0453cb'];
 
         $data['filiereStats'] = $filiereStatsRaw->map(function($filiere, $index) use ($colors) {
@@ -271,16 +352,27 @@ class DashboardController extends Controller
             ];
         });
 
-        // Données mensuelles pour les graphiques
+        // Données mensuelles pour les graphiques (filtré par année en cours)
         $data['monthlyStats'] = [];
         for ($i = 11; $i >= 0; $i--) {
             $date = now()->subMonths($i);
-            $studentsCount = ESBTPEtudiant::whereYear('created_at', $date->year)
-                ->whereMonth('created_at', $date->month)
-                ->count();
-            $inscriptionsCount = ESBTPInscription::whereYear('created_at', $date->year)
-                ->whereMonth('created_at', $date->month)
-                ->count();
+            if ($anneeEnCours) {
+                $studentsCount = ESBTPInscription::where('annee_universitaire_id', $anneeEnCours->id)
+                    ->whereYear('created_at', $date->year)
+                    ->whereMonth('created_at', $date->month)
+                    ->count();
+                $inscriptionsCount = ESBTPInscription::where('annee_universitaire_id', $anneeEnCours->id)
+                    ->whereYear('created_at', $date->year)
+                    ->whereMonth('created_at', $date->month)
+                    ->count();
+            } else {
+                $studentsCount = ESBTPEtudiant::whereYear('created_at', $date->year)
+                    ->whereMonth('created_at', $date->month)
+                    ->count();
+                $inscriptionsCount = ESBTPInscription::whereYear('created_at', $date->year)
+                    ->whereMonth('created_at', $date->month)
+                    ->count();
+            }
 
             $data['monthlyStats'][] = [
                 'month' => $date->format('M'),
@@ -290,18 +382,41 @@ class DashboardController extends Controller
             ];
         }
 
-        // Inscriptions par mois pour le graphique
-        $data['inscriptionsByMonth'] = ESBTPInscription::selectRaw('MONTH(created_at) as month, YEAR(created_at) as year, COUNT(*) as count')
-            ->where('created_at', '>=', now()->subMonths(12))
-            ->groupBy('year', 'month')
-            ->orderBy('year', 'asc')
-            ->orderBy('month', 'asc')
-            ->get();
+        // Inscriptions par mois pour le graphique (filtré par année en cours)
+        if ($anneeEnCours) {
+            $data['inscriptionsByMonth'] = ESBTPInscription::selectRaw('MONTH(created_at) as month, YEAR(created_at) as year, COUNT(*) as count')
+                ->where('annee_universitaire_id', $anneeEnCours->id)
+                ->where('created_at', '>=', now()->subMonths(12))
+                ->groupBy('year', 'month')
+                ->orderBy('year', 'asc')
+                ->orderBy('month', 'asc')
+                ->get();
+        } else {
+            $data['inscriptionsByMonth'] = ESBTPInscription::selectRaw('MONTH(created_at) as month, YEAR(created_at) as year, COUNT(*) as count')
+                ->where('created_at', '>=', now()->subMonths(12))
+                ->groupBy('year', 'month')
+                ->orderBy('year', 'asc')
+                ->orderBy('month', 'asc')
+                ->get();
+        }
 
-        // Statistiques de présence
+        // Statistiques de présence (filtré par année en cours)
         try {
-            $totalPresent = ESBTPAttendance::where('status', 'present')->whereDate('date', today())->count();
-            $totalAbsent = ESBTPAttendance::where('status', 'absent')->whereDate('date', today())->count();
+            if ($anneeEnCours) {
+                $totalPresent = ESBTPAttendance::whereHas('etudiant.inscriptions', function($q) use ($anneeEnCours) {
+                    $q->where('annee_universitaire_id', $anneeEnCours->id)
+                      ->where('status', 'active');
+                })->where('status', 'present')->whereDate('date', today())->count();
+
+                $totalAbsent = ESBTPAttendance::whereHas('etudiant.inscriptions', function($q) use ($anneeEnCours) {
+                    $q->where('annee_universitaire_id', $anneeEnCours->id)
+                      ->where('status', 'active');
+                })->where('status', 'absent')->whereDate('date', today())->count();
+            } else {
+                $totalPresent = ESBTPAttendance::where('status', 'present')->whereDate('date', today())->count();
+                $totalAbsent = ESBTPAttendance::where('status', 'absent')->whereDate('date', today())->count();
+            }
+
             $attendanceRate = $totalPresent + $totalAbsent > 0
                 ? round(($totalPresent / ($totalPresent + $totalAbsent)) * 100, 1)
                 : 0;
@@ -411,20 +526,37 @@ class DashboardController extends Controller
             'user' => $user
         ];
 
+        // Récupérer l'année universitaire en cours
+        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
         // Statistiques accessibles aux coordinateurs
         try {
-            // Étudiants - Coordinateurs peuvent voir et gérer les étudiants
-            $data['totalStudents'] = ESBTPEtudiant::count();
-            $data['recentStudents'] = ESBTPEtudiant::with(['classe.filiere'])
-                ->orderBy('created_at', 'desc')
-                ->take(5)
-                ->get();
+            // Étudiants - Coordinateurs peuvent voir et gérer les étudiants (filtré par année en cours)
+            if ($anneeEnCours) {
+                $data['totalStudents'] = ESBTPInscription::where('annee_universitaire_id', $anneeEnCours->id)
+                    ->where('status', 'active')
+                    ->count();
+                $data['recentStudents'] = ESBTPInscription::with(['etudiant', 'classe.filiere'])
+                    ->where('annee_universitaire_id', $anneeEnCours->id)
+                    ->orderBy('created_at', 'desc')
+                    ->take(5)
+                    ->get()
+                    ->map(function($inscription) {
+                        return $inscription->etudiant;
+                    });
+            } else {
+                $data['totalStudents'] = ESBTPEtudiant::count();
+                $data['recentStudents'] = ESBTPEtudiant::with(['classe.filiere'])
+                    ->orderBy('created_at', 'desc')
+                    ->take(5)
+                    ->get();
+            }
         } catch (\Exception $e) {
             $data['totalStudents'] = 0;
             $data['recentStudents'] = collect();
         }
 
-        // Classes - Coordinateurs supervisent les classes
+        // Classes - Coordinateurs supervisent les classes (pas de filtrage par année)
         try {
             $data['totalClasses'] = ESBTPClasse::count();
         } catch (\Exception $e) {
@@ -438,32 +570,69 @@ class DashboardController extends Controller
             $data['totalTeachers'] = 0;
         }
 
-        // Évaluations - Coordinateurs peuvent voir les évaluations
+        // Évaluations - Coordinateurs peuvent voir les évaluations (filtré par année en cours)
         try {
-            $data['totalExamens'] = ESBTPEvaluation::count();
-            $data['recentExamens'] = ESBTPEvaluation::with(['classe', 'matiere'])
-                ->orderBy('created_at', 'desc')
-                ->take(5)
-                ->get();
+            if ($anneeEnCours) {
+                $data['totalExamens'] = ESBTPEvaluation::whereHas('classe', function($q) use ($anneeEnCours) {
+                    $q->where('annee_universitaire_id', $anneeEnCours->id);
+                })->count();
+                $data['recentExamens'] = ESBTPEvaluation::with(['classe', 'matiere'])
+                    ->whereHas('classe', function($q) use ($anneeEnCours) {
+                        $q->where('annee_universitaire_id', $anneeEnCours->id);
+                    })
+                    ->orderBy('created_at', 'desc')
+                    ->take(5)
+                    ->get();
+            } else {
+                $data['totalExamens'] = ESBTPEvaluation::count();
+                $data['recentExamens'] = ESBTPEvaluation::with(['classe', 'matiere'])
+                    ->orderBy('created_at', 'desc')
+                    ->take(5)
+                    ->get();
+            }
         } catch (\Exception $e) {
             $data['totalExamens'] = 0;
             $data['recentExamens'] = collect();
         }
 
-        // Emplois du temps - Coordinateurs gèrent la planification
+        // Emplois du temps - Coordinateurs gèrent la planification (filtré par année en cours)
         try {
-            $data['totalEmploiTemps'] = ESBTPEmploiTemps::count();
-            $data['activeEmploiTemps'] = ESBTPEmploiTemps::where('is_active', true)->count();
+            if ($anneeEnCours) {
+                $data['totalEmploiTemps'] = ESBTPEmploiTemps::where('annee_universitaire_id', $anneeEnCours->id)->count();
+                $data['activeEmploiTemps'] = ESBTPEmploiTemps::where('annee_universitaire_id', $anneeEnCours->id)
+                    ->where('is_active', true)->count();
+            } else {
+                $data['totalEmploiTemps'] = ESBTPEmploiTemps::count();
+                $data['activeEmploiTemps'] = ESBTPEmploiTemps::where('is_active', true)->count();
+            }
         } catch (\Exception $e) {
             $data['totalEmploiTemps'] = 0;
             $data['activeEmploiTemps'] = 0;
         }
 
-        // Présences - Coordinateurs suivent les présences
+        // Présences - Coordinateurs suivent les présences (filtré par année en cours)
         try {
-            $data['todayAttendances'] = ESBTPAttendance::whereDate('date', today())->count();
-            $totalPresent = ESBTPAttendance::where('status', 'present')->whereDate('date', today())->count();
-            $totalAbsent = ESBTPAttendance::where('status', 'absent')->whereDate('date', today())->count();
+            if ($anneeEnCours) {
+                $data['todayAttendances'] = ESBTPAttendance::whereHas('etudiant.inscriptions', function($q) use ($anneeEnCours) {
+                    $q->where('annee_universitaire_id', $anneeEnCours->id)
+                      ->where('status', 'active');
+                })->whereDate('date', today())->count();
+
+                $totalPresent = ESBTPAttendance::whereHas('etudiant.inscriptions', function($q) use ($anneeEnCours) {
+                    $q->where('annee_universitaire_id', $anneeEnCours->id)
+                      ->where('status', 'active');
+                })->where('status', 'present')->whereDate('date', today())->count();
+
+                $totalAbsent = ESBTPAttendance::whereHas('etudiant.inscriptions', function($q) use ($anneeEnCours) {
+                    $q->where('annee_universitaire_id', $anneeEnCours->id)
+                      ->where('status', 'active');
+                })->where('status', 'absent')->whereDate('date', today())->count();
+            } else {
+                $data['todayAttendances'] = ESBTPAttendance::whereDate('date', today())->count();
+                $totalPresent = ESBTPAttendance::where('status', 'present')->whereDate('date', today())->count();
+                $totalAbsent = ESBTPAttendance::where('status', 'absent')->whereDate('date', today())->count();
+            }
+
             $attendanceRate = $totalPresent + $totalAbsent > 0
                 ? round(($totalPresent / ($totalPresent + $totalAbsent)) * 100, 1)
                 : 0;
@@ -501,16 +670,29 @@ class DashboardController extends Controller
             $data['recentMessages'] = collect();
         }
 
-        // Inscriptions en attente
+        // Inscriptions en attente (filtré par année en cours)
         try {
-            $data['pendingInscriptionsCount'] = ESBTPInscription::where('status', 'pending')->count();
-            $data['recentInscriptions'] = ESBTPInscription::with([
-                'etudiant',
-                'classe.filiere'
-            ])
-                ->orderBy('created_at', 'desc')
-                ->limit(5)
-                ->get();
+            if ($anneeEnCours) {
+                $data['pendingInscriptionsCount'] = ESBTPInscription::where('status', 'pending')
+                    ->where('annee_universitaire_id', $anneeEnCours->id)->count();
+                $data['recentInscriptions'] = ESBTPInscription::with([
+                    'etudiant',
+                    'classe.filiere'
+                ])
+                    ->where('annee_universitaire_id', $anneeEnCours->id)
+                    ->orderBy('created_at', 'desc')
+                    ->limit(5)
+                    ->get();
+            } else {
+                $data['pendingInscriptionsCount'] = ESBTPInscription::where('status', 'pending')->count();
+                $data['recentInscriptions'] = ESBTPInscription::with([
+                    'etudiant',
+                    'classe.filiere'
+                ])
+                    ->orderBy('created_at', 'desc')
+                    ->limit(5)
+                    ->get();
+            }
         } catch (\Exception $e) {
             $data['pendingInscriptionsCount'] = 0;
             $data['recentInscriptions'] = collect();
@@ -674,8 +856,17 @@ class DashboardController extends Controller
             ->limit(3)
             ->get();
 
-        // Statistiques par filière avec couleurs pour le graphique
-        $filiereStatsRaw = ESBTPFiliere::withCount('inscriptions')->get();
+        // Récupérer l'année universitaire en cours
+        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        // Statistiques par filière avec couleurs pour le graphique (filtré par année en cours)
+        if ($anneeEnCours) {
+            $filiereStatsRaw = ESBTPFiliere::withCount(['inscriptions' => function($query) use ($anneeEnCours) {
+                $query->where('annee_universitaire_id', $anneeEnCours->id);
+            }])->get();
+        } else {
+            $filiereStatsRaw = ESBTPFiliere::withCount('inscriptions')->get();
+        }
         $colors = ['#0453cb', '#ec4899', '#22c55e', '#f59e0b', '#ef4444', '#0ea5e9', '#5e91de', '#f97316', '#06b6d4', '#84cc16', '#f43f5e', '#0453cb'];
 
         $filiereStats = $filiereStatsRaw->map(function($filiere, $index) use ($colors) {
@@ -687,16 +878,27 @@ class DashboardController extends Controller
             ];
         });
 
-        // Données mensuelles pour les graphiques
+        // Données mensuelles pour les graphiques (filtré par année en cours)
         $monthlyStats = [];
         for ($i = 11; $i >= 0; $i--) {
             $date = now()->subMonths($i);
-            $studentsCount = ESBTPEtudiant::whereYear('created_at', $date->year)
-                ->whereMonth('created_at', $date->month)
-                ->count();
-            $inscriptionsCount = ESBTPInscription::whereYear('created_at', $date->year)
-                ->whereMonth('created_at', $date->month)
-                ->count();
+            if ($anneeEnCours) {
+                $studentsCount = ESBTPInscription::where('annee_universitaire_id', $anneeEnCours->id)
+                    ->whereYear('created_at', $date->year)
+                    ->whereMonth('created_at', $date->month)
+                    ->count();
+                $inscriptionsCount = ESBTPInscription::where('annee_universitaire_id', $anneeEnCours->id)
+                    ->whereYear('created_at', $date->year)
+                    ->whereMonth('created_at', $date->month)
+                    ->count();
+            } else {
+                $studentsCount = ESBTPEtudiant::whereYear('created_at', $date->year)
+                    ->whereMonth('created_at', $date->month)
+                    ->count();
+                $inscriptionsCount = ESBTPInscription::whereYear('created_at', $date->year)
+                    ->whereMonth('created_at', $date->month)
+                    ->count();
+            }
 
             $monthlyStats[] = [
                 'month' => $date->format('M'),
@@ -706,13 +908,23 @@ class DashboardController extends Controller
             ];
         }
 
-        // Inscriptions par mois pour le graphique
-        $inscriptionsByMonth = ESBTPInscription::selectRaw('MONTH(created_at) as month, YEAR(created_at) as year, COUNT(*) as count')
-            ->where('created_at', '>=', now()->subMonths(12))
-            ->groupBy('year', 'month')
-            ->orderBy('year', 'asc')
-            ->orderBy('month', 'asc')
-            ->get();
+        // Inscriptions par mois pour le graphique (filtré par année en cours)
+        if ($anneeEnCours) {
+            $inscriptionsByMonth = ESBTPInscription::selectRaw('MONTH(created_at) as month, YEAR(created_at) as year, COUNT(*) as count')
+                ->where('annee_universitaire_id', $anneeEnCours->id)
+                ->where('created_at', '>=', now()->subMonths(12))
+                ->groupBy('year', 'month')
+                ->orderBy('year', 'asc')
+                ->orderBy('month', 'asc')
+                ->get();
+        } else {
+            $inscriptionsByMonth = ESBTPInscription::selectRaw('MONTH(created_at) as month, YEAR(created_at) as year, COUNT(*) as count')
+                ->where('created_at', '>=', now()->subMonths(12))
+                ->groupBy('year', 'month')
+                ->orderBy('year', 'asc')
+                ->orderBy('month', 'asc')
+                ->get();
+        }
 
         return view('dashboard.superadmin', compact(
             'totalStudents',

@@ -192,14 +192,16 @@
         font-weight: 700;
         color: var(--text-primary);
         margin-bottom: var(--space-xs);
+        line-height: 1.2;
     }
-    
+
     .stat-label {
         font-size: var(--text-small);
         color: var(--text-secondary);
         text-transform: uppercase;
         letter-spacing: 0.5px;
         font-weight: 600;
+        margin-top: var(--space-xs);
     }
     
     .personnel-actions {
