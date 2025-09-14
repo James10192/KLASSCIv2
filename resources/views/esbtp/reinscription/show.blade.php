@@ -237,8 +237,29 @@
                                 <div>
                                     <div style="font-weight: 600; color: var(--danger); margin-bottom: var(--space-xs);">Réinscription Bloquée</div>
                                     <div style="color: var(--text-primary);">
-                                        L'étudiant doit avoir <strong>tout soldé</strong> (100% de ses frais) pour pouvoir se réinscrire.
+                                        <strong>Pour les utilisateurs standards :</strong> L'étudiant doit avoir <strong>tout soldé</strong> (100% de ses frais) pour pouvoir se réinscrire.
                                         <br><strong>Montant restant à payer : {{ number_format($soldeRestant, 0, ',', ' ') }} FCFA</strong>
+                                        <br><small class="text-muted mt-2">
+                                            <i class="fas fa-info-circle"></i> Seuls les superadministrateurs peuvent créer des réinscriptions avec reliquat.
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @elseif($peutReinscrire && isset($etudiant->reliquat_possible) && $etudiant->reliquat_possible)
+                    <div class="card-moderne mb-lg" style="border-left: 4px solid var(--warning); background-color: rgba(245, 158, 11, 0.05);">
+                        <div class="p-md">
+                            <div style="display: flex; align-items: center; gap: var(--space-md);">
+                                <i class="fas fa-exclamation-circle fa-2x" style="color: var(--warning);"></i>
+                                <div>
+                                    <div style="font-weight: 600; color: var(--warning); margin-bottom: var(--space-xs);">Réinscription avec Reliquat (Superadmin)</div>
+                                    <div style="color: var(--text-primary);">
+                                        En tant que <strong>superadministrateur</strong>, vous pouvez autoriser la réinscription malgré les impayés.
+                                        <br><strong>Reliquat à reporter : {{ number_format($etudiant->reliquat_montant, 0, ',', ' ') }} FCFA</strong>
+                                        <br><small class="text-muted mt-2">
+                                            <i class="fas fa-info-circle"></i> Le reliquat sera reporté sur la nouvelle inscription et devra être soldé ultérieurement.
+                                        </small>
                                     </div>
                                 </div>
                             </div>
@@ -541,9 +562,15 @@
                         <button type="button" class="btn-acasi secondary" onclick="history.back()">
                             <i class="fas fa-times"></i>Annuler
                         </button>
-                        <button type="submit" class="btn-acasi primary">
-                            <i class="fas fa-save"></i>Confirmer la Réinscription
+                        @if($etudiant->peut_reinscrire)
+                        <a href="{{ route('esbtp.reinscription.create', $analyse['etudiant']->id) }}?annee_academique={{ $anneeAcademique }}" class="btn-acasi primary">
+                            <i class="fas fa-arrow-right"></i>Finaliser la Réinscription
+                        </a>
+                        @else
+                        <button type="button" class="btn-acasi primary" disabled title="Réinscription bloquée - Solde impayé">
+                            <i class="fas fa-lock"></i>Réinscription Bloquée
                         </button>
+                        @endif
                     </div>
                 </form>
             </div>
