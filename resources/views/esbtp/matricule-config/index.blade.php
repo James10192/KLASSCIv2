@@ -129,9 +129,8 @@
         </div>
     </div>
 
-    @if($matriculeMode == 'automatique' && $configurations->count() == 0)
     <!-- Alerte si aucune configuration en mode automatique -->
-    <div class="card-moderne">
+    <div class="card-moderne" id="configurationAlert" style="display: {{ ($matriculeMode == 'automatique' && $configurations->count() == 0) ? 'block' : 'none' }};">
         <div class="section-card-body">
             <div class="alert alert-warning">
                 <h6><i class="fas fa-exclamation-triangle me-2"></i>Configuration requise</h6>
@@ -140,7 +139,6 @@
             </div>
         </div>
     </div>
-    @endif
 </div>
 @endsection
 
@@ -173,6 +171,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.success) {
                 updateModeDescription(mode);
                 toggleConfigForm(mode === 'automatique');
+                updateNomenclatureSection(); // Mettre à jour l'affichage selon le nouveau mode
 
                 Swal.fire({
                     title: 'Mode changé!',
@@ -214,7 +213,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     timer: 2000,
                     showConfirmButton: false
                 }).then(() => {
-                    location.reload(); // Recharger pour afficher les configs de cet établissement
+                    // Recharger la section nomenclature sans recharger toute la page
+                    updateNomenclatureSection();
                 });
             } else {
                 Swal.fire('Erreur', data.message, 'error');
@@ -386,6 +386,75 @@ function debounce(func, wait) {
         clearTimeout(timeout);
         timeout = setTimeout(later, wait);
     };
+}
+
+// Fonction pour mettre à jour la section nomenclature
+function updateNomenclatureSection() {
+    const currentEtablissementId = document.getElementById('currentEtablissement').value;
+    const currentMode = document.getElementById('matriculeMode').value;
+
+    fetch('/esbtp/matricule-config/get-configurations', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            etablissement_id: currentEtablissementId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        const nomenclatureSection = document.getElementById('currentNomenclature');
+
+        if (data.success && data.configurations.length > 0) {
+            let html = '<div class="kpi-grid">';
+            data.configurations.forEach(config => {
+                html += `
+                    <div class="kpi-card card-moderne">
+                        <div class="kpi-title">${config.niveau_etude_name}</div>
+                        <div class="kpi-value color-primary">
+                            <div class="mb-sm">
+                                <span class="badge success me-1"><i class="fas fa-mars"></i> ${config.exemples_generes.masculin}</span>
+                                <span class="badge warning"><i class="fas fa-venus"></i> ${config.exemples_generes.feminin}</span>
+                            </div>
+                        </div>
+                        <div class="kpi-trend">
+                            <small class="text-muted">
+                                ${config.annee_format} chiffres • ${config.numero_digits} digits • ${config.etablissement_code}
+                            </small>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            nomenclatureSection.innerHTML = html;
+        } else {
+            nomenclatureSection.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p>Aucune configuration définie pour cet établissement</p>
+                    <small>Les configurations sont gérées automatiquement en backend selon les niveaux d'études disponibles.</small>
+                </div>
+            `;
+        }
+
+        // Afficher/masquer l'alerte de configuration manquante
+        const alertSection = document.getElementById('configurationAlert');
+        if (currentMode === 'automatique' && (!data.success || data.configurations.length === 0)) {
+            if (alertSection) {
+                alertSection.style.display = 'block';
+            }
+        } else {
+            if (alertSection) {
+                alertSection.style.display = 'none';
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Erreur lors de la mise à jour des nomenclatures:', error);
+    });
 }
 </script>
 @endsection

@@ -291,4 +291,44 @@ class ESBTPMatriculeConfigController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Récupérer les configurations pour un établissement (AJAX)
+     */
+    public function getConfigurations(Request $request)
+    {
+        $request->validate([
+            'etablissement_id' => 'required|exists:esbtp_etablissements,id'
+        ]);
+
+        try {
+            $configurations = ESBTPMatriculeConfig::where('etablissement_id', $request->etablissement_id)
+                ->where('is_active', true)
+                ->orderBy('niveau_etude_code')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'configurations' => $configurations->map(function ($config) {
+                    return [
+                        'id' => $config->id,
+                        'niveau_etude_code' => $config->niveau_etude_code,
+                        'niveau_etude_name' => $config->niveau_etude_name,
+                        'description' => $config->description,
+                        'annee_format' => $config->annee_format,
+                        'numero_digits' => $config->numero_digits,
+                        'etablissement_code' => $config->etablissement_code,
+                        'exemples_generes' => $config->exemples_generes
+                    ];
+                })
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur: ' . $e->getMessage(),
+                'configurations' => []
+            ], 500);
+        }
+    }
 }

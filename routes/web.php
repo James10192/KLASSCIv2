@@ -975,6 +975,7 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'role:superAdmin'])-
     Route::post('/matricule-config/change-mode', [ESBTPMatriculeConfigController::class, 'changeMode'])->name('matricule-config.change-mode');
     Route::post('/matricule-config/change-etablissement', [ESBTPMatriculeConfigController::class, 'changeEtablissement'])->name('matricule-config.change-etablissement');
     Route::get('/matricule-config/mode-info', [ESBTPMatriculeConfigController::class, 'getModeInfo'])->name('matricule-config.mode-info');
+    Route::post('/matricule-config/get-configurations', [ESBTPMatriculeConfigController::class, 'getConfigurations'])->name('matricule-config.get-configurations');
 });
 
     // Routes pour l'émargement - Administration

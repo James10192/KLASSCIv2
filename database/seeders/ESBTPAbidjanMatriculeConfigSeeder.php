@@ -6,7 +6,7 @@ use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
-class MatriculeConfigSeeder extends Seeder
+class ESBTPAbidjanMatriculeConfigSeeder extends Seeder
 {
     /**
      * Run the database seeds.
@@ -71,7 +71,7 @@ class MatriculeConfigSeeder extends Seeder
         // Insérer les configurations
         DB::table('esbtp_matricule_configs')->insert([$configBTS, $configLICENCE]);
 
-        $this->command->info('✅ Configurations matricules créées avec succès !');
+        $this->command->info('✅ Configurations matricules ESBTP-ABIDJAN créées avec succès !');
         $this->command->info('📋 BTS: MESBTP25-0001, FESBTP25-0001');
         $this->command->info('📋 LICENCE: MLESBTP2025-0001, FLESBTP2025-0001');
     }
