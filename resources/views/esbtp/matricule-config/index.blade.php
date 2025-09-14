@@ -146,12 +146,8 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('configForm');
-    const previewSection = document.getElementById('previewSection');
-    const previewExamples = document.getElementById('previewExamples');
     const matriculeModeSelect = document.getElementById('matriculeMode');
     const etablissementSelect = document.getElementById('currentEtablissement');
-    const configFormSection = document.getElementById('configFormSection');
 
     // Gestion du changement de mode
     matriculeModeSelect.addEventListener('change', function() {
@@ -170,7 +166,6 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             if (data.success) {
                 updateModeDescription(mode);
-                toggleConfigForm(mode === 'automatique');
                 updateNomenclatureSection(); // Mettre à jour l'affichage selon le nouveau mode
 
                 Swal.fire({
@@ -240,141 +235,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Fonction pour activer/désactiver le formulaire de configuration
-    function toggleConfigForm(enabled) {
-        const inputs = configFormSection.querySelectorAll('input, select, textarea, button');
-        inputs.forEach(input => {
-            input.disabled = !enabled;
-        });
+    // Initialiser l'interface
 
-        if (enabled) {
-            configFormSection.style.opacity = '1';
-            configFormSection.style.pointerEvents = 'auto';
-        } else {
-            configFormSection.style.opacity = '0.5';
-            configFormSection.style.pointerEvents = 'none';
-        }
-    }
-
-    // Initialiser l'état du formulaire selon le mode actuel
-    const currentMode = '{{ $matriculeMode }}';
-    toggleConfigForm(currentMode === 'automatique');
-
-    // Prévisualisation en temps réel
-    form.addEventListener('change', updatePreview);
-    form.addEventListener('keyup', debounce(updatePreview, 300));
-
-    function updatePreview() {
-        const formData = new FormData(form);
-
-        if (!formData.get('niveau_etude_code') || !formData.get('annee_format') || !formData.get('numero_digits') || !formData.get('etablissement_code')) {
-            previewSection.style.display = 'none';
-            return;
-        }
-
-        fetch('{{ route("esbtp.matricule-config.preview") }}', {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                prefixe: formData.get('prefixe'),
-                annee_format: parseInt(formData.get('annee_format')),
-                numero_digits: parseInt(formData.get('numero_digits')),
-                etablissement_code: formData.get('etablissement_code')
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                previewExamples.innerHTML = `
-                    <span class="example-badge">♂️ ${data.exemples.masculin}</span>
-                    <span class="example-badge">♀️ ${data.exemples.feminin}</span>
-                `;
-                previewSection.style.display = 'block';
-                previewSection.classList.add('fade-in');
-            }
-        })
-        .catch(console.error);
-    }
-
-    // Soumission du formulaire
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-
-        const formData = new FormData(form);
-        const data = Object.fromEntries(formData.entries());
-        data.niveau_etude_name = form.querySelector('select[name="niveau_etude_code"] option:checked').text;
-
-        fetch('{{ route("esbtp.matricule-config.store") }}', {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(data)
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                Swal.fire({
-                    title: 'Succès!',
-                    text: data.message,
-                    icon: 'success',
-                    timer: 2000,
-                    showConfirmButton: false
-                }).then(() => {
-                    location.reload();
-                });
-            } else {
-                Swal.fire('Erreur', data.message, 'error');
-            }
-        })
-        .catch(error => {
-            Swal.fire('Erreur', 'Une erreur est survenue', 'error');
-            console.error(error);
-        });
-    });
+    // Charger les nomenclatures au démarrage
+    updateNomenclatureSection();
 });
 
-function deleteConfig(id) {
-    Swal.fire({
-        title: 'Êtes-vous sûr?',
-        text: 'Cette action supprimera définitivement la configuration',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Oui, supprimer',
-        cancelButtonText: 'Annuler'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            fetch(`/esbtp/matricule-config/${id}`, {
-                method: 'DELETE',
-                headers: {
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    'Accept': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    location.reload();
-                } else {
-                    Swal.fire('Erreur', data.message, 'error');
-                }
-            });
-        }
-    });
-}
-
-function resetForm() {
-    document.getElementById('configForm').reset();
-    document.getElementById('previewSection').style.display = 'none';
-}
+// Fonctions utilitaires supprimées - interface simplifiée
 
 function debounce(func, wait) {
     let timeout;
@@ -393,7 +260,9 @@ function updateNomenclatureSection() {
     const currentEtablissementId = document.getElementById('currentEtablissement').value;
     const currentMode = document.getElementById('matriculeMode').value;
 
-    fetch('/esbtp/matricule-config/get-configurations', {
+    console.log('UpdateNomenclatureSection - Etablissement:', currentEtablissementId, 'Mode:', currentMode);
+
+    fetch('{{ route("esbtp.matricule-config.get-configurations") }}', {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -406,6 +275,7 @@ function updateNomenclatureSection() {
     })
     .then(response => response.json())
     .then(data => {
+        console.log('Réponse AJAX:', data);
         const nomenclatureSection = document.getElementById('currentNomenclature');
 
         if (data.success && data.configurations.length > 0) {
