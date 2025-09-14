@@ -26,8 +26,8 @@ return new class extends Migration
             $table->json('exemple')->nullable(); // Exemples de matricules générés
             $table->timestamps();
 
-            // Index unique sur etablissement_id + niveau_etude_code
-            $table->unique(['etablissement_id', 'niveau_etude_code']);
+            // Index unique sur etablissement_id + niveau_etude_code avec nom personnalisé
+            $table->unique(['etablissement_id', 'niveau_etude_code'], 'matricule_config_unique');
             $table->foreign('etablissement_id')->references('id')->on('esbtp_etablissements')->onDelete('cascade');
         });
     }
