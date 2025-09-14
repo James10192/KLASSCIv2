@@ -90,7 +90,7 @@ class ESBTPCoordinateurController extends Controller
                 $this->userService->generateDefaultPassword()
             );
 
-            return redirect()->route('esbtp.coordinateurs.index')
+            return redirect()->route('esbtp.personnel.unified.index')
                            ->with('success', 'Coordinateur créé avec succès.')
                            ->with('credentials', $credentials);
 
@@ -179,7 +179,7 @@ class ESBTPCoordinateurController extends Controller
 
             DB::commit();
 
-            return redirect()->route('esbtp.coordinateurs.index')
+            return redirect()->route('esbtp.personnel.unified.index')
                            ->with('success', 'Coordinateur mis à jour avec succès.');
 
         } catch (\Exception $e) {
@@ -220,7 +220,7 @@ class ESBTPCoordinateurController extends Controller
 
             DB::commit();
 
-            return redirect()->route('esbtp.coordinateurs.index')
+            return redirect()->route('esbtp.personnel.unified.index')
                            ->with('success', 'Coordinateur supprimé avec succès.');
 
         } catch (\Exception $e) {

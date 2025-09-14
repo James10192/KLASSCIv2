@@ -10,7 +10,7 @@
             <a href="{{ route('esbtp.secretaires.show', $secretaire->id) }}" class="btn btn-info me-2">
                 <i class="fas fa-eye me-2"></i>Voir le profil
             </a>
-            <a href="{{ route('esbtp.secretaires.index') }}" class="btn btn-secondary">
+            <a href="{{ route('esbtp.personnel.unified.index') }}" class="btn btn-secondary">
                 <i class="fas fa-arrow-left me-2"></i>Retour à la liste
             </a>
         </div>
@@ -161,7 +161,7 @@
                 </div>
 
                 <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                    <a href="{{ route('esbtp.secretaires.index') }}" class="btn btn-secondary me-md-2">
+                    <a href="{{ route('esbtp.personnel.unified.index') }}" class="btn btn-secondary me-md-2">
                         <i class="fas fa-times me-2"></i>Annuler
                     </a>
                     <button type="submit" class="btn btn-primary">

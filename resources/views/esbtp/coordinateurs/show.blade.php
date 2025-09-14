@@ -352,7 +352,7 @@
                     <a href="{{ route('esbtp.coordinateurs.edit', $coordinateur) }}" class="btn-acasi primary">
                         <i class="fas fa-edit me-1"></i>Modifier
                     </a>
-                    <a href="{{ route('esbtp.coordinateurs.index') }}" class="btn-acasi secondary">
+                    <a href="{{ route('esbtp.personnel.unified.index') }}" class="btn-acasi secondary">
                         <i class="fas fa-arrow-left me-1"></i>Retour
                     </a>
                 </div>

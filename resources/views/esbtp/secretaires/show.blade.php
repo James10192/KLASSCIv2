@@ -10,7 +10,7 @@
             <a href="{{ route('esbtp.secretaires.edit', $secretaire->id) }}" class="btn btn-primary me-2">
                 <i class="fas fa-edit me-2"></i>Modifier
             </a>
-            <a href="{{ route('esbtp.secretaires.index') }}" class="btn btn-secondary">
+            <a href="{{ route('esbtp.personnel.unified.index') }}" class="btn btn-secondary">
                 <i class="fas fa-arrow-left me-2"></i>Retour à la liste
             </a>
         </div>

@@ -103,7 +103,7 @@ class SecretaireAdminController extends Controller
 
             DB::commit();
 
-            return redirect()->route('esbtp.secretaires.index')
+            return redirect()->route('esbtp.personnel.unified.index')
                 ->with('success', 'Le compte secrétaire a été créé avec succès.');
 
         } catch (\Exception $e) {
@@ -235,7 +235,7 @@ class SecretaireAdminController extends Controller
             // Supprimer l'utilisateur
             $secretaire->delete();
 
-            return redirect()->route('esbtp.secretaires.index')
+            return redirect()->route('esbtp.personnel.unified.index')
                 ->with('success', 'Le compte secrétaire a été supprimé avec succès.');
 
         } catch (\Exception $e) {

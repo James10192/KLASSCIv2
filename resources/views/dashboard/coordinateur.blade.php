@@ -12,7 +12,7 @@
         border-radius: var(--radius-large);
         margin-bottom: var(--space-xl);
         position: relative;
-        overflow: hidden;
+        overflow: visible;
     }
     
     .coordinateur-header::before {
@@ -25,6 +25,40 @@
         background: rgba(255,255,255,0.1);
         transform: skewX(-15deg);
         transform-origin: top;
+    }
+
+    /* Styles pour les dropdowns dans le header */
+    .coordinateur-header .dropdown {
+        position: relative;
+        z-index: 1050;
+    }
+
+    .coordinateur-header .dropdown-menu {
+        z-index: 1051 !important;
+        position: absolute !important;
+        background: white !important;
+        border: 1px solid var(--border) !important;
+        border-radius: var(--radius-medium) !important;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15) !important;
+        margin-top: 2px !important;
+    }
+
+    .coordinateur-header .dropdown-item {
+        padding: var(--space-sm) var(--space-md) !important;
+        color: var(--text-primary) !important;
+        text-decoration: none !important;
+        display: flex !important;
+        align-items: center !important;
+        transition: all 0.2s ease !important;
+    }
+
+    .coordinateur-header .dropdown-item:hover {
+        background: rgba(var(--primary-rgb), 0.1) !important;
+        color: var(--primary) !important;
+    }
+
+    .coordinateur-header .dropdown-item i {
+        margin-right: var(--space-sm) !important;
     }
     
     .dashboard-cards {

@@ -168,7 +168,7 @@
                         <a href="{{ route('esbtp.coordinateurs.show', $coordinateur) }}" class="btn-acasi secondary" style="margin-right: var(--space-md);">
                             <i class="fas fa-arrow-left"></i> Retour
                         </a>
-                        <a href="{{ route('esbtp.coordinateurs.index') }}" class="btn-acasi">
+                        <a href="{{ route('esbtp.personnel.unified.index') }}" class="btn-acasi">
                             <i class="fas fa-list"></i> Liste
                         </a>
                     </div>

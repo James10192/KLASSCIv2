@@ -6,7 +6,7 @@
 <div class="container-fluid px-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="mt-4">Ajouter un Secrétaire</h1>
-        <a href="{{ route('esbtp.secretaires.index') }}" class="btn btn-secondary">
+        <a href="{{ route('esbtp.personnel.unified.index') }}" class="btn btn-secondary">
             <i class="fas fa-arrow-left me-2"></i>Retour à la liste
         </a>
     </div>
