@@ -123,6 +123,12 @@ try {
         'create_notes',
         'edit_notes',
         'view_own_notes',
+
+        // Grades (alias for notes)
+        'view_grades',
+        'create_grade',
+        'edit_grades',
+        'delete_grades',
         'view_evaluations',
         'create_evaluations',
         'edit_evaluations',
@@ -152,6 +158,12 @@ try {
         'edit_teachers',
         'view_personnel',
         'manage_personnel',
+
+        // Coordinateurs
+        'view_coordinateurs',
+        'create_coordinateurs',
+        'edit_coordinateurs',
+        'delete_coordinateurs',
         
         // Emplois du temps
         'view_schedules',
@@ -238,6 +250,7 @@ try {
         'view_comptabilite',
         'view_teachers', 'create_teachers', 'edit_teachers',
         'view_personnel', 'manage_personnel',
+        'view_coordinateurs', 'create_coordinateurs', 'edit_coordinateurs', 'delete_coordinateurs',
         'view_schedules', 'create_schedules', 'edit_schedules',
         'manage-planning', 'view-all-timetables', 'view_timetables', 'create_timetable', 'edit_timetables', 'delete_timetables',
         'send_messages', 'receive_messages',
@@ -263,12 +276,14 @@ try {
         'view_classes', 'edit_classes',
         'view_matieres', 'edit_matieres',
         'view_notes', 'create_notes', 'edit_notes',
+        'view_grades', 'create_grade', 'edit_grades', 'delete_grades',
         'view_evaluations', 'create_evaluations', 'edit_evaluations',
         'view_bulletins', 'generate_bulletins',
         'view_attendances', 'edit_attendances',
         'generate-attendance-codes', 'manage-planning', 'view-all-timetables', 'view_timetables', 'edit_timetables',
         'view_payments',
         'view_teachers', 'edit_teachers',
+        'view_coordinateurs', 'create_coordinateurs', 'edit_coordinateurs', 'delete_coordinateurs',
         'view_schedules', 'edit_schedules',
         'send_messages', 'receive_messages',
         'view_annonces', 'create_annonces', 'edit_annonces',

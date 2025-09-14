@@ -197,6 +197,13 @@ class ESBTPNoteController extends Controller
      */
     public function edit(ESBTPNote $note)
     {
+        // Vérifier si le coordinateur a le droit de modifier les notes existantes
+        $user = Auth::user();
+        if ($user->hasRole('coordinateur')) {
+            return redirect()->back()
+                ->with('error', 'Vous ne pouvez pas modifier les notes déjà enregistrées. Vous pouvez seulement ajouter des notes si aucune n\'existe encore.');
+        }
+
         $note->load(['evaluation.matiere', 'evaluation.classe', 'etudiant']);
         return view('esbtp.notes.edit', compact('note'));
     }
@@ -210,6 +217,13 @@ class ESBTPNoteController extends Controller
      */
     public function update(Request $request, ESBTPNote $note)
     {
+        // Vérifier si le coordinateur a le droit de modifier les notes existantes
+        $user = Auth::user();
+        if ($user->hasRole('coordinateur')) {
+            return redirect()->back()
+                ->with('error', 'Vous ne pouvez pas modifier les notes déjà enregistrées. Vous pouvez seulement ajouter des notes si aucune n\'existe encore.');
+        }
+
         $request->validate([
             'note' => 'required_unless:is_absent,on|numeric|min:0',
             'is_absent' => 'nullable|in:on,1,true',

@@ -712,8 +712,8 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             });
         });
 
-        // Routes accessibles pour les secrétaires et super-admins
-        Route::middleware(['auth', 'role:secretaire|superAdmin'])->group(function () {
+        // Routes accessibles pour les secrétaires, super-admins et coordinateurs
+        Route::middleware(['auth', 'role:secretaire|superAdmin|coordinateur'])->group(function () {
             // Nouvelle route pour la vue fusionnée des étudiants et inscriptions
             Route::get('/etudiants-inscriptions', [ESBTPEtudiantController::class, 'indexFusionne'])
                 ->name('etudiants-inscriptions.index')
@@ -1142,8 +1142,8 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'role:superAdmin'])-
     Route::put('students/{id}/restore', [ESBTPStudentController::class, 'restore'])->name('students.restore');
 });
 
-// Routes pour l'espace enseignant
-Route::middleware(['auth', 'role:teacher'])->group(function () {
+// Routes pour l'espace enseignant et coordinateur
+Route::middleware(['auth', 'role:teacher|coordinateur'])->group(function () {
     // Gestion des notes
     Route::prefix('esbtp/notes')->name('esbtp.notes.')->group(function () {
         Route::get('/', [ESBTPNoteController::class, 'index'])->name('index');
@@ -1677,7 +1677,7 @@ Route::get('/comptabilite/paiements/{id}/recu', [ESBTPComptabiliteController::cl
 // ... existing code ...
 
 // Routes pour la gestion du personnel avec sliders
-Route::middleware(['auth'])->prefix('esbtp')->name('esbtp.')->group(function () {
+Route::middleware(['auth', 'role:superAdmin|secretaire|coordinateur'])->prefix('esbtp')->name('esbtp.')->group(function () {
     // Vue combinée du personnel avec sliders
     Route::get('/personnel', [\App\Http\Controllers\ESBTPPersonnelController::class, 'index'])->name('personnel.index');
     Route::get('/personnel/data', [\App\Http\Controllers\ESBTPPersonnelController::class, 'getData'])->name('personnel.data');

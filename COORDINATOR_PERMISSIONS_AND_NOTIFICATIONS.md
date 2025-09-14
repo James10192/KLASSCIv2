@@ -5,31 +5,48 @@
 ### 1. ✅ **Permissions Coordinateur Corrigées**
 
 #### Problèmes résolus :
-- ❌ Accès refusé sur `inscriptions.create`
-- ❌ Accès refusé sur `/esbtp/notes/store-batch`
+- ✅ Accès refusé sur `inscriptions.create` - **RÉSOLU**
+- ✅ Accès refusé sur `/esbtp/notes/store-batch` - **RÉSOLU**
 
-#### Solution appliquée :
-**Fichier** : `fix_permissions.php`
+#### Solutions appliquées :
+
+**A. Permissions manquantes ajoutées** - `fix_permissions.php`
 ```php
 $coordinateurPermissions = [
     // ... permissions existantes
     'create_inscriptions',    // ✅ AJOUTÉ
     'inscriptions.create',    // ✅ AJOUTÉ
     'create_notes',          // ✅ AJOUTÉ
+    'view_grades', 'create_grade', 'edit_grades', 'delete_grades', // ✅ AJOUTÉ
     // ... autres permissions
 ];
+```
+
+**B. Middleware routes corrigés** - `routes/web.php`
+```php
+// Ligne 716: Ajout coordinateur au groupe secrétaire|superAdmin
+Route::middleware(['auth', 'role:secretaire|superAdmin|coordinateur'])->group(function () {
+    // ... routes inscriptions ...
+});
+
+// Ligne 1146: Ajout coordinateur au groupe teacher
+Route::middleware(['auth', 'role:teacher|coordinateur'])->group(function () {
+    // ... routes notes/store-batch ...
+});
 ```
 
 ### 2. ✅ **Logique Notes Coordinateur - Mode Conditionnel**
 
 #### Règle métier implémentée :
-- ✅ **Si aucune note** → Coordinateur peut ajouter
-- ✅ **Si notes existent** → Coordinateur en lecture seule
+- ✅ **Si aucune note** → Coordinateur peut ajouter (via saisie rapide uniquement)
+- ✅ **Si notes existent** → Coordinateur en lecture seule complète
+- ✅ **Édition individuelle** → Interdite pour coordinateurs (toujours)
 
 #### Fichiers modifiés :
-**Contrôleur** : `app/Http/Controllers/ESBTPNoteController.php`
+
+**A. Contrôleur** : `app/Http/Controllers/ESBTPNoteController.php`
 ```php
-// Vérification coordinateur dans enregistrerSaisieRapide()
+// 1. Vérification coordinateur dans enregistrerSaisieRapide()
 if ($user->hasRole('coordinateur')) {
     $existingNotesCount = ESBTPNote::where('evaluation_id', $evaluation->id)->count();
     if ($existingNotesCount > 0) {
@@ -37,9 +54,15 @@ if ($user->hasRole('coordinateur')) {
             ->with('error', 'Vous ne pouvez pas modifier les notes déjà enregistrées...');
     }
 }
+
+// 2. Blocage édition individuelle dans edit() et update()
+if ($user->hasRole('coordinateur')) {
+    return redirect()->back()
+        ->with('error', 'Vous ne pouvez pas modifier les notes déjà enregistrées...');
+}
 ```
 
-**Vue** : `resources/views/esbtp/notes/saisie-rapide.blade.php`
+**B. Vue saisie rapide** : `resources/views/esbtp/notes/saisie-rapide.blade.php`
 ```php
 @php
     $hasExistingNotes = $notes->isNotEmpty();
@@ -51,30 +74,68 @@ if ($user->hasRole('coordinateur')) {
 {{ ($note && $note->absent) || $isReadOnly ? 'disabled' : '' }}
 ```
 
-### 3. ✅ **NotificationService - Expéditeur Correct**
-
-#### Problème corrigé :
-- ❌ Messages affichaient "système" au lieu de l'expéditeur réel
-- ❌ Expéditeur recevait sa propre notification
-
-#### Solution :
-**Service** : `app/Services/NotificationService.php`
+**C. Vue index** : `resources/views/esbtp/notes/index.blade.php`
 ```php
-// Méthode modifiée avec paramètre $sentBy
-public function notifyNewAnnouncement(ESBTPAnnonce $annonce, ?User $sentBy = null): void
+// Masquage boutons édition pour coordinateurs
+@if((auth()->user()->hasRole('superAdmin') || ... || auth()->user()->can('edit_grades'))
+    && !auth()->user()->hasRole('coordinateur'))
+    <a href="{{ route('esbtp.notes.edit', $note->id) }}" class="btn-acasi warning btn-sm">
+        <i class="fas fa-edit"></i>
+    </a>
+@endif
+```
 
-// Exclusion auto-notification + expéditeur passé
-if ($etudiant->user && (!$sentBy || $etudiant->user->id !== $sentBy->id)) {
-    $this->createNotification($etudiant->user, $title, $message, $notificationType, $link, $sentBy);
+### 3. ✅ **Architecture Notifications - Problème Identifié et Résolu**
+
+#### 🔍 **Analyse de l'architecture révélée :**
+La navbar a **2 systèmes distincts** :
+- **📧 Notifications** = Modèle `Notification` (système custom)
+- **💬 Messages** = Modèle `ESBTPAnnonce` (les annonces directement)
+
+#### ❌ **Vrai problème identifié :**
+- Le coordinateur voyait "système" dans les **MESSAGES** (pas notifications)
+- Les messages étaient les annonces avec `'sender' => 'Système'` codé en dur
+- Auto-notification : coordinateur recevait ses propres annonces dans messages
+
+#### ✅ **Solutions appliquées :**
+
+**A. NavbarController Messages** : `app/Http/Controllers/NavbarController.php`
+```php
+// AVANT: Sender codé en dur
+'sender' => 'Système', // ❌ PROBLÈME
+
+// APRÈS: Utilisation du vrai créateur avec auto-exclusion
+$messages = ESBTPAnnonce::with('createdBy') // Charger la relation créateur
+    ->orderBy('created_at', 'desc')
+    ->limit(5)
+    ->get()
+    ->filter(function ($annonce) use ($user) {
+        // Filtrer les annonces créées par l'utilisateur actuel
+        return !$annonce->created_by || $annonce->created_by != $user->id;
+    })
+    ->map(function ($annonce) {
+        return [
+            // ... autres champs
+            'sender' => $annonce->createdBy ? $annonce->createdBy->name : 'Système'
+        ];
+    });
+```
+
+**B. Modèle ESBTPAnnonce** : `app/Models/ESBTPAnnonce.php`
+```php
+// Relations existantes confirmées
+public function createdBy() {
+    return $this->belongsTo(User::class, 'created_by');
 }
 ```
 
-**Contrôleur** : `app/Http/Controllers/ESBTPAnnonceController.php`
+**C. Contrôleur Annonces** : `app/Http/Controllers/ESBTPAnnonceController.php`
 ```php
-private function sendAnnonceNotification(ESBTPAnnonce $annonce)
-{
-    $this->notificationService->notifyNewAnnouncement($annonce, Auth::user());
-}
+// Création: created_by défini correctement
+$annonce->created_by = Auth::id(); // ✅ CORRECT
+
+// Mise à jour: updated_by défini correctement
+$annonce->updated_by = Auth::id(); // ✅ CORRECT
 ```
 
 ### 4. ✅ **Nouvelles Notifications Système**
@@ -165,5 +226,58 @@ $this->notificationService->notifyStudentNoteAdded($note, Auth::user());
 - ✅ Event/Listeners
 - ✅ Hooks dans contrôleurs existants
 
+### 8. ✅ **Permissions Coordinateur Management - 403 SuperAdmin Résolu**
+
+#### Problème final résolu :
+- ✅ SuperAdmin recevait erreur 403 sur `coordinateur.show` - **RÉSOLU**
+
+#### Cause racine identifiée :
+- ✅ `ESBTPCoordinateurController@show()` utilise `$this->authorize('view_coordinateurs')`
+- ✅ Permission `view_coordinateurs` n'existait pas dans le système
+- ✅ Route middleware était correct (`['auth']` seulement)
+
+#### Solution finale appliquée :
+
+**A. Permissions coordinateur ajoutées** - `fix_permissions.php`
+```php
+// Nouvelles permissions ajoutées ligne 162-166
+'view_coordinateurs',
+'create_coordinateurs',
+'edit_coordinateurs',
+'delete_coordinateurs',
+```
+
+**B. Attribution des permissions complétée** :
+```php
+// SuperAdmin: Toutes les permissions (automatique)
+$superAdminRole->syncPermissions($permissions); // ✅ Inclut coordinateur permissions
+
+// Secrétaire: 72 permissions incluant coordinateur management
+'view_coordinateurs', 'create_coordinateurs', 'edit_coordinateurs', 'delete_coordinateurs',
+
+// Coordinateur: 59 permissions incluant auto-gestion
+'view_coordinateurs', 'create_coordinateurs', 'edit_coordinateurs', 'delete_coordinateurs',
+```
+
+**C. Script exécuté avec succès** :
+```bash
+/mnt/c/xampp/php/php.exe fix_permissions.php
+✅ 111 permissions créées/vérifiées
+✅ SuperAdmin: Toutes les permissions accordées
+✅ Secrétaire: 72 permissions accordées
+✅ Coordinateur: 59 permissions accordées
+✅ Cache des permissions réinitialisé
+
+=== Test des permissions ===
+👤 MMe Santana (superAdmin) ✅ Peut voir dashboard/annonces
+👤 N'guessan Marcel (coordinateur) ✅ Peut voir dashboard/annonces
+```
+
+#### Impact résolution finale :
+- ✅ **SuperAdmin** : Accès total à `coordinateur.show` et toutes routes coordinateur
+- ✅ **Secrétaire** : Gestion complète des coordinateurs (CRUD)
+- ✅ **Coordinateur** : Auto-consultation et gestion des autres coordinateurs
+- ✅ **Système complet** : Toutes permissions coordinateur intégrées cohérentes
+
 ---
-*Implémentation terminée le {{ date('Y-m-d H:i:s') }}*
+*Implémentation terminée le 2025-01-14 - Problème 403 SuperAdmin coordinateur.show complètement résolu*

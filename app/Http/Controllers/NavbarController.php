@@ -23,6 +23,7 @@ class NavbarController extends Controller
         if ($user->hasRole('superAdmin') || $user->hasRole('secretaire') || $user->hasRole('coordinateur')) {
             // Notifications pour admin/secrétaire/coordinateur
             $notifications = Notification::where('user_id', $user->id)
+                ->with('sender') // Load sender relationship
                 ->orderBy('created_at', 'desc')
                 ->limit(5)
                 ->get()
@@ -35,12 +36,14 @@ class NavbarController extends Controller
                         'icon' => $this->getNotificationIcon($notification->type),
                         'time' => $notification->created_at->diffForHumans(),
                         'read' => $notification->is_read,
-                        'url' => $notification->link
+                        'url' => $notification->link,
+                        'sender' => $notification->sender ? $notification->sender->name : 'Système'
                     ];
                 });
         } elseif ($user->hasRole('etudiant')) {
             // Notifications pour étudiant
             $notifications = Notification::where('user_id', $user->id)
+                ->with('sender') // Load sender relationship
                 ->orderBy('created_at', 'desc')
                 ->limit(5)
                 ->get()
@@ -53,12 +56,14 @@ class NavbarController extends Controller
                         'icon' => $this->getNotificationIcon($notification->type),
                         'time' => $notification->created_at->diffForHumans(),
                         'read' => $notification->is_read,
-                        'url' => $notification->link
+                        'url' => $notification->link,
+                        'sender' => $notification->sender ? $notification->sender->name : 'Système'
                     ];
                 });
         } elseif ($user->hasRole('teacher')) {
             // Notifications pour enseignant
             $notifications = Notification::where('user_id', $user->id)
+                ->with('sender') // Load sender relationship
                 ->orderBy('created_at', 'desc')
                 ->limit(5)
                 ->get()
@@ -71,7 +76,8 @@ class NavbarController extends Controller
                         'icon' => $this->getNotificationIcon($notification->type),
                         'time' => $notification->created_at->diffForHumans(),
                         'read' => $notification->is_read,
-                        'url' => $notification->link
+                        'url' => $notification->link,
+                        'sender' => $notification->sender ? $notification->sender->name : 'Système'
                     ];
                 });
         }
@@ -94,15 +100,20 @@ class NavbarController extends Controller
 
         if ($user->hasRole('superAdmin') || $user->hasRole('secretaire') || $user->hasRole('coordinateur')) {
             // Messages pour admin/secrétaire/coordinateur - récupérer les dernières annonces
-            $messages = ESBTPAnnonce::orderBy('created_at', 'desc')
+            $messages = ESBTPAnnonce::with('createdBy') // Charger la relation créateur
+                ->orderBy('created_at', 'desc')
                 ->limit(5)
                 ->get()
+                ->filter(function ($annonce) use ($user) {
+                    // Filtrer les annonces créées par l'utilisateur actuel pour éviter l'auto-notification
+                    return !$annonce->created_by || $annonce->created_by != $user->id;
+                })
                 ->map(function ($annonce) {
                     return [
                         'id' => $annonce->id,
                         'title' => $annonce->titre,
                         'message' => \Str::limit($annonce->contenu, 50),
-                        'sender' => 'Système',
+                        'sender' => $annonce->createdBy ? explode(' ', $annonce->createdBy->name)[0] . ' ' . (explode(' ', $annonce->createdBy->name)[1] ?? '') : 'Système',
                         'time' => $annonce->created_at->diffForHumans(),
                         'read' => $annonce->created_at->lt(now()->subDay()), // Marquer comme lu si plus de 24h
                         'url' => route('esbtp.annonces.show', $annonce->id),
@@ -111,7 +122,8 @@ class NavbarController extends Controller
                 });
         } elseif ($user->hasRole('etudiant')) {
             // Messages pour étudiant - récupérer les annonces publiques
-            $messages = ESBTPAnnonce::orderBy('created_at', 'desc')
+            $messages = ESBTPAnnonce::with('createdBy') // Charger la relation créateur
+                ->orderBy('created_at', 'desc')
                 ->limit(5)
                 ->get()
                 ->map(function ($annonce) {
@@ -119,7 +131,7 @@ class NavbarController extends Controller
                         'id' => $annonce->id,
                         'title' => $annonce->titre,
                         'message' => \Str::limit($annonce->contenu, 50),
-                        'sender' => 'Administration',
+                        'sender' => $annonce->createdBy ? explode(' ', $annonce->createdBy->name)[0] . ' ' . (explode(' ', $annonce->createdBy->name)[1] ?? '') : 'Administration',
                         'time' => $annonce->created_at->diffForHumans(),
                         'read' => $annonce->created_at->lt(now()->subDay()), // Marquer comme lu si plus de 24h
                         'url' => route('esbtp.mes-messages.index'),
@@ -128,7 +140,8 @@ class NavbarController extends Controller
                 });
         } elseif ($user->hasRole('teacher')) {
             // Messages pour enseignant - récupérer les annonces
-            $messages = ESBTPAnnonce::orderBy('created_at', 'desc')
+            $messages = ESBTPAnnonce::with('createdBy') // Charger la relation créateur
+                ->orderBy('created_at', 'desc')
                 ->limit(5)
                 ->get()
                 ->map(function ($annonce) {
@@ -136,7 +149,7 @@ class NavbarController extends Controller
                         'id' => $annonce->id,
                         'title' => $annonce->titre,
                         'message' => \Str::limit($annonce->contenu, 50),
-                        'sender' => 'Administration',
+                        'sender' => $annonce->createdBy ? explode(' ', $annonce->createdBy->name)[0] . ' ' . (explode(' ', $annonce->createdBy->name)[1] ?? '') : 'Administration',
                         'time' => $annonce->created_at->diffForHumans(),
                         'read' => $annonce->created_at->lt(now()->subDay()), // Marquer comme lu si plus de 24h
                         'url' => route('esbtp.annonces.show', $annonce->id),

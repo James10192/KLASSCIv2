@@ -14,7 +14,7 @@
                 <p class="header-subtitle">Liste et gestion des notes des étudiants</p>
             </div>
             <div class="header-actions">
-                @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('teacher') || auth()->user()->hasRole('enseignant') || auth()->user()->can('create_grade'))
+                @if((auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('teacher') || auth()->user()->hasRole('enseignant') || auth()->user()->can('create_grade')) && !auth()->user()->hasRole('coordinateur'))
                 <a href="{{ route('esbtp.notes.create') }}" class="btn-acasi primary me-2">
                     <i class="fas fa-plus-circle"></i>Ajouter une note
                 </a>
@@ -177,7 +177,7 @@
                                                         <a href="{{ route('esbtp.notes.show', $note->id) }}" class="btn-acasi secondary btn-sm" data-bs-toggle="tooltip" title="Voir les détails">
                                                             <i class="fas fa-eye"></i>
                                                         </a>
-                                                        @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('teacher') || auth()->user()->hasRole('enseignant') || auth()->user()->can('edit_grades'))
+                                                        @if((auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('teacher') || auth()->user()->hasRole('enseignant') || auth()->user()->can('edit_grades')) && !auth()->user()->hasRole('coordinateur'))
                                                         <a href="{{ route('esbtp.notes.edit', $note->id) }}" class="btn-acasi warning btn-sm" data-bs-toggle="tooltip" title="Modifier">
                                                             <i class="fas fa-edit"></i>
                                                         </a>
@@ -196,7 +196,7 @@
                                                     <div class="my-4 text-muted">
                                                         <i class="fas fa-info-circle fs-1 mb-3 d-block"></i>
                                                         <p class="mb-0">Aucune note trouvée</p>
-                                                        @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('teacher') || auth()->user()->hasRole('enseignant') || auth()->user()->can('create_grade'))
+                                                        @if((auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('teacher') || auth()->user()->hasRole('enseignant') || auth()->user()->can('create_grade')) && !auth()->user()->hasRole('coordinateur'))
                                                         <p class="small">Utilisez le bouton "Ajouter une note" pour commencer</p>
                                                         @endif
                                                     </div>
