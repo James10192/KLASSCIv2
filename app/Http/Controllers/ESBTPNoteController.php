@@ -328,6 +328,19 @@ class ESBTPNoteController extends Controller
 
         $evaluation = ESBTPEvaluation::findOrFail($request->evaluation_id);
 
+        // Vérifier si le coordinateur a le droit de modifier les notes existantes
+        $user = Auth::user();
+        if ($user->hasRole('coordinateur')) {
+            // Vérifier s'il y a déjà des notes pour cette évaluation
+            $existingNotesCount = ESBTPNote::where('evaluation_id', $evaluation->id)->count();
+
+            if ($existingNotesCount > 0) {
+                return redirect()->back()
+                    ->with('error', 'Vous ne pouvez pas modifier les notes déjà enregistrées. Vous pouvez seulement ajouter des notes si aucune n\'existe encore.')
+                    ->withInput();
+            }
+        }
+
         DB::beginTransaction();
         try {
             foreach ($request->notes as $noteData) {

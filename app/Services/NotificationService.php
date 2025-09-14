@@ -496,7 +496,7 @@ class NotificationService
     /**
      * Notifications pour les annonces
      */
-    public function notifyNewAnnouncement(ESBTPAnnonce $annonce): void
+    public function notifyNewAnnouncement(ESBTPAnnonce $annonce, ?User $sentBy = null): void
     {
         try {
             $etudiants = collect();
@@ -528,8 +528,8 @@ class NotificationService
 
             $notifiedCount = 0;
             foreach ($etudiants as $etudiant) {
-                if ($etudiant->user) {
-                    $this->createNotification($etudiant->user, $title, $message, $notificationType, $link);
+                if ($etudiant->user && (!$sentBy || $etudiant->user->id !== $sentBy->id)) {
+                    $this->createNotification($etudiant->user, $title, $message, $notificationType, $link, $sentBy);
                     $notifiedCount++;
                 }
             }
@@ -585,6 +585,220 @@ class NotificationService
                 'teacher_id' => $teacher->id,
                 'error' => $e->getMessage()
             ]);
+        }
+    }
+
+    /**
+     * ===== NOUVELLES NOTIFICATIONS SYSTÈME =====
+     */
+
+    /**
+     * Notifie les non-étudiants (coordinateurs, enseignants, secrétaires, admins) d'une nouvelle inscription
+     */
+    public function notifyNewInscription($inscription, ?User $createdBy = null): void
+    {
+        try {
+            $nonStudentUsers = User::role(['superAdmin', 'admin', 'secretaire', 'coordinateur', 'enseignant'])->get();
+
+            $title = "Nouvelle inscription";
+            $message = "L'étudiant {$inscription->etudiant->nom} {$inscription->etudiant->prenoms} s'est inscrit en {$inscription->classe->name}";
+            $link = route('esbtp.inscriptions.show', $inscription->id);
+
+            foreach ($nonStudentUsers as $user) {
+                if (!$createdBy || $user->id !== $createdBy->id) {
+                    $this->createNotification($user, $title, $message, 'info', $link, $createdBy);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Erreur notification nouvelle inscription', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Notifie les non-étudiants d'une nouvelle réinscription
+     */
+    public function notifyNewReinscription($inscription, ?User $createdBy = null): void
+    {
+        try {
+            $nonStudentUsers = User::role(['superAdmin', 'admin', 'secretaire', 'coordinateur', 'enseignant'])->get();
+
+            $title = "Nouvelle réinscription";
+            $message = "L'étudiant {$inscription->etudiant->nom} {$inscription->etudiant->prenoms} s'est réinscrit en {$inscription->classe->name}";
+            $link = route('esbtp.inscriptions.show', $inscription->id);
+
+            foreach ($nonStudentUsers as $user) {
+                if (!$createdBy || $user->id !== $createdBy->id) {
+                    $this->createNotification($user, $title, $message, 'info', $link, $createdBy);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Erreur notification nouvelle réinscription', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Notifie les non-étudiants de l'ajout d'une nouvelle classe
+     */
+    public function notifyNewClasse($classe, ?User $createdBy = null): void
+    {
+        try {
+            $nonStudentUsers = User::role(['superAdmin', 'admin', 'secretaire', 'coordinateur', 'enseignant'])->get();
+
+            $title = "Nouvelle classe créée";
+            $message = "La classe {$classe->name} a été créée pour la filière {$classe->filiere->name}";
+            $link = route('esbtp.classes.show', $classe->id);
+
+            foreach ($nonStudentUsers as $user) {
+                if (!$createdBy || $user->id !== $createdBy->id) {
+                    $this->createNotification($user, $title, $message, 'success', $link, $createdBy);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Erreur notification nouvelle classe', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Notifie les non-étudiants de l'ajout d'une nouvelle filière
+     */
+    public function notifyNewFiliere($filiere, ?User $createdBy = null): void
+    {
+        try {
+            $nonStudentUsers = User::role(['superAdmin', 'admin', 'secretaire', 'coordinateur', 'enseignant'])->get();
+
+            $title = "Nouvelle filière créée";
+            $message = "La filière {$filiere->name} ({$filiere->code}) a été créée";
+            $link = route('esbtp.filieres.show', $filiere->id);
+
+            foreach ($nonStudentUsers as $user) {
+                if (!$createdBy || $user->id !== $createdBy->id) {
+                    $this->createNotification($user, $title, $message, 'success', $link, $createdBy);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Erreur notification nouvelle filière', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Notifie les non-étudiants de l'ajout d'un nouveau niveau d'étude
+     */
+    public function notifyNewNiveauEtude($niveau, ?User $createdBy = null): void
+    {
+        try {
+            $nonStudentUsers = User::role(['superAdmin', 'admin', 'secretaire', 'coordinateur', 'enseignant'])->get();
+
+            $title = "Nouveau niveau d'étude créé";
+            $message = "Le niveau d'étude {$niveau->name} ({$niveau->code}) a été créé";
+            $link = route('esbtp.niveaux-etudes.show', $niveau->id);
+
+            foreach ($nonStudentUsers as $user) {
+                if (!$createdBy || $user->id !== $createdBy->id) {
+                    $this->createNotification($user, $title, $message, 'success', $link, $createdBy);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Erreur notification nouveau niveau étude', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Notifie les non-étudiants et étudiants concernés de l'ajout d'une nouvelle matière
+     */
+    public function notifyNewMatiere($matiere, ?User $createdBy = null): void
+    {
+        try {
+            // Notifier les non-étudiants
+            $nonStudentUsers = User::role(['superAdmin', 'admin', 'secretaire', 'coordinateur', 'enseignant'])->get();
+
+            $title = "Nouvelle matière créée";
+            $message = "La matière {$matiere->name} ({$matiere->code}) a été créée";
+            $link = route('esbtp.matieres.show', $matiere->id);
+
+            foreach ($nonStudentUsers as $user) {
+                if (!$createdBy || $user->id !== $createdBy->id) {
+                    $this->createNotification($user, $title, $message, 'success', $link, $createdBy);
+                }
+            }
+
+            // Notifier les étudiants des filières concernées (année universitaire courante)
+            $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+            if ($anneeEnCours && $matiere->filieres) {
+                $etudiants = ESBTPEtudiant::whereHas('inscriptions', function($q) use ($anneeEnCours, $matiere) {
+                    $q->where('annee_universitaire_id', $anneeEnCours->id)
+                      ->where('status', 'active')
+                      ->whereHas('classe', function($q2) use ($matiere) {
+                          $q2->whereHas('filiere', function($q3) use ($matiere) {
+                              $q3->whereIn('id', $matiere->filieres->pluck('id'));
+                          });
+                      });
+                })->whereHas('user')->get();
+
+                $studentTitle = "Nouvelle matière dans votre cursus";
+                $studentMessage = "La matière {$matiere->name} a été ajoutée à votre filière";
+
+                foreach ($etudiants as $etudiant) {
+                    if ($etudiant->user) {
+                        $this->createNotification($etudiant->user, $studentTitle, $studentMessage, 'info', null, $createdBy);
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Erreur notification nouvelle matière', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Notifie les étudiants concernés de l'ajout d'une nouvelle évaluation
+     */
+    public function notifyNewEvaluation($evaluation, ?User $createdBy = null): void
+    {
+        try {
+            $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+            if (!$anneeEnCours) return;
+
+            // Récupérer les étudiants de la classe concernée avec inscription active pour l'année courante
+            $etudiants = ESBTPEtudiant::whereHas('inscriptions', function($q) use ($anneeEnCours, $evaluation) {
+                $q->where('annee_universitaire_id', $anneeEnCours->id)
+                  ->where('status', 'active')
+                  ->where('classe_id', $evaluation->classe_id);
+            })->whereHas('user')->get();
+
+            $title = "Nouvelle évaluation programmée";
+            $message = "Une évaluation \"{$evaluation->titre}\" est programmée en {$evaluation->matiere->name} pour le " . $evaluation->date_evaluation->format('d/m/Y');
+            $link = route('esbtp.evaluations.show', $evaluation->id);
+
+            foreach ($etudiants as $etudiant) {
+                if ($etudiant->user) {
+                    $this->createNotification($etudiant->user, $title, $message, 'warning', $link, $createdBy);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Erreur notification nouvelle évaluation', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Notifie un étudiant de l'ajout de sa note (uniquement si publiée)
+     */
+    public function notifyStudentNoteAdded($note, ?User $createdBy = null): void
+    {
+        try {
+            // Vérifier si la note est publiée
+            if (!$note->evaluation || !$note->evaluation->is_published) {
+                return; // Ne pas notifier si l'évaluation n'est pas publiée
+            }
+
+            $etudiant = $note->etudiant;
+            if (!$etudiant || !$etudiant->user) return;
+
+            $title = "Nouvelle note disponible";
+            $message = "Votre note pour l'évaluation \"{$note->evaluation->titre}\" en {$note->evaluation->matiere->name} est maintenant disponible";
+            $link = route('esbtp.mes-notes.index');
+
+            $this->createNotification($etudiant->user, $title, $message, 'success', $link, $createdBy);
+        } catch (\Exception $e) {
+            Log::error('Erreur notification note étudiant', ['error' => $e->getMessage()]);
         }
     }
 

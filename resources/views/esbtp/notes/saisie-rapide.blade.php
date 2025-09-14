@@ -195,6 +195,19 @@
             </div>
         </div>
         <!-- Formulaire de saisie des notes -->
+        @php
+            $hasExistingNotes = $notes->isNotEmpty();
+            $isCoordinateur = Auth::user()->hasRole('coordinateur');
+            $isReadOnly = $hasExistingNotes && $isCoordinateur;
+        @endphp
+
+        @if($isReadOnly)
+            <div class="alert alert-info mb-4">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>Mode lecture seule :</strong> Des notes ont déjà été enregistrées pour cette évaluation. En tant que coordinateur, vous pouvez consulter les notes mais ne pouvez pas les modifier.
+            </div>
+        @endif
+
         <form action="{{ route('esbtp.notes.store-batch') }}" method="POST" id="notesForm">
             @csrf
             <input type="hidden" name="evaluation_id" value="{{ $evaluation->id }}">
@@ -207,12 +220,16 @@
                     </div>
                     <div class="d-flex align-items-center gap-3">
                         <input type="search" class="search-bar" id="searchStudent" placeholder="Rechercher un étudiant...">
-                        <button type="button" class="btn-acasi secondary" id="resetForm">
-                            <i class="fas fa-undo"></i>Réinitialiser
-                        </button>
-                        <button type="submit" class="btn-acasi primary" id="saveAllBtn">
-                            <i class="fas fa-save"></i>Enregistrer toutes les notes
-                        </button>
+                        @if(!$isReadOnly)
+                            <button type="button" class="btn-acasi secondary" id="resetForm">
+                                <i class="fas fa-undo"></i>Réinitialiser
+                            </button>
+                            <button type="submit" class="btn-acasi primary" id="saveAllBtn">
+                                <i class="fas fa-save"></i>Enregistrer toutes les notes
+                            </button>
+                        @else
+                            <span class="badge bg-info">Mode consultation uniquement</span>
+                        @endif
                     </div>
                 </div>
                 <div class="main-card-body p-0">
@@ -252,7 +269,7 @@
                                                                 min="0"
                                                                 max="{{ $evaluation->bareme }}"
                                                                 step="0.25"
-                                                                {{ $note && $note->absent ? 'disabled' : '' }}
+                                                                {{ ($note && $note->absent) || $isReadOnly ? 'disabled' : '' }}
                                                                 autocomplete="off">
                                                         </div>
                                                         @error('notes.' . $etudiant->id . '.valeur')
@@ -267,7 +284,8 @@
                                                                 value="1"
                                                                 role="switch"
                                                                 style="width: 2.5em; height: 1.25em;"
-                                                                {{ old('notes.' . $etudiant->id . '.absent', $note && $note->absent ? '1' : '') ? 'checked' : '' }}>
+                                                                {{ old('notes.' . $etudiant->id . '.absent', $note && $note->absent ? '1' : '') ? 'checked' : '' }}
+                                                                {{ $isReadOnly ? 'disabled' : '' }}>
                                                         </div>
                                                     </td>
                                                     <td>
@@ -276,7 +294,8 @@
                                                             name="notes[{{ $etudiant->id }}][commentaire]"
                                                             value="{{ old('notes.' . $etudiant->id . '.commentaire', $note ? $note->commentaire : '') }}"
                                                             maxlength="255"
-                                                            placeholder="Commentaire optionnel">
+                                                            placeholder="Commentaire optionnel"
+                                                            {{ $isReadOnly ? 'disabled' : '' }}>
                                                     </td>
                                                 </tr>
                                             @empty

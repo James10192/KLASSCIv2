@@ -513,7 +513,7 @@ class ESBTPAnnonceController extends Controller
      */
     private function sendAnnonceNotification(ESBTPAnnonce $annonce)
     {
-        // Utiliser le service de notifications centralisé
-        $this->notificationService->notifyNewAnnouncement($annonce);
+        // Utiliser le service de notifications centralisé avec l'expéditeur
+        $this->notificationService->notifyNewAnnouncement($annonce, Auth::user());
     }
 }
