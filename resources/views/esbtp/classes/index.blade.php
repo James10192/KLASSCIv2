@@ -293,9 +293,47 @@
                                         <i class="fas fa-book"></i>
                                     </a>
                                     @endif
+
+                                    @if(auth()->user()->hasRole('superAdmin'))
+                                        @if($classe->nombre_etudiants == 0)
+                                        <button type="button" class="btn-acasi danger" style="padding: var(--space-xs);" data-bs-toggle="modal" data-bs-target="#deleteModal{{ $classe->id }}" title="Supprimer">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                        @else
+                                        <button type="button" class="btn-acasi secondary" style="padding: var(--space-xs); opacity: 0.5; cursor: not-allowed;" title="Suppression impossible - Classe contient des étudiants" disabled>
+                                            <i class="fas fa-lock"></i>
+                                        </button>
+                                        @endif
+                                    @endif
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Modal de suppression -->
+                        @if(auth()->user()->hasRole('superAdmin') && $classe->nombre_etudiants == 0)
+                        <div class="modal fade" id="deleteModal{{ $classe->id }}" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel{{ $classe->id }}" aria-hidden="true">
+                            <div class="modal-dialog" role="document">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="deleteModalLabel{{ $classe->id }}">Confirmation de suppression</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p>Êtes-vous sûr de vouloir supprimer définitivement la classe <strong>{{ $classe->name }}</strong> ?</p>
+                                        <p class="text-danger"><strong>Attention:</strong> Cette action est irréversible.</p>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                                        <form action="{{ route('esbtp.classes.destroy', $classe->id) }}" method="POST" class="d-inline">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-danger">Supprimer définitivement</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        @endif
                     @endforeach
                 </div>
             @else

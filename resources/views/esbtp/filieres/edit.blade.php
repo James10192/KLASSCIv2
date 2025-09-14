@@ -84,44 +84,6 @@
                         @enderror
                     </div>
 
-                    <div class="mb-3">
-                        <label for="parent_id" class="form-label">Filière parente (optionnel)</label>
-                        <select class="form-control @error('parent_id') is-invalid @enderror" id="parent_id" name="parent_id">
-                            <option value="">Aucune (Filière principale)</option>
-                            @foreach($filieres as $f)
-                                @if($f->id !== $filiere->id)
-                                    <option value="{{ $f->id }}" {{ old('parent_id', $filiere->parent_id) == $f->id ? 'selected' : '' }}>{{ $f->name }}</option>
-                                @endif
-                            @endforeach
-                        </select>
-                        @error('parent_id')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="niveau_ids" class="form-label">Niveaux d'études associés</label>
-                        <select class="form-control select2 @error('niveau_ids') is-invalid @enderror" id="niveau_ids" name="niveau_ids[]" multiple>
-                            @foreach($niveaux as $niveau)
-                                <option value="{{ $niveau->id }}" {{ in_array($niveau->id, old('niveau_ids', $filiere->niveaux->pluck('id')->toArray())) ? 'selected' : '' }}>{{ $niveau->name }}</option>
-                            @endforeach
-                        </select>
-                        @error('niveau_ids')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="matiere_ids" class="form-label">Matières associées</label>
-                        <select class="form-control select2 @error('matiere_ids') is-invalid @enderror" id="matiere_ids" name="matiere_ids[]" multiple>
-                            @foreach($matieres as $matiere)
-                                <option value="{{ $matiere->id }}" {{ in_array($matiere->id, old('matiere_ids', $filiere->matieres->pluck('id')->toArray())) ? 'selected' : '' }}>{{ $matiere->name }}</option>
-                            @endforeach
-                        </select>
-                        @error('matiere_ids')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
 
                     <div class="mb-4">
                         <div class="form-check form-switch">

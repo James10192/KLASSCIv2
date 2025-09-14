@@ -116,58 +116,6 @@
 
                     <div class="row">
                         <div class="col-md-6">
-                            <!-- Options (sous-filières) -->
-                            <div class="card mb-4">
-                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                    <h6 class="mb-0"><i class="fas fa-sitemap me-2"></i>Options ({{ $filiere->options->count() }})</h6>
-                                    <a href="{{ route('esbtp.filieres.create', ['parent_id' => $filiere->id]) }}" class="btn btn-sm btn-primary">
-                                        <i class="fas fa-plus me-1"></i>Ajouter une option
-                                    </a>
-                                    </div>
-                                    <div class="card-body">
-                                    @if($filiere->options->count() > 0)
-                                            <div class="table-responsive">
-                                            <table class="table table-hover">
-                                                    <thead>
-                                                        <tr>
-                                                        <th>Nom</th>
-                                                            <th>Code</th>
-                                                            <th>Statut</th>
-                                                            <th>Actions</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        @foreach($filiere->options as $option)
-                                                            <tr>
-                                                            <td>{{ $option->name }}</td>
-                                                                <td>{{ $option->code }}</td>
-                                                                <td>
-                                                                    @if($option->is_active)
-                                                                    <span class="badge bg-success">Active</span>
-                                                                    @else
-                                                                    <span class="badge bg-danger">Inactive</span>
-                                                                    @endif
-                                                                </td>
-                                                                <td>
-                                                                <a href="{{ route('esbtp.filieres.show', $option) }}" class="btn btn-sm btn-info">
-                                                                            <i class="fas fa-eye"></i>
-                                                                        </a>
-                                                                <a href="{{ route('esbtp.filieres.edit', $option) }}" class="btn btn-sm btn-primary">
-                                                                            <i class="fas fa-edit"></i>
-                                                                        </a>
-                                                            </td>
-                                                        </tr>
-                                                    @endforeach
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    @else
-                                        <p class="text-muted text-center my-3">
-                                            <i class="fas fa-info-circle me-1"></i>Aucune option associée à cette filière.
-                                        </p>
-                                    @endif
-                                </div>
-                            </div>
 
                             <!-- Niveaux d'études -->
                             <div class="card mb-4">
@@ -210,56 +158,6 @@
                         </div>
 
                         <div class="col-md-6">
-                            <!-- Formations -->
-                            <div class="card mb-4">
-                                <div class="card-header bg-light">
-                                    <h6 class="mb-0"><i class="fas fa-graduation-cap me-2"></i>Formations ({{ $filiere->formations ? $filiere->formations->count() : 0 }})</h6>
-                                </div>
-                                <div class="card-body">
-                                    @if($filiere->formations && $filiere->formations->count() > 0)
-                                        <div class="table-responsive">
-                                            <table class="table table-hover">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Nom</th>
-                                                        <th>Code</th>
-                                                        <th>Type</th>
-                                                        <th>Actions</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    @foreach($filiere->formations as $formation)
-                                                        <tr>
-                                                            <td>{{ $formation->name }}</td>
-                                                            <td>{{ $formation->code }}</td>
-                                                            <td>
-                                                                @if($formation->type == 'initial')
-                                                                    <span class="badge bg-primary">Initiale</span>
-                                                                @elseif($formation->type == 'continue')
-                                                                    <span class="badge bg-success">Continue</span>
-                                                                @elseif($formation->type == 'alternance')
-                                                                    <span class="badge bg-info">Alternance</span>
-                                                                @else
-                                                                    <span class="badge bg-secondary">{{ $formation->type }}</span>
-                                                                @endif
-                                                            </td>
-                                                            <td>
-                                                                <a href="{{ route('esbtp.formations.show', $formation) }}" class="btn btn-sm btn-info">
-                                                                    <i class="fas fa-eye"></i>
-                                                                </a>
-                                                                </td>
-                                                            </tr>
-                                                        @endforeach
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                    @else
-                                        <p class="text-muted text-center my-3">
-                                            <i class="fas fa-info-circle me-1"></i>Aucune formation associée à cette filière.
-                                        </p>
-                                        @endif
-                                    </div>
-                            </div>
 
                             <!-- Classes -->
                             <div class="card mb-4">

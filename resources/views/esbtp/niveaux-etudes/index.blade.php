@@ -121,12 +121,6 @@
                                     </td>
                                     <td style="padding: var(--space-md);">
                                         <div style="display: flex; gap: var(--space-sm);">
-                                            <div class="badge primary" style="text-align: center;">
-                                                {{ $niveauEtude->filieres ? $niveauEtude->filieres->count() : 0 }} Filières
-                                            </div>
-                                            <div class="badge success" style="text-align: center;">
-                                                {{ $niveauEtude->matieres ? $niveauEtude->matieres->count() : 0 }} Matières
-                                            </div>
                                             <div class="badge warning" style="text-align: center;">
                                                 {{ $niveauEtude->classes ? $niveauEtude->classes->count() : 0 }} Classes
                                             </div>

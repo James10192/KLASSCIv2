@@ -180,73 +180,10 @@
 
     <!-- Related Data -->
     <div class="row">
-        <!-- Filières associées -->
-        @if(($niveauxEtude->filieres ? $niveauxEtude->filieres->count() : 0) > 0)
-            <div class="col-lg-4 mb-lg">
-                <div class="card-moderne">
-                    <div class="p-md" style="background-color: var(--primary); color: white; border-radius: var(--radius-medium) var(--radius-medium) 0 0;">
-                        <div class="section-title" style="color: white; margin: 0; border: none; padding: 0;">
-                            <i class="fas fa-stream"></i>
-                            Filières Associées
-                        </div>
-                    </div>
-
-                    <div class="p-lg">
-                        @foreach($niveauxEtude->filieres->take(5) as $filiere)
-                            <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-md); margin-bottom: var(--space-sm); background: var(--background); border-radius: var(--radius-small); border-left: 4px solid var(--primary);">
-                                <div>
-                                    <div style="font-weight: 600; color: var(--text-primary);">{{ $filiere->name }}</div>
-                                    <small style="color: var(--text-secondary);">{{ $filiere->code }}</small>
-                                </div>
-                                <span class="badge primary">{{ $filiere->id }}</span>
-                            </div>
-                        @endforeach
-
-                        @if($niveauxEtude->filieres->count() > 5)
-                            <div class="text-center mt-md">
-                                <small style="color: var(--text-secondary);">et {{ $niveauxEtude->filieres->count() - 5 }} autres...</small>
-                            </div>
-                        @endif
-                    </div>
-                </div>
-            </div>
-        @endif
-
-        <!-- Matières enseignées -->
-        @if(($niveauxEtude->matieres ? $niveauxEtude->matieres->count() : 0) > 0)
-            <div class="col-lg-4 mb-lg">
-                <div class="card-moderne">
-                    <div class="p-md" style="background-color: var(--success); color: white; border-radius: var(--radius-medium) var(--radius-medium) 0 0;">
-                        <div class="section-title" style="color: white; margin: 0; border: none; padding: 0;">
-                            <i class="fas fa-book"></i>
-                            Matières Enseignées
-                        </div>
-                    </div>
-
-                    <div class="p-lg">
-                        @foreach($niveauxEtude->matieres->take(5) as $matiere)
-                            <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-md); margin-bottom: var(--space-sm); background: var(--background); border-radius: var(--radius-small); border-left: 4px solid var(--success);">
-                                <div>
-                                    <div style="font-weight: 600; color: var(--text-primary);">{{ $matiere->name }}</div>
-                                    <small style="color: var(--text-secondary);">{{ $matiere->code }}</small>
-                                </div>
-                                <span class="badge success">{{ $matiere->coefficient ?? 1 }}</span>
-                            </div>
-                        @endforeach
-
-                        @if($niveauxEtude->matieres->count() > 5)
-                            <div class="text-center mt-md">
-                                <small style="color: var(--text-secondary);">et {{ $niveauxEtude->matieres->count() - 5 }} autres...</small>
-                            </div>
-                        @endif
-                    </div>
-                </div>
-            </div>
-        @endif
 
         <!-- Classes ouvertes -->
         @if(($niveauxEtude->classes ? $niveauxEtude->classes->count() : 0) > 0)
-            <div class="col-lg-4 mb-lg">
+            <div class="col-lg-12 mb-lg">
                 <div class="card-moderne">
                     <div class="p-md" style="background-color: var(--warning); color: white; border-radius: var(--radius-medium) var(--radius-medium) 0 0;">
                         <div class="section-title" style="color: white; margin: 0; border: none; padding: 0;">
@@ -262,7 +199,7 @@
                                     <div style="font-weight: 600; color: var(--text-primary);">{{ $classe->name }}</div>
                                     <small style="color: var(--text-secondary);">{{ $classe->code ?? 'Code non défini' }}</small>
                                 </div>
-                                <span class="badge warning">{{ $classe->etudiants ? $classe->etudiants->count() : 0 }}</span>
+                                <span class="badge info">{{ $classe->places_totales ?? 0 }} places</span>
                             </div>
                         @endforeach
 
