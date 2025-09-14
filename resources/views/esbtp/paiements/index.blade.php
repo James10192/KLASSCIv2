@@ -204,17 +204,6 @@
                             <label for="date_fin" class="form-label">Date fin</label>
                             <input type="date" name="date_fin" id="date_fin" class="form-control" value="{{ request('date_fin') }}">
                         </div>
-                        <div class="col-md-2">
-                            <label for="annee_id" class="form-label">Année universitaire</label>
-                            <select name="annee_id" id="annee_id" class="form-select">
-                                <option value="">Toutes</option>
-                                @foreach($annees ?? [] as $annee)
-                                    <option value="{{ $annee->id }}" {{ request('annee_id') == $annee->id ? 'selected' : '' }}>
-                                        {{ $annee->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
                         <div class="col-md-1">
                             <button type="submit" class="btn-acasi primary w-100">
                                 <i class="fas fa-search"></i>

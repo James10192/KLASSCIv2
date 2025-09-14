@@ -652,6 +652,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             // Paiements
             Route::get('/paiements', [App\Http\Controllers\ESBTPPaiementController::class, 'index'])->name('paiements.index');
             Route::get('/paiements/suivi-categories', [App\Http\Controllers\ESBTPPaiementController::class, 'suiviCategories'])->name('paiements.suivi-categories');
+            Route::get('/paiements/suivi-categories/load/{statut}', [App\Http\Controllers\ESBTPPaiementController::class, 'loadStudentsByStatut'])->name('paiements.suivi-categories.load');
             Route::get('/paiements/create', [App\Http\Controllers\ESBTPPaiementController::class, 'create'])->name('paiements.create');
             Route::post('/paiements', [App\Http\Controllers\ESBTPPaiementController::class, 'store'])->name('paiements.store');
             Route::get('/paiements/{paiement}', [App\Http\Controllers\ESBTPPaiementController::class, 'show'])->name('paiements.show');
@@ -1539,6 +1540,9 @@ Route::get('/esbtp/bulletins/preview', [ESBTPBulletinController::class, 'preview
 
 // Route pour générer PDF directement (utilisée par le bouton download de la preview)
 Route::get('/esbtp/bulletins/generer-pdf', [ESBTPBulletinController::class, 'genererPDFParParams'])->name('esbtp.bulletins.generer-pdf');
+
+// Route pour générer tous les bulletins d'une classe
+Route::post('/esbtp/bulletins/generer-classe', [ESBTPBulletinController::class, 'genererClasseBulletins'])->name('esbtp.bulletins.generer-classe');
 
 // Route AJAX pour récupérer les étudiants d'une classe
 Route::get('/esbtp/classes/{classe}/etudiants', [ESBTPClasseController::class, 'getEtudiants'])->name('esbtp.classes.etudiants');

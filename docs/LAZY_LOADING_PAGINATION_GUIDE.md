@@ -413,6 +413,36 @@ console.log('Performance Metrics:', metrics);
 4. **Export progressif** : Exporter par chunks avec progress bar
 5. **Cache intelligent** : Mettre en cache les pages déjà chargées
 
+### 🆕 **Implémentations réalisées**
+
+#### ✅ **Suivi Paiements par Catégorie** (Septembre 2024)
+
+**Problème résolu :** Timeout sur `/esbtp/paiements/suivi-categories?category_id=1` avec affichage simultané de tous les étudiants.
+
+**Solution appliquée :**
+- **Structure :** Onglets par statut (Aucun paiement, Partiels, À jour)
+- **Pagination :** 20 étudiants par page avec bouton "Charger plus"
+- **Performance :** Optimisation des requêtes N+1 dans le contrôleur
+- **UX :** Auto-sélection du premier onglet avec des étudiants
+
+**Fichiers modifiés :**
+```
+app/Http/Controllers/ESBTPPaiementController.php:1325
+├─ loadStudentsByStatut() - Route AJAX pagination
+├─ analyserCategorieDetailleOptimisee() - Optimisation requêtes
+routes/web.php:655
+├─ Route::get('/paiements/suivi-categories/load/{statut}')
+resources/views/esbtp/paiements/
+├─ suivi-categories.blade.php - Onglets + JavaScript
+├─ partials/liste-etudiants.blade.php - Template page 1
+└─ partials/lignes-etudiants.blade.php - Template pages 2+
+```
+
+**Métriques obtenues :**
+- **Temps chargement initial :** 2-3s (vs 60s+ timeout)
+- **Première page :** 20 étudiants chargés immédiatement
+- **Pages suivantes :** Chargement AJAX en <1s
+
 ### 🔧 **Configuration modulaire**
 
 ```php

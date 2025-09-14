@@ -1,16 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(/mnt/c/xampp/php/php.exe:*)",
-      "mcp__memory__search_nodes",
       "mcp__sequential-thinking__sequentialthinking",
-      "Bash(grep:*)",
-      "Bash(php artisan:*)",
-      "Bash(git add:*)",
-      "Bash(find:*)",
-      "Bash(git commit:*)",
-      "WebSearch",
-      "Bash(/mnt/c/xampp/php/php.php -r \"\n// Test des places disponibles avec les bonnes colonnes\nrequire_once ''/mnt/c/xampp/htdocs/ESBTP-yAKROv2Pascal/bootstrap/app.php'';\n$app = require_once ''/mnt/c/xampp/htdocs/ESBTP-yAKROv2Pascal/bootstrap/app.php'';\n$kernel = $app->make(Illuminate\\Contracts\\Console\\Kernel::class);\n$kernel->bootstrap();\n\necho ''=== TEST PLACES DISPONIBLES AVEC BONNES COLONNES ==='' . PHP_EOL;\n\n$classe = App\\Models\\ESBTPClasse::first();\nif ($classe) {\n    echo ''Classe: '' . $classe->name . PHP_EOL;\n    echo ''Places totales: '' . ($classe->places_totales ?? ''NULL'') . PHP_EOL;\n    echo ''Places occupées: '' . ($classe->places_occupees ?? ''NULL'') . PHP_EOL;\n    \n    $inscriptionsCount = $classe->inscriptions()->count();\n    echo ''Inscriptions réelles: '' . $inscriptionsCount . PHP_EOL;\n    \n    if ($classe->places_totales) {\n        $disponibles = $classe->places_totales - $inscriptionsCount;\n        echo ''Places disponibles: '' . $disponibles . PHP_EOL;\n    } else {\n        echo ''Capacité non définie'' . PHP_EOL;\n    }\n}\n\")"
+      "Bash(php artisan:*)"
     ],
     "deny": [],
     "ask": [],

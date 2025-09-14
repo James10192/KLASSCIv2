@@ -16,16 +16,9 @@
                 <p class="header-subtitle">Détail complet des notes et moyennes - {{ isset($classe) && $classe ? $classe->name : 'Toutes classes' }}</p>
             </div>
             <div class="header-actions">
-                @if(isset($classe) && $classe)
-                    <a href="{{ route('esbtp.resultats.classe', ['classe' => $classe->id]) }}?periode={{ $periode }}&annee_universitaire_id={{ $annee_id }}" 
-                       class="btn-acasi secondary">
-                        <i class="fas fa-arrow-left"></i>Retour à la classe
-                    </a>
-                @else
-                    <a href="{{ route('esbtp.resultats.index') }}" class="btn-acasi secondary">
-                        <i class="fas fa-arrow-left"></i>Retour aux résultats
-                    </a>
-                @endif
+                <a href="{{ route('esbtp.resultats.index') }}" class="btn-acasi secondary">
+                    <i class="fas fa-arrow-left"></i>Retour aux résultats
+                </a>
                 @if(isset($classe) && $classe)
                     <a href="{{ route('esbtp.resultats.etudiant.preview', ['etudiant' => $etudiant->id]) }}?classe_id={{ $classe->id }}&annee_universitaire_id={{ $annee_id }}" 
                        class="btn-acasi primary">

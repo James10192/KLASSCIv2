@@ -41,10 +41,10 @@ class ESBTPPaiementController extends Controller
         $status = $request->input('status');
         $dateDebut = $request->input('date_debut');
         $dateFin = $request->input('date_fin');
-        $anneeId = $request->input('annee_id');
 
-        // Récupérer les années universitaires pour le filtre
-        $annees = ESBTPAnneeUniversitaire::orderBy('annee_debut', 'desc')->get();
+        // Toujours utiliser l'année en cours
+        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $anneeId = $anneeEnCours ? $anneeEnCours->id : null;
 
         // Construire la requête avec toutes les relations nécessaires
         $query = ESBTPPaiement::with([
@@ -82,6 +82,7 @@ class ESBTPPaiementController extends Controller
             $query->whereDate('date_paiement', '<=', $dateFin);
         }
 
+        // Toujours filtrer par l'année en cours
         if ($anneeId) {
             $query->whereHas('inscription', function ($q) use ($anneeId) {
                 $q->where('annee_universitaire_id', $anneeId);
@@ -119,7 +120,7 @@ class ESBTPPaiementController extends Controller
         $stats['recovery_rate'] = $totalAttendu > 0 ? 
             round(($totalPaye / $totalAttendu) * 100, 1) : 0;
 
-        return view('esbtp.paiements.index', compact('paiements', 'annees', 'stats'));
+        return view('esbtp.paiements.index', compact('paiements', 'stats'));
     }
 
     /**
@@ -726,9 +727,9 @@ class ESBTPPaiementController extends Controller
 
         // Construire la requête pour les inscriptions actives avec toutes les relations nécessaires
         $inscriptionsQuery = \App\Models\ESBTPInscription::with([
-            'etudiant.user', 
-            'filiere', 
-            'niveauEtude', 
+            'etudiant.user',
+            'filiere',
+            'niveauEtude',
             'anneeUniversitaire'
         ])->where('status', 'active');
 
@@ -745,25 +746,59 @@ class ESBTPPaiementController extends Controller
 
         $inscriptions = $inscriptionsQuery->get();
 
+        // OPTIMISATION: Pré-charger toutes les données nécessaires en une seule fois
+        $inscriptionIds = $inscriptions->pluck('id')->toArray();
+
+        // Pré-charger toutes les configurations de frais
+        $configurations = collect();
+        if (!empty($inscriptions)) {
+            $configurations = \App\Models\ESBTPFraisConfiguration::where('is_active', true)
+                ->whereIn('frais_category_id', $categories->pluck('id'))
+                ->get()
+                ->groupBy(function($config) {
+                    return $config->frais_category_id . '_' . $config->filiere_id . '_' . $config->niveau_id;
+                });
+        }
+
+        // Pré-charger toutes les souscriptions
+        $subscriptions = collect();
+        if (!empty($inscriptionIds)) {
+            $subscriptions = \App\Models\ESBTPFraisSubscription::where('is_active', true)
+                ->whereIn('inscription_id', $inscriptionIds)
+                ->get()
+                ->groupBy('inscription_id');
+        }
+
+        // Pré-charger tous les paiements validés
+        $paiements = collect();
+        if (!empty($inscriptionIds)) {
+            $paiements = ESBTPPaiement::where('status', 'validé')
+                ->whereIn('inscription_id', $inscriptionIds)
+                ->get()
+                ->groupBy(function($paiement) {
+                    return $paiement->inscription_id . '_' . $paiement->frais_category_id;
+                });
+        }
+
         // Si une catégorie spécifique est sélectionnée, analyser en détail
         $detailsCategorie = null;
         if ($categoryId) {
             $category = \App\Models\ESBTPFraisCategory::find($categoryId);
             if ($category) {
-                $detailsCategorie = $this->analyserCategorieDetaille($category, $inscriptions);
+                $detailsCategorie = $this->analyserCategorieDetailleOptimisee($category, $inscriptions, $configurations, $subscriptions, $paiements);
             }
         }
 
-        // Statistiques globales par catégorie
-        $statistiquesCategories = $this->calculerStatistiquesCategories($inscriptions);
+        // Statistiques globales par catégorie - version optimisée
+        $statistiquesCategories = $this->calculerStatistiquesCategoriesOptimisees($inscriptions, $categories, $configurations, $subscriptions, $paiements);
 
-        // Vue d'ensemble des étudiants par statut de paiement
-        $vueEnsemble = $this->calculerVueEnsemble($inscriptions);
+        // Vue d'ensemble des étudiants par statut de paiement - version optimisée
+        $vueEnsemble = $this->calculerVueEnsembleOptimisee($inscriptions, $categories, $configurations, $subscriptions, $paiements);
 
         return view('esbtp.paiements.suivi-categories', compact(
             'inscriptions',
             'annees',
-            'filieres', 
+            'filieres',
             'niveaux',
             'categories',
             'statistiquesCategories',
@@ -1049,5 +1084,382 @@ class ESBTPPaiementController extends Controller
         $totalValide = $paiements->where('status', 'validé')->sum('montant');
 
         return view('esbtp.paiements.etudiant', compact('etudiant', 'paiements', 'totalValide'));
+    }
+
+    /**
+     * Version optimisée de analyserCategorieDetaille - évite les requêtes N+1
+     */
+    private function analyserCategorieDetailleOptimisee($category, $inscriptions, $configurations, $subscriptions, $paiements)
+    {
+        $details = [
+            'category' => $category,
+            'etudiants_a_jour' => collect(),
+            'etudiants_en_retard' => collect(),
+            'etudiants_non_payes' => collect(),
+            'montant_total_attendu' => 0,
+            'montant_total_recu' => 0,
+        ];
+
+        foreach ($inscriptions as $inscription) {
+            // Vérifier si l'étudiant est concerné par ce frais
+            $estConcerne = false;
+            $montantAttendu = 0;
+
+            if ($category->is_mandatory) {
+                // Frais obligatoire : tous les étudiants sont concernés
+                $estConcerne = true;
+                $configKey = $category->id . '_' . $inscription->filiere_id . '_' . $inscription->niveau_id;
+                $configuration = $configurations->get($configKey, collect())->first();
+                $montantAttendu = $configuration ? $configuration->amount : $category->default_amount;
+            } else {
+                // Service optionnel : vérifier s'il y a une souscription active
+                $inscriptionSubscriptions = $subscriptions->get($inscription->id, collect());
+                $subscription = $inscriptionSubscriptions->where('frais_category_id', $category->id)->first();
+
+                if ($subscription) {
+                    $estConcerne = true;
+                    $montantAttendu = $subscription->amount;
+                }
+            }
+
+            // Traiter seulement les étudiants concernés
+            if ($estConcerne) {
+                $details['montant_total_attendu'] += $montantAttendu;
+
+                // Vérifier les paiements de l'étudiant pour cette catégorie
+                $paiementKey = $inscription->id . '_' . $category->id;
+                $paiementsEtudiant = $paiements->get($paiementKey, collect());
+                $montantPaye = $paiementsEtudiant->sum('montant');
+                $details['montant_total_recu'] += $montantPaye;
+
+                $statutEtudiant = [
+                    'inscription' => $inscription,
+                    'montant_attendu' => $montantAttendu,
+                    'montant_paye' => $montantPaye,
+                    'solde' => $montantAttendu - $montantPaye,
+                    'pourcentage' => $montantAttendu > 0 ? round(($montantPaye / $montantAttendu) * 100, 1) : 0,
+                    'derniers_paiements' => $paiementsEtudiant->sortByDesc('date_paiement')->take(3),
+                ];
+
+                // Catégoriser l'étudiant
+                if ($montantPaye >= $montantAttendu) {
+                    $details['etudiants_a_jour']->push($statutEtudiant);
+                } elseif ($montantPaye > 0) {
+                    $details['etudiants_en_retard']->push($statutEtudiant);
+                } else {
+                    $details['etudiants_non_payes']->push($statutEtudiant);
+                }
+            }
+        }
+
+        return $details;
+    }
+
+    /**
+     * Version optimisée de calculerStatistiquesCategories - évite les requêtes N+1
+     */
+    private function calculerStatistiquesCategoriesOptimisees($inscriptions, $categories, $configurations, $subscriptions, $paiements)
+    {
+        $statistiques = [];
+
+        foreach ($categories as $category) {
+            $stats = [
+                'category' => $category,
+                'total_etudiants' => $inscriptions->count(),
+                'etudiants_concernes' => 0,
+                'etudiants_a_jour' => 0,
+                'etudiants_en_retard' => 0,
+                'etudiants_non_payes' => 0,
+                'montant_total_attendu' => 0,
+                'montant_total_recu' => 0,
+                'taux_recouvrement' => 0,
+            ];
+
+            foreach ($inscriptions as $inscription) {
+                // Vérifier si l'étudiant est concerné par ce frais
+                $estConcerne = false;
+                $montantAttendu = 0;
+
+                if ($category->is_mandatory) {
+                    // Frais obligatoire : tous les étudiants sont concernés
+                    $estConcerne = true;
+                    $configKey = $category->id . '_' . $inscription->filiere_id . '_' . $inscription->niveau_id;
+                    $configuration = $configurations->get($configKey, collect())->first();
+                    $montantAttendu = $configuration ? $configuration->amount : $category->default_amount;
+                } else {
+                    // Service optionnel : vérifier s'il y a une souscription active
+                    $inscriptionSubscriptions = $subscriptions->get($inscription->id, collect());
+                    $subscription = $inscriptionSubscriptions->where('frais_category_id', $category->id)->first();
+
+                    if ($subscription) {
+                        $estConcerne = true;
+                        $montantAttendu = $subscription->amount;
+                    }
+                }
+
+                // Traiter seulement les étudiants concernés
+                if ($estConcerne) {
+                    $stats['etudiants_concernes']++;
+                    $stats['montant_total_attendu'] += $montantAttendu;
+
+                    // Paiements de l'étudiant pour cette catégorie
+                    $paiementKey = $inscription->id . '_' . $category->id;
+                    $paiementsEtudiant = $paiements->get($paiementKey, collect());
+                    $montantPaye = $paiementsEtudiant->sum('montant');
+                    $stats['montant_total_recu'] += $montantPaye;
+
+                    // Catégorisation
+                    if ($montantPaye >= $montantAttendu) {
+                        $stats['etudiants_a_jour']++;
+                    } elseif ($montantPaye > 0) {
+                        $stats['etudiants_en_retard']++;
+                    } else {
+                        $stats['etudiants_non_payes']++;
+                    }
+                }
+            }
+
+            // Calcul du taux de recouvrement basé sur les montants attendus réels
+            $stats['taux_recouvrement'] = $stats['montant_total_attendu'] > 0
+                ? round(($stats['montant_total_recu'] / $stats['montant_total_attendu']) * 100, 1)
+                : 0;
+
+            $statistiques[] = $stats;
+        }
+
+        return collect($statistiques);
+    }
+
+    /**
+     * Version optimisée de calculerVueEnsemble - évite les requêtes N+1
+     */
+    private function calculerVueEnsembleOptimisee($inscriptions, $categories, $configurations, $subscriptions, $paiements)
+    {
+        $totalEtudiants = $inscriptions->count();
+        $etudiantsEnRegle = 0;
+        $etudiantsEnRetard = 0;
+        $etudiantsNonPayes = 0;
+        $montantTotalAttendu = 0;
+        $montantTotalRecu = 0;
+
+        foreach ($inscriptions as $inscription) {
+            $etudiantEnRegle = true;
+            $etudiantAPayeQuelqueChose = false;
+            $montantEtudiantAttendu = 0;
+            $montantEtudiantPaye = 0;
+
+            foreach ($categories as $category) {
+                // Vérifier si l'étudiant est concerné par ce frais
+                $estConcerne = false;
+                $montantAttendu = 0;
+
+                if ($category->is_mandatory) {
+                    // Frais obligatoire : tous les étudiants sont concernés
+                    $estConcerne = true;
+                    $configKey = $category->id . '_' . $inscription->filiere_id . '_' . $inscription->niveau_id;
+                    $configuration = $configurations->get($configKey, collect())->first();
+                    $montantAttendu = $configuration ? $configuration->amount : $category->default_amount;
+                } else {
+                    // Service optionnel : vérifier s'il y a une souscription active
+                    $inscriptionSubscriptions = $subscriptions->get($inscription->id, collect());
+                    $subscription = $inscriptionSubscriptions->where('frais_category_id', $category->id)->first();
+
+                    if ($subscription) {
+                        $estConcerne = true;
+                        $montantAttendu = $subscription->amount;
+                    }
+                }
+
+                if ($estConcerne) {
+                    $montantEtudiantAttendu += $montantAttendu;
+
+                    // Paiements de l'étudiant pour cette catégorie
+                    $paiementKey = $inscription->id . '_' . $category->id;
+                    $paiementsEtudiant = $paiements->get($paiementKey, collect());
+                    $montantPaye = $paiementsEtudiant->sum('montant');
+                    $montantEtudiantPaye += $montantPaye;
+
+                    if ($montantPaye > 0) {
+                        $etudiantAPayeQuelqueChose = true;
+                    }
+                    if ($montantPaye < $montantAttendu) {
+                        $etudiantEnRegle = false;
+                    }
+                }
+            }
+
+            $montantTotalAttendu += $montantEtudiantAttendu;
+            $montantTotalRecu += $montantEtudiantPaye;
+
+            // Catégoriser l'étudiant globalement
+            if ($etudiantEnRegle) {
+                $etudiantsEnRegle++;
+            } elseif ($etudiantAPayeQuelqueChose) {
+                $etudiantsEnRetard++;
+            } else {
+                $etudiantsNonPayes++;
+            }
+        }
+
+        $tauxRecouvrement = $montantTotalAttendu > 0
+            ? round(($montantTotalRecu / $montantTotalAttendu) * 100, 1)
+            : 0;
+
+        return [
+            'total_etudiants' => $totalEtudiants,
+            'etudiants_en_regle' => $etudiantsEnRegle,
+            'etudiants_en_retard' => $etudiantsEnRetard,
+            'etudiants_non_payes' => $etudiantsNonPayes,
+            'montant_total_attendu' => $montantTotalAttendu,
+            'montant_total_recu' => $montantTotalRecu,
+            'taux_recouvrement' => $tauxRecouvrement,
+            'taux_recouvrement_global' => $tauxRecouvrement, // Ajouté pour compatibilité avec la vue
+            'pourcentage_en_regle' => $totalEtudiants > 0 ? round(($etudiantsEnRegle / $totalEtudiants) * 100, 1) : 0,
+            'pourcentage_en_retard' => $totalEtudiants > 0 ? round(($etudiantsEnRetard / $totalEtudiants) * 100, 1) : 0,
+            'pourcentage_non_payes' => $totalEtudiants > 0 ? round(($etudiantsNonPayes / $totalEtudiants) * 100, 1) : 0,
+        ];
+    }
+
+    /**
+     * Charger les étudiants par statut avec pagination AJAX
+     */
+    public function loadStudentsByStatut(Request $request, $statut)
+    {
+        try {
+            $categoryId = $request->input('category_id');
+            $page = $request->get('page', 1);
+            $perPage = $request->get('per_page', 20);
+
+            if (!$categoryId) {
+                return response()->json(['error' => 'Category ID required'], 400);
+            }
+
+            $category = \App\Models\ESBTPFraisCategory::find($categoryId);
+            if (!$category) {
+                return response()->json(['error' => 'Category not found'], 404);
+            }
+
+            // Récupérer les paramètres de filtrage
+            $filiereId = $request->input('filiere_id');
+            $niveauId = $request->input('niveau_id');
+            $anneeId = $request->input('annee_id');
+
+            // Année par défaut
+            if (!$anneeId) {
+                $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+                $anneeId = $anneeEnCours ? $anneeEnCours->id : null;
+            }
+
+            // Requête pour les inscriptions actives
+        $inscriptionsQuery = \App\Models\ESBTPInscription::with([
+            'etudiant.user',
+            'filiere',
+            'niveauEtude',
+            'anneeUniversitaire'
+        ])->where('status', 'active');
+
+        // Appliquer les filtres
+        if ($anneeId) {
+            $inscriptionsQuery->where('annee_universitaire_id', $anneeId);
+        }
+        if ($filiereId) {
+            $inscriptionsQuery->where('filiere_id', $filiereId);
+        }
+        if ($niveauId) {
+            $inscriptionsQuery->where('niveau_id', $niveauId);
+        }
+
+        $inscriptions = $inscriptionsQuery->get();
+        $inscriptionIds = $inscriptions->pluck('id')->toArray();
+
+        // Pré-charger données pour performance
+        $configurations = collect();
+        if (!empty($inscriptions)) {
+            $configurations = \App\Models\ESBTPFraisConfiguration::where('is_active', true)
+                ->where('frais_category_id', $categoryId)
+                ->get()
+                ->groupBy(function($config) {
+                    return $config->frais_category_id . '_' . $config->filiere_id . '_' . $config->niveau_id;
+                });
+        }
+
+        $subscriptions = collect();
+        if (!empty($inscriptionIds)) {
+            $subscriptions = \App\Models\ESBTPFraisSubscription::where('is_active', true)
+                ->whereIn('inscription_id', $inscriptionIds)
+                ->where('frais_category_id', $categoryId)
+                ->get()
+                ->groupBy('inscription_id');
+        }
+
+        $paiements = collect();
+        if (!empty($inscriptionIds)) {
+            $paiements = ESBTPPaiement::where('status', 'validé')
+                ->whereIn('inscription_id', $inscriptionIds)
+                ->where('frais_category_id', $categoryId)
+                ->get()
+                ->groupBy(function($paiement) {
+                    return $paiement->inscription_id . '_' . $paiement->frais_category_id;
+                });
+        }
+
+        // Analyser les détails avec données pré-chargées
+        $details = $this->analyserCategorieDetailleOptimisee($category, $inscriptions, $configurations, $subscriptions, $paiements);
+
+        // Filtrer par statut demandé
+        $etudiants = collect();
+        switch ($statut) {
+            case 'non_payes':
+                $etudiants = $details['etudiants_non_payes'];
+                break;
+            case 'en_retard':
+                $etudiants = $details['etudiants_en_retard'];
+                break;
+            case 'a_jour':
+                $etudiants = $details['etudiants_a_jour'];
+                break;
+        }
+
+        // Paginer les résultats
+        $total = $etudiants->count();
+        $offset = ($page - 1) * $perPage;
+        $etudiantsPagines = $etudiants->slice($offset, $perPage);
+        $hasMore = $total > ($offset + $perPage);
+
+        // Render template approprié
+        if ((int)$page === 1) {
+            $html = view('esbtp.paiements.partials.liste-etudiants', [
+                'etudiants' => $etudiantsPagines,
+                'statut' => $statut,
+                'category' => $category
+            ])->render();
+        } else {
+            $html = view('esbtp.paiements.partials.lignes-etudiants', [
+                'etudiants' => $etudiantsPagines,
+                'statut' => $statut,
+                'category' => $category
+            ])->render();
+            }
+
+            return response()->json([
+                'html' => $html,
+                'total' => $total,
+                'current_page' => (int)$page,
+                'has_more' => $hasMore
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Erreur dans loadStudentsByStatut: ' . $e->getMessage(), [
+                'statut' => $statut,
+                'category_id' => $request->input('category_id'),
+                'page' => $request->get('page', 1),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'error' => 'Erreur serveur: ' . $e->getMessage(),
+                'debug' => config('app.debug') ? $e->getTraceAsString() : null
+            ], 500);
+        }
     }
 }
