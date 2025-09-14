@@ -393,6 +393,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 // Route pour la page de finalisation de réinscription
                 Route::get('{etudiant}/finaliser', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'create'])->name('create');
 
+                // Route AJAX pour récupérer les classes selon la décision
+                Route::get('{etudiant}/classes-by-decision', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'getClassesByDecision'])->name('classes-by-decision');
+
                 // Routes avec paramètres à la FIN
                 Route::get('{etudiant}', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'show'])->name('show');
                 Route::put('{etudiant}', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'update'])->name('update');

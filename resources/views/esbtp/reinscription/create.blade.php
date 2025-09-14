@@ -139,9 +139,16 @@
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="form-group-moderne form-group-disabled">
-                                <label class="form-label-moderne">Décision académique</label>
-                                <input type="text" class="form-control-moderne" value="{{ ucfirst($analyse['decision']) }}" readonly>
+                            <div class="form-group-moderne">
+                                <label for="decision" class="form-label-moderne">Décision académique *</label>
+                                <select name="decision" id="decision" class="form-select-moderne" required>
+                                    <option value="passage" {{ $analyse['decision'] === 'passage' ? 'selected' : '' }}>Passage</option>
+                                    <option value="redoublement" {{ $analyse['decision'] === 'redoublement' ? 'selected' : '' }}>Redoublement</option>
+                                    <option value="rattrapage" {{ $analyse['decision'] === 'rattrapage' ? 'selected' : '' }}>Rattrapage</option>
+                                </select>
+                                <small class="form-text text-muted">
+                                    La décision détermine les classes proposées
+                                </small>
                             </div>
                         </div>
                     </div>
@@ -228,6 +235,7 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 Script réinscription create chargé');
 
     const classeSelect = document.getElementById('nouvelle_classe_id');
+    const decisionSelect = document.getElementById('decision');
     const fraisContainer = document.getElementById('fraisContainer');
     const btnConfirmer = document.getElementById('btnConfirmer');
     const reporterReliquat = document.getElementById('reporter_reliquat');
@@ -253,6 +261,46 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     @endif
+
+    // Recharger les classes quand la décision change
+    if (decisionSelect) {
+        decisionSelect.addEventListener('change', function() {
+            const decision = this.value;
+            const etudiantId = {{ $analyse['etudiant']->id }};
+
+            console.log('🔄 Changement de décision:', decision);
+
+            // Réinitialiser le select des classes
+            classeSelect.innerHTML = '<option value="">Chargement...</option>';
+            fraisContainer.innerHTML = '<div class="text-center py-4"><p class="text-muted">Sélectionnez une classe pour voir les frais applicables</p></div>';
+
+            // Charger les nouvelles classes
+            fetch(`{{ url('esbtp/reinscription') }}/${etudiantId}/classes-by-decision?decision=${decision}`, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.classes) {
+                    let options = '<option value="">Sélectionner une classe...</option>';
+                    data.classes.forEach(function(classe) {
+                        const niveauName = classe.niveau ? classe.niveau.name : 'N/A';
+                        const filiereName = classe.filiere ? classe.filiere.name : 'N/A';
+                        options += `<option value="${classe.id}">${classe.name || classe.nom} - ${niveauName} ${filiereName}</option>`;
+                    });
+                    classeSelect.innerHTML = options;
+                } else {
+                    classeSelect.innerHTML = '<option value="">Aucune classe disponible</option>';
+                }
+            })
+            .catch(error => {
+                console.error('Erreur chargement classes:', error);
+                classeSelect.innerHTML = '<option value="">Erreur de chargement</option>';
+            });
+        });
+    }
 
     // Chargement des frais quand une classe est sélectionnée
     if (classeSelect && fraisContainer) {
@@ -305,36 +353,36 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        let html = '<div class="row">';
+        let html = '<div class="kpi-grid">';
 
         fraisData.forEach(function(category) {
-            html += `
-                <div class="col-md-6 mb-3">
-                    <div class="card h-100" style="border-left: 4px solid ${category.is_mandatory ? 'var(--success)' : 'var(--primary)'};">
-                        <div class="card-body">
-                            <h6 class="card-title">
-                                <i class="${category.icon || 'fas fa-money-bill-wave'} me-2"></i>
-                                ${category.name}
-                                <span class="badge ${category.is_mandatory ? 'bg-success' : 'bg-primary'} ms-2">
-                                    ${category.is_mandatory ? 'Obligatoire' : 'Optionnel'}
-                                </span>
-                            </h6>
-                            <p class="text-muted small">${category.description || ''}</p>
+            const categoryName = category.name || category.libelle || category.title || 'Frais non défini';
+            const categoryAmount = category.default_amount || category.amount || 0;
 
-                            ${category.is_mandatory ?
-                                `<div class="alert alert-success">
-                                    <strong>${Number(category.default_amount).toLocaleString('fr-FR')} FCFA</strong>
-                                    <br><small>Sera automatiquement appliqué</small>
-                                </div>` :
-                                `<select class="form-select frais-optional" data-category-id="${category.id}">
-                                    <option value="none">Ne pas souscrire</option>
-                                    <option value="default" data-amount="${category.default_amount}">
-                                        Souscrire - ${Number(category.default_amount).toLocaleString('fr-FR')} FCFA
-                                    </option>
-                                </select>`
-                            }
-                        </div>
+            html += `
+                <div class="card-moderne kpi-card">
+                    <div class="kpi-title">
+                        <i class="${category.icon || 'fas fa-money-bill-wave'} me-2"></i>
+                        ${categoryName}
                     </div>
+                    <div class="kpi-value ${category.is_mandatory ? 'color-success' : 'color-primary'}">
+                        ${Number(categoryAmount).toLocaleString('fr-FR')} FCFA
+                    </div>
+                    <div class="kpi-trend ${category.is_mandatory ? 'positive' : ''}">
+                        <i class="fas ${category.is_mandatory ? 'fa-check-circle' : 'fa-plus-circle'}"></i>
+                        <span>${category.is_mandatory ? 'Obligatoire' : 'Optionnel'}</span>
+                    </div>
+                    ${category.is_mandatory ?
+                        `<input type="hidden" name="frais_obligatoire[]" value="${category.id}" data-amount="${categoryAmount}">` :
+                        `<div class="mt-3">
+                            <select class="form-select frais-optional" data-category-id="${category.id}" style="font-size: 12px;">
+                                <option value="none">Ne pas souscrire</option>
+                                <option value="default" data-amount="${categoryAmount}">
+                                    Souscrire ce frais
+                                </option>
+                            </select>
+                        </div>`
+                    }
                 </div>
             `;
         });

@@ -390,6 +390,36 @@ class ESBTPReinscriptionController extends Controller
     }
 
     /**
+     * Récupérer les classes disponibles selon la décision (AJAX)
+     */
+    public function getClassesByDecision($etudiantId, Request $request)
+    {
+        try {
+            $decision = $request->get('decision');
+
+            if (!$decision) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Décision manquante'
+                ]);
+            }
+
+            $classesProposees = $this->reinscriptionService->proposerNouvellesClasses($etudiantId, $decision);
+
+            return response()->json([
+                'success' => true,
+                'classes' => $classesProposees->load(['niveau', 'filiere'])
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la récupération des classes: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Charger une catégorie d'étudiants via AJAX (optimisation lazy loading)
      */
     public function loadCategory(Request $request, $category)
