@@ -316,7 +316,26 @@ class ESBTPReinscriptionController extends Controller
             }
 
             $analyse = $this->reinscriptionService->analyserSituationEtudiantParInscription($inscription, $anneeAcademique);
-            $classesProposees = $this->reinscriptionService->proposerNouvellesClasses($etudiantId, $analyse['decision']);
+
+            // Récupérer TOUTES les classes possibles selon les différentes décisions
+            $classesParDecision = [
+                'passage' => $this->reinscriptionService->proposerNouvellesClasses($etudiantId, 'passage'),
+                'redoublement' => $this->reinscriptionService->proposerNouvellesClasses($etudiantId, 'redoublement'),
+                'rattrapage' => $this->reinscriptionService->proposerNouvellesClasses($etudiantId, 'rattrapage')
+            ];
+
+            // Charger les relations pour toutes les classes
+            foreach ($classesParDecision as $decision => $classes) {
+                if (is_array($classes)) {
+                    $classes = collect($classes);
+                }
+                $classesParDecision[$decision] = $classes->map(function($classe) {
+                    if ($classe && !$classe->relationLoaded('niveau')) {
+                        $classe->load(['niveau', 'filiere']);
+                    }
+                    return $classe;
+                });
+            }
 
             // Calculer les informations financières
             $etudiant = $analyse['etudiant'];
@@ -339,11 +358,15 @@ class ESBTPReinscriptionController extends Controller
                 $fraisNonSoldes = $this->calculerFraisNonSoldes($inscription);
             }
 
+            // Précharger tous les frais pour toutes les combinaisons classe/affectation
+            $fraisParClasse = $this->prechargerFraisPourToutesLesClasses($classesParDecision);
+
             $analyse['inscription'] = $inscription;
 
             return view('esbtp.reinscription.create', compact(
                 'analyse',
-                'classesProposees',
+                'classesParDecision',
+                'fraisParClasse',
                 'anneeAcademique',
                 'fraisNonSoldes',
                 'isSuperAdmin'
@@ -351,6 +374,104 @@ class ESBTPReinscriptionController extends Controller
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Erreur lors de l\'analyse: ' . $e->getMessage()]);
         }
+    }
+
+    /**
+     * Précharger tous les frais pour toutes les classes et statuts d'affectation
+     */
+    private function prechargerFraisPourToutesLesClasses($classesParDecision)
+    {
+        $fraisParClasse = [];
+        $statutsAffectation = ['affecté', 'non-affecté', 'maintenant-affecté'];
+
+        // Pour chaque décision
+        foreach ($classesParDecision as $decision => $classes) {
+            if (!$classes || $classes->isEmpty()) {
+                continue;
+            }
+
+            // Pour chaque classe de cette décision
+            foreach ($classes as $classe) {
+                if (!$classe) continue;
+
+                // Pour chaque statut d'affectation
+                foreach ($statutsAffectation as $statut) {
+                    $classeKey = "{$classe->id}_{$statut}";
+
+                    try {
+                        // Utiliser la même logique que l'endpoint AJAX existant
+                        $frais = $this->getFraisForClasseEtAffectation($classe->id, $statut);
+                        $fraisParClasse[$classeKey] = $frais;
+                    } catch (\Exception $e) {
+                        // Si erreur, continuer avec les autres classes
+                        \Log::warning("Erreur préchargement frais classe {$classe->id} statut {$statut}: " . $e->getMessage());
+                        $fraisParClasse[$classeKey] = [];
+                    }
+                }
+            }
+        }
+
+        return $fraisParClasse;
+    }
+
+    /**
+     * Récupérer les frais pour une classe et un statut d'affectation donnés
+     */
+    private function getFraisForClasseEtAffectation($classeId, $statutAffectation = 'affecté')
+    {
+        // Logique basée sur l'endpoint existant dans ESBTPInscriptionController
+        $classe = \App\Models\ESBTPClasse::with(['niveau', 'filiere'])->findOrFail($classeId);
+
+        // Récupérer les frais configurés pour cette filiere/niveau
+        $fraisConfigs = \App\Models\ESBTPFraisConfiguration::active()
+            ->where('filiere_id', $classe->filiere_id)
+            ->where('niveau_id', $classe->niveau_etude_id)
+            ->with(['fraisCategory'])
+            ->get();
+
+        $fraisData = [];
+
+        foreach ($fraisConfigs as $config) {
+            if (!$config->fraisCategory) continue;
+
+            // Convertir le format de statut d'affectation
+            $statusForConfig = $this->normaliserStatutAffectation($statutAffectation);
+
+            // Utiliser la méthode du modèle pour obtenir le montant
+            $montantCalcule = $config->getMontantByStatus($statusForConfig);
+
+            // Si le montant est 0, on peut ignorer ce frais pour ce statut
+            if ($montantCalcule <= 0) {
+                continue;
+            }
+
+            $fraisData[] = [
+                'category' => [
+                    'id' => $config->fraisCategory->id,
+                    'name' => $config->fraisCategory->name,
+                    'libelle' => $config->fraisCategory->libelle ?? $config->fraisCategory->name,
+                ],
+                'is_mandatory' => $config->fraisCategory->is_mandatory ?? true,
+                'default_amount' => $montantCalcule,
+                'configured_amount' => $montantCalcule,
+                'amount' => $montantCalcule,
+            ];
+        }
+
+        return $fraisData;
+    }
+
+    /**
+     * Normaliser le statut d'affectation pour correspondre au format du modèle
+     */
+    private function normaliserStatutAffectation($statutAffectation)
+    {
+        return match($statutAffectation) {
+            'affecté', 'affecte' => 'affecté',
+            'non-affecté', 'non_affecte', 'non-affecte', 'non_affecté' => 'non_affecté',
+            'réaffecté', 'reaffecte', 'maintenant-affecté', 'maintenant_affecte' => 'réaffecté',
+            default => 'affecté'
+        };
     }
 
     /**
@@ -406,9 +527,21 @@ class ESBTPReinscriptionController extends Controller
 
             $classesProposees = $this->reinscriptionService->proposerNouvellesClasses($etudiantId, $decision);
 
+            // S'assurer que les relations sont chargées
+            if (is_array($classesProposees)) {
+                $classesProposees = collect($classesProposees);
+            }
+
+            $classesWithRelations = $classesProposees->map(function($classe) {
+                if ($classe && !$classe->relationLoaded('niveau')) {
+                    $classe->load(['niveau', 'filiere']);
+                }
+                return $classe;
+            });
+
             return response()->json([
                 'success' => true,
-                'classes' => $classesProposees->load(['niveau', 'filiere'])
+                'classes' => $classesWithRelations
             ]);
 
         } catch (\Exception $e) {

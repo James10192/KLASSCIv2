@@ -153,27 +153,29 @@
                         </div>
                     </div>
 
-                    <!-- Sélection nouvelle classe -->
+                    <!-- Sélection nouvelle classe et statut d'affectation -->
                     <div class="row mb-4">
-                        <div class="col-md-12">
+                        <div class="col-md-6">
+                            <div class="form-group-moderne">
+                                <label for="statut_affectation" class="form-label-moderne">Statut d'affectation *</label>
+                                <select name="statut_affectation" id="statut_affectation" class="form-select-moderne" required>
+                                    <option value="affecté">Affecté</option>
+                                    <option value="réaffecté">Réaffecté</option>
+                                    <option value="non_affecté">Non affecté</option>
+                                </select>
+                                <small class="form-text text-muted">
+                                    Le statut influence les frais applicables
+                                </small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
                             <div class="form-group-moderne">
                                 <label for="nouvelle_classe_id" class="form-label-moderne">Nouvelle Classe pour {{ date('Y') + 1 }} *</label>
                                 <select name="nouvelle_classe_id" id="nouvelle_classe_id" class="form-select-moderne" required>
-                                    <option value="">Sélectionner une classe...</option>
-                                    @foreach($classesProposees as $classe)
-                                    <option value="{{ $classe->id }}">
-                                        {{ $classe->name ?? $classe->nom }} - {{ $classe->niveau->name ?? 'N/A' }} {{ $classe->filiere->name ?? 'N/A' }}
-                                    </option>
-                                    @endforeach
+                                    <option value="">Sélectionnez d'abord une décision...</option>
                                 </select>
-                                <small class="form-text text-muted">
-                                    @if($analyse['decision'] === 'passage')
-                                        Classes de niveau supérieur proposées
-                                    @elseif($analyse['decision'] === 'redoublement')
-                                        Classes de même niveau proposées
-                                    @else
-                                        Classe actuelle (rattrapage)
-                                    @endif
+                                <small class="form-text text-muted" id="classes-help">
+                                    Les classes dépendent de votre décision académique
                                 </small>
                             </div>
                         </div>
@@ -199,8 +201,9 @@
                     @endif
 
                     <!-- Champs cachés -->
-                    <input type="hidden" name="decision" value="{{ $analyse['decision'] }}">
-                    <input type="hidden" name="selected_optionals" id="selectedOptionals" value="{}">
+                    <input type="hidden" name="decision_finale" id="decisionFinale" value="{{ $analyse['decision'] }}">
+                    <input type="hidden" name="statut_affectation_final" id="affectationFinale" value="affecté">
+                    <input type="hidden" name="selected_optionals" id="selectedOptionals" value="{}"
                     @if($isSuperAdmin)
                     <input type="hidden" name="has_reliquat" value="{{ !empty($fraisNonSoldes) ? '1' : '0' }}">
                     <input type="hidden" name="reliquat_montant" value="{{ $analyse['etudiant']->reliquat_montant }}">
@@ -232,13 +235,25 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Script réinscription create chargé');
+    console.log('🚀 Script réinscription create chargé - Version locale');
 
     const classeSelect = document.getElementById('nouvelle_classe_id');
     const decisionSelect = document.getElementById('decision');
+    const affectationSelect = document.getElementById('statut_affectation');
     const fraisContainer = document.getElementById('fraisContainer');
     const btnConfirmer = document.getElementById('btnConfirmer');
     const reporterReliquat = document.getElementById('reporter_reliquat');
+
+    // Champs cachés pour transmission finale
+    const decisionFinale = document.getElementById('decisionFinale');
+    const affectationFinale = document.getElementById('affectationFinale');
+
+    // Données locales transmises depuis le contrôleur
+    const classesParDecision = @json($classesParDecision ?? []);
+    const fraisParClasse = @json($fraisParClasse ?? []);
+
+    console.log('📊 Classes par décision:', classesParDecision);
+    console.log('💰 Frais par classe:', fraisParClasse);
 
     // Validation du reliquat pour superadmin
     @if($isSuperAdmin && !empty($fraisNonSoldes))
@@ -258,55 +273,68 @@ document.addEventListener('DOMContentLoaded', function() {
                 e.preventDefault();
                 return false;
             }
+
+            // Mettre à jour les champs cachés avec les valeurs finales
+            decisionFinale.value = decisionSelect.value;
+            affectationFinale.value = affectationSelect.value;
         });
     }
     @endif
 
-    // Recharger les classes quand la décision change
-    if (decisionSelect) {
-        decisionSelect.addEventListener('change', function() {
-            const decision = this.value;
-            const etudiantId = {{ $analyse['etudiant']->id }};
+    // Fonction pour mettre à jour les classes selon la décision
+    function updateClassesParDecision() {
+        const decision = decisionSelect.value;
+        const affectation = affectationSelect.value;
 
-            console.log('🔄 Changement de décision:', decision);
+        console.log('🔄 Mise à jour classes - Décision:', decision, 'Affectation:', affectation);
 
-            // Réinitialiser le select des classes
-            classeSelect.innerHTML = '<option value="">Chargement...</option>';
-            fraisContainer.innerHTML = '<div class="text-center py-4"><p class="text-muted">Sélectionnez une classe pour voir les frais applicables</p></div>';
+        // Réinitialiser le select des classes
+        classeSelect.innerHTML = '<option value="">Chargement...</option>';
+        fraisContainer.innerHTML = '<div class="text-center py-4"><p class="text-muted">Sélectionnez une classe pour voir les frais applicables</p></div>';
 
-            // Charger les nouvelles classes
-            fetch(`{{ url('esbtp/reinscription') }}/${etudiantId}/classes-by-decision?decision=${decision}`, {
-                headers: {
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success && data.classes) {
-                    let options = '<option value="">Sélectionner une classe...</option>';
-                    data.classes.forEach(function(classe) {
-                        const niveauName = classe.niveau ? classe.niveau.name : 'N/A';
-                        const filiereName = classe.filiere ? classe.filiere.name : 'N/A';
-                        options += `<option value="${classe.id}">${classe.name || classe.nom} - ${niveauName} ${filiereName}</option>`;
-                    });
-                    classeSelect.innerHTML = options;
-                } else {
-                    classeSelect.innerHTML = '<option value="">Aucune classe disponible</option>';
-                }
-            })
-            .catch(error => {
-                console.error('Erreur chargement classes:', error);
-                classeSelect.innerHTML = '<option value="">Erreur de chargement</option>';
+        if (decision && classesParDecision[decision]) {
+            let options = '<option value="">Sélectionner une classe...</option>';
+            const classes = classesParDecision[decision];
+
+            classes.forEach(function(classe) {
+                const niveauName = classe.niveau ? classe.niveau.name : 'N/A';
+                const filiereName = classe.filiere ? classe.filiere.name : 'N/A';
+                options += `<option value="${classe.id}">${classe.name || classe.nom} - ${niveauName} ${filiereName}</option>`;
             });
+
+            classeSelect.innerHTML = options;
+            document.getElementById('classes-help').textContent = `${classes.length} classe(s) disponible(s) pour ${decision}`;
+        } else {
+            classeSelect.innerHTML = '<option value="">Aucune classe disponible</option>';
+            document.getElementById('classes-help').textContent = 'Aucune classe trouvée pour cette décision';
+        }
+    }
+
+    // Écouteurs d'événements pour décision et affectation
+    if (decisionSelect) {
+        decisionSelect.addEventListener('change', updateClassesParDecision);
+    }
+
+    if (affectationSelect) {
+        affectationSelect.addEventListener('change', function() {
+            console.log('🏛️ Changement statut affectation:', this.value);
+            // Recharger les classes (l'affectation peut influencer les classes disponibles)
+            updateClassesParDecision();
+            // Recharger les frais si une classe est sélectionnée
+            if (classeSelect.value) {
+                loadFraisForClasse(classeSelect.value);
+            }
         });
     }
+
+    // Initialisation au chargement
+    updateClassesParDecision();
 
     // Chargement des frais quand une classe est sélectionnée
     if (classeSelect && fraisContainer) {
         classeSelect.addEventListener('change', function() {
             if (this.value) {
-                console.log('Chargement frais pour classe:', this.value);
+                console.log('💰 Chargement frais pour classe:', this.value);
                 loadFraisForClasse(this.value);
             } else {
                 fraisContainer.innerHTML = '<div class="text-center py-4"><p class="text-muted">Sélectionnez une classe pour voir les frais applicables</p></div>';
@@ -315,6 +343,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function loadFraisForClasse(classeId) {
+        const affectation = affectationSelect.value;
+
         fraisContainer.innerHTML = `
             <div class="text-center py-4">
                 <div class="spinner-border text-primary" role="status"></div>
@@ -322,24 +352,34 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
 
-        fetch(`/esbtp/inscriptions/frais-by-classe/${classeId}`, {
-            headers: {
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                displayFrais(data.frais);
-            } else {
-                fraisContainer.innerHTML = `<div class="alert alert-danger">Erreur: ${data.message}</div>`;
-            }
-        })
-        .catch(error => {
-            console.error('Erreur:', error);
-            fraisContainer.innerHTML = `<div class="alert alert-danger">Erreur lors du chargement des frais</div>`;
-        });
+        // Vérifier si nous avons les frais localement
+        const classeKey = `${classeId}_${affectation || 'affecté'}`;
+
+        if (fraisParClasse && fraisParClasse[classeKey]) {
+            console.log('📋 Utilisation frais locaux pour:', classeKey);
+            displayFrais(fraisParClasse[classeKey]);
+        } else {
+            console.log('🌐 Chargement frais via AJAX pour:', classeKey);
+            // Fallback AJAX si les données locales ne sont pas disponibles
+            fetch(`/esbtp/inscriptions/frais-by-classe/${classeId}?affectation_status=${encodeURIComponent(affectation)}`, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    displayFrais(data.frais);
+                } else {
+                    fraisContainer.innerHTML = `<div class="alert alert-danger">Erreur: ${data.message}</div>`;
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                fraisContainer.innerHTML = `<div class="alert alert-danger">Erreur lors du chargement des frais</div>`;
+            });
+        }
     }
 
     function displayFrais(fraisData) {
@@ -355,27 +395,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
         let html = '<div class="kpi-grid">';
 
-        fraisData.forEach(function(category) {
-            const categoryName = category.name || category.libelle || category.title || 'Frais non défini';
-            const categoryAmount = category.default_amount || category.amount || 0;
+        fraisData.forEach(function(fraisItem) {
+            const categoryName = fraisItem.category.name || fraisItem.category.libelle || fraisItem.category.title || 'Frais non défini';
+            const categoryAmount = fraisItem.default_amount || fraisItem.configured_amount || fraisItem.amount || 0;
 
             html += `
                 <div class="card-moderne kpi-card">
-                    <div class="kpi-title">
-                        <i class="${category.icon || 'fas fa-money-bill-wave'} me-2"></i>
-                        ${categoryName}
-                    </div>
-                    <div class="kpi-value ${category.is_mandatory ? 'color-success' : 'color-primary'}">
+                    <div class="kpi-title">${categoryName}</div>
+                    <div class="kpi-value ${fraisItem.is_mandatory ? 'color-success' : 'color-primary'}">
                         ${Number(categoryAmount).toLocaleString('fr-FR')} FCFA
                     </div>
-                    <div class="kpi-trend ${category.is_mandatory ? 'positive' : ''}">
-                        <i class="fas ${category.is_mandatory ? 'fa-check-circle' : 'fa-plus-circle'}"></i>
-                        <span>${category.is_mandatory ? 'Obligatoire' : 'Optionnel'}</span>
+                    <div class="kpi-trend ${fraisItem.is_mandatory ? 'positive' : ''}">
+                        <i class="fas ${fraisItem.is_mandatory ? 'fa-check-circle' : 'fa-plus-circle'}"></i>
+                        <span>${fraisItem.is_mandatory ? 'Obligatoire' : 'Optionnel'}</span>
                     </div>
-                    ${category.is_mandatory ?
-                        `<input type="hidden" name="frais_obligatoire[]" value="${category.id}" data-amount="${categoryAmount}">` :
+                    ${fraisItem.is_mandatory ?
+                        `<input type="hidden" name="frais_obligatoire[]" value="${fraisItem.category.id}" data-amount="${categoryAmount}">` :
                         `<div class="mt-3">
-                            <select class="form-select frais-optional" data-category-id="${category.id}" style="font-size: 12px;">
+                            <select class="form-select frais-optional" data-category-id="${fraisItem.category.id}" style="font-size: 12px;">
                                 <option value="none">Ne pas souscrire</option>
                                 <option value="default" data-amount="${categoryAmount}">
                                     Souscrire ce frais
