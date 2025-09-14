@@ -142,12 +142,17 @@
 </div>
 @endsection
 
-@section('scripts')
+@push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const matriculeModeSelect = document.getElementById('matriculeMode');
     const etablissementSelect = document.getElementById('currentEtablissement');
+
+    if (!matriculeModeSelect || !etablissementSelect) {
+        console.error('Elements not found!');
+        return;
+    }
 
     // Gestion du changement de mode
     matriculeModeSelect.addEventListener('change', function() {
@@ -260,8 +265,6 @@ function updateNomenclatureSection() {
     const currentEtablissementId = document.getElementById('currentEtablissement').value;
     const currentMode = document.getElementById('matriculeMode').value;
 
-    console.log('UpdateNomenclatureSection - Etablissement:', currentEtablissementId, 'Mode:', currentMode);
-
     fetch('{{ route("esbtp.matricule-config.get-configurations") }}', {
         method: 'POST',
         headers: {
@@ -275,7 +278,6 @@ function updateNomenclatureSection() {
     })
     .then(response => response.json())
     .then(data => {
-        console.log('Réponse AJAX:', data);
         const nomenclatureSection = document.getElementById('currentNomenclature');
 
         if (data.success && data.configurations.length > 0) {
@@ -327,4 +329,4 @@ function updateNomenclatureSection() {
     });
 }
 </script>
-@endsection
+@endpush
