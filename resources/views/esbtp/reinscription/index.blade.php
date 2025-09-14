@@ -247,13 +247,35 @@
             </div>
         @endif
 
+        <!-- Information année académique courante -->
+        <div class="card-moderne mb-lg">
+            <div class="p-lg">
+                <div class="section-title mb-md">
+                    <i class="fas fa-calendar me-2"></i>Contexte d'affichage
+                </div>
+                <div style="display: flex; gap: var(--space-md); align-items: end;">
+                    <div style="flex: 1; max-width: 300px;">
+                        <label for="annee_academique" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Année Académique Courante</label>
+                        <select name="annee_academique" id="annee_academique" class="year-selector" style="width: 100%; background-color: #f8f9fa; cursor: not-allowed;" disabled>
+                            <option value="{{ $anneeAcademique }}" selected>
+                                {{ $anneeAcademique }} (Année en cours)
+                            </option>
+                        </select>
+                    </div>
+                    <button type="button" class="btn-acasi secondary" onclick="showYearChangeInfo()" title="Comment changer d'année ?">
+                        <i class="fas fa-info-circle"></i>Changer d'année
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Filtres de réinscription -->
         <div class="card-moderne mb-lg">
             <div class="p-lg">
                 <div class="section-title mb-md">
                     <i class="fas fa-filter me-2"></i>Filtres de réinscription
                 </div>
-                <form method="GET" action="{{ route('esbtp.reinscription.index') }}" id="reinscriptionFiltersForm">
+                <form method="GET" action="{{ route('esbtp.reinscription.index') }}" id="reinscriptionFiltersForm" onsubmit="return applyFilters()">
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-md); margin-bottom: var(--space-md);">
                         <!-- Recherche -->
                         <div>
@@ -817,13 +839,30 @@ function loadTabContent(category, page = 1) {
     const ajaxUrl = `{{ route('esbtp.reinscription.load-category', ':category') }}`.replace(':category', category);
     console.log(`📡 DEBUG: URL AJAX: ${ajaxUrl}`);
     
+    // Récupérer les paramètres de filtres depuis le formulaire
+    const filterParams = {};
+    const searchValue = $('#search').val();
+    const filiereValue = $('#filiere_id').val();
+    const niveauValue = $('#niveau_id').val();
+    const statutReinscriptionValue = $('#statut_reinscription').val();
+    const statutPaiementValue = $('#statut_paiement').val();
+    
+    if (searchValue) filterParams.search = searchValue;
+    if (filiereValue) filterParams.filiere_id = filiereValue;
+    if (niveauValue) filterParams.niveau_id = niveauValue;
+    if (statutReinscriptionValue) filterParams.statut_reinscription = statutReinscriptionValue;
+    if (statutPaiementValue) filterParams.statut_paiement = statutPaiementValue;
+    
+    console.log(`🔍 DEBUG: Paramètres de filtres:`, filterParams);
+    
     // Faire la requête AJAX
     $.ajax({
         url: ajaxUrl,
         method: 'GET',
         data: {
             page: page,
-            per_page: 50
+            per_page: 50,
+            ...filterParams // Inclure les paramètres de filtres
         },
         success: function(response) {
             console.log(`✅ DEBUG: AJAX Success pour "${category}", page ${page}`);
@@ -1081,6 +1120,25 @@ function showYearChangeInfo() {
     } catch (error) {
         console.error('❌ DEBUG REINSCRIPTIONS: Erreur dans showYearChangeInfo():', error);
     }
+}
+
+// Fonction pour recharger les données avec les filtres
+function applyFilters() {
+    console.log('🔍 Applying filters and reloading all tabs...');
+    
+    // Réinitialiser le statut des onglets chargés
+    loadedTabs = {};
+    
+    // Recharger l'onglet actuellement actif
+    const activeTab = $('.tab-pane.active');
+    if (activeTab.length > 0) {
+        const category = activeTab.attr('id');
+        console.log(`🎯 Rechargement de l'onglet actif: ${category}`);
+        loadTabContent(category, 1);
+        loadedTabs[category] = true;
+    }
+    
+    return false; // Empêcher la soumission normale du formulaire
 }
 
 // FONCTION TEST DEBUG TEMPORAIRE

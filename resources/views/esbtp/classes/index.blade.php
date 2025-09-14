@@ -44,6 +44,34 @@
             </div>
         @endif
 
+        <!-- Information année académique courante -->
+        <div class="card-moderne mb-lg">
+            <div class="p-lg">
+                <div class="section-title mb-md">
+                    <i class="fas fa-calendar me-2"></i>Contexte d'affichage
+                </div>
+                <div style="display: flex; gap: var(--space-md); align-items: end;">
+                    <div style="flex: 1; max-width: 300px;">
+                        <label for="annee_academique" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Année Académique Courante</label>
+                        <select name="annee_academique" id="annee_academique" class="year-selector" style="width: 100%; background-color: #f8f9fa; cursor: not-allowed;" disabled>
+                            <option value="{{ $anneeAcademique }}" selected>
+                                {{ $anneeAcademique }} (Année en cours)
+                            </option>
+                        </select>
+                    </div>
+                    <button type="button" class="btn-acasi secondary" onclick="showYearChangeInfo()" title="Comment changer d'année ?">
+                        <i class="fas fa-info-circle"></i>Changer d'année
+                    </button>
+                </div>
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Les classes sont visibles pour toutes les années, mais les étudiants affichés correspondent à l'année courante.
+                    </small>
+                </div>
+            </div>
+        </div>
+
         <!-- Filtres avancés -->
         <div class="card-moderne mb-lg">
             <div class="p-lg">

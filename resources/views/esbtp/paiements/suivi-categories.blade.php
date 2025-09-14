@@ -262,21 +262,39 @@
             </div>
         </div>
 
+        <!-- Information année académique courante -->
+        <div class="card-moderne mb-lg">
+            <div class="p-lg">
+                <div class="section-title mb-md">
+                    <i class="fas fa-calendar me-2"></i>Contexte d'affichage
+                </div>
+                <div style="display: flex; gap: var(--space-md); align-items: end;">
+                    <div style="flex: 1; max-width: 300px;">
+                        <label for="annee_academique" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Année Académique Courante</label>
+                        <select name="annee_academique" id="annee_academique" class="year-selector" style="width: 100%; background-color: #f8f9fa; cursor: not-allowed;" disabled>
+                            <option value="{{ date('Y') . '-' . (date('Y') + 1) }}" selected>
+                                {{ date('Y') . '-' . (date('Y') + 1) }} (Année en cours)
+                            </option>
+                        </select>
+                    </div>
+                    <button type="button" class="btn-acasi secondary" onclick="showYearChangeInfo()" title="Comment changer d'année ?">
+                        <i class="fas fa-info-circle"></i>Changer d'année
+                    </button>
+                </div>
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Les paiements par catégorie affichés correspondent à l'année académique courante.
+                    </small>
+                </div>
+            </div>
+        </div>
+
         <!-- Filtres et Actions -->
         <div class="card-moderne mb-lg">
             <div class="p-lg">
                 <form action="{{ route('esbtp.paiements.suivi-categories') }}" method="GET">
                     <div class="row align-items-end">
-                        <div class="col-md-3">
-                            <label for="annee_id" class="form-label">Année universitaire</label>
-                            <select name="annee_id" id="annee_id" class="form-select" onchange="this.form.submit()">
-                                @foreach($annees as $annee)
-                                    <option value="{{ $annee->id }}" {{ $anneeId == $annee->id ? 'selected' : '' }}>
-                                        {{ $annee->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
                         <div class="col-md-2">
                             <label for="filiere_id" class="form-label">Filière</label>
                             <select name="filiere_id" id="filiere_id" class="form-select" onchange="this.form.submit()">
@@ -673,3 +691,65 @@ $(function() {
 });
 </script>
 @endpush
+
+<!-- Modal pour les instructions de changement d'année -->
+<div class="modal fade" id="yearChangeModal" tabindex="-1" role="dialog" aria-labelledby="yearChangeModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="yearChangeModalLabel">Comment changer l'année académique ?</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="background: none; border: none; font-size: 1.5rem; font-weight: bold; color: #999; cursor: pointer;">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Pour consulter les données d'une autre année :</strong></p>
+                <ol style="padding-left: 20px; line-height: 1.6; margin: 15px 0;">
+                    <li><strong>Aller dans</strong> : Menu → Années Universitaires</li>
+                    <li><strong>Trouver l'année souhaitée</strong> (ex: 2023-2024)</li>
+                    <li><strong>Cliquer sur "Activer"</strong> pour la définir comme année courante</li>
+                    <li><strong>Revenir ici</strong> : Les paiements par catégorie se mettront à jour automatiquement</li>
+                </ol>
+                <hr style="margin: 15px 0;">
+                <p style="color: #6b7280; font-size: 14px;">
+                    <i class="fas fa-info-circle"></i> 
+                    <strong>Note :</strong> Seule une année peut être "courante" à la fois. 
+                    Changer l'année courante affecte l'affichage des paiements dans toute l'application.
+                </p>
+                <div style="background: #f3f4f6; padding: 12px; border-radius: 6px; margin-top: 15px;">
+                    <strong>Exemple :</strong><br>
+                    • Année courante = 2024-2025 → Voir les paiements de 2024-2025<br>
+                    • Année courante = 2023-2024 → Voir les paiements de 2023-2024
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="$('#yearChangeModal').modal('hide');">Fermer</button>
+                <a href="{{ route('esbtp.annees-universitaires.index') }}" target="_blank" class="btn btn-primary">
+                    <i class="fas fa-external-link-alt"></i> Aller aux Années
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+function showYearChangeInfo() {
+    $('#yearChangeModal').modal('show');
+}
+
+// Gérer la fermeture de la modal d'info année
+$(document).ready(function() {
+    // Gérer la fermeture avec le bouton X
+    $('#yearChangeModal .close[data-dismiss="modal"]').on('click', function() {
+        $('#yearChangeModal').modal('hide');
+    });
+    
+    // Gérer la fermeture avec le bouton Fermer
+    $('#yearChangeModal button[data-dismiss="modal"]').on('click', function() {
+        $('#yearChangeModal').modal('hide');
+    });
+});
+</script>

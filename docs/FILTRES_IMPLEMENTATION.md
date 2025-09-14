@@ -2,7 +2,23 @@
 
 ## Vue d'ensemble
 
-Cette documentation décrit l'implémentation des filtres avancés pour les modules **Classes** et **Réinscriptions** du système KLASSCI SAAS.
+Cette documentation décrit l'implémentation des filtres avancés pour les modules **Classes**, **Réinscriptions** et **Paiements** du système KLASSCI SAAS.
+
+## 🎯 **Information contextuelle année académique**
+
+Toutes les pages principales du système incluent une section d'information contextuelle qui affiche l'année académique courante et permet à l'utilisateur de comprendre comment changer d'année. Cette section est **standardisée** et **cohérente** à travers tout le système.
+
+### Pages concernées
+- **Classes Index** : `esbtp/classes/index`  
+- **Réinscriptions Index** : `esbtp/reinscriptions/index`
+- **Paiements - Suivi des paiements** : `esbtp/paiements/index`
+- **Paiements - Suivi par catégorie** : `esbtp/paiements/suivi-categories`
+
+### Composants de la section
+- **Sélecteur désactivé** : Affiche l'année courante (ex: 2024-2025) en grisé
+- **Bouton "Changer d'année"** : Déclenche une modal d'information
+- **Message contextuel** : Explique quelles données correspondent à l'année courante
+- **Modal d'aide** : Instructions complètes pour changer d'année via le menu Années Universitaires
 
 ## 1. Filtres pour esbtp/classes/index
 
@@ -200,9 +216,70 @@ gap: var(--space-md);
 4. **Responsive** : Tests sur mobile et tablette
 5. **Persistance** : Vérification de la conservation des filtres lors de navigation
 
+## 3. Information contextuelle - Implémentation technique
+
+### Structure HTML standardisée
+```html
+<!-- Information année académique courante -->
+<div class="card-moderne mb-lg">
+    <div class="p-lg">
+        <div class="section-title mb-md">
+            <i class="fas fa-calendar me-2"></i>Contexte d'affichage
+        </div>
+        <div style="display: flex; gap: var(--space-md); align-items: end;">
+            <div style="flex: 1; max-width: 300px;">
+                <label for="annee_academique" style="...">Année Académique Courante</label>
+                <select name="annee_academique" id="annee_academique" class="year-selector" 
+                        style="width: 100%; background-color: #f8f9fa; cursor: not-allowed;" disabled>
+                    <option value="{{ $anneeAcademique }}" selected>
+                        {{ $anneeAcademique }} (Année en cours)
+                    </option>
+                </select>
+            </div>
+            <button type="button" class="btn-acasi secondary" 
+                    onclick="showYearChangeInfo()" title="Comment changer d'année ?">
+                <i class="fas fa-info-circle"></i>Changer d'année
+            </button>
+        </div>
+        <div class="mt-3">
+            <small class="text-muted">
+                <i class="fas fa-info-circle me-1"></i>
+                [Message contextuel spécifique à chaque page]
+            </small>
+        </div>
+    </div>
+</div>
+```
+
+### Modal d'aide standardisée
+- **ID** : `yearChangeModal`
+- **Déclencheur** : `showYearChangeInfo()` JavaScript function
+- **Contenu** : Instructions step-by-step pour changer d'année
+- **Action** : Lien vers `route('esbtp.annees-universitaires.index')`
+
+### JavaScript requis
+```javascript
+function showYearChangeInfo() {
+    $('#yearChangeModal').modal('show');
+}
+
+// Gestion des événements de fermeture
+$(document).ready(function() {
+    $('#yearChangeModal .close[data-dismiss="modal"]').on('click', function() {
+        $('#yearChangeModal').modal('hide');
+    });
+});
+```
+
+### Messages contextuels par page
+- **Classes** : "Les classes sont visibles pour toutes les années, mais les étudiants affichés correspondent à l'année courante."
+- **Réinscriptions** : "Les données de réinscription correspondent à l'année académique courante."
+- **Paiements (suivi)** : "Les paiements affichés correspondent à l'année académique courante."
+- **Paiements (catégories)** : "Les paiements par catégorie affichés correspondent à l'année académique courante."
+
 ---
 
 **Date de création** : 2025-01-16  
-**Version** : 1.0  
+**Version** : 1.1 (Mise à jour avec information contextuelle)  
 **Auteur** : Claude Code Assistant  
 **Système** : KLASSCI SAAS Educational Management
