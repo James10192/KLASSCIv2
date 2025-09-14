@@ -29,11 +29,11 @@
     
     .dashboard-cards {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
         gap: var(--space-lg);
         margin-bottom: var(--space-xl);
     }
-    
+
     .stat-card {
         background: var(--surface);
         border-radius: var(--radius-medium);
@@ -41,6 +41,10 @@
         border: 1px solid var(--border);
         transition: all 0.3s ease;
         cursor: pointer;
+        min-height: 140px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
     }
     
     .stat-card:hover {
@@ -58,16 +62,19 @@
         font-size: 1.5rem;
         margin-bottom: var(--space-md);
     }
-    
+
     .stat-card .stat-number {
         font-size: 2rem;
         font-weight: bold;
         color: var(--primary);
+        margin-bottom: var(--space-xs);
+        line-height: 1.2;
     }
-    
+
     .stat-card .stat-label {
         color: var(--text-secondary);
         font-size: 0.9rem;
+        margin-top: var(--space-xs);
     }
     
     .quick-actions {
@@ -231,7 +238,7 @@
         <div class="row">
             <!-- Inscriptions récentes -->
             <div class="col-xl-6 mb-xl">
-                <div class="card-moderne">
+                <div class="card-moderne" style="min-height: 400px;">
                     <div class="card-header">
                         <h5><i class="fas fa-user-plus me-2" style="color: var(--primary);"></i>Inscriptions récentes</h5>
                         @if($pendingInscriptionsCount ?? 0 > 0)
@@ -263,7 +270,7 @@
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td>{{ $inscription->classe->filiere->nom ?? 'N/A' }}</td>
+                                                <td>{{ $inscription->classe->filiere->name ?? $inscription->classe->filiere->nom ?? 'N/A' }}</td>
                                                 <td>{{ $inscription->created_at->format('d/m/Y') }}</td>
                                                 <td>
                                                     <span class="badge bg-{{ $inscription->status == 'pending' ? 'warning' : 'success' }}">
@@ -287,7 +294,7 @@
 
             <!-- Évaluations récentes -->
             <div class="col-xl-6 mb-xl">
-                <div class="card-moderne">
+                <div class="card-moderne" style="min-height: 400px;">
                     <div class="card-header">
                         <h5><i class="fas fa-clipboard-list me-2" style="color: var(--success);"></i>Évaluations récentes</h5>
                     </div>
@@ -332,7 +339,7 @@
         <div class="row">
             <!-- Statistiques de présence -->
             <div class="col-md-6 mb-lg">
-                <div class="card-moderne">
+                <div class="card-moderne" style="min-height: 300px;">
                     <div class="card-header">
                         <h5><i class="fas fa-chart-line me-2" style="color: var(--accent-blue);"></i>Taux de présence aujourd'hui</h5>
                     </div>
@@ -358,7 +365,7 @@
 
             <!-- Messages récents -->
             <div class="col-md-6 mb-lg">
-                <div class="card-moderne">
+                <div class="card-moderne" style="min-height: 300px;">
                     <div class="card-header">
                         <h5><i class="fas fa-comments me-2" style="color: var(--warning);"></i>Messages récents</h5>
                     </div>
@@ -407,11 +414,6 @@
                     <div class="col-md-3 mb-2">
                         <a href="{{ route('esbtp.evaluations.index') }}" class="btn-acasi success w-100">
                             <i class="fas fa-clipboard-list me-2"></i>Évaluations
-                        </a>
-                    </div>
-                    <div class="col-md-3 mb-2">
-                        <a href="{{ route('esbtp.attendances.index') }}" class="btn-acasi warning w-100">
-                            <i class="fas fa-user-check me-2"></i>Présences
                         </a>
                     </div>
                 </div>

@@ -1543,27 +1543,19 @@
 
                         <!-- Student Management -->
                         <div class="menu-accordion">
-                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.attendances.*') || Request::routeIs('esbtp.reinscription.*') ? 'active' : '' }}">
+                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.reinscription.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-user-graduate"></i></div>
                                 <div class="menu-text">Gestion étudiants</div>
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
-                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.attendances.*') || Request::routeIs('esbtp.reinscription.*') ? 'show' : '' }}">
+                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.reinscription.*') ? 'show' : '' }}">
                                 <a href="{{ route('esbtp.etudiants.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.etudiants.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Liste des étudiants</span>
                                 </a>
-                                <a href="{{ route('esbtp.inscriptions.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.inscriptions.*') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Inscriptions</span>
-                                </a>
                                 <a href="{{ route('esbtp.reinscription.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.reinscription.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Réinscriptions</span>
-                                </a>
-                                <a href="{{ route('esbtp.attendances.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.attendances.*') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Présences étudiants</span>
                                 </a>
                             </div>
                         </div>
@@ -2090,12 +2082,6 @@
                                                     <i class="fas fa-plus-circle"></i>
                                                 </div>
                                                 <span class="quick-action-text">Nouvelle évaluation</span>
-                                            </a>
-                                            <a href="{{ route('esbtp.attendances.index') }}" class="quick-action-item">
-                                                <div class="quick-action-icon" style="background: linear-gradient(135deg, #10b981, #059669); color: white;">
-                                                    <i class="fas fa-clipboard-list"></i>
-                                                </div>
-                                                <span class="quick-action-text">Présences</span>
                                             </a>
                                             <a href="{{ route('esbtp.annonces.create') }}" class="quick-action-item">
                                                 <div class="quick-action-icon" style="background: linear-gradient(135deg, #ef4444, #dc2626); color: white;">
