@@ -531,4 +531,60 @@ class ESBTPClasseController extends Controller
             'etudiants' => $etudiants
         ]);
     }
+
+    /**
+     * Récupère la configuration matricule pour le niveau d'études d'une classe
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function getNiveauConfig($id)
+    {
+        try {
+            $classe = ESBTPClasse::with('niveau')->findOrFail($id);
+
+            if (!$classe->niveau) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Niveau d\'études non trouvé pour cette classe',
+                    'niveau_config' => null
+                ]);
+            }
+
+            // Rechercher la configuration matricule pour ce niveau
+            $currentEtablissementId = \App\Models\ESBTPSystemSetting::getCurrentEtablissementId();
+
+            $matriculeConfig = \App\Models\ESBTPMatriculeConfig::where('etablissement_id', $currentEtablissementId)
+                ->where('niveau_etude_code', $classe->niveau->code ?? strtoupper($classe->niveau->name))
+                ->where('is_active', true)
+                ->first();
+
+            if (!$matriculeConfig) {
+                return response()->json([
+                    'success' => true,
+                    'niveau_config' => null,
+                    'message' => 'Configuration matricule non trouvée pour ce niveau'
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'niveau_config' => [
+                    'id' => $matriculeConfig->id,
+                    'code' => $matriculeConfig->niveau_etude_code,
+                    'nom' => $matriculeConfig->niveau_etude_name,
+                    'prefixe' => $matriculeConfig->prefixe,
+                    'annee_format' => $matriculeConfig->annee_format,
+                    'etablissement_code' => $matriculeConfig->etablissement_code
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur: ' . $e->getMessage(),
+                'niveau_config' => null
+            ], 500);
+        }
+    }
 }

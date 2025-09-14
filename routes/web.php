@@ -53,6 +53,7 @@ use App\Http\Controllers\ESBTPDepartmentController;
 use App\Http\Controllers\ESBTPPlanningGeneralController;
 use App\Http\Controllers\ESBTP\Admin\TeacherAdminController;
 use App\Http\Controllers\ESBTP\ESBTPSettingsController;
+use App\Http\Controllers\ESBTPMatriculeConfigController;
 use App\Http\Controllers\ESBTPLogsController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\NavbarController;
@@ -963,6 +964,19 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         Route::post('/settings/validate', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'checkStatus'])->name('esbtp.settings.validate');
     });
 
+// Configuration des matricules - accès direct sans sidebar
+Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'role:superAdmin'])->group(function () {
+    Route::get('/matricule-config', [ESBTPMatriculeConfigController::class, 'index'])->name('matricule-config.index');
+    Route::post('/matricule-config', [ESBTPMatriculeConfigController::class, 'store'])->name('matricule-config.store');
+    Route::delete('/matricule-config/{id}', [ESBTPMatriculeConfigController::class, 'destroy'])->name('matricule-config.destroy');
+    Route::post('/matricule-config/preview', [ESBTPMatriculeConfigController::class, 'previewMatricule'])->name('matricule-config.preview');
+    Route::post('/matricule-config/generate', [ESBTPMatriculeConfigController::class, 'genererMatricule'])->name('matricule-config.generate');
+    Route::post('/matricule-config/check', [ESBTPMatriculeConfigController::class, 'checkMatricule'])->name('matricule-config.check');
+    Route::post('/matricule-config/change-mode', [ESBTPMatriculeConfigController::class, 'changeMode'])->name('matricule-config.change-mode');
+    Route::post('/matricule-config/change-etablissement', [ESBTPMatriculeConfigController::class, 'changeEtablissement'])->name('matricule-config.change-etablissement');
+    Route::get('/matricule-config/mode-info', [ESBTPMatriculeConfigController::class, 'getModeInfo'])->name('matricule-config.mode-info');
+});
+
     // Routes pour l'émargement - Administration
     Route::prefix('esbtp/admin/attendance')->name('esbtp.admin.attendance.')->middleware(['auth', 'role:superAdmin,secretaire'])->group(function () {
         Route::get('/', [App\Http\Controllers\ESBTP\Admin\AttendanceController::class, 'index'])->name('index');
@@ -1038,6 +1052,7 @@ Route::prefix('api/esbtp')->name('api.esbtp.')->middleware(['auth'])->group(func
 Route::prefix('esbtp/api')->name('esbtp.api.')->middleware(['auth'])->group(function () {
     Route::get('classes/{id}/matieres', [ESBTPClasseController::class, 'getMatieresForApi'])->name('classes.matieres.api');
     Route::get('classes/{id}', [ESBTPClasseController::class, 'getClasseById'])->name('classes.get');
+    Route::get('classes/{id}/niveau-config', [ESBTPClasseController::class, 'getNiveauConfig'])->name('classes.niveau-config');
     Route::get('get-classes', [ESBTPInscriptionController::class, 'getClasses'])->name('get-classes');
     Route::get('search-parents', [ESBTPEtudiantController::class, 'searchParents'])->name('search-parents');
     Route::get('etudiants/search', [ESBTPEtudiantController::class, 'searchForApi'])->name('etudiants.search');

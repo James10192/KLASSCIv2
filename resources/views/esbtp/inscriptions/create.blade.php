@@ -757,9 +757,25 @@
                         </div>
                         <div class="col-md-4">
                             <div class="form-group mb-3">
-                                <label class="form-label fw-bold">Matricule <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control @error('matricule') is-invalid @enderror" name="matricule" value="{{ old('matricule') }}" required placeholder="Ex: ETU2025001">
-                                <small class="form-text text-muted">Matricule unique de l'étudiant</small>
+                                <label class="form-label fw-bold">
+                                    Matricule <span class="text-danger">*</span>
+                                    <span id="matriculeMode" class="badge bg-info ms-1"></span>
+                                </label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control @error('matricule') is-invalid @enderror"
+                                           name="matricule" id="matriculeInput" value="{{ old('matricule') }}"
+                                           placeholder="Ex: MESBTP25-0001">
+                                    <button type="button" class="btn btn-outline-primary" id="generateMatriculeBtn"
+                                            style="display: none;">
+                                        <i class="fas fa-magic"></i> Générer
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" id="checkMatriculeBtn"
+                                            style="display: none;">
+                                        <i class="fas fa-search"></i> Vérifier
+                                    </button>
+                                </div>
+                                <small class="form-text text-muted" id="matriculeHelp">Matricule unique de l'étudiant</small>
+                                <div id="matriculeStatus" class="mt-1"></div>
                                 @error('matricule')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -1963,16 +1979,222 @@ document.addEventListener('DOMContentLoaded', function() {
     window.loadFraisForClasse = function() {
         const classeSelect = document.getElementById('classe_id');
         const affectationSelect = document.getElementById('affectation_status');
-        
+
         if (!classeSelect || !classeSelect.value) {
             console.log('Aucune classe sélectionnée pour recharger les frais');
             return;
         }
-        
+
         // Déclencher l'événement change sur la classe pour recharger les frais
         const changeEvent = new Event('change', { bubbles: true });
         classeSelect.dispatchEvent(changeEvent);
     };
+
+    // ========================
+    // GESTION DES MATRICULES
+    // ========================
+
+    const matriculeInput = document.getElementById('matriculeInput');
+    const generateBtn = document.getElementById('generateMatriculeBtn');
+    const checkBtn = document.getElementById('checkMatriculeBtn');
+    const matriculeStatus = document.getElementById('matriculeStatus');
+    const matriculeMode = document.getElementById('matriculeMode');
+    const matriculeHelp = document.getElementById('matriculeHelp');
+    const genreSelect = document.querySelector('select[name="sexe"]');
+    const classeSelect = document.getElementById('classe_id');
+
+    // Charger le mode de génération des matricules
+    let currentMatriculeMode = 'automatique'; // Par défaut
+    let niveauConfig = null;
+
+    fetch('/esbtp/matricule-config/mode-info', {
+        method: 'GET',
+        headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        currentMatriculeMode = data.mode || 'automatique';
+        updateMatriculeUI();
+    })
+    .catch(error => {
+        console.log('Erreur lors du chargement du mode matricule:', error);
+        updateMatriculeUI();
+    });
+
+    function updateMatriculeUI() {
+        if (currentMatriculeMode === 'automatique') {
+            matriculeMode.textContent = 'AUTO';
+            matriculeMode.className = 'badge bg-success ms-1';
+            matriculeHelp.textContent = 'Matricule généré automatiquement selon le niveau d\'études';
+            generateBtn.style.display = 'block';
+            checkBtn.style.display = 'none';
+            matriculeInput.readOnly = true;
+            matriculeInput.placeholder = 'Sera généré automatiquement...';
+        } else {
+            matriculeMode.textContent = 'MANUEL';
+            matriculeMode.className = 'badge bg-warning ms-1';
+            matriculeHelp.textContent = 'Saisissez manuellement le matricule (vérification anti-doublon)';
+            generateBtn.style.display = 'none';
+            checkBtn.style.display = 'block';
+            matriculeInput.readOnly = false;
+            matriculeInput.placeholder = 'Ex: MESBTP25-0001';
+        }
+    }
+
+    // Génération automatique
+    generateBtn.addEventListener('click', function() {
+        const genre = genreSelect ? genreSelect.value : null;
+
+        if (!genre) {
+            showMatriculeStatus('Veuillez d\'abord sélectionner le genre/sexe', 'warning');
+            return;
+        }
+
+        if (!niveauConfig) {
+            showMatriculeStatus('Niveau d\'études non configuré. Contactez l\'équipe technique.', 'danger');
+            return;
+        }
+
+        generateBtn.disabled = true;
+        generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Génération...';
+
+        fetch('/esbtp/matricule-config/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                niveau_etude_code: niveauConfig.code,
+                genre: genre,
+                annee: new Date().getFullYear()
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                matriculeInput.value = data.matricule;
+                showMatriculeStatus('Matricule généré avec succès', 'success');
+            } else {
+                showMatriculeStatus(data.message || 'Erreur lors de la génération', 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            showMatriculeStatus('Erreur de connexion', 'danger');
+        })
+        .finally(() => {
+            generateBtn.disabled = false;
+            generateBtn.innerHTML = '<i class="fas fa-magic"></i> Générer';
+        });
+    });
+
+    // Vérification manuelle
+    checkBtn.addEventListener('click', checkMatriculeManuel);
+
+    // Vérification en temps réel pour le mode manuel
+    if (currentMatriculeMode === 'manuel') {
+        let checkTimeout;
+        matriculeInput.addEventListener('input', function() {
+            clearTimeout(checkTimeout);
+            if (this.value.length >= 3) {
+                checkTimeout = setTimeout(checkMatriculeManuel, 500);
+            }
+        });
+    }
+
+    function checkMatriculeManuel() {
+        const matricule = matriculeInput.value.trim();
+
+        if (!matricule) {
+            showMatriculeStatus('', '');
+            return;
+        }
+
+        checkBtn.disabled = true;
+        checkBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+        fetch('/esbtp/matricule-config/check', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ matricule: matricule })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.exists) {
+                showMatriculeStatus('❌ Ce matricule existe déjà', 'danger');
+            } else {
+                showMatriculeStatus('✅ Matricule disponible', 'success');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            showMatriculeStatus('Erreur de vérification', 'warning');
+        })
+        .finally(() => {
+            checkBtn.disabled = false;
+            checkBtn.innerHTML = '<i class="fas fa-search"></i> Vérifier';
+        });
+    }
+
+    function showMatriculeStatus(message, type) {
+        if (!message) {
+            matriculeStatus.innerHTML = '';
+            return;
+        }
+
+        const alertClass = {
+            'success': 'alert-success',
+            'danger': 'alert-danger',
+            'warning': 'alert-warning',
+            'info': 'alert-info'
+        }[type] || 'alert-info';
+
+        matriculeStatus.innerHTML = `<small class="alert ${alertClass} p-1 m-0">${message}</small>`;
+    }
+
+    // Détecter le niveau d'études depuis la classe sélectionnée
+    if (classeSelect) {
+        classeSelect.addEventListener('change', function() {
+            // Logique pour détecter le niveau d'études de la classe sélectionnée
+            // et vérifier s'il y a une configuration de matricule
+            const classeId = this.value;
+
+            if (classeId && currentMatriculeMode === 'automatique') {
+                fetch(`/esbtp/api/classes/${classeId}/niveau-config`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    niveauConfig = data.niveau_config;
+
+                    if (!niveauConfig) {
+                        showMatriculeStatus('⚠️ Niveau non configuré pour génération automatique', 'warning');
+                        generateBtn.disabled = true;
+                    } else {
+                        showMatriculeStatus('', '');
+                        generateBtn.disabled = false;
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    niveauConfig = null;
+                });
+            }
+        });
+    }
 });
 </script>
 @endpush
