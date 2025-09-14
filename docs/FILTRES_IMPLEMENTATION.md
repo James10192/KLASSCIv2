@@ -277,9 +277,55 @@ $(document).ready(function() {
 - **Paiements (suivi)** : "Les paiements affichés correspondent à l'année académique courante."
 - **Paiements (catégories)** : "Les paiements par catégorie affichés correspondent à l'année académique courante."
 
+## 7. Corrections et Améliorations
+
+### ErrorException - Accès propriété null (2025-01-16)
+
+**Problème identifié** : 
+- ErrorException "Attempt to read property 'name' on null" dans `suivi-categories.blade.php` ligne 570
+- Tentative d'accès à `$etudiant['inscription']->etudiant->user->name` sur des étudiants sans relation `user`
+
+**Analyse** :
+- Les étudiants dans le système utilisent directement les champs `nom` et `prenoms` de la table `esbtp_etudiants`
+- Pas de relation `user_id` - les étudiants n'ont pas de comptes utilisateur système
+- La vue tentait d'accéder à une relation inexistante
+
+**Corrections appliquées** :
+
+1. **Vue `suivi-categories.blade.php`** :
+```php
+// AVANT (causait l'erreur)
+{{ $etudiant['inscription']->etudiant->user->name }}
+
+// APRÈS (corrigé)
+{{ $etudiant['inscription']->etudiant ? ($etudiant['inscription']->etudiant->prenoms ?? '') . ' ' . ($etudiant['inscription']->etudiant->nom ?? '') : 'Nom non disponible' }}
+```
+
+2. **Contrôleur `ESBTPPaiementController.php`** :
+```php
+// Amélioration des commentaires pour clarifier l'eager loading
+$inscriptionsQuery = \App\Models\ESBTPInscription::with([
+    'etudiant.user',  // Garde pour compatibilité future
+    'filiere', 
+    'niveauEtude', 
+    'anneeUniversitaire'
+])->where('status', 'active');
+```
+
+3. **Protection contre les valeurs nulles** :
+- Ajout de vérifications `{{ $etudiant['inscription']->etudiant ? ... : 'Valeur par défaut' }}`
+- Utilisation de l'opérateur null coalescing `??` pour les propriétés facultatives
+- Gestion gracieuse des relations manquantes
+
+**Résultat** :
+- ErrorException résolu
+- Affichage correct des noms d'étudiants : "PRENOMS NOM"
+- Initiales calculées correctement pour les avatars
+- Pas de plantage quand des relations sont manquantes
+
 ---
 
 **Date de création** : 2025-01-16  
-**Version** : 1.1 (Mise à jour avec information contextuelle)  
+**Version** : 1.2 (Correction ErrorException relations étudiants)  
 **Auteur** : Claude Code Assistant  
 **Système** : KLASSCI SAAS Educational Management

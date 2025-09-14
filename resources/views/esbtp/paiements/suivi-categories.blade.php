@@ -585,11 +585,11 @@
                             <div class="card-moderne student-card danger">
                                 <div class="student-info">
                                     <div class="student-avatar">
-                                        {{ substr($etudiant['inscription']->etudiant->user->name, 0, 2) }}
+                                        {{ $etudiant['inscription']->etudiant ? substr(($etudiant['inscription']->etudiant->prenoms ?? '') . ' ' . ($etudiant['inscription']->etudiant->nom ?? ''), 0, 2) : 'XX' }}
                                     </div>
                                     <div class="student-details">
-                                        <h6>{{ $etudiant['inscription']->etudiant->user->name }}</h6>
-                                        <p>{{ $etudiant['inscription']->filiere->name }} - {{ $etudiant['inscription']->niveauEtude->name }}</p>
+                                        <h6>{{ $etudiant['inscription']->etudiant ? ($etudiant['inscription']->etudiant->prenoms ?? '') . ' ' . ($etudiant['inscription']->etudiant->nom ?? '') : 'Nom non disponible' }}</h6>
+                                        <p>{{ $etudiant['inscription']->filiere ? $etudiant['inscription']->filiere->name : 'Filière non disponible' }} - {{ $etudiant['inscription']->niveauEtude ? $etudiant['inscription']->niveauEtude->name : 'Niveau non disponible' }}</p>
                                     </div>
                                 </div>
                                 <div class="payment-summary">
@@ -616,11 +616,11 @@
                             <div class="card-moderne student-card warning">
                                 <div class="student-info">
                                     <div class="student-avatar">
-                                        {{ substr($etudiant['inscription']->etudiant->user->name, 0, 2) }}
+                                        {{ $etudiant['inscription']->etudiant ? substr(($etudiant['inscription']->etudiant->prenoms ?? '') . ' ' . ($etudiant['inscription']->etudiant->nom ?? ''), 0, 2) : 'XX' }}
                                     </div>
                                     <div class="student-details">
-                                        <h6>{{ $etudiant['inscription']->etudiant->user->name }}</h6>
-                                        <p>{{ $etudiant['inscription']->filiere->name }} - {{ $etudiant['inscription']->niveauEtude->name }}</p>
+                                        <h6>{{ $etudiant['inscription']->etudiant ? ($etudiant['inscription']->etudiant->prenoms ?? '') . ' ' . ($etudiant['inscription']->etudiant->nom ?? '') : 'Nom non disponible' }}</h6>
+                                        <p>{{ $etudiant['inscription']->filiere ? $etudiant['inscription']->filiere->name : 'Filière non disponible' }} - {{ $etudiant['inscription']->niveauEtude ? $etudiant['inscription']->niveauEtude->name : 'Niveau non disponible' }}</p>
                                     </div>
                                 </div>
                                 <div class="payment-summary">
@@ -647,11 +647,11 @@
                             <div class="card-moderne student-card success">
                                 <div class="student-info">
                                     <div class="student-avatar">
-                                        {{ substr($etudiant['inscription']->etudiant->user->name, 0, 2) }}
+                                        {{ $etudiant['inscription']->etudiant ? substr(($etudiant['inscription']->etudiant->prenoms ?? '') . ' ' . ($etudiant['inscription']->etudiant->nom ?? ''), 0, 2) : 'XX' }}
                                     </div>
                                     <div class="student-details">
-                                        <h6>{{ $etudiant['inscription']->etudiant->user->name }}</h6>
-                                        <p>{{ $etudiant['inscription']->filiere->name }} - {{ $etudiant['inscription']->niveauEtude->name }}</p>
+                                        <h6>{{ $etudiant['inscription']->etudiant ? ($etudiant['inscription']->etudiant->prenoms ?? '') . ' ' . ($etudiant['inscription']->etudiant->nom ?? '') : 'Nom non disponible' }}</h6>
+                                        <p>{{ $etudiant['inscription']->filiere ? $etudiant['inscription']->filiere->name : 'Filière non disponible' }} - {{ $etudiant['inscription']->niveauEtude ? $etudiant['inscription']->niveauEtude->name : 'Niveau non disponible' }}</p>
                                     </div>
                                 </div>
                                 <div class="payment-summary">

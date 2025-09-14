@@ -724,7 +724,7 @@ class ESBTPPaiementController extends Controller
             $anneeId = $anneeEnCours ? $anneeEnCours->id : null;
         }
 
-        // Construire la requête pour les inscriptions actives
+        // Construire la requête pour les inscriptions actives avec toutes les relations nécessaires
         $inscriptionsQuery = \App\Models\ESBTPInscription::with([
             'etudiant.user', 
             'filiere', 
