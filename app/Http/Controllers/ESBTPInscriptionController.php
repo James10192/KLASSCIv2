@@ -157,7 +157,7 @@ class ESBTPInscriptionController extends Controller
         $filieres = ESBTPFiliere::where('is_active', true)->get();
         $niveaux = ESBTPNiveauEtude::where('is_active', true)->get();
         $academicYears = ESBTPAnneeUniversitaire::where('is_active', true)->get();
-        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_active', true)->first();
+        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
         // Renommer les variables pour les utiliser dans le modal
         $anneeUniversitaires = $academicYears;
@@ -351,11 +351,17 @@ class ESBTPInscriptionController extends Controller
             // Récupérer le statut d'affectation depuis le request
             $affectationStatus = $request->input('affectation_status', 'affecté');
 
+            // CORRECTION: Utiliser l'année courante au lieu de l'année de la classe
+            $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+            if (!$anneeCourante) {
+                throw new \Exception("Aucune année universitaire courante définie. Veuillez configurer l'année courante.");
+            }
+
             // Préparer les données d'inscription
             $inscriptionData = [
                 'date_inscription' => $request->date_inscription ?? now()->format('Y-m-d'),
                 'classe_id' => $classe->id,
-                'annee_universitaire_id' => $classe->annee_universitaire_id,
+                'annee_universitaire_id' => $anneeCourante->id, // Utiliser l'année courante
                 'status' => 'en_attente',
                 'filiere_id' => $classe->filiere_id,
                 'niveau_id' => $classe->niveau_etude_id,
@@ -895,16 +901,23 @@ class ESBTPInscriptionController extends Controller
         // Construire la requête pour les inscriptions en attente de validation
         $query = ESBTPInscription::query()
             ->with([
-                'etudiant', 
-                'filiere', 
-                'niveau', 
-                'classe', 
+                'etudiant',
+                'filiere',
+                'niveau',
+                'classe',
                 'anneeUniversitaire',
                 'paiements' => function($q) {
                     $q->where('status', 'validated');
                 }
             ])
-            ->where('status', 'en_attente');
+            // CORRECTION: inclure les inscriptions en cours de validation (pas seulement 'en_attente')
+            ->where(function($q) {
+                $q->where('status', 'en_attente')
+                  ->orWhere(function($subQ) {
+                      $subQ->where('status', 'active')
+                           ->whereIn('workflow_step', ['prospect', 'documents_complets', 'en_validation']);
+                  });
+            });
 
         // Appliquer les filtres
         if ($search) {
@@ -960,39 +973,35 @@ class ESBTPInscriptionController extends Controller
         // Calculer les statistiques (CORRECTION: filtrer par année en cours comme la liste)
         $anneeStatsFilter = $annee ? $annee : ($anneeEnCours ? $anneeEnCours->id : null);
 
-        $stats = [
-            'total_en_attente' => ESBTPInscription::where('status', 'en_attente')
-                ->when($anneeStatsFilter, function($q) use ($anneeStatsFilter) {
-                    $q->where('annee_universitaire_id', $anneeStatsFilter);
-                })->count(),
-            'avec_paiement' => ESBTPInscription::where('status', 'en_attente')
-                ->when($anneeStatsFilter, function($q) use ($anneeStatsFilter) {
-                    $q->where('annee_universitaire_id', $anneeStatsFilter);
+        // Requête de base pour les statistiques (même logique que la liste)
+        $baseStatsQuery = function() use ($anneeStatsFilter) {
+            return ESBTPInscription::where(function($q) {
+                    $q->where('status', 'en_attente')
+                      ->orWhere(function($subQ) {
+                          $subQ->where('status', 'active')
+                               ->whereIn('workflow_step', ['prospect', 'documents_complets', 'en_validation']);
+                      });
                 })
+                ->when($anneeStatsFilter, function($q) use ($anneeStatsFilter) {
+                    $q->where('annee_universitaire_id', $anneeStatsFilter);
+                });
+        };
+
+        $stats = [
+            'total_en_attente' => $baseStatsQuery()->count(),
+            'avec_paiement' => $baseStatsQuery()
                 ->whereHas('paiements', function($q) {
                     $q->where('status', 'validated');
                 })->count(),
-            'sans_paiement' => ESBTPInscription::where('status', 'en_attente')
-                ->when($anneeStatsFilter, function($q) use ($anneeStatsFilter) {
-                    $q->where('annee_universitaire_id', $anneeStatsFilter);
-                })
+            'sans_paiement' => $baseStatsQuery()
                 ->whereDoesntHave('paiements', function($q) {
                     $q->where('status', 'validated');
                 })->count(),
-            'prospects' => ESBTPInscription::where('status', 'en_attente')
-                ->when($anneeStatsFilter, function($q) use ($anneeStatsFilter) {
-                    $q->where('annee_universitaire_id', $anneeStatsFilter);
-                })
+            'prospects' => $baseStatsQuery()
                 ->where('workflow_step', 'prospect')->count(),
-            'documents_complets' => ESBTPInscription::where('status', 'en_attente')
-                ->when($anneeStatsFilter, function($q) use ($anneeStatsFilter) {
-                    $q->where('annee_universitaire_id', $anneeStatsFilter);
-                })
+            'documents_complets' => $baseStatsQuery()
                 ->where('workflow_step', 'documents_complets')->count(),
-            'en_validation' => ESBTPInscription::where('status', 'en_attente')
-                ->when($anneeStatsFilter, function($q) use ($anneeStatsFilter) {
-                    $q->where('annee_universitaire_id', $anneeStatsFilter);
-                })
+            'en_validation' => $baseStatsQuery()
                 ->where('workflow_step', 'en_validation')->count(),
         ];
 
