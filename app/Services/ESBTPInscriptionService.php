@@ -560,7 +560,7 @@ class ESBTPInscriptionService
      * @param array $selectedOptionals Frais optionnels sélectionnés
      * @return array Liste des frais générés
      */
-    private function generateFeesForInscription(ESBTPInscription $inscription, array $selectedOptionals = [])
+    public function generateFeesForInscription(ESBTPInscription $inscription, array $selectedOptionals = [])
     {
         $generatedFees = [];
         
