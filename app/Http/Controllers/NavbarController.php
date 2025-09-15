@@ -99,15 +99,28 @@ class NavbarController extends Controller
         $messages = collect();
 
         if ($user->hasRole('superAdmin') || $user->hasRole('secretaire') || $user->hasRole('coordinateur')) {
-            // Messages pour admin/secrétaire/coordinateur - récupérer les dernières annonces
+            // Messages pour admin/secrétaire/coordinateur - récupérer les annonces qui leur sont destinées
             $messages = ESBTPAnnonce::with('createdBy') // Charger la relation créateur
+                ->where(function ($query) {
+                    // Annonces destinées aux administrateurs (ni étudiants généraux, ni classes, ni étudiants spécifiques)
+                    // Pour l'instant, les administrateurs ne voient que les annonces générales (à adapter selon besoins)
+                    $query->where('type', '!=', 'general')
+                          ->where('type', '!=', 'classe')
+                          ->where('type', '!=', 'etudiant');
+                })
+                ->orWhere(function ($query) {
+                    // Ou bien, inclure toutes les annonces mais avec un système de destinataires pour admin
+                    // Cette partie peut être étendue selon les besoins métier
+                    $query->whereNull('type'); // Annonces sans type spécifique (pour admin)
+                })
                 ->orderBy('created_at', 'desc')
-                ->limit(5)
+                ->limit(10) // Augmenté car le filtrage peut réduire les résultats
                 ->get()
                 ->filter(function ($annonce) use ($user) {
                     // Filtrer les annonces créées par l'utilisateur actuel pour éviter l'auto-notification
                     return !$annonce->created_by || $annonce->created_by != $user->id;
                 })
+                ->take(5) // Limiter à 5 après filtrage
                 ->map(function ($annonce) {
                     return [
                         'id' => $annonce->id,
@@ -121,8 +134,34 @@ class NavbarController extends Controller
                     ];
                 });
         } elseif ($user->hasRole('etudiant')) {
-            // Messages pour étudiant - récupérer les annonces publiques
-            $messages = ESBTPAnnonce::with('createdBy') // Charger la relation créateur
+            // Messages pour étudiant - récupérer seulement les annonces qui leur sont destinées
+            $etudiant = ESBTPEtudiant::where('user_id', $user->id)->first();
+
+            $messages = ESBTPAnnonce::with(['createdBy', 'classes', 'etudiants']) // Charger les relations nécessaires
+                ->where(function ($query) use ($etudiant) {
+                    // Annonces générales pour tous les étudiants
+                    $query->where('type', 'general');
+
+                    // Si l'étudiant existe, ajouter les annonces pour sa classe
+                    if ($etudiant && $etudiant->classe_active) {
+                        $query->orWhere(function ($subQuery) use ($etudiant) {
+                            $subQuery->where('type', 'classe')
+                                     ->whereHas('classes', function ($classQuery) use ($etudiant) {
+                                         $classQuery->where('esbtp_classes.id', $etudiant->classe_active->id);
+                                     });
+                        });
+                    }
+
+                    // Annonces destinées spécifiquement à cet étudiant
+                    if ($etudiant) {
+                        $query->orWhere(function ($subQuery) use ($etudiant) {
+                            $subQuery->where('type', 'etudiant')
+                                     ->whereHas('etudiants', function ($etudiantQuery) use ($etudiant) {
+                                         $etudiantQuery->where('esbtp_etudiants.id', $etudiant->id);
+                                     });
+                        });
+                    }
+                })
                 ->orderBy('created_at', 'desc')
                 ->limit(5)
                 ->get()
@@ -139,8 +178,19 @@ class NavbarController extends Controller
                     ];
                 });
         } elseif ($user->hasRole('teacher')) {
-            // Messages pour enseignant - récupérer les annonces
+            // Messages pour enseignant - récupérer les annonces qui leur sont destinées
             $messages = ESBTPAnnonce::with('createdBy') // Charger la relation créateur
+                ->where(function ($query) {
+                    // Les enseignants ne voient que les annonces destinées aux administrateurs/personnel
+                    // (pas celles pour étudiants spécifiquement)
+                    $query->where('type', '!=', 'general')
+                          ->where('type', '!=', 'classe')
+                          ->where('type', '!=', 'etudiant');
+                })
+                ->orWhere(function ($query) {
+                    // Ou annonces générales pour le personnel
+                    $query->whereNull('type'); // Annonces sans type spécifique
+                })
                 ->orderBy('created_at', 'desc')
                 ->limit(5)
                 ->get()
