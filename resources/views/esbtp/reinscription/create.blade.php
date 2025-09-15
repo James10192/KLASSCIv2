@@ -36,7 +36,7 @@
         <div class="dashboard-header">
             <div class="header-left">
                 <h1>Finaliser la Réinscription</h1>
-                <p class="header-subtitle">{{ $analyse['etudiant']->prenoms }} {{ $analyse['etudiant']->nom }} - {{ $anneeAcademique }}</p>
+                <p class="header-subtitle">{{ $analyse['etudiant']->prenoms }} {{ $analyse['etudiant']->nom }} - De {{ $anneeEtudiantActuelle }} vers {{ $anneeDestinationName }}</p>
             </div>
             <div class="header-actions">
                 <a href="{{ route('esbtp.reinscription.show', $analyse['etudiant']->id) }}?annee_academique={{ $anneeAcademique }}" class="btn-acasi secondary">
@@ -188,7 +188,7 @@
                         </div>
                         <div class="col-md-6">
                             <div class="form-group-moderne">
-                                <label for="nouvelle_classe_id" class="form-label-moderne">Nouvelle Classe pour {{ date('Y') + 1 }} *</label>
+                                <label for="nouvelle_classe_id" class="form-label-moderne">Nouvelle Classe pour {{ $anneeDestinationName }} *</label>
                                 <select name="nouvelle_classe_id" id="nouvelle_classe_id" class="form-select-moderne" required>
                                     <option value="">Sélectionnez d'abord une décision...</option>
                                 </select>
@@ -205,7 +205,7 @@
                         <div class="main-card-header">
                             <div class="main-card-title">
                                 <i class="fas fa-money-bill-wave"></i>
-                                Configuration des Frais pour {{ date('Y') + 1 }}
+                                Configuration des Frais pour {{ $anneeDestinationName }}
                             </div>
                         </div>
                         <div class="p-lg">

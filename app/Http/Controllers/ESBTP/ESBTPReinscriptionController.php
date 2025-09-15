@@ -303,12 +303,13 @@ class ESBTPReinscriptionController extends Controller
         $anneeAcademique = $request->get('annee_academique', date('Y') . '-' . (date('Y') + 1));
 
         try {
-            // Récupérer l'analyse de l'étudiant (même logique que show)
+            // Récupérer l'inscription la plus récente de l'étudiant avec classe
             $inscription = \App\Models\ESBTPInscription::whereNotNull('classe_id')
                 ->whereHas('etudiant', function($query) use ($etudiantId) {
                     $query->where('id', $etudiantId);
                 })
-                ->with(['etudiant', 'classe.niveau', 'classe.filiere'])
+                ->with(['etudiant', 'classe.niveau', 'classe.filiere', 'anneeUniversitaire'])
+                ->orderBy('created_at', 'desc')
                 ->first();
 
             if (!$inscription) {
@@ -366,6 +367,11 @@ class ESBTPReinscriptionController extends Controller
 
             $analyse['inscription'] = $inscription;
 
+            // Déterminer les années pour l'affichage cohérent
+            $anneeEtudiantActuelle = $inscription->anneeUniversitaire->name ?? 'N/A'; // Année de l'inscription actuelle de l'étudiant
+            $anneeDestination = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+            $anneeDestinationName = $anneeDestination ? $anneeDestination->name : $anneeAcademique;
+
             return view('esbtp.reinscription.create', compact(
                 'analyse',
                 'classesParDecision',
@@ -373,7 +379,9 @@ class ESBTPReinscriptionController extends Controller
                 'anneeAcademique',
                 'fraisNonSoldes',
                 'isSuperAdmin',
-                'anneeUniversitairesFutures'
+                'anneeUniversitairesFutures',
+                'anneeEtudiantActuelle',
+                'anneeDestinationName'
             ));
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Erreur lors de l\'analyse: ' . $e->getMessage()]);

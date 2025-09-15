@@ -63,7 +63,35 @@ $inscriptions = ESBTPInscription::where('annee_universitaire_id', $anneePreceden
 - ABOUANOU KOUAME maintenant dans "valides" (1 étudiant)
 - "redoublement" réduit de 2452 à 2451 étudiants
 
-### 3. Problème ENUM résolu précédemment
+### 3. Problème : Années universitaires incohérentes dans "finaliser reinscription"
+**Symptôme** : Dans la page de finalisation de réinscription, les années affichées étaient calculées automatiquement (année courante + 1) au lieu d'être cohérentes avec la logique N-1 vers N.
+
+**Cause racine** : Le template affichait `date('Y') + 1` (2026) au lieu de l'année de destination réelle (2025-2026), et ne montrait pas l'année d'origine de l'étudiant.
+
+**Solution appliquée** :
+
+**A. Modification du contrôleur** :
+- **Fichier** : `app/Http/Controllers/ESBTP/ESBTPReinscriptionController.php`
+- **Méthode** : `create()`
+- **Ajout** : Calcul des années réelles de l'étudiant et de destination
+
+```php
+// Déterminer les années pour l'affichage cohérent
+$anneeEtudiantActuelle = $inscription->anneeUniversitaire->name ?? 'N/A'; // Année de l'inscription actuelle de l'étudiant
+$anneeDestination = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+$anneeDestinationName = $anneeDestination ? $anneeDestination->name : $anneeAcademique;
+```
+
+**B. Modification du template** :
+- **Fichier** : `resources/views/esbtp/reinscription/create.blade.php`
+- **Changements** :
+  - Header : "De 2024-2025 vers 2025-2026" au lieu de "2025-2026"
+  - "Nouvelle Classe pour 2025-2026" au lieu de "Nouvelle Classe pour 2026"
+  - "Configuration des Frais pour 2025-2026" au lieu de "Configuration des Frais pour 2026"
+
+**Résultat** : Cohérence visuelle complète entre la logique N-1 et l'interface utilisateur.
+
+### 4. Problème ENUM résolu précédemment
 **Symptôme** : Erreur SQL "Data truncated for column 'status' at row 1" avec valeur 'redoublant'
 **Solution** : Modification du retour de `getStatutFromDecision()` de 'redoublant' vers 'actif'
 
@@ -81,6 +109,7 @@ $inscriptions = ESBTPInscription::where('annee_universitaire_id', $anneePreceden
 3. ✅ Exclut les étudiants déjà réinscrits des catégories d'attente
 4. ✅ Place les étudiants réinscrits dans la catégorie "valides"
 5. ✅ Ignore les étudiants d'années plus anciennes
+6. ✅ Interface utilisateur cohérente montrant "De 2024-2025 vers 2025-2026"
 
 ## Tests de validation
 - **Script de test** : `dev-scripts/test_reinscription_fix.php`
