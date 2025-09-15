@@ -205,7 +205,7 @@ class ESBTPPaiementController extends Controller
                     ->first();
 
                 if ($configuration) {
-                    $expectedAmount = $configuration->amount;
+                    $expectedAmount = $configuration->getMontantByStatus($inscription->affectation_status ?? 'affecté');
                 } else {
                     // Utiliser le montant par défaut si pas de configuration spécifique
                     $expectedAmount = $category->default_amount ?? 0;
@@ -838,7 +838,7 @@ class ESBTPPaiementController extends Controller
                     ->where('niveau_id', $inscription->niveau_id)
                     ->where('is_active', true)
                     ->first();
-                $montantAttendu = $configuration ? $configuration->amount : $category->default_amount;
+                $montantAttendu = $configuration ? $configuration->getMontantByStatus($inscription->affectation_status ?? 'affecté') : $category->default_amount;
             } else {
                 // Service optionnel : vérifier s'il y a une souscription active
                 $subscription = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
@@ -921,7 +921,7 @@ class ESBTPPaiementController extends Controller
                         ->where('filiere_id', $inscription->filiere_id)
                         ->where('niveau_id', $inscription->niveau_id)
                         ->first();
-                    $montantAttendu = $rule ? $rule->amount : $category->default_amount;
+                    $montantAttendu = $rule ? $rule->getMontantByStatus($inscription->affectation_status ?? 'affecté') : $category->default_amount;
                 } else {
                     // Service optionnel : vérifier s'il y a une souscription active
                     $subscription = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
@@ -1002,7 +1002,7 @@ class ESBTPPaiementController extends Controller
                         ->where('filiere_id', $inscription->filiere_id)
                         ->where('niveau_id', $inscription->niveau_id)
                         ->first();
-                    $montantAttendu = $rule ? $rule->amount : $category->default_amount;
+                    $montantAttendu = $rule ? $rule->getMontantByStatus($inscription->affectation_status ?? 'affecté') : $category->default_amount;
                 } else {
                     // Service optionnel : vérifier s'il y a une souscription active
                     $subscription = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
@@ -1110,7 +1110,7 @@ class ESBTPPaiementController extends Controller
                 $estConcerne = true;
                 $configKey = $category->id . '_' . $inscription->filiere_id . '_' . $inscription->niveau_id;
                 $configuration = $configurations->get($configKey, collect())->first();
-                $montantAttendu = $configuration ? $configuration->amount : $category->default_amount;
+                $montantAttendu = $configuration ? $configuration->getMontantByStatus($inscription->affectation_status ?? 'affecté') : $category->default_amount;
             } else {
                 // Service optionnel : vérifier s'il y a une souscription active
                 $inscriptionSubscriptions = $subscriptions->get($inscription->id, collect());
@@ -1185,7 +1185,7 @@ class ESBTPPaiementController extends Controller
                     $estConcerne = true;
                     $configKey = $category->id . '_' . $inscription->filiere_id . '_' . $inscription->niveau_id;
                     $configuration = $configurations->get($configKey, collect())->first();
-                    $montantAttendu = $configuration ? $configuration->amount : $category->default_amount;
+                    $montantAttendu = $configuration ? $configuration->getMontantByStatus($inscription->affectation_status ?? 'affecté') : $category->default_amount;
                 } else {
                     // Service optionnel : vérifier s'il y a une souscription active
                     $inscriptionSubscriptions = $subscriptions->get($inscription->id, collect());
@@ -1258,7 +1258,7 @@ class ESBTPPaiementController extends Controller
                     $estConcerne = true;
                     $configKey = $category->id . '_' . $inscription->filiere_id . '_' . $inscription->niveau_id;
                     $configuration = $configurations->get($configKey, collect())->first();
-                    $montantAttendu = $configuration ? $configuration->amount : $category->default_amount;
+                    $montantAttendu = $configuration ? $configuration->getMontantByStatus($inscription->affectation_status ?? 'affecté') : $category->default_amount;
                 } else {
                     // Service optionnel : vérifier s'il y a une souscription active
                     $inscriptionSubscriptions = $subscriptions->get($inscription->id, collect());
