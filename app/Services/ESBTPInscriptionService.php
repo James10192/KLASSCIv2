@@ -29,9 +29,10 @@ class ESBTPInscriptionService
      * @param array|null $paiementData Données de paiement initial [optionnel]
      * @param int $userId ID de l'utilisateur qui crée l'inscription
      * @param array $selectedOptionals Additional options for FeeAssignmentService
+     * @param string $affectationStatus Statut d'affectation pour le calcul des frais
      * @return ESBTPInscription
      */
-    public function createInscription(array $etudiantData, array $inscriptionData, array $parentsData = [], ?array $paiementData = null, int $userId = null, array $selectedOptionals = [])
+    public function createInscription(array $etudiantData, array $inscriptionData, array $parentsData = [], ?array $paiementData = null, int $userId = null, array $selectedOptionals = [], string $affectationStatus = 'affecté')
     {
         try {
             DB::beginTransaction();
@@ -121,7 +122,7 @@ class ESBTPInscriptionService
             $inscription = ESBTPInscription::create($inscriptionData);
 
             // 6bis. Générer automatiquement les frais selon la nouvelle architecture
-            $generatedFees = $this->generateFeesForInscription($inscription, $selectedOptionals);
+            $generatedFees = $this->generateFeesForInscription($inscription, $selectedOptionals, $affectationStatus);
             Log::info('Frais générés automatiquement pour l\'inscription', [
                 'inscription_id' => $inscription->id,
                 'fees_count' => count($generatedFees),
@@ -556,12 +557,13 @@ class ESBTPInscriptionService
 
     /**
      * Générer les frais pour une inscription selon la nouvelle architecture
-     * 
+     *
      * @param ESBTPInscription $inscription
      * @param array $selectedOptionals Frais optionnels sélectionnés
+     * @param string $affectationStatus Statut d'affectation pour le calcul des frais
      * @return array Liste des frais générés
      */
-    public function generateFeesForInscription(ESBTPInscription $inscription, array $selectedOptionals = [])
+    public function generateFeesForInscription(ESBTPInscription $inscription, array $selectedOptionals = [], string $affectationStatus = 'affecté')
     {
         $generatedFees = [];
         
@@ -586,7 +588,15 @@ class ESBTPInscriptionService
                     ->where('is_active', true)
                     ->first();
 
-                $amount = $configuration ? $configuration->amount : $category->default_amount;
+                // Utiliser getMontantByStatus pour prendre en compte le statut d'affectation
+                $amount = $configuration ? $configuration->getMontantByStatus($affectationStatus) : $category->default_amount;
+
+                Log::info('Calcul frais obligatoire avec statut d\'affectation', [
+                    'category' => $category->name,
+                    'affectation_status' => $affectationStatus,
+                    'amount' => $amount,
+                    'has_configuration' => $configuration !== null
+                ]);
 
                 $generatedFees[] = [
                     'id' => 'mandatory_' . $category->id,

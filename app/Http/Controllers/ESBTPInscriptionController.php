@@ -348,6 +348,9 @@ class ESBTPInscriptionController extends Controller
                 $etudiantData['photo'] = $this->handlePhotoUpload($request->file('photo'));
             }
 
+            // Récupérer le statut d'affectation depuis le request
+            $affectationStatus = $request->input('affectation_status', 'affecté');
+
             // Préparer les données d'inscription
             $inscriptionData = [
                 'date_inscription' => $request->date_inscription ?? now()->format('Y-m-d'),
@@ -359,6 +362,7 @@ class ESBTPInscriptionController extends Controller
                 'type_inscription' => 'première_inscription',
                 'montant_scolarite' => $request->montant_scolarite ?? 0,
                 'frais_inscription' => $request->frais_inscription ?? 0,
+                'affectation_status' => $affectationStatus, // Sauvegarder le statut d'affectation
             ];
 
             // Si la classe a des relations filière et niveau, les ajouter aux données de l'étudiant
@@ -429,7 +433,8 @@ class ESBTPInscriptionController extends Controller
                 $parentsData,
                 null, // Pas de paiement pour l'instant
                 auth()->id(),
-                $selectedOptionals // Frais optionnels sélectionnés selon la nouvelle architecture
+                $selectedOptionals, // Frais optionnels sélectionnés selon la nouvelle architecture
+                $affectationStatus // Statut d'affectation pour calculer les bons montants
             );
 
             DB::commit();
@@ -491,18 +496,22 @@ class ESBTPInscriptionController extends Controller
         
         $feeCategoriesWithRules = [];
         
+        // Récupérer le statut d'affectation de l'inscription
+        $affectationStatus = $inscription->affectation_status ?? 'affecté';
+
         // Traiter les frais obligatoires (tous affichés)
         foreach ($mandatoryCategories as $category) {
             $rule = $category->getApplicableRule($inscription->filiere_id, $inscription->niveau_id, $inscription->annee_universitaire_id);
-            
+
             // Calculer les paiements pour cette catégorie
             $paiements = $inscription->paiements()
                 ->where('frais_category_id', $category->id)
                 ->where('status', 'validé')
                 ->get();
-            
+
             $totalPaye = $paiements->sum('montant');
-            $montantAttendu = $rule ? $rule->amount : $category->default_amount;
+            // Utiliser getMontantByStatus pour prendre en compte le statut d'affectation
+            $montantAttendu = $rule ? $rule->getMontantByStatus($affectationStatus) : $category->default_amount;
             $solde = $montantAttendu - $totalPaye;
             
             $feeCategoriesWithRules[] = [
