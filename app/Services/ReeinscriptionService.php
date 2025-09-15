@@ -261,7 +261,28 @@ class ReeinscriptionService
                 throw new \Exception("Aucune année universitaire active trouvée");
             }
 
-            // 3. Créer nouvelle inscription
+            // 3. Désactiver toute inscription active existante pour cet étudiant dans cette année
+            $inscriptionExistante = \App\Models\ESBTPInscription::where('etudiant_id', $etudiantId)
+                ->where('annee_universitaire_id', $nouvelleAnnee->id)
+                ->where('status', 'active')
+                ->first();
+
+            if ($inscriptionExistante) {
+                $inscriptionExistante->update([
+                    'status' => 'terminée',
+                    'observations' => ($inscriptionExistante->observations ? $inscriptionExistante->observations . "\n" : '') .
+                                    "Inscription terminée automatiquement lors de la réinscription le " . now()->format('d/m/Y H:i'),
+                    'updated_by' => auth()->id()
+                ]);
+
+                \Log::info('Inscription existante désactivée pour réinscription', [
+                    'ancienne_inscription_id' => $inscriptionExistante->id,
+                    'etudiant_id' => $etudiantId,
+                    'annee_universitaire_id' => $nouvelleAnnee->id
+                ]);
+            }
+
+            // 4. Créer nouvelle inscription
             $nouvelleInscription = \App\Models\ESBTPInscription::create([
                 'etudiant_id' => $etudiantId,
                 'annee_universitaire_id' => $nouvelleAnnee->id,
@@ -279,23 +300,23 @@ class ReeinscriptionService
                 'created_by' => auth()->id(),
                 'numero_recu' => $this->genererNumeroRecu($nouvelleAnnee, $nouvelleClasse)
             ]);
-            
-            // 4. Générer nouveaux frais via service existant
+
+            // 5. Générer nouveaux frais via service existant
             $inscriptionService = app(\App\Services\ESBTPInscriptionService::class);
             $generatedFees = $inscriptionService->generateFeesForInscription(
-                $nouvelleInscription, 
+                $nouvelleInscription,
                 $selectedOptionals
             );
-            
-            // 5. Créer facture automatique
+
+            // 6. Créer facture automatique
             $this->creerFactureReinscription($nouvelleInscription, $generatedFees);
-            
-            // 6. Mise à jour statut étudiant
+
+            // 7. Mise à jour statut étudiant
             $etudiant->update([
                 'statut' => $this->getStatutFromDecision($decision)
             ]);
-            
-            // 7. Historique complet
+
+            // 8. Historique complet
             $this->sauvegarderHistoriqueComplet($etudiant, $decision, $observations, $nouvelleInscription, $generatedFees);
             
             \DB::commit();
