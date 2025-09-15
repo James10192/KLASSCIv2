@@ -98,14 +98,18 @@ class ESBTPAnnonceController extends Controller
 
         DB::beginTransaction();
         try {
+            // Déterminer le statut de publication basé sur l'action
+            $action = $request->get('action', 'save_draft');
+            $is_published = ($action === 'publish');
+
             $annonce = new ESBTPAnnonce();
             $annonce->titre = $request->titre;
             $annonce->contenu = $request->contenu;
-            $annonce->date_publication = $request->date_publication ?? now();
+            $annonce->date_publication = $is_published ? now() : $request->date_publication;
             $annonce->date_expiration = $request->date_expiration;
             $annonce->type = $request->type;
             $annonce->priorite = $request->priorite;
-            $annonce->is_published = $request->get('is_published') == '1';
+            $annonce->is_published = $is_published;
             $annonce->created_by = Auth::id();
 
             // Handle file upload
@@ -180,6 +184,12 @@ class ESBTPAnnonceController extends Controller
      */
     public function edit(ESBTPAnnonce $annonce)
     {
+        // Vérifier si l'annonce est expirée
+        if ($annonce->isExpired()) {
+            return redirect()->route('esbtp.annonces.show', $annonce)
+                ->with('error', 'Cette annonce est expirée et ne peut plus être modifiée.');
+        }
+
         // Vérification règle 15 minutes
         if (!$this->canEditAnnonce($annonce)) {
             $publishedAt = $annonce->created_at;
@@ -215,6 +225,12 @@ class ESBTPAnnonceController extends Controller
      */
     public function update(Request $request, ESBTPAnnonce $annonce)
     {
+        // Vérifier si l'annonce est expirée
+        if ($annonce->isExpired()) {
+            return redirect()->route('esbtp.annonces.show', $annonce)
+                ->with('error', 'Cette annonce est expirée et ne peut plus être modifiée.');
+        }
+
         // Double vérification règle 15 minutes
         if (!$this->canEditAnnonce($annonce)) {
             return redirect()->route('esbtp.annonces.show', $annonce)
@@ -246,13 +262,23 @@ class ESBTPAnnonceController extends Controller
         try {
             $wasPublished = $annonce->is_published;
 
+            // Déterminer le statut de publication basé sur l'action
+            $action = $request->get('action', 'update');
+            $is_published = false;
+
+            if ($action === 'publish') {
+                $is_published = true;
+            } elseif ($action === 'update' && $wasPublished) {
+                $is_published = true; // Garder le statut publié si déjà publié
+            }
+
             $annonce->titre = $request->titre;
             $annonce->contenu = $request->contenu;
-            $annonce->date_publication = $request->date_publication ?? $annonce->date_publication ?? now();
+            $annonce->date_publication = $is_published && !$wasPublished ? now() : ($request->date_publication ?? $annonce->date_publication ?? now());
             $annonce->date_expiration = $request->date_expiration;
             $annonce->type = $request->type;
             $annonce->priorite = $request->priorite;
-            $annonce->is_published = $request->get('is_published') == '1';
+            $annonce->is_published = $is_published;
             $annonce->updated_by = Auth::id();
 
             // Handle file upload

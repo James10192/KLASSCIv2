@@ -705,17 +705,13 @@
                             </div>
                         </div>
                         <div class="main-card-body">
-                            <div class="form-group">
-                                <label for="status" class="form-label">Statut de publication <span class="required">*</span></label>
-                                <select name="is_published" id="status" class="form-select-single @error('is_published') error @enderror" required>
-                                    <option value="0" {{ old('is_published') == '0' ? 'selected' : '' }}>Brouillon</option>
-                                    <option value="1" {{ old('is_published') == '1' ? 'selected' : '' }}>Publiée</option>
-                                </select>
-                                @error('is_published')
-                                    <div class="error-message">{{ $message }}</div>
-                                @enderror
-                                <div class="form-help">Les annonces en brouillon ne sont pas visibles par les destinataires.</div>
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Mode brouillon automatique :</strong> Votre annonce sera sauvegardée en brouillon. Cliquez sur "Envoyer l'annonce" pour la publier aux destinataires.
                             </div>
+
+                            <!-- Champ caché pour définir le statut en brouillon par défaut -->
+                            <input type="hidden" name="is_published" value="0">
 
                             <div class="form-group">
                                 <label for="date_expiration" class="form-label">Date d'expiration <span class="required">*</span></label>
@@ -745,10 +741,13 @@
                     <div class="main-card mb-4">
                         <div class="main-card-body">
                             <div class="form-actions">
-                                <button type="submit" class="btn-acasi primary">
-                                    <i class="fas fa-save"></i>Enregistrer l'annonce
+                                <button type="submit" name="action" value="save_draft" class="btn-acasi secondary me-2">
+                                    <i class="fas fa-save"></i>Sauvegarder en brouillon
                                 </button>
-                                <button type="reset" class="btn-acasi secondary">
+                                <button type="submit" name="action" value="publish" class="btn-acasi primary">
+                                    <i class="fas fa-paper-plane"></i>Envoyer l'annonce
+                                </button>
+                                <button type="reset" class="btn-acasi outline ms-2">
                                     <i class="fas fa-undo"></i>Réinitialiser
                                 </button>
                             </div>

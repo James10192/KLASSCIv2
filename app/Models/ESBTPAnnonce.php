@@ -190,4 +190,25 @@ class ESBTPAnnonce extends Model
             && $this->date_publication <= $now
             && ($this->date_expiration === null || $this->date_expiration >= $now);
     }
+
+    /**
+     * Détermine si l'annonce est expirée.
+     *
+     * @return bool
+     */
+    public function isExpired()
+    {
+        return $this->date_expiration && $this->date_expiration < now();
+    }
+
+    /**
+     * Détermine si l'annonce peut être modifiée.
+     * Une annonce ne peut plus être modifiée si elle est expirée.
+     *
+     * @return bool
+     */
+    public function canBeEdited()
+    {
+        return !$this->isExpired();
+    }
 }

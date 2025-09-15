@@ -108,6 +108,17 @@
         color: var(--neutral);
     }
 
+    .status-badge.expired {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+
     .type-badge {
         padding: var(--space-xs) var(--space-sm);
         border-radius: var(--radius-small);
@@ -445,10 +456,17 @@
                 </div>
 
                 <!-- Badges de statut -->
-                <span class="status-badge {{ $annonce->is_published ? 'published' : 'draft' }}">
-                    <i class="fas fa-{{ $annonce->is_published ? 'check' : 'edit' }}"></i>
-                    {{ $annonce->is_published ? 'Publiée' : 'Brouillon' }}
-                </span>
+                @if($annonce->isExpired())
+                    <span class="status-badge expired">
+                        <i class="fas fa-clock"></i>
+                        Expirée
+                    </span>
+                @else
+                    <span class="status-badge {{ $annonce->is_published ? 'published' : 'draft' }}">
+                        <i class="fas fa-{{ $annonce->is_published ? 'check' : 'edit' }}"></i>
+                        {{ $annonce->is_published ? 'Publiée' : 'Brouillon' }}
+                    </span>
+                @endif
 
                 <span class="priority-badge {{ $annonce->priorite == 2 ? 'urgent' : ($annonce->priorite == 1 ? 'important' : 'normal') }}">
                     <i class="fas fa-{{ $annonce->priorite == 2 ? 'exclamation-triangle' : ($annonce->priorite == 1 ? 'exclamation-circle' : 'info-circle') }}"></i>

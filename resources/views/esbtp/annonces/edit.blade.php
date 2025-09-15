@@ -766,17 +766,20 @@
                             </div>
                         </div>
                         <div class="main-card-body">
-                            <div class="form-group">
-                                <label for="status" class="form-label">Statut de publication <span class="required">*</span></label>
-                                <select name="is_published" id="status" class="form-select-single @error('is_published') error @enderror" required>
-                                    <option value="0" {{ old('is_published', $annonce->is_published ? '1' : '0') == '0' ? 'selected' : '' }}>Brouillon</option>
-                                    <option value="1" {{ old('is_published', $annonce->is_published ? '1' : '0') == '1' ? 'selected' : '' }}>Publiée</option>
-                                </select>
-                                @error('is_published')
-                                    <div class="error-message">{{ $message }}</div>
-                                @enderror
-                                <div class="form-help">Les annonces en brouillon ne sont pas visibles par les destinataires.</div>
-                            </div>
+                            @if($annonce->is_published)
+                                <div class="alert alert-success">
+                                    <i class="fas fa-check-circle me-2"></i>
+                                    <strong>Annonce publiée</strong> - Cette annonce est actuellement visible par les destinataires.
+                                </div>
+                            @else
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-clock me-2"></i>
+                                    <strong>Brouillon</strong> - Cette annonce n'est pas encore visible par les destinataires.
+                                </div>
+                            @endif
+
+                            <!-- Champ caché pour maintenir le statut actuel -->
+                            <input type="hidden" name="current_status" value="{{ $annonce->is_published ? '1' : '0' }}">
 
                             <div class="form-group">
                                 <label for="date_expiration" class="form-label">Date d'expiration <span class="required">*</span></label>
@@ -806,10 +809,19 @@
                     <div class="main-card mb-4">
                         <div class="main-card-body">
                             <div class="form-actions">
-                                <button type="submit" class="btn-acasi primary">
-                                    <i class="fas fa-save"></i>Enregistrer les modifications
-                                </button>
-                                <a href="{{ route('esbtp.annonces.show', $annonce) }}" class="btn-acasi secondary">
+                                @if($annonce->is_published)
+                                    <button type="submit" name="action" value="update" class="btn-acasi primary">
+                                        <i class="fas fa-save"></i>Enregistrer les modifications
+                                    </button>
+                                @else
+                                    <button type="submit" name="action" value="save_draft" class="btn-acasi secondary me-2">
+                                        <i class="fas fa-save"></i>Sauvegarder en brouillon
+                                    </button>
+                                    <button type="submit" name="action" value="publish" class="btn-acasi primary">
+                                        <i class="fas fa-paper-plane"></i>Envoyer l'annonce
+                                    </button>
+                                @endif
+                                <a href="{{ route('esbtp.annonces.show', $annonce) }}" class="btn-acasi outline ms-2">
                                     <i class="fas fa-times"></i>Annuler
                                 </a>
                             </div>
