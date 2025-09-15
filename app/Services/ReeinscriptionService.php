@@ -97,16 +97,34 @@ class ReeinscriptionService
 
     public function getEtudiantsParDecision($anneeAcademique)
     {
-        // Récupérer l'année académique courante (is_current = true)
-        $anneeUniversitaire = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
-        
-        // Récupérer les étudiants via leurs inscriptions validées - FILTRÉS PAR ANNÉE COURANTE
+        // CORRECTION: Pour la réinscription, nous devons analyser les étudiants de l'année PRÉCÉDENTE
+        // et non de l'année courante. Pour réinscrire vers 2025-2026, on analyse 2024-2025
+        $anneeUniversitaireCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        if (!$anneeUniversitaireCourante) {
+            throw new \Exception("Aucune année universitaire courante définie");
+        }
+
+        // Trouver l'année précédente (année N-1)
+        $anneePrecedente = \App\Models\ESBTPAnneeUniversitaire::where('end_date', '<', $anneeUniversitaireCourante->start_date)
+            ->orderBy('end_date', 'desc')
+            ->first();
+
+        if (!$anneePrecedente) {
+            throw new \Exception("Aucune année universitaire précédente trouvée pour l'analyse de réinscription");
+        }
+
+        \Log::info("Analyse de réinscription", [
+            'annee_courante' => $anneeUniversitaireCourante->name,
+            'annee_precedente_analysee' => $anneePrecedente->name,
+            'pour_reinscription_vers' => $anneeAcademique
+        ]);
+
+        // Récupérer les étudiants via leurs inscriptions de l'ANNÉE PRÉCÉDENTE
         $inscriptions = \App\Models\ESBTPInscription::with(['etudiant', 'classe.niveau', 'classe.filiere'])
             ->whereNotNull('classe_id')
             ->whereNotNull('etudiant_id')
-            ->when($anneeUniversitaire, function($query) use ($anneeUniversitaire) {
-                return $query->where('annee_universitaire_id', $anneeUniversitaire->id);
-            })
+            ->where('annee_universitaire_id', $anneePrecedente->id)
             ->get();
         
         $resultat = [
@@ -141,18 +159,28 @@ class ReeinscriptionService
             }
         }
 
-        // Ajouter les étudiants sans inscription validée dans les erreurs - FILTRÉS PAR ANNÉE COURANTE
-        $etudiantsSansInscription = ESBTPEtudiant::whereDoesntHave('inscriptions', function($query) use ($anneeUniversitaire) {
-            $query->whereNotNull('classe_id')
-                  ->when($anneeUniversitaire, function($subQuery) use ($anneeUniversitaire) {
-                      return $subQuery->where('annee_universitaire_id', $anneeUniversitaire->id);
-                  });
-        })->get();
-        
-        foreach ($etudiantsSansInscription as $etudiant) {
+        // CORRECTION: Pour les "non validés", chercher les étudiants de l'année précédente qui n'ont pas
+        // encore été réinscrits dans l'année courante (et non pas TOUS les étudiants sans inscription courante)
+        $etudiantsNonReinscritsDeMêmePeriode = ESBTPEtudiant::whereHas('inscriptions', function($query) use ($anneePrecedente) {
+                // Étudiants qui ont une inscription dans l'année précédente
+                $query->where('annee_universitaire_id', $anneePrecedente->id)
+                      ->whereNotNull('classe_id');
+            })
+            ->whereDoesntHave('inscriptions', function($query) use ($anneeUniversitaireCourante) {
+                // Mais qui n'ont pas d'inscription dans l'année courante
+                $query->where('annee_universitaire_id', $anneeUniversitaireCourante->id);
+            })
+            // Exclure les étudiants déjà traités dans les analyses ci-dessus
+            ->whereNotIn('id', collect($resultat['passages'])->pluck('etudiant.id')
+                                ->merge(collect($resultat['rattrapages'])->pluck('etudiant.id'))
+                                ->merge(collect($resultat['redoublements'])->pluck('etudiant.id'))
+                                ->filter())
+            ->get();
+
+        foreach ($etudiantsNonReinscritsDeMêmePeriode as $etudiant) {
             $resultat['errors'][] = [
                 'etudiant' => $etudiant,
-                'error' => 'Inscription en cours - Non encore validée'
+                'error' => 'Non encore réinscrit pour ' . $anneeUniversitaireCourante->name
             ];
         }
 
@@ -164,63 +192,74 @@ class ReeinscriptionService
      */
     public function getStatistiquesReinscription($anneeAcademique)
     {
-        // Récupérer l'année académique courante (is_current = true)
-        $anneeUniversitaire = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
-        
-        $statistiques = [
-            'passages' => 0,
-            'rattrapages' => 0,
-            'redoublements' => 0,
-            'valides' => 0,
-            'abandons_annee' => 0,
-            'abandons_ecole' => 0,
-            'errors' => 0
-        ];
-        
-        if (!$anneeUniversitaire) {
+        // CORRECTION: Utiliser la logique corrigée consistante avec getEtudiantsParDecision
+        try {
+            $resultats = $this->getEtudiantsParDecision($anneeAcademique);
+
+            $statistiques = [
+                'passages' => count($resultats['passages'] ?? []),
+                'rattrapages' => count($resultats['rattrapages'] ?? []),
+                'redoublements' => count($resultats['redoublements'] ?? []),
+                'errors' => count($resultats['errors'] ?? []),
+                'valides' => 0,
+                'abandons_annee' => 0,
+                'abandons_ecole' => 0
+            ];
+
+            // Récupérer l'année courante pour les autres statistiques
+            $anneeUniversitaireCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+            if ($anneeUniversitaireCourante) {
+                // Compter les réinscriptions validées dans l'année courante
+                $statistiques['valides'] = \App\Models\ESBTPInscription::where('type_inscription', 'reinscription')
+                    ->where('annee_universitaire_id', $anneeUniversitaireCourante->id)
+                    ->where('status', 'active')
+                    ->count();
+
+                // Compter les abandons (basés sur l'année précédente analysée)
+                $anneePrecedente = \App\Models\ESBTPAnneeUniversitaire::where('end_date', '<', $anneeUniversitaireCourante->start_date)
+                    ->orderBy('end_date', 'desc')
+                    ->first();
+
+                if ($anneePrecedente) {
+                    $statistiques['abandons_annee'] = ESBTPEtudiant::where('statut', 'abandon')
+                        ->where(function($query) {
+                            $query->where('abandon_type', 'annee_scolaire')
+                                  ->orWhereNull('abandon_type');
+                        })
+                        ->whereHas('inscriptions', function($query) use ($anneePrecedente) {
+                            $query->where('annee_universitaire_id', $anneePrecedente->id);
+                        })
+                        ->count();
+
+                    $statistiques['abandons_ecole'] = ESBTPEtudiant::where('statut', 'abandon')
+                        ->where('abandon_type', 'ecole')
+                        ->whereHas('inscriptions', function($query) use ($anneePrecedente) {
+                            $query->where('annee_universitaire_id', $anneePrecedente->id);
+                        })
+                        ->count();
+                }
+            }
+
             return $statistiques;
+
+        } catch (\Exception $e) {
+            \Log::error("Erreur lors du calcul des statistiques de réinscription", [
+                'error' => $e->getMessage(),
+                'annee_academique' => $anneeAcademique
+            ]);
+
+            // Retourner des statistiques vides en cas d'erreur
+            return [
+                'passages' => 0,
+                'rattrapages' => 0,
+                'redoublements' => 0,
+                'valides' => 0,
+                'abandons_annee' => 0,
+                'abandons_ecole' => 0,
+                'errors' => 0
+            ];
         }
-        
-        // CORRECTION: Utiliser la même logique que getEtudiantsParDecision pour cohérence
-        $resultats = $this->getEtudiantsParDecision($anneeAcademique);
-        
-        $statistiques['passages'] = count($resultats['passages'] ?? []);
-        $statistiques['rattrapages'] = count($resultats['rattrapages'] ?? []);
-        $statistiques['redoublements'] = count($resultats['redoublements'] ?? []);
-        $statistiques['errors'] = count($resultats['errors'] ?? []);
-        
-        // Compter les réinscriptions validées
-        $statistiques['valides'] = \App\Models\ESBTPInscription::where('reinscription_status', 'validated')
-            ->where('annee_universitaire_id', $anneeUniversitaire->id)
-            ->count();
-            
-        // Compter les abandons par type
-        $statistiques['abandons_annee'] = ESBTPEtudiant::where('statut', 'abandon')
-            ->where(function($query) {
-                $query->where('abandon_type', 'annee_scolaire')
-                      ->orWhereNull('abandon_type');
-            })
-            ->whereHas('inscriptions', function($query) use ($anneeUniversitaire) {
-                $query->where('annee_universitaire_id', $anneeUniversitaire->id);
-            })
-            ->count();
-            
-        $statistiques['abandons_ecole'] = ESBTPEtudiant::where('statut', 'abandon')
-            ->where('abandon_type', 'ecole')
-            ->whereHas('inscriptions', function($query) use ($anneeUniversitaire) {
-                $query->where('annee_universitaire_id', $anneeUniversitaire->id);
-            })
-            ->count();
-            
-        // Compter les étudiants sans inscription validée
-        $etudiantsSansInscription = ESBTPEtudiant::whereDoesntHave('inscriptions', function($query) use ($anneeUniversitaire) {
-            $query->whereNotNull('classe_id')
-                  ->where('annee_universitaire_id', $anneeUniversitaire->id);
-        })->count();
-        
-        $statistiques['errors'] += $etudiantsSansInscription;
-        
-        return $statistiques;
     }
 
     public function proposerNouvellesClasses($etudiantId, $decision)
