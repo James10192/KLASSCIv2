@@ -204,7 +204,7 @@ class ESBTPInscriptionController extends Controller
             'email_personnel' => 'nullable|email|max:100',
             'ville' => 'nullable|string|max:100',
             'commune' => 'nullable|string|max:100',
-            'photo' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'matricule' => 'required|string|max:20|unique:esbtp_etudiants,matricule',
         ];
         $messages = [

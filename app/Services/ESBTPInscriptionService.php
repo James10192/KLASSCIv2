@@ -130,7 +130,7 @@ class ESBTPInscriptionService
 
             // 6ter. Générer automatiquement la facture liée à l'inscription
             $facture = new \App\Models\ESBTPFacture();
-            $facture->numero = 'FAC-' . date('Ymd') . '-' . str_pad($inscription->id, 5, '0', STR_PAD_LEFT);
+            $facture->numero_facture = 'FAC-' . date('Ymd') . '-' . str_pad($inscription->id, 5, '0', STR_PAD_LEFT);
             $facture->etudiant_id = $inscription->etudiant_id;
             $facture->inscription_id = $inscription->id;
             $facture->annee_universitaire_id = $inscription->annee_universitaire_id;
@@ -155,6 +155,7 @@ class ESBTPInscriptionService
                     'quantite' => 1,
                     'montant' => $fee['amount'],
                     'total_ligne' => $fee['amount'],
+                    'prix_unitaire' => $fee['amount'] ?? 0,
                 ]);
             }
 

@@ -27,6 +27,7 @@ class ESBTPFactureDetail extends Model
         'description',
         'montant',
         'quantite',
+        'prix_unitaire',
         'total_ligne',
     ];
 
