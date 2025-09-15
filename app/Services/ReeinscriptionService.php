@@ -239,7 +239,7 @@ class ReeinscriptionService
         return [];
     }
 
-    public function effectuerReinscription($etudiantId, $nouvelleClasseId, $decision, $observations = null, $selectedOptionals = [], $affectationStatus = 'affecté')
+    public function effectuerReinscription($etudiantId, $nouvelleClasseId, $decision, $observations = null, $selectedOptionals = [], $affectationStatus = 'affecté', $anneeUniversitaireId = null)
     {
         \DB::beginTransaction();
         try {
@@ -264,32 +264,37 @@ class ReeinscriptionService
             }
 
             // 3. Déterminer l'année universitaire pour la nouvelle inscription
-            // Pour une réinscription, on cherche l'année suivante ou on crée dans l'année courante si différente
-            $anneeActuelle = $inscriptionActuelle->anneeUniversitaire;
-            $nouvelleAnnee = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+            if ($anneeUniversitaireId) {
+                // Utiliser l'année sélectionnée par l'utilisateur
+                $nouvelleAnnee = \App\Models\ESBTPAnneeUniversitaire::findOrFail($anneeUniversitaireId);
+            } else {
+                // Fallback : utiliser l'année courante
+                $nouvelleAnnee = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
-            if (!$nouvelleAnnee) {
-                throw new \Exception("Aucune année universitaire active trouvée");
+                if (!$nouvelleAnnee) {
+                    throw new \Exception("Aucune année universitaire active trouvée");
+                }
             }
 
-            // 4. Si l'inscription actuelle est déjà dans l'année courante, chercher l'année suivante
-            if ($inscriptionActuelle->annee_universitaire_id === $nouvelleAnnee->id) {
-                // Chercher l'année suivante ou créer une logique pour année suivante
-                $prochaineAnnee = \App\Models\ESBTPAnneeUniversitaire::where('id', '>', $nouvelleAnnee->id)
-                    ->orderBy('id')
-                    ->first();
+            // 4. Vérifier et désactiver toute inscription active existante pour cet étudiant dans cette année
+            $inscriptionExistante = \App\Models\ESBTPInscription::where('etudiant_id', $etudiantId)
+                ->where('annee_universitaire_id', $nouvelleAnnee->id)
+                ->where('status', 'active')
+                ->first();
 
-                if ($prochaineAnnee) {
-                    $nouvelleAnnee = $prochaineAnnee;
-                } else {
-                    // Si pas d'année suivante, on garde l'année courante et on désactive l'ancienne
-                    $inscriptionActuelle->update([
-                        'status' => 'terminée',
-                        'observations' => ($inscriptionActuelle->observations ? $inscriptionActuelle->observations . "\n" : '') .
-                                        "Inscription terminée pour réinscription le " . now()->format('d/m/Y H:i'),
-                        'updated_by' => auth()->id()
-                    ]);
-                }
+            if ($inscriptionExistante) {
+                $inscriptionExistante->update([
+                    'status' => 'terminée',
+                    'observations' => ($inscriptionExistante->observations ? $inscriptionExistante->observations . "\n" : '') .
+                                    "Inscription terminée automatiquement lors de la réinscription le " . now()->format('d/m/Y H:i'),
+                    'updated_by' => auth()->id()
+                ]);
+
+                \Log::info('Inscription existante désactivée pour réinscription', [
+                    'ancienne_inscription_id' => $inscriptionExistante->id,
+                    'etudiant_id' => $etudiantId,
+                    'annee_universitaire_id' => $nouvelleAnnee->id
+                ]);
             }
 
             $nouvelleClasse = ESBTPClasse::findOrFail($nouvelleClasseId);

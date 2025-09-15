@@ -153,6 +153,24 @@
                         </div>
                     </div>
 
+                    <!-- Sélection année universitaire -->
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <div class="form-group-moderne">
+                                <label for="annee_universitaire_id" class="form-label-moderne">Année universitaire de destination *</label>
+                                <select name="annee_universitaire_id" id="annee_universitaire_id" class="form-select-moderne" required>
+                                    <option value="">Sélectionner l'année universitaire</option>
+                                    @foreach($anneeUniversitairesFutures as $annee)
+                                        <option value="{{ $annee->id }}">{{ $annee->name }}</option>
+                                    @endforeach
+                                </select>
+                                <small class="form-text text-muted">
+                                    Seules les années universitaires futures sont disponibles pour la réinscription
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Sélection nouvelle classe et statut d'affectation -->
                     <div class="row mb-4">
                         <div class="col-md-6">

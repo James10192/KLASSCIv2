@@ -361,6 +361,9 @@ class ESBTPReinscriptionController extends Controller
             // Précharger tous les frais pour toutes les combinaisons classe/affectation
             $fraisParClasse = $this->prechargerFraisPourToutesLesClasses($classesParDecision);
 
+            // Récupérer les années universitaires futures pour la sélection
+            $anneeUniversitairesFutures = $this->getAnneesUniversitairesFutures();
+
             $analyse['inscription'] = $inscription;
 
             return view('esbtp.reinscription.create', compact(
@@ -369,7 +372,8 @@ class ESBTPReinscriptionController extends Controller
                 'fraisParClasse',
                 'anneeAcademique',
                 'fraisNonSoldes',
-                'isSuperAdmin'
+                'isSuperAdmin',
+                'anneeUniversitairesFutures'
             ));
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Erreur lors de l\'analyse: ' . $e->getMessage()]);
@@ -747,7 +751,8 @@ class ESBTPReinscriptionController extends Controller
             'decision' => 'required|in:passage,redoublement,rattrapage',
             'observations' => 'nullable|string',
             'selected_optionals' => 'nullable|string', // JSON des frais optionnels
-            'affectation_status' => 'nullable|string|in:affecté,réaffecté,non_affecté'
+            'affectation_status' => 'nullable|string|in:affecté,réaffecté,non_affecté',
+            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id'
         ]);
 
         try {
@@ -774,7 +779,8 @@ class ESBTPReinscriptionController extends Controller
                 $request->decision,
                 $request->observations,
                 $selectedOptionals,
-                $affectationStatus
+                $affectationStatus,
+                $request->annee_universitaire_id
             );
 
             return redirect()->route('esbtp.inscriptions.show', $nouvelleInscription->id)
@@ -950,5 +956,24 @@ class ESBTPReinscriptionController extends Controller
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Récupérer les années universitaires futures (après l'année courante)
+     */
+    private function getAnneesUniversitairesFutures()
+    {
+        // Récupérer l'année universitaire courante
+        $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        if (!$anneeCourante) {
+            return collect(); // Retourner une collection vide si pas d'année courante
+        }
+
+        // Récupérer les années dont la start_date est postérieure à la end_date de l'année courante
+        return \App\Models\ESBTPAnneeUniversitaire::where('is_active', true)
+            ->where('start_date', '>', $anneeCourante->end_date)
+            ->orderBy('start_date')
+            ->get();
     }
 }
