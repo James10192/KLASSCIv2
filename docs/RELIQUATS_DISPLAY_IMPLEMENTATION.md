@@ -6,6 +6,24 @@ L'utilisateur a signalé que les reliquats des inscriptions précédentes n'éta
 
 ## Solution implémentée
 
+### 0. Création automatique des reliquats lors de la réinscription
+
+**Problème identifié :** La méthode `effectuerReinscription` ne créait pas de reliquats lors de la réinscription.
+
+**Solution :** Ajout de la méthode `creerReliquatsSiNecessaire()` dans `ReeinscriptionService`
+
+```php
+// Dans effectuerReinscription(), après la création de la nouvelle inscription
+$this->creerReliquatsSiNecessaire($inscriptionActuelle, $nouvelleInscription);
+```
+
+**Logique de création des reliquats :**
+1. Récupère tous les frais souscrits de l'inscription source
+2. Pour chaque frais, calcule le montant attendu vs le montant payé
+3. Si il y a un solde impayé, crée un `ESBTPReliquatDetail`
+4. Le reliquat est lié à l'inscription source et destination
+5. Log détaillé pour traçabilité
+
 ### 1. Modifications des contrôleurs
 
 #### ESBTPEtudiantController@show

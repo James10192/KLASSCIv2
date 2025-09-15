@@ -253,6 +253,8 @@ class ReeinscriptionService
                 throw new \Exception("L'étudiant doit solder tous ses frais avant la réinscription");
             }
 
+            // Note: Si SuperAdmin et que l'étudiant a des impayés, les reliquats seront créés automatiquement
+
             // 2. Récupérer l'inscription active actuelle de l'étudiant
             $inscriptionActuelle = $etudiant->inscriptions()
                 ->where('status', 'active')
@@ -326,6 +328,9 @@ class ReeinscriptionService
             );
 
             // Note: Facture et paiements seront gérés via inscriptions.show comme d'habitude
+
+            // 5.5 Créer les reliquats si il y a des montants impayés sur l'inscription précédente
+            $this->creerReliquatsSiNecessaire($inscriptionActuelle, $nouvelleInscription);
 
             // 6. Mise à jour statut étudiant
             $etudiant->update([
@@ -543,6 +548,59 @@ class ReeinscriptionService
         $anneeCode = $annee->code ?? date('Y');
         $numero = str_pad(mt_rand(1, 9999), 4, '0', STR_PAD_LEFT);
         return "{$prefix}-{$anneeCode}-{$numero}";
+    }
+
+    /**
+     * Créer les reliquats pour les montants impayés de l'inscription précédente
+     */
+    private function creerReliquatsSiNecessaire($inscriptionSource, $inscriptionDestination)
+    {
+        // Récupérer tous les frais souscrits pour l'inscription source
+        $fraisSouscrits = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscriptionSource->id)
+            ->where('is_active', true)
+            ->with('fraisConfiguration')
+            ->get();
+
+        foreach ($fraisSouscrits as $fraisSubscription) {
+            // Calculer le montant attendu pour ce frais
+            $montantAttendu = $fraisSubscription->amount;
+
+            // Calculer le montant payé pour ce frais spécifique
+            $montantPaye = \App\Models\ESBTPPaiement::where('inscription_id', $inscriptionSource->id)
+                ->where('frais_category_id', $fraisSubscription->frais_category_id)
+                ->where('status', 'validé')
+                ->sum('montant');
+
+            // Calculer le reliquat
+            $montantReliquat = $montantAttendu - $montantPaye;
+
+            // Créer un reliquat seulement s'il y a un montant impayé
+            if ($montantReliquat > 0) {
+                \App\Models\ESBTPReliquatDetail::create([
+                    'inscription_source_id' => $inscriptionSource->id,
+                    'inscription_destination_id' => $inscriptionDestination->id,
+                    'frais_subscription_id' => $fraisSubscription->id,
+                    'montant_attendu' => $montantAttendu,
+                    'montant_paye' => $montantPaye,
+                    'montant_reliquat' => $montantReliquat,
+                    'montant_regle' => 0, // Aucun montant réglé initialement
+                    'statut' => 'actif',
+                    'date_creation' => now(),
+                    'date_derniere_maj' => now(),
+                    'created_by' => auth()->id(),
+                    'notes' => "Reliquat créé automatiquement lors de la réinscription de {$inscriptionSource->anneeUniversitaire->name} vers {$inscriptionDestination->anneeUniversitaire->name}"
+                ]);
+
+                \Log::info("Reliquat créé pour réinscription", [
+                    'etudiant_id' => $inscriptionSource->etudiant_id,
+                    'inscription_source_id' => $inscriptionSource->id,
+                    'inscription_destination_id' => $inscriptionDestination->id,
+                    'frais_category_id' => $fraisSubscription->frais_category_id,
+                    'montant_reliquat' => $montantReliquat,
+                    'frais_name' => $fraisSubscription->fraisConfiguration->name ?? 'N/A'
+                ]);
+            }
+        }
     }
 
 }
