@@ -239,28 +239,28 @@ class ReeinscriptionService
         return [];
     }
 
-    public function effectuerReinscription($etudiantId, $nouvelleClasseId, $decision, $observations = null, $selectedOptionals = [])
+    public function effectuerReinscription($etudiantId, $nouvelleClasseId, $decision, $observations = null, $selectedOptionals = [], $affectationStatus = 'affecté')
     {
         \DB::beginTransaction();
         try {
             // 1. Vérifications préalables
             $etudiant = ESBTPEtudiant::findOrFail($etudiantId);
-            
+
             // Vérifier permissions SuperAdmin pour outrepasser
             $isSuperAdmin = auth()->user() && auth()->user()->hasRole('superAdmin');
 
             if (!$this->peutSeReinscrire($etudiantId) && !$isSuperAdmin) {
                 throw new \Exception("L'étudiant doit solder tous ses frais avant la réinscription");
             }
-            
+
             // 2. Données de la nouvelle inscription
             $nouvelleClasse = ESBTPClasse::findOrFail($nouvelleClasseId);
             $nouvelleAnnee = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
-            
+
             if (!$nouvelleAnnee) {
                 throw new \Exception("Aucune année universitaire active trouvée");
             }
-            
+
             // 3. Créer nouvelle inscription
             $nouvelleInscription = \App\Models\ESBTPInscription::create([
                 'etudiant_id' => $etudiantId,
@@ -268,6 +268,9 @@ class ReeinscriptionService
                 'classe_id' => $nouvelleClasseId,
                 'filiere_id' => $nouvelleClasse->filiere_id,
                 'niveau_id' => $nouvelleClasse->niveau_etude_id,
+                'affectation_status' => $affectationStatus,
+                'montant_scolarite' => 0, // À définir plus tard comme les autres inscriptions
+                'frais_inscription' => 0, // À définir plus tard
                 'type_inscription' => 'reinscription',
                 'date_inscription' => now(),
                 'status' => 'active',

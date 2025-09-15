@@ -746,7 +746,8 @@ class ESBTPReinscriptionController extends Controller
             'nouvelle_classe_id' => 'required|exists:esbtp_classes,id',
             'decision' => 'required|in:passage,redoublement,rattrapage',
             'observations' => 'nullable|string',
-            'selected_optionals' => 'nullable|string' // JSON des frais optionnels
+            'selected_optionals' => 'nullable|string', // JSON des frais optionnels
+            'affectation_status' => 'nullable|string|in:affecté,réaffecté,non_affecté'
         ]);
 
         try {
@@ -756,10 +757,14 @@ class ESBTPReinscriptionController extends Controller
                 $selectedOptionals = json_decode($request->selected_optionals, true) ?: [];
             }
 
+            // Récupérer le statut d'affectation ou utiliser 'affecté' par défaut
+            $affectationStatus = $request->affectation_status ?? 'affecté';
+
             \Log::info('Début réinscription avec frais optionnels', [
                 'etudiant_id' => $etudiantId,
                 'nouvelle_classe_id' => $request->nouvelle_classe_id,
                 'decision' => $request->decision,
+                'affectation_status' => $affectationStatus,
                 'selected_optionals' => $selectedOptionals
             ]);
 
@@ -768,7 +773,8 @@ class ESBTPReinscriptionController extends Controller
                 $request->nouvelle_classe_id,
                 $request->decision,
                 $request->observations,
-                $selectedOptionals
+                $selectedOptionals,
+                $affectationStatus
             );
 
             return redirect()->route('esbtp.inscriptions.show', $nouvelleInscription->id)
