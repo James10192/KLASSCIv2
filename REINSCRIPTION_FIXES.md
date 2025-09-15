@@ -179,7 +179,31 @@ $etudiants = $analyses->map(function($analyse) {
 
 **Résultat** : L'endpoint fonctionne maintenant correctement et retourne les étudiants avec leurs informations financières.
 
-### 8. Problème ENUM résolu précédemment
+### 8. Problème : Timeout "Maximum execution time exceeded" après ajout enrichissement financier
+**Symptôme** : Timeout de 60 secondes sur l'endpoint `/esbtp/reinscription/load-category/redoublements` après l'ajout de l'enrichissement financier.
+
+**Cause racine** : L'enrichissement financier (`enrichirInformationsFinancieres()`) appliqué à 2450+ étudiants provoquait des requêtes N+1 à la base de données, une par étudiant.
+
+**Solution temporaire appliquée** :
+- **Fichier** : `app/Http/Controllers/ESBTP/ESBTPReinscriptionController.php`
+- **Action** : Suppression temporaire des appels `enrichirInformationsFinancieres()`
+- **Objectif** : Restaurer la fonctionnalité de base sans timeout
+
+```php
+// TEMPORAIRE: Extraire seulement les étudiants sans enrichissement financier (pour éviter timeout)
+$etudiants = $analyses->map(function($analyse) {
+    return $analyse['etudiant'] ?? null;
+})->filter();
+```
+
+**Résultat** :
+- ✅ Plus de timeout - l'endpoint fonctionne
+- ❌ Pas d'affichage des frais attendus (à optimiser ultérieurement)
+- ✅ Fonctionnalité de réinscription restaurée
+
+**Note** : L'affichage des frais attendus nécessitera une optimisation avec requêtes batch plutôt que par étudiant individuel.
+
+### 9. Problème ENUM résolu précédemment
 **Symptôme** : Erreur SQL "Data truncated for column 'status' at row 1" avec valeur 'redoublant'
 **Solution** : Modification du retour de `getStatutFromDecision()` de 'redoublant' vers 'actif'
 
