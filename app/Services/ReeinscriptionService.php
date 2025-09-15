@@ -253,34 +253,46 @@ class ReeinscriptionService
                 throw new \Exception("L'étudiant doit solder tous ses frais avant la réinscription");
             }
 
-            // 2. Données de la nouvelle inscription
-            $nouvelleClasse = ESBTPClasse::findOrFail($nouvelleClasseId);
+            // 2. Récupérer l'inscription active actuelle de l'étudiant
+            $inscriptionActuelle = $etudiant->inscriptions()
+                ->where('status', 'active')
+                ->latest()
+                ->first();
+
+            if (!$inscriptionActuelle) {
+                throw new \Exception("Aucune inscription active trouvée pour cet étudiant");
+            }
+
+            // 3. Déterminer l'année universitaire pour la nouvelle inscription
+            // Pour une réinscription, on cherche l'année suivante ou on crée dans l'année courante si différente
+            $anneeActuelle = $inscriptionActuelle->anneeUniversitaire;
             $nouvelleAnnee = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
             if (!$nouvelleAnnee) {
                 throw new \Exception("Aucune année universitaire active trouvée");
             }
 
-            // 3. Désactiver toute inscription active existante pour cet étudiant dans cette année
-            $inscriptionExistante = \App\Models\ESBTPInscription::where('etudiant_id', $etudiantId)
-                ->where('annee_universitaire_id', $nouvelleAnnee->id)
-                ->where('status', 'active')
-                ->first();
+            // 4. Si l'inscription actuelle est déjà dans l'année courante, chercher l'année suivante
+            if ($inscriptionActuelle->annee_universitaire_id === $nouvelleAnnee->id) {
+                // Chercher l'année suivante ou créer une logique pour année suivante
+                $prochaineAnnee = \App\Models\ESBTPAnneeUniversitaire::where('id', '>', $nouvelleAnnee->id)
+                    ->orderBy('id')
+                    ->first();
 
-            if ($inscriptionExistante) {
-                $inscriptionExistante->update([
-                    'status' => 'terminée',
-                    'observations' => ($inscriptionExistante->observations ? $inscriptionExistante->observations . "\n" : '') .
-                                    "Inscription terminée automatiquement lors de la réinscription le " . now()->format('d/m/Y H:i'),
-                    'updated_by' => auth()->id()
-                ]);
-
-                \Log::info('Inscription existante désactivée pour réinscription', [
-                    'ancienne_inscription_id' => $inscriptionExistante->id,
-                    'etudiant_id' => $etudiantId,
-                    'annee_universitaire_id' => $nouvelleAnnee->id
-                ]);
+                if ($prochaineAnnee) {
+                    $nouvelleAnnee = $prochaineAnnee;
+                } else {
+                    // Si pas d'année suivante, on garde l'année courante et on désactive l'ancienne
+                    $inscriptionActuelle->update([
+                        'status' => 'terminée',
+                        'observations' => ($inscriptionActuelle->observations ? $inscriptionActuelle->observations . "\n" : '') .
+                                        "Inscription terminée pour réinscription le " . now()->format('d/m/Y H:i'),
+                        'updated_by' => auth()->id()
+                    ]);
+                }
             }
+
+            $nouvelleClasse = ESBTPClasse::findOrFail($nouvelleClasseId);
 
             // 4. Créer nouvelle inscription
             $nouvelleInscription = \App\Models\ESBTPInscription::create([
