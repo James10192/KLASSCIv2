@@ -355,6 +355,20 @@ class ESBTPEtudiantController extends Controller
             }
         ]);
 
+        // Récupérer les reliquats de l'étudiant
+        $inscriptionIds = $etudiant->inscriptions->pluck('id');
+
+        // Reliquats entrants (provenant d'inscriptions précédentes)
+        $reliquatsEntrants = \App\Models\ESBTPReliquatDetail::whereIn('inscription_destination_id', $inscriptionIds)
+            ->with(['inscriptionSource.anneeUniversitaire', 'fraisSubscription.fraisConfiguration'])
+            ->actifs()
+            ->get();
+
+        // Reliquats sortants (transférés vers des inscriptions futures)
+        $reliquatsSortants = \App\Models\ESBTPReliquatDetail::whereIn('inscription_source_id', $inscriptionIds)
+            ->with(['inscriptionDestination.anneeUniversitaire', 'fraisSubscription.fraisConfiguration'])
+            ->get();
+
         // Calculer quelques statistiques utiles
         $statistiques = [
             'total_paiements' => $etudiant->paiements->sum('montant'),
@@ -363,9 +377,12 @@ class ESBTPEtudiantController extends Controller
             'nombre_paiements' => $etudiant->paiements->count(),
             'inscription_active' => $etudiant->inscriptions->where('status', 'active')->first(),
             'derniere_inscription' => $etudiant->inscriptions->first(),
+            'total_reliquats_entrants' => $reliquatsEntrants->sum('solde_restant'),
+            'total_reliquats_sortants' => $reliquatsSortants->sum('solde_restant'),
+            'nombre_reliquats_actifs' => $reliquatsEntrants->where('statut', 'actif')->count(),
         ];
 
-        return view('esbtp.etudiants.show', compact('etudiant', 'statistiques'));
+        return view('esbtp.etudiants.show', compact('etudiant', 'statistiques', 'reliquatsEntrants', 'reliquatsSortants'));
     }
 
     /**

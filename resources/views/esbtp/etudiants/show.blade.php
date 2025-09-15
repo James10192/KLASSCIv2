@@ -214,6 +214,30 @@
                                 <br><small>{{ $statistiques['inscription_active']->niveauEtude->name ?? 'N/A' }}</small>
                             </div>
                             @endif
+
+                            {{-- Section Reliquats --}}
+                            @if($statistiques['total_reliquats_entrants'] > 0 || $statistiques['total_reliquats_sortants'] > 0)
+                            <div class="mt-4">
+                                <div class="section-title mb-md">
+                                    <i class="fas fa-exchange-alt"></i>Reliquats
+                                </div>
+
+                                @if($statistiques['total_reliquats_entrants'] > 0)
+                                <div class="alert alert-warning">
+                                    <h6><i class="fas fa-arrow-right me-2"></i>Reliquats à payer</h6>
+                                    <p class="mb-2">Montant dû des inscriptions précédentes: <strong>{{ number_format($statistiques['total_reliquats_entrants'], 0, ',', ' ') }} FCFA</strong></p>
+                                    <small class="text-muted">{{ $statistiques['nombre_reliquats_actifs'] }} reliquat(s) actif(s)</small>
+                                </div>
+                                @endif
+
+                                @if($statistiques['total_reliquats_sortants'] > 0)
+                                <div class="alert alert-info">
+                                    <h6><i class="fas fa-arrow-left me-2"></i>Reliquats transférés</h6>
+                                    <p class="mb-0">Montant transféré vers les inscriptions futures: <strong>{{ number_format($statistiques['total_reliquats_sortants'], 0, ',', ' ') }} FCFA</strong></p>
+                                </div>
+                                @endif
+                            </div>
+                            @endif
                         </div>
                     </div>
                     @endif

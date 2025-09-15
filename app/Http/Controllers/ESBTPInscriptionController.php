@@ -569,20 +569,42 @@ class ESBTPInscriptionController extends Controller
 
         // Récupérer les catégories de frais pour la modal de paiement
         $categoriesfrais = collect($feeCategoriesWithRules)->pluck('category');
-        
+
         // Filtrer les catégories obligatoires pour le debug
         $mandatoryFeeCategoriesWithRules = collect($feeCategoriesWithRules)->filter(function($item) {
             return $item['is_mandatory'];
         });
-        
+
+        // Récupérer les reliquats pour cette inscription
+        // Reliquats entrants (provenant d'inscriptions précédentes)
+        $reliquatsEntrants = \App\Models\ESBTPReliquatDetail::where('inscription_destination_id', $inscription->id)
+            ->with(['inscriptionSource.anneeUniversitaire', 'fraisSubscription.fraisConfiguration'])
+            ->actifs()
+            ->get();
+
+        // Reliquats sortants (transférés vers des inscriptions futures)
+        $reliquatsSortants = \App\Models\ESBTPReliquatDetail::where('inscription_source_id', $inscription->id)
+            ->with(['inscriptionDestination.anneeUniversitaire', 'fraisSubscription.fraisConfiguration'])
+            ->get();
+
+        // Statistiques reliquats
+        $statistiquesReliquats = [
+            'total_reliquats_entrants' => $reliquatsEntrants->sum('solde_restant'),
+            'total_reliquats_sortants' => $reliquatsSortants->sum('solde_restant'),
+            'nombre_reliquats_actifs' => $reliquatsEntrants->where('statut', 'actif')->count(),
+        ];
+
         return view('esbtp.inscriptions.show', compact(
-            'inscription', 
-            'fees', 
-            'soldeRestant', 
-            'feeCategoriesWithRules', 
-            'categoriesfrais', 
+            'inscription',
+            'fees',
+            'soldeRestant',
+            'feeCategoriesWithRules',
+            'categoriesfrais',
             'mandatoryFeeCategoriesWithRules',
-            'availableOptionalCategories'
+            'availableOptionalCategories',
+            'reliquatsEntrants',
+            'reliquatsSortants',
+            'statistiquesReliquats'
         ));
     }
 

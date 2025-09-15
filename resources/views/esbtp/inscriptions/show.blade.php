@@ -815,6 +815,103 @@ body.modal-open .card:hover {
                             @endif
                         </div>
                     </div>
+
+                    {{-- Section Reliquats --}}
+                    @if(isset($reliquatsEntrants) && $reliquatsEntrants->count() > 0 || isset($reliquatsSortants) && $reliquatsSortants->count() > 0)
+                        <div class="card-moderne mt-4">
+                            <div class="p-lg">
+                                <div class="section-title mb-md">
+                                    <i class="fas fa-exchange-alt"></i>Reliquats liés à cette inscription
+                                </div>
+
+                                @if(isset($reliquatsEntrants) && $reliquatsEntrants->count() > 0)
+                                    <div class="alert alert-warning mb-3">
+                                        <h6><i class="fas fa-arrow-right me-2"></i>Reliquats entrants (provenant d'inscriptions précédentes)</h6>
+                                        <div class="table-responsive">
+                                            <table class="table table-sm">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Année source</th>
+                                                        <th>Frais</th>
+                                                        <th>Montant reliquat</th>
+                                                        <th>Montant réglé</th>
+                                                        <th>Solde restant</th>
+                                                        <th>Statut</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach($reliquatsEntrants as $reliquat)
+                                                        <tr>
+                                                            <td>{{ $reliquat->inscriptionSource->anneeUniversitaire->name ?? 'N/A' }}</td>
+                                                            <td>{{ $reliquat->fraisSubscription->fraisConfiguration->name ?? 'N/A' }}</td>
+                                                            <td>{{ number_format($reliquat->montant_reliquat, 0, ',', ' ') }} FCFA</td>
+                                                            <td>{{ number_format($reliquat->montant_regle, 0, ',', ' ') }} FCFA</td>
+                                                            <td><strong>{{ number_format($reliquat->solde_restant, 0, ',', ' ') }} FCFA</strong></td>
+                                                            <td>
+                                                                <span class="badge bg-{{ $reliquat->statut == 'actif' ? 'warning' : ($reliquat->statut == 'soldé' ? 'success' : 'info') }}">
+                                                                    {{ ucfirst($reliquat->statut) }}
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    @endforeach
+                                                </tbody>
+                                                <tfoot>
+                                                    <tr class="table-warning">
+                                                        <th colspan="4">Total reliquats entrants</th>
+                                                        <th>{{ number_format($statistiquesReliquats['total_reliquats_entrants'] ?? 0, 0, ',', ' ') }} FCFA</th>
+                                                        <th></th>
+                                                    </tr>
+                                                </tfoot>
+                                            </table>
+                                        </div>
+                                    </div>
+                                @endif
+
+                                @if(isset($reliquatsSortants) && $reliquatsSortants->count() > 0)
+                                    <div class="alert alert-info">
+                                        <h6><i class="fas fa-arrow-left me-2"></i>Reliquats sortants (transférés vers des inscriptions futures)</h6>
+                                        <div class="table-responsive">
+                                            <table class="table table-sm">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Année destination</th>
+                                                        <th>Frais</th>
+                                                        <th>Montant reliquat</th>
+                                                        <th>Montant réglé</th>
+                                                        <th>Solde restant</th>
+                                                        <th>Statut</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach($reliquatsSortants as $reliquat)
+                                                        <tr>
+                                                            <td>{{ $reliquat->inscriptionDestination->anneeUniversitaire->name ?? 'N/A' }}</td>
+                                                            <td>{{ $reliquat->fraisSubscription->fraisConfiguration->name ?? 'N/A' }}</td>
+                                                            <td>{{ number_format($reliquat->montant_reliquat, 0, ',', ' ') }} FCFA</td>
+                                                            <td>{{ number_format($reliquat->montant_regle, 0, ',', ' ') }} FCFA</td>
+                                                            <td><strong>{{ number_format($reliquat->solde_restant, 0, ',', ' ') }} FCFA</strong></td>
+                                                            <td>
+                                                                <span class="badge bg-{{ $reliquat->statut == 'actif' ? 'warning' : ($reliquat->statut == 'soldé' ? 'success' : 'info') }}">
+                                                                    {{ ucfirst($reliquat->statut) }}
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    @endforeach
+                                                </tbody>
+                                                <tfoot>
+                                                    <tr class="table-info">
+                                                        <th colspan="4">Total reliquats sortants</th>
+                                                        <th>{{ number_format($statistiquesReliquats['total_reliquats_sortants'] ?? 0, 0, ',', ' ') }} FCFA</th>
+                                                        <th></th>
+                                                    </tr>
+                                                </tfoot>
+                                            </table>
+                                        </div>
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
