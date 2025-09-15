@@ -469,7 +469,7 @@ class ReeinscriptionService
             case 'passage':
                 return 'actif';
             case 'redoublement':
-                return 'redoublant';
+                return 'actif';
             case 'rattrapage':
                 return 'rattrapage';
             default:
