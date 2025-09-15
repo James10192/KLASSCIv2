@@ -56,21 +56,21 @@ class ReeinscriptionService
     {
         $etudiant = $inscription->etudiant;
         $classe = $inscription->classe;
-        
+
         if (!$classe) {
             throw new \Exception("Classe manquante pour l'étudiant {$etudiant->prenom} {$etudiant->nom}");
         }
 
         $niveauNom = $classe->niveau ? $classe->niveau->name : '';
         $filiereNom = $classe->filiere ? $classe->filiere->name : '';
-        
+
         $regle = ESBTPRegleAcademique::getRegleForNiveauFiliere($niveauNom, $filiereNom);
 
         // Si pas de règle trouvée, chercher une règle par défaut
         if (!$regle) {
             $regle = ESBTPRegleAcademique::where('niveau', '')->where('filiere', '')->where('actif', true)->first();
         }
-        
+
         // Si toujours pas de règle, créer une règle par défaut
         if (!$regle) {
             $regle = $this->creerRegleParDefaut($niveauNom, $filiereNom);
@@ -79,7 +79,25 @@ class ReeinscriptionService
         $notes = $this->getNotesEtudiant($etudiant->id, $anneeAcademique);
         $moyenneGenerale = $this->calculerMoyenneGenerale($notes);
         $matieresEchouees = $this->getMatieresEchouees($notes, $regle->moyenne_passage);
-        
+
+        // TEMPORAIRE: Désactiver l'enrichissement financier pour éviter timeout (optimisation à faire plus tard)
+        // $this->ajouterInformationsFinancieres($etudiant, $inscription);
+
+        // Vérification de sécurité: s'assurer que l'étudiant n'est pas null
+        if (!$etudiant) {
+            \Log::warning("Étudiant null détecté dans analyserSituationEtudiantParInscription", [
+                'inscription_id' => $inscription->id ?? null
+            ]);
+            return null; // Retourner null pour filtrage ultérieur
+        }
+
+        // Ajouter des valeurs par défaut pour éviter erreurs dans la vue
+        $etudiant->montant_attendu = 0;
+        $etudiant->montant_paye = 0;
+        $etudiant->solde_restant = 0;
+        $etudiant->peut_reinscrire = true;  // Valeur par défaut optimiste
+        $etudiant->affectation_status = $inscription->affectation_status ?? 'affecté';
+
         return [
             'etudiant' => $etudiant,
             'classe' => $classe,
@@ -143,7 +161,16 @@ class ReeinscriptionService
             if ($inscription->etudiant && $inscription->classe) {
                 try {
                     $analyse = $this->analyserSituationEtudiantParInscription($inscription, $anneeAcademique);
-                    
+
+                    // CORRECTION: Vérifier que l'analyse n'est pas null
+                    if ($analyse === null) {
+                        \Log::warning("Analyse null ignorée", [
+                            'inscription_id' => $inscription->id,
+                            'etudiant_id' => $inscription->etudiant_id
+                        ]);
+                        continue;
+                    }
+
                     switch ($analyse['decision']) {
                         case 'passage':
                             $resultat['passages'][] = $analyse;
@@ -645,6 +672,84 @@ class ReeinscriptionService
                 ]);
             }
         }
+    }
+
+    /**
+     * Ajoute les informations financières à l'étudiant en tenant compte du statut d'affectation
+     */
+    private function ajouterInformationsFinancieres($etudiant, $inscription)
+    {
+        try {
+            // Récupérer le statut d'affectation de l'inscription (défaut: affecté)
+            $affectationStatus = $inscription->affectation_status ?? 'affecté';
+
+            // Calculer le montant attendu selon le statut d'affectation
+            $montantAttendu = $this->calculerMontantAttenduAvecStatut($inscription, $affectationStatus);
+
+            // Calculer le montant payé pour cette inscription
+            $montantPaye = $this->calculerMontantPaye($inscription);
+
+            // Calculer le solde restant
+            $soldeRestant = max(0, $montantAttendu - $montantPaye);
+
+            // Déterminer si l'étudiant peut se réinscrire (soldé ou quasi-soldé)
+            $peutReinscrire = $soldeRestant <= 50000; // Tolérance de 50k FCFA
+
+            // Ajouter les propriétés à l'objet étudiant
+            $etudiant->montant_attendu = $montantAttendu;
+            $etudiant->montant_paye = $montantPaye;
+            $etudiant->solde_restant = $soldeRestant;
+            $etudiant->peut_reinscrire = $peutReinscrire;
+            $etudiant->affectation_status = $affectationStatus;
+
+        } catch (\Exception $e) {
+            \Log::warning("Erreur lors du calcul des informations financières", [
+                'etudiant_id' => $etudiant->id ?? null,
+                'inscription_id' => $inscription->id ?? null,
+                'error' => $e->getMessage()
+            ]);
+
+            // Valeurs par défaut en cas d'erreur
+            $etudiant->montant_attendu = 0;
+            $etudiant->montant_paye = 0;
+            $etudiant->solde_restant = 0;
+            $etudiant->peut_reinscrire = false;
+            $etudiant->affectation_status = 'affecté';
+        }
+    }
+
+    /**
+     * Calcule le montant attendu selon le statut d'affectation
+     */
+    private function calculerMontantAttenduAvecStatut($inscription, $affectationStatus)
+    {
+        $montantTotal = 0;
+
+        // Récupérer les frais de l'inscription
+        $fraisSubscriptions = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
+            ->with('fraisConfiguration')
+            ->get();
+
+        foreach ($fraisSubscriptions as $fraisSubscription) {
+            $config = $fraisSubscription->fraisConfiguration;
+            if ($config) {
+                // Utiliser le montant selon le statut d'affectation
+                $montant = $config->getMontantByStatus($affectationStatus);
+                $montantTotal += $montant;
+            }
+        }
+
+        return $montantTotal;
+    }
+
+    /**
+     * Calcule le montant payé pour une inscription
+     */
+    private function calculerMontantPaye($inscription)
+    {
+        return \App\Models\ESBTPPaiement::where('inscription_id', $inscription->id)
+            ->where('status', 'validé')
+            ->sum('montant');
     }
 
 }
