@@ -787,7 +787,7 @@
                         <div class="col-md-4">
                             <div class="form-group mb-3">
                                 <label class="form-label fw-bold">Photo <span class="text-danger">*</span></label>
-                                <input type="file" class="form-control @error('photo') is-invalid @enderror" name="photo" accept="image/jpeg,image/png,image/jpg,image/gif" required>
+                                <input type="file" class="form-control @error('photo') is-invalid @enderror" name="photo" accept="image/jpeg,image/png,image/jpg,image/gif">
                                 <small class="form-text text-muted">Formats acceptés: JPEG, PNG, JPG, GIF. Taille max: 2MB</small>
                                 @error('photo')
                                     <div class="invalid-feedback">{{ $message }}</div>
