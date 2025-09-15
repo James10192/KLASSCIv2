@@ -36,7 +36,7 @@
         <div class="dashboard-header">
             <div class="header-left">
                 <h1>Finaliser la Réinscription</h1>
-                <p class="header-subtitle">{{ $analyse['etudiant']->prenoms }} {{ $analyse['etudiant']->nom }} - De {{ $anneeEtudiantActuelle }} vers {{ $anneeDestinationName }}</p>
+                <p class="header-subtitle">{{ $analyse['etudiant']->prenoms }} {{ $analyse['etudiant']->nom }} - De {{ $anneeEtudiantActuelle }} vers <span id="anneeDestinationDisplay">{{ $anneeDestinationName }}</span></p>
             </div>
             <div class="header-actions">
                 <a href="{{ route('esbtp.reinscription.show', $analyse['etudiant']->id) }}?annee_academique={{ $anneeAcademique }}" class="btn-acasi secondary">
