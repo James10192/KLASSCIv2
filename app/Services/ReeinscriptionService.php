@@ -312,7 +312,7 @@ class ReeinscriptionService
                 'type_inscription' => 'reinscription',
                 'date_inscription' => now(),
                 'status' => 'active',
-                'workflow_step' => 'prospect',
+                'workflow_step' => 'documents_complets',
                 'observations' => $observations,
                 'created_by' => auth()->id(),
                 'numero_recu' => $this->genererNumeroRecu($nouvelleAnnee, $nouvelleClasse)
