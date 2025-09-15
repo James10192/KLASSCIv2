@@ -587,13 +587,16 @@ class ESBTPReinscriptionController extends Controller
                 case 'rattrapages':
                 case 'redoublements':
                     $resultats = $this->reinscriptionService->getEtudiantsParDecision($anneeAcademique);
-                    $etudiants = collect($resultats[$category] ?? []);
+                    $analyses = collect($resultats[$category] ?? []);
 
-                    // CORRECTION: Ajouter les informations financières manquantes
-                    $etudiants = $etudiants->map(function($etudiant) {
-                        $this->enrichirInformationsFinancieres($etudiant);
+                    // CORRECTION: Extraire les étudiants des analyses et ajouter les informations financières
+                    $etudiants = $analyses->map(function($analyse) {
+                        $etudiant = $analyse['etudiant'] ?? null;
+                        if ($etudiant) {
+                            $this->enrichirInformationsFinancieres($etudiant);
+                        }
                         return $etudiant;
-                    });
+                    })->filter(); // Supprimer les valeurs null
                     break;
                     
                 case 'valides':
@@ -610,7 +613,16 @@ class ESBTPReinscriptionController extends Controller
                     
                 case 'errors':
                     $resultats = $this->reinscriptionService->getEtudiantsParDecision($anneeAcademique);
-                    $etudiants = collect($resultats['errors'] ?? []);
+                    $erreurs = collect($resultats['errors'] ?? []);
+
+                    // CORRECTION: Extraire les étudiants des erreurs et ajouter les informations financières
+                    $etudiants = $erreurs->map(function($erreur) {
+                        $etudiant = $erreur['etudiant'] ?? null;
+                        if ($etudiant) {
+                            $this->enrichirInformationsFinancieres($etudiant);
+                        }
+                        return $etudiant;
+                    })->filter(); // Supprimer les valeurs null
                     break;
                     
                 default:

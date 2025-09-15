@@ -156,7 +156,30 @@ $montant = $config->getMontantByStatus($affectationStatus);
 
 **Résultat** : Les frais sont maintenant calculés selon le statut d'affectation de l'étudiant (cohérence avec `inscriptions.show`).
 
-### 7. Problème ENUM résolu précédemment
+### 7. Problème : Erreur "Attempt to read property 'id' on array" dans loadCategory
+**Symptôme** : Erreur 500 sur l'endpoint `/esbtp/reinscription/load-category/{category}` avec message "Attempt to read property 'id' on array".
+
+**Cause racine** : Dans `loadCategory()`, les données retournées par `getEtudiantsParDecision()` sont des tableaux d'analyse (`$analyse`) et non des objets étudiant directs. La méthode `enrichirInformationsFinancieres()` essayait d'accéder à `$etudiant->id` sur un tableau.
+
+**Solution appliquée** :
+- **Fichier** : `app/Http/Controllers/ESBTP/ESBTPReinscriptionController.php`
+- **Méthode** : `loadCategory()`
+- **Changement** : Extraction correcte des étudiants des analyses
+
+```php
+// CORRECTION: Extraire les étudiants des analyses et ajouter les informations financières
+$etudiants = $analyses->map(function($analyse) {
+    $etudiant = $analyse['etudiant'] ?? null;
+    if ($etudiant) {
+        $this->enrichirInformationsFinancieres($etudiant);
+    }
+    return $etudiant;
+})->filter(); // Supprimer les valeurs null
+```
+
+**Résultat** : L'endpoint fonctionne maintenant correctement et retourne les étudiants avec leurs informations financières.
+
+### 8. Problème ENUM résolu précédemment
 **Symptôme** : Erreur SQL "Data truncated for column 'status' at row 1" avec valeur 'redoublant'
 **Solution** : Modification du retour de `getStatutFromDecision()` de 'redoublant' vers 'actif'
 
