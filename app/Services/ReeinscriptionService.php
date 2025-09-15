@@ -312,7 +312,7 @@ class ReeinscriptionService
                 'type_inscription' => 'reinscription',
                 'date_inscription' => now(),
                 'status' => 'active',
-                'workflow_step' => 'etudiant_cree',
+                'workflow_step' => 'prospect',
                 'observations' => $observations,
                 'created_by' => auth()->id(),
                 'numero_recu' => $this->genererNumeroRecu($nouvelleAnnee, $nouvelleClasse)
@@ -325,15 +325,14 @@ class ReeinscriptionService
                 $selectedOptionals
             );
 
-            // 6. Créer facture automatique
-            $this->creerFactureReinscription($nouvelleInscription, $generatedFees);
+            // Note: Facture et paiements seront gérés via inscriptions.show comme d'habitude
 
-            // 7. Mise à jour statut étudiant
+            // 6. Mise à jour statut étudiant
             $etudiant->update([
                 'statut' => $this->getStatutFromDecision($decision)
             ]);
 
-            // 8. Historique complet
+            // 7. Historique complet
             $this->sauvegarderHistoriqueComplet($etudiant, $decision, $observations, $nouvelleInscription, $generatedFees);
             
             \DB::commit();
@@ -546,41 +545,4 @@ class ReeinscriptionService
         return "{$prefix}-{$anneeCode}-{$numero}";
     }
 
-    /**
-     * Créer une facture pour la nouvelle inscription de réinscription
-     */
-    private function creerFactureReinscription($inscription, $generatedFees)
-    {
-        $facture = new \App\Models\ESBTPFacture();
-        $facture->numero = 'FREINSC-' . date('Ymd') . '-' . str_pad($inscription->id, 5, '0', STR_PAD_LEFT);
-        $facture->etudiant_id = $inscription->etudiant_id;
-        $facture->inscription_id = $inscription->id;
-        $facture->annee_universitaire_id = $inscription->annee_universitaire_id;
-        $facture->date_emission = now();
-        $facture->date_echeance = now()->addDays(15);
-        $facture->montant_ht = collect($generatedFees)->sum('amount');
-        $facture->taux_taxe = 0;
-        $facture->montant_taxe = 0;
-        $facture->montant_ttc = $facture->montant_ht + $facture->montant_taxe;
-        $facture->montant_regle = 0;
-        $facture->montant_du = $facture->montant_ttc;
-        $facture->statut = 'émise';
-        $facture->notes = 'Facture générée automatiquement pour réinscription';
-        $facture->createur_id = auth()->id();
-        $facture->save();
-
-        // Générer les détails de la facture
-        foreach ($generatedFees as $fee) {
-            \App\Models\ESBTPFactureDetail::create([
-                'facture_id' => $facture->id,
-                'designation' => $fee['description'],
-                'description' => "Frais de réinscription - " . $fee['description'],
-                'quantite' => 1,
-                'montant' => $fee['amount'],
-                'total_ligne' => $fee['amount'],
-            ]);
-        }
-
-        return $facture;
-    }
 }
