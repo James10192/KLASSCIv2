@@ -455,9 +455,9 @@
                     {{ $annonce->priorite == 2 ? 'Urgent' : ($annonce->priorite == 1 ? 'Important' : 'Normal') }}
                 </span>
 
-                <span class="type-badge {{ $annonce->type == 'globale' ? 'global' : ($annonce->type == 'classe' ? 'class' : 'student') }}">
-                    <i class="fas fa-{{ $annonce->type == 'globale' ? 'globe' : ($annonce->type == 'classe' ? 'users' : 'user') }}"></i>
-                    {{ $annonce->type == 'globale' ? 'Tous les étudiants' : ($annonce->type == 'classe' ? 'Classes spécifiques' : 'Étudiants spécifiques') }}
+                <span class="type-badge {{ $annonce->type == 'general' ? 'global' : ($annonce->type == 'classe' ? 'class' : 'student') }}">
+                    <i class="fas fa-{{ $annonce->type == 'general' ? 'globe' : ($annonce->type == 'classe' ? 'users' : 'user') }}"></i>
+                    {{ $annonce->type == 'general' ? 'Tous les étudiants' : ($annonce->type == 'classe' ? 'Classes spécifiques' : 'Étudiants spécifiques') }}
                 </span>
             </div>
         </div>
@@ -543,7 +543,7 @@
                         <tr>
                             <th>Type de diffusion</th>
                             <td>
-                                @if($annonce->type == 'globale')
+                                @if($annonce->type == 'general')
                                     Tous les étudiants
                                 @elseif($annonce->type == 'classe')
                                     Classes spécifiques
@@ -601,7 +601,7 @@
     </div>
 
     <!-- Destinataires -->
-    @if($annonce->type != 'globale')
+    @if($annonce->type != 'general')
     <div class="recipients-section">
         <div class="card-header-moderne">
             <i class="fas fa-users"></i>
