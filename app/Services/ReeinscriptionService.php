@@ -246,7 +246,10 @@ class ReeinscriptionService
             // 1. Vérifications préalables
             $etudiant = ESBTPEtudiant::findOrFail($etudiantId);
             
-            if (!$this->peutSeReinscrire($etudiantId)) {
+            // Vérifier permissions SuperAdmin pour outrepasser
+            $isSuperAdmin = auth()->user() && auth()->user()->hasRole('superAdmin');
+
+            if (!$this->peutSeReinscrire($etudiantId) && !$isSuperAdmin) {
                 throw new \Exception("L'étudiant doit solder tous ses frais avant la réinscription");
             }
             
