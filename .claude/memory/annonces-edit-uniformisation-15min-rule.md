@@ -526,3 +526,117 @@ $messages = ESBTPAnnonce::with('createdBy')
 ---
 
 *Correction appliquée le 2025-01-15 - Problème messages SuperAdmin complètement résolu*
+
+### 12. ✅ **Notifications Administratives Annonces - Système Ajouté**
+
+#### Problème identifié :
+- ❌ **Aucune notification administrative** lors création d'annonces
+- ❌ **SuperAdmin ne sait pas** quand d'autres créent des annonces
+- ❌ **Manque de traçabilité** des publications d'annonces
+
+#### Solution implémentée :
+
+**A. Nouvelle méthode NotificationService** :
+```php
+/**
+ * Notifie les administrateurs de la création d'une nouvelle annonce
+ */
+public function notifyAdminsNewAnnouncement(ESBTPAnnonce $annonce, ?User $createdBy = null): void
+{
+    // Récupérer les utilisateurs administratifs (sauf créateur)
+    $admins = User::role(['superAdmin', 'secretaire', 'coordinateur'])->get();
+
+    // Déterminer type de destinataires pour message informatif
+    if ($annonce->type == 'general') {
+        $destinataireCount = ESBTPEtudiant::whereHas('user')->count();
+        $destinataireText = "tous les étudiants ({$destinataireCount} étudiants)";
+    } elseif ($annonce->type == 'classe') {
+        $classes = $annonce->classes;
+        $classNames = $classes->pluck('name')->join(', ');
+        $destinataireText = "les classes {$classNames} ({$destinataireCount} étudiants)";
+    } elseif ($annonce->type == 'etudiant') {
+        $etudiants = $annonce->etudiants;
+        $destinataireCount = $etudiants->count();
+        $destinataireText = "{$destinataireCount} étudiants spécifiques";
+    }
+
+    $creatorName = $createdBy ? $createdBy->name : 'Système';
+    $title = "Nouvelle annonce publiée";
+    $message = "{$creatorName} a publié l'annonce \"{$annonce->titre}\" pour {$destinataireText}";
+    $link = route('esbtp.annonces.show', $annonce->id);
+
+    // Envoyer à tous les admins sauf créateur
+    foreach ($admins as $admin) {
+        if (!$createdBy || $admin->id !== $createdBy->id) {
+            $this->createNotification($admin, $title, $message, 'info', $link, $createdBy);
+        }
+    }
+}
+```
+
+**B. Intégration dans ESBTPAnnonceController** :
+
+**Création d'annonce (store)** :
+```php
+// Envoyer des notifications si l'annonce est publiée
+if ($annonce->is_published && $annonce->date_publication <= now()) {
+    $this->sendAnnonceNotification($annonce); // Destinataires
+    // NOUVEAU: Notification administrative
+    $this->notificationService->notifyAdminsNewAnnouncement($annonce, Auth::user());
+}
+```
+
+**Mise à jour d'annonce (update)** :
+```php
+// Envoyer des notifications si l'annonce devient publiée
+if ($annonce->is_published && !$wasPublished && $annonce->date_publication <= now()) {
+    $this->sendAnnonceNotification($annonce); // Destinataires
+    // NOUVEAU: Notification administrative
+    $this->notificationService->notifyAdminsNewAnnouncement($annonce, Auth::user());
+}
+```
+
+#### Fonctionnalités du système :
+
+**1. Messages informatifs détaillés** :
+- ✅ "X a publié l'annonce 'Titre' pour tous les étudiants (250 étudiants)"
+- ✅ "X a publié l'annonce 'Titre' pour les classes BTS1, BTS2 (45 étudiants)"
+- ✅ "X a publié l'annonce 'Titre' pour 3 étudiants spécifiques"
+
+**2. Auto-exclusion intelligente** :
+- ✅ Le créateur ne reçoit pas de notification de sa propre annonce
+- ✅ Seuls les autres administrateurs sont notifiés
+
+**3. Liens directs** :
+- ✅ Notification cliquable vers `esbtp.annonces.show`
+- ✅ Accès direct pour consultation/suivi
+
+**4. Logging complet** :
+- ✅ Logs détaillés des notifications envoyées
+- ✅ Traçabilité complète des erreurs
+
+#### Types de notifications administratives :
+
+1. **SuperAdmin crée annonce** → Secrétaires et Coordinateurs notifiés
+2. **Secrétaire crée annonce** → SuperAdmin et Coordinateurs notifiés
+3. **Coordinateur crée annonce** → SuperAdmin et Secrétaires notifiés
+
+#### Impact utilisateur :
+
+**Avant :**
+- ❌ Aucune visibilité sur les annonces créées par d'autres
+- ❌ Découverte des annonces uniquement via navigation manuelle
+
+**Après :**
+- ✅ **Notification instantanée** : "X a publié une annonce pour Y destinataires"
+- ✅ **Traçabilité complète** : Qui a créé quoi pour qui
+- ✅ **Accès direct** : Clic sur notification → Page annonce
+- ✅ **Information contextuelle** : Type et nombre de destinataires
+
+#### Fichiers modifiés :
+- ✅ **`app/Services/NotificationService.php`** - Nouvelle méthode `notifyAdminsNewAnnouncement()`
+- ✅ **`app/Http/Controllers/ESBTPAnnonceController.php`** - Intégration store() et update()
+
+---
+
+*Implémentation terminée le 2025-01-15 - Système notifications administratives annonces opérationnel*

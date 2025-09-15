@@ -128,6 +128,8 @@ class ESBTPAnnonceController extends Controller
             // Envoyer des notifications si l'annonce est publiée
             if ($annonce->is_published && $annonce->date_publication <= now()) {
                 $this->sendAnnonceNotification($annonce);
+                // Envoyer notification administrative aux autres admins
+                $this->notificationService->notifyAdminsNewAnnouncement($annonce, Auth::user());
             }
 
             DB::commit();
@@ -282,6 +284,8 @@ class ESBTPAnnonceController extends Controller
             // Envoyer des notifications si l'annonce devient publiée et est prévue pour maintenant ou le passé
             if ($annonce->is_published && !$wasPublished && $annonce->date_publication <= now()) {
                 $this->sendAnnonceNotification($annonce);
+                // Envoyer notification administrative aux autres admins
+                $this->notificationService->notifyAdminsNewAnnouncement($annonce, Auth::user());
             }
 
             DB::commit();

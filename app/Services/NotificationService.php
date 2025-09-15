@@ -550,6 +550,72 @@ class NotificationService
     }
 
     /**
+     * Notifie les administrateurs de la création d'une nouvelle annonce
+     */
+    public function notifyAdminsNewAnnouncement(ESBTPAnnonce $annonce, ?User $createdBy = null): void
+    {
+        try {
+            // Récupérer les utilisateurs administratifs (sauf celui qui a créé l'annonce)
+            $admins = User::role(['superAdmin', 'secretaire', 'coordinateur'])->get();
+
+            // Déterminer le type de destinataires pour le message
+            $destinataireText = '';
+            $destinataireCount = 0;
+
+            if ($annonce->type == 'general') {
+                $destinataireCount = ESBTPEtudiant::whereHas('user')->count();
+                $destinataireText = "tous les étudiants ({$destinataireCount} étudiants)";
+            } elseif ($annonce->type == 'classe') {
+                $classes = $annonce->classes;
+                $destinataireCount = ESBTPEtudiant::whereHas('user')
+                    ->whereHas('classe_active', function($query) use ($annonce) {
+                        $query->whereIn('id', $annonce->classes->pluck('id'));
+                    })
+                    ->count();
+                $classNames = $classes->pluck('name')->join(', ');
+                $destinataireText = "les classes {$classNames} ({$destinataireCount} étudiants)";
+            } elseif ($annonce->type == 'etudiant') {
+                $etudiants = $annonce->etudiants;
+                $destinataireCount = $etudiants->count();
+                if ($destinataireCount <= 3) {
+                    $etudiantNames = $etudiants->map(function($e) { return $e->nom . ' ' . $e->prenoms; })->join(', ');
+                    $destinataireText = "les étudiants {$etudiantNames}";
+                } else {
+                    $destinataireText = "{$destinataireCount} étudiants spécifiques";
+                }
+            }
+
+            $creatorName = $createdBy ? $createdBy->name : 'Système';
+            $title = "Nouvelle annonce publiée";
+            $message = "{$creatorName} a publié l'annonce \"{$annonce->titre}\" pour {$destinataireText}";
+            $link = route('esbtp.annonces.show', $annonce->id);
+
+            $notifiedCount = 0;
+            foreach ($admins as $admin) {
+                // Ne pas notifier le créateur de l'annonce
+                if (!$createdBy || $admin->id !== $createdBy->id) {
+                    $this->createNotification($admin, $title, $message, 'info', $link, $createdBy);
+                    $notifiedCount++;
+                }
+            }
+
+            Log::info('Notifications administratives envoyées pour nouvelle annonce', [
+                'annonce_id' => $annonce->id,
+                'titre' => $annonce->titre,
+                'type' => $annonce->type,
+                'destinataires' => $destinataireText,
+                'admins_notifies' => $notifiedCount
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de l\'envoi des notifications administratives d\'annonce', [
+                'annonce_id' => $annonce->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
      * Notifications pour les enseignants
      */
     public function notifyTeacherAttendanceCodeGenerated(User $teacher, string $code, string $className, Carbon $expiresAt): void
