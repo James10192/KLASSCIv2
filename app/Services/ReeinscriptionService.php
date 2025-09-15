@@ -471,7 +471,7 @@ class ReeinscriptionService
             case 'redoublement':
                 return 'actif';
             case 'rattrapage':
-                return 'rattrapage';
+                return 'actif';
             default:
                 return 'actif';
         }
