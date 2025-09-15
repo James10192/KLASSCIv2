@@ -1433,7 +1433,10 @@ class ESBTPFraisController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'amount' => 'required|numeric|min:0',
-            'payment_deadline_days' => 'required|integer|min:1|max:365'
+            'payment_deadline_days' => 'required|integer|min:1|max:365',
+            'amount_affecte' => 'nullable|numeric|min:0',
+            'amount_reaffecte' => 'nullable|numeric|min:0',
+            'amount_non_affecte' => 'nullable|numeric|min:0'
         ]);
 
         if ($validator->fails()) {
@@ -1450,6 +1453,9 @@ class ESBTPFraisController extends Controller
             $configuration->update([
                 'amount' => $request->amount,
                 'payment_deadline_days' => $request->payment_deadline_days,
+                'amount_affecte' => $request->amount_affecte,
+                'amount_reaffecte' => $request->amount_reaffecte,
+                'amount_non_affecte' => $request->amount_non_affecte,
                 'updated_by' => auth()->id()
             ]);
 

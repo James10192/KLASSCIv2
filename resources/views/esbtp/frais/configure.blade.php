@@ -512,14 +512,6 @@
                                     </button>
                                     
                                     @if($classe->configurations->count() > 0)
-                                        <button type="button" 
-                                                class="btn-acasi secondary" 
-                                                style="width: 100%; justify-content: center;" 
-                                                title="Voir le détail des configurations"
-                                                onclick="viewConfigurationDetails({{ $classe->filiere->id }}, {{ $classe->niveau->id }})">
-                                            <i class="fas fa-eye"></i>
-                                            <span>Voir Détails</span>
-                                        </button>
                                     @endif
                                 </div>
                             </div>

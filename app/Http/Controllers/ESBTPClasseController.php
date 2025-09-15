@@ -264,7 +264,7 @@ class ESBTPClasseController extends Controller
         // Vérifier si des étudiants sont inscrits dans cette classe
         if ($classe->inscriptions()->count() > 0) {
             return redirect()->route('esbtp.classes.index')
-                ->with('error', 'Impossible de supprimer cette classe car elle contient des étudiants inscrits.');
+                ->with('error', 'Impossible d\'archiver cette classe car elle contient encore des étudiants inscrits pour l\'année en cours.');
         }
 
         // Détacher toutes les matières
@@ -274,7 +274,7 @@ class ESBTPClasseController extends Controller
         $classe->delete();
 
         return redirect()->route('esbtp.classes.index')
-            ->with('success', 'La classe a été supprimée avec succès.');
+            ->with('success', 'La classe a été archivée avec succès. L\'historique des inscriptions est préservé.');
     }
 
     /**

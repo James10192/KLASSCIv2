@@ -300,7 +300,7 @@
                                             <i class="fas fa-trash"></i>
                                         </button>
                                         @else
-                                        <button type="button" class="btn-acasi secondary" style="padding: var(--space-xs); opacity: 0.5; cursor: not-allowed;" title="Suppression impossible - Classe contient des étudiants" disabled>
+                                        <button type="button" class="btn-acasi secondary" style="padding: var(--space-xs); opacity: 0.5; cursor: not-allowed;" title="Suppression impossible - Classe avec historique d'inscriptions préservé" disabled>
                                             <i class="fas fa-lock"></i>
                                         </button>
                                         @endif
@@ -315,19 +315,25 @@
                             <div class="modal-dialog" role="document">
                                 <div class="modal-content">
                                     <div class="modal-header">
-                                        <h5 class="modal-title" id="deleteModalLabel{{ $classe->id }}">Confirmation de suppression</h5>
+                                        <h5 class="modal-title" id="deleteModalLabel{{ $classe->id }}">Archivage de la classe</h5>
                                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                     </div>
                                     <div class="modal-body">
-                                        <p>Êtes-vous sûr de vouloir supprimer définitivement la classe <strong>{{ $classe->name }}</strong> ?</p>
-                                        <p class="text-danger"><strong>Attention:</strong> Cette action est irréversible.</p>
+                                        <p>Êtes-vous sûr de vouloir archiver la classe <strong>{{ $classe->name }}</strong> ?</p>
+                                        <div class="alert alert-info">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            <strong>Note:</strong> La classe sera archivée mais l'historique des inscriptions sera préservé pour les rapports et statistiques des années universitaires passées.
+                                        </div>
+                                        <p class="text-warning"><strong>Important:</strong> Cette classe ne sera plus visible dans la liste active mais restera accessible dans l'historique.</p>
                                     </div>
                                     <div class="modal-footer">
                                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
                                         <form action="{{ route('esbtp.classes.destroy', $classe->id) }}" method="POST" class="d-inline">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" class="btn btn-danger">Supprimer définitivement</button>
+                                            <button type="submit" class="btn btn-warning">
+                                                <i class="fas fa-archive me-1"></i>Archiver la classe
+                                            </button>
                                         </form>
                                     </div>
                                 </div>

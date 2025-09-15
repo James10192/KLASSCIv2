@@ -415,7 +415,7 @@
                             <!-- Actions d'édition -->
                             <div style="display: flex; gap: var(--space-xs); justify-content: end;">
                                 <button class="btn-acasi primary" style="padding: var(--space-xs) var(--space-sm); font-size: var(--text-small);" 
-                                        onclick="editConfiguration({{ $config->id }}, '{{ $config->filiere->name ?? 'N/A' }}', '{{ $config->niveau->name ?? 'N/A' }}', {{ $config->amount }}, {{ $config->payment_deadline_days }})"
+                                        onclick="editConfiguration({{ $config->id }}, '{{ $config->filiere->name ?? 'N/A' }}', '{{ $config->niveau->name ?? 'N/A' }}', {{ $config->amount }}, {{ $config->payment_deadline_days }}, {{ $config->amount_affecte ?? 'null' }}, {{ $config->amount_reaffecte ?? 'null' }}, {{ $config->amount_non_affecte ?? 'null' }})"
                                         title="Modifier cette configuration">
                                     <i class="fas fa-edit"></i>
                                 </button>
@@ -520,10 +520,44 @@
                     </div>
                     
                     <div class="mb-3">
-                        <label for="configAmount" class="form-label">Montant (F CFA)</label>
+                        <label for="configAmount" class="form-label">Montant de base (F CFA)</label>
                         <input type="number" class="form-control" id="configAmount" required min="0" step="1">
                     </div>
-                    
+
+                    <!-- Montants par statut d'affectation MESRS -->
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="fas fa-coins me-1"></i>Montants selon le statut d'affectation MESRS
+                        </label>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label for="configAmountAffecte" class="form-label text-success">
+                                    <i class="fas fa-check me-1"></i>Affectés (F CFA)
+                                </label>
+                                <input type="number" class="form-control" id="configAmountAffecte" min="0" step="1" placeholder="Montant pour les étudiants affectés">
+                                <small class="text-muted">Étudiants bénéficiant de subvention</small>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="configAmountReaffecte" class="form-label text-warning">
+                                    <i class="fas fa-sync-alt me-1"></i>Réaffectés (F CFA)
+                                </label>
+                                <input type="number" class="form-control" id="configAmountReaffecte" min="0" step="1" placeholder="Montant pour les étudiants réaffectés">
+                                <small class="text-muted">Maintien de la subvention</small>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="configAmountNonAffecte" class="form-label text-danger">
+                                    <i class="fas fa-times me-1"></i>Non Affectés (F CFA)
+                                </label>
+                                <input type="number" class="form-control" id="configAmountNonAffecte" min="0" step="1" placeholder="Montant pour les étudiants non affectés">
+                                <small class="text-muted">Tarif plein sans subvention</small>
+                            </div>
+                        </div>
+                        <div class="alert alert-info mt-2">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <small>Si un montant spécifique n'est pas défini, le montant de base sera utilisé par défaut.</small>
+                        </div>
+                    </div>
+
                     <div class="mb-3">
                         <label for="configDeadline" class="form-label">Délai de paiement (jours)</label>
                         <input type="number" class="form-control" id="configDeadline" required min="1" max="365">
@@ -631,14 +665,19 @@ let currentOptionId = null;
 // ========== GESTION DES CONFIGURATIONS ==========
 
 // Éditer une configuration
-function editConfiguration(configId, filiereName, niveauName, amount, deadline) {
+function editConfiguration(configId, filiereName, niveauName, amount, deadline, amountAffecte, amountReaffecte, amountNonAffecte) {
     currentConfigId = configId;
-    
+
     document.getElementById('configId').value = configId;
     document.getElementById('configClassInfo').textContent = `${filiereName} - ${niveauName}`;
     document.getElementById('configAmount').value = amount;
     document.getElementById('configDeadline').value = deadline;
-    
+
+    // Remplir les montants d'affectation
+    document.getElementById('configAmountAffecte').value = amountAffecte || '';
+    document.getElementById('configAmountReaffecte').value = amountReaffecte || '';
+    document.getElementById('configAmountNonAffecte').value = amountNonAffecte || '';
+
     new bootstrap.Modal(document.getElementById('editConfigModal')).show();
 }
 
@@ -647,6 +686,9 @@ function saveConfiguration() {
     const formData = {
         amount: document.getElementById('configAmount').value,
         payment_deadline_days: document.getElementById('configDeadline').value,
+        amount_affecte: document.getElementById('configAmountAffecte').value || null,
+        amount_reaffecte: document.getElementById('configAmountReaffecte').value || null,
+        amount_non_affecte: document.getElementById('configAmountNonAffecte').value || null,
         _token: document.querySelector('meta[name="csrf-token"]').getAttribute('content')
     };
     
