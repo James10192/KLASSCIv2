@@ -638,9 +638,10 @@ class ReeinscriptionService
             $montantAttendu = $fraisSubscription->amount;
 
             // Calculer le montant payé pour ce frais spécifique
+            // Chercher les paiements avec plusieurs variantes de statut possibles
             $montantPaye = \App\Models\ESBTPPaiement::where('inscription_id', $inscriptionSource->id)
                 ->where('frais_category_id', $fraisSubscription->frais_category_id)
-                ->where('status', 'validé')
+                ->whereIn('status', ['validé', 'validated', 'valide', 'confirmé', 'confirmed'])
                 ->sum('montant');
 
             // Calculer le reliquat
