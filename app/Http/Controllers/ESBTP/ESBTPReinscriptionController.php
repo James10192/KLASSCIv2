@@ -589,13 +589,9 @@ class ESBTPReinscriptionController extends Controller
                     $resultats = $this->reinscriptionService->getEtudiantsParDecision($anneeAcademique);
                     $analyses = collect($resultats[$category] ?? []);
 
-                    // CORRECTION: Extraire les étudiants des analyses et ajouter les informations financières
+                    // TEMPORAIRE: Extraire seulement les étudiants sans enrichissement financier (pour éviter timeout)
                     $etudiants = $analyses->map(function($analyse) {
-                        $etudiant = $analyse['etudiant'] ?? null;
-                        if ($etudiant) {
-                            $this->enrichirInformationsFinancieres($etudiant);
-                        }
-                        return $etudiant;
+                        return $analyse['etudiant'] ?? null;
                     })->filter(); // Supprimer les valeurs null
                     break;
                     
@@ -615,13 +611,9 @@ class ESBTPReinscriptionController extends Controller
                     $resultats = $this->reinscriptionService->getEtudiantsParDecision($anneeAcademique);
                     $erreurs = collect($resultats['errors'] ?? []);
 
-                    // CORRECTION: Extraire les étudiants des erreurs et ajouter les informations financières
+                    // TEMPORAIRE: Extraire seulement les étudiants sans enrichissement financier (pour éviter timeout)
                     $etudiants = $erreurs->map(function($erreur) {
-                        $etudiant = $erreur['etudiant'] ?? null;
-                        if ($etudiant) {
-                            $this->enrichirInformationsFinancieres($etudiant);
-                        }
-                        return $etudiant;
+                        return $erreur['etudiant'] ?? null;
                     })->filter(); // Supprimer les valeurs null
                     break;
                     
