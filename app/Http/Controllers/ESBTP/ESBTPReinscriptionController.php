@@ -645,22 +645,26 @@ class ESBTPReinscriptionController extends Controller
     
     private function getEtudiantsValides($anneeUniversitaire)
     {
-        return \App\Models\ESBTPInscription::where('reinscription_status', 'validated')
+        // CORRECTION: Chercher les inscriptions de type 'réinscription' et status 'active'
+        // au lieu de 'reinscription_status' = 'validated' qui n'est pas utilisé
+        return \App\Models\ESBTPInscription::where('type_inscription', 'reinscription')
+            ->where('status', 'active')
             ->when($anneeUniversitaire, function($query) use ($anneeUniversitaire) {
                 return $query->where('annee_universitaire_id', $anneeUniversitaire->id);
             })
-            ->with(['etudiant.paiements', 'classe.filiere', 'classe.niveau', 'reinscriptionValidatedBy'])
+            ->with(['etudiant.paiements', 'classe.filiere', 'classe.niveau', 'anneeUniversitaire'])
             ->get()
             ->map(function($inscription) {
                 return [
                     'etudiant' => $inscription->etudiant,
                     'inscription' => $inscription,
                     'classe' => $inscription->classe,
-                    'decision' => $inscription->reinscription_observations ?? 'Validée',
+                    'decision' => 'Réinscription validée',
                     'moyenne_generale' => 0,
                     'matieres_echouees' => [],
-                    'validated_at' => $inscription->reinscription_validated_at,
-                    'validated_by' => $inscription->reinscriptionValidatedBy,
+                    'validated_at' => $inscription->created_at,
+                    'validated_by' => $inscription->created_by ?? null,
+                    'annee_universitaire' => $inscription->anneeUniversitaire->name,
                 ];
             });
     }

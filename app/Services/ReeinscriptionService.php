@@ -121,10 +121,15 @@ class ReeinscriptionService
         ]);
 
         // Récupérer les étudiants via leurs inscriptions de l'ANNÉE PRÉCÉDENTE
+        // MAIS SEULEMENT ceux qui n'ont pas encore été réinscrits dans l'année courante
         $inscriptions = \App\Models\ESBTPInscription::with(['etudiant', 'classe.niveau', 'classe.filiere'])
             ->whereNotNull('classe_id')
             ->whereNotNull('etudiant_id')
             ->where('annee_universitaire_id', $anneePrecedente->id)
+            // CORRECTION: Exclure les étudiants qui ont déjà une inscription dans l'année courante
+            ->whereDoesntHave('etudiant.inscriptions', function($query) use ($anneeUniversitaireCourante) {
+                $query->where('annee_universitaire_id', $anneeUniversitaireCourante->id);
+            })
             ->get();
         
         $resultat = [
