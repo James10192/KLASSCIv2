@@ -65,58 +65,46 @@
                                         <div class="row">
                                             <div class="col-md-4 mb-3">
                                                 <label for="matricule" class="form-label">Matricule</label>
-                                                <input type="text" class="form-control" id="matricule" value="{{ $etudiant->matricule }}" readonly>
+                                                <input type="text" class="form-control" id="matricule" name="matricule" value="{{ $etudiant->matricule }}" readonly>
                                                 <small class="form-text text-muted">Le matricule ne peut pas être modifié.</small>
                                             </div>
                                             <div class="col-md-4 mb-3">
-                                                <label for="nom" class="form-label">Nom <span class="text-danger">*</span></label>
-                                                <input type="text" class="form-control @error('nom') is-invalid @enderror" id="nom" name="nom" value="{{ old('nom', $etudiant->nom) }}" required>
-                                                @error('nom')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
+                                                <label for="nom" class="form-label">Nom</label>
+                                                <input type="text" class="form-control" id="nom" name="nom" value="{{ old('nom', $etudiant->nom) }}" readonly>
+                                                <small class="form-text text-muted">Le nom ne peut pas être modifié.</small>
                                             </div>
                                             <div class="col-md-4 mb-3">
-                                                <label for="prenoms" class="form-label">Prénom(s) <span class="text-danger">*</span></label>
-                                                <input type="text" class="form-control @error('prenoms') is-invalid @enderror" id="prenoms" name="prenoms" value="{{ old('prenoms', $etudiant->prenoms) }}" required>
-                                                @error('prenoms')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
+                                                <label for="prenoms" class="form-label">Prénom(s)</label>
+                                                <input type="text" class="form-control" id="prenoms" name="prenoms" value="{{ old('prenoms', $etudiant->prenoms) }}" readonly>
+                                                <small class="form-text text-muted">Les prénoms ne peuvent pas être modifiés.</small>
                                             </div>
                                         </div>
                                         <div class="row">
                                             <div class="col-md-4 mb-3">
-                                                <label for="sexe" class="form-label">Genre <span class="text-danger">*</span></label>
-                                                <select class="form-select @error('sexe') is-invalid @enderror" id="sexe" name="sexe" required>
+                                                <label for="sexe" class="form-label">Genre</label>
+                                                <select class="form-select" id="sexe" name="sexe" disabled>
                                                     <option value="M" {{ old('sexe', $etudiant->sexe) == 'M' ? 'selected' : '' }}>Masculin</option>
                                                     <option value="F" {{ old('sexe', $etudiant->sexe) == 'F' ? 'selected' : '' }}>Féminin</option>
                                                 </select>
-                                                @error('sexe')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
+                                                <small class="form-text text-muted">Le genre ne peut pas être modifié.</small>
                                             </div>
                                             <div class="col-md-4 mb-3">
                                                 <label for="date_naissance" class="form-label">Date de naissance</label>
-                                                <input type="date" class="form-control @error('date_naissance') is-invalid @enderror" id="date_naissance" name="date_naissance" value="{{ old('date_naissance', $etudiant->date_naissance ? $etudiant->date_naissance->format('Y-m-d') : '') }}">
-                                                @error('date_naissance')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
+                                                <input type="date" class="form-control" id="date_naissance" name="date_naissance" value="{{ old('date_naissance', $etudiant->date_naissance ? $etudiant->date_naissance->format('Y-m-d') : '') }}" readonly>
+                                                <small class="form-text text-muted">La date de naissance ne peut pas être modifiée.</small>
                                             </div>
                                             <div class="col-md-4 mb-3">
                                                 <label for="lieu_naissance" class="form-label">Lieu de naissance</label>
-                                                <input type="text" class="form-control @error('lieu_naissance') is-invalid @enderror" id="lieu_naissance" name="lieu_naissance" value="{{ old('lieu_naissance', $etudiant->lieu_naissance) }}">
-                                                @error('lieu_naissance')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
+                                                <input type="text" class="form-control" id="lieu_naissance" name="lieu_naissance" value="{{ old('lieu_naissance', $etudiant->lieu_naissance) }}" readonly>
+                                                <small class="form-text text-muted">Le lieu de naissance ne peut pas être modifié.</small>
                                             </div>
                                         </div>
                                         <div class="row">
 
                                             <div class="col-md-4 mb-3">
                                                 <label for="nationalite" class="form-label">Nationalité</label>
-                                                <input type="text" class="form-control @error('nationalite') is-invalid @enderror" id="nationalite" name="nationalite" value="{{ old('nationalite', $etudiant->nationalite) }}">
-                                                @error('nationalite')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
+                                                <input type="text" class="form-control" id="nationalite" name="nationalite" value="{{ old('nationalite', $etudiant->nationalite) }}" readonly>
+                                                <small class="form-text text-muted">La nationalité ne peut pas être modifiée.</small>
                                             </div>
                                         </div>
                                         <div class="row">

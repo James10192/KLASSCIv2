@@ -728,7 +728,116 @@
                         <div class="col-md-4">
                             <div class="form-group mb-3">
                                 <label class="form-label fw-bold">Nationalité</label>
-                                <input type="text" class="form-control @error('nationalite') is-invalid @enderror" name="nationalite" value="{{ old('nationalite') }}" required>
+                                <select class="form-control @error('nationalite') is-invalid @enderror" name="nationalite" required>
+                                    <option value="">Sélectionner une nationalité</option>
+                                    <option value="Ivoirienne" {{ old('nationalite') == 'Ivoirienne' ? 'selected' : '' }}>🇨🇮 Ivoirienne</option>
+                                    <optgroup label="─────────── Pays africains ───────────">
+                                        <option value="Algérienne" {{ old('nationalite') == 'Algérienne' ? 'selected' : '' }}>🇩🇿 Algérienne</option>
+                                        <option value="Angolaise" {{ old('nationalite') == 'Angolaise' ? 'selected' : '' }}>🇦🇴 Angolaise</option>
+                                        <option value="Béninoise" {{ old('nationalite') == 'Béninoise' ? 'selected' : '' }}>🇧🇯 Béninoise</option>
+                                        <option value="Botswanaise" {{ old('nationalite') == 'Botswanaise' ? 'selected' : '' }}>🇧🇼 Botswanaise</option>
+                                        <option value="Burkinabè" {{ old('nationalite') == 'Burkinabè' ? 'selected' : '' }}>🇧🇫 Burkinabè</option>
+                                        <option value="Burundaise" {{ old('nationalite') == 'Burundaise' ? 'selected' : '' }}>🇧🇮 Burundaise</option>
+                                        <option value="Camerounaise" {{ old('nationalite') == 'Camerounaise' ? 'selected' : '' }}>🇨🇲 Camerounaise</option>
+                                        <option value="Cap-verdienne" {{ old('nationalite') == 'Cap-verdienne' ? 'selected' : '' }}>🇨🇻 Cap-verdienne</option>
+                                        <option value="Centrafricaine" {{ old('nationalite') == 'Centrafricaine' ? 'selected' : '' }}>🇨🇫 Centrafricaine</option>
+                                        <option value="Comorienne" {{ old('nationalite') == 'Comorienne' ? 'selected' : '' }}>🇰🇲 Comorienne</option>
+                                        <option value="Congolaise (RDC)" {{ old('nationalite') == 'Congolaise (RDC)' ? 'selected' : '' }}>🇨🇩 Congolaise (RDC)</option>
+                                        <option value="Congolaise (RC)" {{ old('nationalite') == 'Congolaise (RC)' ? 'selected' : '' }}>🇨🇬 Congolaise (RC)</option>
+                                        <option value="Djiboutienne" {{ old('nationalite') == 'Djiboutienne' ? 'selected' : '' }}>🇩🇯 Djiboutienne</option>
+                                        <option value="Égyptienne" {{ old('nationalite') == 'Égyptienne' ? 'selected' : '' }}>🇪🇬 Égyptienne</option>
+                                        <option value="Érythréenne" {{ old('nationalite') == 'Érythréenne' ? 'selected' : '' }}>🇪🇷 Érythréenne</option>
+                                        <option value="Éthiopienne" {{ old('nationalite') == 'Éthiopienne' ? 'selected' : '' }}>🇪🇹 Éthiopienne</option>
+                                        <option value="Gabonaise" {{ old('nationalite') == 'Gabonaise' ? 'selected' : '' }}>🇬🇦 Gabonaise</option>
+                                        <option value="Gambienne" {{ old('nationalite') == 'Gambienne' ? 'selected' : '' }}>🇬🇲 Gambienne</option>
+                                        <option value="Ghanéenne" {{ old('nationalite') == 'Ghanéenne' ? 'selected' : '' }}>🇬🇭 Ghanéenne</option>
+                                        <option value="Guinéenne" {{ old('nationalite') == 'Guinéenne' ? 'selected' : '' }}>🇬🇳 Guinéenne</option>
+                                        <option value="Bissau-Guinéenne" {{ old('nationalite') == 'Bissau-Guinéenne' ? 'selected' : '' }}>🇬🇼 Bissau-Guinéenne</option>
+                                        <option value="Équato-Guinéenne" {{ old('nationalite') == 'Équato-Guinéenne' ? 'selected' : '' }}>🇬🇶 Équato-Guinéenne</option>
+                                        <option value="Kényane" {{ old('nationalite') == 'Kényane' ? 'selected' : '' }}>🇰🇪 Kényane</option>
+                                        <option value="Lesothane" {{ old('nationalite') == 'Lesothane' ? 'selected' : '' }}>🇱🇸 Lesothane</option>
+                                        <option value="Libérienne" {{ old('nationalite') == 'Libérienne' ? 'selected' : '' }}>🇱🇷 Libérienne</option>
+                                        <option value="Libyenne" {{ old('nationalite') == 'Libyenne' ? 'selected' : '' }}>🇱🇾 Libyenne</option>
+                                        <option value="Malgache" {{ old('nationalite') == 'Malgache' ? 'selected' : '' }}>🇲🇬 Malgache</option>
+                                        <option value="Malawite" {{ old('nationalite') == 'Malawite' ? 'selected' : '' }}>🇲🇼 Malawite</option>
+                                        <option value="Malienne" {{ old('nationalite') == 'Malienne' ? 'selected' : '' }}>🇲🇱 Malienne</option>
+                                        <option value="Marocaine" {{ old('nationalite') == 'Marocaine' ? 'selected' : '' }}>🇲🇦 Marocaine</option>
+                                        <option value="Mauricienne" {{ old('nationalite') == 'Mauricienne' ? 'selected' : '' }}>🇲🇺 Mauricienne</option>
+                                        <option value="Mauritanienne" {{ old('nationalite') == 'Mauritanienne' ? 'selected' : '' }}>🇲🇷 Mauritanienne</option>
+                                        <option value="Mozambicaine" {{ old('nationalite') == 'Mozambicaine' ? 'selected' : '' }}>🇲🇿 Mozambicaine</option>
+                                        <option value="Namibienne" {{ old('nationalite') == 'Namibienne' ? 'selected' : '' }}>🇳🇦 Namibienne</option>
+                                        <option value="Nigérienne" {{ old('nationalite') == 'Nigérienne' ? 'selected' : '' }}>🇳🇪 Nigérienne</option>
+                                        <option value="Nigériane" {{ old('nationalite') == 'Nigériane' ? 'selected' : '' }}>🇳🇬 Nigériane</option>
+                                        <option value="Ougandaise" {{ old('nationalite') == 'Ougandaise' ? 'selected' : '' }}>🇺🇬 Ougandaise</option>
+                                        <option value="Rwandaise" {{ old('nationalite') == 'Rwandaise' ? 'selected' : '' }}>🇷🇼 Rwandaise</option>
+                                        <option value="Sao-Toméenne" {{ old('nationalite') == 'Sao-Toméenne' ? 'selected' : '' }}>🇸🇹 Sao-Toméenne</option>
+                                        <option value="Sénégalaise" {{ old('nationalite') == 'Sénégalaise' ? 'selected' : '' }}>🇸🇳 Sénégalaise</option>
+                                        <option value="Seychelloise" {{ old('nationalite') == 'Seychelloise' ? 'selected' : '' }}>🇸🇨 Seychelloise</option>
+                                        <option value="Sierra-Léonaise" {{ old('nationalite') == 'Sierra-Léonaise' ? 'selected' : '' }}>🇸🇱 Sierra-Léonaise</option>
+                                        <option value="Somalienne" {{ old('nationalite') == 'Somalienne' ? 'selected' : '' }}>🇸🇴 Somalienne</option>
+                                        <option value="Sud-Africaine" {{ old('nationalite') == 'Sud-Africaine' ? 'selected' : '' }}>🇿🇦 Sud-Africaine</option>
+                                        <option value="Sud-Soudanaise" {{ old('nationalite') == 'Sud-Soudanaise' ? 'selected' : '' }}>🇸🇸 Sud-Soudanaise</option>
+                                        <option value="Soudanaise" {{ old('nationalite') == 'Soudanaise' ? 'selected' : '' }}>🇸🇩 Soudanaise</option>
+                                        <option value="Swatilienne" {{ old('nationalite') == 'Swatilienne' ? 'selected' : '' }}>🇸🇿 Swatilienne</option>
+                                        <option value="Tanzanienne" {{ old('nationalite') == 'Tanzanienne' ? 'selected' : '' }}>🇹🇿 Tanzanienne</option>
+                                        <option value="Tchadienne" {{ old('nationalite') == 'Tchadienne' ? 'selected' : '' }}>🇹🇩 Tchadienne</option>
+                                        <option value="Togolaise" {{ old('nationalite') == 'Togolaise' ? 'selected' : '' }}>🇹🇬 Togolaise</option>
+                                        <option value="Tunisienne" {{ old('nationalite') == 'Tunisienne' ? 'selected' : '' }}>🇹🇳 Tunisienne</option>
+                                        <option value="Zambienne" {{ old('nationalite') == 'Zambienne' ? 'selected' : '' }}>🇿🇲 Zambienne</option>
+                                        <option value="Zimbabwéenne" {{ old('nationalite') == 'Zimbabwéenne' ? 'selected' : '' }}>🇿🇼 Zimbabwéenne</option>
+                                    </optgroup>
+                                    <optgroup label="─────────── Autres pays ───────────">
+                                        <option value="Française" {{ old('nationalite') == 'Française' ? 'selected' : '' }}>🇫🇷 Française</option>
+                                        <option value="Allemande" {{ old('nationalite') == 'Allemande' ? 'selected' : '' }}>🇩🇪 Allemande</option>
+                                        <option value="Américaine" {{ old('nationalite') == 'Américaine' ? 'selected' : '' }}>🇺🇸 Américaine</option>
+                                        <option value="Britannique" {{ old('nationalite') == 'Britannique' ? 'selected' : '' }}>🇬🇧 Britannique</option>
+                                        <option value="Chinoise" {{ old('nationalite') == 'Chinoise' ? 'selected' : '' }}>🇨🇳 Chinoise</option>
+                                        <option value="Espagnole" {{ old('nationalite') == 'Espagnole' ? 'selected' : '' }}>🇪🇸 Espagnole</option>
+                                        <option value="Italienne" {{ old('nationalite') == 'Italienne' ? 'selected' : '' }}>🇮🇹 Italienne</option>
+                                        <option value="Japonaise" {{ old('nationalite') == 'Japonaise' ? 'selected' : '' }}>🇯🇵 Japonaise</option>
+                                        <option value="Canadienne" {{ old('nationalite') == 'Canadienne' ? 'selected' : '' }}>🇨🇦 Canadienne</option>
+                                        <option value="Australienne" {{ old('nationalite') == 'Australienne' ? 'selected' : '' }}>🇦🇺 Australienne</option>
+                                        <option value="Brésilienne" {{ old('nationalite') == 'Brésilienne' ? 'selected' : '' }}>🇧🇷 Brésilienne</option>
+                                        <option value="Indienne" {{ old('nationalite') == 'Indienne' ? 'selected' : '' }}>🇮🇳 Indienne</option>
+                                        <option value="Russe" {{ old('nationalite') == 'Russe' ? 'selected' : '' }}>🇷🇺 Russe</option>
+                                        <option value="Mexicaine" {{ old('nationalite') == 'Mexicaine' ? 'selected' : '' }}>🇲🇽 Mexicaine</option>
+                                        <option value="Argentine" {{ old('nationalite') == 'Argentine' ? 'selected' : '' }}>🇦🇷 Argentine</option>
+                                        <option value="Belge" {{ old('nationalite') == 'Belge' ? 'selected' : '' }}>🇧🇪 Belge</option>
+                                        <option value="Suisse" {{ old('nationalite') == 'Suisse' ? 'selected' : '' }}>🇨🇭 Suisse</option>
+                                        <option value="Néerlandaise" {{ old('nationalite') == 'Néerlandaise' ? 'selected' : '' }}>🇳🇱 Néerlandaise</option>
+                                        <option value="Suédoise" {{ old('nationalite') == 'Suédoise' ? 'selected' : '' }}>🇸🇪 Suédoise</option>
+                                        <option value="Norvégienne" {{ old('nationalite') == 'Norvégienne' ? 'selected' : '' }}>🇳🇴 Norvégienne</option>
+                                        <option value="Danoise" {{ old('nationalite') == 'Danoise' ? 'selected' : '' }}>🇩🇰 Danoise</option>
+                                        <option value="Autrichienne" {{ old('nationalite') == 'Autrichienne' ? 'selected' : '' }}>🇦🇹 Autrichienne</option>
+                                        <option value="Portugaise" {{ old('nationalite') == 'Portugaise' ? 'selected' : '' }}>🇵🇹 Portugaise</option>
+                                        <option value="Grecque" {{ old('nationalite') == 'Grecque' ? 'selected' : '' }}>🇬🇷 Grecque</option>
+                                        <option value="Turque" {{ old('nationalite') == 'Turque' ? 'selected' : '' }}>🇹🇷 Turque</option>
+                                        <option value="Polonaise" {{ old('nationalite') == 'Polonaise' ? 'selected' : '' }}>🇵🇱 Polonaise</option>
+                                        <option value="Tchèque" {{ old('nationalite') == 'Tchèque' ? 'selected' : '' }}>🇨🇿 Tchèque</option>
+                                        <option value="Hongroise" {{ old('nationalite') == 'Hongroise' ? 'selected' : '' }}>🇭🇺 Hongroise</option>
+                                        <option value="Roumaine" {{ old('nationalite') == 'Roumaine' ? 'selected' : '' }}>🇷🇴 Roumaine</option>
+                                        <option value="Bulgare" {{ old('nationalite') == 'Bulgare' ? 'selected' : '' }}>🇧🇬 Bulgare</option>
+                                        <option value="Croate" {{ old('nationalite') == 'Croate' ? 'selected' : '' }}>🇭🇷 Croate</option>
+                                        <option value="Serbe" {{ old('nationalite') == 'Serbe' ? 'selected' : '' }}>🇷🇸 Serbe</option>
+                                        <option value="Slovène" {{ old('nationalite') == 'Slovène' ? 'selected' : '' }}>🇸🇮 Slovène</option>
+                                        <option value="Slovaque" {{ old('nationalite') == 'Slovaque' ? 'selected' : '' }}>🇸🇰 Slovaque</option>
+                                        <option value="Ukrainienne" {{ old('nationalite') == 'Ukrainienne' ? 'selected' : '' }}>🇺🇦 Ukrainienne</option>
+                                        <option value="Libanaise" {{ old('nationalite') == 'Libanaise' ? 'selected' : '' }}>🇱🇧 Libanaise</option>
+                                        <option value="Saoudienne" {{ old('nationalite') == 'Saoudienne' ? 'selected' : '' }}>🇸🇦 Saoudienne</option>
+                                        <option value="Iranienne" {{ old('nationalite') == 'Iranienne' ? 'selected' : '' }}>🇮🇷 Iranienne</option>
+                                        <option value="Israélienne" {{ old('nationalite') == 'Israélienne' ? 'selected' : '' }}>🇮🇱 Israélienne</option>
+                                        <option value="Coréenne" {{ old('nationalite') == 'Coréenne' ? 'selected' : '' }}>🇰🇷 Coréenne</option>
+                                        <option value="Thaïlandaise" {{ old('nationalite') == 'Thaïlandaise' ? 'selected' : '' }}>🇹🇭 Thaïlandaise</option>
+                                        <option value="Vietnamienne" {{ old('nationalite') == 'Vietnamienne' ? 'selected' : '' }}>🇻🇳 Vietnamienne</option>
+                                        <option value="Malaisienne" {{ old('nationalite') == 'Malaisienne' ? 'selected' : '' }}>🇲🇾 Malaisienne</option>
+                                        <option value="Singapourienne" {{ old('nationalite') == 'Singapourienne' ? 'selected' : '' }}>🇸🇬 Singapourienne</option>
+                                        <option value="Indonésienne" {{ old('nationalite') == 'Indonésienne' ? 'selected' : '' }}>🇮🇩 Indonésienne</option>
+                                        <option value="Philippine" {{ old('nationalite') == 'Philippine' ? 'selected' : '' }}>🇵🇭 Philippine</option>
+                                    </optgroup>
+                                    <optgroup label="─────────── Autre ───────────">
+                                        <option value="Autre" {{ old('nationalite') == 'Autre' ? 'selected' : '' }}>🌍 Autre</option>
+                                    </optgroup>
+                                </select>
                                 @error('nationalite')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror

@@ -464,23 +464,25 @@ class ESBTPEtudiantController extends Controller
             'etudiantCommune' => $etudiant->commune,
         ]);
 
-        // Validation des données
+        // Validation des données - Exclus les champs non modifiables
         $validator = Validator::make($request->all(), [
-            'nom' => 'required|string|max:255',
-            'prenoms' => 'required|string|max:255',
-            'sexe' => 'required|in:M,F',
-            'date_naissance' => 'nullable|date',
-            'lieu_naissance' => 'nullable|string|max:255',
-            'ville_naissance' => 'nullable|string|max:255',
-            'commune_naissance' => 'nullable|string|max:255',
-            'nationalite' => 'nullable|string|max:255',
-            'adresse' => 'nullable|string',
             'telephone' => 'nullable|string|max:20',
             'email_personnel' => 'nullable|email|max:255',
             'photo' => 'nullable|image|max:2048',
             'statut' => 'required|in:actif,inactif,diplômé,abandon,exclu',
             'ville' => 'nullable|string|max:255',
             'commune' => 'nullable|string|max:255',
+            'adresse' => 'nullable|string',
+            // Les champs suivants sont en readonly et ne doivent pas être validés comme requis
+            'matricule' => 'nullable|string|max:255',
+            'nom' => 'nullable|string|max:255',
+            'prenoms' => 'nullable|string|max:255',
+            'sexe' => 'nullable|in:M,F',
+            'date_naissance' => 'nullable|date',
+            'lieu_naissance' => 'nullable|string|max:255',
+            'ville_naissance' => 'nullable|string|max:255',
+            'commune_naissance' => 'nullable|string|max:255',
+            'nationalite' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
