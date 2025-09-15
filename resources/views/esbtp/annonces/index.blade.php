@@ -338,6 +338,19 @@
     color: white;
 }
 
+.btn-action.disabled {
+    background: #f9fafb !important;
+    color: #9ca3af !important;
+    cursor: not-allowed !important;
+    opacity: 0.5;
+}
+
+.btn-action.disabled:hover {
+    background: #f9fafb !important;
+    color: #9ca3af !important;
+    transform: none !important;
+}
+
 .empty-state {
     text-align: center;
     padding: 3rem 1rem;
@@ -573,9 +586,25 @@
                                             <a href="{{ route('esbtp.annonces.show', $annonce) }}" class="btn-action primary" title="Voir">
                                                 <i class="fas fa-eye"></i>
                                             </a>
-                                            <a href="{{ route('esbtp.annonces.edit', $annonce) }}" class="btn-action secondary" title="Modifier">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
+                                            @php
+                                                $canEdit = true;
+                                                if ($annonce->is_published) {
+                                                    $publishedAt = $annonce->date_publication && $annonce->date_publication > $annonce->created_at
+                                                        ? $annonce->date_publication
+                                                        : $annonce->created_at;
+                                                    $canEdit = $publishedAt->diffInMinutes(now()) <= 15;
+                                                }
+                                            @endphp
+
+                                            @if($canEdit)
+                                                <a href="{{ route('esbtp.annonces.edit', $annonce) }}" class="btn-action secondary" title="Modifier">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                            @else
+                                                <button class="btn-action secondary disabled" disabled title="Modification impossible (plus de 15 minutes)">
+                                                    <i class="fas fa-edit text-muted"></i>
+                                                </button>
+                                            @endif
                                             <button type="button" class="btn-action danger" onclick="deleteAnnonce({{ $annonce->id }})" title="Supprimer">
                                                 <i class="fas fa-trash"></i>
                                             </button>

@@ -392,6 +392,22 @@
             padding: var(--space-sm);
         }
     }
+
+    /* Styles pour boutons disabled */
+    .btn-acasi.disabled {
+        background-color: #f9fafb !important;
+        color: #9ca3af !important;
+        cursor: not-allowed !important;
+        opacity: 0.5;
+        border-color: #e5e7eb !important;
+    }
+
+    .btn-acasi.disabled:hover {
+        background-color: #f9fafb !important;
+        color: #9ca3af !important;
+        transform: none !important;
+        box-shadow: none !important;
+    }
 </style>
 @endpush
 
@@ -447,16 +463,46 @@
         </div>
         
         <div class="header-actions">
-            <a href="{{ route('esbtp.annonces.edit', $annonce) }}" class="btn-acasi secondary">
-                <i class="fas fa-edit"></i>
-                Modifier
-            </a>
+            @php
+                $canEdit = true;
+                $minutesElapsed = 0;
+                if ($annonce->is_published) {
+                    $publishedAt = $annonce->date_publication && $annonce->date_publication > $annonce->created_at
+                        ? $annonce->date_publication
+                        : $annonce->created_at;
+                    $minutesElapsed = $publishedAt->diffInMinutes(now());
+                    $canEdit = $minutesElapsed <= 15;
+                }
+            @endphp
+
+            @if($canEdit)
+                <a href="{{ route('esbtp.annonces.edit', $annonce) }}" class="btn-acasi secondary">
+                    <i class="fas fa-edit"></i>
+                    Modifier l'annonce
+                </a>
+            @else
+                <button class="btn-acasi secondary disabled" disabled>
+                    <i class="fas fa-edit"></i>
+                    Modification impossible
+                </button>
+            @endif
             <a href="{{ route('esbtp.annonces.index') }}" class="btn-acasi primary">
                 <i class="fas fa-arrow-left"></i>
                 Retour à la liste
             </a>
         </div>
     </div>
+
+    @if(!$canEdit && $annonce->is_published)
+        <div class="alert-modern warning mb-3">
+            <i class="fas fa-clock"></i>
+            <div>
+                <h4>Modification impossible</h4>
+                <p>Cette annonce ne peut plus être modifiée (publiée il y a {{ $minutesElapsed }} minutes).
+                   Vous pouvez la supprimer et en créer une nouvelle si nécessaire.</p>
+            </div>
+        </div>
+    @endif
 
     <!-- Contenu principal -->
     <div class="content-grid">

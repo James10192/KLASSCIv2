@@ -154,6 +154,23 @@ class ESBTPAnnonceController extends Controller
     }
 
     /**
+     * Vérifie si une annonce peut encore être modifiée (< 15 min après publication)
+     */
+    private function canEditAnnonce($annonce)
+    {
+        if (!$annonce->is_published) {
+            return true; // Brouillons toujours modifiables
+        }
+
+        $publishedAt = $annonce->created_at;
+        if ($annonce->date_publication && $annonce->date_publication > $annonce->created_at) {
+            $publishedAt = $annonce->date_publication;
+        }
+
+        return $publishedAt->diffInMinutes(now()) <= 15;
+    }
+
+    /**
      * Affiche le formulaire de modification d'une annonce.
      *
      * @param  \App\Models\ESBTPAnnonce  $annonce
@@ -161,13 +178,30 @@ class ESBTPAnnonceController extends Controller
      */
     public function edit(ESBTPAnnonce $annonce)
     {
+        // Vérification règle 15 minutes
+        if (!$this->canEditAnnonce($annonce)) {
+            $publishedAt = $annonce->created_at;
+            if ($annonce->date_publication && $annonce->date_publication > $annonce->created_at) {
+                $publishedAt = $annonce->date_publication;
+            }
+            $minutesElapsed = $publishedAt->diffInMinutes(now());
+
+            return redirect()->route('esbtp.annonces.show', $annonce)
+                ->with('error', "Cette annonce ne peut plus être modifiée (publiée il y a {$minutesElapsed} minutes). Vous pouvez la supprimer et en créer une nouvelle.");
+        }
+
+        // Chargement des données avec même structure que create
         $classes = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
-        $etudiants = ESBTPEtudiant::orderBy('nom')->get();
+        $etudiants = ESBTPEtudiant::with('classe')
+            ->whereHas('classe')
+            ->distinct()
+            ->orderBy('nom')
+            ->orderBy('prenoms')
+            ->get();
+        $filieres = ESBTPFiliere::where('is_active', true)->orderBy('name')->get();
+        $niveaux = ESBTPNiveauEtude::where('is_active', true)->orderBy('name')->get();
 
-        $classeIds = $annonce->classes->pluck('id')->toArray();
-        $etudiantIds = $annonce->etudiants->pluck('id')->toArray();
-
-        return view('esbtp.annonces.edit', compact('annonce', 'classes', 'etudiants', 'classeIds', 'etudiantIds'));
+        return view('esbtp.annonces.edit', compact('annonce', 'classes', 'etudiants', 'filieres', 'niveaux'));
     }
 
     /**
@@ -179,6 +213,11 @@ class ESBTPAnnonceController extends Controller
      */
     public function update(Request $request, ESBTPAnnonce $annonce)
     {
+        // Double vérification règle 15 minutes
+        if (!$this->canEditAnnonce($annonce)) {
+            return redirect()->route('esbtp.annonces.show', $annonce)
+                ->with('error', 'Cette annonce ne peut plus être modifiée.');
+        }
         $request->validate([
             'titre' => 'required|string|max:255',
             'contenu' => 'required|string',
