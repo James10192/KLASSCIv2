@@ -395,7 +395,8 @@ class ReeinscriptionService
             $inscriptionService = app(\App\Services\ESBTPInscriptionService::class);
             $generatedFees = $inscriptionService->generateFeesForInscription(
                 $nouvelleInscription,
-                $selectedOptionals
+                $selectedOptionals,
+                $affectationStatus
             );
 
             // Note: Facture et paiements seront gérés via inscriptions.show comme d'habitude
