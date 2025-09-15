@@ -91,7 +91,30 @@ $anneeDestinationName = $anneeDestination ? $anneeDestination->name : $anneeAcad
 
 **Résultat** : Cohérence visuelle complète entre la logique N-1 et l'interface utilisateur.
 
-### 4. Problème ENUM résolu précédemment
+### 4. Problème : Année courante non disponible pour réinscription
+**Symptôme** : Impossible de réinscrire les étudiants de l'année N-1 vers l'année courante N car seules les années futures étaient disponibles.
+
+**Cause racine** : La méthode `getAnneesUniversitairesFutures()` utilisait `start_date > end_date_courante`, excluant l'année courante de la sélection.
+
+**Solution appliquée** :
+- **Fichier** : `app/Http/Controllers/ESBTP/ESBTPReinscriptionController.php`
+- **Méthode** : `getAnneesUniversitairesFutures()`
+- **Changement** : Modification du critère de sélection
+
+```php
+// AVANT (incorrect - exclut l'année courante)
+->where('start_date', '>', $anneeCourante->end_date)
+
+// APRÈS (correct - inclut l'année courante)
+->where('start_date', '>=', $anneeCourante->start_date)
+```
+
+**Résultat** :
+- **Avant** : Années disponibles = N+1, N+2... (2026-2027, 2027-2028...)
+- **Après** : Années disponibles = N, N+1, N+2... (2025-2026, 2026-2027, 2027-2028...)
+- **Impact** : Permet la réinscription des étudiants N-1 vers l'année courante N
+
+### 5. Problème ENUM résolu précédemment
 **Symptôme** : Erreur SQL "Data truncated for column 'status' at row 1" avec valeur 'redoublant'
 **Solution** : Modification du retour de `getStatutFromDecision()` de 'redoublant' vers 'actif'
 

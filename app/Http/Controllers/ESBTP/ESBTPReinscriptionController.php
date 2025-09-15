@@ -971,7 +971,7 @@ class ESBTPReinscriptionController extends Controller
     }
 
     /**
-     * Récupérer les années universitaires futures (après l'année courante)
+     * Récupérer les années universitaires disponibles pour réinscription (courante et futures)
      */
     private function getAnneesUniversitairesFutures()
     {
@@ -982,9 +982,10 @@ class ESBTPReinscriptionController extends Controller
             return collect(); // Retourner une collection vide si pas d'année courante
         }
 
-        // Récupérer les années dont la start_date est postérieure à la end_date de l'année courante
+        // Récupérer l'année courante ET les années futures
+        // Cela permet de réinscrire les étudiants N-1 vers l'année courante N
         return \App\Models\ESBTPAnneeUniversitaire::where('is_active', true)
-            ->where('start_date', '>', $anneeCourante->end_date)
+            ->where('start_date', '>=', $anneeCourante->start_date)
             ->orderBy('start_date')
             ->get();
     }
