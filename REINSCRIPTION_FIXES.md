@@ -114,7 +114,49 @@ $anneeDestinationName = $anneeDestination ? $anneeDestination->name : $anneeAcad
 - **Après** : Années disponibles = N, N+1, N+2... (2025-2026, 2026-2027, 2027-2028...)
 - **Impact** : Permet la réinscription des étudiants N-1 vers l'année courante N
 
-### 5. Problème ENUM résolu précédemment
+### 5. Problème : Frais attendus affichent 0 FCFA sur reinscriptions.index
+**Symptôme** : Sur la page index des réinscriptions, les frais attendus affichaient 0 FCFA pour tous les étudiants, alors que les frais s'affichaient correctement sur la page show.
+
+**Cause racine** : Dans la méthode `loadCategory()`, les étudiants des catégories 'passages', 'rattrapages', 'redoublements' venaient directement de `getEtudiantsParDecision()` sans calcul des informations financières.
+
+**Solution appliquée** :
+- **Fichier** : `app/Http/Controllers/ESBTP/ESBTPReinscriptionController.php`
+- **Méthode** : `loadCategory()`
+- **Ajout** : Enrichissement des informations financières pour ces catégories
+
+```php
+// CORRECTION: Ajouter les informations financières manquantes
+$etudiants = $etudiants->map(function($etudiant) {
+    $this->enrichirInformationsFinancieres($etudiant);
+    return $etudiant;
+});
+```
+
+- **Nouvelle méthode** : `enrichirInformationsFinancieres()` pour calculer `montant_attendu`, `montant_paye`, `solde_restant`
+
+**Résultat** : Les frais attendus s'affichent maintenant correctement sur la page index.
+
+### 6. Problème : Statut d'affectation non pris en compte dans le calcul des frais
+**Symptôme** : Dans `reinscriptions.show`, le statut d'affectation (`affecté`, `réaffecté`, `non_affecté`) n'était pas pris en compte pour calculer les frais, contrairement à `inscriptions.show`.
+
+**Cause racine** : La méthode `calculerTotalAttendu()` utilisait l'ancienne logique sans considérer les nouveaux champs `amount_affecte`, `amount_reaffecte`, `amount_non_affecte`.
+
+**Solution appliquée** :
+- **Fichier** : `app/Http/Controllers/ESBTP/ESBTPReinscriptionController.php`
+- **Méthode** : `calculerTotalAttendu()`
+- **Changement** : Prise en compte du statut d'affectation
+
+```php
+// Récupérer le statut d'affectation de l'inscription (défaut: affecté)
+$affectationStatus = $inscription->affectation_status ?? 'affecté';
+
+// CORRECTION: Utiliser le montant selon le statut d'affectation
+$montant = $config->getMontantByStatus($affectationStatus);
+```
+
+**Résultat** : Les frais sont maintenant calculés selon le statut d'affectation de l'étudiant (cohérence avec `inscriptions.show`).
+
+### 7. Problème ENUM résolu précédemment
 **Symptôme** : Erreur SQL "Data truncated for column 'status' at row 1" avec valeur 'redoublant'
 **Solution** : Modification du retour de `getStatutFromDecision()` de 'redoublant' vers 'actif'
 
@@ -133,6 +175,8 @@ $anneeDestinationName = $anneeDestination ? $anneeDestination->name : $anneeAcad
 4. ✅ Place les étudiants réinscrits dans la catégorie "valides"
 5. ✅ Ignore les étudiants d'années plus anciennes
 6. ✅ Interface utilisateur cohérente montrant "De 2024-2025 vers 2025-2026"
+7. ✅ Affichage correct des frais attendus sur toutes les pages
+8. ✅ Prise en compte du statut d'affectation dans le calcul des frais
 
 ## Tests de validation
 - **Script de test** : `dev-scripts/test_reinscription_fix.php`

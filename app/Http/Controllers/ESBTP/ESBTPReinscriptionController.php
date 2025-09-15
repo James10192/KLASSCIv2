@@ -151,34 +151,38 @@ class ESBTPReinscriptionController extends Controller
     }
     
     /**
-     * Calculer le total attendu pour une inscription
+     * Calculer le total attendu pour une inscription avec prise en compte du statut d'affectation
      */
     private function calculerTotalAttendu($inscription)
     {
-        // Récupérer les catégories de frais obligatoires
-        $mandatoryCategories = \App\Models\ESBTPFraisCategory::where('is_mandatory', true)
-            ->where('is_active', true)
+        // Récupérer le statut d'affectation de l'inscription (défaut: affecté)
+        $affectationStatus = $inscription->affectation_status ?? 'affecté';
+
+        // Récupérer les configurations de frais pour cette filière/niveau
+        $fraisConfigs = \App\Models\ESBTPFraisConfiguration::active()
+            ->where('filiere_id', $inscription->classe->filiere_id)
+            ->where('niveau_id', $inscription->classe->niveau_etude_id)
+            ->with(['fraisCategory'])
             ->get();
-        
+
         $totalAttendu = 0;
-        
-        foreach ($mandatoryCategories as $category) {
-            $rule = $category->getApplicableRule(
-                $inscription->filiere_id, 
-                $inscription->niveau_id, 
-                $inscription->annee_universitaire_id
-            );
-            
-            $montant = $rule ? $rule->amount : $category->default_amount;
+
+        foreach ($fraisConfigs as $config) {
+            if (!$config->fraisCategory || !$config->fraisCategory->is_mandatory) {
+                continue; // Ignorer les frais non obligatoires ou sans catégorie
+            }
+
+            // CORRECTION: Utiliser le montant selon le statut d'affectation
+            $montant = $config->getMontantByStatus($affectationStatus);
             $totalAttendu += $montant;
         }
-        
+
         // Ajouter les frais optionnels souscrits
         $subscriptions = \App\Models\ESBTPFraisSubscription::getActiveSubscriptions($inscription->id);
         foreach ($subscriptions as $subscription) {
             $totalAttendu += $subscription->amount;
         }
-        
+
         return $totalAttendu;
     }
     
@@ -580,10 +584,16 @@ class ESBTPReinscriptionController extends Controller
         try {
             switch ($category) {
                 case 'passages':
-                case 'rattrapages':  
+                case 'rattrapages':
                 case 'redoublements':
                     $resultats = $this->reinscriptionService->getEtudiantsParDecision($anneeAcademique);
                     $etudiants = collect($resultats[$category] ?? []);
+
+                    // CORRECTION: Ajouter les informations financières manquantes
+                    $etudiants = $etudiants->map(function($etudiant) {
+                        $this->enrichirInformationsFinancieres($etudiant);
+                        return $etudiant;
+                    });
                     break;
                     
                 case 'valides':
@@ -988,5 +998,36 @@ class ESBTPReinscriptionController extends Controller
             ->where('start_date', '>=', $anneeCourante->start_date)
             ->orderBy('start_date')
             ->get();
+    }
+
+    /**
+     * Enrichir les informations financières d'un étudiant
+     */
+    private function enrichirInformationsFinancieres($etudiant)
+    {
+        // Récupérer l'inscription la plus récente de l'étudiant avec classe
+        $inscription = \App\Models\ESBTPInscription::whereNotNull('classe_id')
+            ->where('etudiant_id', $etudiant->id)
+            ->with(['classe', 'anneeUniversitaire'])
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        if ($inscription) {
+            // Calculer le total attendu et payé
+            $totalAttendu = $this->calculerTotalAttendu($inscription);
+            $totalPaye = $this->calculerTotalPaye($inscription);
+            $soldeRestant = $totalAttendu - $totalPaye;
+
+            $etudiant->montant_attendu = $totalAttendu;
+            $etudiant->montant_paye = $totalPaye;
+            $etudiant->solde_restant = $soldeRestant;
+            $etudiant->peut_reinscrire = $soldeRestant <= 0;
+        } else {
+            // Pas d'inscription active
+            $etudiant->montant_attendu = 0;
+            $etudiant->montant_paye = 0;
+            $etudiant->solde_restant = 0;
+            $etudiant->peut_reinscrire = false;
+        }
     }
 }
