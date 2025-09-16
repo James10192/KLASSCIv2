@@ -204,4 +204,37 @@ Si nécessaire, exécuter le script de diagnostic pour identifier et corriger le
 | Affichage paiements | ❌ Erreur si user null | ✅ Fallback robuste |
 | Architecture | ⚠️ Incomplète | ✅ Cohérente |
 
+## 🔐 Fonctionnalité Bonus : Modification de Paiements (Super-Admin)
+
+### Nouvelle fonctionnalité ajoutée :
+
+**Boutons de modification pour les super-administrateurs uniquement :**
+- ✅ `resources/views/esbtp/paiements/index.blade.php` : Bouton d'édition dans la liste
+- ✅ `resources/views/esbtp/paiements/show.blade.php` : Bouton d'édition dans la vue détaillée
+- ✅ `app/Http/Controllers/ESBTPPaiementController.php` : Protection au niveau contrôleur
+
+**Sécurité :**
+```php
+// Protection dans les vues
+@if(auth()->user()->hasRole('superadmin'))
+    <a href="{{ route('esbtp.paiements.edit', $paiement->id) }}" ...>
+        <i class="fas fa-edit"></i>Modifier
+    </a>
+@endif
+
+// Protection dans le contrôleur
+if (!auth()->user()->hasRole('superadmin')) {
+    return redirect()->route('esbtp.paiements.show', $id)
+        ->with('error', 'Seuls les super-administrateurs peuvent modifier les paiements.');
+}
+```
+
+**Règles de modification :**
+- ✅ Seuls les super-administrateurs peuvent voir et utiliser les boutons
+- ✅ Les paiements validés ne peuvent pas être modifiés
+- ✅ Messages d'erreur clairs pour les tentatives non autorisées
+
+---
+
 **Le système de reliquats est maintenant entièrement fonctionnel ! 🎉**
+**La gestion des paiements est sécurisée avec contrôle d'accès super-admin ! 🔐**
