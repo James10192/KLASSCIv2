@@ -130,7 +130,7 @@ class GenerateFeesForAcademicYear extends Command
                             ESBTPFraisSubscription::create([
                                 'inscription_id' => $inscription->id,
                                 'frais_category_id' => $fee['category_id'],
-                                'frais_configuration_id' => $fee['configuration_id'] ?? null,
+                                'selected_option_id' => $fee['configuration_id'] ?? null,
                                 'amount' => $fee['amount'],
                                 'is_active' => true,
                                 'created_by' => 1,

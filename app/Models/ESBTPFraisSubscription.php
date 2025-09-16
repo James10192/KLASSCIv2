@@ -13,7 +13,7 @@ class ESBTPFraisSubscription extends Model
     protected $fillable = [
         'inscription_id',
         'frais_category_id',
-        'frais_configuration_id',
+        'selected_option_id',
         'amount',
         'is_active',
         'subscribed_at',
@@ -44,11 +44,27 @@ class ESBTPFraisSubscription extends Model
     }
 
     /**
-     * Relation avec la configuration de frais
+     * Relation avec l'option sélectionnée (peut être une configuration de frais)
      */
-    public function fraisConfiguration(): BelongsTo
+    public function selectedOption(): BelongsTo
     {
-        return $this->belongsTo(ESBTPFraisConfiguration::class, 'frais_configuration_id');
+        return $this->belongsTo(ESBTPFraisOption::class, 'selected_option_id');
+    }
+
+    /**
+     * Alias pour accéder à la configuration via l'option ou directement
+     */
+    public function fraisConfiguration()
+    {
+        // Si on a une option sélectionnée, utiliser sa configuration
+        if ($this->selected_option_id) {
+            return $this->selectedOption?->fraisConfiguration ?? null;
+        }
+
+        // Sinon, chercher directement la configuration par catégorie
+        return ESBTPFraisConfiguration::where('frais_category_id', $this->frais_category_id)
+            ->where('is_active', true)
+            ->first();
     }
 
     /**
