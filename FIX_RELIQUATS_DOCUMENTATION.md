@@ -286,6 +286,31 @@ foreach (['academic', 'service', 'administrative'] as $type) {
 - `app/Http/Controllers/ESBTPPaiementController.php` : lignes 177-182, 252-287, 123-128
 - `resources/views/esbtp/paiements/index.blade.php` : lignes 123-132, 189-196
 
+### Correction #4: Erreur SQL lors du paiement de reliquat
+**Problème :** Erreur "Column not found: 'statut'" lors du paiement d'un reliquat
+**Cause :** Utilisation de colonnes inexistantes dans ESBTPPaiement (`statut` au lieu de `status`, colonnes de validation inexistantes)
+**Solution :** Correction des noms de colonnes dans la méthode `payReliquat()`
+
+**Changements effectués :**
+```php
+// Avant (colonnes incorrectes)
+'statut' => 'valide',
+'is_validated' => true,
+'validated_at' => now(),
+'validated_by' => auth()->id(),
+'fee_category_id' => $category_id,
+'notes' => $description
+
+// Après (colonnes correctes)
+'status' => 'validé',
+'frais_category_id' => $category_id,
+'description' => $description
+// Colonnes inexistantes supprimées
+```
+
+**Fichier corrigé :**
+- `app/Http/Controllers/ESBTPPaiementController.php` : méthode `payReliquat()` lignes 1562-1574
+
 ---
 
 **Le système de reliquats est maintenant entièrement fonctionnel ! 🎉**

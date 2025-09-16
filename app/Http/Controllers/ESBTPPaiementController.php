@@ -1562,17 +1562,14 @@ class ESBTPPaiementController extends Controller
             $paiement = ESBTPPaiement::create([
                 'etudiant_id' => $reliquat->inscriptionDestination->etudiant_id,
                 'inscription_id' => $reliquat->inscription_destination_id,
-                'fee_category_id' => $reliquat->fraisSubscription->frais_category_id,
+                'frais_category_id' => $reliquat->fraisSubscription->frais_category_id,
                 'montant' => $montantPaye,
                 'mode_paiement' => $modePaiement,
                 'date_paiement' => now(),
-                'statut' => 'valide',
-                'is_validated' => true,
-                'validated_at' => now(),
-                'validated_by' => auth()->id(),
+                'status' => 'validé',
                 'type_paiement' => 'reliquat',
                 'reliquat_detail_id' => $reliquat->id,
-                'notes' => $notes ? "Paiement de reliquat: " . $notes : "Paiement de reliquat",
+                'description' => $notes ? "Paiement de reliquat: " . $notes : "Paiement de reliquat",
                 'created_by' => auth()->id()
             ]);
 
