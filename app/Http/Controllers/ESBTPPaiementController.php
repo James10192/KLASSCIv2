@@ -1476,6 +1476,7 @@ class ESBTPPaiementController extends Controller
             $paiement = ESBTPPaiement::create([
                 'etudiant_id' => $reliquat->inscriptionDestination->etudiant_id,
                 'inscription_id' => $reliquat->inscription_destination_id,
+                'annee_universitaire_id' => $reliquat->inscriptionDestination->annee_universitaire_id,
                 'frais_category_id' => $reliquat->fraisSubscription->frais_category_id,
                 'montant' => $montantPaye,
                 'mode_paiement' => $modePaiement,
