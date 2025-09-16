@@ -752,7 +752,8 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::post('/inscriptions/{inscription}/valider-definitivement', [ESBTPInscriptionController::class, 'validerDefinitivement'])->name('inscriptions.valider-definitivement');
             Route::post('/inscriptions/{inscription}/payer-frais', [ESBTPInscriptionController::class, 'payerFraisCategorie'])->name('inscriptions.payer-frais');
             Route::post('/inscriptions/{inscription}/transfer-overpayment', [ESBTPInscriptionController::class, 'transferOverpayment'])->name('inscriptions.transfer-overpayment');
-            
+            Route::put('/inscriptions/{inscription}/subscriptions/{subscription}', [ESBTPInscriptionController::class, 'updateSubscription'])->name('inscriptions.update-subscription')->middleware('role:superAdmin');
+
             // API pour les parents dans les inscriptions
             Route::get('/api/parents/search', [ESBTPInscriptionController::class, 'searchParents'])->name('api.parents.search');
             

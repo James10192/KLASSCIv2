@@ -22,22 +22,22 @@ Le composant `class-selector` utilisé dans `inscriptions/create` avait des filt
 #### Comportement :
 - **Premier clic** : Tri croissant (A-Z) avec icône ↑
 - **Deuxième clic** : Tri décroissant (Z-A) avec icône ↓
-- **Colonnes triables** : Classe, Filière, Niveau, Année
+- **Colonnes triables** : Classe, Filière, Niveau
 - **Indication visuelle** : Icônes colorées pour la colonne active
 
 ### 2. Filtres de Recherche Fonctionnels
 **Fonctionnalité :** Filtrage en temps réel des classes
 
 #### Types de filtres :
-1. **Filtrage par type** : Nom, Filière, Niveau, Année, ou Tous
+1. **Filtrage par type** : Nom, Filière, Niveau, ou Tous
 2. **Recherche textuelle** : Input avec filtrage en temps réel
-3. **Filtrage par année** : Select pour limiter à une année universitaire
 
 #### Logique de filtrage :
-- **Recherche "Tous"** : Recherche dans tous les champs
+- **Recherche "Tous"** : Recherche dans tous les champs (nom, filière, niveau)
 - **Recherche spécifique** : Filtrage selon le type sélectionné
-- **Combinaison** : Filtres d'année ET recherche textuelle
 - **Temps réel** : Filtrage à chaque frappe (event `input`)
+
+**Note :** Le filtre par année universitaire a été supprimé car les inscriptions utilisent automatiquement l'année courante (`is_current`).
 
 ### 3. Améliorations UX/UI
 
@@ -96,11 +96,12 @@ header.addEventListener('click', function() { /* logique tri */ });
 ❌ Recherche manuelle difficile dans une longue liste
 ❌ Pas de tri possible
 ❌ Filtres non fonctionnels
+❌ Colonne "Année" redondante (toujours année courante)
 
 ### Après :
 ✅ **Recherche rapide** : "BTS" trouve toutes les classes BTS
 ✅ **Tri intelligent** : Clic sur "Filière" pour grouper par filière
-✅ **Filtrage combiné** : Année 2025-2026 + recherche "Informatique"
+✅ **Interface simplifiée** : Colonne "Année" supprimée (inscriptions = année courante)
 ✅ **Feedback visuel** : Indicateurs clairs de tri et filtrage
 
 ## Impact Utilisateur
@@ -129,5 +130,22 @@ header.addEventListener('click', function() { /* logique tri */ });
 
 ## Fichiers Modifiés
 - `resources/views/components/forms/class-selector.blade.php` : Composant principal
+
+## Simplification (16/09/2025)
+
+### Suppression de la colonne "Année universitaire"
+**Rationale :** Les inscriptions utilisent automatiquement l'année marquée comme `is_current` dans la base de données.
+
+#### Modifications apportées :
+1. **Interface simplifiée** : Tableau passe de 5 à 4 colonnes
+2. **Filtres réduits** : Suppression du select "Année universitaire"
+3. **Layout amélioré** : Filtres passent de 3 à 2 colonnes (col-md-6 chacune)
+4. **Logique JavaScript** : Suppression des références à "annee" dans le tri et filtrage
+
+#### Impact :
+- ✅ **Interface plus claire** : Moins d'encombrement visuel
+- ✅ **Logique métier respectée** : Inscription = toujours année courante
+- ✅ **Performance** : Moins de données à traiter côté client
+- ✅ **UX améliorée** : Focus sur les critères pertinents (classe, filière, niveau)
 
 Date : 16/09/2025

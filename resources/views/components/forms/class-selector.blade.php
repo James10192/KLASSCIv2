@@ -49,28 +49,18 @@
             <div class="modal-body">
                 <!-- Filtres pour la recherche de classe -->
                 <div class="row mb-3">
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <label for="classe_search_filter">Filtrer par :</label>
                         <select class="form-control" id="classe_search_filter">
                             <option value="all">Toutes les classes</option>
                             <option value="nom">Nom de la classe</option>
                             <option value="filiere">Filière</option>
                             <option value="niveau">Niveau</option>
-                            <option value="annee">Année universitaire</option>
                         </select>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <label for="classe_search_query">Rechercher :</label>
-                        <input type="text" class="form-control" id="classe_search_query" placeholder="Nom de la classe, filière, niveau, etc.">
-                    </div>
-                    <div class="col-md-4">
-                        <label for="classe_search_year">Année universitaire :</label>
-                        <select class="form-control" id="classe_search_year">
-                            <option value="">Toutes les années</option>
-                            @foreach($academicYears as $year)
-                                <option value="{{ $year->id }}">{{ $year->name }}</option>
-                            @endforeach
-                        </select>
+                        <input type="text" class="form-control" id="classe_search_query" placeholder="Nom de la classe, filière, niveau...">
                     </div>
                 </div>
                 <!-- Tableau pour afficher les classes -->
@@ -86,9 +76,6 @@
                                 </th>
                                 <th class="sortable" data-column="niveau" style="cursor: pointer;">
                                     Niveau <i class="fas fa-sort text-muted"></i>
-                                </th>
-                                <th class="sortable" data-column="annee" style="cursor: pointer;">
-                                    Année <i class="fas fa-sort text-muted"></i>
                                 </th>
                                 <th>Action</th>
                             </tr>
@@ -401,17 +388,16 @@ body.modal-open * {
         tableBody.innerHTML = '';
 
         if (classes.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Aucune classe trouvée</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Aucune classe trouvée</td></tr>';
             return;
         }
 
         classes.forEach(classe => {
-            const displayText = `${classe.name || ''} - ${classe.filiere_name || 'N/A'} - ${classe.niveau_name || 'N/A'} - ${classe.annee_name || 'N/A'}`;
+            const displayText = `${classe.name || ''} - ${classe.filiere_name || 'N/A'} - ${classe.niveau_name || 'N/A'}`;
             tableBody.innerHTML += `<tr>
                 <td>${classe.name || ''}</td>
                 <td>${classe.filiere_name || 'N/A'}</td>
                 <td>${classe.niveau_name || 'N/A'}</td>
-                <td>${classe.annee_name || 'N/A'}</td>
                 <td><button class="btn btn-sm btn-primary" onclick="selectClasse(${classe.id}, '${displayText.replace(/'/g, "\\'")}\')">Sélectionner</button></td>
             </tr>`;
         });
@@ -421,14 +407,8 @@ body.modal-open * {
     function filterClasses() {
         const filterType = document.getElementById('classe_search_filter').value;
         const query = document.getElementById('classe_search_query').value.toLowerCase();
-        const yearFilter = document.getElementById('classe_search_year').value;
 
         let filteredClasses = allClasses;
-
-        // Filter by year if selected
-        if (yearFilter) {
-            filteredClasses = filteredClasses.filter(classe => classe.annee_universitaire_id == yearFilter);
-        }
 
         // Filter by search query if provided
         if (query) {
@@ -440,13 +420,10 @@ body.modal-open * {
                         return (classe.filiere_name || '').toLowerCase().includes(query);
                     case 'niveau':
                         return (classe.niveau_name || '').toLowerCase().includes(query);
-                    case 'annee':
-                        return (classe.annee_name || '').toLowerCase().includes(query);
                     default: // 'all'
                         return (classe.name || '').toLowerCase().includes(query) ||
                                (classe.filiere_name || '').toLowerCase().includes(query) ||
-                               (classe.niveau_name || '').toLowerCase().includes(query) ||
-                               (classe.annee_name || '').toLowerCase().includes(query);
+                               (classe.niveau_name || '').toLowerCase().includes(query);
                 }
             });
         }
@@ -476,10 +453,6 @@ body.modal-open * {
                 case 'niveau':
                     aValue = a.niveau_name || '';
                     bValue = b.niveau_name || '';
-                    break;
-                case 'annee':
-                    aValue = a.annee_name || '';
-                    bValue = b.annee_name || '';
                     break;
                 default:
                     return 0;
@@ -528,12 +501,6 @@ body.modal-open * {
             searchFilter.addEventListener('change', filterClasses);
         }
 
-        // Year filter change event listener
-        const yearFilter = document.getElementById('classe_search_year');
-        if (yearFilter) {
-            yearFilter.addEventListener('change', filterClasses);
-        }
-
         // Sort headers click event listeners
         document.querySelectorAll('.sortable').forEach(header => {
             header.addEventListener('click', function() {
@@ -550,15 +517,10 @@ body.modal-open * {
                 // Apply sort to currently visible classes
                 const filterType = document.getElementById('classe_search_filter').value;
                 const query = document.getElementById('classe_search_query').value.toLowerCase();
-                const yearFilter = document.getElementById('classe_search_year').value;
 
                 let filteredClasses = allClasses;
 
                 // Apply same filters as filterClasses()
-                if (yearFilter) {
-                    filteredClasses = filteredClasses.filter(classe => classe.annee_universitaire_id == yearFilter);
-                }
-
                 if (query) {
                     filteredClasses = filteredClasses.filter(classe => {
                         switch (filterType) {
@@ -568,13 +530,10 @@ body.modal-open * {
                                 return (classe.filiere_name || '').toLowerCase().includes(query);
                             case 'niveau':
                                 return (classe.niveau_name || '').toLowerCase().includes(query);
-                            case 'annee':
-                                return (classe.annee_name || '').toLowerCase().includes(query);
                             default: // 'all'
                                 return (classe.name || '').toLowerCase().includes(query) ||
                                        (classe.filiere_name || '').toLowerCase().includes(query) ||
-                                       (classe.niveau_name || '').toLowerCase().includes(query) ||
-                                       (classe.annee_name || '').toLowerCase().includes(query);
+                                       (classe.niveau_name || '').toLowerCase().includes(query);
                         }
                     });
                 }

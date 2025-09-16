@@ -1380,6 +1380,75 @@ body.modal-open .card:hover {
 
 @endsection
 
+<!-- Modal d'édition de souscription (SuperAdmin) -->
+<div class="modal fade" id="editSubscriptionModal" tabindex="-1" aria-labelledby="editSubscriptionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editSubscriptionModalLabel">
+                    <i class="fas fa-edit me-2"></i>Modifier le montant de la souscription
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editSubscriptionForm" method="POST">
+                @csrf
+                @method('PUT')
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Attention :</strong> Cette fonctionnalité est réservée aux super-administrateurs.
+                        La modification du montant de souscription affectera les calculs de paiement pour cet étudiant.
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="form-group mb-3">
+                                <label for="edit_subscription_category_name" class="form-label fw-bold">Catégorie de frais</label>
+                                <input type="text" class="form-control" id="edit_subscription_category_name" readonly>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label for="edit_subscription_current_amount" class="form-label">Montant actuel</label>
+                                <input type="text" class="form-control bg-light" id="edit_subscription_current_amount" readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label for="edit_subscription_new_amount" class="form-label fw-bold text-primary">
+                                    Nouveau montant <span class="text-danger">*</span>
+                                </label>
+                                <input type="number" class="form-control" id="edit_subscription_new_amount"
+                                       name="amount" min="0" step="1" required>
+                                <div class="form-text">Le montant doit être en FCFA (nombre entier)</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="edit_subscription_reason" class="form-label">Motif de la modification <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="edit_subscription_reason" name="reason" rows="3"
+                                  placeholder="Indiquez le motif de cette modification (ex: bourse partielle, réduction, correction d'erreur...)" required></textarea>
+                    </div>
+
+                    <input type="hidden" id="edit_subscription_id" name="subscription_id">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>Annuler
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>Sauvegarder les modifications
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
     console.log('🚀 SCRIPT CHARGÉ - Fonctions modales en cours de définition...');
     
@@ -2032,6 +2101,79 @@ body.modal-open .card:hover {
             document.getElementById('reliquat_mode_paiement').value = '';
             document.getElementById('reliquat_notes').value = '';
         };
+
+        // Fonction pour préparer le modal d'édition de souscription (SuperAdmin)
+        window.prepareEditSubscriptionModal = function(subscriptionId, categoryName, currentAmount) {
+            console.log('✏️ Préparation modal édition souscription:', { subscriptionId, categoryName, currentAmount });
+
+            // Remplir les données de la souscription
+            document.getElementById('edit_subscription_id').value = subscriptionId;
+            document.getElementById('edit_subscription_category_name').value = categoryName;
+            document.getElementById('edit_subscription_current_amount').value = new Intl.NumberFormat('fr-FR').format(currentAmount) + ' FCFA';
+            document.getElementById('edit_subscription_new_amount').value = currentAmount;
+
+            // Réinitialiser les champs de saisie
+            document.getElementById('edit_subscription_reason').value = '';
+
+            // Mettre à jour l'action du formulaire
+            const form = document.getElementById('editSubscriptionForm');
+            const currentInscriptionId = {{ $inscription->id }};
+            form.action = `/esbtp/inscriptions/${currentInscriptionId}/subscriptions/${subscriptionId}`;
+
+            console.log('✅ Modal édition souscription préparé, action:', form.action);
+        };
+
+        // Gestionnaire de soumission du formulaire d'édition
+        document.getElementById('editSubscriptionForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const newAmount = document.getElementById('edit_subscription_new_amount').value;
+            const reason = document.getElementById('edit_subscription_reason').value;
+
+            // Validation côté client
+            if (!newAmount || newAmount < 0) {
+                alert('Veuillez saisir un montant valide');
+                return;
+            }
+
+            if (!reason.trim()) {
+                alert('Veuillez indiquer le motif de la modification');
+                return;
+            }
+
+            // Confirmation avant soumission
+            if (!confirm(`Êtes-vous sûr de vouloir modifier le montant de cette souscription ?\n\nNouveau montant: ${new Intl.NumberFormat('fr-FR').format(newAmount)} FCFA\nMotif: ${reason}`)) {
+                return;
+            }
+
+            // Soumission via fetch
+            fetch(this.action, {
+                method: 'PUT',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Fermer le modal
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('editSubscriptionModal'));
+                    modal.hide();
+
+                    // Recharger la page pour afficher les changements
+                    location.reload();
+                } else {
+                    alert('Erreur: ' + (data.message || 'Une erreur est survenue'));
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                alert('Une erreur est survenue lors de la mise à jour');
+            });
+        });
     });
 </script>
 

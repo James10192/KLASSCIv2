@@ -1306,6 +1306,92 @@ class ESBTPInscriptionController extends Controller
     }
 
     /**
+     * Mettre à jour le montant d'une souscription (SuperAdmin uniquement).
+     */
+    public function updateSubscription(Request $request, ESBTPInscription $inscription, ESBTPFraisSubscription $subscription)
+    {
+        // Vérifier que la souscription appartient bien à cette inscription
+        if ($subscription->inscription_id !== $inscription->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cette souscription n\'appartient pas à cette inscription.'
+            ], 403);
+        }
+
+        $request->validate([
+            'amount' => 'required|numeric|min:0',
+            'reason' => 'required|string|max:500',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $oldAmount = $subscription->amount;
+            $newAmount = $request->amount;
+
+            // Mettre à jour la souscription
+            $subscription->update([
+                'amount' => $newAmount,
+                'updated_at' => now(),
+            ]);
+
+            // Créer un log de l'activité pour audit
+            Log::info('Modification de souscription par SuperAdmin', [
+                'user_id' => auth()->id(),
+                'user_name' => auth()->user()->name,
+                'inscription_id' => $inscription->id,
+                'subscription_id' => $subscription->id,
+                'etudiant_matricule' => $inscription->etudiant->matricule ?? 'N/A',
+                'frais_category' => $subscription->fraisCategory->name ?? 'N/A',
+                'old_amount' => $oldAmount,
+                'new_amount' => $newAmount,
+                'difference' => $newAmount - $oldAmount,
+                'reason' => $request->reason,
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->header('User-Agent')
+            ]);
+
+            // Optionnel: créer une entrée dans une table d'audit si elle existe
+            // ESBTPSubscriptionAudit::create([...]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => sprintf(
+                    'Souscription mise à jour avec succès. Montant: %s FCFA → %s FCFA (différence: %s%s FCFA)',
+                    number_format($oldAmount, 0, ',', ' '),
+                    number_format($newAmount, 0, ',', ' '),
+                    $newAmount >= $oldAmount ? '+' : '',
+                    number_format($newAmount - $oldAmount, 0, ',', ' ')
+                ),
+                'data' => [
+                    'subscription_id' => $subscription->id,
+                    'old_amount' => $oldAmount,
+                    'new_amount' => $newAmount,
+                    'difference' => $newAmount - $oldAmount
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Erreur lors de la mise à jour de souscription', [
+                'user_id' => auth()->id(),
+                'inscription_id' => $inscription->id,
+                'subscription_id' => $subscription->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la mise à jour de la souscription: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Calculer le solde d'une catégorie de frais pour une inscription.
      */
     private function calculerSoldeCategorie(ESBTPInscription $inscription, ESBTPFraisCategory $category)
