@@ -1137,7 +1137,7 @@ class ESBTPInscriptionController extends Controller
                 'date_paiement' => $request->date_paiement,
                 'commentaire' => $request->commentaire,
                 'numero_recu' => $this->genererNumeroRecu(),
-                'status' => 'validé',
+                'status' => 'en_attente',
                 'created_by' => auth()->id(),
                 'updated_by' => auth()->id(),
             ]);
@@ -1223,7 +1223,7 @@ class ESBTPInscriptionController extends Controller
                 'date_paiement' => now(),
                 'commentaire' => $request->comment ?: 'Transfert multiple automatique de trop-perçu',
                 'numero_recu' => $this->genererNumeroRecu(),
-                'status' => 'validé',
+                'status' => 'en_attente',
                 'created_by' => auth()->id(),
                 'updated_by' => auth()->id(),
             ]);
@@ -1248,7 +1248,7 @@ class ESBTPInscriptionController extends Controller
                     'date_paiement' => now(),
                     'commentaire' => $request->comment ?: 'Réception transfert multiple de trop-perçu',
                     'numero_recu' => $this->genererNumeroRecu(),
-                    'status' => 'validé',
+                    'status' => 'en_attente',
                     'created_by' => auth()->id(),
                     'updated_by' => auth()->id(),
                 ]);

@@ -703,10 +703,30 @@ body.modal-open .card:hover {
                                                             <strong>{{ number_format($reliquat->montant_reliquat, 0, ',', ' ') }} FCFA</strong>
                                                         </td>
                                                         <td>
+                                                            @php
+                                                                // Paiements en attente pour ce reliquat
+                                                                $paiementsReliquatEnAttente = \App\Models\ESBTPPaiement::where('type_paiement', 'reliquat')
+                                                                    ->where('reliquat_detail_id', $reliquat->id)
+                                                                    ->where('status', 'en_attente')
+                                                                    ->sum('montant');
+                                                            @endphp
+
                                                             @if($reliquat->montant_regle > 0)
                                                                 <span class="text-success">{{ number_format($reliquat->montant_regle, 0, ',', ' ') }} FCFA</span>
+                                                                <br><small class="text-success"><i class="fas fa-check-circle me-1"></i>Validé</small>
                                                             @else
-                                                                <span class="text-muted">0 FCFA</span>
+                                                                <span class="text-muted">0 FCFA validé</span>
+                                                            @endif
+
+                                                            @if($paiementsReliquatEnAttente > 0)
+                                                                <br>
+                                                                <span class="text-warning">{{ number_format($paiementsReliquatEnAttente, 0, ',', ' ') }} FCFA</span>
+                                                                <br><small class="text-warning">
+                                                                    <i class="fas fa-hourglass-half me-1"></i>En attente -
+                                                                    <a href="{{ route('esbtp.paiements.index') }}?search={{ $reliquat->id }}" class="text-warning">
+                                                                        <i class="fas fa-external-link-alt"></i>Valider
+                                                                    </a>
+                                                                </small>
                                                             @endif
                                                         </td>
                                                         <td>
