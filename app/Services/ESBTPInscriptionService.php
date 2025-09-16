@@ -129,6 +129,9 @@ class ESBTPInscriptionService
                 'selected_optionals' => $selectedOptionals
             ]);
 
+            // 6bis-2. Sauvegarder les frais générés comme ESBTPFraisSubscription
+            $this->saveGeneratedFeesAsSubscriptions($inscription, $generatedFees);
+
             // 6ter. Générer automatiquement la facture liée à l'inscription
             $facture = new \App\Models\ESBTPFacture();
             $facture->numero_facture = 'FAC-' . date('Ymd') . '-' . str_pad($inscription->id, 5, '0', STR_PAD_LEFT);
@@ -738,6 +741,50 @@ class ESBTPInscriptionService
                 'inscription_id' => $inscription->id,
                 'error' => $e->getMessage()
             ]);
+        }
+    }
+
+    /**
+     * Sauvegarder les frais générés comme ESBTPFraisSubscription
+     */
+    private function saveGeneratedFeesAsSubscriptions(ESBTPInscription $inscription, array $generatedFees)
+    {
+        try {
+            foreach ($generatedFees as $fee) {
+                // Vérifier si la souscription existe déjà
+                $existingSubscription = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
+                    ->where('frais_category_id', $fee['category_id'])
+                    ->first();
+
+                if (!$existingSubscription && $fee['amount'] > 0) {
+                    // Créer la nouvelle souscription
+                    \App\Models\ESBTPFraisSubscription::create([
+                        'inscription_id' => $inscription->id,
+                        'frais_category_id' => $fee['category_id'],
+                        'frais_configuration_id' => $fee['configuration_id'],
+                        'amount' => $fee['amount'],
+                        'is_active' => true,
+                        'subscribed_at' => $inscription->date_inscription ?? now(),
+                        'created_by' => $inscription->created_by ?? auth()->id(),
+                        'notes' => 'Frais ' . $fee['type'] . ' créé automatiquement lors de l\'inscription - ' . $fee['description']
+                    ]);
+
+                    Log::info('ESBTPFraisSubscription créée automatiquement', [
+                        'inscription_id' => $inscription->id,
+                        'category_id' => $fee['category_id'],
+                        'amount' => $fee['amount'],
+                        'description' => $fee['description'],
+                        'type' => $fee['type']
+                    ]);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la sauvegarde des frais générés comme subscriptions', [
+                'inscription_id' => $inscription->id,
+                'error' => $e->getMessage(),
+                'generated_fees_count' => count($generatedFees)
+            ]);
+            throw $e; // Re-lancer l'erreur pour interrompre la transaction
         }
     }
 }
