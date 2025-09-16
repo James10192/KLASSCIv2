@@ -447,6 +447,12 @@ class ESBTPPaiementController extends Controller
      */
     public function edit($id)
     {
+        // Vérifier que l'utilisateur est superadmin
+        if (!auth()->user()->hasRole('superadmin')) {
+            return redirect()->route('esbtp.paiements.show', $id)
+                ->with('error', 'Seuls les super-administrateurs peuvent modifier les paiements.');
+        }
+
         $paiement = ESBTPPaiement::with([
             'etudiant.user',
             'inscription.anneeUniversitaire',
@@ -472,6 +478,12 @@ class ESBTPPaiementController extends Controller
      */
     public function update(Request $request, $id)
     {
+        // Vérifier que l'utilisateur est superadmin
+        if (!auth()->user()->hasRole('superadmin')) {
+            return redirect()->route('esbtp.paiements.show', $id)
+                ->with('error', 'Seuls les super-administrateurs peuvent modifier les paiements.');
+        }
+
         $paiement = ESBTPPaiement::findOrFail($id);
 
         // Vérifier si le paiement peut être modifié

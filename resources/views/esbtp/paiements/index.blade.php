@@ -384,6 +384,14 @@
                                                     </ul>
                                                 </div>
                                             @endif
+
+                                            @if(auth()->user()->hasRole('superadmin'))
+                                                <a href="{{ route('esbtp.paiements.edit', $paiement->id) }}"
+                                                   class="btn btn-outline-warning btn-sm"
+                                                   title="Modifier">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                            @endif
                                         </div>
                                     </td>
                                 </tr>
