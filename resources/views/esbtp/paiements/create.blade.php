@@ -233,7 +233,7 @@
                             <div class="row">
                                 <div class="col-md-4">
                                     <div class="form-floating-modern">
-                                        <input type="text" class="form-control" value="{{ $inscription->filiere->name }}" readonly>
+                                        <input type="text" class="form-control" value="{{ $inscription->filiere->name ?? 'N/A' }}" readonly>
                                         <label>Filière</label>
                                         <input type="hidden" name="inscription_id" value="{{ $inscription->id }}">
                                     </div>

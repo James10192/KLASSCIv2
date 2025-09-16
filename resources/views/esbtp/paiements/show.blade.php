@@ -405,13 +405,13 @@
                         <div class="info-item">
                             <span class="info-label">Filière</span>
                             <span class="info-value">
-                                <span class="badge bg-primary">{{ $paiement->inscription->filiere->name }}</span>
+                                <span class="badge bg-primary">{{ $paiement->inscription->filiere->name ?? 'N/A' }}</span>
                             </span>
                         </div>
                         
                         <div class="info-item">
                             <span class="info-label">Niveau d'étude</span>
-                            <span class="info-value">{{ $paiement->inscription->niveauEtude->name }}</span>
+                            <span class="info-value">{{ $paiement->inscription->niveauEtude->name ?? 'N/A' }}</span>
                         </div>
                         
                         <div class="info-item">

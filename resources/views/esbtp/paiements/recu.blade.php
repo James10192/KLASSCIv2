@@ -268,15 +268,15 @@
                 </tr>
                 <tr>
                     <th>Filière</th>
-                    <td>{{ $paiement->inscription->filiere->name }}</td>
+                    <td>{{ $paiement->inscription->filiere->name ?? 'N/A' }}</td>
                 </tr>
                 <tr>
                     <th>Niveau</th>
-                    <td>{{ $paiement->inscription->niveauEtude->name }}</td>
+                    <td>{{ $paiement->inscription->niveauEtude->name ?? 'N/A' }}</td>
                 </tr>
                 <tr>
                     <th>Année Universitaire</th>
-                    <td>{{ $paiement->inscription->anneeUniversitaire->libelle }}</td>
+                    <td>{{ $paiement->inscription->anneeUniversitaire->libelle ?? 'N/A' }}</td>
                 </tr>
             </table>
         </div>

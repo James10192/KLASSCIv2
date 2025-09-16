@@ -346,6 +346,50 @@ Schema::table('esbtp_paiements', function (Blueprint $table) {
 
 ---
 
+### Correction #6: Erreurs "Attempt to read property 'name' on null" dans les vues de paiements
+**Problème :** Erreurs répétées dans différentes vues de paiements lors de l'accès à des propriétés de relations nulles
+**Cause :** Accès direct aux propriétés sans vérification de nullité (ex: `$paiement->etudiant->user->name`)
+**Solution :** Application systématique de l'opérateur de coalescence nulle (`??`) avec fallbacks appropriés
+
+**Fichiers corrigés :**
+- **resources/views/esbtp/paiements/preview.blade.php** : Lignes 232, 310, 314, 318
+- **resources/views/esbtp/paiements/recu.blade.php** : Lignes 267, 271, 275, 279
+- **resources/views/esbtp/paiements/create.blade.php** : Lignes 187, 190, 192, 201, 236
+- **resources/views/esbtp/paiements/etudiant.blade.php** : Lignes 11, 39, 43, 68, 69
+- **resources/views/esbtp/paiements/show.blade.php** : Lignes 408, 414, 528
+
+**Patterns de correction appliqués :**
+```blade
+// AVANT (vulnérable aux erreurs null)
+{{ $paiement->etudiant->user->name }}
+{{ $paiement->inscription->filiere->name }}
+
+// APRÈS (défensif avec fallbacks)
+{{ $paiement->etudiant->user->name ?? $paiement->etudiant->nom_complet ?? 'N/A' }}
+{{ $paiement->inscription->filiere->name ?? 'N/A' }}
+```
+
+**Types d'erreurs corrigées :**
+- ✅ `$paiement->etudiant->user->name` → Avec fallback vers `nom_complet`
+- ✅ `$paiement->etudiant->user->email` → Avec fallback vers `'N/A'`
+- ✅ `$paiement->inscription->filiere->name` → Avec fallback vers `'N/A'`
+- ✅ `$paiement->inscription->niveauEtude->name` → Avec fallback vers `'N/A'`
+- ✅ `$paiement->inscription->anneeUniversitaire->libelle` → Avec fallback vers `'N/A'`
+
+**Stratégie de fallback :**
+1. **Pour les noms d'étudiants** : `user->name ?? nom_complet ?? 'N/A'` (double fallback)
+2. **Pour les emails** : `user->email ?? 'N/A'` (fallback simple)
+3. **Pour les données académiques** : `relation->property ?? 'N/A'` (fallback générique)
+
+**Impact :**
+- ✅ Élimination complète des erreurs "Attempt to read property on null"
+- ✅ Affichage gracieux avec données de fallback appropriées
+- ✅ Robustesse accrue face aux données incomplètes
+- ✅ Meilleure expérience utilisateur avec messages informatifs
+
+---
+
 **Le système de reliquats est maintenant entièrement fonctionnel ! 🎉**
 **La gestion des paiements est sécurisée avec contrôle d'accès super-admin ! 🔐**
 **Le workflow de validation des paiements fonctionne parfaitement ! ✅**
+**Les vues de paiements sont maintenant robustes et résistantes aux erreurs null ! 🛡️**
