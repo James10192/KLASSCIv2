@@ -85,7 +85,6 @@ class ESBTPPaiement extends Model implements Auditable
         'numero_transaction',
         'date_paiement',
         'date_echeance',
-        'description',
         'statut',
         'createur_id',
         'validateur_id',
