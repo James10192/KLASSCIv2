@@ -349,10 +349,10 @@
                         <!-- Avatar et nom -->
                         <div class="d-flex align-items-center mb-lg">
                             <div class="student-avatar">
-                                {{ substr($paiement->etudiant->user->name, 0, 2) }}
+                                {{ substr($paiement->etudiant->user->name ?? $paiement->etudiant->nom_complet, 0, 2) }}
                             </div>
                             <div>
-                                <h5 class="mb-1">{{ $paiement->etudiant->user->name }}</h5>
+                                <h5 class="mb-1">{{ $paiement->etudiant->user->name ?? $paiement->etudiant->nom_complet }}</h5>
                                 <p class="text-muted mb-0">{{ $paiement->etudiant->matricule }}</p>
                             </div>
                         </div>
