@@ -78,10 +78,18 @@
                     <table class="table table-striped table-hover">
                         <thead>
                             <tr>
-                                <th>Classe</th>
-                                <th>Filière</th>
-                                <th>Niveau</th>
-                                <th>Année</th>
+                                <th class="sortable" data-column="name" style="cursor: pointer;">
+                                    Classe <i class="fas fa-sort text-muted"></i>
+                                </th>
+                                <th class="sortable" data-column="filiere" style="cursor: pointer;">
+                                    Filière <i class="fas fa-sort text-muted"></i>
+                                </th>
+                                <th class="sortable" data-column="niveau" style="cursor: pointer;">
+                                    Niveau <i class="fas fa-sort text-muted"></i>
+                                </th>
+                                <th class="sortable" data-column="annee" style="cursor: pointer;">
+                                    Année <i class="fas fa-sort text-muted"></i>
+                                </th>
                                 <th>Action</th>
                             </tr>
                         </thead>
@@ -229,6 +237,40 @@ body.modal-open {
 body.modal-open * {
     cursor: default !important;
 }
+
+/* Styles pour le tri et les filtres */
+.sortable:hover {
+    background-color: #f8f9fa !important;
+}
+
+.sortable i {
+    transition: color 0.2s ease;
+}
+
+.sortable:hover i {
+    color: #007bff !important;
+}
+
+.table th.sortable {
+    user-select: none;
+}
+
+/* Style pour le champ de recherche actif */
+#classe_search_query:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Amélioration visuelle des filtres */
+.mb-3 label {
+    font-weight: 500;
+    color: #495057;
+}
+
+/* Style pour les icônes de tri actives */
+.sortable i.text-primary {
+    font-weight: bold;
+}
 </style>
 
 <script>
@@ -322,12 +364,16 @@ body.modal-open * {
         }
     });
 
+    // Variables globales pour la gestion des classes
+    let allClasses = [];
+    let currentSort = { column: null, direction: 'asc' };
+
     // Function to load classes
     function loadClasses() {
         console.log('Loading classes...');
         const tableBody = document.getElementById('classes-table-body');
         tableBody.innerHTML = '<tr><td colspan="5">Chargement...</td></tr>';
-        
+
         // Load classes using the existing API
         fetch('/esbtp/inscriptions/getClasses')
             .then(response => {
@@ -339,23 +385,204 @@ body.modal-open * {
             })
             .then(classes => {
                 console.log('Classes loaded:', classes);
-                tableBody.innerHTML = '';
-                classes.forEach(classe => {
-                    const displayText = `${classe.name || ''} - ${classe.filiere_name || 'N/A'} - ${classe.niveau_name || 'N/A'} - ${classe.annee_name || 'N/A'}`;
-                    tableBody.innerHTML += `<tr>
-                        <td>${classe.name || ''}</td>
-                        <td>${classe.filiere_name || 'N/A'}</td>
-                        <td>${classe.niveau_name || 'N/A'}</td>
-                        <td>${classe.annee_name || 'N/A'}</td>
-                        <td><button class="btn btn-sm btn-primary" onclick="selectClasse(${classe.id}, '${displayText.replace(/'/g, "\\'")}\')">Sélectionner</button></td>
-                    </tr>`;
-                });
+                allClasses = classes; // Stocker toutes les classes
+                displayClasses(allClasses);
             })
             .catch(error => {
                 console.error('Error loading classes:', error);
+                const tableBody = document.getElementById('classes-table-body');
                 tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Erreur lors du chargement des classes.</td></tr>';
             });
     }
+
+    // Function to display classes in table
+    function displayClasses(classes) {
+        const tableBody = document.getElementById('classes-table-body');
+        tableBody.innerHTML = '';
+
+        if (classes.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Aucune classe trouvée</td></tr>';
+            return;
+        }
+
+        classes.forEach(classe => {
+            const displayText = `${classe.name || ''} - ${classe.filiere_name || 'N/A'} - ${classe.niveau_name || 'N/A'} - ${classe.annee_name || 'N/A'}`;
+            tableBody.innerHTML += `<tr>
+                <td>${classe.name || ''}</td>
+                <td>${classe.filiere_name || 'N/A'}</td>
+                <td>${classe.niveau_name || 'N/A'}</td>
+                <td>${classe.annee_name || 'N/A'}</td>
+                <td><button class="btn btn-sm btn-primary" onclick="selectClasse(${classe.id}, '${displayText.replace(/'/g, "\\'")}\')">Sélectionner</button></td>
+            </tr>`;
+        });
+    }
+
+    // Function to filter classes
+    function filterClasses() {
+        const filterType = document.getElementById('classe_search_filter').value;
+        const query = document.getElementById('classe_search_query').value.toLowerCase();
+        const yearFilter = document.getElementById('classe_search_year').value;
+
+        let filteredClasses = allClasses;
+
+        // Filter by year if selected
+        if (yearFilter) {
+            filteredClasses = filteredClasses.filter(classe => classe.annee_universitaire_id == yearFilter);
+        }
+
+        // Filter by search query if provided
+        if (query) {
+            filteredClasses = filteredClasses.filter(classe => {
+                switch (filterType) {
+                    case 'nom':
+                        return (classe.name || '').toLowerCase().includes(query);
+                    case 'filiere':
+                        return (classe.filiere_name || '').toLowerCase().includes(query);
+                    case 'niveau':
+                        return (classe.niveau_name || '').toLowerCase().includes(query);
+                    case 'annee':
+                        return (classe.annee_name || '').toLowerCase().includes(query);
+                    default: // 'all'
+                        return (classe.name || '').toLowerCase().includes(query) ||
+                               (classe.filiere_name || '').toLowerCase().includes(query) ||
+                               (classe.niveau_name || '').toLowerCase().includes(query) ||
+                               (classe.annee_name || '').toLowerCase().includes(query);
+                }
+            });
+        }
+
+        // Apply current sort if any
+        if (currentSort.column) {
+            sortClasses(filteredClasses, currentSort.column, currentSort.direction);
+        } else {
+            displayClasses(filteredClasses);
+        }
+    }
+
+    // Function to sort classes
+    function sortClasses(classes, column, direction) {
+        const sortedClasses = [...classes].sort((a, b) => {
+            let aValue, bValue;
+
+            switch (column) {
+                case 'name':
+                    aValue = a.name || '';
+                    bValue = b.name || '';
+                    break;
+                case 'filiere':
+                    aValue = a.filiere_name || '';
+                    bValue = b.filiere_name || '';
+                    break;
+                case 'niveau':
+                    aValue = a.niveau_name || '';
+                    bValue = b.niveau_name || '';
+                    break;
+                case 'annee':
+                    aValue = a.annee_name || '';
+                    bValue = b.annee_name || '';
+                    break;
+                default:
+                    return 0;
+            }
+
+            if (direction === 'asc') {
+                return aValue.localeCompare(bValue);
+            } else {
+                return bValue.localeCompare(aValue);
+            }
+        });
+
+        displayClasses(sortedClasses);
+        updateSortIcons(column, direction);
+    }
+
+    // Function to update sort icons
+    function updateSortIcons(activeColumn, direction) {
+        // Reset all icons
+        document.querySelectorAll('.sortable i').forEach(icon => {
+            icon.className = 'fas fa-sort text-muted';
+        });
+
+        // Update active column icon
+        const activeHeader = document.querySelector(`[data-column="${activeColumn}"] i`);
+        if (activeHeader) {
+            if (direction === 'asc') {
+                activeHeader.className = 'fas fa-sort-up text-primary';
+            } else {
+                activeHeader.className = 'fas fa-sort-down text-primary';
+            }
+        }
+    }
+
+    // Event listeners for filters and search
+    document.addEventListener('DOMContentLoaded', function() {
+        // Search input event listener
+        const searchQuery = document.getElementById('classe_search_query');
+        if (searchQuery) {
+            searchQuery.addEventListener('input', filterClasses);
+        }
+
+        // Filter type change event listener
+        const searchFilter = document.getElementById('classe_search_filter');
+        if (searchFilter) {
+            searchFilter.addEventListener('change', filterClasses);
+        }
+
+        // Year filter change event listener
+        const yearFilter = document.getElementById('classe_search_year');
+        if (yearFilter) {
+            yearFilter.addEventListener('change', filterClasses);
+        }
+
+        // Sort headers click event listeners
+        document.querySelectorAll('.sortable').forEach(header => {
+            header.addEventListener('click', function() {
+                const column = this.getAttribute('data-column');
+                let direction = 'asc';
+
+                // Toggle direction if clicking the same column
+                if (currentSort.column === column) {
+                    direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+                }
+
+                currentSort = { column, direction };
+
+                // Apply sort to currently visible classes
+                const filterType = document.getElementById('classe_search_filter').value;
+                const query = document.getElementById('classe_search_query').value.toLowerCase();
+                const yearFilter = document.getElementById('classe_search_year').value;
+
+                let filteredClasses = allClasses;
+
+                // Apply same filters as filterClasses()
+                if (yearFilter) {
+                    filteredClasses = filteredClasses.filter(classe => classe.annee_universitaire_id == yearFilter);
+                }
+
+                if (query) {
+                    filteredClasses = filteredClasses.filter(classe => {
+                        switch (filterType) {
+                            case 'nom':
+                                return (classe.name || '').toLowerCase().includes(query);
+                            case 'filiere':
+                                return (classe.filiere_name || '').toLowerCase().includes(query);
+                            case 'niveau':
+                                return (classe.niveau_name || '').toLowerCase().includes(query);
+                            case 'annee':
+                                return (classe.annee_name || '').toLowerCase().includes(query);
+                            default: // 'all'
+                                return (classe.name || '').toLowerCase().includes(query) ||
+                                       (classe.filiere_name || '').toLowerCase().includes(query) ||
+                                       (classe.niveau_name || '').toLowerCase().includes(query) ||
+                                       (classe.annee_name || '').toLowerCase().includes(query);
+                        }
+                    });
+                }
+
+                sortClasses(filteredClasses, column, direction);
+            });
+        });
+    });
 
     // Add AJAX loading logic for classes when modal opens
     document.getElementById('classeSelectorModal').addEventListener('show.bs.modal', function () {

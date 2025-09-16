@@ -667,6 +667,11 @@ body.modal-open .card:hover {
                                                                 <i class="fas fa-credit-card"></i>
                                                             </button>
                                                         @endif
+                                                        @if(auth()->user()->hasRole('superAdmin') && $item['subscription'])
+                                                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#editSubscriptionModal" onclick="prepareEditSubscriptionModal({{ $item['subscription']->id }}, '{{ $item['category']->name }}', {{ $item['subscription']->amount }})" title="Modifier le montant de la souscription">
+                                                                <i class="fas fa-edit"></i>
+                                                            </button>
+                                                        @endif
                                                         @if(!$item['is_configured'])
                                                             <a href="{{ route('esbtp.frais.configure') }}?filiere_id={{ $inscription->filiere_id }}&niveau_id={{ $inscription->niveau_id }}" class="btn btn-sm btn-warning" title="Configurer ce frais">
                                                                 <i class="fas fa-cogs"></i>

@@ -505,9 +505,12 @@ class ESBTPInscriptionController extends Controller
         // Récupérer le statut d'affectation de l'inscription
         $affectationStatus = $inscription->affectation_status ?? 'affecté';
 
-        // Traiter les frais obligatoires (tous affichés)
+        // Traiter les frais obligatoires (utiliser les souscriptions individuelles)
         foreach ($mandatoryCategories as $category) {
             $rule = $category->getApplicableRule($inscription->filiere_id, $inscription->niveau_id, $inscription->annee_universitaire_id);
+
+            // Récupérer la souscription pour ce frais obligatoire
+            $subscription = $subscriptions->where('frais_category_id', $category->id)->first();
 
             // Calculer les paiements pour cette catégorie (exclure les paiements de reliquats)
             $paiements = $inscription->paiements()
@@ -520,10 +523,21 @@ class ESBTPInscriptionController extends Controller
                 ->get();
 
             $totalPaye = $paiements->sum('montant');
-            // Utiliser getMontantByStatus pour prendre en compte le statut d'affectation
-            $montantAttendu = $rule ? $rule->getMontantByStatus($affectationStatus) : $category->default_amount;
+
+            // Utiliser le montant de la souscription si elle existe, sinon fallback sur la configuration
+            if ($subscription) {
+                $montantAttendu = $subscription->amount;
+                $isConfigured = true;
+                $isSubscribed = true;
+            } else {
+                // Fallback sur la configuration générale si pas de souscription
+                $montantAttendu = $rule ? $rule->getMontantByStatus($affectationStatus) : $category->default_amount;
+                $isConfigured = $rule !== null;
+                $isSubscribed = false;
+            }
+
             $solde = $montantAttendu - $totalPaye;
-            
+
             $feeCategoriesWithRules[] = [
                 'category' => $category,
                 'rule' => $rule,
@@ -531,10 +545,10 @@ class ESBTPInscriptionController extends Controller
                 'total_paye' => $totalPaye,
                 'solde' => $solde,
                 'paiements' => $paiements,
-                'is_configured' => $rule !== null,
+                'is_configured' => $isConfigured,
                 'is_mandatory' => true,
-                'is_subscribed' => true, // Les frais obligatoires sont automatiquement "souscrits"
-                'subscription' => null,
+                'is_subscribed' => $isSubscribed,
+                'subscription' => $subscription,
                 'status' => $solde <= 0 ? 'paid' : ($totalPaye > 0 ? 'partial' : 'unpaid')
             ];
         }
