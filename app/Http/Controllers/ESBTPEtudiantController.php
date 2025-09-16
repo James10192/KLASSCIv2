@@ -360,13 +360,13 @@ class ESBTPEtudiantController extends Controller
 
         // Reliquats entrants (provenant d'inscriptions précédentes)
         $reliquatsEntrants = \App\Models\ESBTPReliquatDetail::whereIn('inscription_destination_id', $inscriptionIds)
-            ->with(['inscriptionSource.anneeUniversitaire', 'fraisSubscription.fraisConfiguration'])
+            ->with(['inscriptionSource.anneeUniversitaire', 'fraisSubscription.fraisCategory', 'fraisSubscription.selectedOption'])
             ->actifs()
             ->get();
 
         // Reliquats sortants (transférés vers des inscriptions futures)
         $reliquatsSortants = \App\Models\ESBTPReliquatDetail::whereIn('inscription_source_id', $inscriptionIds)
-            ->with(['inscriptionDestination.anneeUniversitaire', 'fraisSubscription.fraisConfiguration'])
+            ->with(['inscriptionDestination.anneeUniversitaire', 'fraisSubscription.fraisCategory', 'fraisSubscription.selectedOption'])
             ->get();
 
         // Calculer quelques statistiques utiles

@@ -52,19 +52,29 @@ class ESBTPFraisSubscription extends Model
     }
 
     /**
-     * Alias pour accéder à la configuration via l'option ou directement
+     * Accesseur pour obtenir la configuration de frais
+     * Retourne la configuration associée à cette souscription
      */
-    public function fraisConfiguration()
+    public function getFraisConfigurationAttribute()
     {
         // Si on a une option sélectionnée, utiliser sa configuration
-        if ($this->selected_option_id) {
-            return $this->selectedOption?->fraisConfiguration ?? null;
+        if ($this->selected_option_id && $this->selectedOption) {
+            return $this->selectedOption->fraisConfiguration ?? null;
         }
 
         // Sinon, chercher directement la configuration par catégorie
         return ESBTPFraisConfiguration::where('frais_category_id', $this->frais_category_id)
             ->where('is_active', true)
             ->first();
+    }
+
+    /**
+     * Méthode pour obtenir le nom de la configuration de frais
+     */
+    public function getConfigurationNameAttribute()
+    {
+        $config = $this->frais_configuration;
+        return $config ? $config->name : ($this->fraisCategory ? $this->fraisCategory->name : 'N/A');
     }
 
     /**
