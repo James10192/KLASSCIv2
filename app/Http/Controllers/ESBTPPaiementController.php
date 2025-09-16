@@ -1482,8 +1482,7 @@ class ESBTPPaiementController extends Controller
                 'date_paiement' => now(),
                 'status' => 'en_attente',
                 'type_paiement' => 'reliquat',
-                'reliquat_detail_id' => $reliquat->id,
-                'description' => $notes ? "Paiement de reliquat: " . $notes : "Paiement de reliquat",
+                'description' => ($notes ? "Paiement de reliquat: " . $notes : "Paiement de reliquat") . " (Reliquat ID: {$reliquat->id})",
                 'created_by' => auth()->id()
             ]);
 
@@ -1531,17 +1530,22 @@ class ESBTPPaiementController extends Controller
             ]);
 
             // Si c'est un paiement de reliquat, mettre à jour le reliquat
-            if ($paiement->type_paiement === 'reliquat' && $paiement->reliquat_detail_id) {
-                $reliquat = \App\Models\ESBTPReliquatDetail::find($paiement->reliquat_detail_id);
-                if ($reliquat) {
-                    $nouveauMontantRegle = $reliquat->montant_regle + $paiement->montant;
-                    $nouveauSolde = $reliquat->montant_reliquat - $nouveauMontantRegle;
+            if ($paiement->type_paiement === 'reliquat' && $paiement->description) {
+                // Extraire l'ID du reliquat depuis la description
+                preg_match('/Reliquat ID: (\d+)/', $paiement->description, $matches);
+                if (isset($matches[1])) {
+                    $reliquatId = $matches[1];
+                    $reliquat = \App\Models\ESBTPReliquatDetail::find($reliquatId);
+                    if ($reliquat) {
+                        $nouveauMontantRegle = $reliquat->montant_regle + $paiement->montant;
+                        $nouveauSolde = $reliquat->montant_reliquat - $nouveauMontantRegle;
 
-                    $reliquat->update([
-                        'montant_regle' => $nouveauMontantRegle,
-                        'statut' => $nouveauSolde <= 0 ? 'soldé' : 'partiellement_regle',
-                        'date_derniere_maj' => now()
-                    ]);
+                        $reliquat->update([
+                            'montant_regle' => $nouveauMontantRegle,
+                            'statut' => $nouveauSolde <= 0 ? 'soldé' : 'partiellement_regle',
+                            'date_derniere_maj' => now()
+                        ]);
+                    }
                 }
             }
 

@@ -99,8 +99,7 @@ class ESBTPPaiement extends Model implements Auditable
         // Nouvelles colonnes ajoutées en Task #1
         'reference_externe',
         'metadata',
-        'relance_id',
-        'reliquat_detail_id'
+        'relance_id'
     ];
 
     /**
