@@ -245,11 +245,11 @@
                                     <td>
                                         <div class="d-flex align-items-center">
                                             <div class="avatar-circle bg-primary me-2">
-                                                {{ substr($paiement->etudiant->user->name, 0, 2) }}
+                                                {{ substr($paiement->etudiant->user->name ?? $paiement->etudiant->nom_complet, 0, 2) }}
                                             </div>
                                             <div>
                                                 <a href="{{ route('esbtp.etudiants.show', $paiement->etudiant_id) }}" class="text-decoration-none">
-                                                    <strong>{{ $paiement->etudiant->user->name }}</strong>
+                                                    <strong>{{ $paiement->etudiant->user->name ?? $paiement->etudiant->nom_complet }}</strong>
                                                 </a>
                                                 <br><small class="text-muted">{{ $paiement->etudiant->matricule }}</small>
                                             </div>

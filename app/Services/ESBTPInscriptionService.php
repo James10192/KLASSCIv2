@@ -761,7 +761,6 @@ class ESBTPInscriptionService
                     \App\Models\ESBTPFraisSubscription::create([
                         'inscription_id' => $inscription->id,
                         'frais_category_id' => $fee['category_id'],
-                        'frais_configuration_id' => $fee['configuration_id'],
                         'amount' => $fee['amount'],
                         'is_active' => true,
                         'subscribed_at' => $inscription->date_inscription ?? now(),
