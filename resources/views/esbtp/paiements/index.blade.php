@@ -374,12 +374,25 @@
                                                 @endcan
                                                 
                                                 @can('validate-paiements')
-                                                <a href="{{ route('esbtp.paiements.valider', $paiement->id) }}" 
-                                                   class="btn btn-outline-success" 
-                                                   title="Valider"
-                                                   onclick="return confirm('Êtes-vous sûr de vouloir valider ce paiement ?')">
-                                                    <i class="fas fa-check"></i>
-                                                </a>
+                                                <form action="{{ route('esbtp.paiements.valider', $paiement->id) }}" method="POST" class="d-inline">
+                                                    @csrf
+                                                    <button type="submit"
+                                                            class="btn btn-outline-success"
+                                                            title="Valider"
+                                                            onclick="return confirm('Êtes-vous sûr de vouloir valider ce paiement ?')">
+                                                        <i class="fas fa-check"></i>
+                                                    </button>
+                                                </form>
+
+                                                @if($paiement->status == 'en_attente')
+                                                <button type="button"
+                                                        class="btn btn-outline-danger"
+                                                        title="Rejeter"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#rejetModal{{ $paiement->id }}">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                                @endif
                                                 @endcan
                                             @endif
                                             
@@ -539,6 +552,58 @@
         </div>
     </div>
 </div>
+
+<!-- Modaux de rejet pour les paiements en attente -->
+@foreach($paiements as $paiement)
+    @if($paiement->status == 'en_attente')
+        <div class="modal fade" id="rejetModal{{ $paiement->id }}" tabindex="-1" role="dialog">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <form action="{{ route('esbtp.paiements.rejeter', $paiement->id) }}" method="POST">
+                        @csrf
+                        <div class="modal-header">
+                            <h5 class="modal-title">
+                                <i class="fas fa-times-circle text-danger me-2"></i>
+                                Rejeter le paiement
+                            </h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                Vous êtes sur le point de rejeter le paiement de <strong>{{ $paiement->etudiant->nom_complet ?? 'N/A' }}</strong>
+                                d'un montant de <strong>{{ number_format($paiement->montant, 0, ',', ' ') }} FCFA</strong>.
+                            </div>
+
+                            <div class="form-group">
+                                <label for="motif_rejet_{{ $paiement->id }}">Motif du rejet <span class="text-danger">*</span></label>
+                                <textarea class="form-control" id="motif_rejet_{{ $paiement->id }}" name="motif_rejet" rows="4"
+                                          placeholder="Expliquez pourquoi ce paiement est rejeté..." required></textarea>
+                            </div>
+
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="confirmer_rejet_{{ $paiement->id }}" required>
+                                <label class="form-check-label" for="confirmer_rejet_{{ $paiement->id }}">
+                                    Je confirme le rejet de ce paiement
+                                </label>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                                <i class="fas fa-times me-1"></i>Annuler
+                            </button>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-times-circle me-1"></i>Rejeter le paiement
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @endif
+@endforeach
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>

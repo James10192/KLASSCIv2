@@ -1566,26 +1566,16 @@ class ESBTPPaiementController extends Controller
                 'montant' => $montantPaye,
                 'mode_paiement' => $modePaiement,
                 'date_paiement' => now(),
-                'status' => 'validé',
+                'status' => 'en_attente',
                 'type_paiement' => 'reliquat',
                 'reliquat_detail_id' => $reliquat->id,
                 'description' => $notes ? "Paiement de reliquat: " . $notes : "Paiement de reliquat",
                 'created_by' => auth()->id()
             ]);
 
-            // Mettre à jour le reliquat
-            $nouveauMontantRegle = $reliquat->montant_regle + $montantPaye;
-            $nouveauSolde = $reliquat->montant_reliquat - $nouveauMontantRegle;
-
-            $reliquat->update([
-                'montant_regle' => $nouveauMontantRegle,
-                'statut' => $nouveauSolde <= 0 ? 'soldé' : 'partiellement_regle',
-                'date_derniere_maj' => now()
-            ]);
-
             DB::commit();
 
-            return redirect()->back()->with('success', 'Paiement de reliquat enregistré avec succès. Montant payé: ' . number_format($montantPaye, 0, ',', ' ') . ' FCFA');
+            return redirect()->back()->with('success', 'Paiement de reliquat créé avec succès. Le paiement est en attente de validation. Montant: ' . number_format($montantPaye, 0, ',', ' ') . ' FCFA');
 
         } catch (\Exception $e) {
             DB::rollback();
@@ -1597,6 +1587,104 @@ class ESBTPPaiementController extends Controller
             ]);
 
             return redirect()->back()->with('error', 'Erreur lors du paiement: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Valider un paiement
+     */
+    public function valider($id)
+    {
+        try {
+            $paiement = ESBTPPaiement::findOrFail($id);
+
+            // Vérifier si le paiement peut être validé
+            if ($paiement->status === 'validé') {
+                return redirect()->back()->with('error', 'Ce paiement est déjà validé.');
+            }
+
+            if ($paiement->status === 'rejeté') {
+                return redirect()->back()->with('error', 'Ce paiement a été rejeté et ne peut pas être validé.');
+            }
+
+            DB::beginTransaction();
+
+            // Changer le statut du paiement
+            $paiement->update([
+                'status' => 'validé',
+                'date_validation' => now(),
+                'validateur_id' => auth()->id()
+            ]);
+
+            // Si c'est un paiement de reliquat, mettre à jour le reliquat
+            if ($paiement->type_paiement === 'reliquat' && $paiement->reliquat_detail_id) {
+                $reliquat = \App\Models\ESBTPReliquatDetail::find($paiement->reliquat_detail_id);
+                if ($reliquat) {
+                    $nouveauMontantRegle = $reliquat->montant_regle + $paiement->montant;
+                    $nouveauSolde = $reliquat->montant_reliquat - $nouveauMontantRegle;
+
+                    $reliquat->update([
+                        'montant_regle' => $nouveauMontantRegle,
+                        'statut' => $nouveauSolde <= 0 ? 'soldé' : 'partiellement_regle',
+                        'date_derniere_maj' => now()
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            return redirect()->back()->with('success', 'Paiement validé avec succès.');
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            \Log::error('Erreur lors de la validation du paiement', [
+                'paiement_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->back()->with('error', 'Erreur lors de la validation: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Rejeter un paiement
+     */
+    public function rejeter(Request $request, $id)
+    {
+        $request->validate([
+            'motif_rejet' => 'required|string|max:500'
+        ]);
+
+        try {
+            $paiement = ESBTPPaiement::findOrFail($id);
+
+            // Vérifier si le paiement peut être rejeté
+            if ($paiement->status === 'validé') {
+                return redirect()->back()->with('error', 'Ce paiement est déjà validé et ne peut pas être rejeté.');
+            }
+
+            if ($paiement->status === 'rejeté') {
+                return redirect()->back()->with('error', 'Ce paiement est déjà rejeté.');
+            }
+
+            $paiement->update([
+                'status' => 'rejeté',
+                'date_validation' => now(),
+                'validateur_id' => auth()->id(),
+                'commentaire' => $request->input('motif_rejet')
+            ]);
+
+            return redirect()->back()->with('success', 'Paiement rejeté avec succès.');
+
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors du rejet du paiement', [
+                'paiement_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->back()->with('error', 'Erreur lors du rejet: ' . $e->getMessage());
         }
     }
 }
