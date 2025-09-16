@@ -10,9 +10,10 @@
 
 /* Forcer tous les modals de cette page au premier plan */
 #paymentModal.modal,
-#validationModal.modal, 
+#validationModal.modal,
 #subscriptionModal.modal,
-#transferModal.modal {
+#transferModal.modal,
+#reliquatPaymentModal.modal {
     z-index: 9999 !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
@@ -21,7 +22,8 @@
 #paymentModal .modal-dialog,
 #validationModal .modal-dialog,
 #subscriptionModal .modal-dialog,
-#transferModal .modal-dialog {
+#transferModal .modal-dialog,
+#reliquatPaymentModal .modal-dialog {
     z-index: 10000 !important;
     position: relative !important;
     backdrop-filter: none !important;
@@ -31,7 +33,8 @@
 #paymentModal .modal-content,
 #validationModal .modal-content,
 #subscriptionModal .modal-content,
-#transferModal .modal-content {
+#transferModal .modal-content,
+#reliquatPaymentModal .modal-content {
     z-index: 10001 !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
@@ -45,7 +48,8 @@
 #paymentModal.modal.fade .modal-dialog,
 #validationModal.modal.fade .modal-dialog,
 #subscriptionModal.modal.fade .modal-dialog,
-#transferModal.modal.fade .modal-dialog {
+#transferModal.modal.fade .modal-dialog,
+#reliquatPaymentModal.modal.fade .modal-dialog {
     transition: none !important;
     transform: none !important;
 }
@@ -54,7 +58,8 @@
 #paymentModal.modal.show,
 #validationModal.modal.show,
 #subscriptionModal.modal.show,
-#transferModal.modal.show {
+#transferModal.modal.show,
+#reliquatPaymentModal.modal.show {
     display: block !important;
     visibility: visible !important;
     opacity: 1 !important;
@@ -655,6 +660,57 @@ body.modal-open .card:hover {
                                                 </td>
                                             </tr>
                                         @endforelse
+
+                                        {{-- Intégrer les reliquats comme des lignes de paiement --}}
+                                        @if($reliquatsEntrants->count() > 0)
+                                            @foreach($reliquatsEntrants as $reliquat)
+                                                @if($reliquat->solde_restant > 0)
+                                                    <tr class="reliquat-row">
+                                                        <td>
+                                                            <div class="d-flex align-items-center">
+                                                                <i class="fas fa-history me-2 text-warning"></i>
+                                                                <div>
+                                                                    <strong>{{ $reliquat->fraisSubscription->fraisConfiguration->name ?? $reliquat->fraisSubscription->fraisCategory->name ?? 'N/A' }}</strong>
+                                                                    <br><small class="text-muted">Reliquat {{ $reliquat->inscriptionSource->anneeUniversitaire->name ?? 'N/A' }}</small>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            <span class="badge bg-warning">Reliquat</span>
+                                                        </td>
+                                                        <td>
+                                                            <strong>{{ number_format($reliquat->montant_reliquat, 0, ',', ' ') }} FCFA</strong>
+                                                        </td>
+                                                        <td>
+                                                            @if($reliquat->montant_regle > 0)
+                                                                <span class="text-success">{{ number_format($reliquat->montant_regle, 0, ',', ' ') }} FCFA</span>
+                                                            @else
+                                                                <span class="text-muted">0 FCFA</span>
+                                                            @endif
+                                                        </td>
+                                                        <td>
+                                                            <strong class="text-danger">{{ number_format($reliquat->solde_restant, 0, ',', ' ') }} FCFA</strong>
+                                                        </td>
+                                                        <td>
+                                                            <span class="badge bg-{{ $reliquat->statut == 'actif' ? 'warning' : ($reliquat->statut == 'soldé' ? 'success' : 'info') }}">
+                                                                {{ ucfirst($reliquat->statut) }}
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            <div class="btn-group">
+                                                                <button class="btn btn-sm btn-success"
+                                                                        data-bs-toggle="modal"
+                                                                        data-bs-target="#reliquatPaymentModal"
+                                                                        onclick="prepareReliquatPaymentModal({{ $reliquat->id }}, {{ $reliquat->solde_restant }}, {{ json_encode($reliquat->fraisSubscription->fraisConfiguration->name ?? $reliquat->fraisSubscription->fraisCategory->name ?? 'N/A') }})"
+                                                                        title="Payer ce reliquat">
+                                                                    <i class="fas fa-credit-card"></i>
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                @endif
+                                            @endforeach
+                                        @endif
                                     </tbody>
                                 </table>
                             </div>
@@ -843,7 +899,7 @@ body.modal-open .card:hover {
                                                     @foreach($reliquatsEntrants as $reliquat)
                                                         <tr>
                                                             <td>{{ $reliquat->inscriptionSource->anneeUniversitaire->name ?? 'N/A' }}</td>
-                                                            <td>{{ $reliquat->fraisSubscription->fraisConfiguration->name ?? 'N/A' }}</td>
+                                                            <td>{{ $reliquat->fraisSubscription->fraisConfiguration->name ?? $reliquat->fraisSubscription->fraisCategory->name ?? 'N/A' }}</td>
                                                             <td>{{ number_format($reliquat->montant_reliquat, 0, ',', ' ') }} FCFA</td>
                                                             <td>{{ number_format($reliquat->montant_regle, 0, ',', ' ') }} FCFA</td>
                                                             <td><strong>{{ number_format($reliquat->solde_restant, 0, ',', ' ') }} FCFA</strong></td>
@@ -886,7 +942,7 @@ body.modal-open .card:hover {
                                                     @foreach($reliquatsSortants as $reliquat)
                                                         <tr>
                                                             <td>{{ $reliquat->inscriptionDestination->anneeUniversitaire->name ?? 'N/A' }}</td>
-                                                            <td>{{ $reliquat->fraisSubscription->fraisConfiguration->name ?? 'N/A' }}</td>
+                                                            <td>{{ $reliquat->fraisSubscription->fraisConfiguration->name ?? $reliquat->fraisSubscription->fraisCategory->name ?? 'N/A' }}</td>
                                                             <td>{{ number_format($reliquat->montant_reliquat, 0, ',', ' ') }} FCFA</td>
                                                             <td>{{ number_format($reliquat->montant_regle, 0, ',', ' ') }} FCFA</td>
                                                             <td><strong>{{ number_format($reliquat->solde_restant, 0, ',', ' ') }} FCFA</strong></td>
@@ -1025,6 +1081,79 @@ body.modal-open .card:hover {
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
                     <button type="submit" class="btn btn-success">Valider définitivement</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal pour paiement de reliquat -->
+<div class="modal fade" id="reliquatPaymentModal" tabindex="-1" aria-labelledby="reliquatPaymentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="reliquatPaymentModalLabel">
+                    <i class="fas fa-history me-2"></i>Paiement de Reliquat
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="reliquatPaymentForm" method="POST" action="{{ route('esbtp.reliquats.pay') }}">
+                @csrf
+                <input type="hidden" id="reliquat_id" name="reliquat_id">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Vous êtes sur le point de payer un reliquat de l'année précédente.
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title"><i class="fas fa-receipt me-2"></i>Détail du Reliquat</h6>
+                                    <p class="mb-1"><strong>Frais:</strong> <span id="reliquat_frais_name"></span></p>
+                                    <p class="mb-0"><strong>Montant à payer:</strong> <span id="reliquat_amount" class="text-danger fw-bold"></span> FCFA</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="reliquat_montant" class="form-label">Montant à payer <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" id="reliquat_montant" name="montant" min="1" step="1" required>
+                                <div class="form-text">Montant minimum: 1 FCFA</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="reliquat_mode_paiement" class="form-label">Mode de paiement <span class="text-danger">*</span></label>
+                                <select class="form-select" id="reliquat_mode_paiement" name="mode_paiement" required>
+                                    <option value="">Sélectionnez un mode</option>
+                                    <option value="especes">Espèces</option>
+                                    <option value="cheque">Chèque</option>
+                                    <option value="virement">Virement bancaire</option>
+                                    <option value="mobile_money">Mobile Money</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="mb-3">
+                                <label for="reliquat_notes" class="form-label">Notes (optionnel)</label>
+                                <textarea class="form-control" id="reliquat_notes" name="notes" rows="2" placeholder="Notes complémentaires sur ce paiement..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-credit-card me-2"></i>Confirmer le paiement
+                    </button>
                 </div>
             </form>
         </div>
@@ -1678,7 +1807,7 @@ body.modal-open .card:hover {
         console.log('🚀 Initialisation du diagnostic des modals');
         
         // Surveillance simple des événements de modals - Style class-selector
-        const modals = ['paymentModal', 'validationModal', 'subscriptionModal', 'transferModal'];
+        const modals = ['paymentModal', 'validationModal', 'subscriptionModal', 'transferModal', 'reliquatPaymentModal'];
         
         // Événement spécial pour le modal de transfert - réinitialisation complète
         const transferModal = document.getElementById('transferModal');
@@ -1837,6 +1966,22 @@ body.modal-open .card:hover {
                 }
             });
         }
+
+        // Fonction pour préparer le modal de paiement de reliquat
+        window.prepareReliquatPaymentModal = function(reliquatId, montantRestant, nomFrais) {
+            console.log('🔄 Préparation modal paiement reliquat:', { reliquatId, montantRestant, nomFrais });
+
+            // Remplir les données du reliquat
+            document.getElementById('reliquat_id').value = reliquatId;
+            document.getElementById('reliquat_frais_name').textContent = nomFrais;
+            document.getElementById('reliquat_amount').textContent = new Intl.NumberFormat('fr-FR').format(montantRestant);
+            document.getElementById('reliquat_montant').value = montantRestant;
+            document.getElementById('reliquat_montant').max = montantRestant;
+
+            // Réinitialiser les autres champs
+            document.getElementById('reliquat_mode_paiement').value = '';
+            document.getElementById('reliquat_notes').value = '';
+        };
     });
 </script>
 

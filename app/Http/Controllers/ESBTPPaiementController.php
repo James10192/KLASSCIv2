@@ -117,8 +117,15 @@ class ESBTPPaiementController extends Controller
         $stats = array_merge($stats, $categoriesStats);
         
         // Calcul du taux de recouvrement global corrigé
-        $stats['recovery_rate'] = $totalAttendu > 0 ? 
+        $stats['recovery_rate'] = $totalAttendu > 0 ?
             round(($totalPaye / $totalAttendu) * 100, 1) : 0;
+
+        // Calculer les statistiques spécifiques aux reliquats pour affichage séparé
+        $inscriptions = \App\Models\ESBTPInscription::where('annee_universitaire_id', $anneeId)
+            ->where('status', 'active')
+            ->get();
+        $reliquatsStats = $this->calculateReliquatsStats($inscriptions);
+        $stats['reliquats_total'] = $reliquatsStats['academic_pending'] + $reliquatsStats['service_pending'] + $reliquatsStats['administrative_pending'];
 
         return view('esbtp.paiements.index', compact('paiements', 'stats'));
     }
@@ -172,6 +179,13 @@ class ESBTPPaiementController extends Controller
         // S'assurer que les pending ne sont jamais négatifs
         foreach (['academic', 'service', 'administrative'] as $type) {
             $stats[$type . '_pending'] = max(0, $stats[$type . '_pending']);
+        }
+
+        // Ajouter les reliquats aux montants en attente
+        $reliquatsStats = $this->calculateReliquatsStats($inscriptions);
+        foreach (['academic', 'service', 'administrative'] as $type) {
+            $stats[$type . '_pending'] += $reliquatsStats[$type . '_pending'];
+            $stats[$type . '_total'] += $reliquatsStats[$type . '_total'];
         }
 
         return $stats;
@@ -237,6 +251,46 @@ class ESBTPPaiementController extends Controller
         }
 
         return $fraisStats;
+    }
+
+    /**
+     * Calcule les statistiques des reliquats pour les inscriptions données.
+     */
+    private function calculateReliquatsStats($inscriptions)
+    {
+        $reliquatsStats = [
+            'academic_pending' => 0,
+            'service_pending' => 0,
+            'administrative_pending' => 0,
+            'academic_total' => 0,
+            'service_total' => 0,
+            'administrative_total' => 0,
+        ];
+
+        // Récupérer tous les reliquats entrants pour les inscriptions données
+        $inscriptionIds = $inscriptions->pluck('id');
+
+        $reliquats = \App\Models\ESBTPReliquatDetail::with([
+            'fraisSubscription.fraisCategory'
+        ])
+        ->whereIn('inscription_destination_id', $inscriptionIds)
+        ->where('statut', '!=', 'soldé')  // Seulement les reliquats non soldés
+        ->get();
+
+        foreach ($reliquats as $reliquat) {
+            if ($reliquat->fraisSubscription && $reliquat->fraisSubscription->fraisCategory) {
+                $category = $reliquat->fraisSubscription->fraisCategory;
+                $categoryType = $category->category_type ?? 'academic';
+                $montantRestant = $reliquat->solde_restant;
+
+                if ($montantRestant > 0) {
+                    $reliquatsStats[$categoryType . '_pending'] += $montantRestant;
+                    $reliquatsStats[$categoryType . '_total'] += $montantRestant;
+                }
+            }
+        }
+
+        return $reliquatsStats;
     }
 
     /**
@@ -448,7 +502,7 @@ class ESBTPPaiementController extends Controller
     public function edit($id)
     {
         // Vérifier que l'utilisateur est superadmin
-        if (!auth()->user()->hasRole('superadmin')) {
+        if (!auth()->user()->hasRole('superAdmin')) {
             return redirect()->route('esbtp.paiements.show', $id)
                 ->with('error', 'Seuls les super-administrateurs peuvent modifier les paiements.');
         }
@@ -479,7 +533,7 @@ class ESBTPPaiementController extends Controller
     public function update(Request $request, $id)
     {
         // Vérifier que l'utilisateur est superadmin
-        if (!auth()->user()->hasRole('superadmin')) {
+        if (!auth()->user()->hasRole('superAdmin')) {
             return redirect()->route('esbtp.paiements.show', $id)
                 ->with('error', 'Seuls les super-administrateurs peuvent modifier les paiements.');
         }
@@ -1472,6 +1526,80 @@ class ESBTPPaiementController extends Controller
                 'error' => 'Erreur serveur: ' . $e->getMessage(),
                 'debug' => config('app.debug') ? $e->getTraceAsString() : null
             ], 500);
+        }
+    }
+
+    /**
+     * Payer un reliquat
+     */
+    public function payReliquat(Request $request)
+    {
+        try {
+            // Validation
+            $request->validate([
+                'reliquat_id' => 'required|exists:esbtp_reliquats_details,id',
+                'montant' => 'required|numeric|min:1',
+                'mode_paiement' => 'required|string',
+                'notes' => 'nullable|string|max:1000'
+            ]);
+
+            $reliquatId = $request->input('reliquat_id');
+            $montantPaye = $request->input('montant');
+            $modePaiement = $request->input('mode_paiement');
+            $notes = $request->input('notes');
+
+            DB::beginTransaction();
+
+            // Récupérer le reliquat
+            $reliquat = \App\Models\ESBTPReliquatDetail::findOrFail($reliquatId);
+
+            // Vérifier que le montant ne dépasse pas le solde restant
+            if ($montantPaye > $reliquat->solde_restant) {
+                return redirect()->back()->with('error', 'Le montant à payer ne peut pas dépasser le solde restant (' . number_format($reliquat->solde_restant, 0, ',', ' ') . ' FCFA).');
+            }
+
+            // Créer le paiement
+            $paiement = ESBTPPaiement::create([
+                'etudiant_id' => $reliquat->inscriptionDestination->etudiant_id,
+                'inscription_id' => $reliquat->inscription_destination_id,
+                'fee_category_id' => $reliquat->fraisSubscription->frais_category_id,
+                'montant' => $montantPaye,
+                'mode_paiement' => $modePaiement,
+                'date_paiement' => now(),
+                'statut' => 'valide',
+                'is_validated' => true,
+                'validated_at' => now(),
+                'validated_by' => auth()->id(),
+                'type_paiement' => 'reliquat',
+                'reliquat_detail_id' => $reliquat->id,
+                'notes' => $notes ? "Paiement de reliquat: " . $notes : "Paiement de reliquat",
+                'created_by' => auth()->id()
+            ]);
+
+            // Mettre à jour le reliquat
+            $nouveauMontantRegle = $reliquat->montant_regle + $montantPaye;
+            $nouveauSolde = $reliquat->montant_reliquat - $nouveauMontantRegle;
+
+            $reliquat->update([
+                'montant_regle' => $nouveauMontantRegle,
+                'statut' => $nouveauSolde <= 0 ? 'soldé' : 'partiellement_regle',
+                'date_derniere_maj' => now()
+            ]);
+
+            DB::commit();
+
+            return redirect()->back()->with('success', 'Paiement de reliquat enregistré avec succès. Montant payé: ' . number_format($montantPaye, 0, ',', ' ') . ' FCFA');
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            \Log::error('Erreur lors du paiement de reliquat', [
+                'reliquat_id' => $request->input('reliquat_id'),
+                'montant' => $request->input('montant'),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->back()->with('error', 'Erreur lors du paiement: ' . $e->getMessage());
         }
     }
 }

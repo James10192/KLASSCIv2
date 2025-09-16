@@ -255,7 +255,7 @@
                         </div>
                         @endif
 
-                        @if(auth()->user()->hasRole('superadmin'))
+                        @if(auth()->user()->hasRole('superAdmin'))
                             <a href="{{ route('esbtp.paiements.edit', $paiement->id) }}" class="btn-action warning mb-2">
                                 <i class="fas fa-edit me-1"></i>Modifier
                             </a>

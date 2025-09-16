@@ -671,6 +671,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::get('/paiements/{paiement}/recu', [App\Http\Controllers\ESBTPPaiementController::class, 'genererRecu'])->name('paiements.recu');
             Route::get('/paiements/etudiant/{etudiant}', [App\Http\Controllers\ESBTPPaiementController::class, 'paiementsEtudiant'])->name('paiements.etudiant');
 
+            // Routes pour les reliquats
+            Route::post('/reliquats/pay', [App\Http\Controllers\ESBTPPaiementController::class, 'payReliquat'])->name('reliquats.pay');
+
             // Routes ESBTP Bulletins
             Route::prefix('bulletins')->name('bulletins.')->group(function () {
                 Route::get('/', [ESBTPBulletinController::class, 'index'])->name('index');

@@ -584,13 +584,13 @@ class ESBTPInscriptionController extends Controller
         // Récupérer les reliquats pour cette inscription
         // Reliquats entrants (provenant d'inscriptions précédentes)
         $reliquatsEntrants = \App\Models\ESBTPReliquatDetail::where('inscription_destination_id', $inscription->id)
-            ->with(['inscriptionSource.anneeUniversitaire', 'fraisSubscription.fraisConfiguration'])
+            ->with(['inscriptionSource.anneeUniversitaire', 'fraisSubscription.fraisConfiguration', 'fraisSubscription.fraisCategory'])
             ->actifs()
             ->get();
 
         // Reliquats sortants (transférés vers des inscriptions futures)
         $reliquatsSortants = \App\Models\ESBTPReliquatDetail::where('inscription_source_id', $inscription->id)
-            ->with(['inscriptionDestination.anneeUniversitaire', 'fraisSubscription.fraisConfiguration'])
+            ->with(['inscriptionDestination.anneeUniversitaire', 'fraisSubscription.fraisConfiguration', 'fraisSubscription.fraisCategory'])
             ->get();
 
         // Statistiques reliquats

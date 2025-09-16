@@ -236,5 +236,57 @@ if (!auth()->user()->hasRole('superadmin')) {
 
 ---
 
+## 🔄 Corrections Post-Déploiement
+
+### Correction #1: Modal de paiement de reliquat
+**Problème :** Le modal de paiement de reliquat ne montrait pas les détails (champs vides)
+**Cause :** Utilisation de guillemets simples dans le JavaScript pouvant être cassés par des apostrophes
+**Solution :** Utilisation de `json_encode()` pour sécuriser les données passées au JavaScript
+
+```php
+// Avant
+onclick="prepareReliquatPaymentModal({{ $reliquat->id }}, {{ $reliquat->solde_restant }}, '{{ $fraisName }}')"
+
+// Après
+onclick="prepareReliquatPaymentModal({{ $reliquat->id }}, {{ $reliquat->solde_restant }}, {{ json_encode($fraisName) }})"
+```
+
+### Correction #2: Boutons d'édition superadmin non visibles
+**Problème :** Les boutons d'édition des paiements n'apparaissaient pas pour les superadmins
+**Cause :** Inconsistance dans la casse du rôle (`superadmin` vs `superAdmin`)
+**Solution :** Uniformisation avec `superAdmin` (casse Pascal)
+
+**Fichiers corrigés :**
+- `resources/views/esbtp/paiements/index.blade.php` : ligne 388
+- `resources/views/esbtp/paiements/show.blade.php` : ligne 258
+- `app/Http/Controllers/ESBTPPaiementController.php` : méthodes `edit()` et `update()`
+
+### Correction #3: Reliquats non inclus dans les KPI de paiement.index
+**Problème :** Les KPI cards ne prenaient pas en compte les reliquats dans les montants en attente
+**Impact :** Vision incomplète des montants à recouvrer pour l'année universitaire
+**Solution :** Intégration des reliquats dans le calcul des statistiques
+
+**Nouvelles fonctionnalités ajoutées :**
+- Méthode `calculateReliquatsStats()` dans `ESBTPPaiementController`
+- KPI card dédiée "Reliquats à Recouvrer" (affichée seulement si > 0)
+- Note informative dans les statistiques détaillées
+- Inclusion automatique des reliquats dans tous les totaux et montants en attente
+
+**Calculs mis à jour :**
+```php
+// Ajout des reliquats aux statistiques existantes
+$reliquatsStats = $this->calculateReliquatsStats($inscriptions);
+foreach (['academic', 'service', 'administrative'] as $type) {
+    $stats[$type . '_pending'] += $reliquatsStats[$type . '_pending'];
+    $stats[$type . '_total'] += $reliquatsStats[$type . '_total'];
+}
+```
+
+**Fichiers modifiés :**
+- `app/Http/Controllers/ESBTPPaiementController.php` : lignes 177-182, 252-287, 123-128
+- `resources/views/esbtp/paiements/index.blade.php` : lignes 123-132, 189-196
+
+---
+
 **Le système de reliquats est maintenant entièrement fonctionnel ! 🎉**
 **La gestion des paiements est sécurisée avec contrôle d'accès super-admin ! 🔐**

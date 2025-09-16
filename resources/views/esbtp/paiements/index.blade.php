@@ -119,6 +119,17 @@
                     {{ number_format($stats['montant_valide'], 0, ',', ' ') }} / {{ number_format($stats['montant_total'], 0, ',', ' ') }} FCFA
                 </div>
             </div>
+
+            @if($stats['reliquats_total'] > 0)
+            <div class="card-moderne kpi-card">
+                <div class="kpi-title">Reliquats à Recouvrer</div>
+                <div class="kpi-value color-danger">{{ number_format($stats['reliquats_total'], 0, ',', ' ') }} FCFA</div>
+                <div class="kpi-trend">
+                    <i class="fas fa-history"></i>
+                    Années précédentes
+                </div>
+            </div>
+            @endif
         </div>
 
         <!-- Statistiques Détaillées par Catégorie -->
@@ -174,6 +185,15 @@
                         </div>
                     </div>
                 </div>
+
+                @if($stats['reliquats_total'] > 0)
+                <div class="mt-3">
+                    <div class="alert alert-info alert-sm">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Note :</strong> Les montants "En attente" incluent les reliquats des années précédentes ({{ number_format($stats['reliquats_total'], 0, ',', ' ') }} FCFA).
+                    </div>
+                </div>
+                @endif
             </div>
         </div>
 
@@ -385,7 +405,7 @@
                                                 </div>
                                             @endif
 
-                                            @if(auth()->user()->hasRole('superadmin'))
+                                            @if(auth()->user()->hasRole('superAdmin'))
                                                 <a href="{{ route('esbtp.paiements.edit', $paiement->id) }}"
                                                    class="btn btn-outline-warning btn-sm"
                                                    title="Modifier">
