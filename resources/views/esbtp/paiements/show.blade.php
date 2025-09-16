@@ -373,9 +373,13 @@
                         <div class="info-item">
                             <span class="info-label">Email institutionnel</span>
                             <span class="info-value">
-                                <a href="mailto:{{ $paiement->etudiant->user->email }}" class="text-primary">
-                                    {{ $paiement->etudiant->user->email }}
-                                </a>
+                                @if($paiement->etudiant->user && $paiement->etudiant->user->email)
+                                    <a href="mailto:{{ $paiement->etudiant->user->email }}" class="text-primary">
+                                        {{ $paiement->etudiant->user->email }}
+                                    </a>
+                                @else
+                                    <span class="text-muted">Non disponible</span>
+                                @endif
                             </span>
                         </div>
                         
