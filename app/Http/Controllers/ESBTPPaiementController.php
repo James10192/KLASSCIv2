@@ -1484,6 +1484,7 @@ class ESBTPPaiementController extends Controller
                 'status' => 'en_attente',
                 'type_paiement' => 'reliquat',
                 'reliquat_detail_id' => $reliquat->id,
+                'motif' => $reliquat->fraisSubscription->fraisCategory->name ?? 'Reliquat',
                 'commentaire' => $notes ? "Paiement de reliquat: " . $notes : "Paiement de reliquat",
                 'created_by' => auth()->id()
             ]);
