@@ -92,7 +92,10 @@ $this->saveGeneratedFeesAsSubscriptions($inscription, $generatedFees); // ✅ AJ
 
 ### 2. Correction de l'erreur "Attempt to read property 'name' on null"
 
-**Problème :** Dans `resources/views/esbtp/paiements/index.blade.php`, ligne 248 :
+**Problème :** Dans les vues de paiements, accès direct à `user->name` sans vérification :
+- `resources/views/esbtp/paiements/index.blade.php`, ligne 248
+- `resources/views/esbtp/paiements/show.blade.php`, ligne 352
+
 ```blade
 {{ $paiement->etudiant->user->name }} <!-- ❌ user peut être null -->
 ```
