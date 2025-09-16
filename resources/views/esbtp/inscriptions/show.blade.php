@@ -589,10 +589,31 @@ body.modal-open .card:hover {
                                                     @endif
                                                 </td>
                                                 <td>
+                                                    @php
+                                                        // Paiements en attente pour cette catégorie
+                                                        $paiementsEnAttente = $inscription->paiements()
+                                                            ->where('frais_category_id', $item['category']->id)
+                                                            ->where('status', 'en_attente')
+                                                            ->get();
+                                                        $montantEnAttente = $paiementsEnAttente->sum('montant');
+                                                    @endphp
+
                                                     @if($item['total_paye'] > 0)
                                                         <strong class="text-success">{{ number_format($item['total_paye'], 0, ',', ' ') }} FCFA</strong>
+                                                        <br><small class="text-success"><i class="fas fa-check-circle me-1"></i>Validé</small>
                                                     @else
-                                                        <span class="text-muted">0 FCFA</span>
+                                                        <span class="text-muted">0 FCFA validé</span>
+                                                    @endif
+
+                                                    @if($montantEnAttente > 0)
+                                                        <br>
+                                                        <span class="text-warning">{{ number_format($montantEnAttente, 0, ',', ' ') }} FCFA</span>
+                                                        <br><small class="text-warning">
+                                                            <i class="fas fa-hourglass-half me-1"></i>En attente -
+                                                            <a href="{{ route('esbtp.paiements.index') }}?etudiant={{ $inscription->etudiant_id }}" class="text-warning">
+                                                                <i class="fas fa-external-link-alt"></i>Valider
+                                                            </a>
+                                                        </small>
                                                     @endif
                                                 </td>
                                                 <td>

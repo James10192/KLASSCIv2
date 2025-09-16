@@ -373,7 +373,7 @@
                                                 </a>
                                                 @endcan
                                                 
-                                                @can('validate-paiements')
+                                                @if(auth()->user()->hasRole('superAdmin'))
                                                 <form action="{{ route('esbtp.paiements.valider', $paiement->id) }}" method="POST" class="d-inline">
                                                     @csrf
                                                     <button type="submit"
@@ -393,7 +393,7 @@
                                                     <i class="fas fa-times"></i>
                                                 </button>
                                                 @endif
-                                                @endcan
+                                                @endif
                                             @endif
                                             
                                             @if($paiement->status == 'validé')

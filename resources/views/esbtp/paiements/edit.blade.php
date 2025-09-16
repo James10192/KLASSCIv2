@@ -1,21 +1,30 @@
 @extends('layouts.app')
 
-@section('title', 'Modifier un Paiement')
+@section('title', 'Modifier un Paiement - ESBTP-yAKRO')
+
+@section('styles')
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+@endsection
 
 @section('content')
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">Modifier le Paiement #{{ $paiement->numero_recu }}</h3>
-                    <div class="card-tools">
-                        <a href="{{ route('esbtp.paiements.show', $paiement->id) }}" class="btn btn-default btn-sm">
-                            <i class="fas fa-arrow-left"></i> Retour aux détails
-                        </a>
-                    </div>
-                </div>
-                <div class="card-body">
+<div class="dashboard-acasi">
+    <div class="main-content">
+        <!-- Header Section -->
+        <div class="dashboard-header">
+            <div class="header-left">
+                <h1><i class="fas fa-edit me-2"></i>Modifier le Paiement</h1>
+                <p class="header-subtitle">Modification du paiement #{{ $paiement->numero_recu }}</p>
+            </div>
+            <div class="header-actions">
+                <a href="{{ route('esbtp.paiements.show', $paiement->id) }}" class="btn-acasi secondary">
+                    <i class="fas fa-arrow-left"></i>Retour aux détails
+                </a>
+            </div>
+        </div>
+
+        <!-- Contenu principal -->
+        <div class="card-moderne" style="background: white; border: 1px solid #e5e7eb;">
+            <div class="p-4">
                     @if ($errors->any())
                     <div class="alert alert-danger">
                         <ul class="mb-0">
@@ -44,7 +53,7 @@
                                                 <div class="input-group-prepend">
                                                     <span class="input-group-text"><i class="fas fa-user"></i></span>
                                                 </div>
-                                                <input type="text" class="form-control" value="{{ $paiement->etudiant->matricule }} - {{ $paiement->etudiant->user->name }}" readonly>
+                                                <input type="text" class="form-control" value="{{ $paiement->etudiant->matricule ?? 'N/A' }} - {{ $paiement->etudiant->user->name ?? $paiement->etudiant->nom_complet ?? 'N/A' }}" readonly>
                                             </div>
                                         </div>
                                     </div>
@@ -156,9 +165,12 @@
                         </div>
                         
                         <div class="form-group text-center">
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="fas fa-save"></i> Enregistrer les modifications
+                            <button type="submit" class="btn-acasi primary">
+                                <i class="fas fa-save"></i>Enregistrer les modifications
                             </button>
+                            <a href="{{ route('esbtp.paiements.show', $paiement->id) }}" class="btn-acasi secondary ml-2">
+                                <i class="fas fa-times"></i>Annuler
+                            </a>
                         </div>
                     </form>
                 </div>
