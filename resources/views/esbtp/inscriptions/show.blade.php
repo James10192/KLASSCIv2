@@ -668,7 +668,7 @@ body.modal-open .card:hover {
                                                             </button>
                                                         @endif
                                                         @if(auth()->user()->hasRole('superAdmin') && $item['subscription'])
-                                                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#editSubscriptionModal" onclick="prepareEditSubscriptionModal({{ $item['subscription']->id }}, '{{ $item['category']->name }}', {{ $item['subscription']->amount }})" title="Modifier le montant de la souscription">
+                                                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#editSubscriptionModal" onclick="prepareEditSubscriptionModal({{ $item['subscription']->id }}, {{ json_encode($item['category']->name) }}, {{ $item['subscription']->amount }})" title="Modifier le montant de la souscription">
                                                                 <i class="fas fa-edit"></i>
                                                             </button>
                                                         @endif
@@ -1920,6 +1920,27 @@ body.modal-open .card:hover {
     console.log('  - openValidationModal:', typeof openValidationModal);
     console.log('  - preparePaymentModalForCategory:', typeof preparePaymentModalForCategory);
     console.log('  - prepareTransferModal:', typeof prepareTransferModal);
+    console.log('  - prepareEditSubscriptionModal:', typeof window.prepareEditSubscriptionModal);
+
+    // Debug des éléments du modal d'édition
+    const editModal = document.getElementById('editSubscriptionModal');
+    console.log('🔍 Modal d\'édition présent:', !!editModal);
+
+    if (editModal) {
+        const requiredElements = [
+            'edit_subscription_id',
+            'edit_subscription_category_name',
+            'edit_subscription_current_amount',
+            'edit_subscription_new_amount',
+            'edit_subscription_reason',
+            'editSubscriptionForm'
+        ];
+
+        requiredElements.forEach(id => {
+            const element = document.getElementById(id);
+            console.log(`  - ${id}:`, !!element);
+        });
+    }
 
     // Initialisation au chargement de la page
     document.addEventListener('DOMContentLoaded', function() {
@@ -2106,25 +2127,59 @@ body.modal-open .card:hover {
         window.prepareEditSubscriptionModal = function(subscriptionId, categoryName, currentAmount) {
             console.log('✏️ Préparation modal édition souscription:', { subscriptionId, categoryName, currentAmount });
 
-            // Remplir les données de la souscription
-            document.getElementById('edit_subscription_id').value = subscriptionId;
-            document.getElementById('edit_subscription_category_name').value = categoryName;
-            document.getElementById('edit_subscription_current_amount').value = new Intl.NumberFormat('fr-FR').format(currentAmount) + ' FCFA';
-            document.getElementById('edit_subscription_new_amount').value = currentAmount;
+            try {
+                // Vérifier que tous les éléments existent
+                const elements = {
+                    id: document.getElementById('edit_subscription_id'),
+                    categoryName: document.getElementById('edit_subscription_category_name'),
+                    currentAmount: document.getElementById('edit_subscription_current_amount'),
+                    newAmount: document.getElementById('edit_subscription_new_amount'),
+                    reason: document.getElementById('edit_subscription_reason'),
+                    form: document.getElementById('editSubscriptionForm')
+                };
 
-            // Réinitialiser les champs de saisie
-            document.getElementById('edit_subscription_reason').value = '';
+                console.log('🔍 Éléments trouvés:', elements);
 
-            // Mettre à jour l'action du formulaire
-            const form = document.getElementById('editSubscriptionForm');
-            const currentInscriptionId = {{ $inscription->id }};
-            form.action = `/esbtp/inscriptions/${currentInscriptionId}/subscriptions/${subscriptionId}`;
+                // Vérifier si tous les éléments existent
+                for (const [key, element] of Object.entries(elements)) {
+                    if (!element) {
+                        console.error(`❌ Élément manquant: ${key}`);
+                        alert(`Erreur: Élément manquant dans le modal: ${key}`);
+                        return;
+                    }
+                }
 
-            console.log('✅ Modal édition souscription préparé, action:', form.action);
+                // Remplir les données de la souscription
+                elements.id.value = subscriptionId;
+                elements.categoryName.value = categoryName;
+                elements.currentAmount.value = new Intl.NumberFormat('fr-FR').format(currentAmount) + ' FCFA';
+                elements.newAmount.value = currentAmount;
+
+                // Réinitialiser les champs de saisie
+                elements.reason.value = '';
+
+                // Mettre à jour l'action du formulaire
+                const currentInscriptionId = {{ $inscription->id }};
+                elements.form.action = `/esbtp/inscriptions/${currentInscriptionId}/subscriptions/${subscriptionId}`;
+
+                console.log('✅ Modal édition souscription préparé, action:', elements.form.action);
+                console.log('✅ Valeurs définies:', {
+                    id: elements.id.value,
+                    categoryName: elements.categoryName.value,
+                    currentAmount: elements.currentAmount.value,
+                    newAmount: elements.newAmount.value
+                });
+
+            } catch (error) {
+                console.error('❌ Erreur dans prepareEditSubscriptionModal:', error);
+                alert('Erreur lors de la préparation du modal: ' + error.message);
+            }
         };
 
         // Gestionnaire de soumission du formulaire d'édition
-        document.getElementById('editSubscriptionForm').addEventListener('submit', function(e) {
+        const editForm = document.getElementById('editSubscriptionForm');
+        if (editForm) {
+            editForm.addEventListener('submit', function(e) {
             e.preventDefault();
 
             const formData = new FormData(this);
@@ -2147,9 +2202,21 @@ body.modal-open .card:hover {
                 return;
             }
 
+            // Ajouter la méthode PUT pour Laravel
+            formData.append('_method', 'PUT');
+
+            // Debug: afficher les données envoyées
+            console.log('📤 Données envoyées:', {
+                action: this.action,
+                amount: formData.get('amount'),
+                reason: formData.get('reason'),
+                _method: formData.get('_method'),
+                _token: formData.get('_token')
+            });
+
             // Soumission via fetch
             fetch(this.action, {
-                method: 'PUT',
+                method: 'POST',
                 body: formData,
                 headers: {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
@@ -2173,7 +2240,10 @@ body.modal-open .card:hover {
                 console.error('Erreur:', error);
                 alert('Une erreur est survenue lors de la mise à jour');
             });
-        });
+            });
+        } else {
+            console.warn('⚠️ Formulaire editSubscriptionForm non trouvé');
+        }
     });
 </script>
 
