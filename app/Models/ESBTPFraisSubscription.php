@@ -12,7 +12,8 @@ class ESBTPFraisSubscription extends Model
     
     protected $fillable = [
         'inscription_id',
-        'frais_category_id', 
+        'frais_category_id',
+        'frais_configuration_id',
         'amount',
         'is_active',
         'subscribed_at',
@@ -40,6 +41,14 @@ class ESBTPFraisSubscription extends Model
     public function fraisCategory(): BelongsTo
     {
         return $this->belongsTo(ESBTPFraisCategory::class, 'frais_category_id');
+    }
+
+    /**
+     * Relation avec la configuration de frais
+     */
+    public function fraisConfiguration(): BelongsTo
+    {
+        return $this->belongsTo(ESBTPFraisConfiguration::class, 'frais_configuration_id');
     }
 
     /**
