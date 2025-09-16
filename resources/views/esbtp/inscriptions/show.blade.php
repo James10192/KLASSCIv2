@@ -590,10 +590,14 @@ body.modal-open .card:hover {
                                                 </td>
                                                 <td>
                                                     @php
-                                                        // Paiements en attente pour cette catégorie
+                                                        // Paiements en attente pour cette catégorie (exclure les paiements de reliquats)
                                                         $paiementsEnAttente = $inscription->paiements()
                                                             ->where('frais_category_id', $item['category']->id)
                                                             ->where('status', 'en_attente')
+                                                            ->where(function($query) {
+                                                                $query->where('type_paiement', '!=', 'reliquat')
+                                                                      ->orWhereNull('type_paiement');
+                                                            })
                                                             ->get();
                                                         $montantEnAttente = $paiementsEnAttente->sum('montant');
                                                     @endphp

@@ -560,7 +560,7 @@ class ComptabiliteService
             'mode_paiement' => $methodePaiement,
             'reference_paiement' => $reference ?? 'INSCRIPTION-' . $inscription->id,
             'motif' => 'Frais d\'inscription',
-            'status' => 'validé', // Les paiements à l'inscription sont validés d'office
+            'status' => 'en_attente', // Tous les paiements doivent être validés manuellement
             'created_by' => Auth::id(),
         ]);
 

@@ -256,7 +256,7 @@ class InscriptionWorkflowService
                 'date_paiement' => $paiementData['date_paiement'],
                 'commentaire' => $paiementData['observations'] ?? null,
                 'motif' => $motif,
-                'status' => 'validé',
+                'status' => 'en_attente',
                 'numero_recu' => $this->genererNumeroRecu(),
                 'created_by' => Auth::id(),
             ]);

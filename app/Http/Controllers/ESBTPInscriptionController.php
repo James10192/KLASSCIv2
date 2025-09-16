@@ -509,10 +509,14 @@ class ESBTPInscriptionController extends Controller
         foreach ($mandatoryCategories as $category) {
             $rule = $category->getApplicableRule($inscription->filiere_id, $inscription->niveau_id, $inscription->annee_universitaire_id);
 
-            // Calculer les paiements pour cette catégorie
+            // Calculer les paiements pour cette catégorie (exclure les paiements de reliquats)
             $paiements = $inscription->paiements()
                 ->where('frais_category_id', $category->id)
                 ->where('status', 'validé')
+                ->where(function($query) {
+                    $query->where('type_paiement', '!=', 'reliquat')
+                          ->orWhereNull('type_paiement');
+                })
                 ->get();
 
             $totalPaye = $paiements->sum('montant');
@@ -542,10 +546,14 @@ class ESBTPInscriptionController extends Controller
             if ($subscription) {
                 $rule = $category->getApplicableRule($inscription->filiere_id, $inscription->niveau_id, $inscription->annee_universitaire_id);
                 
-                // Calculer les paiements pour cette catégorie
+                // Calculer les paiements pour cette catégorie (exclure les paiements de reliquats)
                 $paiements = $inscription->paiements()
                     ->where('frais_category_id', $category->id)
                     ->where('status', 'validé')
+                    ->where(function($query) {
+                        $query->where('type_paiement', '!=', 'reliquat')
+                              ->orWhereNull('type_paiement');
+                    })
                     ->get();
                 
                 $totalPaye = $paiements->sum('montant');

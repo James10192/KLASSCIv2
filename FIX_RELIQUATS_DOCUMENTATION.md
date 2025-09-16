@@ -313,5 +313,39 @@ foreach (['academic', 'service', 'administrative'] as $type) {
 
 ---
 
+### Correction #5: Colonne validateur_id manquante
+**Problème :** Erreur SQL "Column not found: 1054 Unknown column 'validateur_id'" lors de la validation d'un paiement
+**Cause :** La colonne `validateur_id` était référencée dans le code mais n'existait pas dans la table `esbtp_paiements`
+**Solution :** Création d'une migration pour ajouter la colonne manquante
+
+**Migration créée :**
+```php
+// Migration: 2025_09_16_173407_add_validateur_id_to_esbtp_paiements_table.php
+Schema::table('esbtp_paiements', function (Blueprint $table) {
+    $table->unsignedBigInteger('validateur_id')->nullable()->after('date_validation');
+    $table->foreign('validateur_id')->references('id')->on('users')->onDelete('set null');
+});
+```
+
+**Caractéristiques de la colonne :**
+- Type : `unsignedBigInteger` (compatible avec l'ID des users)
+- Nullable : `true` (pour les paiements existants sans validateur)
+- Foreign Key : Référence vers `users.id` avec suppression en cascade définie sur `set null`
+- Position : Après la colonne `date_validation` pour maintenir la logique
+
+**Fichiers concernés :**
+- **Model** : `app/Models/ESBTPPaiement.php` - Déjà configuré avec la relation `validateur()`
+- **Controller** : `app/Http/Controllers/ESBTPPaiementController.php` - Utilise déjà `'validateur_id' => auth()->id()`
+- **Migration** : Nouvelle migration pour ajouter la colonne physique en base
+
+**État de la fonctionnalité :**
+- ✅ Migration exécutée avec succès
+- ✅ Relation model configurée
+- ✅ Controller fonctionnel
+- ✅ Validation des paiements opérationnelle
+
+---
+
 **Le système de reliquats est maintenant entièrement fonctionnel ! 🎉**
 **La gestion des paiements est sécurisée avec contrôle d'accès super-admin ! 🔐**
+**Le workflow de validation des paiements fonctionne parfaitement ! ✅**
