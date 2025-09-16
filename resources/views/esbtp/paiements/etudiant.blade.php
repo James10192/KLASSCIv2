@@ -8,7 +8,7 @@
         <div class="col-md-12">
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">Paiements de l'étudiant: {{ $etudiant->user->name }}</h3>
+                    <h3 class="card-title">Paiements de l'étudiant: {{ $etudiant->user->name ?? $etudiant->nom_complet ?? 'N/A' }}</h3>
                     <div class="card-tools">
                         <a href="{{ route('esbtp.etudiants.show', $etudiant->id) }}" class="btn btn-default btn-sm">
                             <i class="fas fa-arrow-left"></i> Profil de l'étudiant
@@ -36,11 +36,11 @@
                                         </tr>
                                         <tr>
                                             <th>Nom complet</th>
-                                            <td>{{ $etudiant->user->name }}</td>
+                                            <td>{{ $etudiant->user->name ?? $etudiant->nom_complet ?? 'N/A' }}</td>
                                         </tr>
                                         <tr>
                                             <th>Email</th>
-                                            <td>{{ $etudiant->user->email }}</td>
+                                            <td>{{ $etudiant->user->email ?? 'N/A' }}</td>
                                         </tr>
                                     </table>
                                 </div>

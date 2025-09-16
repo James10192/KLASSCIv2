@@ -525,7 +525,7 @@
                 </div>
                 <div class="row">
                     <div class="col-6"><strong>Étudiant :</strong></div>
-                    <div class="col-6">{{ $paiement->etudiant->user->name }}</div>
+                    <div class="col-6">{{ $paiement->etudiant->user->name ?? $paiement->etudiant->nom_complet ?? 'N/A' }}</div>
                 </div>
                 <div class="row">
                     <div class="col-6"><strong>Référence :</strong></div>

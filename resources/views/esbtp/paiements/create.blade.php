@@ -184,12 +184,12 @@
                     @if($etudiant)
                         <div class="d-flex align-items-center p-3 bg-light rounded-3">
                             <div class="avatar-circle bg-primary me-3" style="width: 60px; height: 60px; font-size: 24px;">
-                                {{ substr($etudiant->user->name, 0, 2) }}
+                                {{ substr($etudiant->user->name ?? $etudiant->nom_complet ?? 'NN', 0, 2) }}
                             </div>
                             <div class="flex-grow-1">
-                                <h5 class="mb-1">{{ $etudiant->user->name }}</h5>
+                                <h5 class="mb-1">{{ $etudiant->user->name ?? $etudiant->nom_complet ?? 'N/A' }}</h5>
                                 <p class="mb-1 text-muted">{{ $etudiant->matricule }}</p>
-                                <small class="text-muted">{{ $etudiant->user->email }}</small>
+                                <small class="text-muted">{{ $etudiant->user->email ?? 'N/A' }}</small>
                             </div>
                             <input type="hidden" name="etudiant_id" value="{{ $etudiant->id }}">
                         </div>
@@ -198,7 +198,7 @@
                             <select name="etudiant_id" id="etudiant_id" class="form-control select2" required>
                                 <option value="">-- Rechercher et sélectionner un étudiant --</option>
                                 @foreach(\App\Models\ESBTPEtudiant::with('user')->limit(10)->get() as $etudiant)
-                                    <option value="{{ $etudiant->id }}">{{ $etudiant->matricule }} - {{ $etudiant->user->name }}</option>
+                                    <option value="{{ $etudiant->id }}">{{ $etudiant->matricule }} - {{ $etudiant->user->name ?? $etudiant->nom_complet ?? 'N/A' }}</option>
                                 @endforeach
                             </select>
                             <label>Étudiant <span class="text-danger">*</span></label>

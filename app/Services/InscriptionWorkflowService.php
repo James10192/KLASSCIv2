@@ -257,7 +257,7 @@ class InscriptionWorkflowService
                 'commentaire' => $paiementData['observations'] ?? null,
                 'motif' => $motif,
                 'status' => 'en_attente',
-                'numero_recu' => $this->genererNumeroRecu(),
+                'numero_recu' => ESBTPPaiement::genererNumeroRecu(),
                 'created_by' => Auth::id(),
             ]);
 

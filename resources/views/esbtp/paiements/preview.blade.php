@@ -229,7 +229,7 @@
                         <i class="fas fa-eye me-2"></i>
                         Prévisualisation du Reçu
                     </h4>
-                    <small class="text-muted">{{ $paiement->numero_recu }} - {{ $paiement->etudiant->user->name }}</small>
+                    <small class="text-muted">{{ $paiement->numero_recu }} - {{ $paiement->etudiant->user->name ?? $paiement->etudiant->nom_complet ?? 'N/A' }}</small>
                 </div>
                 
                 <div class="preview-actions">
@@ -307,7 +307,7 @@
                             </tr>
                             <tr>
                                 <th>Nom et Prénoms</th>
-                                <td>{{ $paiement->etudiant->user->name }}</td>
+                                <td>{{ $paiement->etudiant->user->name ?? $paiement->etudiant->nom_complet ?? 'N/A' }}</td>
                             </tr>
                             <tr>
                                 <th>Filière</th>

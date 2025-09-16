@@ -264,7 +264,7 @@
                 </tr>
                 <tr>
                     <th>Nom et Prénoms</th>
-                    <td>{{ $paiement->etudiant->user->name }}</td>
+                    <td>{{ $paiement->etudiant->user->name ?? $paiement->etudiant->nom_complet ?? 'N/A' }}</td>
                 </tr>
                 <tr>
                     <th>Filière</th>

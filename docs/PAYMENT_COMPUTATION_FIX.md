@@ -72,4 +72,24 @@ Pour l'exemple d'ABOUANOU KOUAME qui paie 50 000 FCFA pour un reliquat :
 3. `app/Services/ComptabiliteService.php`
 4. `app/Services/InscriptionWorkflowService.php`
 
+## Correction supplémentaire : Cohérence des numéros de reçu
+
+### Problème identifié
+Incohérence dans les préfixes des numéros de reçu de paiement :
+- **Paiements normaux** : "REC25-00001" (via InscriptionWorkflowService)
+- **Paiements de reliquats** : "PAIE25-00001" (via ESBTPPaiement::genererNumeroRecu)
+
+### Solution appliquée
+**Unification du préfixe "REC" pour tous les reçus de paiement** car ils prouvent tous que l'établissement a reçu un paiement de l'étudiant.
+
+#### Changements techniques :
+1. **app/Models/ESBTPPaiement.php** : Préfixe par défaut changé de `'PAIE'` vers `'REC'`
+2. **app/Services/InscriptionWorkflowService.php** : Remplacement de la méthode privée par `ESBTPPaiement::genererNumeroRecu()`
+3. **app/Http/Controllers/ESBTPInscriptionController.php** : Même remplacement
+
+#### Résultat :
+- ✅ **Tous les reçus de paiement** : Format unifié "REC25-00001"
+- ✅ **Cohérence métier** : Un reçu de paiement = même format
+- ✅ **Distinction maintenue** : Les reçus d'inscription gardent "REINSC" (ce ne sont pas des reçus de paiement)
+
 Date : 16/09/2025

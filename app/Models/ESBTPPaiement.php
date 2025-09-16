@@ -349,7 +349,7 @@ class ESBTPPaiement extends Model implements Auditable
      * @param string $prefix Préfixe pour le numéro de reçu (ex: SCOL, INSC, etc.)
      * @return string
      */
-    public static function genererNumeroRecu($prefix = 'PAIE')
+    public static function genererNumeroRecu($prefix = 'REC')
     {
         // Récupérer l'année universitaire en cours
         $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
