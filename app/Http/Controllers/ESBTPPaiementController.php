@@ -1472,6 +1472,9 @@ class ESBTPPaiementController extends Controller
                 return redirect()->back()->with('error', 'Le montant à payer ne peut pas dépasser le solde restant (' . number_format($reliquat->solde_restant, 0, ',', ' ') . ' FCFA).');
             }
 
+            // Générer un numéro de reçu
+            $numeroRecu = ESBTPPaiement::genererNumeroRecu();
+
             // Créer le paiement
             $paiement = ESBTPPaiement::create([
                 'etudiant_id' => $reliquat->inscriptionDestination->etudiant_id,
@@ -1485,13 +1488,14 @@ class ESBTPPaiementController extends Controller
                 'type_paiement' => 'reliquat',
                 'reliquat_detail_id' => $reliquat->id,
                 'motif' => $reliquat->fraisSubscription->fraisCategory->name ?? 'Reliquat',
+                'numero_recu' => $numeroRecu,
                 'commentaire' => $notes ? "Paiement de reliquat: " . $notes : "Paiement de reliquat",
                 'created_by' => auth()->id()
             ]);
 
             DB::commit();
 
-            return redirect()->back()->with('success', 'Paiement de reliquat créé avec succès. Le paiement est en attente de validation. Montant: ' . number_format($montantPaye, 0, ',', ' ') . ' FCFA');
+            return redirect()->back()->with('success', 'Paiement de reliquat créé avec succès. Le paiement est en attente de validation. Montant: ' . number_format($montantPaye, 0, ',', ' ') . ' FCFA - Numéro de reçu: ' . $numeroRecu);
 
         } catch (\Exception $e) {
             DB::rollback();
