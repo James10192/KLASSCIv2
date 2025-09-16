@@ -71,7 +71,8 @@ class ESBTPInscriptionService
             // 3. Préparer les données de l'étudiant pour la création
             $etudiantData['filiere_id'] = $classe->filiere_id;
             $etudiantData['niveau_etude_id'] = $classe->niveau_etude_id;
-            $etudiantData['annee_universitaire_id'] = $classe->annee_universitaire_id;
+            // CORRECTION: L'année universitaire de l'étudiant doit suivre l'inscription, pas la classe
+            // L'année sera définie lors de la création de l'inscription
             $etudiantData['created_by'] = $userId;
             $etudiantData['updated_by'] = $userId;
 
@@ -102,7 +103,10 @@ class ESBTPInscriptionService
 
             // 5. Préparer les données d'inscription
             $inscriptionData['etudiant_id'] = $etudiant->id;
-            $inscriptionData['annee_universitaire_id'] = $classe->annee_universitaire_id;
+            // CORRECTION: Ne pas surcharger l'année universitaire si elle est déjà définie par le contrôleur
+            if (!isset($inscriptionData['annee_universitaire_id'])) {
+                $inscriptionData['annee_universitaire_id'] = $classe->annee_universitaire_id;
+            }
             $inscriptionData['filiere_id'] = $classe->filiere_id;
             $inscriptionData['niveau_id'] = $classe->niveau_etude_id;
             $inscriptionData['date_inscription'] = $inscriptionData['date_inscription'] ?? now()->format('Y-m-d');
