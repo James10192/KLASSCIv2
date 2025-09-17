@@ -93,10 +93,14 @@ class VerifyPaymentStats extends Command
                     $this->info("  - {$categoryName}: " . number_format($subscription->amount, 0, ',', ' ') . " FCFA");
                     $montantAttenduEtudiant += $subscription->amount;
 
-                    // Calculer les paiements pour cette catégorie
+                    // Calculer les paiements pour cette catégorie (exclure les reliquats)
                     $paiements = ESBTPPaiement::where('inscription_id', $inscription->id)
                         ->where('frais_category_id', $subscription->frais_category_id)
                         ->whereIn('status', ['validé', 'en_attente'])
+                        ->where(function($query) {
+                            $query->where('type_paiement', '!=', 'reliquat')
+                                  ->orWhereNull('type_paiement');
+                        })
                         ->get();
 
                     $montantPayeCategorie = $paiements->sum('montant');
@@ -114,10 +118,14 @@ class VerifyPaymentStats extends Command
                 }
             }
 
-            // Vérifier aussi les paiements sans souscription correspondante
+            // Vérifier aussi les paiements sans souscription correspondante (exclure les reliquats)
             $paiementsSansSubscription = ESBTPPaiement::where('inscription_id', $inscription->id)
                 ->whereIn('status', ['validé', 'en_attente'])
                 ->whereNotIn('frais_category_id', $subscriptions->pluck('frais_category_id'))
+                ->where(function($query) {
+                    $query->where('type_paiement', '!=', 'reliquat')
+                          ->orWhereNull('type_paiement');
+                })
                 ->with('fraisCategory')
                 ->get();
 

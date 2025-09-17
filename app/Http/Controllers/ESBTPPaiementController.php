@@ -238,10 +238,14 @@ class ESBTPPaiementController extends Controller
             if ($expectedAmount > 0) {
                 $fraisStats[$categoryType]['expected'] += $expectedAmount;
 
-                // Calculer le montant payé pour cette catégorie
+                // Calculer le montant payé pour cette catégorie (exclure les reliquats)
                 $paidAmount = ESBTPPaiement::where('inscription_id', $inscription->id)
                     ->where('frais_category_id', $category->id)
                     ->where('status', 'validé')
+                    ->where(function($query) {
+                        $query->where('type_paiement', '!=', 'reliquat')
+                              ->orWhereNull('type_paiement');
+                    })
                     ->sum('montant');
 
                 $fraisStats[$categoryType]['paid'] += $paidAmount;
@@ -752,6 +756,10 @@ class ESBTPPaiementController extends Controller
         if (!empty($inscriptionIds)) {
             $paiements = ESBTPPaiement::where('status', 'validé')
                 ->whereIn('inscription_id', $inscriptionIds)
+                ->where(function($query) {
+                    $query->where('type_paiement', '!=', 'reliquat')
+                          ->orWhereNull('type_paiement');
+                })
                 ->get()
                 ->groupBy(function($paiement) {
                     return $paiement->inscription_id . '_' . $paiement->frais_category_id;
@@ -1405,6 +1413,10 @@ class ESBTPPaiementController extends Controller
             $paiements = ESBTPPaiement::where('status', 'validé')
                 ->whereIn('inscription_id', $inscriptionIds)
                 ->where('frais_category_id', $categoryId)
+                ->where(function($query) {
+                    $query->where('type_paiement', '!=', 'reliquat')
+                          ->orWhereNull('type_paiement');
+                })
                 ->get()
                 ->groupBy(function($paiement) {
                     return $paiement->inscription_id . '_' . $paiement->frais_category_id;
