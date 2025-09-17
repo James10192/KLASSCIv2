@@ -779,7 +779,9 @@ class ESBTPPaiementController extends Controller
         $statistiquesCategories = $this->calculerStatistiquesCategoriesOptimisees($inscriptions, $categories, $configurations, $subscriptions, $paiements);
 
         // Vue d'ensemble des étudiants par statut de paiement - version optimisée
-        $vueEnsemble = $this->calculerVueEnsembleOptimisee($inscriptions, $categories, $configurations, $subscriptions, $paiements);
+        // Si un filtre par catégorie est appliqué, les KPIs doivent refléter seulement cette catégorie
+        $categoriesForKPI = $categoryId ? $categories->where('id', $categoryId) : $categories;
+        $vueEnsemble = $this->calculerVueEnsembleOptimisee($inscriptions, $categoriesForKPI, $configurations, $subscriptions, $paiements);
 
         return view('esbtp.paiements.suivi-categories', compact(
             'inscriptions',
@@ -1304,16 +1306,20 @@ class ESBTPPaiementController extends Controller
                 }
             }
 
-            $montantTotalAttendu += $montantEtudiantAttendu;
-            $montantTotalRecu += $montantEtudiantPaye;
+            // Si on filtre par catégorie spécifique, ne compter que les étudiants concernés par cette catégorie
+            // (c'est-à-dire qui ont des frais > 0 pour cette catégorie)
+            if ($montantEtudiantAttendu > 0) {
+                $montantTotalAttendu += $montantEtudiantAttendu;
+                $montantTotalRecu += $montantEtudiantPaye;
 
-            // Catégoriser l'étudiant globalement
-            if ($etudiantEnRegle) {
-                $etudiantsEnRegle++;
-            } elseif ($etudiantAPayeQuelqueChose) {
-                $etudiantsEnRetard++;
-            } else {
-                $etudiantsNonPayes++;
+                // Catégoriser l'étudiant globalement
+                if ($etudiantEnRegle) {
+                    $etudiantsEnRegle++;
+                } elseif ($etudiantAPayeQuelqueChose) {
+                    $etudiantsEnRetard++;
+                } else {
+                    $etudiantsNonPayes++;
+                }
             }
         }
 
@@ -1321,8 +1327,11 @@ class ESBTPPaiementController extends Controller
             ? round(($montantTotalRecu / $montantTotalAttendu) * 100, 1)
             : 0;
 
+        // Le total d'étudiants pour les pourcentages doit correspondre aux étudiants concernés
+        $totalEtudiantsConcernes = $etudiantsEnRegle + $etudiantsEnRetard + $etudiantsNonPayes;
+
         return [
-            'total_etudiants' => $totalEtudiants,
+            'total_etudiants' => $totalEtudiantsConcernes,
             'etudiants_en_regle' => $etudiantsEnRegle,
             'etudiants_en_retard' => $etudiantsEnRetard,
             'etudiants_non_payes' => $etudiantsNonPayes,
@@ -1330,9 +1339,9 @@ class ESBTPPaiementController extends Controller
             'montant_total_recu' => $montantTotalRecu,
             'taux_recouvrement' => $tauxRecouvrement,
             'taux_recouvrement_global' => $tauxRecouvrement, // Ajouté pour compatibilité avec la vue
-            'pourcentage_en_regle' => $totalEtudiants > 0 ? round(($etudiantsEnRegle / $totalEtudiants) * 100, 1) : 0,
-            'pourcentage_en_retard' => $totalEtudiants > 0 ? round(($etudiantsEnRetard / $totalEtudiants) * 100, 1) : 0,
-            'pourcentage_non_payes' => $totalEtudiants > 0 ? round(($etudiantsNonPayes / $totalEtudiants) * 100, 1) : 0,
+            'pourcentage_en_regle' => $totalEtudiantsConcernes > 0 ? round(($etudiantsEnRegle / $totalEtudiantsConcernes) * 100, 1) : 0,
+            'pourcentage_en_retard' => $totalEtudiantsConcernes > 0 ? round(($etudiantsEnRetard / $totalEtudiantsConcernes) * 100, 1) : 0,
+            'pourcentage_non_payes' => $totalEtudiantsConcernes > 0 ? round(($etudiantsNonPayes / $totalEtudiantsConcernes) * 100, 1) : 0,
         ];
     }
 
