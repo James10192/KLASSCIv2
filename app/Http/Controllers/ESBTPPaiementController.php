@@ -1120,8 +1120,8 @@ class ESBTPPaiementController extends Controller
                 }
             }
 
-            // Traiter seulement les étudiants concernés
-            if ($estConcerne) {
+            // Traiter seulement les étudiants concernés ET qui ont des frais > 0
+            if ($estConcerne && $montantAttendu > 0) {
                 $details['montant_total_attendu'] += $montantAttendu;
 
                 // Vérifier les paiements de l'étudiant pour cette catégorie
@@ -1205,8 +1205,8 @@ class ESBTPPaiementController extends Controller
                     }
                 }
 
-                // Traiter seulement les étudiants concernés
-                if ($estConcerne) {
+                // Traiter seulement les étudiants concernés ET qui ont des frais > 0
+                if ($estConcerne && $montantAttendu > 0) {
                     $stats['etudiants_concernes']++;
                     $stats['montant_total_attendu'] += $montantAttendu;
 
