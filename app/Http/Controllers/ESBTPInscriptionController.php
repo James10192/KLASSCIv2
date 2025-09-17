@@ -505,6 +505,13 @@ class ESBTPInscriptionController extends Controller
         // Récupérer le statut d'affectation de l'inscription
         $affectationStatus = $inscription->affectation_status ?? 'affecté';
 
+        // Log pour debugging du statut d'affectation
+        \Log::info('Affichage inscription - Statut d\'affectation', [
+            'inscription_id' => $inscription->id,
+            'affectation_status' => $affectationStatus,
+            'matricule' => $inscription->etudiant->matricule ?? 'N/A'
+        ]);
+
         // Traiter les frais obligatoires (utiliser les souscriptions individuelles)
         foreach ($mandatoryCategories as $category) {
             $rule = $category->getApplicableRule($inscription->filiere_id, $inscription->niveau_id, $inscription->annee_universitaire_id);
@@ -524,17 +531,34 @@ class ESBTPInscriptionController extends Controller
 
             $totalPaye = $paiements->sum('montant');
 
-            // Utiliser le montant de la souscription si elle existe, sinon fallback sur la configuration
-            if ($subscription) {
-                $montantAttendu = $subscription->amount;
+            // Pour les frais obligatoires, toujours recalculer selon le statut d'affectation actuel
+            // au lieu d'utiliser le montant fixe de la souscription
+            if ($rule) {
+                $montantAttendu = $rule->getMontantByStatus($affectationStatus);
                 $isConfigured = true;
-                $isSubscribed = true;
+
+                // Log pour debugging du calcul des frais obligatoires
+                \Log::info('Calcul frais obligatoire - inscriptions.show', [
+                    'category' => $category->name,
+                    'affectation_status' => $affectationStatus,
+                    'montant_attendu' => $montantAttendu,
+                    'has_rule' => true,
+                    'rule_amounts' => $rule->getAllAmounts()
+                ]);
             } else {
-                // Fallback sur la configuration générale si pas de souscription
-                $montantAttendu = $rule ? $rule->getMontantByStatus($affectationStatus) : $category->default_amount;
-                $isConfigured = $rule !== null;
-                $isSubscribed = false;
+                // Fallback sur le montant de la souscription ou le montant par défaut
+                $montantAttendu = $subscription ? $subscription->amount : $category->default_amount;
+                $isConfigured = $subscription !== null;
+
+                \Log::info('Calcul frais obligatoire - fallback', [
+                    'category' => $category->name,
+                    'montant_attendu' => $montantAttendu,
+                    'has_rule' => false,
+                    'subscription_amount' => $subscription ? $subscription->amount : null,
+                    'default_amount' => $category->default_amount
+                ]);
             }
+            $isSubscribed = $subscription !== null;
 
             $solde = $montantAttendu - $totalPaye;
 

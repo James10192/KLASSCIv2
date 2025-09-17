@@ -750,10 +750,21 @@ class ESBTPInscriptionService
 
     /**
      * Sauvegarder les frais générés comme ESBTPFraisSubscription
+     * IMPORTANT: Vérifier le statut d'affectation avant la sauvegarde
      */
     private function saveGeneratedFeesAsSubscriptions(ESBTPInscription $inscription, array $generatedFees)
     {
         try {
+            // Récupérer le statut d'affectation de l'inscription
+            $affectationStatus = $inscription->affectation_status ?? 'affecté';
+
+            // Charger la classe pour les vérifications
+            $classe = $inscription->classe;
+            if (!$classe) {
+                Log::warning('Classe non trouvée pour la sauvegarde des frais', ['inscription_id' => $inscription->id]);
+                return;
+            }
+
             foreach ($generatedFees as $fee) {
                 // Vérifier si la souscription existe déjà
                 $existingSubscription = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
@@ -761,22 +772,48 @@ class ESBTPInscriptionService
                     ->first();
 
                 if (!$existingSubscription && $fee['amount'] > 0) {
-                    // Créer la nouvelle souscription
+                    // VERIFICATION OBLIGATOIRE: Recalculer le montant selon le statut d'affectation
+                    $verifiedAmount = $fee['amount']; // Montant par défaut
+
+                    // Pour les frais obligatoires, vérifier avec la configuration
+                    if ($fee['type'] === 'mandatory') {
+                        $configuration = \App\Models\ESBTPFraisConfiguration::where('frais_category_id', $fee['category_id'])
+                            ->where('filiere_id', $classe->filiere_id)
+                            ->where('niveau_id', $classe->niveau_etude_id)
+                            ->where('is_active', true)
+                            ->first();
+
+                        if ($configuration) {
+                            $verifiedAmount = $configuration->getMontantByStatus($affectationStatus);
+
+                            Log::info('Verification du montant avant sauvegarde de la souscription', [
+                                'category_id' => $fee['category_id'],
+                                'affectation_status' => $affectationStatus,
+                                'montant_initial' => $fee['amount'],
+                                'montant_verifie' => $verifiedAmount,
+                                'configuration_id' => $configuration->id
+                            ]);
+                        }
+                    }
+
+                    // Créer la nouvelle souscription avec le montant vérifié
                     \App\Models\ESBTPFraisSubscription::create([
                         'inscription_id' => $inscription->id,
                         'frais_category_id' => $fee['category_id'],
-                        'selected_option_id' => null, // Pour les frais obligatoires, pas d'option spécifique
-                        'amount' => $fee['amount'],
+                        'selected_option_id' => $fee['option_id'] ?? null,
+                        'amount' => $verifiedAmount, // Utiliser le montant vérifié
                         'is_active' => true,
                         'subscribed_at' => $inscription->date_inscription ?? now(),
                         'created_by' => $inscription->created_by ?? auth()->id(),
-                        'notes' => 'Frais ' . $fee['type'] . ' créé automatiquement lors de l\'inscription - ' . $fee['description']
+                        'notes' => 'Frais ' . $fee['type'] . ' créé automatiquement lors de l\'inscription - ' . $fee['description'] . ' (statut: ' . $affectationStatus . ')'
                     ]);
 
-                    Log::info('ESBTPFraisSubscription créée automatiquement', [
+                    Log::info('ESBTPFraisSubscription créée avec montant vérifié', [
                         'inscription_id' => $inscription->id,
                         'category_id' => $fee['category_id'],
-                        'amount' => $fee['amount'],
+                        'amount_original' => $fee['amount'],
+                        'amount_verified' => $verifiedAmount,
+                        'affectation_status' => $affectationStatus,
                         'description' => $fee['description'],
                         'type' => $fee['type']
                     ]);
