@@ -209,8 +209,16 @@ class ESBTPPaiementController extends Controller
             $categoryType = $category->category_type ?? 'academic';
             $expectedAmount = 0;
 
-            if ($category->is_mandatory) {
-                // Frais obligatoire : vérifier s'il y a une configuration pour cette classe
+            // Prioriser toujours la souscription individuelle (obligatoire ou optionnel)
+            $subscription = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
+                ->where('frais_category_id', $category->id)
+                ->where('is_active', true)
+                ->first();
+
+            if ($subscription) {
+                $expectedAmount = $subscription->amount;
+            } elseif ($category->is_mandatory) {
+                // Frais obligatoire : fallback sur la configuration si pas de souscription
                 $configuration = \App\Models\ESBTPFraisConfiguration::where('frais_category_id', $category->id)
                     ->where('filiere_id', $inscription->filiere_id)
                     ->where('niveau_id', $inscription->niveau_id)
@@ -223,16 +231,6 @@ class ESBTPPaiementController extends Controller
                 } else {
                     // Utiliser le montant par défaut si pas de configuration spécifique
                     $expectedAmount = $category->default_amount ?? 0;
-                }
-            } else {
-                // Service optionnel : vérifier s'il y a une souscription active
-                $subscription = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
-                    ->where('frais_category_id', $category->id)
-                    ->where('is_active', true)
-                    ->first();
-
-                if ($subscription) {
-                    $expectedAmount = $subscription->amount;
                 }
             }
 
@@ -711,7 +709,7 @@ class ESBTPPaiementController extends Controller
             'filiere',
             'niveauEtude',
             'anneeUniversitaire'
-        ])->where('status', 'active');
+        ])->whereIn('status', ['active', 'en_attente', 'validée']);
 
         // Appliquer les filtres
         if ($anneeId) {
@@ -1088,9 +1086,19 @@ class ESBTPPaiementController extends Controller
             if ($category->is_mandatory) {
                 // Frais obligatoire : tous les étudiants sont concernés
                 $estConcerne = true;
-                $configKey = $category->id . '_' . $inscription->filiere_id . '_' . $inscription->niveau_id;
-                $configuration = $configurations->get($configKey, collect())->first();
-                $montantAttendu = $configuration ? $configuration->getMontantByStatus($inscription->affectation_status ?? 'affecté') : $category->default_amount;
+
+                // Prioriser la souscription individuelle
+                $inscriptionSubscriptions = $subscriptions->get($inscription->id, collect());
+                $subscription = $inscriptionSubscriptions->where('frais_category_id', $category->id)->first();
+
+                if ($subscription) {
+                    $montantAttendu = $subscription->amount;
+                } else {
+                    // Fallback sur la configuration générale si pas de souscription
+                    $configKey = $category->id . '_' . $inscription->filiere_id . '_' . $inscription->niveau_id;
+                    $configuration = $configurations->get($configKey, collect())->first();
+                    $montantAttendu = $configuration ? $configuration->getMontantByStatus($inscription->affectation_status ?? 'affecté') : $category->default_amount;
+                }
             } else {
                 // Service optionnel : vérifier s'il y a une souscription active
                 $inscriptionSubscriptions = $subscriptions->get($inscription->id, collect());
@@ -1163,9 +1171,19 @@ class ESBTPPaiementController extends Controller
                 if ($category->is_mandatory) {
                     // Frais obligatoire : tous les étudiants sont concernés
                     $estConcerne = true;
-                    $configKey = $category->id . '_' . $inscription->filiere_id . '_' . $inscription->niveau_id;
-                    $configuration = $configurations->get($configKey, collect())->first();
-                    $montantAttendu = $configuration ? $configuration->getMontantByStatus($inscription->affectation_status ?? 'affecté') : $category->default_amount;
+
+                    // Prioriser la souscription individuelle
+                    $inscriptionSubscriptions = $subscriptions->get($inscription->id, collect());
+                    $subscription = $inscriptionSubscriptions->where('frais_category_id', $category->id)->first();
+
+                    if ($subscription) {
+                        $montantAttendu = $subscription->amount;
+                    } else {
+                        // Fallback sur la configuration générale si pas de souscription
+                        $configKey = $category->id . '_' . $inscription->filiere_id . '_' . $inscription->niveau_id;
+                        $configuration = $configurations->get($configKey, collect())->first();
+                        $montantAttendu = $configuration ? $configuration->getMontantByStatus($inscription->affectation_status ?? 'affecté') : $category->default_amount;
+                    }
                 } else {
                     // Service optionnel : vérifier s'il y a une souscription active
                     $inscriptionSubscriptions = $subscriptions->get($inscription->id, collect());
@@ -1236,9 +1254,19 @@ class ESBTPPaiementController extends Controller
                 if ($category->is_mandatory) {
                     // Frais obligatoire : tous les étudiants sont concernés
                     $estConcerne = true;
-                    $configKey = $category->id . '_' . $inscription->filiere_id . '_' . $inscription->niveau_id;
-                    $configuration = $configurations->get($configKey, collect())->first();
-                    $montantAttendu = $configuration ? $configuration->getMontantByStatus($inscription->affectation_status ?? 'affecté') : $category->default_amount;
+
+                    // Prioriser la souscription individuelle
+                    $inscriptionSubscriptions = $subscriptions->get($inscription->id, collect());
+                    $subscription = $inscriptionSubscriptions->where('frais_category_id', $category->id)->first();
+
+                    if ($subscription) {
+                        $montantAttendu = $subscription->amount;
+                    } else {
+                        // Fallback sur la configuration générale si pas de souscription
+                        $configKey = $category->id . '_' . $inscription->filiere_id . '_' . $inscription->niveau_id;
+                        $configuration = $configurations->get($configKey, collect())->first();
+                        $montantAttendu = $configuration ? $configuration->getMontantByStatus($inscription->affectation_status ?? 'affecté') : $category->default_amount;
+                    }
                 } else {
                     // Service optionnel : vérifier s'il y a une souscription active
                     $inscriptionSubscriptions = $subscriptions->get($inscription->id, collect());
