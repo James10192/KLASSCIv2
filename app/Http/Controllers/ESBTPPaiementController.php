@@ -272,7 +272,7 @@ class ESBTPPaiementController extends Controller
             'fraisSubscription.fraisCategory'
         ])
         ->whereIn('inscription_destination_id', $inscriptionIds)
-        ->where('statut', '!=', 'soldé')  // Seulement les reliquats non soldés
+        ->where('statut', '!=', 'totalement_regle')  // Seulement les reliquats non soldés
         ->get();
 
         foreach ($reliquats as $reliquat) {
@@ -1573,7 +1573,7 @@ class ESBTPPaiementController extends Controller
 
                     $reliquat->update([
                         'montant_regle' => $nouveauMontantRegle,
-                        'statut' => $nouveauSolde <= 0 ? 'soldé' : 'partiellement_regle',
+                        'statut' => $nouveauSolde <= 0 ? 'totalement_regle' : 'partiellement_regle',
                         'date_derniere_maj' => now()
                     ]);
                 }
