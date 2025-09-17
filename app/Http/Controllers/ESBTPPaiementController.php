@@ -1232,6 +1232,9 @@ class ESBTPPaiementController extends Controller
                 ? round(($stats['montant_total_recu'] / $stats['montant_total_attendu']) * 100, 1)
                 : 0;
 
+            // Mettre à jour total_etudiants avec le nombre réel d'étudiants concernés
+            $stats['total_etudiants'] = $stats['etudiants_concernes'];
+
             $statistiques[] = $stats;
         }
 
