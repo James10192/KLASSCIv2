@@ -90,3 +90,118 @@ Route::get('/classes/{id}/available-places', [ESBTPClasseController::class, 'get
 Route::post('/inscriptions/validate', [ESBTPEtudiantController::class, 'validateInscription'])->name('api.inscriptions.validate');
 
 Route::get('/classes', [ESBTPClasseController::class, 'indexApi']);
+
+/*
+|--------------------------------------------------------------------------
+| API Routes LMS - KLASSCI Integration
+|--------------------------------------------------------------------------
+|
+| Routes pour l'intégration entre le LMS et KLASSCI.
+| Ces routes permettent au LMS d'accéder aux données KLASSCI
+| et d'envoyer les résultats (notes, présences) vers KLASSCI.
+|
+*/
+
+// Routes d'authentification LMS (sans middleware auth)
+Route::prefix('lms/auth')->group(function () {
+    Route::post('/login', [App\Http\Controllers\API\AuthController::class, 'login'])
+        ->name('api.lms.auth.login');
+    Route::get('/documentation', [App\Http\Controllers\API\AuthController::class, 'documentation'])
+        ->name('api.lms.auth.docs');
+});
+
+// Routes LMS protégées par authentification Sanctum
+Route::middleware(['auth:sanctum'])->prefix('lms')->name('api.lms.')->group(function () {
+
+    // ================================
+    // AUTHENTIFICATION & PROFIL
+    // ================================
+    Route::prefix('auth')->name('auth.')->group(function () {
+        Route::get('/me', [App\Http\Controllers\API\AuthController::class, 'me']);
+        Route::post('/logout', [App\Http\Controllers\API\AuthController::class, 'logout']);
+        Route::post('/logout-all', [App\Http\Controllers\API\AuthController::class, 'logoutAll']);
+        Route::get('/check', [App\Http\Controllers\API\AuthController::class, 'check']);
+    });
+
+    // ================================
+    // DONNÉES EN LECTURE SEULE
+    // ================================
+
+    // Structure organisationnelle
+    Route::get('/structure', [App\Http\Controllers\API\LMSDataController::class, 'structure'])
+        ->name('structure');
+
+    // Matières et cours
+    Route::get('/matieres', [App\Http\Controllers\API\LMSDataController::class, 'matieres'])
+        ->name('matieres');
+
+    // Classes et étudiants
+    Route::get('/classes', [App\Http\Controllers\API\LMSDataController::class, 'classes'])
+        ->name('classes');
+    Route::get('/classes/{classeId}/etudiants', [App\Http\Controllers\API\LMSDataController::class, 'etudiantsClasse'])
+        ->name('classes.etudiants');
+
+    // Emploi du temps
+    Route::get('/emploi-temps', [App\Http\Controllers\API\LMSDataController::class, 'emploiTemps'])
+        ->name('emploi_temps');
+
+    // Évaluations programmées
+    Route::get('/evaluations', [App\Http\Controllers\API\LMSDataController::class, 'evaluations'])
+        ->name('evaluations');
+
+    // ================================
+    // DONNÉES EN ÉCRITURE (LMS → KLASSCI)
+    // ================================
+
+    // Notes d'évaluations
+    Route::post('/evaluations/{evaluationId}/notes', [App\Http\Controllers\API\LMSWriteController::class, 'saveEvaluationNotes'])
+        ->name('evaluations.notes.save');
+    Route::post('/evaluations/{evaluationId}/notes/preview', [App\Http\Controllers\API\LMSWriteController::class, 'previewEvaluationNotes'])
+        ->name('evaluations.notes.preview');
+
+    // Présences cours en ligne
+    Route::post('/cours/{coursId}/presences', [App\Http\Controllers\API\LMSWriteController::class, 'saveCourseAttendance'])
+        ->name('cours.presences.save');
+
+    // Statut des cours
+    Route::put('/cours/{coursId}/statut', [App\Http\Controllers\API\LMSWriteController::class, 'updateCourseStatus'])
+        ->name('cours.statut.update');
+});
+
+// ================================
+// ROUTES DE DOCUMENTATION
+// ================================
+Route::get('/lms/documentation', function () {
+    return response()->json([
+        'title' => 'API LMS-KLASSCI Integration',
+        'version' => '1.0.0',
+        'description' => 'API pour l\'intégration entre le LMS et KLASSCI',
+        'base_url' => url('/api/lms'),
+        'authentication' => [
+            'type' => 'Bearer Token (Laravel Sanctum)',
+            'login_endpoint' => '/api/lms/auth/login',
+            'header_format' => 'Authorization: Bearer {token}'
+        ],
+        'endpoints' => [
+            'read_only' => [
+                'GET /api/lms/structure' => 'Structure organisationnelle (filières, niveaux)',
+                'GET /api/lms/matieres' => 'Liste des matières accessibles',
+                'GET /api/lms/classes' => 'Classes de l\'année courante',
+                'GET /api/lms/classes/{id}/etudiants' => 'Étudiants d\'une classe',
+                'GET /api/lms/emploi-temps' => 'Emploi du temps filtré par rôle',
+                'GET /api/lms/evaluations' => 'Évaluations programmées'
+            ],
+            'write_only' => [
+                'POST /api/lms/evaluations/{id}/notes' => 'Sauvegarder notes d\'évaluation',
+                'POST /api/lms/cours/{id}/presences' => 'Enregistrer présences cours',
+                'PUT /api/lms/cours/{id}/statut' => 'Mettre à jour statut cours'
+            ]
+        ],
+        'roles_supported' => ['enseignant', 'coordinateur', 'etudiant'],
+        'data_scope' => 'Année universitaire courante uniquement',
+        'contact' => [
+            'team' => 'KLASSCI Development Team',
+            'documentation' => url('/api/lms/auth/documentation')
+        ]
+    ]);
+})->name('api.lms.documentation');
