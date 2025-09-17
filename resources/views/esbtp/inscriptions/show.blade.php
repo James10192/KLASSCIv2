@@ -823,96 +823,281 @@ body.modal-open .card:hover {
                                 if($inscription->payments && $inscription->payments->count()) {
                                     $allPayments = $allPayments->merge($inscription->payments);
                                 }
+
+                                // Séparer les paiements par statut
+                                $validatedPayments = $allPayments->filter(function($payment) {
+                                    if (isset($payment->status)) {
+                                        return in_array($payment->status, ['validated', 'validé']);
+                                    }
+                                    // Pour les anciens paiements sans status, vérifier le statut explicite
+                                    return !isset($payment->status) || $payment->status === 'validé';
+                                });
+
+                                $rejectedPayments = $allPayments->filter(function($payment) {
+                                    if (isset($payment->status)) {
+                                        return in_array($payment->status, ['rejected', 'rejeté']);
+                                    }
+                                    return false;
+                                });
+
+                                $pendingPayments = $allPayments->filter(function($payment) {
+                                    if (isset($payment->status)) {
+                                        return in_array($payment->status, ['pending', 'en_attente']);
+                                    }
+                                    return false;
+                                });
                             @endphp
-                            
+
                             @if($allPayments->count() > 0)
-                                <div class="table-responsive">
-                                    <table class="table table-bordered table-striped">
-                                        <thead>
-                                            <tr>
-                                                <th>Date</th>
-                                                <th>Montant</th>
-                                                <th>Mode</th>
-                                                <th>Référence</th>
-                                                <th>Statut</th>
-                                                <th>Commentaire</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach($allPayments as $payment)
-                                                <tr>
-                                                    <td>
-                                                        @if(isset($payment->date_paiement))
-                                                            {{ \Carbon\Carbon::parse($payment->date_paiement)->format('d/m/Y') }}
-                                                        @elseif(isset($payment->payment_date))
-                                                            {{ $payment->payment_date ? $payment->payment_date->format('d/m/Y') : '' }}
-                                                        @else
-                                                            {{ $payment->date ?? '-' }}
-                                                        @endif
-                                                    </td>
-                                                    <td>
-                                                        <strong>
-                                                            @if(isset($payment->montant))
-                                                                {{ number_format($payment->montant, 0, ',', ' ') }} FCFA
-                                                            @elseif(isset($payment->amount))
-                                                                {{ number_format($payment->amount, 0, ',', ' ') }} FCFA
-                                                            @endif
-                                                        </strong>
-                                                    </td>
-                                                    <td>
-                                                        @if(isset($payment->mode_paiement))
-                                                            {{ ucfirst($payment->mode_paiement) }}
-                                                        @elseif(isset($payment->payment_method))
-                                                            {{ ucfirst($payment->payment_method) }}
-                                                        @else
-                                                            {{ $payment->methode ?? '-' }}
-                                                        @endif
-                                                    </td>
-                                                    <td>
-                                                        @if(isset($payment->reference_paiement))
-                                                            {{ $payment->reference_paiement ?? '-' }}
-                                                        @elseif(isset($payment->reference_number))
-                                                            {{ $payment->reference_number ?? '-' }}
-                                                        @else
-                                                            {{ $payment->reference ?? '-' }}
-                                                        @endif
-                                                    </td>
-                                                    <td>
-                                                        @if(isset($payment->status))
-                                                            <span class="badge bg-{{ $payment->status === 'validated' ? 'success' : ($payment->status === 'pending' ? 'warning' : 'danger') }}">
-                                                                {{ ucfirst($payment->status) }}
-                                                            </span>
-                                                        @else
-                                                            <span class="badge bg-success">Validé</span>
-                                                        @endif
-                                                    </td>
-                                                    <td>
-                                                        @if(isset($payment->observations))
-                                                            {{ $payment->observations }}
-                                                        @else
-                                                            {{ $payment->commentaire ?? '-' }}
-                                                        @endif
-                                                    </td>
-                                                </tr>
-                                            @endforeach
-                                        </tbody>
-                                        <tfoot>
-                                            <tr class="table-info">
-                                                <th>Total</th>
-                                                <th>
-                                                    @php
-                                                        $total = 0;
-                                                        foreach($allPayments as $payment) {
-                                                            $total += $payment->montant ?? $payment->amount ?? 0;
-                                                        }
-                                                    @endphp
-                                                    <strong>{{ number_format($total, 0, ',', ' ') }} FCFA</strong>
-                                                </th>
-                                                <th colspan="4"></th>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-                                </div>
+                                <!-- Paiements Validés -->
+                                @if($validatedPayments->count() > 0)
+                                    <div class="mb-4">
+                                        <h6 class="text-success mb-3">
+                                            <i class="fas fa-check-circle me-2"></i>Paiements Validés ({{ $validatedPayments->count() }})
+                                        </h6>
+                                        <div class="table-responsive">
+                                            <table class="table table-bordered table-striped">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Date</th>
+                                                        <th>Montant</th>
+                                                        <th>Mode</th>
+                                                        <th>Référence</th>
+                                                        <th>Statut</th>
+                                                        <th>Commentaire</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach($validatedPayments as $payment)
+                                                        <tr>
+                                                            <td>
+                                                                @if(isset($payment->date_paiement))
+                                                                    {{ \Carbon\Carbon::parse($payment->date_paiement)->format('d/m/Y') }}
+                                                                @elseif(isset($payment->payment_date))
+                                                                    {{ $payment->payment_date ? $payment->payment_date->format('d/m/Y') : '' }}
+                                                                @else
+                                                                    {{ $payment->date ?? '-' }}
+                                                                @endif
+                                                            </td>
+                                                            <td>
+                                                                <strong>
+                                                                    @if(isset($payment->montant))
+                                                                        {{ number_format($payment->montant, 0, ',', ' ') }} FCFA
+                                                                    @elseif(isset($payment->amount))
+                                                                        {{ number_format($payment->amount, 0, ',', ' ') }} FCFA
+                                                                    @endif
+                                                                </strong>
+                                                            </td>
+                                                            <td>
+                                                                @if(isset($payment->mode_paiement))
+                                                                    {{ ucfirst($payment->mode_paiement) }}
+                                                                @elseif(isset($payment->payment_method))
+                                                                    {{ ucfirst($payment->payment_method) }}
+                                                                @else
+                                                                    {{ $payment->methode ?? '-' }}
+                                                                @endif
+                                                            </td>
+                                                            <td>
+                                                                @if(isset($payment->reference_paiement))
+                                                                    {{ $payment->reference_paiement ?? '-' }}
+                                                                @elseif(isset($payment->reference_number))
+                                                                    {{ $payment->reference_number ?? '-' }}
+                                                                @else
+                                                                    {{ $payment->reference ?? '-' }}
+                                                                @endif
+                                                            </td>
+                                                            <td>
+                                                                <span class="badge bg-success">
+                                                                    @if(isset($payment->status))
+                                                                        {{ $payment->status === 'validated' ? 'Validé' : ucfirst($payment->status) }}
+                                                                    @else
+                                                                        Validé
+                                                                    @endif
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                @if(isset($payment->observations))
+                                                                    {{ $payment->observations }}
+                                                                @else
+                                                                    {{ $payment->commentaire ?? '-' }}
+                                                                @endif
+                                                            </td>
+                                                        </tr>
+                                                    @endforeach
+                                                </tbody>
+                                                <tfoot>
+                                                    <tr class="table-success">
+                                                        <th>Total Validé</th>
+                                                        <th>
+                                                            @php
+                                                                $totalValidated = 0;
+                                                                foreach($validatedPayments as $payment) {
+                                                                    $totalValidated += $payment->montant ?? $payment->amount ?? 0;
+                                                                }
+                                                            @endphp
+                                                            <strong>{{ number_format($totalValidated, 0, ',', ' ') }} FCFA</strong>
+                                                        </th>
+                                                        <th colspan="4"></th>
+                                                    </tr>
+                                                </tfoot>
+                                            </table>
+                                        </div>
+                                    </div>
+                                @endif
+
+                                <!-- Paiements en Attente -->
+                                @if($pendingPayments->count() > 0)
+                                    <div class="mb-4">
+                                        <h6 class="text-warning mb-3">
+                                            <i class="fas fa-hourglass-half me-2"></i>Paiements en Attente ({{ $pendingPayments->count() }})
+                                        </h6>
+                                        <div class="table-responsive">
+                                            <table class="table table-bordered table-striped">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Date</th>
+                                                        <th>Montant</th>
+                                                        <th>Mode</th>
+                                                        <th>Référence</th>
+                                                        <th>Statut</th>
+                                                        <th>Commentaire</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach($pendingPayments as $payment)
+                                                        <tr>
+                                                            <td>
+                                                                @if(isset($payment->date_paiement))
+                                                                    {{ \Carbon\Carbon::parse($payment->date_paiement)->format('d/m/Y') }}
+                                                                @elseif(isset($payment->payment_date))
+                                                                    {{ $payment->payment_date ? $payment->payment_date->format('d/m/Y') : '' }}
+                                                                @else
+                                                                    {{ $payment->date ?? '-' }}
+                                                                @endif
+                                                            </td>
+                                                            <td>
+                                                                <strong>
+                                                                    @if(isset($payment->montant))
+                                                                        {{ number_format($payment->montant, 0, ',', ' ') }} FCFA
+                                                                    @elseif(isset($payment->amount))
+                                                                        {{ number_format($payment->amount, 0, ',', ' ') }} FCFA
+                                                                    @endif
+                                                                </strong>
+                                                            </td>
+                                                            <td>
+                                                                @if(isset($payment->mode_paiement))
+                                                                    {{ ucfirst($payment->mode_paiement) }}
+                                                                @elseif(isset($payment->payment_method))
+                                                                    {{ ucfirst($payment->payment_method) }}
+                                                                @else
+                                                                    {{ $payment->methode ?? '-' }}
+                                                                @endif
+                                                            </td>
+                                                            <td>
+                                                                @if(isset($payment->reference_paiement))
+                                                                    {{ $payment->reference_paiement ?? '-' }}
+                                                                @elseif(isset($payment->reference_number))
+                                                                    {{ $payment->reference_number ?? '-' }}
+                                                                @else
+                                                                    {{ $payment->reference ?? '-' }}
+                                                                @endif
+                                                            </td>
+                                                            <td>
+                                                                <span class="badge bg-warning">
+                                                                    {{ $payment->status === 'pending' ? 'En attente' : ucfirst($payment->status) }}
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                @if(isset($payment->observations))
+                                                                    {{ $payment->observations }}
+                                                                @else
+                                                                    {{ $payment->commentaire ?? '-' }}
+                                                                @endif
+                                                            </td>
+                                                        </tr>
+                                                    @endforeach
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                @endif
+
+                                <!-- Paiements Rejetés -->
+                                @if($rejectedPayments->count() > 0)
+                                    <div class="mb-4">
+                                        <h6 class="text-danger mb-3">
+                                            <i class="fas fa-times-circle me-2"></i>Paiements Rejetés ({{ $rejectedPayments->count() }})
+                                        </h6>
+                                        <div class="table-responsive">
+                                            <table class="table table-bordered table-striped">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Date</th>
+                                                        <th>Montant</th>
+                                                        <th>Mode</th>
+                                                        <th>Référence</th>
+                                                        <th>Statut</th>
+                                                        <th>Commentaire</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach($rejectedPayments as $payment)
+                                                        <tr>
+                                                            <td>
+                                                                @if(isset($payment->date_paiement))
+                                                                    {{ \Carbon\Carbon::parse($payment->date_paiement)->format('d/m/Y') }}
+                                                                @elseif(isset($payment->payment_date))
+                                                                    {{ $payment->payment_date ? $payment->payment_date->format('d/m/Y') : '' }}
+                                                                @else
+                                                                    {{ $payment->date ?? '-' }}
+                                                                @endif
+                                                            </td>
+                                                            <td>
+                                                                <strong class="text-muted">
+                                                                    @if(isset($payment->montant))
+                                                                        {{ number_format($payment->montant, 0, ',', ' ') }} FCFA
+                                                                    @elseif(isset($payment->amount))
+                                                                        {{ number_format($payment->amount, 0, ',', ' ') }} FCFA
+                                                                    @endif
+                                                                </strong>
+                                                            </td>
+                                                            <td>
+                                                                @if(isset($payment->mode_paiement))
+                                                                    {{ ucfirst($payment->mode_paiement) }}
+                                                                @elseif(isset($payment->payment_method))
+                                                                    {{ ucfirst($payment->payment_method) }}
+                                                                @else
+                                                                    {{ $payment->methode ?? '-' }}
+                                                                @endif
+                                                            </td>
+                                                            <td>
+                                                                @if(isset($payment->reference_paiement))
+                                                                    {{ $payment->reference_paiement ?? '-' }}
+                                                                @elseif(isset($payment->reference_number))
+                                                                    {{ $payment->reference_number ?? '-' }}
+                                                                @else
+                                                                    {{ $payment->reference ?? '-' }}
+                                                                @endif
+                                                            </td>
+                                                            <td>
+                                                                <span class="badge bg-danger">
+                                                                    {{ $payment->status === 'rejected' ? 'Rejeté' : ucfirst($payment->status) }}
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                @if(isset($payment->observations))
+                                                                    {{ $payment->observations }}
+                                                                @else
+                                                                    {{ $payment->commentaire ?? '-' }}
+                                                                @endif
+                                                            </td>
+                                                        </tr>
+                                                    @endforeach
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                @endif
                             @else
                                 <div class="alert alert-info mb-0">
                                     <i class="fas fa-info-circle me-2"></i>
