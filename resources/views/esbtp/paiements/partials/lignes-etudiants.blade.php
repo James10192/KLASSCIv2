@@ -27,9 +27,45 @@
             {{ $initiales }}
         </div>
         <div class="student-details" style="flex: 1;">
-            <h6 style="font-weight: 600; margin: 0 0 4px 0; color: #1f2937; font-size: 14px;">
-                {{ ($etudiant['inscription']->etudiant->prenoms ?? '') . ' ' . ($etudiant['inscription']->etudiant->nom ?? '') }}
-            </h6>
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                <h6 style="font-weight: 600; margin: 0; color: #1f2937; font-size: 14px;">
+                    {{ ($etudiant['inscription']->etudiant->prenoms ?? '') . ' ' . ($etudiant['inscription']->etudiant->nom ?? '') }}
+                </h6>
+                @php
+                    $statusInscription = $etudiant['inscription']->status ?? 'unknown';
+                    $badgeClass = '';
+                    $badgeText = '';
+
+                    switch($statusInscription) {
+                        case 'active':
+                            $badgeClass = 'success';
+                            $badgeText = 'Validée';
+                            break;
+                        case 'en_attente':
+                            $badgeClass = 'warning';
+                            $badgeText = 'En attente';
+                            break;
+                        case 'validée':
+                            $badgeClass = 'success';
+                            $badgeText = 'Validée';
+                            break;
+                        default:
+                            $badgeClass = 'secondary';
+                            $badgeText = ucfirst($statusInscription);
+                    }
+                @endphp
+                <span class="badge badge-{{ $badgeClass }}" style="
+                    padding: 2px 6px;
+                    border-radius: 10px;
+                    font-size: 10px;
+                    font-weight: 600;
+                    @if($badgeClass == 'success') background-color: #10b981; color: white; @endif
+                    @if($badgeClass == 'warning') background-color: #f59e0b; color: white; @endif
+                    @if($badgeClass == 'secondary') background-color: #6b7280; color: white; @endif
+                ">
+                    {{ $badgeText }}
+                </span>
+            </div>
             <p style="font-size: 12px; color: #6b7280; margin: 0;">
                 {{ $etudiant['inscription']->etudiant->matricule ?? 'Matricule non disponible' }}
             </p>

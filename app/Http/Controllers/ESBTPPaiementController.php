@@ -1364,7 +1364,7 @@ class ESBTPPaiementController extends Controller
             'filiere',
             'niveauEtude',
             'anneeUniversitaire'
-        ])->where('status', 'active');
+        ])->whereIn('status', ['active', 'en_attente', 'validée']);
 
         // Appliquer les filtres
         if ($anneeId) {
