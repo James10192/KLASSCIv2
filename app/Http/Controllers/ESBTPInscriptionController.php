@@ -1098,7 +1098,7 @@ class ESBTPInscriptionController extends Controller
             $result = $this->workflowService->associerPaiement($inscription, $paiementData);
 
             if ($result['success']) {
-                return redirect()->route('esbtp.inscriptions.administration')
+                return redirect()->route('esbtp.inscriptions.show', $inscription->id)
                     ->with('success', $result['message']);
             } else {
                 return redirect()->back()
@@ -1124,7 +1124,7 @@ class ESBTPInscriptionController extends Controller
             $result = $this->workflowService->convertProspectToStudent($inscription, $request->input('observations'));
 
             if ($result['success']) {
-                return redirect()->route('esbtp.inscriptions.administration')
+                return redirect()->route('esbtp.inscriptions.show', $inscription->id)
                     ->with('success', $result['message']);
             } else {
                 return redirect()->back()
