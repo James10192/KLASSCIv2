@@ -122,7 +122,7 @@ class ESBTPPaiementController extends Controller
 
         // Calculer les statistiques spécifiques aux reliquats pour affichage séparé
         $inscriptions = \App\Models\ESBTPInscription::where('annee_universitaire_id', $anneeId)
-            ->where('status', 'active')
+            ->whereIn('status', ['active', 'en_attente', 'validée'])
             ->get();
         $reliquatsStats = $this->calculateReliquatsStats($inscriptions);
         $stats['reliquats_total'] = $reliquatsStats['academic_pending'] + $reliquatsStats['service_pending'] + $reliquatsStats['administrative_pending'];
@@ -147,10 +147,10 @@ class ESBTPPaiementController extends Controller
             return $this->getEmptyStats();
         }
 
-        // Récupérer toutes les inscriptions actives de l'année en cours
+        // Récupérer toutes les inscriptions de l'année en cours (même filtrage que suivi-categories)
         $inscriptions = \App\Models\ESBTPInscription::with(['filiere', 'niveauEtude'])
             ->where('annee_universitaire_id', $anneeEnCours->id)
-            ->where('status', 'active')
+            ->whereIn('status', ['active', 'en_attente', 'validée'])
             ->get();
 
         $stats = [
