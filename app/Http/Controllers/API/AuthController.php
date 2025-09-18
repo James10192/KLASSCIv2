@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use App\Models\User;
+use App\Helpers\RoleHelper;
 
 /**
  * Contrôleur d'authentification pour les APIs LMS
@@ -39,7 +40,7 @@ class AuthController extends BaseApiController
     {
         // Validation des données
         $validator = Validator::make($request->all(), [
-            'email' => 'required|email',
+            'username' => 'required|string',
             'password' => 'required|string|min:6',
             'remember' => 'boolean'
         ]);
@@ -52,8 +53,14 @@ class AuthController extends BaseApiController
             );
         }
 
+        // Déterminer si c'est un email ou un nom d'utilisateur (comme KLASSCI)
+        $field = filter_var($request->username, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
+
         // Tentative de connexion
-        $credentials = $request->only('email', 'password');
+        $credentials = [
+            $field => $request->username,
+            'password' => $request->password
+        ];
 
         if (!Auth::attempt($credentials)) {
             return $this->errorResponse(
@@ -77,8 +84,10 @@ class AuthController extends BaseApiController
         }
 
         // Vérifier que l'utilisateur a un rôle autorisé pour le LMS
-        $rolesAutorises = ['enseignant', 'coordinateur', 'etudiant'];
-        if (!$user->hasAnyRole($rolesAutorises)) {
+        $rolesAutorises = ['enseignant', 'coordinateur', 'etudiant', 'superAdmin'];
+        $userRole = $user->getRoleNames()->first();
+
+        if (!RoleHelper::hasAnyRole($userRole, $rolesAutorises)) {
             Auth::logout();
             return $this->errorResponse(
                 'Accès non autorisé au LMS. Rôles requis: ' . implode(', ', $rolesAutorises),
@@ -92,13 +101,18 @@ class AuthController extends BaseApiController
         $token = $user->createToken($tokenName, ['lms:access'])->plainTextToken;
 
         // Données utilisateur pour le LMS
+        $userRole = $user->getRoleNames()->first();
         $userData = [
             'id' => $user->id,
             'nom' => $user->name,
             'email' => $user->email,
-            'role' => $user->getRoleNames()->first(),
+            'role' => $userRole,
             'roles' => $user->getRoleNames()->toArray(),
             'avatar' => $user->profile_photo_url ?? null,
+            'role_display_name' => RoleHelper::getRoleDisplayName($userRole),
+            'permissions' => RoleHelper::getRolePermissions($userRole),
+            'is_admin' => RoleHelper::isAdmin($userRole),
+            'is_coordinator_equivalent' => RoleHelper::isCoordinatorEquivalent($userRole),
             'preferences' => [
                 'langue' => $user->langue ?? 'fr',
                 'timezone' => $user->timezone ?? 'Africa/Douala'
@@ -110,6 +124,9 @@ class AuthController extends BaseApiController
             $userData['enseignant_data'] = $this->getEnseignantData($user);
         } elseif ($user->hasRole('etudiant')) {
             $userData['etudiant_data'] = $this->getEtudiantData($user);
+        } elseif (RoleHelper::isCoordinatorEquivalent($userRole)) {
+            // Les coordinateurs et superAdmin ont accès aux mêmes données d'administration
+            $userData['admin_data'] = $this->getAdminData($user);
         }
 
         return $this->successResponse([
@@ -309,6 +326,50 @@ class AuthController extends BaseApiController
     }
 
     /**
+     * Récupère les données spécifiques aux administrateurs
+     * Utilisé pour coordinateur et superAdmin (rôles équivalents)
+     *
+     * @param User $user
+     * @return array
+     */
+    private function getAdminData(User $user): array
+    {
+        $annee = $this->getAnneeCouraante();
+
+        if (!$annee) {
+            return [];
+        }
+
+        // Statistiques générales
+        $stats = [
+            'nb_enseignants' => \App\Models\User::role('enseignant')->count(),
+            'nb_etudiants' => \App\Models\User::role('etudiant')->count(),
+            'nb_classes_actives' => \App\Models\ESBTPClasse::where('is_active', true)->count(),
+            'nb_matieres_actives' => \App\Models\ESBTPMatiere::where('is_active', true)->count(),
+        ];
+
+        // Informations sur l'année universitaire courante
+        $anneeInfo = [
+            'id' => $annee->id,
+            'nom' => $annee->nom,
+            'date_debut' => $annee->date_debut,
+            'date_fin' => $annee->date_fin,
+            'is_current' => $annee->is_current
+        ];
+
+        return [
+            'role_equivalent' => 'coordinateur', // Normalisation pour l'interface
+            'access_level' => 'full_admin',
+            'permissions' => RoleHelper::getRolePermissions($user->getRoleNames()->first()),
+            'statistics' => $stats,
+            'annee_universitaire' => $anneeInfo,
+            'can_manage_users' => true,
+            'can_view_all_data' => true,
+            'can_generate_reports' => true
+        ];
+    }
+
+    /**
      * Documentation de l'API d'authentification
      *
      * Endpoint: GET /api/auth/documentation
@@ -327,7 +388,7 @@ class AuthController extends BaseApiController
                     'path' => '/api/auth/login',
                     'description' => 'Connexion utilisateur',
                     'parameters' => [
-                        'email' => 'string (required) - Email de l\'utilisateur',
+                        'username' => 'string (required) - Email ou nom d\'utilisateur',
                         'password' => 'string (required) - Mot de passe',
                         'remember' => 'boolean (optional) - Se souvenir de moi'
                     ],
@@ -358,7 +419,7 @@ class AuthController extends BaseApiController
                 'header' => 'Authorization: Bearer {your_token}',
                 'scopes' => ['lms:access']
             ],
-            'roles_autorises' => ['enseignant', 'coordinateur', 'etudiant']
+            'roles_autorises' => ['enseignant', 'coordinateur', 'etudiant', 'superAdmin']
         ]);
     }
 }
