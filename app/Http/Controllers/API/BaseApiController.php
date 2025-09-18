@@ -181,8 +181,8 @@ class BaseApiController extends Controller
             return $query->whereRaw('1 = 0'); // Retourner une requête vide
         }
 
-        // Les coordinateurs et super_admin ont accès à tout
-        if ($user->hasRole(['coordinateur', 'super_admin'])) {
+        // Les coordinateurs et superAdmin ont accès à tout
+        if ($user->hasRole(['coordinateur', 'superAdmin'])) {
             return $query;
         }
 
