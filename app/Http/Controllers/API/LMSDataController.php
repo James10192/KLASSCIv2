@@ -160,7 +160,7 @@ class LMSDataController extends BaseApiController
             'filiere',
             'niveau',
             'matieres' => function ($q) {
-                $q->where('is_active', true);
+                $q->where('esbtp_matieres.is_active', true);
             },
             'etudiants' => function ($q) use ($annee) {
                 $q->whereHas('inscriptions', function ($inscriptionQuery) use ($annee) {
