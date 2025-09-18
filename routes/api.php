@@ -141,6 +141,16 @@ Route::middleware(['auth:sanctum'])->prefix('lms')->name('api.lms.')->group(func
     Route::get('/classes/{classeId}/etudiants', [App\Http\Controllers\API\LMSDataController::class, 'etudiantsClasse'])
         ->name('classes.etudiants');
 
+    // Enseignants actifs
+    Route::get('/enseignants', [App\Http\Controllers\API\LMSDataController::class, 'enseignants'])
+        ->name('enseignants');
+
+    // KPIs pour le dashboard
+    Route::get('/filieres', [App\Http\Controllers\API\LMSDataController::class, 'filieres'])
+        ->name('filieres');
+    Route::get('/niveaux-etudes', [App\Http\Controllers\API\LMSDataController::class, 'niveauxEtudes'])
+        ->name('niveaux_etudes');
+
     // Emploi du temps
     Route::get('/emploi-temps', [App\Http\Controllers\API\LMSDataController::class, 'emploiTemps'])
         ->name('emploi_temps');

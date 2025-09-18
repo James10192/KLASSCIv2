@@ -11,6 +11,7 @@ use App\Models\ESBTPEmploiTemps;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPEvaluation;
+use App\Models\User;
 
 /**
  * Contrôleur pour les données en lecture seule du LMS
@@ -37,7 +38,12 @@ class LMSDataController extends BaseApiController
      */
     public function matieres(Request $request): JsonResponse
     {
+        $startTime = microtime(true);
+        \Log::info('🚀 LMS Matieres API - Starting request');
+
         $annee = $this->getAnneeCouraante();
+        $anneeTime = microtime(true);
+        \Log::info('⏱️ Got current year in: ' . round(($anneeTime - $startTime) * 1000, 2) . 'ms');
 
         if (!$annee) {
             return $this->errorResponse('Aucune année universitaire courante trouvée');
@@ -57,7 +63,7 @@ class LMSDataController extends BaseApiController
                 $q->where('esbtp_enseignant_matiere.annee_universitaire_id', $annee->id)
                   ->where('esbtp_enseignant_matiere.is_active', true);
             }
-        ])->where('is_active', true);
+        ])->where('esbtp_matieres.is_active', true);
 
         // Appliquer les filtres de rôle
         $query = $this->applyRoleFilters($query, 'matieres');
@@ -79,6 +85,8 @@ class LMSDataController extends BaseApiController
         }
 
         $matieres = $query->get();
+        $queryTime = microtime(true);
+        \Log::info('📊 Query executed in: ' . round(($queryTime - $anneeTime) * 1000, 2) . 'ms - Found ' . $matieres->count() . ' matieres');
 
         // Formater les données pour le LMS
         $data = $matieres->map(function ($matiere) use ($annee) {
@@ -131,11 +139,22 @@ class LMSDataController extends BaseApiController
             ];
         });
 
+        $mapTime = microtime(true);
+        \Log::info('🔄 Data mapping completed in: ' . round(($mapTime - $queryTime) * 1000, 2) . 'ms');
+
+        $totalTime = microtime(true);
+        \Log::info('✅ LMS Matieres API - Total time: ' . round(($totalTime - $startTime) * 1000, 2) . 'ms');
+
         return $this->successResponse($data, 'Matières récupérées avec succès', [
             'total' => $data->count(),
             'filters_applied' => [
                 'annee_universitaire' => $annee->nom,
                 'role_filter' => auth()->user()->getRoleNames()->first()
+            ],
+            'performance' => [
+                'total_time_ms' => round(($totalTime - $startTime) * 1000, 2),
+                'query_time_ms' => round(($queryTime - $anneeTime) * 1000, 2),
+                'mapping_time_ms' => round(($mapTime - $queryTime) * 1000, 2)
             ]
         ]);
     }
@@ -150,7 +169,12 @@ class LMSDataController extends BaseApiController
      */
     public function classes(Request $request): JsonResponse
     {
+        $startTime = microtime(true);
+        \Log::info('🚀 LMS Classes API - Starting request');
+
         $annee = $this->getAnneeCouraante();
+        $anneeTime = microtime(true);
+        \Log::info('⏱️ Got current year in: ' . round(($anneeTime - $startTime) * 1000, 2) . 'ms');
 
         if (!$annee) {
             return $this->errorResponse('Aucune année universitaire courante trouvée');
@@ -167,8 +191,12 @@ class LMSDataController extends BaseApiController
                     $inscriptionQuery->where('annee_universitaire_id', $annee->id)
                                    ->where('status', 'active');
                 });
+            },
+            'inscriptions' => function ($q) use ($annee) {
+                $q->where('annee_universitaire_id', $annee->id)
+                  ->where('status', 'active');
             }
-        ])->where('is_active', true);
+        ])->where('esbtp_classes.is_active', true);
 
         // Filtres optionnels
         if ($request->has('filiere_id')) {
@@ -180,12 +208,12 @@ class LMSDataController extends BaseApiController
         }
 
         $classes = $query->get();
+        $queryTime = microtime(true);
+        \Log::info('📊 Query executed in: ' . round(($queryTime - $anneeTime) * 1000, 2) . 'ms - Found ' . $classes->count() . ' classes');
 
         $data = $classes->map(function ($classe) use ($annee) {
-            $nbEtudiants = $classe->inscriptions()
-                ->where('annee_universitaire_id', $annee->id)
-                ->where('status', 'active')
-                ->count();
+            // Utiliser les inscriptions préchargées au lieu d'une requête séparée
+            $nbEtudiants = $classe->inscriptions->count();
 
             return [
                 'id' => $classe->id,
@@ -206,20 +234,31 @@ class LMSDataController extends BaseApiController
                     'nb_etudiants' => $nbEtudiants,
                     'nb_matieres' => $classe->matieres->count()
                 ],
-                'matieres' => $classe->matieres->map(function ($matiere) {
+                'matieres' => $classe->matieres->map(function ($matiere) use ($classe) {
                     return [
                         'id' => $matiere->id,
                         'nom' => $matiere->nom,
                         'code' => $matiere->code,
-                        'coefficient' => $matiere->getCoefficientForClasse($classe->id)
+                        'coefficient' => $matiere->pivot->coefficient ?? null
                     ];
                 })
             ];
         });
 
+        $mapTime = microtime(true);
+        \Log::info('🔄 Data mapping completed in: ' . round(($mapTime - $queryTime) * 1000, 2) . 'ms');
+
+        $totalTime = microtime(true);
+        \Log::info('✅ LMS Classes API - Total time: ' . round(($totalTime - $startTime) * 1000, 2) . 'ms');
+
         return $this->successResponse($data, 'Classes récupérées avec succès', [
             'total' => $data->count(),
-            'annee_universitaire' => $annee->nom
+            'annee_universitaire' => $annee->nom,
+            'performance' => [
+                'total_time_ms' => round(($totalTime - $startTime) * 1000, 2),
+                'query_time_ms' => round(($queryTime - $anneeTime) * 1000, 2),
+                'mapping_time_ms' => round(($mapTime - $queryTime) * 1000, 2)
+            ]
         ]);
     }
 
@@ -336,7 +375,7 @@ class LMSDataController extends BaseApiController
         ])->whereBetween('date_cours', [$dateDebut, $dateFin])
           ->whereHas('emploiTemps', function ($q) use ($annee) {
               $q->where('annee_universitaire_id', $annee->id)
-                ->where('is_active', true);
+                ->where('esbtp_emploi_temps.is_active', true);
           });
 
         // Filtrer selon le rôle
@@ -422,13 +461,13 @@ class LMSDataController extends BaseApiController
      */
     public function structure(): JsonResponse
     {
-        $filieres = ESBTPFiliere::where('is_active', true)
+        $filieres = ESBTPFiliere::where('esbtp_filieres.is_active', true)
             ->with(['niveauxEtudes' => function ($q) {
-                $q->where('is_active', true);
+                $q->where('esbtp_niveau_etudes.is_active', true);
             }])
             ->get();
 
-        $niveaux = ESBTPNiveauEtude::where('is_active', true)->get();
+        $niveaux = ESBTPNiveauEtude::where('esbtp_niveau_etudes.is_active', true)->get();
 
         $data = [
             'filieres' => $filieres->map(function ($filiere) {
@@ -529,6 +568,154 @@ class LMSDataController extends BaseApiController
         return $this->successResponse($data, 'Évaluations récupérées', [
             'total' => $data->count(),
             'annee_universitaire' => $annee->nom
+        ]);
+    }
+
+    /**
+     * Liste des enseignants actifs
+     *
+     * Endpoint: GET /api/lms/enseignants
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function enseignants(Request $request): JsonResponse
+    {
+        $startTime = microtime(true);
+        \Log::info('🚀 LMS Enseignants API - Starting request');
+
+        $annee = $this->getAnneeCouraante();
+        $anneeTime = microtime(true);
+        \Log::info('⏱️ Got current year in: ' . round(($anneeTime - $startTime) * 1000, 2) . 'ms');
+
+        if (!$annee) {
+            return $this->errorResponse('Aucune année universitaire courante trouvée');
+        }
+
+        // Récupérer les enseignants actifs (simplifié pour l'instant)
+        $query = User::where('role', 'enseignant');
+
+        $enseignants = $query->get();
+        $queryTime = microtime(true);
+        \Log::info('📊 Query executed in: ' . round(($queryTime - $anneeTime) * 1000, 2) . 'ms - Found ' . $enseignants->count() . ' enseignants');
+
+        $data = $enseignants->map(function ($enseignant) {
+            return [
+                'id' => $enseignant->id,
+                'nom' => $enseignant->name,
+                'email' => $enseignant->email,
+                'role' => $enseignant->role
+            ];
+        });
+
+        $mapTime = microtime(true);
+        \Log::info('🔄 Data mapping completed in: ' . round(($mapTime - $queryTime) * 1000, 2) . 'ms');
+
+        $totalTime = microtime(true);
+        \Log::info('✅ LMS Enseignants API - Total time: ' . round(($totalTime - $startTime) * 1000, 2) . 'ms');
+
+        return $this->successResponse($data, 'Enseignants récupérés avec succès', [
+            'total' => $data->count(),
+            'annee_universitaire' => $annee->nom,
+            'performance' => [
+                'total_time_ms' => round(($totalTime - $startTime) * 1000, 2),
+                'query_time_ms' => round(($queryTime - $anneeTime) * 1000, 2),
+                'mapping_time_ms' => round(($mapTime - $queryTime) * 1000, 2)
+            ]
+        ]);
+    }
+
+    /**
+     * Liste des filières actives
+     *
+     * Endpoint: GET /api/lms/filieres
+     *
+     * @return JsonResponse
+     */
+    public function filieres(): JsonResponse
+    {
+        $startTime = microtime(true);
+        \Log::info('🚀 LMS Filieres API - Starting request');
+
+        $filieres = ESBTPFiliere::where('esbtp_filieres.is_active', true)
+            ->withCount(['classes' => function ($q) {
+                $q->where('esbtp_classes.is_active', true);
+            }])
+            ->get();
+
+        $queryTime = microtime(true);
+        \Log::info('📊 Query executed in: ' . round(($queryTime - $startTime) * 1000, 2) . 'ms - Found ' . $filieres->count() . ' filières');
+
+        $data = $filieres->map(function ($filiere) {
+            return [
+                'id' => $filiere->id,
+                'nom' => $filiere->nom,
+                'code' => $filiere->code,
+                'description' => $filiere->description,
+                'classes_count' => $filiere->classes_count
+            ];
+        });
+
+        $mapTime = microtime(true);
+        \Log::info('🔄 Data mapping completed in: ' . round(($mapTime - $queryTime) * 1000, 2) . 'ms');
+
+        $totalTime = microtime(true);
+        \Log::info('✅ LMS Filieres API - Total time: ' . round(($totalTime - $startTime) * 1000, 2) . 'ms');
+
+        return $this->successResponse($data, 'Filières récupérées avec succès', [
+            'total' => $data->count(),
+            'performance' => [
+                'total_time_ms' => round(($totalTime - $startTime) * 1000, 2),
+                'query_time_ms' => round(($queryTime - $startTime) * 1000, 2),
+                'mapping_time_ms' => round(($mapTime - $queryTime) * 1000, 2)
+            ]
+        ]);
+    }
+
+    /**
+     * Liste des niveaux d'études actifs
+     *
+     * Endpoint: GET /api/lms/niveaux-etudes
+     *
+     * @return JsonResponse
+     */
+    public function niveauxEtudes(): JsonResponse
+    {
+        $startTime = microtime(true);
+        \Log::info('🚀 LMS Niveaux Etudes API - Starting request');
+
+        $niveaux = ESBTPNiveauEtude::where('esbtp_niveau_etudes.is_active', true)
+            ->withCount(['classes' => function ($q) {
+                $q->where('esbtp_classes.is_active', true);
+            }])
+            ->get();
+
+        $queryTime = microtime(true);
+        \Log::info('📊 Query executed in: ' . round(($queryTime - $startTime) * 1000, 2) . 'ms - Found ' . $niveaux->count() . ' niveaux');
+
+        $data = $niveaux->map(function ($niveau) {
+            return [
+                'id' => $niveau->id,
+                'nom' => $niveau->nom,
+                'code' => $niveau->code,
+                'description' => $niveau->description,
+                'classes_count' => $niveau->classes_count
+            ];
+        });
+
+        $mapTime = microtime(true);
+        \Log::info('🔄 Data mapping completed in: ' . round(($mapTime - $queryTime) * 1000, 2) . 'ms');
+
+        $totalTime = microtime(true);
+        \Log::info('✅ LMS Niveaux Etudes API - Total time: ' . round(($totalTime - $startTime) * 1000, 2) . 'ms');
+
+        return $this->successResponse($data, 'Niveaux d\'études récupérés avec succès', [
+            'total' => $data->count(),
+            'performance' => [
+                'total_time_ms' => round(($totalTime - $startTime) * 1000, 2),
+                'query_time_ms' => round(($queryTime - $startTime) * 1000, 2),
+                'mapping_time_ms' => round(($mapTime - $queryTime) * 1000, 2)
+            ]
         ]);
     }
 }
