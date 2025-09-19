@@ -289,7 +289,7 @@
                                     @endif
 
                                     @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire'))
-                                    <a href="{{ route('esbtp.api.classes.matieres.api', ['id' => $classe->id]) }}" class="btn-acasi secondary" style="padding: var(--space-xs);" title="Gérer les matières">
+                                    <a href="{{ route('esbtp.classes.matieres', ['classe' => $classe->id]) }}" class="btn-acasi secondary" style="padding: var(--space-xs);" title="Gérer les matières">
                                         <i class="fas fa-book"></i>
                                     </a>
                                     @endif

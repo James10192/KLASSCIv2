@@ -1842,4 +1842,128 @@ class ESBTPInscriptionController extends Controller
             throw $e;
         }
     }
+
+    /**
+     * Prévisualiser la situation financière de l'étudiant pour cette inscription
+     */
+    public function previewSituationFinanciere(ESBTPInscription $inscription)
+    {
+        // Charger toutes les données nécessaires
+        $inscription->load([
+            'etudiant.user',
+            'filiere',
+            'niveau',
+            'classe',
+            'anneeUniversitaire',
+            'paiements' => function($query) {
+                $query->where('status', 'validé')
+                      ->orderBy('date_paiement', 'desc');
+            }
+        ]);
+
+        // Récupérer les frais souscrits pour cette inscription
+        $fraisSouscrits = ESBTPFraisSubscription::where('inscription_id', $inscription->id)
+            ->where('is_active', true)
+            ->with(['fraisCategory'])
+            ->get();
+
+        // Calculer les totaux
+        $totalAttendu = $fraisSouscrits->sum('amount');
+        $totalPaye = $inscription->paiements->sum('montant');
+        $soldeRestant = $totalAttendu - $totalPaye;
+
+        // Récupérer les reliquats liés à cette inscription (entrants)
+        $reliquats = \App\Models\ESBTPReliquatDetail::where('inscription_destination_id', $inscription->id)
+            ->where('statut', 'actif')
+            ->with(['inscriptionSource.etudiant', 'fraisSubscription.fraisCategory'])
+            ->get();
+
+        $totalReliquats = $reliquats->sum('montant_reliquat');
+
+        // Statistiques
+        $statistiques = [
+            'total_attendu' => $totalAttendu,
+            'total_paye' => $totalPaye,
+            'total_reliquats' => $totalReliquats,
+            'solde_restant' => $soldeRestant + $totalReliquats,
+            'pourcentage_paye' => $totalAttendu > 0 ? round(($totalPaye / $totalAttendu) * 100, 2) : 0,
+        ];
+
+        return view('esbtp.inscriptions.situation-financiere-preview', compact(
+            'inscription',
+            'fraisSouscrits',
+            'reliquats',
+            'statistiques'
+        ));
+    }
+
+    /**
+     * Exporter la situation financière en PDF
+     */
+    public function exportSituationFinanciere(ESBTPInscription $inscription)
+    {
+        // Récupérer les mêmes données que pour la preview
+        $inscription->load([
+            'etudiant.user',
+            'filiere',
+            'niveau',
+            'classe',
+            'anneeUniversitaire',
+            'paiements' => function($query) {
+                $query->where('status', 'validé')
+                      ->orderBy('date_paiement', 'desc');
+            }
+        ]);
+
+        $fraisSouscrits = ESBTPFraisSubscription::where('inscription_id', $inscription->id)
+            ->where('is_active', true)
+            ->with(['fraisCategory'])
+            ->get();
+
+        $totalAttendu = $fraisSouscrits->sum('amount');
+        $totalPaye = $inscription->paiements->sum('montant');
+        $soldeRestant = $totalAttendu - $totalPaye;
+
+        $reliquats = \App\Models\ESBTPReliquatDetail::where('inscription_destination_id', $inscription->id)
+            ->where('statut', 'actif')
+            ->with(['inscriptionSource.etudiant', 'fraisSubscription.fraisCategory'])
+            ->get();
+
+        $totalReliquats = $reliquats->sum('montant_reliquat');
+
+        $statistiques = [
+            'total_attendu' => $totalAttendu,
+            'total_paye' => $totalPaye,
+            'total_reliquats' => $totalReliquats,
+            'solde_restant' => $soldeRestant + $totalReliquats,
+            'pourcentage_paye' => $totalAttendu > 0 ? round(($totalPaye / $totalAttendu) * 100, 2) : 0,
+        ];
+
+        // Récupérer les paramètres de l'établissement
+        $etablissement = [
+            'nom' => setting('school_name', 'ESBTP-yAKRO'),
+            'adresse' => setting('school_address', ''),
+            'telephone' => setting('school_phone', ''),
+            'email' => setting('school_email', ''),
+            'logo' => setting('school_logo', null),
+        ];
+
+        // Générer le PDF
+        $pdf = Pdf::loadView('esbtp.inscriptions.situation-financiere-pdf', compact(
+            'inscription',
+            'fraisSouscrits',
+            'reliquats',
+            'statistiques',
+            'etablissement'
+        ));
+
+        $pdf->setPaper('A4', 'portrait');
+
+        $filename = 'situation_financiere_' .
+                   $inscription->etudiant->matricule . '_' .
+                   $inscription->anneeUniversitaire->name . '_' .
+                   now()->format('Y-m-d') . '.pdf';
+
+        return $pdf->download($filename);
+    }
 }

@@ -812,8 +812,29 @@ body.modal-open .card:hover {
                     <!-- Paiements liés à l'inscription -->
                     <div class="card-moderne">
                         <div class="p-lg">
-                            <div class="section-title mb-md">
-                                <i class="fas fa-money-bill-wave"></i>Paiements liés à cette inscription
+                            <div class="section-title mb-md d-flex justify-content-between align-items-center">
+                                <span>
+                                    <i class="fas fa-money-bill-wave"></i>Paiements liés à cette inscription
+                                </span>
+                                <div class="dropdown pdf-dropdown">
+                                    <button class="btn btn-outline-success dropdown-toggle" type="button"
+                                            id="situationFinanciereDropdown" data-bs-toggle="dropdown"
+                                            aria-expanded="false" title="Situation Financière">
+                                        <i class="fas fa-file-invoice-dollar"></i> Situation Financière
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="situationFinanciereDropdown">
+                                        <li>
+                                            <a class="dropdown-item" href="{{ route('esbtp.inscriptions.situation-financiere.preview', $inscription) }}">
+                                                <i class="fas fa-eye me-1"></i>Prévisualiser
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" href="{{ route('esbtp.inscriptions.situation-financiere.pdf', $inscription) }}">
+                                                <i class="fas fa-download me-1"></i>Télécharger PDF
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
                             </div>
                             @php
                                 $allPayments = collect();

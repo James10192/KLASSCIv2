@@ -417,9 +417,14 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->name('classes.show')
                 ->middleware(['permission:view_classes|view classes']);
 
-            // Routes de l'API pour récupérer les matières d'une classe - accessible aux superAdmin et secrétaires
-            Route::get('classes/{classe}/matieres', [ESBTPClasseController::class, 'getMatieres'])
+            // Route pour gérer les matières d'une classe - accessible aux superAdmin et secrétaires
+            Route::get('classes/{classe}/matieres', [ESBTPClasseController::class, 'matieres'])
                 ->name('classes.matieres')
+                ->middleware(['permission:view_classes|view classes']);
+
+            // Routes de l'API pour récupérer les matières d'une classe - accessible aux superAdmin et secrétaires
+            Route::get('classes/{classe}/matieres/api', [ESBTPClasseController::class, 'getMatieres'])
+                ->name('classes.matieres.data')
                 ->middleware(['permission:view_classes|view classes']);
 
             
