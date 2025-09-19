@@ -270,53 +270,6 @@
                     </div>
                 </div>
 
-                <!-- Récapitulatif des paiements -->
-                <div class="row mb-4">
-                    <div class="col-md-12">
-                        <h5 class="font-weight-bold">Récapitulatif des paiements</h5>
-                        <hr>
-
-                        @if($inscription->paiements->count() > 0)
-                            <div class="table-responsive">
-                                <table class="table table-bordered table-sm">
-                                    <thead>
-                                        <tr>
-                                            <th>Date</th>
-                                            <th>Montant</th>
-                                            <th>Méthode</th>
-                                            <th>Référence</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($inscription->paiements as $paiement)
-                                            <tr>
-                                                <td>{{ $paiement->date->format('d/m/Y') }}</td>
-                                                <td>{{ number_format($paiement->montant, 0, ',', ' ') }} FCFA</td>
-                                                <td>{{ $paiement->methode }}</td>
-                                                <td>{{ $paiement->reference }}</td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                    <tfoot>
-                                        <tr>
-                                            <td colspan="1"><strong>Total payé :</strong></td>
-                                            <td colspan="3"><strong>{{ number_format($inscription->paiements->sum('montant'), 0, ',', ' ') }} FCFA</strong></td>
-                                        </tr>
-                                        <tr>
-                                            <td colspan="1"><strong>Reste à payer :</strong></td>
-                                            <td colspan="3"><strong>{{ number_format($inscription->montant_scolarite - $inscription->paiements->sum('montant'), 0, ',', ' ') }} FCFA</strong></td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
-                            <p class="text-muted">Pour ajouter un nouveau paiement, veuillez utiliser la page de détails de l'inscription.</p>
-                        @else
-                            <div class="alert alert-warning">
-                                Aucun paiement enregistré pour cette inscription.
-                            </div>
-                        @endif
-                    </div>
-                </div>
 
                 <div class="row">
                     <div class="col-md-12 text-end">
