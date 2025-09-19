@@ -768,9 +768,6 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::get('/inscriptions/frais-by-classe/{classeId}', [ESBTPInscriptionController::class, 'getFraisByClasse'])->name('inscriptions.frais-by-classe');
 
             // Routes API utilisées par les formulaires
-            Route::get('classes/{classe}/matieres', [ESBTPClasseController::class, 'getMatieres'])
-                ->name('classes.matieres')
-                ->middleware(['permission:view_classes|view classes']);
 
             // Routes pour les notes
             Route::resource('notes', ESBTPNoteController::class)
@@ -1070,7 +1067,6 @@ Route::prefix('api/esbtp')->name('api.esbtp.')->middleware(['auth'])->group(func
 });
 
 Route::prefix('esbtp/api')->name('esbtp.api.')->middleware(['auth'])->group(function () {
-    Route::get('classes/{classe}/matieres', [ESBTPClasseController::class, 'getMatieresForApi'])->name('classes.matieres.api');
     Route::get('classes/{id}', [ESBTPClasseController::class, 'getClasseById'])->name('classes.get');
     Route::get('classes/{id}/niveau-config', [ESBTPClasseController::class, 'getNiveauConfig'])->name('classes.niveau-config');
     Route::get('get-classes', [ESBTPInscriptionController::class, 'getClasses'])->name('get-classes');
