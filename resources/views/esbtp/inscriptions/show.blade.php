@@ -101,7 +101,7 @@ body.modal-open .card:hover {
                         <i class="fas fa-cog"></i>Administration
                     </a>
                     
-                    @if($inscription->status === 'en_attente' && !$inscription->paiement_validation_id)
+                    @if(auth()->user()->hasRole('superAdmin') && $inscription->status === 'en_attente' && !$inscription->paiement_validation_id)
                         <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#paymentModal" onclick="preparePaymentModal({{ $inscription->id }})">
                             <i class="fas fa-credit-card"></i>Valider avec paiement
                         </button>
@@ -662,7 +662,7 @@ body.modal-open .card:hover {
                                                 </td>
                                                 <td>
                                                     <div class="btn-group">
-                                                        @if($item['is_configured'] && $item['solde'] > 0)
+                                                        @if(auth()->user()->hasRole('superAdmin') && $item['is_configured'] && $item['solde'] > 0)
                                                             <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#paymentModal" onclick="preparePaymentModalForCategory({{ $inscription->id }}, {{ $item['category']->id }})" title="Effectuer un paiement">
                                                                 <i class="fas fa-credit-card"></i>
                                                             </button>
