@@ -783,13 +783,6 @@ class ESBTPReinscriptionController extends Controller
         ]);
 
         try {
-            // Debug log pour voir les paramètres reçus
-            \Log::info("Réinscription - paramètres reçus", [
-                'action_reliquat' => $request->action_reliquat,
-                'etudiant_id' => $etudiantId,
-                'all_request' => $request->all()
-            ]);
-
             // Décoder les frais optionnels sélectionnés
             $selectedOptionals = [];
             if ($request->selected_optionals) {
