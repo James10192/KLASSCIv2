@@ -156,6 +156,16 @@ class ESBTPInscription extends Model
     }
 
     /**
+     * Frais souscriptions liées à cette inscription.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function fraisSubscriptions()
+    {
+        return $this->hasMany(ESBTPFraisSubscription::class, 'inscription_id');
+    }
+
+    /**
      * Utilisateur qui a validé l'inscription.
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo

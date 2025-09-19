@@ -627,6 +627,16 @@ class ESBTPInscriptionService
                     continue;
                 }
 
+                // IMPORTANT: Skip les catégories obligatoires car elles sont déjà générées automatiquement
+                if ($category->is_mandatory) {
+                    Log::warning('Catégorie obligatoire ignorée dans selectedOptionals', [
+                        'category_id' => $categoryId,
+                        'category_name' => $category->name,
+                        'message' => 'Les frais obligatoires sont générés automatiquement et ne doivent pas être dans selectedOptionals'
+                    ]);
+                    continue;
+                }
+
                 if ($optionData['variant_id'] === 'default') {
                     // Option par défaut - utiliser le montant configuré ou par défaut
                     $configuration = \App\Models\ESBTPFraisConfiguration::where('frais_category_id', $categoryId)
