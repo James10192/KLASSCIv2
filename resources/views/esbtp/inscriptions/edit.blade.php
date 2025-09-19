@@ -57,10 +57,10 @@
                     </div>
                 @endif
 
-                @if ($errors->except('frais_inscription')->any())
+                @if ($errors->any())
                     <div class="alert alert-danger">
                         <ul class="mb-0">
-                            @foreach ($errors->except('frais_inscription')->all() as $error)
+                            @foreach ($errors->all() as $error)
                                 <li>{{ $error }}</li>
                             @endforeach
                         </ul>

@@ -721,7 +721,7 @@ class ESBTPInscriptionController extends Controller
             'date_inscription' => 'required|date',
             'type_inscription' => 'required|in:première_inscription,réinscription,transfert',
             'montant_scolarite' => 'required|numeric|min:0',
-            'frais_inscription' => 'required|numeric|min:0',
+            'frais_inscription' => 'nullable|numeric|min:0',
             'observations' => 'nullable|string',
             'status' => 'required|in:en_attente,active,annulée,terminée',
             'affectation_status' => 'nullable|in:affecté,réaffecté,non_affecté',
@@ -767,7 +767,7 @@ class ESBTPInscriptionController extends Controller
             $inscription->date_inscription = $data['date_inscription'];
             $inscription->type_inscription = $data['type_inscription'];
             $inscription->montant_scolarite = $data['montant_scolarite'];
-            $inscription->frais_inscription = $data['frais_inscription'];
+            $inscription->frais_inscription = $data['frais_inscription'] ?? $inscription->frais_inscription ?? 0;
             $inscription->observations = $data['observations'];
             $inscription->affectation_status = $data['affectation_status'] ?? null;
 
