@@ -89,13 +89,30 @@
                     </div>
                     @endforeach
 
-                    <div class="form-check mt-3">
-                        <input class="form-check-input" type="checkbox" id="reporter_reliquat" name="reporter_reliquat" value="1">
-                        <label class="form-check-label" for="reporter_reliquat">
-                            <strong>Confirmer le report du reliquat</strong>
-                            ({{ number_format($analyse['etudiant']->reliquat_montant, 0, ',', ' ') }} FCFA)
-                            <br><small class="text-muted">Le reliquat sera ajouté aux frais de la nouvelle inscription</small>
-                        </label>
+                    <div class="mt-4">
+                        <h6 class="mb-3">Choix de gestion du reliquat :</h6>
+
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="radio" id="reporter_reliquat" name="action_reliquat" value="reporter">
+                            <label class="form-check-label" for="reporter_reliquat">
+                                <strong><i class="fas fa-arrow-right me-1"></i> Reporter le reliquat</strong>
+                                ({{ number_format($analyse['etudiant']->reliquat_montant, 0, ',', ' ') }} FCFA)
+                                <br><small class="text-muted">Le reliquat sera ajouté aux frais de la nouvelle inscription et devra être soldé ultérieurement</small>
+                            </label>
+                        </div>
+
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="radio" id="abandonner_reliquat" name="action_reliquat" value="abandonner">
+                            <label class="form-check-label" for="abandonner_reliquat">
+                                <strong><i class="fas fa-times me-1"></i> Abandonner les frais impayés</strong>
+                                <br><small class="text-muted">Les frais non soldés seront annulés définitivement (remise exceptionnelle)</small>
+                            </label>
+                        </div>
+
+                        <div class="alert alert-info mt-3">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Information :</strong> Vous devez choisir une action pour les frais impayés avant de pouvoir finaliser la réinscription.
+                        </div>
                     </div>
                 </div>
             </div>
@@ -260,7 +277,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const affectationSelect = document.getElementById('statut_affectation');
     const fraisContainer = document.getElementById('fraisContainer');
     const btnConfirmer = document.getElementById('btnConfirmer');
-    const reporterReliquat = document.getElementById('reporter_reliquat');
+    // Variables pour la gestion des reliquats gérées directement dans validateReliquat()
 
     // Champs cachés pour transmission finale
     const decisionFinale = document.getElementById('decisionFinale');
@@ -277,9 +294,12 @@ document.addEventListener('DOMContentLoaded', function() {
     @if($isSuperAdmin && !empty($fraisNonSoldes))
     function validateReliquat() {
         const hasReliquat = {{ !empty($fraisNonSoldes) ? 'true' : 'false' }};
-        if (hasReliquat && reporterReliquat && !reporterReliquat.checked) {
-            alert('Vous devez confirmer le report du reliquat pour procéder à la réinscription.');
-            return false;
+        if (hasReliquat) {
+            const actionReliquat = document.querySelector('input[name="action_reliquat"]:checked');
+            if (!actionReliquat) {
+                alert('Vous devez choisir une action pour les frais impayés (reporter ou abandonner) avant de procéder à la réinscription.');
+                return false;
+            }
         }
         return true;
     }

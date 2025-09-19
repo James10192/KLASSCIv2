@@ -310,7 +310,7 @@ class ReeinscriptionService
         return [];
     }
 
-    public function effectuerReinscription($etudiantId, $nouvelleClasseId, $decision, $observations = null, $selectedOptionals = [], $affectationStatus = 'affecté', $anneeUniversitaireId = null)
+    public function effectuerReinscription($etudiantId, $nouvelleClasseId, $decision, $observations = null, $selectedOptionals = [], $affectationStatus = 'affecté', $anneeUniversitaireId = null, $actionReliquat = null)
     {
         \DB::beginTransaction();
         try {
@@ -401,8 +401,8 @@ class ReeinscriptionService
 
             // Note: Facture et paiements seront gérés via inscriptions.show comme d'habitude
 
-            // 5.5 Créer les reliquats si il y a des montants impayés sur l'inscription précédente
-            $this->creerReliquatsSiNecessaire($inscriptionActuelle, $nouvelleInscription);
+            // 5.5 Gérer les reliquats selon l'action choisie par le superAdmin
+            $this->gererReliquats($inscriptionActuelle, $nouvelleInscription, $actionReliquat);
 
             // 6. Mise à jour statut étudiant
             $etudiant->update([
@@ -625,7 +625,7 @@ class ReeinscriptionService
     /**
      * Créer les reliquats pour les montants impayés de l'inscription précédente
      */
-    private function creerReliquatsSiNecessaire($inscriptionSource, $inscriptionDestination)
+    private function gererReliquats($inscriptionSource, $inscriptionDestination, $actionReliquat = null)
     {
         // Récupérer tous les frais souscrits pour l'inscription source
         $fraisSouscrits = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscriptionSource->id)
@@ -647,31 +647,68 @@ class ReeinscriptionService
             // Calculer le reliquat
             $montantReliquat = $montantAttendu - $montantPaye;
 
-            // Créer un reliquat seulement s'il y a un montant impayé
+            // Traiter seulement s'il y a un montant impayé
             if ($montantReliquat > 0) {
-                \App\Models\ESBTPReliquatDetail::create([
-                    'inscription_source_id' => $inscriptionSource->id,
-                    'inscription_destination_id' => $inscriptionDestination->id,
-                    'frais_subscription_id' => $fraisSubscription->id,
-                    'montant_attendu' => $montantAttendu,
-                    'montant_paye' => $montantPaye,
-                    'montant_reliquat' => $montantReliquat,
-                    'montant_regle' => 0, // Aucun montant réglé initialement
-                    'statut' => 'actif',
-                    'date_creation' => now(),
-                    'date_derniere_maj' => now(),
-                    'created_by' => auth()->id(),
-                    'notes' => "Reliquat créé automatiquement lors de la réinscription de {$inscriptionSource->anneeUniversitaire->name} vers {$inscriptionDestination->anneeUniversitaire->name}"
-                ]);
+                if ($actionReliquat === 'reporter') {
+                    // Reporter le reliquat vers la nouvelle inscription
+                    \App\Models\ESBTPReliquatDetail::create([
+                        'inscription_source_id' => $inscriptionSource->id,
+                        'inscription_destination_id' => $inscriptionDestination->id,
+                        'frais_subscription_id' => $fraisSubscription->id,
+                        'montant_attendu' => $montantAttendu,
+                        'montant_paye' => $montantPaye,
+                        'montant_reliquat' => $montantReliquat,
+                        'montant_regle' => 0,
+                        'statut' => 'actif',
+                        'date_creation' => now(),
+                        'date_derniere_maj' => now(),
+                        'created_by' => auth()->id(),
+                        'notes' => "Reliquat reporté lors de la réinscription de {$inscriptionSource->anneeUniversitaire->name} vers {$inscriptionDestination->anneeUniversitaire->name}"
+                    ]);
 
-                \Log::info("Reliquat créé pour réinscription", [
-                    'etudiant_id' => $inscriptionSource->etudiant_id,
-                    'inscription_source_id' => $inscriptionSource->id,
-                    'inscription_destination_id' => $inscriptionDestination->id,
-                    'frais_category_id' => $fraisSubscription->frais_category_id,
-                    'montant_reliquat' => $montantReliquat,
-                    'frais_name' => $fraisSubscription->fraisConfiguration->name ?? 'N/A'
-                ]);
+                    \Log::info("Reliquat reporté pour réinscription", [
+                        'etudiant_id' => $inscriptionSource->etudiant_id,
+                        'inscription_source_id' => $inscriptionSource->id,
+                        'inscription_destination_id' => $inscriptionDestination->id,
+                        'frais_category_id' => $fraisSubscription->frais_category_id,
+                        'montant_reliquat' => $montantReliquat,
+                        'frais_name' => $fraisSubscription->fraisConfiguration->name ?? 'N/A'
+                    ]);
+                } elseif ($actionReliquat === 'abandonner') {
+                    // Abandonner le reliquat - marquer la souscription comme abandonnée
+                    $fraisSubscription->update([
+                        'is_active' => false,
+                        'status' => 'abandonné',
+                        'notes' => ($fraisSubscription->notes ? $fraisSubscription->notes . "\n" : '') .
+                                  "Frais impayé abandonné lors de la réinscription le " . now()->format('d/m/Y H:i'),
+                        'updated_by' => auth()->id()
+                    ]);
+
+                    \Log::info("Reliquat abandonné pour réinscription", [
+                        'etudiant_id' => $inscriptionSource->etudiant_id,
+                        'inscription_source_id' => $inscriptionSource->id,
+                        'inscription_destination_id' => $inscriptionDestination->id,
+                        'frais_category_id' => $fraisSubscription->frais_category_id,
+                        'montant_reliquat' => $montantReliquat,
+                        'frais_name' => $fraisSubscription->fraisConfiguration->name ?? 'N/A'
+                    ]);
+                } else {
+                    // Comportement par défaut : créer le reliquat (backward compatibility)
+                    \App\Models\ESBTPReliquatDetail::create([
+                        'inscription_source_id' => $inscriptionSource->id,
+                        'inscription_destination_id' => $inscriptionDestination->id,
+                        'frais_subscription_id' => $fraisSubscription->id,
+                        'montant_attendu' => $montantAttendu,
+                        'montant_paye' => $montantPaye,
+                        'montant_reliquat' => $montantReliquat,
+                        'montant_regle' => 0,
+                        'statut' => 'actif',
+                        'date_creation' => now(),
+                        'date_derniere_maj' => now(),
+                        'created_by' => auth()->id(),
+                        'notes' => "Reliquat créé automatiquement lors de la réinscription de {$inscriptionSource->anneeUniversitaire->name} vers {$inscriptionDestination->anneeUniversitaire->name}"
+                    ]);
+                }
             }
         }
     }

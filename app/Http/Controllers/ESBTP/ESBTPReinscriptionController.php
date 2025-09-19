@@ -778,7 +778,8 @@ class ESBTPReinscriptionController extends Controller
             'observations' => 'nullable|string',
             'selected_optionals' => 'nullable|string', // JSON des frais optionnels
             'affectation_status' => 'nullable|string|in:affecté,réaffecté,non_affecté',
-            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id'
+            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
+            'action_reliquat' => 'nullable|string|in:reporter,abandonner', // Gestion des reliquats pour superAdmin
         ]);
 
         try {
@@ -806,7 +807,8 @@ class ESBTPReinscriptionController extends Controller
                 $request->observations,
                 $selectedOptionals,
                 $affectationStatus,
-                $request->annee_universitaire_id
+                $request->annee_universitaire_id,
+                $request->action_reliquat // Gestion des reliquats pour superAdmin
             );
 
             return redirect()->route('esbtp.inscriptions.show', $nouvelleInscription->id)
