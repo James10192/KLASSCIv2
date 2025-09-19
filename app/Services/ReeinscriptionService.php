@@ -630,7 +630,7 @@ class ReeinscriptionService
         // Récupérer tous les frais souscrits pour l'inscription source
         $fraisSouscrits = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscriptionSource->id)
             ->where('is_active', true)
-            ->with('fraisConfiguration')
+            ->with(['fraisCategory', 'selectedOption'])
             ->get();
 
         foreach ($fraisSouscrits as $fraisSubscription) {
@@ -672,7 +672,7 @@ class ReeinscriptionService
                         'inscription_destination_id' => $inscriptionDestination->id,
                         'frais_category_id' => $fraisSubscription->frais_category_id,
                         'montant_reliquat' => $montantReliquat,
-                        'frais_name' => $fraisSubscription->fraisConfiguration->name ?? 'N/A'
+                        'frais_name' => $fraisSubscription->configuration_name ?? 'N/A'
                     ]);
                 } elseif ($actionReliquat === 'abandonner') {
                     // Abandonner le reliquat - marquer la souscription comme abandonnée
@@ -690,7 +690,7 @@ class ReeinscriptionService
                         'inscription_destination_id' => $inscriptionDestination->id,
                         'frais_category_id' => $fraisSubscription->frais_category_id,
                         'montant_reliquat' => $montantReliquat,
-                        'frais_name' => $fraisSubscription->fraisConfiguration->name ?? 'N/A'
+                        'frais_name' => $fraisSubscription->configuration_name ?? 'N/A'
                     ]);
                 } else {
                     // Comportement par défaut : créer le reliquat (backward compatibility)
