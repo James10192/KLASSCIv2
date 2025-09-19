@@ -142,8 +142,9 @@ class ESBTPSettingsController extends Controller
                             Storage::disk('public')->delete($setting->value);
                         }
 
-                        // Stocker le nouveau fichier
-                        $path = $file->store('settings', 'public');
+                        // Stocker le nouveau fichier dans le bon dossier selon le type
+                        $folder = $this->getStorageFolderForSetting($settingKey);
+                        $path = $file->store($folder, 'public');
 
                         $setting->update([
                             'value' => $path,
@@ -529,6 +530,24 @@ class ESBTPSettingsController extends Controller
             default:
                 return $value;
         }
+    }
+
+    /**
+     * Déterminer le dossier de stockage selon la clé du paramètre
+     */
+    private function getStorageFolderForSetting($settingKey)
+    {
+        // Mapper les clés de paramètres aux dossiers appropriés
+        $settingFolders = [
+            'school_logo' => 'logos',
+            'school_favicon' => 'logos',
+            'bulletin_logo' => 'logos',
+            'header_logo' => 'logos',
+            'signature_image' => 'documents',
+            'watermark_image' => 'documents',
+        ];
+
+        return $settingFolders[$settingKey] ?? 'settings';
     }
 
     /**
