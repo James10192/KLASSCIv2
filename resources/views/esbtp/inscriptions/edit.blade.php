@@ -246,16 +246,6 @@
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <div class="form-group">
-                            <label for="frais_inscription">Frais d'inscription <span class="text-danger">*</span></label>
-                            <input type="number" class="form-control @error('frais_inscription') is-invalid @enderror" id="frais_inscription" name="frais_inscription" value="{{ old('frais_inscription', $inscription->frais_inscription) }}" min="0" required>
-                            @error('frais_inscription')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="form-group">
                             <label for="montant_scolarite">Montant scolarité <span class="text-danger">*</span></label>
                             <input type="number" class="form-control @error('montant_scolarite') is-invalid @enderror" id="montant_scolarite" name="montant_scolarite" value="{{ old('montant_scolarite', $inscription->montant_scolarite) }}" min="0" required>
                             @error('montant_scolarite')

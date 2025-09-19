@@ -110,9 +110,22 @@ class InscriptionWorkflowService
                 ];
             }
 
-            // Compter les inscriptions actives pour cette classe
+            // Récupérer l'année universitaire courante
+            $anneeUniversitaireCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+            if (!$anneeUniversitaireCourante) {
+                Log::warning('Aucune année universitaire courante définie');
+                return [
+                    'available' => false,
+                    'message' => 'Aucune année universitaire courante définie.',
+                    'alternatives' => []
+                ];
+            }
+
+            // Compter les inscriptions actives pour cette classe dans l'année courante uniquement
             $inscriptionsActives = ESBTPInscription::where('classe_id', $classeId)
                 ->where('status', 'active')
+                ->where('annee_universitaire_id', $anneeUniversitaireCourante->id)
                 ->count();
 
             // Vérifier si la classe a une limite définie
@@ -123,7 +136,7 @@ class InscriptionWorkflowService
                     ->where('annee_universitaire_id', $classe->annee_universitaire_id)
                     ->where('id', '!=', $classeId)
                     ->where('is_active', true)
-                    ->whereRaw('(places_totales IS NULL OR places_totales > (SELECT COUNT(*) FROM esbtp_inscriptions WHERE classe_id = esbtp_classes.id AND status = "active"))')
+                    ->whereRaw('(places_totales IS NULL OR places_totales > (SELECT COUNT(*) FROM esbtp_inscriptions WHERE classe_id = esbtp_classes.id AND status = "active" AND annee_universitaire_id = ?))', [$anneeUniversitaireCourante->id])
                     ->get();
 
                 return [
