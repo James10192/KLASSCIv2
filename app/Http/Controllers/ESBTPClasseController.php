@@ -365,7 +365,7 @@ class ESBTPClasseController extends Controller
 
                 if ($classe->niveau_etude_id) {
                     $query->whereHas('niveaux', function($q) use ($classe) {
-                        $q->where('esbtp_niveaux_etudes.id', $classe->niveau_etude_id);
+                        $q->where('esbtp_niveau_etudes.id', $classe->niveau_etude_id);
                     });
                 }
 
