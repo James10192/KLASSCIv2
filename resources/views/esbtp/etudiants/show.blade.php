@@ -698,27 +698,43 @@
 </div>
 @endcan
 
-@endsection
-
-@section('scripts')
+<!-- Script pour la suppression d'étudiant -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('Script de suppression chargé');
+
     // Gérer l'activation du bouton de confirmation
     const confirmCheckbox = document.getElementById('confirmDeletion');
     const confirmBtn = document.getElementById('confirmDeleteBtn');
 
+    console.log('Checkbox:', confirmCheckbox);
+    console.log('Button:', confirmBtn);
+
     if (confirmCheckbox && confirmBtn) {
         confirmCheckbox.addEventListener('change', function() {
+            console.log('Checkbox changé:', this.checked);
             confirmBtn.disabled = !this.checked;
+        });
+    } else {
+        console.error('Éléments non trouvés:', {
+            checkbox: !!confirmCheckbox,
+            button: !!confirmBtn
         });
     }
 });
 
 async function deleteStudent() {
+    console.log('deleteStudent appelée');
+
     const confirmBtn = document.getElementById('confirmDeleteBtn');
     const loadingOverlay = document.getElementById('deletionProgress');
     const modalBody = document.querySelector('#deleteStudentModal .modal-body');
-    const keepUser = document.getElementById('keepUserAccount').checked;
+    const keepUser = document.getElementById('keepUserAccount')?.checked || false;
+
+    if (!confirmBtn || !loadingOverlay || !modalBody) {
+        console.error('Éléments requis non trouvés');
+        return;
+    }
 
     // Désactiver le bouton et afficher le loading
     confirmBtn.disabled = true;
@@ -726,11 +742,18 @@ async function deleteStudent() {
     loadingOverlay.classList.remove('d-none');
 
     try {
+        console.log('Envoi de la requête de suppression...');
+
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (!csrfToken) {
+            throw new Error('Token CSRF non trouvé');
+        }
+
         const response = await fetch('{{ route("esbtp.etudiants.destroy", $etudiant->id) }}', {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'X-CSRF-TOKEN': csrfToken,
                 'Accept': 'application/json'
             },
             body: JSON.stringify({
@@ -738,18 +761,23 @@ async function deleteStudent() {
             })
         });
 
-        const data = await response.json();
+        console.log('Réponse reçue:', response.status);
 
         if (response.ok) {
+            const data = await response.json();
+            console.log('Succès:', data);
+
             // Succès - rediriger vers la liste des étudiants
             window.location.href = '{{ route("esbtp.etudiants.index") }}';
         } else {
-            // Erreur du serveur
-            throw new Error(data.message || 'Une erreur est survenue lors de la suppression');
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Une erreur est survenue lors de la suppression');
         }
 
     } catch (error) {
-        // Afficher l'erreur
+        console.error('Erreur:', error);
+
+        // Restaurer l'affichage
         loadingOverlay.classList.add('d-none');
         modalBody.classList.remove('d-none');
         confirmBtn.disabled = false;
@@ -766,4 +794,5 @@ async function deleteStudent() {
     }
 }
 </script>
+
 @endsection
