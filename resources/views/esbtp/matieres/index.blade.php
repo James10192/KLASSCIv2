@@ -1320,10 +1320,20 @@ $(document).ready(function() {
                 const selectedNiveaux = $('.niveau-checkbox:checked').map(function() {
                     return $(this).val();
                 }).get();
-                
-                if (selectedFilieres.length === 0 || selectedNiveaux.length === 0) {
-                    alert('Veuillez sélectionner au moins une filière et un niveau.');
-                    return;
+
+                // Validation modifiée : permettre la sauvegarde même sans sélection (pour retirer toutes les liaisons)
+                if ((selectedFilieres.length === 0 && selectedNiveaux.length > 0) ||
+                    (selectedFilieres.length > 0 && selectedNiveaux.length === 0)) {
+                    if (!confirm('Vous avez sélectionné des filières mais aucun niveau (ou vice-versa).\nCela va supprimer toutes les liaisons existantes pour cette matière.\nÊtes-vous sûr de vouloir continuer ?')) {
+                        return;
+                    }
+                }
+
+                // Confirmation supplémentaire si aucune sélection
+                if (selectedFilieres.length === 0 && selectedNiveaux.length === 0) {
+                    if (!confirm('Aucune filière ni niveau sélectionné.\nCela va supprimer TOUTES les liaisons existantes pour cette matière.\nÊtes-vous vraiment sûr de vouloir continuer ?')) {
+                        return;
+                    }
                 }
                 
                 // Désactiver le bouton pendant la sauvegarde
@@ -1342,10 +1352,17 @@ $(document).ready(function() {
                     })
                 })
                 .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
+                    // Amélioration de la gestion des réponses
+                    if (response.ok) {
+                        return response.json();
+                    } else {
+                        // Tenter de récupérer le message d'erreur du serveur
+                        return response.json().then(errorData => {
+                            throw new Error(errorData.message || `Erreur serveur (${response.status})`);
+                        }).catch(() => {
+                            throw new Error(`Erreur serveur (${response.status}): ${response.statusText}`);
+                        });
                     }
-                    return response.json();
                 })
                 .then(data => {
                     if (data.success) {
@@ -1371,7 +1388,26 @@ $(document).ready(function() {
                 })
                 .catch(error => {
                     console.error('Erreur:', error);
-                    alert('Erreur lors de la sauvegarde');
+
+                    // Gestion détaillée des erreurs
+                    let errorMessage = 'Erreur lors de la sauvegarde';
+
+                    if (error.message && error.message.includes('HTTP error')) {
+                        errorMessage = 'Erreur de connexion au serveur. Veuillez réessayer.';
+                    } else if (error.message) {
+                        errorMessage = error.message;
+                    }
+
+                    // Afficher une alerte d'erreur avec possibilité de continuer
+                    const shouldReload = confirm(
+                        `${errorMessage}\n\n` +
+                        'Les modifications pourraient avoir été sauvegardées malgré cette erreur.\n' +
+                        'Voulez-vous actualiser la page pour vérifier ?'
+                    );
+
+                    if (shouldReload) {
+                        window.location.reload();
+                    }
                 })
                 .finally(() => {
                     // Réactiver le bouton

@@ -156,7 +156,11 @@
                                 <select class="form-control @error('niveau_id') is-invalid @enderror" id="niveau_id" name="niveau_id" required>
                                     <option value="">Sélectionner un niveau</option>
                                     @foreach($niveaux as $niveau)
-                                        <option value="{{ $niveau->id }}" {{ old('niveau_id', $inscription->niveau_id) == $niveau->id ? 'selected' : '' }}>
+                                        <option value="{{ $niveau->id }}"
+                                                data-filieres="{{ $filieres->filter(function($filiere) use ($niveau) {
+                                                    return $filiere->niveaux->contains('id', $niveau->id);
+                                                })->pluck('id')->implode(',') }}"
+                                                {{ old('niveau_id', $inscription->niveau_id) == $niveau->id ? 'selected' : '' }}>
                                             {{ $niveau->name }}
                                         </option>
                                     @endforeach
@@ -298,10 +302,53 @@
 @push('scripts')
 <script>
     $(document).ready(function() {
-        // Stocker toutes les options de classes pour le filtrage côté client
+        // Stocker toutes les options originales pour le filtrage
+        var allNiveauxOptions = $('#niveau_id option').clone();
         var allClassesOptions = $('#classe_id option').clone();
 
-        // Filtrer les classes en fonction de la filière et du niveau sélectionnés
+        // Filtrer les niveaux selon la filière sélectionnée
+        function filterNiveaux() {
+            var filiereId = $('#filiere_id').val();
+            var currentNiveauId = $('#niveau_id').val();
+
+            // Vider la liste des niveaux
+            $('#niveau_id').empty();
+            $('#niveau_id').append('<option value="">Sélectionner un niveau</option>');
+
+            if (filiereId) {
+                // Filtrer les niveaux disponibles pour cette filière
+                allNiveauxOptions.each(function() {
+                    var $option = $(this);
+                    if ($option.val() === '') {
+                        return; // Skip l'option par défaut
+                    }
+
+                    var niveauFilieres = $option.data('filieres');
+                    if (niveauFilieres && niveauFilieres.toString().split(',').includes(filiereId.toString())) {
+                        $('#niveau_id').append($option.clone());
+                    }
+                });
+
+                // Réselectionner le niveau actuel s'il est toujours disponible
+                if (currentNiveauId && $('#niveau_id option[value="' + currentNiveauId + '"]').length > 0) {
+                    $('#niveau_id').val(currentNiveauId);
+                }
+            } else {
+                // Si aucune filière sélectionnée, afficher tous les niveaux
+                allNiveauxOptions.each(function() {
+                    var $option = $(this);
+                    $('#niveau_id').append($option.clone());
+                });
+                if (currentNiveauId) {
+                    $('#niveau_id').val(currentNiveauId);
+                }
+            }
+
+            // Mettre à jour les classes après changement de niveau
+            filterClasses();
+        }
+
+        // Filtrer les classes selon la filière ET le niveau sélectionnés
         function filterClasses() {
             var filiereId = $('#filiere_id').val();
             var niveauId = $('#niveau_id').val();
@@ -311,30 +358,35 @@
             $('#classe_id').empty();
             $('#classe_id').append('<option value="">Sélectionner une classe</option>');
 
-            // Filtrer et ajouter les classes correspondantes
-            allClassesOptions.each(function() {
-                var $option = $(this);
-                var optionFiliereId = $option.data('filiere-id');
-                var optionNiveauId = $option.data('niveau-id');
+            if (filiereId && niveauId) {
+                // Filtrer les classes qui correspondent à la filière ET au niveau
+                allClassesOptions.each(function() {
+                    var $option = $(this);
+                    if ($option.val() === '') {
+                        return; // Skip l'option par défaut
+                    }
 
-                // Inclure l'option si elle correspond aux critères ou si c'est l'option par défaut
-                if ($option.val() === '' ||
-                    (!filiereId && !niveauId) ||
-                    (filiereId && niveauId && optionFiliereId == filiereId && optionNiveauId == niveauId) ||
-                    (filiereId && !niveauId && optionFiliereId == filiereId) ||
-                    (!filiereId && niveauId && optionNiveauId == niveauId)) {
-                    $('#classe_id').append($option.clone());
+                    var optionFiliereId = $option.data('filiere-id');
+                    var optionNiveauId = $option.data('niveau-id');
+
+                    if (optionFiliereId == filiereId && optionNiveauId == niveauId) {
+                        $('#classe_id').append($option.clone());
+                    }
+                });
+
+                // Réselectionner la classe actuelle si elle est toujours disponible
+                if (currentClasseId && $('#classe_id option[value="' + currentClasseId + '"]').length > 0) {
+                    $('#classe_id').val(currentClasseId);
                 }
-            });
-
-            // Réselectionner la classe actuelle si elle est toujours disponible
-            if (currentClasseId && $('#classe_id option[value="' + currentClasseId + '"]').length > 0) {
-                $('#classe_id').val(currentClasseId);
             }
         }
 
-        // Événements de changement de filière et niveau
-        $('#filiere_id, #niveau_id').change(function() {
+        // Événements en cascade : Filière → Niveau → Classe
+        $('#filiere_id').change(function() {
+            filterNiveaux(); // Ceci appellera aussi filterClasses()
+        });
+
+        $('#niveau_id').change(function() {
             filterClasses();
         });
 

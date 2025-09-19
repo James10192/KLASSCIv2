@@ -675,9 +675,17 @@ class ESBTPInscriptionController extends Controller
         // Charger les relations nécessaires
         $inscription->load(['etudiant', 'filiere', 'niveau', 'classe', 'anneeUniversitaire']);
 
-        // Récupérer les données pour les selects
-        $filieres = ESBTPFiliere::where('is_active', true)->get();
-        $niveaux = ESBTPNiveauEtude::where('is_active', true)->get();
+        // Récupérer les données pour les selects avec leurs relations
+        $filieres = ESBTPFiliere::where('is_active', true)
+            ->with(['niveaux' => function($query) {
+                $query->where('is_active', true);
+            }])
+            ->orderBy('name')
+            ->get();
+
+        $niveaux = ESBTPNiveauEtude::where('is_active', true)
+            ->orderBy('name')
+            ->get();
 
         // Charger toutes les classes actives pour permettre le changement de filière/niveau
         $classes = ESBTPClasse::where('is_active', true)

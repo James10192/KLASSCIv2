@@ -512,28 +512,37 @@ class ESBTPMatiereController extends Controller
     {
         try {
             $validated = $request->validate([
-                'filieres' => 'required|array|min:1',
+                'filieres' => 'array', // Permettre les tableaux vides pour supprimer toutes les liaisons
                 'filieres.*' => 'exists:esbtp_filieres,id',
-                'niveaux' => 'required|array|min:1',
+                'niveaux' => 'array', // Permettre les tableaux vides pour supprimer toutes les liaisons
                 'niveaux.*' => 'exists:esbtp_niveau_etudes,id',
             ]);
 
-            // Synchroniser les filières
-            $matiere->filieres()->sync($validated['filieres']);
-            
-            // Synchroniser les niveaux
-            $matiere->niveaux()->sync($validated['niveaux']);
+            // Synchroniser les filières (les tableaux vides suppriment toutes les liaisons)
+            $filieres = $validated['filieres'] ?? [];
+            $matiere->filieres()->sync($filieres);
+
+            // Synchroniser les niveaux (les tableaux vides suppriment toutes les liaisons)
+            $niveaux = $validated['niveaux'] ?? [];
+            $matiere->niveaux()->sync($niveaux);
             
             // Mettre à jour les champs directs pour compatibilité (optionnel)
-            if (count($validated['filieres']) == 1 && count($validated['niveaux']) == 1) {
+            if (count($filieres) == 1 && count($niveaux) == 1) {
                 $matiere->update([
-                    'filiere_id' => $validated['filieres'][0],
-                    'niveau_etude_id' => $validated['niveaux'][0],
+                    'filiere_id' => $filieres[0],
+                    'niveau_etude_id' => $niveaux[0],
+                    'updated_by' => Auth::id()
+                ]);
+            } elseif (count($filieres) == 0 || count($niveaux) == 0) {
+                // Supprimer les références directes si aucune liaison
+                $matiere->update([
+                    'filiere_id' => null,
+                    'niveau_etude_id' => null,
                     'updated_by' => Auth::id()
                 ]);
             }
 
-            $totalCombinations = count($validated['filieres']) * count($validated['niveaux']);
+            $totalCombinations = count($filieres) * count($niveaux);
             
             return response()->json([
                 'success' => true,
