@@ -264,7 +264,7 @@
                         </div>
                         <div style="color: #666; font-size: 14px;">
                             Année Universitaire: {{ $inscription->anneeUniversitaire->name }} |
-                            Classe: {{ $inscription->classe->nom ?? 'N/A' }} |
+                            Classe: {{ $inscription->classe->name ?? 'N/A' }} |
                             Généré le {{ now()->format('d/m/Y à H:i') }}
                         </div>
                     </div>
@@ -290,11 +290,11 @@
                             <h4><i class="fas fa-graduation-cap"></i> Informations Académiques</h4>
                             <div class="info-item">
                                 <span class="info-label">Filière:</span>
-                                <span class="info-value">{{ $inscription->filiere->nom ?? 'N/A' }}</span>
+                                <span class="info-value">{{ $inscription->filiere->name ?? 'N/A' }}</span>
                             </div>
                             <div class="info-item">
                                 <span class="info-label">Niveau:</span>
-                                <span class="info-value">{{ $inscription->niveau->nom ?? 'N/A' }}</span>
+                                <span class="info-value">{{ $inscription->niveau->name ?? 'N/A' }}</span>
                             </div>
                             <div class="info-item">
                                 <span class="info-label">Statut:</span>

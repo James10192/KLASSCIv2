@@ -271,7 +271,7 @@
         </div>
         <div class="document-info">
             Année Universitaire: {{ $inscription->anneeUniversitaire->name }} |
-            Classe: {{ $inscription->classe->nom ?? 'N/A' }} |
+            Classe: {{ $inscription->classe->name ?? 'N/A' }} |
             Généré le {{ now()->format('d/m/Y à H:i') }}
         </div>
     </div>
@@ -286,7 +286,7 @@
                 </div>
                 <div class="student-info-cell">
                     <span class="info-label">Filière:</span>
-                    <span class="info-value">{{ $inscription->filiere->nom ?? 'N/A' }}</span>
+                    <span class="info-value">{{ $inscription->filiere->name ?? 'N/A' }}</span>
                 </div>
             </div>
             <div class="student-info-row">
@@ -296,7 +296,7 @@
                 </div>
                 <div class="student-info-cell">
                     <span class="info-label">Niveau:</span>
-                    <span class="info-value">{{ $inscription->niveau->nom ?? 'N/A' }}</span>
+                    <span class="info-value">{{ $inscription->niveau->name ?? 'N/A' }}</span>
                 </div>
             </div>
             <div class="student-info-row">
