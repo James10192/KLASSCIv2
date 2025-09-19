@@ -627,6 +627,13 @@ class ReeinscriptionService
      */
     private function gererReliquats($inscriptionSource, $inscriptionDestination, $actionReliquat = null)
     {
+        // Debug log pour vérifier la valeur reçue
+        \Log::info("Gestion des reliquats - action reçue", [
+            'action_reliquat' => $actionReliquat,
+            'inscription_source_id' => $inscriptionSource->id,
+            'inscription_destination_id' => $inscriptionDestination->id
+        ]);
+
         // Récupérer tous les frais souscrits pour l'inscription source
         $fraisSouscrits = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscriptionSource->id)
             ->where('is_active', true)
