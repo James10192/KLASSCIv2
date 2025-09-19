@@ -1305,7 +1305,26 @@ $(document).ready(function() {
                 })
                 .catch(error => {
                     console.error('Erreur:', error);
-                    alert('Erreur lors de l\'ajout des matières: ' + error.message);
+
+                    // Gestion détaillée des erreurs
+                    let errorMessage = 'Erreur lors de l\'ajout des matières';
+
+                    if (error.message && error.message.includes('HTTP error')) {
+                        errorMessage = 'Erreur de connexion au serveur. Veuillez réessayer.';
+                    } else if (error.message) {
+                        errorMessage = error.message;
+                    }
+
+                    // Afficher une alerte d'erreur avec possibilité de continuer
+                    const shouldReload = confirm(
+                        `${errorMessage}\n\n` +
+                        'Les modifications pourraient avoir été sauvegardées malgré cette erreur.\n' +
+                        'Voulez-vous actualiser la page pour vérifier ?'
+                    );
+
+                    if (shouldReload) {
+                        window.location.reload();
+                    }
                 })
                 .finally(() => {
                     // Réactiver le bouton

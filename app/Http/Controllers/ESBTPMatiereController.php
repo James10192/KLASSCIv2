@@ -544,9 +544,13 @@ class ESBTPMatiereController extends Controller
 
             $totalCombinations = count($filieres) * count($niveaux);
             
+            $message = $totalCombinations > 0
+                ? "Liaisons mises à jour avec succès ! {$totalCombinations} combinaison(s) configurée(s)."
+                : "Liaisons mises à jour avec succès ! Toutes les liaisons ont été supprimées.";
+
             return response()->json([
                 'success' => true,
-                'message' => "Liaisons mises à jour avec succès ! {$totalCombinations} combinaison(s) configurée(s)."
+                'message' => $message
             ]);
 
         } catch (\Illuminate\Validation\ValidationException $e) {

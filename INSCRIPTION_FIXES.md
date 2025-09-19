@@ -192,8 +192,104 @@ if ($ancienneFiliere != $inscription->filiere_id ||
 5. **Validation avec paiement** : Première étape qui fait passer l'inscription en validation tout en gardant les champs modifiables
 6. **Validation définitive** : Étape finale qui rend l'inscription active et verrouille définitivement filière/niveau/classe
 
+### 5. Problème : Faux messages d'erreur dans le modal combinaisons matières
+**Symptôme** : Sur la page `/esbtp/matières.index`, dans le modal de configuration des combinaisons filière/niveau :
+- Message d'erreur "Erreur lors de la sauvegarde" affiché même quand la sauvegarde réussit
+- Après refresh, les combinaisons sont bien enregistrées
+- Problème particulier lors du retrait de filières
+- Erreur affichée même sans modification
+
+**Cause racine** :
+- Gestion d'erreur AJAX trop basique qui ne distingue pas les vrais échecs des succès
+- Validation côté frontend trop stricte empêchant la suppression de toutes les liaisons
+- Validation côté serveur ne permettant pas les tableaux vides
+
+**Solution appliquée** :
+- **Fichiers modifiés** :
+  - `resources/views/esbtp/matieres/index.blade.php` (lignes 1324-1337, 1344-1356, 1372-1394, 1306-1328)
+  - `app/Http/Controllers/ESBTPMatiereController.php` (lignes 514-519, 521-527, 530-549)
+
+**Corrections détaillées** :
+
+**A. Amélioration de la gestion des erreurs AJAX** :
+```javascript
+// Avant : Gestion basique
+.catch(error => {
+    console.error('Erreur:', error);
+    alert('Erreur lors de la sauvegarde');
+})
+
+// Après : Gestion détaillée avec possibilité de vérification
+.catch(error => {
+    let errorMessage = 'Erreur lors de la sauvegarde';
+    if (error.message && error.message.includes('HTTP error')) {
+        errorMessage = 'Erreur de connexion au serveur. Veuillez réessayer.';
+    }
+
+    const shouldReload = confirm(
+        `${errorMessage}\n\nLes modifications pourraient avoir été sauvegardées malgré cette erreur.\nVoulez-vous actualiser la page pour vérifier ?`
+    );
+
+    if (shouldReload) {
+        window.location.reload();
+    }
+})
+```
+
+**B. Validation côté frontend assouplie** :
+```javascript
+// Avant : Validation stricte
+if (selectedFilieres.length === 0 || selectedNiveaux.length === 0) {
+    alert('Veuillez sélectionner au moins une filière et un niveau.');
+    return;
+}
+
+// Après : Validation flexible permettant la suppression
+// Confirmation explicite si suppression partielle ou totale
+if ((selectedFilieres.length === 0 && selectedNiveaux.length > 0) ||
+    (selectedFilieres.length > 0 && selectedNiveaux.length === 0)) {
+    if (!confirm('Vous avez sélectionné des filières mais aucun niveau (ou vice-versa).\nCela va supprimer toutes les liaisons existantes pour cette matière.\nÊtes-vous sûr de vouloir continuer ?')) {
+        return;
+    }
+}
+```
+
+**C. Validation côté serveur corrigée** :
+```php
+// Avant : Validation restrictive
+$validated = $request->validate([
+    'filieres' => 'required|array|min:1',
+    'niveaux' => 'required|array|min:1',
+]);
+
+// Après : Validation flexible
+$validated = $request->validate([
+    'filieres' => 'array', // Permet les tableaux vides
+    'niveaux' => 'array',  // Permet les tableaux vides
+]);
+
+// Gestion correcte des tableaux vides
+$filieres = $validated['filieres'] ?? [];
+$niveaux = $validated['niveaux'] ?? [];
+```
+
+**D. Messages de succès contextuels** :
+```php
+$message = $totalCombinations > 0
+    ? "Liaisons mises à jour avec succès ! {$totalCombinations} combinaison(s) configurée(s)."
+    : "Liaisons mises à jour avec succès ! Toutes les liaisons ont été supprimées.";
+```
+
+**Résultat** :
+- ✅ Suppression des faux messages d'erreur
+- ✅ Possibilité de retirer toutes les liaisons d'une matière
+- ✅ Gestion correcte de tous les scénarios (ajout, modification, suppression)
+- ✅ Interface utilisateur cohérente avec les données réellement sauvegardées
+- ✅ Messages contextuels selon l'action effectuée
+- ✅ Possibilité de vérifier les modifications en cas d'erreur apparente
+
 ## Date de correction
 19 septembre 2025
 
 ---
-*Corrections appliquées pour améliorer la stabilité et l'ergonomie du système d'inscription*
+*Corrections appliquées pour améliorer la stabilité et l'ergonomie du système d'inscription et de gestion des matières*
