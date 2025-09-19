@@ -193,9 +193,16 @@
                             <div class="form-group">
                                 <label for="classe_id" class="form-label">Classe</label>
                                 <select name="classe_id" id="classe_id" class="form-select" required>
+                                    <option value="">Sélectionner une classe</option>
                                     @foreach($classes as $classe)
-                                        <option value="{{ $classe->id }}" @if($inscription->classe_id == $classe->id) selected @endif>
+                                        <option value="{{ $classe->id }}"
+                                                data-filiere-id="{{ $classe->filiere_id }}"
+                                                data-niveau-id="{{ $classe->niveau_etude_id }}"
+                                                @if($inscription->classe_id == $classe->id) selected @endif>
                                             {{ $classe->name }}
+                                            @if($classe->filiere && $classe->niveauEtude)
+                                                ({{ $classe->filiere->name }} - {{ $classe->niveauEtude->name }})
+                                            @endif
                                         </option>
                                     @endforeach
                                 </select>
@@ -291,44 +298,44 @@
 @push('scripts')
 <script>
     $(document).ready(function() {
-        // Charger les classes en fonction de la filière et du niveau
-        function loadClasses() {
+        // Stocker toutes les options de classes pour le filtrage côté client
+        var allClassesOptions = $('#classe_id option').clone();
+
+        // Filtrer les classes en fonction de la filière et du niveau sélectionnés
+        function filterClasses() {
             var filiereId = $('#filiere_id').val();
             var niveauId = $('#niveau_id').val();
+            var currentClasseId = $('#classe_id').val();
 
-            if (filiereId && niveauId) {
-                $.ajax({
-                    url: "{{ route('esbtp.inscriptions.getClasses') }}",
-                    type: "GET",
-                    data: {
-                        filiere_id: filiereId,
-                        niveau_id: niveauId,
-                        annee_id: "{{ $inscription->annee_universitaire_id }}"
-                    },
-                    success: function(data) {
-                        $('#classe_id').empty();
-                        $('#classe_id').append('<option value="">Sélectionner une classe</option>');
+            // Vider la liste des classes
+            $('#classe_id').empty();
+            $('#classe_id').append('<option value="">Sélectionner une classe</option>');
 
-                        $.each(data, function(key, value) {
-                            $('#classe_id').append('<option value="' + value.id + '">' + value.name + '</option>');
-                        });
+            // Filtrer et ajouter les classes correspondantes
+            allClassesOptions.each(function() {
+                var $option = $(this);
+                var optionFiliereId = $option.data('filiere-id');
+                var optionNiveauId = $option.data('niveau-id');
 
-                        // Réselectionner la classe actuelle si elle existe dans la liste
-                        var currentClasseId = "{{ old('classe_id', $inscription->classe_id) }}";
-                        if (currentClasseId) {
-                            $('#classe_id').val(currentClasseId);
-                        }
-                    }
-                });
-            } else {
-                $('#classe_id').empty();
-                $('#classe_id').append('<option value="">Sélectionner une classe</option>');
+                // Inclure l'option si elle correspond aux critères ou si c'est l'option par défaut
+                if ($option.val() === '' ||
+                    (!filiereId && !niveauId) ||
+                    (filiereId && niveauId && optionFiliereId == filiereId && optionNiveauId == niveauId) ||
+                    (filiereId && !niveauId && optionFiliereId == filiereId) ||
+                    (!filiereId && niveauId && optionNiveauId == niveauId)) {
+                    $('#classe_id').append($option.clone());
+                }
+            });
+
+            // Réselectionner la classe actuelle si elle est toujours disponible
+            if (currentClasseId && $('#classe_id option[value="' + currentClasseId + '"]').length > 0) {
+                $('#classe_id').val(currentClasseId);
             }
         }
 
         // Événements de changement de filière et niveau
         $('#filiere_id, #niveau_id').change(function() {
-            loadClasses();
+            filterClasses();
         });
 
         // Avertissement si le statut est modifié à "terminée"
