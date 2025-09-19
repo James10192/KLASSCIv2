@@ -1771,12 +1771,11 @@ class ESBTPInscriptionController extends Controller
     private function regenererFraisInscription(ESBTPInscription $inscription)
     {
         try {
-            // Désactiver toutes les souscriptions existantes pour cette inscription
-            ESBTPFraisSubscription::where('inscription_id', $inscription->id)
-                ->update(['is_active' => false]);
-
-            \Log::info('Souscriptions désactivées pour inscription', [
-                'inscription_id' => $inscription->id
+            \Log::info('Régénération des frais pour inscription', [
+                'inscription_id' => $inscription->id,
+                'filiere_id' => $inscription->filiere_id,
+                'niveau_id' => $inscription->niveau_id,
+                'classe_id' => $inscription->classe_id
             ]);
 
             // Charger les relations nécessaires
@@ -1801,19 +1800,23 @@ class ESBTPInscriptionController extends Controller
                     $affectationStatus = $inscription->affectation_status ?? 'affecté';
                     $montant = $fraisConfig->getMontantByStatus($affectationStatus);
 
-                    // Créer une nouvelle souscription
-                    ESBTPFraisSubscription::create([
-                        'inscription_id' => $inscription->id,
-                        'frais_category_id' => $category->id,
-                        'selected_option_id' => null,
-                        'amount' => $montant,
-                        'is_active' => true,
-                        'subscribed_at' => now(),
-                        'created_by' => Auth::id(),
-                        'notes' => 'Régénéré automatiquement après changement de classe/filière/niveau'
-                    ]);
+                    // Créer ou mettre à jour la souscription (évite la duplication)
+                    ESBTPFraisSubscription::updateOrCreate(
+                        [
+                            'inscription_id' => $inscription->id,
+                            'frais_category_id' => $category->id,
+                        ],
+                        [
+                            'selected_option_id' => null,
+                            'amount' => $montant,
+                            'is_active' => true,
+                            'subscribed_at' => now(),
+                            'created_by' => Auth::id(),
+                            'notes' => 'Régénéré automatiquement après changement de classe/filière/niveau'
+                        ]
+                    );
 
-                    \Log::info('Nouvelle souscription créée', [
+                    \Log::info('Souscription créée/mise à jour', [
                         'inscription_id' => $inscription->id,
                         'category_id' => $category->id,
                         'amount' => $montant,

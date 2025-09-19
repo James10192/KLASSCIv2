@@ -50,9 +50,16 @@
                         @endif
                     </ul>
                 </div>
-                <a href="{{ route('esbtp.paiements.create') }}?etudiant={{ $etudiant->id }}" class="btn-acasi success">
+                <a href="{{ route('esbtp.paiements.create') }}?etudiant={{ $etudiant->id }}" class="btn-acasi success me-2">
                     <i class="fas fa-plus"></i>Nouveau paiement
                 </a>
+
+                <!-- Bouton suppression étudiant - Accès réservé aux superAdmin -->
+                @can('manage-students')
+                <button type="button" class="btn-acasi danger" data-bs-toggle="modal" data-bs-target="#deleteStudentModal" title="Supprimer l'étudiant et toutes ses données">
+                    <i class="fas fa-trash"></i>Supprimer
+                </button>
+                @endcan
             </div>
         </div>
 
@@ -591,4 +598,172 @@
         </div>
     </div>
 </div>
+
+<!-- Modal de confirmation pour suppression étudiant -->
+@can('manage-students')
+<div class="modal fade" id="deleteStudentModal" tabindex="-1" aria-labelledby="deleteStudentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteStudentModalLabel">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Suppression définitive de l'étudiant
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger border-0 mb-4">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
+                        <div>
+                            <h6 class="alert-heading mb-1">⚠️ ATTENTION - Action irréversible</h6>
+                            <p class="mb-0">Cette action supprimera définitivement toutes les données de l'étudiant. Cette opération ne peut pas être annulée.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="student-info mb-4 p-3 bg-light rounded">
+                    <h6><i class="fas fa-user me-2"></i>Étudiant à supprimer :</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <strong>{{ $etudiant->nom }} {{ $etudiant->prenoms }}</strong><br>
+                            <small class="text-muted">Matricule: {{ $etudiant->matricule }}</small>
+                        </div>
+                        <div class="col-md-6">
+                            @if($etudiant->email)
+                            <small class="text-muted">Email: {{ $etudiant->email }}</small><br>
+                            @endif
+                            <small class="text-muted">ID: {{ $etudiant->id }}</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="deletion-preview">
+                    <h6><i class="fas fa-list me-2"></i>Données qui seront supprimées :</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-graduation-cap text-primary me-2"></i>Inscriptions ({{ $etudiant->inscriptions->count() }})</li>
+                                <li><i class="fas fa-money-bill text-success me-2"></i>Paiements ({{ $etudiant->paiements->count() }})</li>
+                                <li><i class="fas fa-file-alt text-info me-2"></i>Notes et bulletins</li>
+                                <li><i class="fas fa-calendar-times text-warning me-2"></i>Absences et présences</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-receipt text-secondary me-2"></i>Frais et factures</li>
+                                <li><i class="fas fa-users text-dark me-2"></i>Relations familiales ({{ $etudiant->parents->count() }})</li>
+                                @if($etudiant->user_id)
+                                <li><i class="fas fa-user-circle text-danger me-2"></i>Compte utilisateur</li>
+                                @endif
+                                <li><i class="fas fa-phone text-info me-2"></i>Historique de relances</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="confirmation-section mt-4 p-3 bg-warning bg-opacity-10 rounded">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="confirmDeletion" required>
+                        <label class="form-check-label fw-bold" for="confirmDeletion">
+                            Je comprends que cette action est irréversible et supprimera définitivement toutes les données de cet étudiant.
+                        </label>
+                    </div>
+
+                    <div class="form-check mt-2">
+                        <input class="form-check-input" type="checkbox" id="keepUserAccount">
+                        <label class="form-check-label" for="keepUserAccount">
+                            Conserver le compte utilisateur (optionnel)
+                        </label>
+                    </div>
+                </div>
+
+                <div class="loading-overlay d-none text-center py-4" id="deletionProgress">
+                    <div class="spinner-border text-danger" role="status">
+                        <span class="visually-hidden">Suppression en cours...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Suppression en cours, veuillez patienter...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Annuler
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn" disabled onclick="deleteStudent()">
+                    <i class="fas fa-trash me-2"></i>Supprimer définitivement
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+@endcan
+
+@endsection
+
+@section('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Gérer l'activation du bouton de confirmation
+    const confirmCheckbox = document.getElementById('confirmDeletion');
+    const confirmBtn = document.getElementById('confirmDeleteBtn');
+
+    if (confirmCheckbox && confirmBtn) {
+        confirmCheckbox.addEventListener('change', function() {
+            confirmBtn.disabled = !this.checked;
+        });
+    }
+});
+
+async function deleteStudent() {
+    const confirmBtn = document.getElementById('confirmDeleteBtn');
+    const loadingOverlay = document.getElementById('deletionProgress');
+    const modalBody = document.querySelector('#deleteStudentModal .modal-body');
+    const keepUser = document.getElementById('keepUserAccount').checked;
+
+    // Désactiver le bouton et afficher le loading
+    confirmBtn.disabled = true;
+    modalBody.classList.add('d-none');
+    loadingOverlay.classList.remove('d-none');
+
+    try {
+        const response = await fetch('{{ route("esbtp.etudiants.destroy", $etudiant->id) }}', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                keep_user: keepUser
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            // Succès - rediriger vers la liste des étudiants
+            window.location.href = '{{ route("esbtp.etudiants.index") }}';
+        } else {
+            // Erreur du serveur
+            throw new Error(data.message || 'Une erreur est survenue lors de la suppression');
+        }
+
+    } catch (error) {
+        // Afficher l'erreur
+        loadingOverlay.classList.add('d-none');
+        modalBody.classList.remove('d-none');
+        confirmBtn.disabled = false;
+
+        // Afficher un message d'erreur
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+        alertDiv.innerHTML = `
+            <i class="fas fa-exclamation-circle me-2"></i>
+            <strong>Erreur:</strong> ${error.message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        modalBody.insertBefore(alertDiv, modalBody.firstChild);
+    }
+}
+</script>
 @endsection
