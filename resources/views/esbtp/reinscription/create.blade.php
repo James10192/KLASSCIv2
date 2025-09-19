@@ -89,31 +89,6 @@
                     </div>
                     @endforeach
 
-                    <div class="mt-4">
-                        <h6 class="mb-3">Choix de gestion du reliquat :</h6>
-
-                        <div class="form-check mb-3">
-                            <input class="form-check-input" type="radio" id="reporter_reliquat" name="action_reliquat" value="reporter">
-                            <label class="form-check-label" for="reporter_reliquat">
-                                <strong><i class="fas fa-arrow-right me-1"></i> Reporter le reliquat</strong>
-                                ({{ number_format($analyse['etudiant']->reliquat_montant, 0, ',', ' ') }} FCFA)
-                                <br><small class="text-muted">Le reliquat sera ajouté aux frais de la nouvelle inscription et devra être soldé ultérieurement</small>
-                            </label>
-                        </div>
-
-                        <div class="form-check mb-3">
-                            <input class="form-check-input" type="radio" id="abandonner_reliquat" name="action_reliquat" value="abandonner">
-                            <label class="form-check-label" for="abandonner_reliquat">
-                                <strong><i class="fas fa-times me-1"></i> Abandonner les frais impayés</strong>
-                                <br><small class="text-muted">Les frais non soldés seront annulés définitivement (remise exceptionnelle)</small>
-                            </label>
-                        </div>
-
-                        <div class="alert alert-info mt-3">
-                            <i class="fas fa-info-circle me-2"></i>
-                            <strong>Information :</strong> Vous devez choisir une action pour les frais impayés avant de pouvoir finaliser la réinscription.
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -131,6 +106,44 @@
                 <form action="{{ route('esbtp.reinscription.update', $analyse['etudiant']->id) }}" method="POST">
                     @csrf
                     @method('PUT')
+
+                    @if($isSuperAdmin && !empty($fraisNonSoldes))
+                    <!-- Section de gestion des reliquats -->
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <div class="card border-warning">
+                                <div class="card-header bg-warning text-dark">
+                                    <h6 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Gestion des Reliquats</h6>
+                                </div>
+                                <div class="card-body">
+                                    <h6 class="mb-3">Choix de gestion du reliquat :</h6>
+
+                                    <div class="form-check mb-3">
+                                        <input class="form-check-input" type="radio" id="reporter_reliquat" name="action_reliquat" value="reporter">
+                                        <label class="form-check-label" for="reporter_reliquat">
+                                            <strong><i class="fas fa-arrow-right me-1"></i> Reporter le reliquat</strong>
+                                            ({{ number_format($analyse['etudiant']->reliquat_montant, 0, ',', ' ') }} FCFA)
+                                            <br><small class="text-muted">Le reliquat sera ajouté aux frais de la nouvelle inscription et devra être soldé ultérieurement</small>
+                                        </label>
+                                    </div>
+
+                                    <div class="form-check mb-3">
+                                        <input class="form-check-input" type="radio" id="abandonner_reliquat" name="action_reliquat" value="abandonner">
+                                        <label class="form-check-label" for="abandonner_reliquat">
+                                            <strong><i class="fas fa-times me-1"></i> Abandonner les frais impayés</strong>
+                                            <br><small class="text-muted">Les frais non soldés seront annulés définitivement (remise exceptionnelle)</small>
+                                        </label>
+                                    </div>
+
+                                    <div class="alert alert-info mt-3">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        <strong>Information :</strong> Vous devez choisir une action pour les frais impayés avant de pouvoir finaliser la réinscription.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
 
                     <!-- Informations étudiant (grisées) -->
                     <div class="row mb-4">
