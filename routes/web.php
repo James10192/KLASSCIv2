@@ -1585,6 +1585,9 @@ Route::get('/esbtp/classes/{classe}/liste-complete', [ESBTPClasseController::cla
 Route::get('/esbtp/classes/{classe}/liste-complete/pdf', [ESBTPClasseController::class, 'listeCompletePDF'])->name('esbtp.classes.liste-complete.pdf');
 Route::get('/esbtp/classes/{classe}/liste-complete/excel', [ESBTPClasseController::class, 'listeCompleteExcel'])->name('esbtp.classes.liste-complete.excel');
 
+// Route pour mettre à jour les matières d'une classe
+Route::post('/esbtp/classes/{classe}/update-matieres', [ESBTPClasseController::class, 'updateMatieres'])->name('esbtp.classes.update-matieres');
+
 // Routes spéciales pour la prévisualisation et modification des moyennes
 Route::get('/esbtp-special/bulletins/moyennes-preview', [ESBTPBulletinController::class, 'previewMoyennes'])->name('esbtp.bulletins.moyennes-preview');
 Route::post('/esbtp-special/bulletins/moyennes-update', [ESBTPBulletinController::class, 'updateMoyennes'])->name('esbtp.bulletins.moyennes-update');

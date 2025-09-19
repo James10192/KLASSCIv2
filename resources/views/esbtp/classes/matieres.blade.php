@@ -35,12 +35,11 @@
 
                     @if($classe->matieres->isEmpty())
                         <div class="alert alert-info">
-                            <i class="fas fa-info-circle"></i> Aucune matière n'est associée à cette classe.
-                            <a href="{{ route('esbtp.matieres.attach-form', ['classe_id' => $classe->id]) }}" class="btn btn-sm btn-success ml-2">
-                                <i class="fas fa-link"></i> Attacher des matières
-                            </a>
+                            <i class="fas fa-info-circle"></i> Aucune matière n'est associée à cette classe. Utilisez le formulaire ci-dessous pour attacher des matières.
                         </div>
-                    @else
+                    @endif
+
+                    @if(!$allMatieres->isEmpty())
                         <div class="alert alert-info">
                             <i class="fas fa-info-circle me-2"></i>
                             Gérez les matières de la classe <strong>{{ $classe->name }}</strong> en ajustant leurs coefficients et le nombre d'heures. La modification des coefficients affectera le calcul des moyennes dans les bulletins.
