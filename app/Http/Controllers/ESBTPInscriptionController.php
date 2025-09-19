@@ -24,6 +24,7 @@ use App\Models\ESBTPFraisCategory;
 use App\Models\ESBTPFraisConfiguration;
 use App\Models\ESBTPFraisSubscription;
 use App\Models\ESBTP\Fee;
+use App\Models\Setting;
 use App\Services\ComptabiliteService;
 
 class ESBTPInscriptionController extends Controller
@@ -1941,11 +1942,11 @@ class ESBTPInscriptionController extends Controller
 
         // Récupérer les paramètres de l'établissement
         $etablissement = [
-            'nom' => setting('school_name', 'ESBTP-yAKRO'),
-            'adresse' => setting('school_address', ''),
-            'telephone' => setting('school_phone', ''),
-            'email' => setting('school_email', ''),
-            'logo' => setting('school_logo', null),
+            'nom' => Setting::get('school_name', 'ESBTP-yAKRO'),
+            'adresse' => Setting::get('school_address', ''),
+            'telephone' => Setting::get('school_phone', ''),
+            'email' => Setting::get('school_email', ''),
+            'logo' => Setting::get('school_logo', null),
         ];
 
         // Générer le PDF

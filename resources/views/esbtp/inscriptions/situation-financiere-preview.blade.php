@@ -463,7 +463,7 @@
                     <!-- Pied de page -->
                     <div style="margin-top: 40px; text-align: center; color: #666; font-size: 12px; border-top: 1px solid #dee2e6; padding-top: 20px;">
                         <p>Document généré automatiquement le {{ now()->format('d/m/Y à H:i') }}</p>
-                        <p>{{ setting('school_name', 'ESBTP-yAKRO') }} - Système de Gestion des Inscriptions</p>
+                        <p>{{ \App\Models\Setting::get('school_name', 'ESBTP-yAKRO') }} - Système de Gestion des Inscriptions</p>
                     </div>
                 </div>
             </div>
