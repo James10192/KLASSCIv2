@@ -142,10 +142,10 @@ class DeleteStudentCommand extends Command
             foreach ($inscriptions as $inscription) {
                 // Frais subscriptions
                 $this->statistics['frais_subscriptions'] += ESBTPFraisSubscription::where('inscription_id', $inscription->id)->count();
-
-                // Factures
-                $this->statistics['factures'] += ESBTPFacture::where('inscription_id', $inscription->id)->count();
             }
+
+            // Factures (liées aux inscriptions ET directement à l'étudiant)
+            $this->statistics['factures'] = ESBTPFacture::where('etudiant_id', $etudiant->id)->count();
 
             // Paiements directs
             $this->statistics['paiements'] = ESBTPPaiement::where('etudiant_id', $etudiant->id)->count();
@@ -253,31 +253,31 @@ class DeleteStudentCommand extends Command
             foreach ($inscriptions as $inscription) {
                 // Frais subscriptions
                 $deleted['frais_subscriptions'] += ESBTPFraisSubscription::where('inscription_id', $inscription->id)->delete();
-
-                // Factures
-                $deleted['factures'] += ESBTPFacture::where('inscription_id', $inscription->id)->delete();
             }
 
-            // 2. Supprimer les paiements
+            // 2. Supprimer toutes les factures de l'étudiant (inscription_id ET etudiant_id)
+            $deleted['factures'] = ESBTPFacture::where('etudiant_id', $etudiant->id)->delete();
+
+            // 3. Supprimer les paiements
             $deleted['paiements'] = ESBTPPaiement::where('etudiant_id', $etudiant->id)->delete();
 
-            // 3. Supprimer les données académiques
+            // 4. Supprimer les données académiques
             $deleted['notes'] = ESBTPNote::where('etudiant_id', $etudiant->id)->delete();
             $deleted['absences'] = ESBTPAbsence::where('etudiant_id', $etudiant->id)->delete();
             $deleted['attendances'] = ESBTPAttendance::where('etudiant_id', $etudiant->id)->delete();
             $deleted['bulletins'] = ESBTPBulletin::where('etudiant_id', $etudiant->id)->delete();
             $deleted['resultats'] = ESBTPResultat::where('etudiant_id', $etudiant->id)->delete();
 
-            // 4. Supprimer les relances
+            // 5. Supprimer les relances
             $deleted['relances'] = ESBTPRelance::where('etudiant_id', $etudiant->id)->delete();
 
-            // 5. Supprimer les relations parents (pivot table)
+            // 6. Supprimer les relations parents (pivot table)
             $deleted['parents_relations'] = $etudiant->parents()->detach();
 
-            // 6. Supprimer les inscriptions
+            // 7. Supprimer les inscriptions
             $deleted['inscriptions'] = $etudiant->inscriptions()->delete();
 
-            // 7. Supprimer le compte utilisateur si demandé
+            // 8. Supprimer le compte utilisateur si demandé
             if (!$keepUser && $etudiant->user_id) {
                 $user = User::find($etudiant->user_id);
                 if ($user) {
@@ -286,7 +286,7 @@ class DeleteStudentCommand extends Command
                 }
             }
 
-            // 8. Supprimer l'étudiant
+            // 9. Supprimer l'étudiant
             $etudiant->delete();
             $deleted['etudiant'] = 1;
 

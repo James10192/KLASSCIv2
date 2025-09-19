@@ -178,11 +178,54 @@ class ESBTPStudentController extends Controller
 
     public function destroy(ESBTPEtudiant $etudiant)
     {
+        // Vérifier les permissions
+        if (!auth()->user()->can('delete_students')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Vous n\'avez pas les permissions pour supprimer des étudiants.'
+            ], 403);
+        }
+
         try {
-            $etudiant->delete();
-            return redirect()->route('esbtp.etudiants.index')
-                ->with('success', 'Étudiant supprimé avec succès.');
+            $keepUser = request()->input('keep_user', false);
+
+            // Utiliser la commande Artisan pour une suppression complète et sécurisée
+            $exitCode = \Artisan::call('esbtp:delete-student', [
+                'identifier' => $etudiant->id,
+                '--force' => true,
+                '--keep-user' => $keepUser
+            ]);
+
+            if ($exitCode === 0) {
+                // Succès
+                if (request()->expectsJson()) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Étudiant supprimé avec succès.',
+                        'redirect' => route('esbtp.etudiants.index')
+                    ]);
+                }
+
+                return redirect()->route('esbtp.etudiants.index')
+                    ->with('success', 'Étudiant supprimé avec succès.');
+            } else {
+                throw new \Exception('La commande de suppression a échoué.');
+            }
+
         } catch (\Exception $e) {
+            \Log::error('Erreur lors de la suppression d\'étudiant', [
+                'etudiant_id' => $etudiant->id,
+                'error' => $e->getMessage(),
+                'user_id' => auth()->id()
+            ]);
+
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erreur lors de la suppression: ' . $e->getMessage()
+                ], 500);
+            }
+
             return back()->with('error', 'Erreur lors de la suppression: ' . $e->getMessage());
         }
     }

@@ -55,7 +55,7 @@
                 </a>
 
                 <!-- Bouton suppression étudiant - Accès réservé aux superAdmin -->
-                @can('manage-students')
+                @can('delete_students')
                 <button type="button" class="btn-acasi danger" data-bs-toggle="modal" data-bs-target="#deleteStudentModal" title="Supprimer l'étudiant et toutes ses données">
                     <i class="fas fa-trash"></i>Supprimer
                 </button>
@@ -600,7 +600,7 @@
 </div>
 
 <!-- Modal de confirmation pour suppression étudiant -->
-@can('manage-students')
+@can('delete_students')
 <div class="modal fade" id="deleteStudentModal" tabindex="-1" aria-labelledby="deleteStudentModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
