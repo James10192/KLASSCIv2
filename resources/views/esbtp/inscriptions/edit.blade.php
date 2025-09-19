@@ -132,7 +132,7 @@
                 </div>
 
                 <div class="row mb-3">
-                    @if($inscription->status === 'en_attente')
+                    @if($inscription->status !== 'active')
                         <div class="col-md-4">
                             <div class="form-group">
                                 <label for="filiere_id">Filière <span class="text-danger">*</span></label>
@@ -170,12 +170,12 @@
                         <!-- Champs hidden pour conserver les valeurs non modifiables -->
                         <input type="hidden" name="filiere_id" value="{{ $inscription->filiere_id }}">
                         <input type="hidden" name="niveau_id" value="{{ $inscription->niveau_id }}">
-                        
+
                         <div class="col-md-4">
                             <div class="form-group">
                                 <label class="form-label">Filière</label>
                                 <input type="text" class="form-control" value="{{ $inscription->filiere->name }}" disabled>
-                                <div class="alert alert-warning mt-2">La filière ne peut plus être modifiée après validation de l'inscription.</div>
+                                <div class="alert alert-warning mt-2">La filière ne peut plus être modifiée après activation de l'inscription.</div>
                             </div>
                         </div>
 
@@ -183,12 +183,12 @@
                             <div class="form-group">
                                 <label class="form-label">Niveau d'études</label>
                                 <input type="text" class="form-control" value="{{ $inscription->niveau->name }}" disabled>
-                                <div class="alert alert-warning mt-2">Le niveau ne peut plus être modifié après validation de l'inscription.</div>
+                                <div class="alert alert-warning mt-2">Le niveau ne peut plus être modifié après activation de l'inscription.</div>
                             </div>
                         </div>
                     @endif
 
-                    @if($inscription->status === 'en_attente')
+                    @if($inscription->status !== 'active')
                         <div class="col-md-4">
                             <div class="form-group">
                                 <label for="classe_id" class="form-label">Classe</label>
@@ -199,18 +199,18 @@
                                         </option>
                                     @endforeach
                                 </select>
-                                <div class="form-text text-muted">Vous pouvez changer la classe tant que l'inscription n'est pas validée.</div>
+                                <div class="form-text text-muted">Vous pouvez changer la classe tant que l'inscription n'est pas activée.</div>
                             </div>
                         </div>
                     @else
                         <!-- Champ hidden pour conserver la valeur de la classe -->
                         <input type="hidden" name="classe_id" value="{{ $inscription->classe_id }}">
-                        
+
                         <div class="col-md-4">
                             <div class="form-group">
                                 <label class="form-label">Classe</label>
                                 <input type="text" class="form-control" value="{{ $inscription->classe->name }}" disabled>
-                                <div class="alert alert-warning mt-2">La classe ne peut plus être modifiée après validation de l'inscription.</div>
+                                <div class="alert alert-warning mt-2">La classe ne peut plus être modifiée après activation de l'inscription.</div>
                             </div>
                         </div>
                     @endif

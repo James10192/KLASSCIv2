@@ -732,19 +732,27 @@ class ESBTPInscriptionController extends Controller
             DB::beginTransaction();
 
             $data = $request->all();
-            if ($inscription->status !== 'en_attente') {
-                // Empêcher la modification de la classe
+
+            // Stocker les anciennes valeurs pour détecter les changements
+            $ancienneFiliere = $inscription->filiere_id;
+            $ancienNiveau = $inscription->niveau_id;
+            $ancienneClasse = $inscription->classe_id;
+
+            if ($inscription->status === 'active') {
+                // Empêcher la modification de la filière, niveau et classe pour les inscriptions actives
+                unset($data['filiere_id']);
+                unset($data['niveau_id']);
                 unset($data['classe_id']);
-                \Log::warning('Tentative de modification de la classe après validation', [
+                \Log::warning('Tentative de modification de la classe/filière/niveau après activation', [
                     'inscription_id' => $inscription->id,
                     'user_id' => Auth::id()
                 ]);
             }
 
             // Mettre à jour l'inscription
-            $inscription->filiere_id = $data['filiere_id'];
-            $inscription->niveau_id = $data['niveau_id'];
-            $inscription->classe_id = $data['classe_id'];
+            $inscription->filiere_id = $data['filiere_id'] ?? $inscription->filiere_id;
+            $inscription->niveau_id = $data['niveau_id'] ?? $inscription->niveau_id;
+            $inscription->classe_id = $data['classe_id'] ?? $inscription->classe_id;
             $inscription->date_inscription = $data['date_inscription'];
             $inscription->type_inscription = $data['type_inscription'];
             $inscription->montant_scolarite = $data['montant_scolarite'];
@@ -785,6 +793,26 @@ class ESBTPInscriptionController extends Controller
 
             $inscription->updated_by = Auth::id();
             $inscription->save();
+
+            // Mettre à jour les souscriptions de frais si la filière, niveau ou classe a changé
+            if ($ancienneFiliere != $inscription->filiere_id ||
+                $ancienNiveau != $inscription->niveau_id ||
+                $ancienneClasse != $inscription->classe_id) {
+
+                \Log::info('Mise à jour des frais après changement de classe/filière/niveau', [
+                    'inscription_id' => $inscription->id,
+                    'ancienne_filiere' => $ancienneFiliere,
+                    'nouvelle_filiere' => $inscription->filiere_id,
+                    'ancien_niveau' => $ancienNiveau,
+                    'nouveau_niveau' => $inscription->niveau_id,
+                    'ancienne_classe' => $ancienneClasse,
+                    'nouvelle_classe' => $inscription->classe_id,
+                    'user_id' => Auth::id()
+                ]);
+
+                // Régénérer les frais pour cette inscription avec les nouvelles configurations
+                $this->regenererFraisInscription($inscription);
+            }
 
             DB::commit();
 
@@ -1728,6 +1756,76 @@ class ESBTPInscriptionController extends Controller
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des frais: ' . $e->getMessage()
             ], 500);
+        }
+    }
+
+    /**
+     * Régénérer les frais d'inscription après changement de classe/filière/niveau
+     */
+    private function regenererFraisInscription(ESBTPInscription $inscription)
+    {
+        try {
+            // Désactiver toutes les souscriptions existantes pour cette inscription
+            ESBTPFraisSubscription::where('inscription_id', $inscription->id)
+                ->update(['is_active' => false]);
+
+            \Log::info('Souscriptions désactivées pour inscription', [
+                'inscription_id' => $inscription->id
+            ]);
+
+            // Charger les relations nécessaires
+            $inscription->load(['filiere', 'niveau', 'classe']);
+
+            // Récupérer les catégories de frais obligatoires actives
+            $categoriesObligatoires = ESBTPFraisCategory::where('is_mandatory', true)
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->get();
+
+            foreach ($categoriesObligatoires as $category) {
+                // Chercher une configuration de frais pour cette catégorie et cette filière/niveau
+                $fraisConfig = ESBTPFraisConfiguration::where('frais_category_id', $category->id)
+                    ->where('filiere_id', $inscription->filiere_id)
+                    ->where('niveau_id', $inscription->niveau_id)
+                    ->where('is_active', true)
+                    ->first();
+
+                if ($fraisConfig) {
+                    // Déterminer le montant selon le statut d'affectation
+                    $affectationStatus = $inscription->affectation_status ?? 'affecté';
+                    $montant = $fraisConfig->getMontantByStatus($affectationStatus);
+
+                    // Créer une nouvelle souscription
+                    ESBTPFraisSubscription::create([
+                        'inscription_id' => $inscription->id,
+                        'frais_category_id' => $category->id,
+                        'selected_option_id' => null,
+                        'amount' => $montant,
+                        'is_active' => true,
+                        'subscribed_at' => now(),
+                        'created_by' => Auth::id(),
+                        'notes' => 'Régénéré automatiquement après changement de classe/filière/niveau'
+                    ]);
+
+                    \Log::info('Nouvelle souscription créée', [
+                        'inscription_id' => $inscription->id,
+                        'category_id' => $category->id,
+                        'amount' => $montant,
+                        'affectation_status' => $affectationStatus
+                    ]);
+                }
+            }
+
+            // Note: Les frais optionnels ne sont pas automatiquement régénérés
+            // L'utilisateur devra les resouscrire manuellement si nécessaire
+
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de la régénération des frais d\'inscription', [
+                'inscription_id' => $inscription->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
         }
     }
 }

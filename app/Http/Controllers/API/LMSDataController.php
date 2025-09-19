@@ -181,21 +181,16 @@ class LMSDataController extends BaseApiController
         }
 
         $query = ESBTPClasse::with([
-            'filiere',
-            'niveau',
-            'matieres' => function ($q) {
-                $q->where('esbtp_matieres.is_active', true);
-            },
-            'etudiants' => function ($q) use ($annee) {
-                $q->whereHas('inscriptions', function ($inscriptionQuery) use ($annee) {
-                    $inscriptionQuery->where('annee_universitaire_id', $annee->id)
-                                   ->where('status', 'active');
-                });
-            },
+            'filiere:id,name,libelle,code',
+            'niveau:id,name,libelle,code,type,year',
             'inscriptions' => function ($q) use ($annee) {
-                $q->where('annee_universitaire_id', $annee->id)
+                $q->select('id', 'classe_id', 'etudiant_id')
+                  ->where('annee_universitaire_id', $annee->id)
                   ->where('status', 'active');
             }
+        ])->select([
+            'id', 'name', 'libelle', 'filiere_id', 'niveau_etude_id',
+            'places_totales', 'places_occupees', 'is_active'
         ])->where('esbtp_classes.is_active', true);
 
         // Filtres optionnels
@@ -211,29 +206,33 @@ class LMSDataController extends BaseApiController
         $queryTime = microtime(true);
         \Log::info('📊 Query executed in: ' . round(($queryTime - $anneeTime) * 1000, 2) . 'ms - Found ' . $classes->count() . ' classes');
 
-        $data = $classes->map(function ($classe) use ($annee) {
-            // Utiliser les inscriptions préchargées au lieu d'une requête séparée
+        $data = $classes->map(function ($classe) {
+            // Compter les inscriptions actives pour l'année courante
             $nbEtudiants = $classe->inscriptions->count();
 
             return [
                 'id' => $classe->id,
-                'nom' => $classe->nom,
-                'code' => $classe->code,
-                'description' => $classe->description,
+                'name' => $classe->name,
+                'libelle' => $classe->libelle,
+                'filiere_id' => $classe->filiere_id,
+                'niveau_etude_id' => $classe->niveau_etude_id,
+                'places_totales' => $classe->places_totales,
+                'places_occupees' => $nbEtudiants, // Nombre réel d'inscrits année courante
+                'is_active' => $classe->is_active,
                 'filiere' => $classe->filiere ? [
                     'id' => $classe->filiere->id,
-                    'nom' => $classe->filiere->nom,
+                    'name' => $classe->filiere->name,
+                    'libelle' => $classe->filiere->libelle,
                     'code' => $classe->filiere->code
                 ] : null,
                 'niveau' => $classe->niveau ? [
                     'id' => $classe->niveau->id,
-                    'nom' => $classe->niveau->nom,
-                    'code' => $classe->niveau->code
+                    'name' => $classe->niveau->name,
+                    'libelle' => $classe->niveau->libelle,
+                    'code' => $classe->niveau->code,
+                    'type' => $classe->niveau->type,
+                    'year' => $classe->niveau->year
                 ] : null,
-                'statistiques' => [
-                    'nb_etudiants' => $nbEtudiants,
-                    'nb_matieres' => $classe->matieres->count()
-                ],
                 'matieres' => $classe->matieres->map(function ($matiere) use ($classe) {
                     return [
                         'id' => $matiere->id,
