@@ -744,12 +744,17 @@ class ESBTPInscriptionController extends Controller
             $ancienNiveau = $inscription->niveau_id;
             $ancienneClasse = $inscription->classe_id;
 
-            if ($inscription->status === 'active') {
-                // Empêcher la modification de la filière, niveau et classe pour les inscriptions actives
+            if ($inscription->status === 'active' && !Auth::user()->hasRole('superAdmin')) {
+                // Empêcher la modification de la filière, niveau et classe pour les inscriptions actives (sauf superAdmin)
                 unset($data['filiere_id']);
                 unset($data['niveau_id']);
                 unset($data['classe_id']);
                 \Log::warning('Tentative de modification de la classe/filière/niveau après activation', [
+                    'inscription_id' => $inscription->id,
+                    'user_id' => Auth::id()
+                ]);
+            } elseif ($inscription->status === 'active' && Auth::user()->hasRole('superAdmin')) {
+                \Log::info('SuperAdmin modifie une inscription active', [
                     'inscription_id' => $inscription->id,
                     'user_id' => Auth::id()
                 ]);
