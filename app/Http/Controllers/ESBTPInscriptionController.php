@@ -675,11 +675,8 @@ class ESBTPInscriptionController extends Controller
         // Charger les relations nécessaires
         $inscription->load(['etudiant', 'filiere', 'niveau', 'classe', 'anneeUniversitaire']);
 
-        // Récupérer les données pour les selects avec leurs relations
+        // Récupérer les données pour les selects (pas de relation directe filière-niveau)
         $filieres = ESBTPFiliere::where('is_active', true)
-            ->with(['niveaux' => function($query) {
-                $query->where('is_active', true);
-            }])
             ->orderBy('name')
             ->get();
 
