@@ -344,66 +344,89 @@ class ESBTPClasseController extends Controller
      */
     public function getMatieresForApi(ESBTPClasse $classe)
     {
-        // Log pour debugging
-        \Log::info('API matières appelée pour la classe ID: ' . $classe->id);
-        \Log::info('Classe: ' . ($classe->nom ?? $classe->name ?? 'N/A') . ' (Filière: ' . ($classe->filiere->nom ?? $classe->filiere->name ?? 'N/A') . ', Niveau: ' . ($classe->niveau->nom ?? $classe->niveau->name ?? 'N/A') . ')');
+        try {
+            \Log::info('API matières appelée pour la classe ID: ' . $classe->id);
+            \Log::info('Classe: ' . ($classe->name ?? 'N/A') . ', Filière ID: ' . ($classe->filiere_id ?? 'N/A') . ', Niveau ID: ' . ($classe->niveau_etude_id ?? 'N/A'));
 
-        // Récupérer les matières de la classe
-        $matieres = $classe->matieres()->where('esbtp_matieres.is_active', true)->get();
-        \Log::info('Matières directement liées à la classe: ' . $matieres->count());
+            // Méthode 1: Matières directement liées à la classe via table pivot
+            $matieres = $classe->matieres()->where('esbtp_matieres.is_active', true)->get();
+            \Log::info('Matières directement liées: ' . $matieres->count());
 
-        // Si aucune matière n'est trouvée, essayer de récupérer les matières de la même filière et niveau
-        if ($matieres->isEmpty()) {
-            \Log::info('Aucune matière directement liée, recherche par filière et niveau...');
-            // Récupérer des matières basées sur la filière et le niveau d'étude
-            $matieres = \App\Models\ESBTPMatiere::where('is_active', true);
+            // Méthode 2: Recherche par relations many-to-many filière et niveau
+            if ($matieres->isEmpty()) {
+                \Log::info('Recherche par relations many-to-many...');
+                $query = \App\Models\ESBTPMatiere::where('is_active', true);
 
-            if ($classe->filiere_id) {
-                $matieres = $matieres->whereHas('filieres', function($q) use ($classe) {
-                    $q->where('esbtp_filieres.id', $classe->filiere_id);
-                });
-                \Log::info('Filtrage par filière_id: ' . $classe->filiere_id);
+                if ($classe->filiere_id) {
+                    $query->whereHas('filieres', function($q) use ($classe) {
+                        $q->where('esbtp_filieres.id', $classe->filiere_id);
+                    });
+                }
+
+                if ($classe->niveau_etude_id) {
+                    $query->whereHas('niveaux', function($q) use ($classe) {
+                        $q->where('esbtp_niveaux_etudes.id', $classe->niveau_etude_id);
+                    });
+                }
+
+                $matieres = $query->get();
+                \Log::info('Matières trouvées par relations many-to-many: ' . $matieres->count());
             }
 
-            if ($classe->niveau_etude_id) {
-                $matieres = $matieres->whereHas('niveaux', function($q) use ($classe) {
-                    $q->where('esbtp_niveaux_etudes.id', $classe->niveau_etude_id);
-                });
-                \Log::info('Filtrage par niveau_etude_id: ' . $classe->niveau_etude_id);
+            // Méthode 3: Recherche par colonnes directes (deprecated mais peut être utilisé)
+            if ($matieres->isEmpty()) {
+                \Log::info('Recherche par colonnes directes...');
+                $query = \App\Models\ESBTPMatiere::where('is_active', true);
+
+                if ($classe->filiere_id) {
+                    $query->where('filiere_id', $classe->filiere_id);
+                }
+
+                if ($classe->niveau_etude_id) {
+                    $query->where('niveau_etude_id', $classe->niveau_etude_id);
+                }
+
+                $matieres = $query->get();
+                \Log::info('Matières trouvées par colonnes directes: ' . $matieres->count());
             }
 
-            $matieres = $matieres->get();
-            \Log::info('Matières trouvées par filière et niveau: ' . $matieres->count());
+            // Méthode 4: Toutes les matières actives comme fallback
+            if ($matieres->isEmpty()) {
+                \Log::info('Fallback: toutes les matières actives...');
+                $matieres = \App\Models\ESBTPMatiere::where('is_active', true)->get();
+                \Log::info('Toutes les matières actives: ' . $matieres->count());
+            }
+
+            // Si encore vide, toutes les matières
+            if ($matieres->isEmpty()) {
+                \Log::info('Fallback final: toutes les matières...');
+                $matieres = \App\Models\ESBTPMatiere::all();
+                \Log::info('Toutes les matières: ' . $matieres->count());
+            }
+
+            // Formatage pour l'API
+            $formattedMatieres = $matieres->map(function ($matiere) {
+                return [
+                    'id' => $matiere->id,
+                    'name' => $matiere->nom ?? $matiere->name ?? 'Matière ' . $matiere->id,
+                    'code' => $matiere->code ?? '',
+                    'coefficient' => $matiere->coefficient ?? 1
+                ];
+            });
+
+            \Log::info('Total matières renvoyées: ' . $formattedMatieres->count());
+            return response()->json($formattedMatieres);
+
+        } catch (\Exception $e) {
+            \Log::error('Erreur dans getMatieresForApi: ' . $e->getMessage());
+            \Log::error('Trace: ' . $e->getTraceAsString());
+
+            return response()->json([
+                'error' => 'Erreur lors de la récupération des matières',
+                'message' => $e->getMessage(),
+                'debug' => config('app.debug') ? $e->getTraceAsString() : null
+            ], 500);
         }
-
-        // Si toujours aucune matière, récupérer toutes les matières actives (pas de limite de 10)
-        if ($matieres->isEmpty()) {
-            \Log::info('Aucune matière trouvée par filière/niveau, récupération de toutes les matières actives...');
-            $matieres = \App\Models\ESBTPMatiere::where('is_active', true)->get();
-            \Log::info('Toutes les matières actives trouvées: ' . $matieres->count());
-        }
-
-        // Si toujours aucune matière, récupérer toutes les matières (même inactives)
-        if ($matieres->isEmpty()) {
-            \Log::info('Aucune matière active trouvée, récupération de toutes les matières...');
-            $matieres = \App\Models\ESBTPMatiere::all();
-            \Log::info('Toutes les matières trouvées: ' . $matieres->count());
-        }
-
-        // Formater les matières pour l'API JavaScript
-        $formattedMatieres = $matieres->map(function ($matiere) {
-            $formatted = [
-                'id' => $matiere->id,
-                'name' => $matiere->nom ?? $matiere->name ?? 'Matière ' . $matiere->id,
-                'code' => $matiere->code ?? '',
-                'coefficient' => $matiere->coefficient ?? 1
-            ];
-            \Log::info('Matière formatée: ' . json_encode($formatted));
-            return $formatted;
-        });
-
-        \Log::info('Total matières renvoyées: ' . $formattedMatieres->count());
-        return response()->json($formattedMatieres);
     }
 
     /**
