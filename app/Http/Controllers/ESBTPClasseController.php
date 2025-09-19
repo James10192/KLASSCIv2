@@ -9,6 +9,9 @@ use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPMatiere;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Barryvdh\DomPDF\Facade\Pdf as PDF;
+use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Str;
 
 class ESBTPClasseController extends Controller
 {
@@ -609,5 +612,160 @@ class ESBTPClasseController extends Controller
                 'niveau_config' => null
             ], 500);
         }
+    }
+
+    /**
+     * Affiche la liste d'appel pour une classe (preview web)
+     *
+     * @param  \App\Models\ESBTPClasse  $classe
+     * @return \Illuminate\Http\Response
+     */
+    public function listeAppel(ESBTPClasse $classe)
+    {
+        $classe->load(['filiere', 'niveau', 'annee']);
+
+        // Récupérer l'année universitaire courante
+        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        $etudiants = $classe->inscriptions()
+            ->with(['etudiant'])
+            ->where('status', 'active')
+            ->when($anneeCourante, function($query) use ($anneeCourante) {
+                return $query->where('annee_universitaire_id', $anneeCourante->id);
+            })
+            ->get()
+            ->map(function($inscription) {
+                return $inscription->etudiant;
+            })
+            ->filter()
+            ->sortBy(['nom', 'prenom']);
+
+        return view('esbtp.classes.liste-appel', compact('classe', 'etudiants', 'anneeCourante'));
+    }
+
+    /**
+     * Génère le PDF de la liste d'appel pour une classe
+     *
+     * @param  \App\Models\ESBTPClasse  $classe
+     * @return \Illuminate\Http\Response
+     */
+    public function listeAppelPDF(ESBTPClasse $classe)
+    {
+        $classe->load(['filiere', 'niveau', 'annee']);
+
+        // Récupérer l'année universitaire courante
+        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        $etudiants = $classe->inscriptions()
+            ->with(['etudiant'])
+            ->where('status', 'active')
+            ->when($anneeCourante, function($query) use ($anneeCourante) {
+                return $query->where('annee_universitaire_id', $anneeCourante->id);
+            })
+            ->get()
+            ->map(function($inscription) {
+                return $inscription->etudiant;
+            })
+            ->filter()
+            ->sortBy(['nom', 'prenom']);
+
+        $pdf = PDF::loadView('esbtp.classes.liste-appel-pdf', compact('classe', 'etudiants', 'anneeCourante'));
+
+        $filename = 'liste-appel-' . Str::slug($classe->name) . '-' . date('Y-m-d') . '.pdf';
+
+        return $pdf->download($filename);
+    }
+
+    /**
+     * Affiche la liste complète des étudiants pour une classe (preview web)
+     *
+     * @param  \App\Models\ESBTPClasse  $classe
+     * @return \Illuminate\Http\Response
+     */
+    public function listeComplete(ESBTPClasse $classe)
+    {
+        $classe->load(['filiere', 'niveau', 'annee']);
+
+        // Récupérer l'année universitaire courante
+        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        $etudiants = $classe->inscriptions()
+            ->with(['etudiant.parent'])
+            ->where('status', 'active')
+            ->when($anneeCourante, function($query) use ($anneeCourante) {
+                return $query->where('annee_universitaire_id', $anneeCourante->id);
+            })
+            ->get()
+            ->map(function($inscription) {
+                return $inscription->etudiant;
+            })
+            ->filter()
+            ->sortBy(['nom', 'prenom']);
+
+        return view('esbtp.classes.liste-complete', compact('classe', 'etudiants', 'anneeCourante'));
+    }
+
+    /**
+     * Génère le PDF de la liste complète des étudiants pour une classe
+     *
+     * @param  \App\Models\ESBTPClasse  $classe
+     * @return \Illuminate\Http\Response
+     */
+    public function listeCompletePDF(ESBTPClasse $classe)
+    {
+        $classe->load(['filiere', 'niveau', 'annee']);
+
+        // Récupérer l'année universitaire courante
+        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        $etudiants = $classe->inscriptions()
+            ->with(['etudiant.parent'])
+            ->where('status', 'active')
+            ->when($anneeCourante, function($query) use ($anneeCourante) {
+                return $query->where('annee_universitaire_id', $anneeCourante->id);
+            })
+            ->get()
+            ->map(function($inscription) {
+                return $inscription->etudiant;
+            })
+            ->filter()
+            ->sortBy(['nom', 'prenom']);
+
+        $pdf = PDF::loadView('esbtp.classes.liste-complete-pdf', compact('classe', 'etudiants', 'anneeCourante'));
+
+        $filename = 'liste-complete-' . Str::slug($classe->name) . '-' . date('Y-m-d') . '.pdf';
+
+        return $pdf->download($filename);
+    }
+
+    /**
+     * Génère le fichier Excel de la liste complète des étudiants pour une classe
+     *
+     * @param  \App\Models\ESBTPClasse  $classe
+     * @return \Illuminate\Http\Response
+     */
+    public function listeCompleteExcel(ESBTPClasse $classe)
+    {
+        $classe->load(['filiere', 'niveau', 'annee']);
+
+        // Récupérer l'année universitaire courante
+        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        $etudiants = $classe->inscriptions()
+            ->with(['etudiant.parent'])
+            ->where('status', 'active')
+            ->when($anneeCourante, function($query) use ($anneeCourante) {
+                return $query->where('annee_universitaire_id', $anneeCourante->id);
+            })
+            ->get()
+            ->map(function($inscription) {
+                return $inscription->etudiant;
+            })
+            ->filter()
+            ->sortBy(['nom', 'prenom']);
+
+        $filename = 'liste-complete-' . Str::slug($classe->name) . '-' . date('Y-m-d') . '.xlsx';
+
+        return Excel::download(new \App\Exports\ClasseEtudiantsExport($classe, $etudiants, $anneeCourante), $filename);
     }
 }

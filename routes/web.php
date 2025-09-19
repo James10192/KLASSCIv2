@@ -740,6 +740,8 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::get('/inscriptions/getClasses', [ESBTPInscriptionController::class, 'getClasses'])->name('inscriptions.getClasses');
             Route::post('/inscriptions', [ESBTPInscriptionController::class, 'store'])->name('inscriptions.store');
             Route::get('/inscriptions/{inscription}', [ESBTPInscriptionController::class, 'show'])->name('inscriptions.show');
+            Route::get('/inscriptions/{inscription}/situation-financiere/preview', [ESBTPInscriptionController::class, 'previewSituationFinanciere'])->name('inscriptions.situation-financiere.preview');
+            Route::get('/inscriptions/{inscription}/situation-financiere/pdf', [ESBTPInscriptionController::class, 'exportSituationFinanciere'])->name('inscriptions.situation-financiere.pdf');
             Route::get('/inscriptions/{inscription}/edit', [ESBTPInscriptionController::class, 'edit'])->name('inscriptions.edit');
             Route::put('/inscriptions/{inscription}', [ESBTPInscriptionController::class, 'update'])->name('inscriptions.update');
             Route::delete('/inscriptions/{inscription}', [ESBTPInscriptionController::class, 'destroy'])->name('inscriptions.destroy');
@@ -1574,6 +1576,13 @@ Route::post('/esbtp/bulletins/generer-classe', [ESBTPBulletinController::class, 
 
 // Route AJAX pour récupérer les étudiants d'une classe
 Route::get('/esbtp/classes/{classe}/etudiants', [ESBTPClasseController::class, 'getEtudiants'])->name('esbtp.classes.etudiants');
+
+// Routes pour les listes d'étudiants par classe
+Route::get('/esbtp/classes/{classe}/liste-appel', [ESBTPClasseController::class, 'listeAppel'])->name('esbtp.classes.liste-appel');
+Route::get('/esbtp/classes/{classe}/liste-appel/pdf', [ESBTPClasseController::class, 'listeAppelPDF'])->name('esbtp.classes.liste-appel.pdf');
+Route::get('/esbtp/classes/{classe}/liste-complete', [ESBTPClasseController::class, 'listeComplete'])->name('esbtp.classes.liste-complete');
+Route::get('/esbtp/classes/{classe}/liste-complete/pdf', [ESBTPClasseController::class, 'listeCompletePDF'])->name('esbtp.classes.liste-complete.pdf');
+Route::get('/esbtp/classes/{classe}/liste-complete/excel', [ESBTPClasseController::class, 'listeCompleteExcel'])->name('esbtp.classes.liste-complete.excel');
 
 // Routes spéciales pour la prévisualisation et modification des moyennes
 Route::get('/esbtp-special/bulletins/moyennes-preview', [ESBTPBulletinController::class, 'previewMoyennes'])->name('esbtp.bulletins.moyennes-preview');

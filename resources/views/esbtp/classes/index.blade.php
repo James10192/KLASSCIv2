@@ -294,6 +294,15 @@
                                     </a>
                                     @endif
 
+                                    @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('enseignant'))
+                                    <a href="{{ route('esbtp.classes.liste-appel', ['classe' => $classe->id]) }}" class="btn-acasi primary" style="padding: var(--space-xs);" title="Liste d'appel" target="_blank">
+                                        <i class="fas fa-clipboard-list"></i>
+                                    </a>
+                                    <a href="{{ route('esbtp.classes.liste-complete', ['classe' => $classe->id]) }}" class="btn-acasi secondary" style="padding: var(--space-xs);" title="Liste complète des étudiants" target="_blank">
+                                        <i class="fas fa-users"></i>
+                                    </a>
+                                    @endif
+
                                     @if(auth()->user()->hasRole('superAdmin'))
                                         @if($classe->nombre_etudiants == 0)
                                         <button type="button" class="btn-acasi danger" style="padding: var(--space-xs);" data-bs-toggle="modal" data-bs-target="#deleteModal{{ $classe->id }}" title="Supprimer">
