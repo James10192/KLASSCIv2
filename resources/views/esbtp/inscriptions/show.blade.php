@@ -1221,6 +1221,12 @@ body.modal-open .card:hover {
                 @csrf
                 <input type="hidden" name="_action" value="valider-avec-paiement">
                 <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Cette action associera un paiement à l'inscription et la fera passer en validation.
+                        Vous pourrez encore modifier la <strong>filière</strong>, le <strong>niveau</strong> et la <strong>classe</strong> jusqu'à la validation définitive.
+                    </div>
+
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
@@ -1306,8 +1312,24 @@ body.modal-open .card:hover {
                 <input type="hidden" name="_action" value="valider-definitivement">
                 <div class="modal-body">
                     <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
                         Cette action va convertir le prospect en étudiant et activer son compte utilisateur.
                     </div>
+
+                    <div class="alert alert-warning">
+                        <h6 class="alert-heading">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Important : Éléments qui ne pourront plus être modifiés
+                        </h6>
+                        <p class="mb-2">Une fois l'inscription validée définitivement (statut 'active'), les éléments suivants ne pourront plus être modifiés :</p>
+                        <ul class="mb-0">
+                            <li><strong>Filière</strong> : {{ $inscription->filiere->name ?? 'Non définie' }}</li>
+                            <li><strong>Niveau d'études</strong> : {{ $inscription->niveau->name ?? 'Non défini' }}</li>
+                            <li><strong>Classe</strong> : {{ $inscription->classe->name ?? 'Non définie' }}</li>
+                        </ul>
+                        <p class="mt-2 mb-0"><small class="text-muted">Assurez-vous que ces informations sont correctes avant de procéder à la validation.</small></p>
+                    </div>
+
                     <div class="mb-3">
                         <label for="validation_observations" class="form-label">Observations</label>
                         <textarea class="form-control" id="validation_observations" name="observations" rows="3" placeholder="Commentaires sur la validation..."></textarea>

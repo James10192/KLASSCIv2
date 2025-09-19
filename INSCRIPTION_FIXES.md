@@ -107,6 +107,51 @@ if ($ancienneFiliere != $inscription->filiere_id ||
 - ✅ Conservation de l'historique avec logging détaillé
 - ✅ Gestion appropriée des statuts d'affectation dans le calcul des frais
 
+### 4. Problème : Manque d'avertissement sur l'immutabilité après validation définitive
+**Symptôme** : Les utilisateurs pouvaient valider définitivement une inscription sans être avertis que certains champs deviendraient immutables.
+
+**Cause racine** : Absence d'information claire sur les conséquences de la validation définitive dans l'interface utilisateur.
+
+**Solution appliquée** :
+
+**A. Ajout d'avertissement dans le modal de validation définitive** :
+- **Fichier modifié** : `resources/views/esbtp/inscriptions/show.blade.php`
+- **Modal** : `validationModal`
+- **Ajout** : Alerte warning avec liste des champs qui deviendront immutables
+
+```html
+<div class="alert alert-warning">
+    <h6 class="alert-heading">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        Important : Éléments qui ne pourront plus être modifiés
+    </h6>
+    <p class="mb-2">Une fois l'inscription validée définitivement (statut 'active'), les éléments suivants ne pourront plus être modifiés :</p>
+    <ul class="mb-0">
+        <li><strong>Filière</strong> : {{ $inscription->filiere->name ?? 'Non définie' }}</li>
+        <li><strong>Niveau d'études</strong> : {{ $inscription->niveau->name ?? 'Non défini' }}</li>
+        <li><strong>Classe</strong> : {{ $inscription->classe->name ?? 'Non définie' }}</li>
+    </ul>
+</div>
+```
+
+**B. Ajout d'information dans le modal de paiement** :
+- **Modal** : `paymentModal`
+- **Ajout** : Information que les modifications restent possibles jusqu'à la validation définitive
+
+```html
+<div class="alert alert-info">
+    <i class="fas fa-info-circle me-2"></i>
+    Cette action associera un paiement à l'inscription et la fera passer en validation.
+    Vous pourrez encore modifier la <strong>filière</strong>, le <strong>niveau</strong> et la <strong>classe</strong> jusqu'à la validation définitive.
+</div>
+```
+
+**Résultat** :
+- ✅ Avertissement clair avant validation définitive
+- ✅ Information sur les champs qui deviendront immutables
+- ✅ Guidance utilisateur sur le processus de validation
+- ✅ Prévention des erreurs de manipulation
+
 ## Impact des corrections
 
 ### Fonctionnalité :
@@ -115,6 +160,8 @@ if ($ancienneFiliere != $inscription->filiere_id ||
 - ✅ Expérience utilisateur améliorée
 - ✅ Flexibilité accrue pour la modification des inscriptions non-actives
 - ✅ Gestion automatique des frais lors des changements de classe
+- ✅ Interface claire sur les conséquences des validations
+- ✅ Prévention des erreurs utilisateur par information proactive
 
 ### Performance :
 - ✅ Réduction des requêtes liées à l'affichage des paiements sur la page d'édition
@@ -134,12 +181,16 @@ if ($ancienneFiliere != $inscription->filiere_id ||
 - ✅ Blocage effectif pour inscriptions actives
 - ✅ Régénération automatique des frais lors des changements
 - ✅ Logging des modifications fonctionnel
+- ✅ Avertissements affichés correctement dans les modals de validation
+- ✅ Processus de validation clairement documenté pour l'utilisateur
 
 ## Instructions d'utilisation
 1. **Modification de classe** : Les inscriptions avec statut 'en_attente', 'annulée', ou 'terminée' peuvent avoir leur filière, niveau et classe modifiés
 2. **Restrictions** : Les inscriptions 'active' ne peuvent plus être modifiées au niveau classe/filière/niveau
 3. **Frais automatiques** : Lors d'un changement de classe, les frais sont automatiquement recalculés selon les nouvelles configurations
 4. **Frais optionnels** : Les frais optionnels devront être resouscrits manuellement après un changement de classe
+5. **Validation avec paiement** : Première étape qui fait passer l'inscription en validation tout en gardant les champs modifiables
+6. **Validation définitive** : Étape finale qui rend l'inscription active et verrouille définitivement filière/niveau/classe
 
 ## Date de correction
 19 septembre 2025
