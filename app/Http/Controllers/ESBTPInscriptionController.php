@@ -1883,7 +1883,7 @@ class ESBTPInscriptionController extends Controller
             ->with(['inscriptionSource.etudiant', 'fraisSubscription.fraisCategory'])
             ->get();
 
-        $totalReliquats = $reliquats->sum('montant_reliquat');
+        $totalReliquats = $reliquats->sum('solde_restant');
 
         // Calculer les totaux
         $totalFraisAnnee = $fraisSouscrits->sum('amount'); // Frais année courante seulement
@@ -1943,7 +1943,7 @@ class ESBTPInscriptionController extends Controller
             ->with(['inscriptionSource.etudiant', 'fraisSubscription.fraisCategory'])
             ->get();
 
-        $totalReliquats = $reliquats->sum('montant_reliquat');
+        $totalReliquats = $reliquats->sum('solde_restant');
 
         // Utiliser la même logique que la page show: PRIORITÉ à la souscription
         $totalFraisAnnee = $fraisSouscrits->sum('amount'); // Frais année courante seulement

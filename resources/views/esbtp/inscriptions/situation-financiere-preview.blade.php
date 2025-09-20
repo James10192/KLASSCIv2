@@ -287,7 +287,7 @@
                                 {{-- Intégrer les reliquats comme des lignes de frais --}}
                                 @if($reliquats->count() > 0)
                                     @foreach($reliquats as $reliquat)
-                                        @if($reliquat->montant_reliquat > 0)
+                                        @if($reliquat->solde_restant > 0)
                                             <tr class="table-warning">
                                                 <td>
                                                     <div class="d-flex align-items-center">
@@ -313,10 +313,10 @@
                                                     <span class="fw-bold">{{ number_format($reliquat->montant_reliquat, 0, ',', ' ') }} FCFA</span>
                                                 </td>
                                                 <td class="text-end">
-                                                    <span class="text-success fw-bold">{{ number_format($reliquat->montant_paye, 0, ',', ' ') }} FCFA</span>
+                                                    <span class="text-success fw-bold">{{ number_format($reliquat->montant_regle, 0, ',', ' ') }} FCFA</span>
                                                 </td>
                                                 <td class="text-end">
-                                                    <span class="fw-bold text-warning">{{ number_format($reliquat->montant_reliquat - $reliquat->montant_paye, 0, ',', ' ') }} FCFA</span>
+                                                    <span class="fw-bold text-warning">{{ number_format($reliquat->solde_restant, 0, ',', ' ') }} FCFA</span>
                                                 </td>
                                                 <td class="text-center">
                                                     <span class="status-badge reliquat">Reliquat</span>
