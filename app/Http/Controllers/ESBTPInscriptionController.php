@@ -1861,6 +1861,7 @@ class ESBTPInscriptionController extends Controller
         // Charger toutes les données nécessaires
         $inscription->load([
             'etudiant.user',
+            'etudiant.parents',
             'filiere',
             'niveau',
             'classe',
@@ -1906,11 +1907,21 @@ class ESBTPInscriptionController extends Controller
             'pourcentage_paye' => $totalAttendu > 0 ? round(($totalPaye / $totalAttendu) * 100, 2) : 0,
         ];
 
+        // Récupérer les paramètres de l'établissement
+        $etablissement = [
+            'nom' => Setting::get('school_name', 'ESBTP-yAKRO'),
+            'adresse' => Setting::get('school_address', ''),
+            'telephone' => Setting::get('school_phone', ''),
+            'email' => Setting::get('school_email', ''),
+            'logo' => Setting::get('school_logo', ''),
+        ];
+
         return view('esbtp.inscriptions.situation-financiere-preview', compact(
             'inscription',
             'fraisSouscrits',
             'reliquatsEntrants',
-            'statistiques'
+            'statistiques',
+            'etablissement'
         ));
     }
 
@@ -1922,6 +1933,7 @@ class ESBTPInscriptionController extends Controller
         // Récupérer les mêmes données que pour la preview
         $inscription->load([
             'etudiant.user',
+            'etudiant.parents',
             'filiere',
             'niveau',
             'classe',

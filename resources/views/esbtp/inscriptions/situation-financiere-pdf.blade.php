@@ -507,6 +507,68 @@
         @endif
     </div>
 
+    <!-- Informations detaillees de l'etudiant -->
+    <div class="section-title">INFORMATIONS DE L'ETUDIANT</div>
+    <table class="student-info-table" style="width: 100%; margin-bottom: 15px; border-collapse: collapse;">
+        <tr>
+            <td rowspan="6" style="width: 120px; text-align: center; vertical-align: top; padding: 10px; border: 1px solid #e5e7eb;">
+                @if($inscription->etudiant->photo_url)
+                    <img src="{{ $inscription->etudiant->photo_url }}" alt="Photo" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid #007bff;">
+                @else
+                    <div style="width: 100px; height: 100px; border-radius: 50%; background: #f3f4f6; display: flex; align-items: center; justify-content: center; border: 2px solid #007bff;">
+                        <i class="fas fa-user" style="font-size: 40px; color: #6b7280;"></i>
+                    </div>
+                @endif
+                <div style="margin-top: 8px; font-weight: bold; font-size: 9px;">{{ $inscription->etudiant->matricule }}</div>
+            </td>
+            <td style="padding: 5px 10px; border: 1px solid #e5e7eb; font-weight: bold; background: #f8f9fa;">Nom complet:</td>
+            <td style="padding: 5px 10px; border: 1px solid #e5e7eb;">{{ $inscription->etudiant->nom }} {{ $inscription->etudiant->prenoms }}</td>
+            <td style="padding: 5px 10px; border: 1px solid #e5e7eb; font-weight: bold; background: #f8f9fa;">Filiere:</td>
+            <td style="padding: 5px 10px; border: 1px solid #e5e7eb;">{{ $inscription->classe->filiere->name ?? 'Non renseigne' }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 5px 10px; border: 1px solid #e5e7eb; font-weight: bold; background: #f8f9fa;">Genre:</td>
+            <td style="padding: 5px 10px; border: 1px solid #e5e7eb;">{{ $inscription->etudiant->genre == 'M' ? 'Masculin' : 'Feminin' }}</td>
+            <td style="padding: 5px 10px; border: 1px solid #e5e7eb; font-weight: bold; background: #f8f9fa;">Niveau:</td>
+            <td style="padding: 5px 10px; border: 1px solid #e5e7eb;">{{ $inscription->classe->niveau->name ?? 'Non renseigne' }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 5px 10px; border: 1px solid #e5e7eb; font-weight: bold; background: #f8f9fa;">Date naissance:</td>
+            <td style="padding: 5px 10px; border: 1px solid #e5e7eb;">{{ $inscription->etudiant->date_naissance ? \Carbon\Carbon::parse($inscription->etudiant->date_naissance)->format('d/m/Y') : 'Non renseigne' }}</td>
+            <td style="padding: 5px 10px; border: 1px solid #e5e7eb; font-weight: bold; background: #f8f9fa;">Classe:</td>
+            <td style="padding: 5px 10px; border: 1px solid #e5e7eb;">{{ $inscription->classe->name ?? 'Non renseigne' }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 5px 10px; border: 1px solid #e5e7eb; font-weight: bold; background: #f8f9fa;">Telephone:</td>
+            <td style="padding: 5px 10px; border: 1px solid #e5e7eb;">{{ $inscription->etudiant->telephone ?? 'Non renseigne' }}</td>
+            <td style="padding: 5px 10px; border: 1px solid #e5e7eb; font-weight: bold; background: #f8f9fa;">Statut:</td>
+            <td style="padding: 5px 10px; border: 1px solid #e5e7eb;">
+                <span style="background: {{ $inscription->status == 'active' ? '#28a745' : '#6c757d' }}; color: white; padding: 2px 6px; border-radius: 4px; font-size: 8px;">
+                    {{ ucfirst($inscription->status) }}
+                </span>
+            </td>
+        </tr>
+        <tr>
+            <td style="padding: 5px 10px; border: 1px solid #e5e7eb; font-weight: bold; background: #f8f9fa;">Email:</td>
+            <td style="padding: 5px 10px; border: 1px solid #e5e7eb; font-size: 8px;">{{ $inscription->etudiant->email ?? 'Non renseigne' }}</td>
+            <td style="padding: 5px 10px; border: 1px solid #e5e7eb; font-weight: bold; background: #f8f9fa;">Annee universitaire:</td>
+            <td style="padding: 5px 10px; border: 1px solid #e5e7eb;">{{ $inscription->anneeUniversitaire->name ?? 'Non renseigne' }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 5px 10px; border: 1px solid #e5e7eb; font-weight: bold; background: #f8f9fa;">Adresse:</td>
+            <td colspan="3" style="padding: 5px 10px; border: 1px solid #e5e7eb; font-size: 9px;">{{ $inscription->etudiant->adresse ?? 'Non renseigne' }}</td>
+        </tr>
+        @if($inscription->etudiant->parents && $inscription->etudiant->parents->count() > 0)
+        @php $parent = $inscription->etudiant->parents->first(); @endphp
+        <tr>
+            <td style="padding: 5px 10px; border: 1px solid #e5e7eb; font-weight: bold; background: #fef3c7;">Contact parent:</td>
+            <td style="padding: 5px 10px; border: 1px solid #e5e7eb;">{{ $parent->nom ?? 'Non renseigne' }} {{ $parent->prenoms ?? '' }}</td>
+            <td style="padding: 5px 10px; border: 1px solid #e5e7eb; font-weight: bold; background: #fef3c7;">Tel. parent:</td>
+            <td style="padding: 5px 10px; border: 1px solid #e5e7eb;">{{ $parent->telephone ?? 'Non renseigne' }}</td>
+        </tr>
+        @endif
+    </table>
+
     <!-- Detail des frais souscrits -->
     <div class="section-title">DETAIL DES FRAIS SOUSCRITS</div>
     @if($fraisSouscrits->count() > 0)

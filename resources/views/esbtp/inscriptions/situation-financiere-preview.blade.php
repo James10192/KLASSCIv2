@@ -132,77 +132,130 @@
             @endif
         </div>
 
-        <!-- Informations Étudiant -->
+        <!-- En-tête de l'établissement -->
         <div class="main-card">
-            <div class="main-card-header">
-                <div class="main-card-title">
-                    <i class="fas fa-user"></i>
-                    Informations Étudiant
-                </div>
-            </div>
-            <div class="main-card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="info-group">
-                            <label class="info-label">Matricule:</label>
-                            <span class="info-value">{{ $inscription->etudiant->matricule ?? 'Non renseigné' }}</span>
+            <div class="main-card-header" style="background: #007bff; color: white; border-radius: 15px 15px 0 0;">
+                <div style="text-align: center; padding: 1rem;">
+                    @if($etablissement['logo'] && file_exists(storage_path('app/public/' . $etablissement['logo'])))
+                        <div style="margin-bottom: 15px;">
+                            <img src="data:image/{{ pathinfo($etablissement['logo'], PATHINFO_EXTENSION) }};base64,{{ base64_encode(file_get_contents(storage_path('app/public/' . $etablissement['logo']))) }}"
+                                 style="max-height: 60px; max-width: 150px; filter: brightness(0) invert(1);" alt="Logo">
                         </div>
+                    @endif
+
+                    <h2 style="margin: 0 0 8px 0; font-size: 1.8rem; font-weight: 700;">{{ $etablissement['nom'] ?? 'ESBTP-yAKRO' }}</h2>
+
+                    @if($etablissement['adresse'] || $etablissement['telephone'] || $etablissement['email'])
+                    <div style="font-size: 0.9rem; opacity: 0.9; margin-bottom: 15px;">
+                        @if($etablissement['adresse']){{ $etablissement['adresse'] }}@endif
+                        @if($etablissement['telephone'] && $etablissement['adresse']) | @endif
+                        @if($etablissement['telephone'])Tel: {{ $etablissement['telephone'] }}@endif
+                        @if($etablissement['email'] && ($etablissement['adresse'] || $etablissement['telephone'])) | @endif
+                        @if($etablissement['email'])Email: {{ $etablissement['email'] }}@endif
                     </div>
-                    <div class="col-md-6">
-                        <div class="info-group">
-                            <label class="info-label">Email:</label>
-                            <span class="info-value">{{ $inscription->etudiant->email ?? 'Non renseigné' }}</span>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="info-group">
-                            <label class="info-label">Téléphone:</label>
-                            <span class="info-value">{{ $inscription->etudiant->telephone ?? 'Non renseigné' }}</span>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="info-group">
-                            <label class="info-label">Statut:</label>
-                            <span class="badge bg-primary">{{ ucfirst($inscription->affectation_status ?? 'Affecté') }}</span>
+                    @endif
+
+                    <div style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 10px; backdrop-filter: blur(10px);">
+                        <h3 style="margin: 0 0 10px 0; font-size: 1.4rem; font-weight: 600;">BULLETIN DE SITUATION FINANCIÈRE</h3>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; font-size: 0.95rem;">
+                            <div><strong>Année:</strong> <span style="background: rgba(255,255,255,0.3); padding: 3px 8px; border-radius: 12px;">{{ $inscription->anneeUniversitaire->name ?? 'N/A' }}</span></div>
+                            <div><strong>Date:</strong> <span style="background: rgba(255,255,255,0.3); padding: 3px 8px; border-radius: 12px;">{{ now()->format('d/m/Y') }}</span></div>
+                            <div><strong>Classe:</strong> <span style="background: rgba(255,255,255,0.3); padding: 3px 8px; border-radius: 12px;">{{ $inscription->classe->name ?? 'N/A' }}</span></div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Informations Académiques -->
+        <!-- Informations de l'étudiant -->
         <div class="main-card">
             <div class="main-card-header">
                 <div class="main-card-title">
-                    <i class="fas fa-graduation-cap"></i>
-                    Informations Académiques
+                    <i class="fas fa-user"></i>
+                    Informations de l'étudiant
                 </div>
+                <div class="main-card-subtitle">Données personnelles et académiques</div>
             </div>
+
             <div class="main-card-body">
                 <div class="row">
-                    <div class="col-md-6">
-                        <div class="info-group">
-                            <label class="info-label">Filière:</label>
-                            <span class="info-value">{{ $inscription->filiere->name ?? 'Non renseigné' }}</span>
+                    <div class="col-md-3 text-center">
+                        @if($inscription->etudiant->photo_url)
+                            <img src="{{ $inscription->etudiant->photo_url }}" alt="Photo de profil" class="rounded-circle img-thumbnail" style="width: 150px; height: 150px; object-fit: cover;">
+                        @else
+                            <div class="bg-light d-flex align-items-center justify-content-center rounded-circle mx-auto" style="width: 150px; height: 150px;">
+                                <i class="fas fa-user fa-5x text-secondary"></i>
+                            </div>
+                        @endif
+                        <h5 class="mt-3">{{ $inscription->etudiant->nom }} {{ $inscription->etudiant->prenoms }}</h5>
+                        <p class="text-muted">
+                            Matricule: <strong>{{ $inscription->etudiant->matricule }}</strong>
+                        </p>
+                    </div>
+
+                    <div class="col-md-4">
+                        <h6 style="color: #007bff; margin-bottom: 15px;"><i class="fas fa-info-circle me-2"></i>Informations personnelles</h6>
+                        <div class="row mb-2">
+                            <div class="col-sm-5"><strong>Genre:</strong></div>
+                            <div class="col-sm-7">{{ $inscription->etudiant->genre == 'M' ? 'Masculin' : 'Féminin' }}</div>
+                        </div>
+                        <div class="row mb-2">
+                            <div class="col-sm-5"><strong>Date de naissance:</strong></div>
+                            <div class="col-sm-7">{{ $inscription->etudiant->date_naissance ? \Carbon\Carbon::parse($inscription->etudiant->date_naissance)->format('d/m/Y') : 'Non renseigné' }}</div>
+                        </div>
+                        <div class="row mb-2">
+                            <div class="col-sm-5"><strong>Lieu de naissance:</strong></div>
+                            <div class="col-sm-7">{{ $inscription->etudiant->lieu_naissance ?? 'Non renseigné' }}</div>
+                        </div>
+                        <div class="row mb-2">
+                            <div class="col-sm-5"><strong>Téléphone:</strong></div>
+                            <div class="col-sm-7">{{ $inscription->etudiant->telephone ?? 'Non renseigné' }}</div>
+                        </div>
+                        <div class="row mb-2">
+                            <div class="col-sm-5"><strong>Email:</strong></div>
+                            <div class="col-sm-7">{{ $inscription->etudiant->email ?? 'Non renseigné' }}</div>
+                        </div>
+                        <div class="row mb-2">
+                            <div class="col-sm-5"><strong>Adresse:</strong></div>
+                            <div class="col-sm-7">{{ $inscription->etudiant->adresse ?? 'Non renseigné' }}</div>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="info-group">
-                            <label class="info-label">Niveau:</label>
-                            <span class="info-value">{{ $inscription->niveau->name ?? 'Non renseigné' }}</span>
+
+                    <div class="col-md-5">
+                        <h6 style="color: #007bff; margin-bottom: 15px;"><i class="fas fa-graduation-cap me-2"></i>Informations académiques</h6>
+                        <div class="row mb-2">
+                            <div class="col-sm-5"><strong>Filière:</strong></div>
+                            <div class="col-sm-7">{{ $inscription->classe->filiere->name ?? 'Non renseigné' }}</div>
                         </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="info-group">
-                            <label class="info-label">Classe:</label>
-                            <span class="info-value">{{ $inscription->classe->name ?? 'Non renseigné' }}</span>
+                        <div class="row mb-2">
+                            <div class="col-sm-5"><strong>Niveau:</strong></div>
+                            <div class="col-sm-7">{{ $inscription->classe->niveau->name ?? 'Non renseigné' }}</div>
                         </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="info-group">
-                            <label class="info-label">Année universitaire:</label>
-                            <span class="info-value">{{ $inscription->anneeUniversitaire->name ?? 'Non renseigné' }}</span>
+                        <div class="row mb-2">
+                            <div class="col-sm-5"><strong>Classe:</strong></div>
+                            <div class="col-sm-7">{{ $inscription->classe->name ?? 'Non renseigné' }}</div>
                         </div>
+                        <div class="row mb-2">
+                            <div class="col-sm-5"><strong>Statut:</strong></div>
+                            <div class="col-sm-7">
+                                <span class="badge {{ $inscription->status == 'active' ? 'bg-success' : 'bg-secondary' }}">
+                                    {{ ucfirst($inscription->status) }}
+                                </span>
+                            </div>
+                        </div>
+
+                        @if($inscription->etudiant->parents && $inscription->etudiant->parents->count() > 0)
+                        <h6 style="color: #007bff; margin-bottom: 15px; margin-top: 20px;"><i class="fas fa-users me-2"></i>Contact parent/tuteur</h6>
+                        @php $parent = $inscription->etudiant->parents->first(); @endphp
+                        <div class="row mb-2">
+                            <div class="col-sm-5"><strong>Nom:</strong></div>
+                            <div class="col-sm-7">{{ $parent->nom ?? 'Non renseigné' }} {{ $parent->prenoms ?? '' }}</div>
+                        </div>
+                        <div class="row mb-2">
+                            <div class="col-sm-5"><strong>Téléphone:</strong></div>
+                            <div class="col-sm-7">{{ $parent->telephone ?? 'Non renseigné' }}</div>
+                        </div>
+                        @endif
                     </div>
                 </div>
             </div>
