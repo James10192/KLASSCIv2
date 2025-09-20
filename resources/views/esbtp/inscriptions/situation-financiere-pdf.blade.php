@@ -608,12 +608,17 @@
             @foreach($inscription->paiements as $paiement)
             <tr>
                 <td>{{ $paiement->date_paiement ? $paiement->date_paiement->format('d/m/Y') : 'Non renseigne' }}</td>
-                <td>{{ $paiement->fraisCategory->name ?? 'Non renseigne' }}</td>
+                <td>
+                    {{ $paiement->fraisCategory->name ?? 'Non renseigne' }}
+                    @if($paiement->type_paiement === 'reliquat')
+                        <br><span style="background: #f59e0b; color: white; padding: 1px 3px; border-radius: 4px; font-size: 7px;">Reliquat</span>
+                    @endif
+                </td>
                 <td>{{ ucfirst($paiement->mode_paiement ?? 'Non renseigne') }}</td>
                 <td class="amount positive">{{ number_format($paiement->montant, 0, ',', ' ') }} FCFA</td>
                 <td>
-                    @if($paiement->status === 'valide')
-                        <span class="status-badge paye">Valide</span>
+                    @if($paiement->status === 'validé')
+                        <span class="status-badge paye">Validé</span>
                     @elseif($paiement->status === 'en_attente')
                         <span class="status-badge partiel">En attente</span>
                     @else

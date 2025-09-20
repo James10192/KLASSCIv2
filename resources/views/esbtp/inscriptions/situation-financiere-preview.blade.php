@@ -338,67 +338,6 @@
             </div>
         </div>
 
-        <!-- Reliquats d'Années Précédentes -->
-        @if($reliquatsEntrants->count() > 0)
-        <div class="main-card">
-            <div class="main-card-header">
-                <div class="main-card-title">
-                    <i class="fas fa-history"></i>
-                    Reliquats d'Années Précédentes
-                </div>
-                <div class="main-card-subtitle">Frais provenant d'inscriptions antérieures</div>
-            </div>
-            <div class="main-card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover financial-table">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Année d'Origine</th>
-                                <th>Catégorie de Frais</th>
-                                <th width="150" class="text-end">Montant Attendu</th>
-                                <th width="150" class="text-end">Montant Payé</th>
-                                <th width="150" class="text-end">Reliquat</th>
-                                <th width="100" class="text-center">Statut</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($reliquatsEntrants as $reliquat)
-                            <tr>
-                                <td>
-                                    <span class="badge bg-warning">{{ $reliquat->inscriptionSource->anneeUniversitaire->name ?? 'Non renseigné' }}</span>
-                                </td>
-                                <td>
-                                    <div class="d-flex align-items-center">
-                                        <i class="fas fa-clock me-2 text-warning"></i>
-                                        <strong>{{ $reliquat->fraisSubscription->fraisCategory->name ?? 'Non renseigné' }}</strong>
-                                    </div>
-                                </td>
-                                <td class="text-end">
-                                    <span class="fw-bold">{{ number_format($reliquat->montant_attendu, 0, ',', ' ') }} FCFA</span>
-                                </td>
-                                <td class="text-end">
-                                    <span class="text-success fw-bold">{{ number_format($reliquat->montant_paye, 0, ',', ' ') }} FCFA</span>
-                                </td>
-                                <td class="text-end">
-                                    <span class="text-warning fw-bold">{{ number_format($reliquat->montant_reliquat, 0, ',', ' ') }} FCFA</span>
-                                </td>
-                                <td class="text-center">
-                                    @if($reliquat->statut == 'soldé')
-                                        <span class="status-badge soldé">Soldé</span>
-                                    @elseif($reliquat->montant_paye > 0)
-                                        <span class="status-badge partiel">Partiel</span>
-                                    @else
-                                        <span class="status-badge impayé">Impayé</span>
-                                    @endif
-                                </td>
-                            </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-        @endif
 
         <!-- Historique des Paiements -->
         <div class="main-card">
@@ -431,10 +370,12 @@
                                         <div class="d-flex align-items-center">
                                             @if($paiement->type_paiement == 'reliquat')
                                                 <i class="fas fa-history me-2 text-warning"></i>
+                                                {{ $paiement->fraisCategory->name ?? 'Non renseigné' }}
+                                                <span class="badge bg-warning ms-2">Reliquat</span>
                                             @else
                                                 <i class="fas fa-money-bill me-2 text-success"></i>
+                                                {{ $paiement->fraisCategory->name ?? 'Non renseigné' }}
                                             @endif
-                                            {{ $paiement->fraisCategory->name ?? 'Non renseigné' }}
                                         </div>
                                     </td>
                                     <td>{{ $paiement->mode_paiement ?? 'Non renseigné' }}</td>
