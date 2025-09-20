@@ -305,10 +305,19 @@ class ESBTPEvaluationController extends Controller
     {
         $evaluation->load(['classe', 'matiere', 'createdBy', 'updatedBy', 'notes.etudiant']);
 
+        // Récupérer l'année universitaire courante
+        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
         // Récupérer les étudiants qui n'ont pas encore de note pour cette évaluation
         $etudiantsAvecNote = $evaluation->notes->pluck('etudiant_id')->toArray();
-        $etudiantsSansNote = ESBTPEtudiant::whereHas('inscriptions', function($query) use ($evaluation) {
-                $query->where('classe_id', $evaluation->classe_id);
+
+        // Récupérer uniquement les étudiants avec inscriptions actives sur l'année courante
+        $etudiantsSansNote = ESBTPEtudiant::whereHas('inscriptions', function($query) use ($evaluation, $anneeCourante) {
+                $query->where('classe_id', $evaluation->classe_id)
+                      ->where('status', 'active');
+                if ($anneeCourante) {
+                    $query->where('annee_universitaire_id', $anneeCourante->id);
+                }
             })
             ->whereNotIn('id', $etudiantsAvecNote)
             ->orderBy('nom')

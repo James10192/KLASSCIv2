@@ -14,6 +14,9 @@
                 <p class="header-subtitle">{{ $evaluation->titre }}</p>
             </div>
             <div class="header-actions">
+                <a href="{{ route('esbtp.notes.saisie-rapide.pdf', $evaluation) }}" class="btn-acasi danger me-2">
+                    <i class="fas fa-file-pdf"></i>Feuille PDF vierge
+                </a>
                 <a href="{{ route('esbtp.evaluations.pdf', $evaluation) }}" class="btn-acasi secondary me-2">
                     <i class="fas fa-file-pdf"></i>Exporter PDF
                 </a>

@@ -86,13 +86,21 @@
                                 <i class="fas fa-user"></i>Informations personnelles
                             </div>
                                     <div class="text-center mb-4">
-                                        @if($etudiant->photo_url)
-                                            <img src="{{ $etudiant->photo_url }}" alt="Photo de profil" class="rounded-circle img-thumbnail" style="width: 150px; height: 150px; object-fit: cover;">
-                                        @else
-                                            <div class="bg-light d-flex align-items-center justify-content-center rounded-circle mx-auto" style="width: 150px; height: 150px;">
-                                                <i class="fas fa-user fa-5x text-secondary"></i>
+                                        <div class="photo-container position-relative mx-auto" style="width: 150px; height: 150px; cursor: pointer;" onclick="document.getElementById('photo-upload').click()">
+                                            @if($etudiant->photo_url)
+                                                <img src="{{ $etudiant->photo_url }}" alt="Photo de profil" class="rounded-circle img-thumbnail" style="width: 150px; height: 150px; object-fit: cover;">
+                                            @else
+                                                <div class="bg-light d-flex align-items-center justify-content-center rounded-circle" style="width: 150px; height: 150px;">
+                                                    <i class="fas fa-user fa-5x text-secondary"></i>
+                                                </div>
+                                            @endif
+                                            <!-- Overlay caméra -->
+                                            <div class="photo-overlay position-absolute bottom-0 end-0 bg-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; border: 3px solid white;">
+                                                <i class="fas fa-camera text-white"></i>
                                             </div>
-                                        @endif
+                                        </div>
+                                        <!-- Input caché pour upload -->
+                                        <input type="file" id="photo-upload" accept="image/*" style="display: none;" onchange="uploadPhoto(this)">
                                         <h5 class="mt-3">{{ $etudiant->nom }} {{ $etudiant->prenoms }}</h5>
                                         <p class="text-muted">
                                             Matricule: <strong>{{ $etudiant->matricule }}</strong>
@@ -791,6 +799,89 @@ async function deleteStudent() {
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         `;
         modalBody.insertBefore(alertDiv, modalBody.firstChild);
+    }
+}
+
+// Fonction pour upload de photo
+async function uploadPhoto(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    // Vérifier le type de fichier
+    if (!file.type.startsWith('image/')) {
+        alert('Veuillez sélectionner un fichier image valide.');
+        return;
+    }
+
+    // Vérifier la taille (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+        alert('Le fichier est trop volumineux. Taille maximale: 5MB');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('photo', file);
+    formData.append('_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
+
+    try {
+        // Afficher un indicateur de chargement
+        const photoContainer = document.querySelector('.photo-container');
+        photoContainer.style.opacity = '0.6';
+
+        const response = await fetch('{{ route("esbtp.etudiants.update-photo", $etudiant->id) }}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            // Mettre à jour l'image
+            const imgElement = photoContainer.querySelector('img');
+            if (imgElement) {
+                imgElement.src = data.photo_url + '?t=' + new Date().getTime();
+            } else {
+                // Créer l'image si elle n'existe pas
+                photoContainer.innerHTML = `
+                    <img src="${data.photo_url}?t=${new Date().getTime()}" alt="Photo de profil" class="rounded-circle img-thumbnail" style="width: 150px; height: 150px; object-fit: cover;">
+                    <div class="photo-overlay position-absolute bottom-0 end-0 bg-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; border: 3px solid white;">
+                        <i class="fas fa-camera text-white"></i>
+                    </div>
+                `;
+            }
+
+            // Afficher un message de succès
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-success alert-dismissible fade show';
+            alertDiv.innerHTML = `
+                <i class="fas fa-check-circle me-2"></i>
+                Photo mise à jour avec succès!
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.querySelector('.p-lg').insertBefore(alertDiv, document.querySelector('.p-lg').firstChild);
+
+            // Supprimer l'alerte après 3 secondes
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 3000);
+
+        } else {
+            throw new Error(data.message || 'Erreur lors de l\'upload');
+        }
+
+    } catch (error) {
+        console.error('Erreur upload photo:', error);
+        alert('Erreur lors de la mise à jour de la photo: ' + error.message);
+    } finally {
+        // Restaurer l'opacité
+        document.querySelector('.photo-container').style.opacity = '1';
+        // Réinitialiser l'input
+        input.value = '';
     }
 }
 </script>

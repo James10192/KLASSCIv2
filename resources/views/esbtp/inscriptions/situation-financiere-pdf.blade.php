@@ -440,11 +440,17 @@
     <table class="student-info-table" style="width: 100%; margin-bottom: 15px; border-collapse: collapse;">
         <tr>
             <td rowspan="{{ $inscription->etudiant->parents && $inscription->etudiant->parents->count() > 0 ? '5' : '4' }}" style="width: 120px; text-align: center; vertical-align: top; padding: 10px; border: 1px solid #e5e7eb;">
-                @if($inscription->etudiant->photo_url)
-                    <img src="{{ $inscription->etudiant->photo_url }}" alt="Photo" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid #007bff;">
+                @if($inscription->etudiant->photo && file_exists(storage_path('app/public/' . $inscription->etudiant->photo)))
+                    @php
+                        $photoPath = storage_path('app/public/' . $inscription->etudiant->photo);
+                        $photoData = base64_encode(file_get_contents($photoPath));
+                        $photoMime = mime_content_type($photoPath);
+                        $photoSrc = 'data:' . $photoMime . ';base64,' . $photoData;
+                    @endphp
+                    <img src="{{ $photoSrc }}" alt="Photo" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid #007bff;">
                 @else
-                    <div style="width: 100px; height: 100px; border-radius: 50%; background: #f3f4f6; display: flex; align-items: center; justify-content: center; border: 2px solid #007bff;">
-                        <i class="fas fa-user" style="font-size: 40px; color: #6b7280;"></i>
+                    <div style="width: 100px; height: 100px; border-radius: 50%; background: #f3f4f6; border: 2px solid #007bff; text-align: center; line-height: 100px; font-size: 32px; color: #6b7280;">
+                        👤
                     </div>
                 @endif
                 <div style="margin-top: 8px; font-weight: bold; font-size: 9px;">{{ $inscription->etudiant->matricule }}</div>

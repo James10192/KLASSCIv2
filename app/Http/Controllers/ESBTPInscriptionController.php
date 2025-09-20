@@ -1986,6 +1986,10 @@ class ESBTPInscriptionController extends Controller
             'logo' => Setting::get('school_logo', null),
         ];
 
+        // Augmenter le temps d'exécution pour le PDF
+        set_time_limit(120);
+        ini_set('memory_limit', '512M');
+
         // Générer le PDF
         $pdf = Pdf::loadView('esbtp.inscriptions.situation-financiere-pdf', compact(
             'inscription',
@@ -1996,6 +2000,21 @@ class ESBTPInscriptionController extends Controller
         ));
 
         $pdf->setPaper('A4', 'portrait');
+
+        // Optimiser les options DomPDF pour les images
+        $pdf->setOptions([
+            'isHtml5ParserEnabled' => true,
+            'isRemoteEnabled' => true,
+            'defaultFont' => 'DejaVu Sans',
+            'dpi' => 96,
+            'defaultMediaType' => 'print',
+            'isFontSubsettingEnabled' => true,
+            'isPhpEnabled' => true,
+            'margin-top' => 10,
+            'margin-right' => 10,
+            'margin-bottom' => 10,
+            'margin-left' => 10,
+        ]);
 
         $filename = 'situation_financiere_' .
                    $inscription->etudiant->matricule . '_' .

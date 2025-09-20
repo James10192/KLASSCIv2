@@ -303,9 +303,16 @@ class ESBTPNoteController extends Controller
     {
         $evaluation->load(['classe', 'matiere', 'notes.etudiant']);
 
-        // Récupérer tous les étudiants de la classe
-        $etudiants = ESBTPEtudiant::whereHas('inscriptions', function($query) use ($evaluation) {
-                $query->where('classe_id', $evaluation->classe_id);
+        // Récupérer l'année universitaire courante
+        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        // Récupérer uniquement les étudiants avec inscriptions actives sur l'année courante
+        $etudiants = ESBTPEtudiant::whereHas('inscriptions', function($query) use ($evaluation, $anneeCourante) {
+                $query->where('classe_id', $evaluation->classe_id)
+                      ->where('status', 'active');
+                if ($anneeCourante) {
+                    $query->where('annee_universitaire_id', $anneeCourante->id);
+                }
             })
             ->with(['notes' => function($query) use ($evaluation) {
                 $query->where('evaluation_id', $evaluation->id);
@@ -317,6 +324,46 @@ class ESBTPNoteController extends Controller
         $notes = $evaluation->notes;
 
         return view('esbtp.notes.saisie-rapide', compact('evaluation', 'etudiants', 'notes'));
+    }
+
+    /**
+     * Génère un PDF pour la saisie rapide des notes.
+     *
+     * @param ESBTPEvaluation $evaluation
+     * @return \Illuminate\Http\Response
+     */
+    public function saisieRapidePDF(ESBTPEvaluation $evaluation)
+    {
+        $evaluation->load(['classe', 'matiere']);
+
+        // Récupérer l'année universitaire courante
+        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        // Récupérer uniquement les étudiants avec inscriptions actives sur l'année courante
+        $etudiants = ESBTPEtudiant::whereHas('inscriptions', function($query) use ($evaluation, $anneeCourante) {
+                $query->where('classe_id', $evaluation->classe_id)
+                      ->where('status', 'active');
+                if ($anneeCourante) {
+                    $query->where('annee_universitaire_id', $anneeCourante->id);
+                }
+            })
+            ->orderBy('nom')
+            ->get();
+
+        // Récupérer les paramètres de l'établissement
+        $etablissement = [
+            'nom' => \App\Models\Setting::get('school_name', 'ESBTP-yAKRO'),
+            'adresse' => \App\Models\Setting::get('school_address', ''),
+            'telephone' => \App\Models\Setting::get('school_phone', ''),
+            'email' => \App\Models\Setting::get('school_email', ''),
+            'logo' => \App\Models\Setting::get('school_logo', '')
+        ];
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('esbtp.notes.saisie-rapide-pdf', compact('evaluation', 'etudiants', 'anneeCourante', 'etablissement'));
+
+        $filename = 'saisie-notes-' . \Illuminate\Support\Str::slug($evaluation->titre) . '-' . date('Y-m-d') . '.pdf';
+
+        return $pdf->download($filename);
     }
 
     /**

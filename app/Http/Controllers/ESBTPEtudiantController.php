@@ -1671,4 +1671,59 @@ class ESBTPEtudiantController extends Controller
             return back()->with('error', 'Erreur lors de la génération de l\'attestation: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Mettre à jour la photo de profil d'un étudiant
+     */
+    public function updatePhoto(Request $request, ESBTPEtudiant $etudiant)
+    {
+        $validator = Validator::make($request->all(), [
+            'photo' => 'required|image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Le fichier doit être une image valide (jpeg, png, jpg, gif) de maximum 5MB.'
+            ], 422);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Supprimer l'ancienne photo si elle existe
+            if ($etudiant->photo && Storage::disk('public')->exists($etudiant->photo)) {
+                Storage::disk('public')->delete($etudiant->photo);
+            }
+
+            // Stocker la nouvelle photo
+            $photo = $request->file('photo');
+            $filename = 'etudiant_' . $etudiant->id . '_' . time() . '.' . $photo->getClientOriginalExtension();
+            $path = $photo->storeAs('photos', $filename, 'public');
+
+            // Mettre à jour le chemin de la photo dans la base de données
+            $etudiant->update(['photo' => $path]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Photo mise à jour avec succès',
+                'photo_url' => asset('storage/' . $path)
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollback();
+
+            \Log::error('Erreur upload photo étudiant: ' . $e->getMessage(), [
+                'etudiant_id' => $etudiant->id,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la mise à jour de la photo: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
