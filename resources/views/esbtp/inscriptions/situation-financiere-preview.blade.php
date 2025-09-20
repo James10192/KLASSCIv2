@@ -264,7 +264,7 @@
                         </div>
                         <div style="color: #666; font-size: 14px;">
                             Année Universitaire: {{ $inscription->anneeUniversitaire->name }} |
-                            Classe: {{ $inscription->classe->name ?? 'N/A' }} |
+                            Classe: {{ $inscription->classe->name ?? 'Non renseigné' }} |
                             Généré le {{ now()->format('d/m/Y à H:i') }}
                         </div>
                     </div>
@@ -275,30 +275,30 @@
                             <h4><i class="fas fa-user"></i> Informations Étudiant</h4>
                             <div class="info-item">
                                 <span class="info-label">Matricule:</span>
-                                <span class="info-value">{{ $inscription->etudiant->matricule ?? 'N/A' }}</span>
+                                <span class="info-value">{{ $inscription->etudiant->matricule ?? 'Non renseigné' }}</span>
                             </div>
                             <div class="info-item">
                                 <span class="info-label">Email:</span>
-                                <span class="info-value">{{ $inscription->etudiant->email ?? 'N/A' }}</span>
+                                <span class="info-value">{{ $inscription->etudiant->email ?? 'Non renseigné' }}</span>
                             </div>
                             <div class="info-item">
                                 <span class="info-label">Téléphone:</span>
-                                <span class="info-value">{{ $inscription->etudiant->telephone ?? 'N/A' }}</span>
+                                <span class="info-value">{{ $inscription->etudiant->telephone ?? 'Non renseigné' }}</span>
                             </div>
                         </div>
                         <div class="info-section">
                             <h4><i class="fas fa-graduation-cap"></i> Informations Académiques</h4>
                             <div class="info-item">
                                 <span class="info-label">Filière:</span>
-                                <span class="info-value">{{ $inscription->filiere->name ?? 'N/A' }}</span>
+                                <span class="info-value">{{ $inscription->filiere->name ?? 'Non renseigné' }}</span>
                             </div>
                             <div class="info-item">
                                 <span class="info-label">Niveau:</span>
-                                <span class="info-value">{{ $inscription->niveau->name ?? 'N/A' }}</span>
+                                <span class="info-value">{{ $inscription->niveau->name ?? 'Non renseigné' }}</span>
                             </div>
                             <div class="info-item">
                                 <span class="info-label">Statut:</span>
-                                <span class="info-value">{{ ucfirst($inscription->affectation_status ?? 'affecté') }}</span>
+                                <span class="info-value">{{ str_replace('_', ' ', ucfirst($inscription->affectation_status ?? 'affecté')) }}</span>
                             </div>
                         </div>
                     </div>
@@ -359,7 +359,7 @@
                                 $pourcentagePaye = $frais->amount > 0 ? ($montantPaye / $frais->amount) * 100 : 0;
                             @endphp
                             <tr>
-                                <td>{{ $frais->fraisCategory->name ?? 'N/A' }}</td>
+                                <td>{{ $frais->fraisCategory->name ?? 'Non renseigné' }}</td>
                                 <td class="amount">{{ number_format($frais->amount, 0, ',', ' ') }} FCFA</td>
                                 <td class="amount positive">{{ number_format($montantPaye, 0, ',', ' ') }} FCFA</td>
                                 <td class="amount {{ $solde > 0 ? 'negative' : 'positive' }}">
@@ -403,8 +403,8 @@
                         <tbody>
                             @foreach($reliquats as $reliquat)
                             <tr>
-                                <td>{{ $reliquat->inscriptionSource->anneeUniversitaire->name ?? 'N/A' }}</td>
-                                <td>{{ $reliquat->fraisSubscription->fraisCategory->name ?? 'N/A' }}</td>
+                                <td>{{ $reliquat->inscriptionSource->anneeUniversitaire->name ?? 'Non renseigné' }}</td>
+                                <td>{{ $reliquat->fraisSubscription->fraisCategory->name ?? 'Non renseigné' }}</td>
                                 <td class="amount">{{ number_format($reliquat->montant_attendu, 0, ',', ' ') }} FCFA</td>
                                 <td class="amount">{{ number_format($reliquat->montant_paye, 0, ',', ' ') }} FCFA</td>
                                 <td class="amount negative">{{ number_format($reliquat->montant_reliquat, 0, ',', ' ') }} FCFA</td>
@@ -436,9 +436,9 @@
                         <tbody>
                             @foreach($inscription->paiements as $paiement)
                             <tr>
-                                <td>{{ $paiement->date_paiement ? $paiement->date_paiement->format('d/m/Y') : 'N/A' }}</td>
-                                <td>{{ $paiement->fraisCategory->name ?? 'N/A' }}</td>
-                                <td>{{ ucfirst($paiement->mode_paiement ?? 'N/A') }}</td>
+                                <td>{{ $paiement->date_paiement ? $paiement->date_paiement->format('d/m/Y') : 'Non renseigné' }}</td>
+                                <td>{{ $paiement->fraisCategory->name ?? 'Non renseigné' }}</td>
+                                <td>{{ ucfirst($paiement->mode_paiement ?? 'Non renseigné') }}</td>
                                 <td class="amount positive">{{ number_format($paiement->montant, 0, ',', ' ') }} FCFA</td>
                                 <td>
                                     @if($paiement->status === 'validé')
@@ -449,7 +449,7 @@
                                         <span class="status-badge impaye">{{ ucfirst($paiement->status) }}</span>
                                     @endif
                                 </td>
-                                <td>{{ $paiement->numero_recu ?? 'N/A' }}</td>
+                                <td>{{ $paiement->numero_recu ?? 'Non renseigné' }}</td>
                             </tr>
                             @endforeach
                         </tbody>

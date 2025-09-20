@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Situation Financière - {{ $inscription->etudiant->nom }} {{ $inscription->etudiant->prenoms }}</title>
+    <title>Situation Financiere - {{ $inscription->etudiant->nom }} {{ $inscription->etudiant->prenoms }}</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -236,7 +236,7 @@
             page-break-before: always;
         }
 
-        /* Éviter les coupures de page dans les éléments importants */
+        /* Eviter les coupures de page dans les elements importants */
         .summary-box, .student-info {
             page-break-inside: avoid;
         }
@@ -247,7 +247,7 @@
     </style>
 </head>
 <body>
-    <!-- En-tête du document -->
+    <!-- En-tete du document -->
     <div class="header">
         @if($etablissement['logo'] && file_exists(storage_path('app/public/' . $etablissement['logo'])))
             <img src="data:image/{{ pathinfo($etablissement['logo'], PATHINFO_EXTENSION) }};base64,{{ base64_encode(file_get_contents(storage_path('app/public/' . $etablissement['logo']))) }}" class="header-logo" alt="Logo">
@@ -259,75 +259,75 @@
         <div class="school-info">
             @if($etablissement['adresse']){{ $etablissement['adresse'] }}@endif
             @if($etablissement['telephone'] && $etablissement['adresse']) | @endif
-            @if($etablissement['telephone'])Tél: {{ $etablissement['telephone'] }}@endif
+            @if($etablissement['telephone'])Tel: {{ $etablissement['telephone'] }}@endif
             @if($etablissement['email'] && ($etablissement['adresse'] || $etablissement['telephone'])) | @endif
             @if($etablissement['email'])Email: {{ $etablissement['email'] }}@endif
         </div>
         @endif
 
-        <div class="document-title">SITUATION FINANCIÈRE</div>
+        <div class="document-title">SITUATION FINANCIERE</div>
         <div class="document-subtitle">
             {{ $inscription->etudiant->prenoms }} {{ $inscription->etudiant->nom }}
         </div>
         <div class="document-info">
-            Année Universitaire: {{ $inscription->anneeUniversitaire->name }} |
-            Classe: {{ $inscription->classe->name ?? 'N/A' }} |
-            Généré le {{ now()->format('d/m/Y à H:i') }}
+            Annee Universitaire: {{ $inscription->anneeUniversitaire->name }} |
+            Classe: {{ $inscription->classe->name ?? 'Non renseigne' }} |
+            Genere le {{ now()->format('d/m/Y a H:i') }}
         </div>
     </div>
 
-    <!-- Informations générales -->
+    <!-- Informations generales -->
     <div class="student-info">
         <div class="student-info-grid">
             <div class="student-info-row">
                 <div class="student-info-cell">
                     <span class="info-label">Matricule:</span>
-                    <span class="info-value">{{ $inscription->etudiant->matricule ?? 'N/A' }}</span>
+                    <span class="info-value">{{ $inscription->etudiant->matricule ?? 'Non renseigne' }}</span>
                 </div>
                 <div class="student-info-cell">
-                    <span class="info-label">Filière:</span>
-                    <span class="info-value">{{ $inscription->filiere->name ?? 'N/A' }}</span>
+                    <span class="info-label">Filiere:</span>
+                    <span class="info-value">{{ $inscription->filiere->name ?? 'Non renseigne' }}</span>
                 </div>
             </div>
             <div class="student-info-row">
                 <div class="student-info-cell">
                     <span class="info-label">Email:</span>
-                    <span class="info-value">{{ $inscription->etudiant->email ?? 'N/A' }}</span>
+                    <span class="info-value">{{ $inscription->etudiant->email ?? 'Non renseigne' }}</span>
                 </div>
                 <div class="student-info-cell">
                     <span class="info-label">Niveau:</span>
-                    <span class="info-value">{{ $inscription->niveau->name ?? 'N/A' }}</span>
+                    <span class="info-value">{{ $inscription->niveau->name ?? 'Non renseigne' }}</span>
                 </div>
             </div>
             <div class="student-info-row">
                 <div class="student-info-cell">
-                    <span class="info-label">Téléphone:</span>
-                    <span class="info-value">{{ $inscription->etudiant->telephone ?? 'N/A' }}</span>
+                    <span class="info-label">Telephone:</span>
+                    <span class="info-value">{{ $inscription->etudiant->telephone ?? 'Non renseigne' }}</span>
                 </div>
                 <div class="student-info-cell">
                     <span class="info-label">Statut:</span>
-                    <span class="info-value">{{ ucfirst($inscription->affectation_status ?? 'affecté') }}</span>
+                    <span class="info-value">{{ str_replace('_', ' ', ucfirst($inscription->affectation_status ?? 'affecte')) }}</span>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Synthèse financière -->
+    <!-- Synthese financiere -->
     <div class="summary-box">
         <div style="font-size: 14px; font-weight: bold; margin-bottom: 10px;">
-            <i class="fas fa-chart-pie"></i> SYNTHÈSE FINANCIÈRE
+            SYNTHESE FINANCIERE
         </div>
         <div class="summary-row">
             <div class="summary-label">Total des frais attendus:</div>
             <div class="summary-value">{{ number_format($statistiques['total_attendu'], 0, ',', ' ') }} FCFA</div>
         </div>
         <div class="summary-row">
-            <div class="summary-label">Total payé:</div>
+            <div class="summary-label">Total paye:</div>
             <div class="summary-value">{{ number_format($statistiques['total_paye'], 0, ',', ' ') }} FCFA</div>
         </div>
         @if($statistiques['total_reliquats'] > 0)
         <div class="summary-row">
-            <div class="summary-label">Reliquats à payer:</div>
+            <div class="summary-label">Reliquats a payer:</div>
             <div class="summary-value">{{ number_format($statistiques['total_reliquats'], 0, ',', ' ') }} FCFA</div>
         </div>
         @endif
@@ -337,20 +337,27 @@
         </div>
         <div class="progress-bar">
             <div class="progress-fill" style="width: {{ $statistiques['pourcentage_paye'] }}%">
-                {{ $statistiques['pourcentage_paye'] }}% payé
+                @if($statistiques['pourcentage_paye'] > 10)
+                    {{ $statistiques['pourcentage_paye'] }}% paye
+                @endif
             </div>
         </div>
+        @if($statistiques['pourcentage_paye'] <= 10)
+        <div style="text-align: center; font-size: 10px; margin-top: 5px; color: rgba(255,255,255,0.8);">
+            {{ $statistiques['pourcentage_paye'] }}% paye
+        </div>
+        @endif
     </div>
 
-    <!-- Détail des frais souscrits -->
-    <div class="section-title">DÉTAIL DES FRAIS SOUSCRITS</div>
+    <!-- Detail des frais souscrits -->
+    <div class="section-title">DETAIL DES FRAIS SOUSCRITS</div>
     @if($fraisSouscrits->count() > 0)
     <table class="table">
         <thead>
             <tr>
-                <th>Catégorie de Frais</th>
+                <th>Categorie de Frais</th>
                 <th>Montant Attendu</th>
-                <th>Montant Payé</th>
+                <th>Montant Paye</th>
                 <th>Solde</th>
                 <th>Statut</th>
             </tr>
@@ -360,12 +367,12 @@
             @php
                 $montantPaye = $inscription->paiements
                     ->where('frais_category_id', $frais->frais_category_id)
-                    ->where('status', 'validé')
+                    ->where('status', 'valide')
                     ->sum('montant');
                 $solde = $frais->amount - $montantPaye;
             @endphp
             <tr>
-                <td>{{ $frais->fraisCategory->name ?? 'N/A' }}</td>
+                <td>{{ $frais->fraisCategory->name ?? 'Non renseigne' }}</td>
                 <td class="amount">{{ number_format($frais->amount, 0, ',', ' ') }} FCFA</td>
                 <td class="amount positive">{{ number_format($montantPaye, 0, ',', ' ') }} FCFA</td>
                 <td class="amount {{ $solde > 0 ? 'negative' : 'positive' }}">
@@ -373,11 +380,11 @@
                 </td>
                 <td>
                     @if($solde <= 0)
-                        <span class="status-badge paye">Soldé</span>
+                        <span class="status-badge paye">Solde</span>
                     @elseif($montantPaye > 0)
                         <span class="status-badge partiel">Partiel</span>
                     @else
-                        <span class="status-badge impaye">Impayé</span>
+                        <span class="status-badge impaye">Impaye</span>
                     @endif
                 </td>
             </tr>
@@ -390,14 +397,14 @@
 
     <!-- Reliquats (s'il y en a) -->
     @if($reliquats->count() > 0)
-    <div class="section-title">RELIQUATS D'ANNÉES PRÉCÉDENTES</div>
+    <div class="section-title">RELIQUATS D'ANNEES PRECEDENTES</div>
     <table class="table">
         <thead>
             <tr>
-                <th>Année d'Origine</th>
-                <th>Catégorie</th>
+                <th>Annee d'Origine</th>
+                <th>Categorie</th>
                 <th>Montant Attendu</th>
-                <th>Montant Payé</th>
+                <th>Montant Paye</th>
                 <th>Reliquat</th>
                 <th>Statut</th>
             </tr>
@@ -405,8 +412,8 @@
         <tbody>
             @foreach($reliquats as $reliquat)
             <tr>
-                <td>{{ $reliquat->inscriptionSource->anneeUniversitaire->name ?? 'N/A' }}</td>
-                <td>{{ $reliquat->fraisSubscription->fraisCategory->name ?? 'N/A' }}</td>
+                <td>{{ $reliquat->inscriptionSource->anneeUniversitaire->name ?? 'Non renseigne' }}</td>
+                <td>{{ $reliquat->fraisSubscription->fraisCategory->name ?? 'Non renseigne' }}</td>
                 <td class="amount">{{ number_format($reliquat->montant_attendu, 0, ',', ' ') }} FCFA</td>
                 <td class="amount">{{ number_format($reliquat->montant_paye, 0, ',', ' ') }} FCFA</td>
                 <td class="amount negative">{{ number_format($reliquat->montant_reliquat, 0, ',', ' ') }} FCFA</td>
@@ -424,49 +431,49 @@
         <thead>
             <tr>
                 <th>Date</th>
-                <th>Catégorie</th>
+                <th>Categorie</th>
                 <th>Mode</th>
                 <th>Montant</th>
                 <th>Statut</th>
-                <th>Référence</th>
+                <th>Reference</th>
             </tr>
         </thead>
         <tbody>
             @foreach($inscription->paiements as $paiement)
             <tr>
-                <td>{{ $paiement->date_paiement ? $paiement->date_paiement->format('d/m/Y') : 'N/A' }}</td>
-                <td>{{ $paiement->fraisCategory->name ?? 'N/A' }}</td>
-                <td>{{ ucfirst($paiement->mode_paiement ?? 'N/A') }}</td>
+                <td>{{ $paiement->date_paiement ? $paiement->date_paiement->format('d/m/Y') : 'Non renseigne' }}</td>
+                <td>{{ $paiement->fraisCategory->name ?? 'Non renseigne' }}</td>
+                <td>{{ ucfirst($paiement->mode_paiement ?? 'Non renseigne') }}</td>
                 <td class="amount positive">{{ number_format($paiement->montant, 0, ',', ' ') }} FCFA</td>
                 <td>
-                    @if($paiement->status === 'validé')
-                        <span class="status-badge paye">Validé</span>
+                    @if($paiement->status === 'valide')
+                        <span class="status-badge paye">Valide</span>
                     @elseif($paiement->status === 'en_attente')
                         <span class="status-badge partiel">En attente</span>
                     @else
                         <span class="status-badge impaye">{{ ucfirst($paiement->status) }}</span>
                     @endif
                 </td>
-                <td>{{ $paiement->numero_recu ?? 'N/A' }}</td>
+                <td>{{ $paiement->numero_recu ?? 'Non renseigne' }}</td>
             </tr>
             @endforeach
         </tbody>
     </table>
     @else
-    <div class="no-data">Aucun paiement enregistré pour cette inscription.</div>
+    <div class="no-data">Aucun paiement enregistre pour cette inscription.</div>
     @endif
 
     <!-- Pied de page -->
     <div class="footer">
-        <p><strong>Document généré automatiquement le {{ now()->format('d/m/Y à H:i') }}</strong></p>
-        <p>{{ $etablissement['nom'] }} - Système de Gestion des Inscriptions</p>
+        <p><strong>Document genere automatiquement le {{ now()->format('d/m/Y a H:i') }}</strong></p>
+        <p>{{ $etablissement['nom'] }} - Systeme de Gestion des Inscriptions</p>
         @if($statistiques['solde_restant'] > 0)
             <p style="color: #dc3545; font-weight: bold;">
-                ⚠️ Solde restant à payer: {{ number_format($statistiques['solde_restant'], 0, ',', ' ') }} FCFA
+                ATTENTION: Solde restant a payer: {{ number_format($statistiques['solde_restant'], 0, ',', ' ') }} FCFA
             </p>
         @else
             <p style="color: #28a745; font-weight: bold;">
-                ✅ Situation financière à jour - Tous les frais sont soldés
+                SITUATION FINANCIERE A JOUR - Tous les frais sont soldes
             </p>
         @endif
     </div>

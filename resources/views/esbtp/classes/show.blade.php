@@ -260,6 +260,94 @@
                 </div>
                 <div class="main-card-subtitle">{{ $classe->nombre_etudiants }} étudiant(s) inscrit(s) dans cette classe pour l'année courante</div>
             </div>
+
+            <!-- Actions d'export -->
+            @if($classe->etudiants->count() > 0)
+            <div class="main-card-body" style="border-bottom: 1px solid #e5e7eb; background: #f8f9fa;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-1" style="font-weight: 600; color: #374151;">
+                            <i class="fas fa-download me-2" style="color: #6366f1;"></i>Documents d'export
+                        </h6>
+                        <p class="mb-0 text-muted" style="font-size: 0.875rem;">Générer et télécharger les listes pour cette classe</p>
+                    </div>
+                    <div class="d-flex gap-3">
+                        @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('enseignant'))
+
+                        <!-- Dropdown pour Liste d'Appel -->
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-outline-primary d-flex align-items-center gap-2"
+                                    style="border-color: #6366f1; color: #6366f1; font-weight: 500; padding: 0.5rem 1rem;">
+                                <i class="fas fa-clipboard-list"></i>
+                                <span>Liste d'Appel</span>
+                            </button>
+                            <button type="button" class="btn btn-outline-primary dropdown-toggle dropdown-toggle-split"
+                                    data-bs-toggle="dropdown" aria-expanded="false"
+                                    style="border-color: #6366f1; color: #6366f1;">
+                                <span class="visually-hidden">Toggle Dropdown</span>
+                            </button>
+                            <ul class="dropdown-menu" style="min-width: 180px;">
+                                <li>
+                                    <a class="dropdown-item d-flex align-items-center gap-2"
+                                       href="{{ route('esbtp.classes.liste-appel', ['classe' => $classe->id]) }}"
+                                       target="_blank">
+                                        <i class="fas fa-eye text-primary"></i>
+                                        <span>Aperçu</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item d-flex align-items-center gap-2"
+                                       href="{{ route('esbtp.classes.liste-appel.pdf', ['classe' => $classe->id]) }}">
+                                        <i class="fas fa-file-pdf text-danger"></i>
+                                        <span>Télécharger PDF</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <!-- Dropdown pour Liste Complète -->
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-outline-success d-flex align-items-center gap-2"
+                                    style="border-color: #10b981; color: #10b981; font-weight: 500; padding: 0.5rem 1rem;">
+                                <i class="fas fa-users"></i>
+                                <span>Liste Complète</span>
+                            </button>
+                            <button type="button" class="btn btn-outline-success dropdown-toggle dropdown-toggle-split"
+                                    data-bs-toggle="dropdown" aria-expanded="false"
+                                    style="border-color: #10b981; color: #10b981;">
+                                <span class="visually-hidden">Toggle Dropdown</span>
+                            </button>
+                            <ul class="dropdown-menu" style="min-width: 180px;">
+                                <li>
+                                    <a class="dropdown-item d-flex align-items-center gap-2"
+                                       href="{{ route('esbtp.classes.liste-complete', ['classe' => $classe->id]) }}"
+                                       target="_blank">
+                                        <i class="fas fa-eye text-primary"></i>
+                                        <span>Aperçu</span>
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <a class="dropdown-item d-flex align-items-center gap-2"
+                                       href="{{ route('esbtp.classes.liste-complete.pdf', ['classe' => $classe->id]) }}">
+                                        <i class="fas fa-file-pdf text-danger"></i>
+                                        <span>Télécharger PDF</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item d-flex align-items-center gap-2"
+                                       href="{{ route('esbtp.classes.liste-complete.excel', ['classe' => $classe->id]) }}">
+                                        <i class="fas fa-file-excel text-success"></i>
+                                        <span>Télécharger Excel</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+            @endif
             <div class="main-card-body">
                 @if($classe->etudiants->count() > 0)
                     <div class="table-responsive">

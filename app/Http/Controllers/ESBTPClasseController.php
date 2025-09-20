@@ -7,6 +7,7 @@ use App\Models\ESBTPFiliere;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPMatiere;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
@@ -663,7 +664,16 @@ class ESBTPClasseController extends Controller
             ->filter()
             ->sortBy(['nom', 'prenom']);
 
-        return view('esbtp.classes.liste-appel', compact('classe', 'etudiants', 'anneeCourante'));
+        // Récupérer les paramètres de l'établissement
+        $etablissement = [
+            'nom' => Setting::get('school_name', 'ESBTP-yAKRO'),
+            'adresse' => Setting::get('school_address', ''),
+            'telephone' => Setting::get('school_phone', ''),
+            'email' => Setting::get('school_email', ''),
+            'logo' => Setting::get('school_logo', '')
+        ];
+
+        return view('esbtp.classes.liste-appel', compact('classe', 'etudiants', 'anneeCourante', 'etablissement'));
     }
 
     /**
@@ -692,7 +702,16 @@ class ESBTPClasseController extends Controller
             ->filter()
             ->sortBy(['nom', 'prenom']);
 
-        $pdf = PDF::loadView('esbtp.classes.liste-appel-pdf', compact('classe', 'etudiants', 'anneeCourante'));
+        // Récupérer les paramètres de l'établissement
+        $etablissement = [
+            'nom' => Setting::get('school_name', 'ESBTP-yAKRO'),
+            'adresse' => Setting::get('school_address', ''),
+            'telephone' => Setting::get('school_phone', ''),
+            'email' => Setting::get('school_email', ''),
+            'logo' => Setting::get('school_logo', '')
+        ];
+
+        $pdf = PDF::loadView('esbtp.classes.liste-appel-pdf', compact('classe', 'etudiants', 'anneeCourante', 'etablissement'));
 
         $filename = 'liste-appel-' . Str::slug($classe->name) . '-' . date('Y-m-d') . '.pdf';
 
@@ -725,7 +744,16 @@ class ESBTPClasseController extends Controller
             ->filter()
             ->sortBy(['nom', 'prenom']);
 
-        return view('esbtp.classes.liste-complete', compact('classe', 'etudiants', 'anneeCourante'));
+        // Récupérer les paramètres de l'établissement
+        $etablissement = [
+            'nom' => Setting::get('school_name', 'ESBTP-yAKRO'),
+            'adresse' => Setting::get('school_address', ''),
+            'telephone' => Setting::get('school_phone', ''),
+            'email' => Setting::get('school_email', ''),
+            'logo' => Setting::get('school_logo', '')
+        ];
+
+        return view('esbtp.classes.liste-complete', compact('classe', 'etudiants', 'anneeCourante', 'etablissement'));
     }
 
     /**
@@ -754,7 +782,16 @@ class ESBTPClasseController extends Controller
             ->filter()
             ->sortBy(['nom', 'prenom']);
 
-        $pdf = PDF::loadView('esbtp.classes.liste-complete-pdf', compact('classe', 'etudiants', 'anneeCourante'));
+        // Récupérer les paramètres de l'établissement
+        $etablissement = [
+            'nom' => Setting::get('school_name', 'ESBTP-yAKRO'),
+            'adresse' => Setting::get('school_address', ''),
+            'telephone' => Setting::get('school_phone', ''),
+            'email' => Setting::get('school_email', ''),
+            'logo' => Setting::get('school_logo', '')
+        ];
+
+        $pdf = PDF::loadView('esbtp.classes.liste-complete-pdf', compact('classe', 'etudiants', 'anneeCourante', 'etablissement'));
 
         $filename = 'liste-complete-' . Str::slug($classe->name) . '-' . date('Y-m-d') . '.pdf';
 
@@ -787,8 +824,17 @@ class ESBTPClasseController extends Controller
             ->filter()
             ->sortBy(['nom', 'prenom']);
 
+        // Récupérer les paramètres de l'établissement
+        $etablissement = [
+            'nom' => Setting::get('school_name', 'ESBTP-yAKRO'),
+            'adresse' => Setting::get('school_address', ''),
+            'telephone' => Setting::get('school_phone', ''),
+            'email' => Setting::get('school_email', ''),
+            'logo' => Setting::get('school_logo', '')
+        ];
+
         $filename = 'liste-complete-' . Str::slug($classe->name) . '-' . date('Y-m-d') . '.xlsx';
 
-        return Excel::download(new \App\Exports\ClasseEtudiantsExport($classe, $etudiants, $anneeCourante), $filename);
+        return Excel::download(new \App\Exports\ClasseEtudiantsExport($classe, $etudiants, $anneeCourante, $etablissement), $filename);
     }
 }
