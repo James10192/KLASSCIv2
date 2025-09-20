@@ -320,8 +320,9 @@ class ESBTPNoteController extends Controller
             ->orderBy('nom')
             ->get();
 
-        // Récupérer toutes les notes de l'évaluation
-        $notes = $evaluation->notes;
+        // Récupérer uniquement les notes des étudiants de l'année courante pour cette évaluation
+        $etudiantsIds = $etudiants->pluck('id');
+        $notes = $evaluation->notes->whereIn('etudiant_id', $etudiantsIds);
 
         return view('esbtp.notes.saisie-rapide', compact('evaluation', 'etudiants', 'notes'));
     }

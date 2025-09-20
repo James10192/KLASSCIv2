@@ -2515,11 +2515,13 @@ class ESBTPBulletinController extends Controller
     {
         $this->validate($request, [
             'semestre' => 'nullable|in:1,2',
+            'periode' => 'nullable|in:1,2', // Ajout du paramètre periode
             'annee_universitaire_id' => 'nullable|exists:esbtp_annee_universitaires,id',
             'include_all_statuses' => 'nullable|boolean',
         ]);
 
-        $semestre = $request->semestre;
+        // Gérer les deux paramètres: semestre et periode (compatibilité)
+        $semestre = $request->semestre ?? $request->periode;
         $annee_universitaire_id = $request->annee_universitaire_id;
 
         // CORRECTION: Conversion du format du semestre pour compatibilité avec le format attendu
@@ -2572,12 +2574,14 @@ class ESBTPBulletinController extends Controller
 
         // Si un semestre est spécifié, filtrer par ce semestre
         if ($semestre) {
+            \Log::info('Filtrage par semestre:', ['semestre' => $semestre]);
             $notesQuery->where(function ($q) use ($semestre) {
-                    $q->where('semestre', $semestre)
-                        ->whereHas('evaluation', function ($query) use ($semestre) {
-                            $query->where('periode', 'semestre'.$semestre);
-                        });
-                });
+                $q->where('semestre', $semestre)
+                  ->orWhereHas('evaluation', function ($query) use ($semestre) {
+                      $query->where('periode', 'semestre'.$semestre)
+                            ->orWhere('periode', $semestre);
+                  });
+            });
         }
 
         $notes = $notesQuery->get();
@@ -2949,11 +2953,18 @@ class ESBTPBulletinController extends Controller
             // Validation des paramètres
             $validator = Validator::make($request->all(), [
                 'classe_id' => 'required|exists:esbtp_classes,id',
-                'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id'
+                'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
+                'periode' => 'nullable|in:semestre1,semestre2,1,2'
             ]);
 
             if ($validator->fails()) {
                 return redirect()->back()->withErrors($validator)->withInput();
+            }
+
+            // Déterminer la période
+            $periode = $request->periode ?? 'semestre1';
+            if (in_array($periode, ['1', '2'])) {
+                $periode = 'semestre' . $periode;
             }
 
             // Utiliser le service pour générer les données
@@ -2961,7 +2972,7 @@ class ESBTPBulletinController extends Controller
                 $etudiantId,
                 $request->classe_id,
                 $request->annee_universitaire_id,
-                'semestre1'
+                $periode
             );
 
             // Préparer le logo
@@ -2975,11 +2986,11 @@ class ESBTPBulletinController extends Controller
             if (str_contains($e->getMessage(), 'Configuration bulletin manquante')) {
                 $configMatieresUrl = route('esbtp.bulletins.config-matieres', [
                     'classe_id' => $request->classe_id,
-                    'periode' => 'semestre1',
+                    'periode' => $periode,
                     'annee_universitaire_id' => $request->annee_universitaire_id,
                     'bulletin' => $etudiantId
                 ]);
-                
+
                 return redirect($configMatieresUrl)->with('error', $e->getMessage());
             }
             

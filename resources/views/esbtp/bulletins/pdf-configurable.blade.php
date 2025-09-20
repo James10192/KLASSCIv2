@@ -385,11 +385,19 @@
                 <tr>
                     <!-- Photo de l'étudiant -->
                     <td rowspan="2" style="width: 120px; text-align: center; vertical-align: top; padding: 10px;">
-                        @if($photoEtudiantBase64)
+                        @if(isset($photoEtudiantBase64) && $photoEtudiantBase64)
                             <img src="{{ $photoEtudiantBase64 }}" alt="Photo" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid #007bff;">
+                            <div style="font-size: 8px; color: green;">PHOTO TROUVÉE</div>
                         @else
                             <div style="width: 100px; height: 100px; border-radius: 50%; background: #f3f4f6; border: 2px solid #007bff; text-align: center; line-height: 100px; font-size: 32px; color: #6b7280;">
                                 👤
+                            </div>
+                            <div style="font-size: 8px; color: red;">
+                                @if(!isset($photoEtudiantBase64))
+                                    VAR NON DÉFINIE
+                                @elseif(!$photoEtudiantBase64)
+                                    VAR VIDE
+                                @endif
                             </div>
                         @endif
                         <div style="margin-top: 8px; font-weight: bold; font-size: 9px;">{{ $etudiant->matricule }}</div>
@@ -411,15 +419,12 @@
                             <span class="info-label">Genre :</span>
                             <span class="info-value">{{ $etudiant->genre == 'M' ? 'Masculin' : 'Féminin' }}</span>
                         </div>
-                        @if(($settings['bulletin_show_redoublant'] ?? '1') == '1')
                         <div class="info-row">
                             <span class="info-label">Redoublant :</span>
                             <span class="info-value">{{ $etudiant->inscriptions->first()->is_redoublant ?? false ? 'Oui' : 'Non' }}</span>
                         </div>
-                        @endif
                     </td>
                     <td class="info-group">
-                        @if(($settings['bulletin_show_class_info'] ?? '1') == '1')
                         <div class="info-row">
                             <span class="info-label">Classe :</span>
                             <span class="info-value">{{ $classe->libelle ?? $classe->name }}</span>
@@ -432,13 +437,10 @@
                             <span class="info-label">Filière :</span>
                             <span class="info-value">{{ $classe->filiere->name ?? 'N/A' }}</span>
                         </div>
-                        @endif
-                        @if(($settings['bulletin_show_effectif'] ?? '1') == '1')
                         <div class="info-row">
                             <span class="info-label">Effectif :</span>
                             <span class="info-value">{{ $effectif }}</span>
                         </div>
-                        @endif
                         <div class="info-row">
                             <span class="info-label">Téléphone :</span>
                             <span class="info-value">{{ $etudiant->telephone ?? 'Non renseigné' }}</span>

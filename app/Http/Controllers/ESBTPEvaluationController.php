@@ -308,22 +308,26 @@ class ESBTPEvaluationController extends Controller
         // Récupérer l'année universitaire courante
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
-        // Récupérer les étudiants qui n'ont pas encore de note pour cette évaluation
-        $etudiantsAvecNote = $evaluation->notes->pluck('etudiant_id')->toArray();
-
-        // Récupérer uniquement les étudiants avec inscriptions actives sur l'année courante
-        $etudiantsSansNote = ESBTPEtudiant::whereHas('inscriptions', function($query) use ($evaluation, $anneeCourante) {
+        // Récupérer tous les étudiants avec inscriptions actives sur l'année courante
+        $etudiantsAnneeCourante = ESBTPEtudiant::whereHas('inscriptions', function($query) use ($evaluation, $anneeCourante) {
                 $query->where('classe_id', $evaluation->classe_id)
                       ->where('status', 'active');
                 if ($anneeCourante) {
                     $query->where('annee_universitaire_id', $anneeCourante->id);
                 }
             })
-            ->whereNotIn('id', $etudiantsAvecNote)
             ->orderBy('nom')
             ->get();
 
-        return view('esbtp.evaluations.show', compact('evaluation', 'etudiantsSansNote'));
+        // Filtrer les notes pour ne garder que celles des étudiants de l'année courante
+        $etudiantsAnneeCouranteIds = $etudiantsAnneeCourante->pluck('id');
+        $notesAnneeCourante = $evaluation->notes->whereIn('etudiant_id', $etudiantsAnneeCouranteIds);
+        $etudiantsAvecNote = $notesAnneeCourante->pluck('etudiant_id')->toArray();
+
+        // Récupérer les étudiants de l'année courante qui n'ont pas encore de note
+        $etudiantsSansNote = $etudiantsAnneeCourante->whereNotIn('id', $etudiantsAvecNote);
+
+        return view('esbtp.evaluations.show', compact('evaluation', 'etudiantsSansNote', 'notesAnneeCourante'));
     }
 
     /**

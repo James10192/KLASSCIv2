@@ -162,7 +162,7 @@
                                     </h6>
                                 </div>
                                 <div class="card-body p-0">
-                                    @if($evaluation->notes->isNotEmpty())
+                                    @if($notesAnneeCourante->isNotEmpty())
                                         <div class="table-responsive">
                                             <table class="table table-hover align-middle mb-0">
                                                 <thead class="bg-light">
@@ -176,7 +176,7 @@
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    @foreach($evaluation->notes as $note)
+                                                    @foreach($notesAnneeCourante as $note)
                                                         <tr>
                                                             <td class="fw-medium">{{ $note->etudiant->nom_complet }}</td>
                                                             <td class="text-center">{{ $note->note }}</td>
@@ -266,7 +266,7 @@
                 </div>
             </div>
 
-            @if($evaluation->notes->isNotEmpty())
+            @if($notesAnneeCourante->isNotEmpty())
             <div class="card shadow-sm">
                 <div class="card-header bg-white py-3">
                     <h5 class="mb-0 text-primary">
@@ -276,20 +276,20 @@
                 <div class="card-body">
                     <div class="text-center mb-4">
                         <h6 class="mb-1 text-muted">Moyenne de classe</h6>
-                        <h3 class="mb-0 fw-bold">{{ number_format($evaluation->notes->avg('note'), 2) }} / {{ $evaluation->bareme }}</h3>
+                        <h3 class="mb-0 fw-bold">{{ number_format($notesAnneeCourante->avg('note'), 2) }} / {{ $evaluation->bareme }}</h3>
                     </div>
 
                     <div class="row g-3 mb-4">
                         <div class="col-6">
                             <div class="bg-light rounded p-3">
                                 <h6 class="mb-1 text-muted small">Note maximale</h6>
-                                <h5 class="mb-0 text-success">{{ number_format($evaluation->notes->max('note'), 2) }}</h5>
+                                <h5 class="mb-0 text-success">{{ number_format($notesAnneeCourante->max('note'), 2) }}</h5>
                             </div>
                         </div>
                         <div class="col-6">
                             <div class="bg-light rounded p-3">
                                 <h6 class="mb-1 text-muted small">Note minimale</h6>
-                                <h5 class="mb-0 text-danger">{{ number_format($evaluation->notes->min('note'), 2) }}</h5>
+                                <h5 class="mb-0 text-danger">{{ number_format($notesAnneeCourante->min('note'), 2) }}</h5>
                             </div>
                         </div>
                     </div>
@@ -298,18 +298,18 @@
                         <div class="col-6">
                             <div class="bg-light rounded p-3">
                                 <h6 class="mb-1 text-muted small">Nombre de notes</h6>
-                                <h5 class="mb-0">{{ $evaluation->notes->count() }}</h5>
+                                <h5 class="mb-0">{{ $notesAnneeCourante->count() }}</h5>
                             </div>
                         </div>
                         <div class="col-6">
                             <div class="bg-light rounded p-3">
                                 <h6 class="mb-1 text-muted small">Taux de réussite</h6>
                                 @php
-                                    $successCount = $evaluation->notes->filter(function($note) use ($evaluation) {
+                                    $successCount = $notesAnneeCourante->filter(function($note) use ($evaluation) {
                                         return $note->note >= ($evaluation->bareme / 2);
                                     })->count();
-                                    $successRate = $evaluation->notes->count() > 0
-                                        ? ($successCount / $evaluation->notes->count()) * 100
+                                    $successRate = $notesAnneeCourante->count() > 0
+                                        ? ($successCount / $notesAnneeCourante->count()) * 100
                                         : 0;
                                 @endphp
                                 <h5 class="mb-0 {{ $successRate >= 60 ? 'text-success' : ($successRate >= 40 ? 'text-warning' : 'text-danger') }}">
@@ -330,12 +330,12 @@
                                     ['min' => 15, 'max' => 20, 'class' => 'bg-success']
                                 ];
 
-                                $total = $evaluation->notes->count();
+                                $total = $notesAnneeCourante->count();
                             @endphp
 
                             @foreach($ranges as $range)
                                 @php
-                                    $count = $evaluation->notes->filter(function($note) use ($range) {
+                                    $count = $notesAnneeCourante->filter(function($note) use ($range) {
                                         return $note->note >= $range['min'] && $note->note < $range['max'];
                                     })->count();
 

@@ -131,9 +131,9 @@
                                 <div class="info-item">
                                     <div class="info-label">État des notes</div>
                                     <div class="info-value">
-                                        <span class="status-badge {{ $evaluation->notes->count() > 0 ? 'success' : 'warning' }}">
-                                            <i class="fas {{ $evaluation->notes->count() > 0 ? 'fa-check-circle' : 'fa-exclamation-circle' }} me-1"></i>
-                                            {{ $evaluation->notes->count() > 0 ? $evaluation->notes->count() . ' notes saisies' : 'Aucune note saisie' }}
+                                        <span class="status-badge {{ $notes->count() > 0 ? 'success' : 'warning' }}">
+                                            <i class="fas {{ $notes->count() > 0 ? 'fa-check-circle' : 'fa-exclamation-circle' }} me-1"></i>
+                                            {{ $notes->count() > 0 ? $notes->count() . ' notes saisies cette année' : 'Aucune note saisie cette année' }}
                                         </span>
                                     </div>
                                 </div>
