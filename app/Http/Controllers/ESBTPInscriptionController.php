@@ -532,31 +532,40 @@ class ESBTPInscriptionController extends Controller
 
             $totalPaye = $paiements->sum('montant');
 
-            // Pour les frais obligatoires, toujours recalculer selon le statut d'affectation actuel
-            // au lieu d'utiliser le montant fixe de la souscription
-            if ($rule) {
+            // PRIORITÉ: Utiliser d'abord le montant de la souscription (modifiable par admin)
+            if ($subscription) {
+                $montantAttendu = $subscription->amount;
+                $isConfigured = true;
+
+                \Log::info('Calcul frais obligatoire - utilise souscription', [
+                    'category' => $category->name,
+                    'montant_attendu' => $montantAttendu,
+                    'subscription_amount' => $subscription->amount,
+                    'source' => 'souscription_prioritaire'
+                ]);
+            } else if ($rule) {
+                // Fallback: utiliser les règles selon le statut d'affectation
                 $montantAttendu = $rule->getMontantByStatus($affectationStatus);
                 $isConfigured = true;
 
-                // Log pour debugging du calcul des frais obligatoires
-                \Log::info('Calcul frais obligatoire - inscriptions.show', [
+                \Log::info('Calcul frais obligatoire - utilise règle', [
                     'category' => $category->name,
                     'affectation_status' => $affectationStatus,
                     'montant_attendu' => $montantAttendu,
                     'has_rule' => true,
-                    'rule_amounts' => $rule->getAllAmounts()
+                    'rule_amounts' => $rule->getAllAmounts(),
+                    'source' => 'regle_fallback'
                 ]);
             } else {
-                // Fallback sur le montant de la souscription ou le montant par défaut
-                $montantAttendu = $subscription ? $subscription->amount : $category->default_amount;
-                $isConfigured = $subscription !== null;
+                // Dernière solution: montant par défaut de la catégorie
+                $montantAttendu = $category->default_amount;
+                $isConfigured = false;
 
-                \Log::info('Calcul frais obligatoire - fallback', [
+                \Log::info('Calcul frais obligatoire - utilise défaut', [
                     'category' => $category->name,
                     'montant_attendu' => $montantAttendu,
-                    'has_rule' => false,
-                    'subscription_amount' => $subscription ? $subscription->amount : null,
-                    'default_amount' => $category->default_amount
+                    'default_amount' => $category->default_amount,
+                    'source' => 'defaut_category'
                 ]);
             }
             $isSubscribed = $subscription !== null;
@@ -1921,7 +1930,29 @@ class ESBTPInscriptionController extends Controller
             ->with(['fraisCategory'])
             ->get();
 
-        $totalAttendu = $fraisSouscrits->sum('amount');
+        // Utiliser la même logique que la page show pour calculer les montants attendus
+        $affectationStatus = $inscription->affectation_status ?? 'affecté';
+        $totalAttendu = 0;
+
+        foreach ($fraisSouscrits as $souscription) {
+            $category = $souscription->fraisCategory;
+
+            if ($category->is_mandatory) {
+                // Pour les frais obligatoires, utiliser les règles selon le statut d'affectation
+                $rule = $category->getApplicableRule($inscription->filiere_id, $inscription->niveau_id, $inscription->annee_universitaire_id);
+                if ($rule) {
+                    $montantAttendu = $rule->getMontantByStatus($affectationStatus);
+                } else {
+                    $montantAttendu = $souscription->amount;
+                }
+            } else {
+                // Pour les frais optionnels, utiliser directement le montant de souscription
+                $montantAttendu = $souscription->amount;
+            }
+
+            $totalAttendu += $montantAttendu;
+        }
+
         $totalPaye = $inscription->paiements->sum('montant');
         $soldeRestant = $totalAttendu - $totalPaye;
 
