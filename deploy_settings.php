@@ -1,0 +1,152 @@
+<?php
+
+/**
+ * Script de déploiement des paramètres ESBTP
+ *
+ * Ce script s'assure que tous les paramètres requis sont présents
+ * Usage: php deploy_settings.php
+ */
+
+echo "=== DÉPLOIEMENT DES PARAMÈTRES ESBTP ===\n";
+
+// Inclure l'autoloader Laravel
+require_once __DIR__ . '/vendor/autoload.php';
+
+// Bootstrapper l'application Laravel
+$app = require_once __DIR__ . '/bootstrap/app.php';
+$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+$kernel->bootstrap();
+
+try {
+    echo "🔍 Vérification des paramètres essentiels...\n";
+
+    // Liste des paramètres critiques qui doivent exister
+    $criticalSettings = [
+        [
+            'key' => 'school_logo',
+            'value' => '',
+            'type' => 'file',
+            'group' => 'establishment',
+            'category' => 'establishment',
+            'description' => 'Logo de l\'établissement',
+            'is_required' => false,
+            'default_value' => '',
+            'validation_rules' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif', 'max:2048'],
+            'sort_order' => 10
+        ],
+        [
+            'key' => 'school_name',
+            'value' => 'ESBTP-yAKRO',
+            'type' => 'string',
+            'group' => 'establishment',
+            'category' => 'establishment',
+            'description' => 'Nom de l\'établissement',
+            'is_required' => true,
+            'default_value' => 'ESBTP-yAKRO',
+            'validation_rules' => ['required', 'string', 'max:255'],
+            'sort_order' => 1
+        ],
+        [
+            'key' => 'bulletin_show_logo',
+            'value' => '1',
+            'type' => 'string',
+            'group' => 'bulletin',
+            'category' => 'bulletin',
+            'description' => 'Afficher le logo sur les bulletins',
+            'is_required' => false,
+            'default_value' => '1',
+            'validation_rules' => ['string'],
+            'sort_order' => 2
+        ]
+    ];
+
+    $created = 0;
+    $existing = 0;
+
+    foreach ($criticalSettings as $settingData) {
+        $setting = App\Models\Setting::where('key', $settingData['key'])->first();
+
+        if ($setting) {
+            echo "✅ {$settingData['key']} existe déjà\n";
+            $existing++;
+        } else {
+            echo "➕ Création de {$settingData['key']}...\n";
+
+            App\Models\Setting::create(array_merge($settingData, [
+                'is_active' => true,
+                'requires_restart' => false,
+                'created_by' => 1,
+                'updated_by' => 1,
+                'validation_rules' => json_encode($settingData['validation_rules'])
+            ]));
+
+            echo "✅ {$settingData['key']} créé\n";
+            $created++;
+        }
+    }
+
+    echo "\n📊 STATISTIQUES\n";
+    echo "• Paramètres existants: {$existing}\n";
+    echo "• Paramètres créés: {$created}\n";
+    echo "• Total vérifié: " . count($criticalSettings) . "\n";
+
+    if ($created > 0) {
+        // Vider le cache des paramètres
+        if (method_exists(App\Models\Setting::class, 'clearCache')) {
+            App\Models\Setting::clearCache();
+            echo "🗑️  Cache des paramètres vidé\n";
+        }
+    }
+
+    echo "\n🏗️  VÉRIFICATION DU STOCKAGE\n";
+
+    // Vérifier la structure de stockage
+    $storageChecks = [
+        'storage/app/public' => 'Dossier de stockage principal',
+        'storage/app/public/logos' => 'Dossier des logos',
+        'storage/app/public/photos' => 'Dossier des photos',
+        'storage/app/public/documents' => 'Dossier des documents',
+        'public/storage' => 'Lien symbolique'
+    ];
+
+    $storageOk = true;
+    foreach ($storageChecks as $path => $description) {
+        $fullPath = base_path($path);
+
+        if (file_exists($fullPath)) {
+            echo "✅ {$description}: {$path}\n";
+        } else {
+            echo "❌ {$description}: {$path}\n";
+            $storageOk = false;
+        }
+    }
+
+    if (!$storageOk) {
+        echo "\n⚠️  PROBLÈME DE STOCKAGE DÉTECTÉ\n";
+        echo "💡 Exécuter: php init_storage.php\n";
+    }
+
+    echo "\n🌐 URLS DE TEST\n";
+    echo "• Paramètres: http://localhost:8000/esbtp/settings\n";
+    echo "• Logo par défaut: http://localhost:8000/storage/logos/esbtp-logo.svg\n";
+
+    echo "\n✅ DÉPLOIEMENT TERMINÉ AVEC SUCCÈS\n";
+
+} catch (Exception $e) {
+    echo "\n❌ ERREUR LORS DU DÉPLOIEMENT: " . $e->getMessage() . "\n";
+
+    echo "\n🆘 COMMANDES DE RÉCUPÉRATION:\n";
+    echo "1. Réinitialiser les paramètres:\n";
+    echo "   php artisan db:seed --class=SettingsSeeder\n\n";
+
+    echo "2. Recréer le lien de stockage:\n";
+    echo "   php artisan storage:link\n\n";
+
+    echo "3. Vérifier les permissions:\n";
+    echo "   chmod -R 755 storage/\n";
+    echo "   chmod -R 755 public/storage/\n";
+
+    exit(1);
+}
+
+echo "\n=== DÉPLOIEMENT TERMINÉ ===\n";

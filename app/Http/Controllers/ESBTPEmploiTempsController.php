@@ -36,7 +36,17 @@ class ESBTPEmploiTempsController extends Controller
     public function index()
     {
         // No policy-based authorization
-        $emploisTemps = ESBTPEmploiTemps::with(['classe', 'seances'])->get();
+        // Récupérer l'année universitaire courante d'abord
+        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        // Filtrer les emplois du temps par année courante
+        $emploisTempsQuery = ESBTPEmploiTemps::with(['classe', 'seances']);
+
+        if ($anneeEnCours) {
+            $emploisTempsQuery->where('annee_universitaire_id', $anneeEnCours->id);
+        }
+
+        $emploisTemps = $emploisTempsQuery->get();
 
         // Ajout des filières pour le filtre
         $filieres = ESBTPFiliere::where('is_active', true)->orderBy('name')->get();
@@ -47,24 +57,19 @@ class ESBTPEmploiTempsController extends Controller
         // Ajout des années universitaires pour le filtre
         $annees = ESBTPAnneeUniversitaire::orderBy('name', 'desc')->get();
 
-        // Récupérer l'année universitaire en cours
-        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_active', true)->first();
-
         // Statistiques
         $totalEmploisTemps = $emploisTemps->count();
         $emploisTempsActifs = $emploisTemps->where('is_active', true)->count();
         $totalSeances = ESBTPSeanceCours::count();
 
-        // Emplois du temps de l'année en cours
-        $emploisTempsAnneeEnCours = 0;
-        if ($anneeEnCours) {
-            // Trouver tous les emplois du temps associés à des classes de l'année en cours
-            $classesAnneeEnCours = ESBTPClasse::where('annee_universitaire_id', $anneeEnCours->id)->pluck('id')->toArray();
-            $emploisTempsAnneeEnCours = $emploisTemps->whereIn('classe_id', $classesAnneeEnCours)->count();
-        }
+        // Emplois du temps de l'année en cours (déjà filtrés)
+        $emploisTempsAnneeEnCours = $emploisTemps->count();
+
+        // Passer l'année courante avec le bon nom pour la vue
+        $anneeUniversitaireCourante = $anneeEnCours;
 
         return view('esbtp.emploi-temps.index', compact(
-            'emploisTemps', 'filieres', 'niveaux', 'annees',
+            'emploisTemps', 'filieres', 'niveaux', 'annees', 'anneeUniversitaireCourante',
             'totalEmploisTemps', 'emploisTempsActifs', 'totalSeances', 'emploisTempsAnneeEnCours'
         ));
     }
@@ -87,8 +92,9 @@ class ESBTPEmploiTempsController extends Controller
         // Générer les dates de la semaine courante
         $semaineCourante = ESBTPEmploiTemps::genererSemaineCourante();
 
-        // Récupérer l'année universitaire active
-        $anneeActive = ESBTPAnneeUniversitaire::where('is_active', true)->first();
+        // Récupérer l'année universitaire courante
+        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', 1)->first();
+        $anneeAcademique = $anneeCourante ? $anneeCourante->name : 'Aucune année active';
 
         // Initialiser les données de planification
         $planificationData = [];
@@ -96,13 +102,8 @@ class ESBTPEmploiTempsController extends Controller
         // Si on a une classe sélectionnée (via paramètres GET ou session)
         $classeSelectionnee = request('classe_id') ? ESBTPClasse::find(request('classe_id')) : null;
         
-        // Utiliser l'année sélectionnée dans le formulaire ou l'année active par défaut
-        $anneeSelectionnee = null;
-        if (request('annee_universitaire_id')) {
-            $anneeSelectionnee = ESBTPAnneeUniversitaire::find(request('annee_universitaire_id'));
-        } elseif ($anneeActive) {
-            $anneeSelectionnee = $anneeActive;
-        }
+        // Utiliser seulement l'année courante (pas de choix possible)
+        $anneeSelectionnee = $anneeCourante;
         
         if ($classeSelectionnee && $anneeSelectionnee) {
             $semestre = request('semestre') ?: null;
@@ -110,7 +111,7 @@ class ESBTPEmploiTempsController extends Controller
         }
 
         return view('esbtp.emploi-temps.create', compact(
-            'classes', 'annees', 'semaineCourante', 'planificationData', 'classeSelectionnee', 'anneeActive', 'anneeSelectionnee'
+            'classes', 'annees', 'semaineCourante', 'planificationData', 'classeSelectionnee', 'anneeCourante', 'anneeSelectionnee', 'anneeAcademique'
         ));
     }
 
@@ -285,7 +286,7 @@ class ESBTPEmploiTempsController extends Controller
         // Récupérer les enseignants disponibles (tous les enseignants, mais marquer ceux qui sont assignés)
         $tousLesEnseignants = \App\Models\User::role('enseignant')
             ->where('is_active', true)
-            ->with('profile')
+            ->with('enseignantProfile')
             ->get();
 
         $enseignantsDisponibles = collect();

@@ -125,6 +125,15 @@ class ESBTPSettingsController extends Controller
                     $settingKey = str_replace('setting_', '', $key);
                     $setting = Setting::where('key', $settingKey)->first();
 
+                    Log::info('Traitement fichier uploadé', [
+                        'key' => $key,
+                        'settingKey' => $settingKey,
+                        'setting_found' => $setting !== null,
+                        'setting_type' => $setting ? $setting->type : null,
+                        'file_name' => $file->getClientOriginalName(),
+                        'file_size' => $file->getSize()
+                    ]);
+
                     if ($setting && $setting->type === 'file') {
                         // Valider le fichier
                         $validator = Validator::make(
@@ -149,6 +158,12 @@ class ESBTPSettingsController extends Controller
                         $setting->update([
                             'value' => $path,
                             'updated_by' => auth()->id()
+                        ]);
+
+                        Log::info('Fichier uploadé avec succès', [
+                            'settingKey' => $settingKey,
+                            'path' => $path,
+                            'folder' => $folder
                         ]);
 
                         $updatedSettings[] = $settingKey;

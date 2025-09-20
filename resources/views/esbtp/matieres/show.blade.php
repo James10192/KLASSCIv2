@@ -63,14 +63,30 @@
                                             </tr>
                                             <tr>
                                                 <th>Volume horaire :</th>
-                                                <td>{{ $matiere->total_heures_default }} heures</td>
+                                                <td>
+                                                    @if(isset($parametresPlanning) && $parametresPlanning['volume_horaire_total'] > 0)
+                                                        {{ $parametresPlanning['volume_horaire_total'] }} heures
+                                                        <small class="text-success">(Planning général)</small>
+                                                    @else
+                                                        {{ $matiere->total_heures_default ?? 0 }} heures
+                                                        <small class="text-muted">(Par défaut)</small>
+                                                    @endif
+                                                </td>
                                             </tr>
                                             <tr>
                                                 <th>Répartition :</th>
                                                 <td>
-                                                    <span class="badge bg-info">CM : {{ $matiere->heures_cm_default }} h</span>
-                                                    <span class="badge bg-success">TD : {{ $matiere->heures_td_default }} h</span>
-                                                    <span class="badge bg-warning">TP : {{ $matiere->heures_tp_default }} h</span>
+                                                    @if(isset($parametresPlanning) && $parametresPlanning['planifications_count'] > 0)
+                                                        <span class="badge bg-info">CM : {{ $parametresPlanning['heures_cm'] ?? 0 }}h</span>
+                                                        <span class="badge bg-success">TD : {{ $parametresPlanning['heures_td'] ?? 0 }}h</span>
+                                                        <span class="badge bg-warning">TP : {{ $parametresPlanning['heures_tp'] ?? 0 }}h</span>
+                                                        <small class="d-block text-success mt-1">(Depuis planning général)</small>
+                                                    @else
+                                                        <span class="badge bg-info">CM : {{ $matiere->heures_cm_default ?? 0 }}h</span>
+                                                        <span class="badge bg-success">TD : {{ $matiere->heures_td_default ?? 0 }}h</span>
+                                                        <span class="badge bg-warning">TP : {{ $matiere->heures_tp_default ?? 0 }}h</span>
+                                                        <small class="d-block text-muted mt-1">(Valeurs par défaut)</small>
+                                                    @endif
                                                 </td>
                                             </tr>
                                             <tr>
@@ -115,7 +131,13 @@
                     <h3 class="main-card-title">
                         <i class="fas fa-sliders-h"></i>Paramètres d'évaluation
                     </h3>
-                    <p class="main-card-subtitle">Coefficient et volume horaire</p>
+                    <p class="main-card-subtitle">
+                        @if(isset($parametresPlanning) && $parametresPlanning['planifications_count'] > 0)
+                            Valeurs du planning général ({{ $anneeUniversitaireCourante->name ?? 'année courante' }})
+                        @else
+                            Valeurs par défaut (aucune planification configurée)
+                        @endif
+                    </p>
                 </div>
                 <div class="main-card-body">
                     <div class="row mb-3">
@@ -125,19 +147,45 @@
                         </div>
                         <div class="col-6">
                             <label class="form-label text-muted">Total heures</label>
-                            <div class="h5 text-primary mb-0">{{ $matiere->total_heures_default }}h</div>
+                            <div class="h5 text-primary mb-0">
+                                @if(isset($parametresPlanning) && $parametresPlanning['volume_horaire_total'] > 0)
+                                    {{ $parametresPlanning['volume_horaire_total'] }}h
+                                    <small class="text-success d-block" style="font-size: 0.7rem;">(Planning général)</small>
+                                @else
+                                    {{ $matiere->total_heures_default }}h
+                                    <small class="text-muted d-block" style="font-size: 0.7rem;">(Valeur par défaut)</small>
+                                @endif
+                            </div>
                         </div>
                     </div>
                     
                     <div class="mb-3">
                         <label class="form-label text-muted">Répartition horaire</label>
                         <div class="d-flex flex-wrap gap-2">
-                            <span class="badge bg-info">CM : {{ $matiere->heures_cm_default ?? 0 }}h</span>
-                            <span class="badge bg-success">TD : {{ $matiere->heures_td_default ?? 0 }}h</span>
-                            <span class="badge bg-warning">TP : {{ $matiere->heures_tp_default ?? 0 }}h</span>
-                            <span class="badge bg-secondary">Stage : {{ $matiere->heures_stage_default ?? 0 }}h</span>
-                            <span class="badge bg-primary">Perso : {{ $matiere->heures_perso_default ?? 0 }}h</span>
+                            @if(isset($parametresPlanning) && $parametresPlanning['planifications_count'] > 0)
+                                <span class="badge bg-info">CM : {{ $parametresPlanning['heures_cm'] }}h</span>
+                                <span class="badge bg-success">TD : {{ $parametresPlanning['heures_td'] }}h</span>
+                                <span class="badge bg-warning">TP : {{ $parametresPlanning['heures_tp'] }}h</span>
+                                <span class="badge bg-secondary">Stage : {{ $parametresPlanning['heures_stage'] }}h</span>
+                                <span class="badge bg-primary">Perso : {{ $parametresPlanning['heures_perso'] }}h</span>
+                            @else
+                                <span class="badge bg-info">CM : {{ $matiere->heures_cm_default ?? 0 }}h</span>
+                                <span class="badge bg-success">TD : {{ $matiere->heures_td_default ?? 0 }}h</span>
+                                <span class="badge bg-warning">TP : {{ $matiere->heures_tp_default ?? 0 }}h</span>
+                                <span class="badge bg-secondary">Stage : {{ $matiere->heures_stage_default ?? 0 }}h</span>
+                                <span class="badge bg-primary">Perso : {{ $matiere->heures_perso_default ?? 0 }}h</span>
+                            @endif
                         </div>
+                        @if(isset($parametresPlanning) && $parametresPlanning['planifications_count'] > 0)
+                            <small class="text-success mt-1 d-block">
+                                <i class="fas fa-check-circle me-1"></i>Configuré dans {{ $parametresPlanning['planifications_count'] }} planification(s)
+                            </small>
+                        @else
+                            <small class="text-warning mt-1 d-block">
+                                <i class="fas fa-exclamation-triangle me-1"></i>Utilise les valeurs par défaut -
+                                <a href="{{ route('esbtp.planning-general.repartition-matieres') }}" class="text-primary">Configurer dans le Planning Général</a>
+                            </small>
+                        @endif
                     </div>
 
                     <div class="mb-3">
@@ -329,28 +377,60 @@
                     <h3 class="main-card-title">
                         <i class="fas fa-chalkboard-teacher"></i>Enseignants
                     </h3>
-                    <p class="main-card-subtitle">{{ $matiere->enseignants->count() }} enseignant(s) associé(s)</p>
+                    <p class="main-card-subtitle">{{ $enseignantsAssignes->count() }} enseignant(s) assigné(s) via planification</p>
                 </div>
                 <div class="main-card-body">
-                    @if($matiere->enseignants->count() > 0)
-                        <div class="table-responsive">
+                    <!-- Message d'information pour rediriger vers le planning général -->
+                    <div class="mb-3 p-3" style="background-color: #e3f2fd; border-radius: 8px; border-left: 4px solid #2196f3;">
+                        <h6 class="mb-2"><i class="fas fa-info-circle text-primary me-1"></i>Gestion des enseignants</h6>
+                        <p class="mb-2 text-muted" style="font-size: 0.9rem;">
+                            Les affectations d'enseignants sont gérées via le module <strong>Planning Général</strong>
+                            pour assurer une planification cohérente et centralisée.
+                        </p>
+                        <a href="{{ route('esbtp.planning-general.repartition-matieres') }}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-external-link-alt me-1"></i>Aller au Planning Général
+                        </a>
+                    </div>
+
+                    @if($enseignantsAssignes->count() > 0)
+                        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
                             <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Enseignant</th>
+                                        <th>Filière</th>
+                                        <th>Niveau</th>
+                                        <th>Volume horaire</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
                                 <tbody>
-                                    @foreach($matiere->enseignants as $enseignant)
+                                    @foreach($enseignantsAssignes as $assignation)
                                         <tr>
                                             <td>
                                                 <div>
-                                                    <strong>{{ $enseignant->user->name }}</strong>
-                                                    <small class="d-block text-muted">{{ $enseignant->matricule }}</small>
-                                                    @if($enseignant->specialite)
-                                                        <span class="badge bg-info">{{ $enseignant->specialite }}</span>
-                                                    @endif
+                                                    <strong>{{ $assignation['enseignant']->name }}</strong>
+                                                    <small class="d-block text-muted">{{ $assignation['enseignant']->email }}</small>
                                                 </div>
                                             </td>
+                                            <td>
+                                                <span class="badge bg-primary">{{ $assignation['filiere']->name }}</span>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-secondary">{{ $assignation['niveau']->name }}</span>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-success">{{ $assignation['volume_horaire'] }}h</span>
+                                            </td>
                                             <td class="text-end">
-                                                <a href="{{ route('esbtp.enseignants.show', ['enseignant' => $enseignant->id]) }}" class="btn btn-sm btn-outline-primary">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
+                                                <div class="btn-group">
+                                                    <a href="{{ route('esbtp.enseignants.show', ['enseignant' => $assignation['enseignant']->esbtpTeacher->id ?? 1]) }}" class="btn btn-sm btn-outline-primary">
+                                                        <i class="fas fa-eye"></i>
+                                                    </a>
+                                                    <a href="{{ route('esbtp.planning-general.repartition-matieres') }}" class="btn btn-sm btn-outline-warning" title="Gérer dans le Planning Général">
+                                                        <i class="fas fa-cog"></i>
+                                                    </a>
+                                                </div>
                                             </td>
                                         </tr>
                                     @endforeach
@@ -359,7 +439,12 @@
                         </div>
                     @else
                         <div class="text-muted text-center py-3">
-                            <i class="fas fa-info-circle me-1"></i>Aucun enseignant associé
+                            <i class="fas fa-info-circle me-1"></i>Aucun enseignant assigné pour l'année {{ $anneeUniversitaireCourante->name ?? 'courante' }}
+                            <div class="mt-2">
+                                <a href="{{ route('esbtp.planning-general.repartition-matieres') }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-plus me-1"></i>Configurer dans le Planning Général
+                                </a>
+                            </div>
                         </div>
                     @endif
                 </div>
@@ -373,14 +458,19 @@
                     <h3 class="main-card-title">
                         <i class="fas fa-clock"></i>Séances de cours
                     </h3>
-                    <p class="main-card-subtitle">{{ $matiere->seancesCours->count() }} séance(s) programmée(s)</p>
+                    <p class="main-card-subtitle">
+                        {{ isset($seances) ? $seances->count() : 0 }} séance(s) programmée(s)
+                        @if(isset($anneeUniversitaireCourante))
+                            ({{ $anneeUniversitaireCourante->name }})
+                        @endif
+                    </p>
                 </div>
                 <div class="main-card-body">
-                    @if($matiere->seancesCours->count() > 0)
-                        <div class="table-responsive">
+                    @if(isset($seances) && $seances->count() > 0)
+                        <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
                             <table class="table table-hover">
                                 <tbody>
-                                    @foreach($matiere->seancesCours->take(5) as $seance)
+                                    @foreach($seances->take(10) as $seance)
                                         <tr>
                                             <td>
                                                 <div>
@@ -426,14 +516,19 @@
                                 </tbody>
                             </table>
                         </div>
-                        @if($matiere->seancesCours->count() > 5)
+                        @if($seances->count() > 10)
                             <div class="text-center">
-                                <small class="text-muted">Et {{ $matiere->seancesCours->count() - 5 }} autre(s) séance(s)...</small>
+                                <small class="text-muted">Et {{ $seances->count() - 10 }} autre(s) séance(s)...</small>
                             </div>
                         @endif
                     @else
                         <div class="text-muted text-center py-3">
-                            <i class="fas fa-info-circle me-1"></i>Aucune séance programmée
+                            <i class="fas fa-info-circle me-1"></i>
+                            @if(isset($anneeUniversitaireCourante))
+                                Aucune séance programmée pour l'année {{ $anneeUniversitaireCourante->name }}
+                            @else
+                                Aucune séance programmée pour l'année courante
+                            @endif
                         </div>
                     @endif
                 </div>
@@ -445,23 +540,30 @@
                     <h3 class="main-card-title">
                         <i class="fas fa-tasks"></i>Évaluations
                     </h3>
-                    <p class="main-card-subtitle">{{ $matiere->evaluations->count() }} évaluation(s) créée(s)</p>
+                    <p class="main-card-subtitle">
+                        {{ isset($evaluations) ? $evaluations->count() : 0 }} évaluation(s)
+                        @if(isset($anneeUniversitaireCourante))
+                            ({{ $anneeUniversitaireCourante->name }})
+                        @else
+                            (année courante)
+                        @endif
+                    </p>
                 </div>
                 <div class="main-card-body">
-                    @if($matiere->evaluations->count() > 0)
-                        <div class="table-responsive">
+                    @if(isset($evaluations) && $evaluations->count() > 0)
+                        <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
                             <table class="table table-hover">
                                 <tbody>
-                                    @foreach($matiere->evaluations->take(5) as $evaluation)
+                                    @foreach($evaluations->take(5) as $evaluation)
                                         <tr>
                                             <td>
                                                 <div>
                                                     <strong>{{ $evaluation->titre }}</strong>
                                                     <small class="d-block text-muted">
                                                         @if($evaluation->classe)
-                                                            {{ $evaluation->classe->name }} • 
+                                                            {{ $evaluation->classe->name }} •
                                                         @endif
-                                                        {{ $evaluation->date->format('d/m/Y') }}
+                                                        {{ $evaluation->date_evaluation ? $evaluation->date_evaluation->format('d/m/Y') : 'Date non définie' }}
                                                     </small>
                                                     @switch($evaluation->type)
                                                         @case('devoir')
@@ -488,14 +590,19 @@
                                 </tbody>
                             </table>
                         </div>
-                        @if($matiere->evaluations->count() > 5)
+                        @if($evaluations->count() > 5)
                             <div class="text-center">
-                                <small class="text-muted">Et {{ $matiere->evaluations->count() - 5 }} autre(s) évaluation(s)...</small>
+                                <small class="text-muted">Et {{ $evaluations->count() - 5 }} autre(s) évaluation(s)...</small>
                             </div>
                         @endif
                     @else
                         <div class="text-muted text-center py-3">
-                            <i class="fas fa-info-circle me-1"></i>Aucune évaluation créée
+                            <i class="fas fa-info-circle me-1"></i>
+                            @if(isset($anneeUniversitaireCourante))
+                                Aucune évaluation pour l'année {{ $anneeUniversitaireCourante->name }}
+                            @else
+                                Aucune évaluation créée pour cette année universitaire
+                            @endif
                         </div>
                     @endif
                 </div>

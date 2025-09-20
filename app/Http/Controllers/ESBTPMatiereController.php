@@ -150,9 +150,95 @@ class ESBTPMatiereController extends Controller
     public function show(ESBTPMatiere $matiere)
     {
         // Charger les relations
-        $matiere->load(['filieres', 'niveaux', 'createdBy', 'updatedBy']);
+        $matiere->load(['filieres', 'niveaux', 'createdBy', 'updatedBy', 'enseignants']);
 
-        return view('esbtp.matieres.show', compact('matiere'));
+        // Récupérer l'année universitaire courante
+        $anneeUniversitaireCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        // Récupérer les évaluations de cette matière pour l'année courante uniquement
+        $evaluationsQuery = $matiere->evaluations()->with(['classe', 'enseignant']);
+        if ($anneeUniversitaireCourante) {
+            $evaluationsQuery->where('annee_universitaire_id', $anneeUniversitaireCourante->id);
+        }
+        $evaluations = $evaluationsQuery->orderBy('date_evaluation', 'desc')->get();
+
+        // Récupérer les données de planification académique pour cette matière
+        $enseignantsAssignes = collect();
+        $parametresPlanning = [];
+
+        if ($anneeUniversitaireCourante) {
+            // Récupérer toutes les planifications pour cette matière et année
+            // en ciblant toutes les combinaisons filière/niveau configurées
+            $planifications = \App\Models\ESBTPPlanificationAcademique::where('matiere_id', $matiere->id)
+                ->where('annee_universitaire_id', $anneeUniversitaireCourante->id)
+                ->with(['enseignantPrincipal', 'filiere', 'niveauEtude'])
+                ->get();
+
+            // Calculer les totaux des volumes horaires depuis la planification
+            $totalVolumeHoraire = $planifications->sum('volume_horaire_total');
+            $totalHeuresCM = $planifications->sum('volume_horaire_cm');
+            $totalHeuresTD = $planifications->sum('volume_horaire_td');
+            $totalHeuresTP = $planifications->sum('volume_horaire_tp');
+            $totalHeuresStage = $planifications->sum('heures_stage');
+            $totalHeuresPerso = $planifications->sum('heures_perso');
+
+            $parametresPlanning = [
+                'volume_horaire_total' => $totalVolumeHoraire,
+                'heures_cm' => $totalHeuresCM,
+                'heures_td' => $totalHeuresTD,
+                'heures_tp' => $totalHeuresTP,
+                'heures_stage' => $totalHeuresStage,
+                'heures_perso' => $totalHeuresPerso,
+                'planifications_count' => $planifications->count()
+            ];
+
+            foreach ($planifications as $planification) {
+                // Récupérer les enseignants assignés via la table de liaison esbtp_planification_teachers
+                $enseignantsLies = \Illuminate\Support\Facades\DB::table('esbtp_planification_teachers')
+                    ->join('esbtp_teachers', 'esbtp_planification_teachers.teacher_id', '=', 'esbtp_teachers.id')
+                    ->join('users', 'esbtp_teachers.user_id', '=', 'users.id')
+                    ->where('esbtp_planification_teachers.planification_id', $planification->id)
+                    ->select('users.*', 'esbtp_teachers.id as teacher_id')
+                    ->get();
+
+                foreach ($enseignantsLies as $enseignant) {
+                    $enseignantsAssignes->push([
+                        'enseignant' => (object) $enseignant,
+                        'filiere' => $planification->filiere,
+                        'niveau' => $planification->niveauEtude,
+                        'planification_id' => $planification->id,
+                        'volume_horaire' => $planification->volume_horaire_total
+                    ]);
+                }
+
+                // Fallback : si pas d'enseignant dans la table de liaison, essayer enseignant_principal_id
+                if ($enseignantsLies->isEmpty() && $planification->enseignantPrincipal) {
+                    $enseignantsAssignes->push([
+                        'enseignant' => $planification->enseignantPrincipal,
+                        'filiere' => $planification->filiere,
+                        'niveau' => $planification->niveauEtude,
+                        'planification_id' => $planification->id,
+                        'volume_horaire' => $planification->volume_horaire_total
+                    ]);
+                }
+            }
+        }
+
+        // Récupérer les séances de cours pour cette matière depuis les emplois du temps actifs de l'année courante
+        $seances = collect();
+        if ($anneeUniversitaireCourante) {
+            $seances = \App\Models\ESBTPSeanceCours::where('matiere_id', $matiere->id)
+                ->whereHas('emploiTemps', function($query) use ($anneeUniversitaireCourante) {
+                    $query->where('annee_universitaire_id', $anneeUniversitaireCourante->id)
+                          ->where('is_current', true);
+                })
+                ->with(['emploiTemps.classe', 'teacher'])
+                ->orderBy('jour')
+                ->orderBy('heure_debut')
+                ->get();
+        }
+
+        return view('esbtp.matieres.show', compact('matiere', 'evaluations', 'enseignantsAssignes', 'anneeUniversitaireCourante', 'parametresPlanning', 'seances'));
     }
 
     /**
@@ -755,10 +841,28 @@ class ESBTPMatiereController extends Controller
 
         } catch (\Exception $e) {
             \Log::error('Erreur lors de la récupération des matières via API: ' . $e->getMessage());
-            
+
             return response()->json([
                 'error' => 'Erreur lors du chargement des matières'
             ], 500);
         }
+    }
+
+    /**
+     * Associe un enseignant à une matière via la planification académique
+     */
+    public function associateEnseignant(Request $request, ESBTPMatiere $matiere)
+    {
+        return back()->with('info', 'Pour associer un enseignant à cette matière, veuillez utiliser le module Planning Général. Cela permet une gestion centralisée et cohérente des affectations.')
+            ->with('planning_link', route('esbtp.planning-general.repartition-matieres'));
+    }
+
+    /**
+     * Dissocie un enseignant d'une matière via la planification académique
+     */
+    public function dissociateEnseignant(Request $request, ESBTPMatiere $matiere)
+    {
+        return back()->with('info', 'Pour modifier les affectations d\'enseignants, veuillez utiliser le module Planning Général. Cela garantit la cohérence avec la planification académique.')
+            ->with('planning_link', route('esbtp.planning-general.repartition-matieres'));
     }
 }

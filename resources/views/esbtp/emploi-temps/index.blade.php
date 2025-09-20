@@ -713,15 +713,27 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="annee_id" class="form-label">Année universitaire</label>
-                            <select class="form-select select2" id="annee_id" name="annee_id">
-                                <option value="">Toutes les années</option>
-                                @foreach($annees as $annee)
-                                    <option value="{{ $annee->id }}" {{ request('annee_id') == $annee->id ? 'selected' : '' }}>
-                                        {{ $annee->name }}
+                            <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 8px;">
+                                <label for="annee_id" class="form-label mb-0" style="font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Année Universitaire Courante</label>
+                                <button type="button" class="btn btn-link btn-sm p-0" data-bs-toggle="modal" data-bs-target="#yearChangeModal" style="font-size: 12px; text-decoration: none;">
+                                    <i class="fas fa-info-circle"></i>Changer d'année
+                                </button>
+                            </div>
+                            <select name="annee_id" id="annee_id" class="form-select" style="background-color: #f8f9fa; cursor: not-allowed;" disabled>
+                                @if(isset($anneeUniversitaireCourante))
+                                    <option value="{{ $anneeUniversitaireCourante->id }}" selected>
+                                        {{ $anneeUniversitaireCourante->name }} (Année en cours)
                                     </option>
-                                @endforeach
+                                @else
+                                    <option value="" selected>Aucune année active</option>
+                                @endif
                             </select>
+                            <div class="mt-2">
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Les emplois du temps sont filtrés par l'année courante.
+                                </small>
+                            </div>
                         </div>
 
                         <div class="mb-3">
@@ -772,6 +784,44 @@
     </div>
 </div>
 @endsection
+
+<!-- Modal pour les instructions de changement d'année -->
+<div class="modal fade" id="yearChangeModal" tabindex="-1" role="dialog" aria-labelledby="yearChangeModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="yearChangeModalLabel">Comment changer l'année universitaire ?</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Pour consulter les données d'une autre année :</strong></p>
+                <ol style="padding-left: 20px; line-height: 1.6; margin: 15px 0;">
+                    <li><strong>Aller dans</strong> : Menu → Années Universitaires</li>
+                    <li><strong>Trouver l'année souhaitée</strong> (ex: 2023-2024)</li>
+                    <li><strong>Cliquer sur "Activer"</strong> pour la définir comme année courante</li>
+                    <li><strong>Revenir ici</strong> : Les emplois du temps affichés se mettront à jour automatiquement</li>
+                </ol>
+                <hr style="margin: 15px 0;">
+                <p style="color: #6b7280; font-size: 14px;">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Note :</strong> Seule une année peut être "courante" à la fois.
+                    Changer l'année courante affecte l'affichage des emplois du temps dans toute l'application.
+                </p>
+                <div style="background: #f3f4f6; padding: 12px; border-radius: 6px; margin-top: 15px;">
+                    <strong>Exemple :</strong><br>
+                    • Année courante = 2024-2025 → Voir les emplois du temps de 2024-2025<br>
+                    • Année courante = 2023-2024 → Voir les emplois du temps de 2023-2024
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                <a href="{{ route('esbtp.annees-universitaires.index') }}" target="_blank" class="btn btn-primary">
+                    <i class="fas fa-external-link-alt"></i> Aller aux Années
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
 
 @section('scripts')
 <script>

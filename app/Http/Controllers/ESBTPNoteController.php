@@ -30,8 +30,16 @@ class ESBTPNoteController extends Controller
      */
     public function index(Request $request)
     {
-        // Initialize query with proper eager loading
-        $query = ESBTPNote::whereHas('evaluation')  // Only fetch notes with valid evaluations
+        // Get current academic year
+        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', 1)->first();
+        $anneeAcademique = $anneeCourante ? $anneeCourante->name : 'Aucune année active';
+
+        // Initialize query with proper eager loading and year filtering
+        $query = ESBTPNote::whereHas('evaluation', function($q) use ($anneeCourante) {
+                if ($anneeCourante) {
+                    $q->where('annee_universitaire_id', $anneeCourante->id);
+                }
+            })
             ->with([
                 'evaluation.matiere',
                 'evaluation.classe',
@@ -61,7 +69,7 @@ class ESBTPNoteController extends Controller
         $classes = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
         $matieres = ESBTPMatiere::orderBy('name')->get();
 
-        return view('esbtp.notes.index', compact('notes', 'classes', 'matieres'));
+        return view('esbtp.notes.index', compact('notes', 'classes', 'matieres', 'anneeAcademique'));
     }
 
     /**

@@ -153,8 +153,8 @@ class ESBTPEnseignantController extends Controller
             'titre_academique' => 'nullable|string|max:10',
             'grade_academique' => 'nullable|string|max:50',
             'specialization' => 'required|string|max:255',
-            'department_id' => 'required|exists:departments,id',
-            'laboratory_id' => 'nullable|exists:laboratories,id',
+            'department_id' => 'required|exists:esbtp_departments,id',
+            'laboratory_id' => 'nullable|exists:esbtp_laboratories,id',
             
             // Informations contractuelles
             'type_contrat' => 'required|in:permanent,temporaire,vacataire,consultant',

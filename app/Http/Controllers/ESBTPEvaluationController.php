@@ -23,8 +23,17 @@ class ESBTPEvaluationController extends Controller
      */
     public function index()
     {
+        // Récupérer l'année universitaire courante
+        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $anneeAcademique = $anneeCourante ? $anneeCourante->name : date('Y') . '-' . (date('Y') + 1);
+
         $query = ESBTPEvaluation::with(['classe', 'matiere', 'createdBy'])
             ->orderBy('date_evaluation', 'desc');
+
+        // Filtrer par année universitaire courante
+        if ($anneeCourante) {
+            $query->where('annee_universitaire_id', $anneeCourante->id);
+        }
 
         // Filtres
         if (request()->has('classe_id') && request('classe_id') != '') {
@@ -54,11 +63,16 @@ class ESBTPEvaluationController extends Controller
         // Paginer les résultats
         $evaluations = $query->paginate(15);
 
-        // Statistiques
-        $totalEvaluations = ESBTPEvaluation::count();
-        $evaluationsPubliees = ESBTPEvaluation::where('is_published', true)->count();
-        $examens = ESBTPEvaluation::where('type', 'examen')->count();
-        $devoirs = ESBTPEvaluation::where('type', 'devoir')->count();
+        // Statistiques pour l'année courante uniquement
+        $statsQuery = ESBTPEvaluation::query();
+        if ($anneeCourante) {
+            $statsQuery->where('annee_universitaire_id', $anneeCourante->id);
+        }
+
+        $totalEvaluations = $statsQuery->count();
+        $evaluationsPubliees = (clone $statsQuery)->where('is_published', true)->count();
+        $examens = (clone $statsQuery)->where('type', 'examen')->count();
+        $devoirs = (clone $statsQuery)->where('type', 'devoir')->count();
 
         // Récupération des classes pour le filtre
         $classes = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
@@ -95,7 +109,9 @@ class ESBTPEvaluationController extends Controller
             'evaluationsPubliees',
             'examens',
             'devoirs',
-            'evaluationsForExternalLinks'
+            'evaluationsForExternalLinks',
+            'anneeAcademique',
+            'anneeCourante'
         ));
     }
 

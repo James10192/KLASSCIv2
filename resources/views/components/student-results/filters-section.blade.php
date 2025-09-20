@@ -36,7 +36,16 @@
                     <label class="form-label">Période</label>
                     <select class="form-select" name="periode">
                         @foreach($periodes ?? [] as $p)
-                            <option value="{{ $p->id }}" {{ isset($periode) && $periode == $p->id ? 'selected' : '' }}>
+                            @php
+                                // Gérer les différents formats de période (1, 2, semestre1, semestre2)
+                                $isSelected = false;
+                                if (isset($periode)) {
+                                    $isSelected = $periode == $p->id ||
+                                                  $periode == 'semestre'.$p->id ||
+                                                  (str_contains($periode, 'semestre') && str_replace('semestre', '', $periode) == $p->id);
+                                }
+                            @endphp
+                            <option value="{{ $p->id }}" {{ $isSelected ? 'selected' : '' }}>
                                 {{ $p->nom }}
                             </option>
                         @endforeach

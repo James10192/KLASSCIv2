@@ -400,17 +400,21 @@
                                 @endif
                             </div>
                         @endif
+                        @if(($settings['bulletin_show_matricule'] ?? '1') == '1')
                         <div style="margin-top: 8px; font-weight: bold; font-size: 9px;">{{ $etudiant->matricule }}</div>
+                        @endif
                     </td>
                     <td class="info-group">
                         <div class="info-row">
                             <span class="info-label">Nom et Prénoms :</span>
                             <span class="info-value">{{ $etudiant->nom }} {{ $etudiant->prenoms ?? $etudiant->prenom }}</span>
                         </div>
+                        @if(($settings['bulletin_show_birth_date'] ?? '1') == '1')
                         <div class="info-row">
                             <span class="info-label">Date de Naissance :</span>
                             <span class="info-value">{{ $etudiant->date_naissance ? \Carbon\Carbon::parse($etudiant->date_naissance)->format('d/m/Y') : 'Non renseigné' }}</span>
                         </div>
+                        @endif
                         <div class="info-row">
                             <span class="info-label">Lieu de Naissance :</span>
                             <span class="info-value">{{ $etudiant->lieu_naissance ?? 'Non renseigné' }}</span>
@@ -419,10 +423,12 @@
                             <span class="info-label">Genre :</span>
                             <span class="info-value">{{ $etudiant->genre == 'M' ? 'Masculin' : 'Féminin' }}</span>
                         </div>
+                        @if(($settings['bulletin_show_redoublant'] ?? '1') == '1')
                         <div class="info-row">
                             <span class="info-label">Redoublant :</span>
                             <span class="info-value">{{ $etudiant->inscriptions->first()->is_redoublant ?? false ? 'Oui' : 'Non' }}</span>
                         </div>
+                        @endif
                     </td>
                     <td class="info-group">
                         <div class="info-row">

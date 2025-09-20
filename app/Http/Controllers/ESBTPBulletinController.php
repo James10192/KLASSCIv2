@@ -2232,9 +2232,8 @@ class ESBTPBulletinController extends Controller
                 $bulletin->periode
             );
 
-            // Ajouter le logo pour l'affichage
-            $config = $this->getPDFConfig();
-            $logoBase64 = $this->prepareLogoBase64($config['school_logo']);
+            // Ajouter le logo pour l'affichage (les settings sont déjà fournis par le service)
+            $logoBase64 = $this->prepareLogoBase64($donnees['settings']['school_logo'] ?? null);
             $donnees['logoBase64'] = $logoBase64;
 
             // Utiliser exactement le même template que la preview admin
@@ -2975,9 +2974,8 @@ class ESBTPBulletinController extends Controller
                 $periode
             );
 
-            // Préparer le logo
-            $config = $this->getPDFConfig();
-            $logoBase64 = $this->prepareLogoBase64($config['school_logo']);
+            // Préparer le logo pour l'affichage (les settings sont déjà fournis par le service)
+            $logoBase64 = $this->prepareLogoBase64($donnees['settings']['school_logo'] ?? null);
             $donnees['logoBase64'] = $logoBase64;
 
             return view('esbtp.bulletins.pdf-configurable', $donnees);
@@ -5069,6 +5067,21 @@ class ESBTPBulletinController extends Controller
             $professeurs = json_decode($bulletin->professeurs, true) ?: [];
         }
 
+        // Récupérer les enseignants associés à chaque matière pour l'année courante
+        $enseignantsParMatiere = [];
+        foreach ($matieres as $matiere) {
+            $matiereModel = \App\Models\ESBTPMatiere::find($matiere['id']);
+            if ($matiereModel) {
+                $enseignants = $matiereModel->enseignants()
+                    ->wherePivot('annee_universitaire_id', $annee_universitaire_id)
+                    ->get(['users.id', 'users.name', 'users.email']);
+
+                $enseignantsParMatiere[$matiere['id']] = $enseignants;
+            } else {
+                $enseignantsParMatiere[$matiere['id']] = collect();
+            }
+        }
+
         // Transformer les matières en objets compatibles avec la vue
         $resultatsGeneraux = collect($matieresGenerales)->map(function ($item) {
             // Vérifier et journaliser chaque élément
@@ -5112,7 +5125,8 @@ class ESBTPBulletinController extends Controller
             'etudiant_id' => $etudiant_id,
             'classe_id' => $classe_id,
             'annee_universitaire_id' => $annee_universitaire_id,
-            'professeurs' => $professeurs
+            'professeurs' => $professeurs,
+            'enseignantsParMatiere' => $enseignantsParMatiere
         ]);
     }
 
@@ -5131,7 +5145,10 @@ class ESBTPBulletinController extends Controller
                 'request_method' => $request->method(),
                 'user_authenticated' => Auth::check(),
                 'user_id' => Auth::id(),
-                'user_role' => Auth::user()->roles
+                'user_role' => Auth::user()->roles,
+                'all_request_data' => $request->all(),
+                'professeurs_data' => $request->input('professeurs'),
+                'action_value' => $request->input('action')
             ]);
 
             // Valider les données d'entrée
@@ -5190,6 +5207,14 @@ class ESBTPBulletinController extends Controller
             if ($action === 'save_and_back') {
                 return redirect()->route('esbtp.resultats.etudiant', [
                     'etudiant' => $etudiant_id,
+                    'classe_id' => $classe_id,
+                    'periode' => $periode,
+                    'annee_universitaire_id' => $annee_universitaire_id
+                ])->with('success', 'Les noms des professeurs ont été enregistrés avec succès.');
+            } elseif ($action === 'edit') {
+                // Rester sur la page d'édition des professeurs
+                return redirect()->route('esbtp.bulletins.edit-professeurs', [
+                    'etudiant_id' => $etudiant_id,
                     'classe_id' => $classe_id,
                     'periode' => $periode,
                     'annee_universitaire_id' => $annee_universitaire_id

@@ -124,6 +124,18 @@ class SettingsSeeder extends Seeder
                 'validation_rules' => ['nullable', 'string', 'max:100'],
                 'sort_order' => 9
             ],
+            [
+                'key' => 'school_logo',
+                'value' => '',
+                'type' => 'file',
+                'group' => 'establishment',
+                'category' => 'establishment',
+                'description' => 'Logo de l\'établissement',
+                'is_required' => false,
+                'default_value' => '',
+                'validation_rules' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif', 'max:2048'],
+                'sort_order' => 10
+            ],
 
             // Paramètres PDF
             [

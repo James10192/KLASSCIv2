@@ -480,6 +480,12 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ])
                 ->middleware(['role:superAdmin|secretaire|teacher']);
 
+            // Routes pour l'association/dissociation d'enseignants
+            Route::post('matieres/{matiere}/associate-enseignant', [ESBTPMatiereController::class, 'associateEnseignant'])
+                ->name('matieres.associate-enseignant');
+            Route::post('matieres/{matiere}/dissociate-enseignant', [ESBTPMatiereController::class, 'dissociateEnseignant'])
+                ->name('matieres.dissociate-enseignant');
+
             // Routes pour les emplois du temps ESBTP
 
             // Routes pour les emplois du temps ESBTP
