@@ -371,27 +371,46 @@
         </div>
         @endif
 
-        @if(($settings['bulletin_show_student_info'] ?? '1') == '1')
+        {{-- Debug temporaire --}}
+        <!-- DEBUG: photoEtudiantBase64 = {{ $photoEtudiantBase64 ? 'PRÉSENT' : 'ABSENT' }} -->
+        <!-- DEBUG: etudiant nom = {{ $etudiant->nom ?? 'NON DÉFINI' }} -->
+
+        @if(true) {{-- Force l'affichage des informations étudiant --}}
+        <!-- SECTION INFORMATIONS ÉTUDIANT -->
+        <div style="background: #e3f2fd; padding: 10px; margin: 15px 0; border: 2px solid #2196f3; text-align: center; font-weight: bold; color: #1976d2;">
+            INFORMATIONS DE L'ÉTUDIANT
+        </div>
         <div class="student-info">
             <table class="student-info-table">
                 <tr>
-                    <td class="info-group">
-                        @if(($settings['bulletin_show_matricule'] ?? '1') == '1')
-                        <div class="info-row">
-                            <span class="info-label">Matricule :</span>
-                            <span class="info-value">{{ $etudiant->matricule }}</span>
-                        </div>
+                    <!-- Photo de l'étudiant -->
+                    <td rowspan="2" style="width: 120px; text-align: center; vertical-align: top; padding: 10px;">
+                        @if($photoEtudiantBase64)
+                            <img src="{{ $photoEtudiantBase64 }}" alt="Photo" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid #007bff;">
+                        @else
+                            <div style="width: 100px; height: 100px; border-radius: 50%; background: #f3f4f6; border: 2px solid #007bff; text-align: center; line-height: 100px; font-size: 32px; color: #6b7280;">
+                                👤
+                            </div>
                         @endif
+                        <div style="margin-top: 8px; font-weight: bold; font-size: 9px;">{{ $etudiant->matricule }}</div>
+                    </td>
+                    <td class="info-group">
                         <div class="info-row">
                             <span class="info-label">Nom et Prénoms :</span>
                             <span class="info-value">{{ $etudiant->nom }} {{ $etudiant->prenoms ?? $etudiant->prenom }}</span>
                         </div>
-                        @if(($settings['bulletin_show_birth_date'] ?? '1') == '1')
                         <div class="info-row">
                             <span class="info-label">Date de Naissance :</span>
-                            <span class="info-value">{{ \Carbon\Carbon::parse($etudiant->date_naissance)->format('d/m/Y') }}</span>
+                            <span class="info-value">{{ $etudiant->date_naissance ? \Carbon\Carbon::parse($etudiant->date_naissance)->format('d/m/Y') : 'Non renseigné' }}</span>
                         </div>
-                        @endif
+                        <div class="info-row">
+                            <span class="info-label">Lieu de Naissance :</span>
+                            <span class="info-value">{{ $etudiant->lieu_naissance ?? 'Non renseigné' }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Genre :</span>
+                            <span class="info-value">{{ $etudiant->genre == 'M' ? 'Masculin' : 'Féminin' }}</span>
+                        </div>
                         @if(($settings['bulletin_show_redoublant'] ?? '1') == '1')
                         <div class="info-row">
                             <span class="info-label">Redoublant :</span>
@@ -409,6 +428,10 @@
                             <span class="info-label">Année d'étude :</span>
                             <span class="info-value">{{ $classe->niveau->libelle ?? $classe->niveau->name ?? ($classe->annee ?? 'N/A') }}</span>
                         </div>
+                        <div class="info-row">
+                            <span class="info-label">Filière :</span>
+                            <span class="info-value">{{ $classe->filiere->name ?? 'N/A' }}</span>
+                        </div>
                         @endif
                         @if(($settings['bulletin_show_effectif'] ?? '1') == '1')
                         <div class="info-row">
@@ -416,6 +439,10 @@
                             <span class="info-value">{{ $effectif }}</span>
                         </div>
                         @endif
+                        <div class="info-row">
+                            <span class="info-label">Téléphone :</span>
+                            <span class="info-value">{{ $etudiant->telephone ?? 'Non renseigné' }}</span>
+                        </div>
                     </td>
                 </tr>
             </table>

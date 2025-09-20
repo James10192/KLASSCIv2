@@ -218,6 +218,9 @@ class BulletinService
         // Préparer la configuration PDF
         $settings = $this->getPDFConfig();
 
+        // Préparer la photo de l'étudiant en base64 pour le PDF
+        $photoEtudiantBase64 = $this->preparePhotoEtudiantBase64($etudiant);
+
         return [
             'etudiant' => $etudiant,
             'classe' => $classe,
@@ -244,7 +247,8 @@ class BulletinService
             'absences_non_justifiees' => $absences['non_justifiees'] ?? 0, // Alias pour compatibilité
             'professeurs' => $professeurs,
             'date_edition' => date('d/m/Y'),
-            'settings' => $settings
+            'settings' => $settings,
+            'photoEtudiantBase64' => $photoEtudiantBase64
         ];
     }
 
@@ -606,6 +610,31 @@ class BulletinService
             if (!isset($resultat->rang)) {
                 $resultat->rang = '-';
             }
+        }
+    }
+
+    /**
+     * Prépare la photo de l'étudiant en base64 pour l'affichage dans le PDF
+     */
+    private function preparePhotoEtudiantBase64($etudiant)
+    {
+        if (!$etudiant->photo) {
+            return null;
+        }
+
+        $photoPath = storage_path('app/public/' . $etudiant->photo);
+
+        if (!file_exists($photoPath)) {
+            return null;
+        }
+
+        try {
+            $photoData = file_get_contents($photoPath);
+            $photoMime = mime_content_type($photoPath);
+            return 'data:' . $photoMime . ';base64,' . base64_encode($photoData);
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de la préparation de la photo étudiant: ' . $e->getMessage());
+            return null;
         }
     }
 }
