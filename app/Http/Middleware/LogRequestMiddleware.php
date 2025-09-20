@@ -21,7 +21,7 @@ class LogRequestMiddleware
         $response = $next($request);
 
         Log::info('Outgoing Response', [
-            'status' => $response->status(),
+            'status' => method_exists($response, 'status') ? $response->status() : $response->getStatusCode(),
             'headers' => $response->headers->all(),
             'content' => method_exists($response, 'content') ? $response->content() : 'N/A'
         ]);

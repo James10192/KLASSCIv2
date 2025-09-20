@@ -1877,13 +1877,13 @@ class ESBTPInscriptionController extends Controller
             ->with(['fraisCategory'])
             ->get();
 
-        // Récupérer les reliquats liés à cette inscription (entrants)
-        $reliquats = \App\Models\ESBTPReliquatDetail::where('inscription_destination_id', $inscription->id)
-            ->where('statut', 'actif')
-            ->with(['inscriptionSource.etudiant', 'fraisSubscription.fraisCategory'])
+        // Récupérer les reliquats liés à cette inscription (entrants) - comme inscriptions.show
+        $reliquatsEntrants = \App\Models\ESBTPReliquatDetail::where('inscription_destination_id', $inscription->id)
+            ->with(['inscriptionSource.anneeUniversitaire', 'fraisSubscription.fraisCategory', 'fraisSubscription.selectedOption'])
+            ->actifs()
             ->get();
 
-        $totalReliquats = $reliquats->sum('solde_restant');
+        $totalReliquats = $reliquatsEntrants->sum('solde_restant');
 
         // Calculer les totaux
         $totalFraisAnnee = $fraisSouscrits->sum('amount'); // Frais année courante seulement
@@ -1909,7 +1909,7 @@ class ESBTPInscriptionController extends Controller
         return view('esbtp.inscriptions.situation-financiere-preview', compact(
             'inscription',
             'fraisSouscrits',
-            'reliquats',
+            'reliquatsEntrants',
             'statistiques'
         ));
     }
@@ -1937,13 +1937,13 @@ class ESBTPInscriptionController extends Controller
             ->with(['fraisCategory'])
             ->get();
 
-        // Récupérer les reliquats liés à cette inscription (entrants)
-        $reliquats = \App\Models\ESBTPReliquatDetail::where('inscription_destination_id', $inscription->id)
-            ->where('statut', 'actif')
-            ->with(['inscriptionSource.etudiant', 'fraisSubscription.fraisCategory'])
+        // Récupérer les reliquats liés à cette inscription (entrants) - comme inscriptions.show
+        $reliquatsEntrants = \App\Models\ESBTPReliquatDetail::where('inscription_destination_id', $inscription->id)
+            ->with(['inscriptionSource.anneeUniversitaire', 'fraisSubscription.fraisCategory', 'fraisSubscription.selectedOption'])
+            ->actifs()
             ->get();
 
-        $totalReliquats = $reliquats->sum('solde_restant');
+        $totalReliquats = $reliquatsEntrants->sum('solde_restant');
 
         // Utiliser la même logique que la page show: PRIORITÉ à la souscription
         $totalFraisAnnee = $fraisSouscrits->sum('amount'); // Frais année courante seulement
@@ -1978,7 +1978,7 @@ class ESBTPInscriptionController extends Controller
         $pdf = Pdf::loadView('esbtp.inscriptions.situation-financiere-pdf', compact(
             'inscription',
             'fraisSouscrits',
-            'reliquats',
+            'reliquatsEntrants',
             'statistiques',
             'etablissement'
         ));
