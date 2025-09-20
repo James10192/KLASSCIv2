@@ -285,8 +285,8 @@
                                 @endforeach
 
                                 {{-- Intégrer les reliquats comme des lignes de frais --}}
-                                @if($reliquatsEntrantsEntrants->count() > 0)
-                                    @foreach($reliquatsEntrantsEntrants as $reliquat)
+                                @if($reliquatsEntrants->count() > 0)
+                                    @foreach($reliquatsEntrants as $reliquat)
                                         @if($reliquat->solde_restant > 0)
                                             <tr class="table-warning">
                                                 <td>
