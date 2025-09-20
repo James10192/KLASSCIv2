@@ -6,62 +6,147 @@
     <title>Situation Financiere - {{ $inscription->etudiant->nom }} {{ $inscription->etudiant->prenoms }}</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            font-size: 12px;
-            line-height: 1.4;
-            color: #333;
+            font-family: 'Arial', sans-serif;
+            font-size: 10px;
             margin: 0;
-            padding: 20px;
+            padding: 10px;
+            color: #333;
+            line-height: 1.3;
+            background: white;
         }
 
-        .header {
+        .container {
+            max-width: 100%;
+            background: white;
+            padding: 15px;
+        }
+
+        /* Header principal */
+        .header-section {
+            background: #007bff;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
             text-align: center;
-            margin-bottom: 25px;
-            border-bottom: 2px solid #007bff;
-            padding-bottom: 15px;
+            margin-bottom: 15px;
+            -webkit-print-color-adjust: exact;
+            color-adjust: exact;
         }
 
         .header-logo {
-            max-height: 60px;
-            margin-bottom: 10px;
+            max-height: 40px;
+            max-width: 100px;
+            margin-bottom: 8px;
+            filter: brightness(0) invert(1);
         }
 
         .school-name {
-            font-size: 18px;
-            font-weight: bold;
-            color: #007bff;
-            margin-bottom: 5px;
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 4px;
         }
 
         .school-info {
-            font-size: 10px;
-            color: #666;
-            margin-bottom: 15px;
+            font-size: 8px;
+            margin-bottom: 10px;
+            opacity: 0.9;
+        }
+
+        .document-title-section {
+            background: rgba(255,255,255,0.2);
+            padding: 8px;
+            border-radius: 6px;
+            margin-top: 8px;
         }
 
         .document-title {
-            font-size: 20px;
-            font-weight: bold;
-            color: #007bff;
+            font-size: 12px;
+            font-weight: 600;
             margin-bottom: 8px;
         }
 
-        .document-subtitle {
-            font-size: 14px;
-            color: #666;
-            margin-bottom: 10px;
+        .student-info-grid {
+            display: table;
+            width: 100%;
+            font-size: 9px;
         }
 
-        .document-info {
-            font-size: 10px;
-            color: #666;
+        .student-info-row {
+            display: table-row;
+        }
+
+        .student-info-cell {
+            display: table-cell;
+            width: 50%;
+            text-align: center;
+            padding: 3px;
+        }
+
+        .info-badge {
+            background: rgba(255,255,255,0.3);
+            padding: 2px 4px;
+            border-radius: 8px;
+            display: inline-block;
+            margin-top: 2px;
+        }
+
+        /* KPI Section */
+        .kpi-section {
+            display: table;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+
+        .kpi-row {
+            display: table-row;
+        }
+
+        .kpi-card {
+            display: table-cell;
+            width: 25%;
+            padding: 6px;
+            text-align: center;
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            vertical-align: top;
+            font-size: 8px;
+        }
+
+        .kpi-card:first-child {
+            border-radius: 6px 0 0 6px;
+        }
+
+        .kpi-card:last-child {
+            border-radius: 0 6px 6px 0;
+        }
+
+        .kpi-title {
+            font-size: 7px;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-bottom: 3px;
+        }
+
+        .kpi-value {
+            font-size: 11px;
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 2px;
+        }
+
+        .kpi-desc {
+            font-size: 6px;
+            color: #9ca3af;
         }
 
         .student-info {
             background: #f8f9fa;
-            padding: 12px;
-            border-radius: 5px;
-            margin-bottom: 20px;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 9px;
         }
 
         .student-info-grid {
@@ -75,7 +160,7 @@
 
         .student-info-cell {
             display: table-cell;
-            padding: 3px 15px 3px 0;
+            padding: 2px 10px 2px 0;
             vertical-align: top;
             width: 50%;
         }
@@ -83,7 +168,7 @@
         .info-label {
             font-weight: 600;
             color: #495057;
-            margin-right: 10px;
+            margin-right: 8px;
         }
 
         .info-value {
@@ -91,11 +176,11 @@
         }
 
         .section-title {
-            font-size: 14px;
+            font-size: 10px;
             font-weight: bold;
             color: #007bff;
-            margin: 20px 0 10px 0;
-            padding-bottom: 5px;
+            margin: 15px 0 8px 0;
+            padding-bottom: 3px;
             border-bottom: 1px solid #e9ecef;
         }
 
@@ -236,6 +321,26 @@
             page-break-before: always;
         }
 
+        /* Informations de génération */
+        .generation-info {
+            text-align: center;
+            font-size: 7px;
+            color: #6b7280;
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .no-data {
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+
         /* Eviter les coupures de page dans les elements importants */
         .summary-box, .student-info {
             page-break-inside: avoid;
@@ -244,37 +349,90 @@
         .section-title {
             page-break-after: avoid;
         }
+
+        /* Print optimizations */
+        @media print {
+            body {
+                background: white;
+                padding: 5px;
+            }
+
+            .container {
+                padding: 10px;
+            }
+
+            .header-section {
+                margin-bottom: 10px;
+            }
+
+            .kpi-section {
+                margin-bottom: 10px;
+            }
+        }
     </style>
 </head>
 <body>
-    <!-- En-tete du document -->
-    <div class="header">
-        @if($etablissement['logo'] && file_exists(storage_path('app/public/' . $etablissement['logo'])))
-            <img src="data:image/{{ pathinfo($etablissement['logo'], PATHINFO_EXTENSION) }};base64,{{ base64_encode(file_get_contents(storage_path('app/public/' . $etablissement['logo']))) }}" class="header-logo" alt="Logo">
-        @endif
+    <div class="container">
+        <!-- Header Section -->
+        <div class="header-section">
+            @if($etablissement['logo'] && file_exists(storage_path('app/public/' . $etablissement['logo'])))
+                <img src="data:image/{{ pathinfo($etablissement['logo'], PATHINFO_EXTENSION) }};base64,{{ base64_encode(file_get_contents(storage_path('app/public/' . $etablissement['logo']))) }}" class="header-logo" alt="Logo">
+            @endif
 
-        <div class="school-name">{{ $etablissement['nom'] }}</div>
+            <div class="school-name">{{ $etablissement['nom'] ?? 'ESBTP-yAKRO' }}</div>
 
-        @if($etablissement['adresse'] || $etablissement['telephone'] || $etablissement['email'])
-        <div class="school-info">
-            @if($etablissement['adresse']){{ $etablissement['adresse'] }}@endif
-            @if($etablissement['telephone'] && $etablissement['adresse']) | @endif
-            @if($etablissement['telephone'])Tel: {{ $etablissement['telephone'] }}@endif
-            @if($etablissement['email'] && ($etablissement['adresse'] || $etablissement['telephone'])) | @endif
-            @if($etablissement['email'])Email: {{ $etablissement['email'] }}@endif
-        </div>
-        @endif
+            @if($etablissement['adresse'] || $etablissement['telephone'] || $etablissement['email'])
+            <div class="school-info">
+                @if($etablissement['adresse']){{ $etablissement['adresse'] }}@endif
+                @if($etablissement['telephone'] && $etablissement['adresse']) | @endif
+                @if($etablissement['telephone'])Tel: {{ $etablissement['telephone'] }}@endif
+                @if($etablissement['email'] && ($etablissement['adresse'] || $etablissement['telephone'])) | @endif
+                @if($etablissement['email'])Email: {{ $etablissement['email'] }}@endif
+            </div>
+            @endif
 
-        <div class="document-title">SITUATION FINANCIERE</div>
-        <div class="document-subtitle">
-            {{ $inscription->etudiant->prenoms }} {{ $inscription->etudiant->nom }}
+            <div class="document-title-section">
+                <div class="document-title">SITUATION FINANCIERE</div>
+                <div class="student-info-grid">
+                    <div class="student-info-row">
+                        <div class="student-info-cell">
+                            <strong>Etudiant:</strong><br>
+                            <span class="info-badge">{{ $inscription->etudiant->nom }} {{ $inscription->etudiant->prenoms }}</span>
+                        </div>
+                        <div class="student-info-cell">
+                            <strong>Annee:</strong><br>
+                            <span class="info-badge">{{ $inscription->anneeUniversitaire->name }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="document-info">
-            Annee Universitaire: {{ $inscription->anneeUniversitaire->name }} |
-            Classe: {{ $inscription->classe->name ?? 'Non renseigne' }} |
-            Genere le {{ now()->format('d/m/Y a H:i') }}
+
+        <!-- KPI Section -->
+        <div class="kpi-section">
+            <div class="kpi-row">
+                <div class="kpi-card">
+                    <div class="kpi-title">Total Attendu</div>
+                    <div class="kpi-value">{{ number_format($statistiques['total_attendu'], 0, ',', ' ') }}</div>
+                    <div class="kpi-desc">FCFA</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">Total Paye</div>
+                    <div class="kpi-value">{{ number_format($statistiques['total_paye'], 0, ',', ' ') }}</div>
+                    <div class="kpi-desc">FCFA</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">Solde Restant</div>
+                    <div class="kpi-value" style="color: {{ $statistiques['solde_restant'] > 0 ? '#dc3545' : '#28a745' }};">{{ number_format($statistiques['solde_restant'], 0, ',', ' ') }}</div>
+                    <div class="kpi-desc">FCFA</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">Progression</div>
+                    <div class="kpi-value">{{ $statistiques['pourcentage_paye'] }}%</div>
+                    <div class="kpi-desc">Complete</div>
+                </div>
+            </div>
         </div>
-    </div>
 
     <!-- Informations generales -->
     <div class="student-info">
@@ -392,40 +550,30 @@
                 </td>
             </tr>
             @endforeach
+
+            {{-- Intégrer les reliquats comme des lignes de frais --}}
+            @if($reliquats->count() > 0)
+                @foreach($reliquats as $reliquat)
+                    @if($reliquat->montant_reliquat > 0)
+                        <tr style="background-color: #fef3c7;">
+                            <td>
+                                {{ $reliquat->fraisSubscription->fraisCategory->name ?? 'Non renseigne' }}<br>
+                                <small style="color: #6b7280;">Reliquat {{ $reliquat->inscriptionSource->anneeUniversitaire->name ?? 'N/A' }}</small>
+                            </td>
+                            <td class="amount">{{ number_format($reliquat->montant_reliquat, 0, ',', ' ') }} FCFA</td>
+                            <td class="amount positive">{{ number_format($reliquat->montant_paye, 0, ',', ' ') }} FCFA</td>
+                            <td class="amount" style="color: #d97706;">{{ number_format($reliquat->montant_reliquat - $reliquat->montant_paye, 0, ',', ' ') }} FCFA</td>
+                            <td><span class="status-badge" style="background: #fef3c7; color: #d97706;">Reliquat</span></td>
+                        </tr>
+                    @endif
+                @endforeach
+            @endif
         </tbody>
     </table>
     @else
     <div class="no-data">Aucun frais souscrit pour cette inscription.</div>
     @endif
 
-    <!-- Reliquats (s'il y en a) -->
-    @if($reliquats->count() > 0)
-    <div class="section-title">RELIQUATS D'ANNEES PRECEDENTES</div>
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Annee d'Origine</th>
-                <th>Categorie</th>
-                <th>Montant Attendu</th>
-                <th>Montant Paye</th>
-                <th>Reliquat</th>
-                <th>Statut</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($reliquats as $reliquat)
-            <tr>
-                <td>{{ $reliquat->inscriptionSource->anneeUniversitaire->name ?? 'Non renseigne' }}</td>
-                <td>{{ $reliquat->fraisSubscription->fraisCategory->name ?? 'Non renseigne' }}</td>
-                <td class="amount">{{ number_format($reliquat->montant_attendu, 0, ',', ' ') }} FCFA</td>
-                <td class="amount">{{ number_format($reliquat->montant_paye, 0, ',', ' ') }} FCFA</td>
-                <td class="amount negative">{{ number_format($reliquat->montant_reliquat, 0, ',', ' ') }} FCFA</td>
-                <td><span class="status-badge impaye">{{ ucfirst($reliquat->statut) }}</span></td>
-            </tr>
-            @endforeach
-        </tbody>
-    </table>
-    @endif
 
     <!-- Historique des paiements -->
     <div class="section-title">HISTORIQUE DES PAIEMENTS</div>
@@ -466,19 +614,20 @@
     <div class="no-data">Aucun paiement enregistre pour cette inscription.</div>
     @endif
 
-    <!-- Pied de page -->
-    <div class="footer">
-        <p><strong>Document genere automatiquement le {{ now()->format('d/m/Y a H:i') }}</strong></p>
-        <p>{{ $etablissement['nom'] }} - Systeme de Gestion des Inscriptions</p>
-        @if($statistiques['solde_restant'] > 0)
-            <p style="color: #dc3545; font-weight: bold;">
-                ATTENTION: Solde restant a payer: {{ number_format($statistiques['solde_restant'], 0, ',', ' ') }} FCFA
-            </p>
-        @else
-            <p style="color: #28a745; font-weight: bold;">
-                SITUATION FINANCIERE A JOUR - Tous les frais sont soldes
-            </p>
-        @endif
+        <!-- Informations de génération -->
+        <div class="generation-info">
+            <strong>Document genere automatiquement le {{ now()->format('d/m/Y a H:i') }}</strong><br>
+            {{ $etablissement['nom'] ?? 'ESBTP-yAKRO' }} - Systeme de Gestion des Inscriptions<br>
+            @if($statistiques['solde_restant'] > 0)
+                <span style="color: #dc3545; font-weight: bold;">
+                    ATTENTION: Solde restant a payer: {{ number_format($statistiques['solde_restant'], 0, ',', ' ') }} FCFA
+                </span>
+            @else
+                <span style="color: #28a745; font-weight: bold;">
+                    SITUATION FINANCIERE A JOUR - Tous les frais sont soldes
+                </span>
+            @endif
+        </div>
     </div>
 </body>
 </html>

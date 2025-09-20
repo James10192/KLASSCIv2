@@ -5,230 +5,66 @@
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
-    .preview-container {
-        max-width: 900px;
-        margin: 0 auto;
-        background: white;
-    }
-
-    .preview-toolbar {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-medium);
-        padding: var(--space-md);
-        margin-bottom: var(--space-lg);
-        display: flex;
-        justify-content: between;
-        align-items: center;
-        gap: var(--space-md);
-    }
-
-    .preview-actions {
-        display: flex;
-        gap: var(--space-sm);
-        margin-left: auto;
-    }
-
-    .preview-content {
-        border: 1px solid #ddd;
-        border-radius: var(--radius-medium);
-        box-shadow: var(--shadow-card);
-        padding: 0;
-        background: white;
-        min-height: 800px;
-    }
-
-    /* Styles pour le document - similaires au PDF mais adaptés pour l'affichage HTML */
-    .financial-document {
-        font-family: Arial, sans-serif;
-        font-size: 14px;
-        line-height: 1.5;
-        color: #333;
-        padding: 30px;
-    }
-
-    .document-header {
-        text-align: center;
-        margin-bottom: 30px;
-        border-bottom: 2px solid #007bff;
-        padding-bottom: 20px;
-    }
-
-    .document-title {
-        font-size: 24px;
-        font-weight: bold;
-        color: #007bff;
-        margin-bottom: 10px;
-    }
-
-    .document-subtitle {
-        font-size: 16px;
-        color: #666;
-        margin-bottom: 15px;
-    }
-
-    .student-info {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
-        margin-bottom: 25px;
-        background: #f8f9fa;
-        padding: 15px;
-        border-radius: 8px;
-    }
-
-    .info-section h4 {
-        color: #007bff;
-        margin-bottom: 10px;
-        font-size: 16px;
-        border-bottom: 1px solid #dee2e6;
-        padding-bottom: 5px;
-    }
-
-    .info-item {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 5px;
+    .info-group {
+        margin-bottom: 1rem;
     }
 
     .info-label {
         font-weight: 600;
-        color: #495057;
+        color: #374151;
+        margin-right: 0.5rem;
     }
 
     .info-value {
-        color: #212529;
+        color: #6b7280;
     }
 
     .financial-table {
         width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 20px;
-        border: 1px solid #dee2e6;
-    }
-
-    .financial-table th,
-    .financial-table td {
-        padding: 10px;
-        text-align: left;
-        border: 1px solid #dee2e6;
-    }
-
-    .financial-table th {
-        background-color: #007bff;
-        color: white;
-        font-weight: 600;
-    }
-
-    .financial-table tbody tr:nth-child(even) {
-        background-color: #f8f9fa;
-    }
-
-    .financial-table tbody tr:hover {
-        background-color: #e3f2fd;
-    }
-
-    .amount {
-        font-weight: 600;
-        text-align: right;
-    }
-
-    .amount.positive {
-        color: #28a745;
-    }
-
-    .amount.negative {
-        color: #dc3545;
-    }
-
-    .amount.neutral {
-        color: #6c757d;
-    }
-
-    .summary-card {
-        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-        color: white;
-        padding: 20px;
-        border-radius: 10px;
-        margin: 20px 0;
-    }
-
-    .summary-row {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 10px;
-        padding: 5px 0;
-    }
-
-    .summary-row.total {
-        border-top: 2px solid rgba(255,255,255,0.3);
-        padding-top: 15px;
-        margin-top: 15px;
-        font-size: 18px;
-        font-weight: bold;
     }
 
     .section-title {
-        font-size: 18px;
-        font-weight: bold;
-        color: #007bff;
-        margin: 25px 0 15px 0;
-        padding-bottom: 8px;
-        border-bottom: 2px solid #e9ecef;
-    }
-
-    .no-data {
-        text-align: center;
-        color: #6c757d;
-        font-style: italic;
-        padding: 20px;
-        background: #f8f9fa;
+        background: #f3f4f6;
+        padding: 0.75rem 1rem;
         border-radius: 8px;
-        margin: 10px 0;
+        font-weight: 600;
+        color: #374151;
+        margin: 1.5rem 0 1rem 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
 
     .status-badge {
-        padding: 4px 8px;
+        padding: 0.25rem 0.75rem;
         border-radius: 12px;
-        font-size: 12px;
-        font-weight: 600;
-        text-transform: uppercase;
+        font-size: 0.875rem;
+        font-weight: 500;
     }
 
-    .status-badge.paye {
-        background: #d4edda;
-        color: #155724;
-    }
+    .status-badge.soldé { background: #d1fae5; color: #065f46; }
+    .status-badge.partiel { background: #fef3c7; color: #92400e; }
+    .status-badge.impayé { background: #fee2e2; color: #991b1b; }
+    .status-badge.reliquat { background: #fef3c7; color: #d97706; }
 
-    .status-badge.partiel {
-        background: #fff3cd;
-        color: #856404;
-    }
+    @media print {
+        .dashboard-header, .btn-acasi, .no-print {
+            display: none !important;
+        }
 
-    .status-badge.impaye {
-        background: #f8d7da;
-        color: #721c24;
-    }
+        .main-content {
+            padding: 0 !important;
+        }
 
-    .progress-bar {
-        width: 100%;
-        height: 20px;
-        background: #e9ecef;
-        border-radius: 10px;
-        overflow: hidden;
-        margin: 10px 0;
-    }
+        .main-card {
+            box-shadow: none !important;
+            border: 1px solid #e5e7eb !important;
+            margin-bottom: 20px !important;
+        }
 
-    .progress-fill {
-        height: 100%;
-        background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
-        transition: width 0.3s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-size: 12px;
-        font-weight: 600;
+        .kpi-grid {
+            display: none !important;
+        }
     }
 </style>
 @endsection
@@ -236,240 +72,379 @@
 @section('content')
 <div class="dashboard-acasi">
     <div class="main-content">
-        <div class="preview-container">
-            <!-- Toolbar de prévisualisation -->
-            <div class="preview-toolbar">
-                <div class="toolbar-info">
-                    <i class="fas fa-file-invoice-dollar me-2"></i>
-                    <strong>Prévisualisation - Situation Financière</strong>
-                </div>
-                <div class="preview-actions">
-                    <a href="{{ route('esbtp.inscriptions.show', $inscription) }}" class="btn-acasi secondary">
-                        <i class="fas fa-arrow-left"></i>Retour
-                    </a>
-                    <a href="{{ route('esbtp.inscriptions.situation-financiere.pdf', $inscription) }}" class="btn-acasi primary">
-                        <i class="fas fa-download"></i>Télécharger PDF
-                    </a>
+        <!-- Header Section -->
+        <div class="dashboard-header">
+            <div class="header-left">
+                <h1><i class="fas fa-chart-line me-2"></i>Situation Financière</h1>
+                <p class="header-subtitle">{{ $inscription->etudiant->nom }} {{ $inscription->etudiant->prenoms }} - {{ $inscription->etudiant->matricule }}</p>
+            </div>
+            <div class="header-actions">
+                <a href="{{ route('esbtp.inscriptions.situation-financiere.pdf', $inscription->id) }}" class="btn-acasi danger">
+                    <i class="fas fa-file-pdf"></i>Télécharger PDF
+                </a>
+                <button onclick="window.print()" class="btn-acasi primary">
+                    <i class="fas fa-print"></i>Imprimer
+                </button>
+                <a href="{{ route('esbtp.inscriptions.show', $inscription->id) }}" class="btn-acasi secondary">
+                    <i class="fas fa-arrow-left"></i>Retour
+                </a>
+            </div>
+        </div>
+
+        <!-- Statistiques KPI -->
+        <div class="kpi-grid">
+            <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
+                <div class="kpi-title" style="color: #000; font-weight: 600;">Total Attendu</div>
+                <div class="kpi-value" style="color: var(--primary); font-size: 2rem; font-weight: bold;">{{ number_format($statistiques['total_attendu'], 0, ',', ' ') }} FCFA</div>
+                <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
+                    <i class="fas fa-money-bill-wave"></i>
+                    Frais année + reliquats
                 </div>
             </div>
 
-            <!-- Contenu du document -->
-            <div class="preview-content">
-                <div class="financial-document">
-                    <!-- En-tête du document -->
-                    <div class="document-header">
-                        <div class="document-title">SITUATION FINANCIÈRE</div>
-                        <div class="document-subtitle">
-                            {{ $inscription->etudiant->prenoms }} {{ $inscription->etudiant->nom }}
-                        </div>
-                        <div style="color: #666; font-size: 14px;">
-                            Année Universitaire: {{ $inscription->anneeUniversitaire->name }} |
-                            Classe: {{ $inscription->classe->name ?? 'Non renseigné' }} |
-                            Généré le {{ now()->format('d/m/Y à H:i') }}
-                        </div>
-                    </div>
+            <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
+                <div class="kpi-title" style="color: #000; font-weight: 600;">Total Payé</div>
+                <div class="kpi-value" style="color: var(--success); font-size: 2rem; font-weight: bold;">{{ number_format($statistiques['total_paye'], 0, ',', ' ') }} FCFA</div>
+                <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
+                    <i class="fas fa-check-circle"></i>
+                    Tous paiements validés
+                </div>
+            </div>
 
-                    <!-- Informations générales -->
-                    <div class="student-info">
-                        <div class="info-section">
-                            <h4><i class="fas fa-user"></i> Informations Étudiant</h4>
-                            <div class="info-item">
-                                <span class="info-label">Matricule:</span>
-                                <span class="info-value">{{ $inscription->etudiant->matricule ?? 'Non renseigné' }}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">Email:</span>
-                                <span class="info-value">{{ $inscription->etudiant->email ?? 'Non renseigné' }}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">Téléphone:</span>
-                                <span class="info-value">{{ $inscription->etudiant->telephone ?? 'Non renseigné' }}</span>
-                            </div>
-                        </div>
-                        <div class="info-section">
-                            <h4><i class="fas fa-graduation-cap"></i> Informations Académiques</h4>
-                            <div class="info-item">
-                                <span class="info-label">Filière:</span>
-                                <span class="info-value">{{ $inscription->filiere->name ?? 'Non renseigné' }}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">Niveau:</span>
-                                <span class="info-value">{{ $inscription->niveau->name ?? 'Non renseigné' }}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">Statut:</span>
-                                <span class="info-value">{{ str_replace('_', ' ', ucfirst($inscription->affectation_status ?? 'affecté')) }}</span>
-                            </div>
-                        </div>
-                    </div>
+            <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
+                <div class="kpi-title" style="color: #000; font-weight: 600;">Solde</div>
+                <div class="kpi-value" style="color: {{ $statistiques['solde_restant'] > 0 ? 'var(--danger)' : 'var(--success)' }}; font-size: 2rem; font-weight: bold;">{{ number_format($statistiques['solde_restant'], 0, ',', ' ') }} FCFA</div>
+                <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
+                    <i class="fas fa-balance-scale"></i>
+                    {{ $statistiques['solde_restant'] > 0 ? 'Restant à payer' : 'Soldé' }}
+                </div>
+            </div>
 
-                    <!-- Synthèse financière -->
-                    <div class="summary-card">
-                        <h4 style="margin: 0 0 15px 0; color: white;"><i class="fas fa-chart-pie"></i> Synthèse Financière</h4>
-                        <div class="summary-row">
-                            <span>Total des frais attendus:</span>
-                            <span>{{ number_format($statistiques['total_attendu'], 0, ',', ' ') }} FCFA</span>
-                        </div>
-                        <div class="summary-row">
-                            <span>Total payé:</span>
-                            <span>{{ number_format($statistiques['total_paye'], 0, ',', ' ') }} FCFA</span>
-                        </div>
-                        @if($statistiques['total_reliquats'] > 0)
-                        <div class="summary-row">
-                            <span>Reliquats à payer:</span>
-                            <span>{{ number_format($statistiques['total_reliquats'], 0, ',', ' ') }} FCFA</span>
-                        </div>
-                        @endif
-                        <div class="summary-row total">
-                            <span>Solde restant:</span>
-                            <span class="{{ $statistiques['solde_restant'] > 0 ? 'text-warning' : 'text-success' }}">
-                                {{ number_format($statistiques['solde_restant'], 0, ',', ' ') }} FCFA
-                            </span>
-                        </div>
-                        <div class="progress-bar" style="margin-top: 15px;">
-                            <div class="progress-fill" style="width: {{ $statistiques['pourcentage_paye'] }}%">
-                                {{ $statistiques['pourcentage_paye'] }}%
-                            </div>
-                        </div>
-                    </div>
+            @if($statistiques['total_reliquats'] > 0)
+            <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
+                <div class="kpi-title" style="color: #000; font-weight: 600;">Reliquats</div>
+                <div class="kpi-value" style="color: var(--warning); font-size: 2rem; font-weight: bold;">{{ number_format($statistiques['total_reliquats'], 0, ',', ' ') }} FCFA</div>
+                <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
+                    <i class="fas fa-history"></i>
+                    Années précédentes
+                </div>
+            </div>
+            @endif
+        </div>
 
-                    <!-- Détail des frais souscrits -->
-                    <div class="section-title">
-                        <i class="fas fa-list-alt"></i> Détail des Frais Souscrits
+        <!-- Informations Étudiant -->
+        <div class="main-card">
+            <div class="main-card-header">
+                <div class="main-card-title">
+                    <i class="fas fa-user"></i>
+                    Informations Étudiant
+                </div>
+            </div>
+            <div class="main-card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="info-group">
+                            <label class="info-label">Matricule:</label>
+                            <span class="info-value">{{ $inscription->etudiant->matricule ?? 'Non renseigné' }}</span>
+                        </div>
                     </div>
-                    @if($fraisSouscrits->count() > 0)
-                    <table class="financial-table">
-                        <thead>
-                            <tr>
-                                <th>Catégorie de Frais</th>
-                                <th>Montant Attendu</th>
-                                <th>Montant Payé</th>
-                                <th>Solde</th>
-                                <th>Statut</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($fraisSouscrits as $frais)
-                            @php
-                                $montantPaye = $inscription->paiements
-                                    ->where('frais_category_id', $frais->frais_category_id)
-                                    ->where('status', 'validé')
-                                    ->where(function($paiement) {
-                                        return $paiement->type_paiement != 'reliquat' || is_null($paiement->type_paiement);
-                                    })
-                                    ->sum('montant');
-                                $solde = $frais->amount - $montantPaye;
-                                $pourcentagePaye = $frais->amount > 0 ? ($montantPaye / $frais->amount) * 100 : 0;
-                            @endphp
-                            <tr>
-                                <td>{{ $frais->fraisCategory->name ?? 'Non renseigné' }}</td>
-                                <td class="amount">{{ number_format($frais->amount, 0, ',', ' ') }} FCFA</td>
-                                <td class="amount positive">{{ number_format($montantPaye, 0, ',', ' ') }} FCFA</td>
-                                <td class="amount {{ $solde > 0 ? 'negative' : 'positive' }}">
-                                    {{ number_format($solde, 0, ',', ' ') }} FCFA
-                                </td>
-                                <td>
-                                    @if($solde <= 0)
-                                        <span class="status-badge paye">Soldé</span>
-                                    @elseif($montantPaye > 0)
-                                        <span class="status-badge partiel">Partiel</span>
-                                    @else
-                                        <span class="status-badge impaye">Impayé</span>
-                                    @endif
-                                </td>
-                            </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                    @else
-                    <div class="no-data">
-                        <i class="fas fa-info-circle"></i> Aucun frais souscrit pour cette inscription.
+                    <div class="col-md-6">
+                        <div class="info-group">
+                            <label class="info-label">Email:</label>
+                            <span class="info-value">{{ $inscription->etudiant->email ?? 'Non renseigné' }}</span>
+                        </div>
                     </div>
-                    @endif
+                    <div class="col-md-6">
+                        <div class="info-group">
+                            <label class="info-label">Téléphone:</label>
+                            <span class="info-value">{{ $inscription->etudiant->telephone ?? 'Non renseigné' }}</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-group">
+                            <label class="info-label">Statut:</label>
+                            <span class="badge bg-primary">{{ ucfirst($inscription->affectation_status ?? 'Affecté') }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-                    <!-- Reliquats (s'il y en a) -->
-                    @if($reliquats->count() > 0)
-                    <div class="section-title">
-                        <i class="fas fa-history"></i> Reliquats d'Années Précédentes
+        <!-- Informations Académiques -->
+        <div class="main-card">
+            <div class="main-card-header">
+                <div class="main-card-title">
+                    <i class="fas fa-graduation-cap"></i>
+                    Informations Académiques
+                </div>
+            </div>
+            <div class="main-card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="info-group">
+                            <label class="info-label">Filière:</label>
+                            <span class="info-value">{{ $inscription->filiere->name ?? 'Non renseigné' }}</span>
+                        </div>
                     </div>
-                    <table class="financial-table">
-                        <thead>
+                    <div class="col-md-6">
+                        <div class="info-group">
+                            <label class="info-label">Niveau:</label>
+                            <span class="info-value">{{ $inscription->niveau->name ?? 'Non renseigné' }}</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-group">
+                            <label class="info-label">Classe:</label>
+                            <span class="info-value">{{ $inscription->classe->name ?? 'Non renseigné' }}</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-group">
+                            <label class="info-label">Année universitaire:</label>
+                            <span class="info-value">{{ $inscription->anneeUniversitaire->name ?? 'Non renseigné' }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Frais Souscrits - Année Courante -->
+        <div class="main-card">
+            <div class="main-card-header">
+                <div class="main-card-title">
+                    <i class="fas fa-money-bill-wave"></i>
+                    Détail des Frais Souscrits - Année {{ $inscription->anneeUniversitaire->name }}
+                </div>
+                <div class="main-card-subtitle">Frais de l'année universitaire en cours</div>
+            </div>
+            <div class="main-card-body">
+                @if($fraisSouscrits->count() > 0)
+                    <div class="table-responsive">
+                        <table class="table table-hover financial-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Catégorie de Frais</th>
+                                    <th width="150" class="text-end">Montant Attendu</th>
+                                    <th width="150" class="text-end">Montant Payé</th>
+                                    <th width="150" class="text-end">Solde</th>
+                                    <th width="100" class="text-center">Statut</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($fraisSouscrits as $frais)
+                                @php
+                                    $montantPaye = $inscription->paiements
+                                        ->where('frais_category_id', $frais->frais_category_id)
+                                        ->where('status', 'validé')
+                                        ->filter(function($paiement) {
+                                            return $paiement->type_paiement != 'reliquat' || is_null($paiement->type_paiement);
+                                        })
+                                        ->sum('montant');
+                                    $solde = $frais->amount - $montantPaye;
+                                @endphp
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-tag me-2 text-primary"></i>
+                                            <strong>{{ $frais->fraisCategory->name ?? 'Non renseigné' }}</strong>
+                                        </div>
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="fw-bold">{{ number_format($frais->amount, 0, ',', ' ') }} FCFA</span>
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="text-success fw-bold">{{ number_format($montantPaye, 0, ',', ' ') }} FCFA</span>
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="fw-bold {{ $solde > 0 ? 'text-danger' : 'text-success' }}">
+                                            {{ number_format($solde, 0, ',', ' ') }} FCFA
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        @if($solde <= 0)
+                                            <span class="status-badge soldé">Soldé</span>
+                                        @elseif($montantPaye > 0)
+                                            <span class="status-badge partiel">Partiel</span>
+                                        @else
+                                            <span class="status-badge impayé">Impayé</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                                @endforeach
+
+                                {{-- Intégrer les reliquats comme des lignes de frais --}}
+                                @if($reliquats->count() > 0)
+                                    @foreach($reliquats as $reliquat)
+                                        @if($reliquat->montant_reliquat > 0)
+                                            <tr class="table-warning">
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <i class="fas fa-history me-2 text-warning"></i>
+                                                        <div>
+                                                            <strong>{{ $reliquat->fraisSubscription->fraisCategory->name ?? 'Non renseigné' }}</strong>
+                                                            <br><small class="text-muted">Reliquat {{ $reliquat->inscriptionSource->anneeUniversitaire->name ?? 'N/A' }}</small>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td class="text-end">
+                                                    <span class="fw-bold">{{ number_format($reliquat->montant_reliquat, 0, ',', ' ') }} FCFA</span>
+                                                </td>
+                                                <td class="text-end">
+                                                    <span class="text-success fw-bold">{{ number_format($reliquat->montant_paye, 0, ',', ' ') }} FCFA</span>
+                                                </td>
+                                                <td class="text-end">
+                                                    <span class="fw-bold text-warning">{{ number_format($reliquat->montant_reliquat - $reliquat->montant_paye, 0, ',', ' ') }} FCFA</span>
+                                                </td>
+                                                <td class="text-center">
+                                                    <span class="status-badge reliquat">Reliquat</span>
+                                                </td>
+                                            </tr>
+                                        @endif
+                                    @endforeach
+                                @endif
+                            </tbody>
+                        </table>
+                    </div>
+                @else
+                    <div class="text-center py-4">
+                        <i class="fas fa-exclamation-triangle text-warning fa-2x mb-3"></i>
+                        <h5>Aucun frais souscrit</h5>
+                        <p class="text-muted">Aucun frais souscrit pour cette inscription.</p>
+                    </div>
+                @endif
+            </div>
+        </div>
+
+        <!-- Reliquats d'Années Précédentes -->
+        @if($reliquats->count() > 0)
+        <div class="main-card">
+            <div class="main-card-header">
+                <div class="main-card-title">
+                    <i class="fas fa-history"></i>
+                    Reliquats d'Années Précédentes
+                </div>
+                <div class="main-card-subtitle">Frais provenant d'inscriptions antérieures</div>
+            </div>
+            <div class="main-card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover financial-table">
+                        <thead class="table-light">
                             <tr>
                                 <th>Année d'Origine</th>
                                 <th>Catégorie de Frais</th>
-                                <th>Montant Attendu</th>
-                                <th>Montant Payé</th>
-                                <th>Reliquat</th>
-                                <th>Statut</th>
+                                <th width="150" class="text-end">Montant Attendu</th>
+                                <th width="150" class="text-end">Montant Payé</th>
+                                <th width="150" class="text-end">Reliquat</th>
+                                <th width="100" class="text-center">Statut</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($reliquats as $reliquat)
                             <tr>
-                                <td>{{ $reliquat->inscriptionSource->anneeUniversitaire->name ?? 'Non renseigné' }}</td>
-                                <td>{{ $reliquat->fraisSubscription->fraisCategory->name ?? 'Non renseigné' }}</td>
-                                <td class="amount">{{ number_format($reliquat->montant_attendu, 0, ',', ' ') }} FCFA</td>
-                                <td class="amount">{{ number_format($reliquat->montant_paye, 0, ',', ' ') }} FCFA</td>
-                                <td class="amount negative">{{ number_format($reliquat->montant_reliquat, 0, ',', ' ') }} FCFA</td>
                                 <td>
-                                    <span class="status-badge impaye">{{ ucfirst($reliquat->statut) }}</span>
+                                    <span class="badge bg-warning">{{ $reliquat->inscriptionSource->anneeUniversitaire->name ?? 'Non renseigné' }}</span>
                                 </td>
-                            </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                    @endif
-
-                    <!-- Historique des paiements -->
-                    <div class="section-title">
-                        <i class="fas fa-history"></i> Historique des Paiements
-                    </div>
-                    @if($inscription->paiements->count() > 0)
-                    <table class="financial-table">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Catégorie</th>
-                                <th>Mode de Paiement</th>
-                                <th>Montant</th>
-                                <th>Statut</th>
-                                <th>Référence</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($inscription->paiements as $paiement)
-                            <tr>
-                                <td>{{ $paiement->date_paiement ? $paiement->date_paiement->format('d/m/Y') : 'Non renseigné' }}</td>
-                                <td>{{ $paiement->fraisCategory->name ?? 'Non renseigné' }}</td>
-                                <td>{{ ucfirst($paiement->mode_paiement ?? 'Non renseigné') }}</td>
-                                <td class="amount positive">{{ number_format($paiement->montant, 0, ',', ' ') }} FCFA</td>
                                 <td>
-                                    @if($paiement->status === 'validé')
-                                        <span class="status-badge paye">Validé</span>
-                                    @elseif($paiement->status === 'en_attente')
-                                        <span class="status-badge partiel">En attente</span>
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-clock me-2 text-warning"></i>
+                                        <strong>{{ $reliquat->fraisSubscription->fraisCategory->name ?? 'Non renseigné' }}</strong>
+                                    </div>
+                                </td>
+                                <td class="text-end">
+                                    <span class="fw-bold">{{ number_format($reliquat->montant_attendu, 0, ',', ' ') }} FCFA</span>
+                                </td>
+                                <td class="text-end">
+                                    <span class="text-success fw-bold">{{ number_format($reliquat->montant_paye, 0, ',', ' ') }} FCFA</span>
+                                </td>
+                                <td class="text-end">
+                                    <span class="text-warning fw-bold">{{ number_format($reliquat->montant_reliquat, 0, ',', ' ') }} FCFA</span>
+                                </td>
+                                <td class="text-center">
+                                    @if($reliquat->statut == 'soldé')
+                                        <span class="status-badge soldé">Soldé</span>
+                                    @elseif($reliquat->montant_paye > 0)
+                                        <span class="status-badge partiel">Partiel</span>
                                     @else
-                                        <span class="status-badge impaye">{{ ucfirst($paiement->status) }}</span>
+                                        <span class="status-badge impayé">Impayé</span>
                                     @endif
                                 </td>
-                                <td>{{ $paiement->numero_recu ?? 'Non renseigné' }}</td>
                             </tr>
                             @endforeach
                         </tbody>
                     </table>
-                    @else
-                    <div class="no-data">
-                        <i class="fas fa-info-circle"></i> Aucun paiement enregistré pour cette inscription.
-                    </div>
-                    @endif
-
-                    <!-- Pied de page -->
-                    <div style="margin-top: 40px; text-align: center; color: #666; font-size: 12px; border-top: 1px solid #dee2e6; padding-top: 20px;">
-                        <p>Document généré automatiquement le {{ now()->format('d/m/Y à H:i') }}</p>
-                        <p>{{ \App\Models\Setting::get('school_name', 'ESBTP-yAKRO') }} - Système de Gestion des Inscriptions</p>
-                    </div>
                 </div>
             </div>
+        </div>
+        @endif
+
+        <!-- Historique des Paiements -->
+        <div class="main-card">
+            <div class="main-card-header">
+                <div class="main-card-title">
+                    <i class="fas fa-receipt"></i>
+                    Historique des Paiements
+                </div>
+                <div class="main-card-subtitle">{{ $inscription->paiements->where('status', 'validé')->count() }} paiement(s) validé(s)</div>
+            </div>
+            <div class="main-card-body">
+                @if($inscription->paiements->where('status', 'validé')->count() > 0)
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Catégorie</th>
+                                    <th>Mode de Paiement</th>
+                                    <th width="120" class="text-end">Montant</th>
+                                    <th width="100" class="text-center">Statut</th>
+                                    <th>Référence</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($inscription->paiements->where('status', 'validé')->sortByDesc('date_paiement') as $paiement)
+                                <tr>
+                                    <td>{{ $paiement->date_paiement ? \Carbon\Carbon::parse($paiement->date_paiement)->format('d/m/Y') : 'Non renseigné' }}</td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            @if($paiement->type_paiement == 'reliquat')
+                                                <i class="fas fa-history me-2 text-warning"></i>
+                                            @else
+                                                <i class="fas fa-money-bill me-2 text-success"></i>
+                                            @endif
+                                            {{ $paiement->fraisCategory->name ?? 'Non renseigné' }}
+                                        </div>
+                                    </td>
+                                    <td>{{ $paiement->mode_paiement ?? 'Non renseigné' }}</td>
+                                    <td class="text-end">
+                                        <span class="fw-bold text-success">{{ number_format($paiement->montant, 0, ',', ' ') }} FCFA</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-success">{{ strtoupper($paiement->status) }}</span>
+                                    </td>
+                                    <td>
+                                        <code class="text-muted">{{ $paiement->numero_recu ?? '-' }}</code>
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @else
+                    <div class="text-center py-4">
+                        <i class="fas fa-receipt text-muted fa-2x mb-3"></i>
+                        <h5>Aucun paiement</h5>
+                        <p class="text-muted">Aucun paiement validé pour cette inscription.</p>
+                    </div>
+                @endif
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-4">
+            <small class="text-muted">
+                <i class="fas fa-info-circle me-1"></i>
+                Document généré automatiquement le {{ now()->format('d/m/Y à H:i') }}
+            </small>
         </div>
     </div>
 </div>

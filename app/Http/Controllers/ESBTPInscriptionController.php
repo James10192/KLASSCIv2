@@ -1877,11 +1877,6 @@ class ESBTPInscriptionController extends Controller
             ->with(['fraisCategory'])
             ->get();
 
-        // Calculer les totaux
-        $totalAttendu = $fraisSouscrits->sum('amount');
-        $totalPaye = $inscription->paiements->sum('montant');
-        $soldeRestant = $totalAttendu - $totalPaye;
-
         // Récupérer les reliquats liés à cette inscription (entrants)
         $reliquats = \App\Models\ESBTPReliquatDetail::where('inscription_destination_id', $inscription->id)
             ->where('statut', 'actif')
@@ -1890,12 +1885,24 @@ class ESBTPInscriptionController extends Controller
 
         $totalReliquats = $reliquats->sum('montant_reliquat');
 
+        // Calculer les totaux
+        $totalFraisAnnee = $fraisSouscrits->sum('amount'); // Frais année courante seulement
+        $totalAttendu = $totalFraisAnnee + $totalReliquats; // Total = Année courante + Reliquats
+
+        // Inclure TOUS les paiements validés (y compris reliquats)
+        $totalPaye = $inscription->paiements
+            ->where('status', 'validé')
+            ->sum('montant');
+
+        $soldeRestant = $totalAttendu - $totalPaye;
+
         // Statistiques
         $statistiques = [
-            'total_attendu' => $totalAttendu,
-            'total_paye' => $totalPaye,
+            'total_frais_annee' => $totalFraisAnnee, // Frais année courante uniquement
+            'total_attendu' => $totalAttendu, // Frais année + reliquats
+            'total_paye' => $totalPaye, // Tous les paiements validés
             'total_reliquats' => $totalReliquats,
-            'solde_restant' => $soldeRestant + $totalReliquats,
+            'solde_restant' => $soldeRestant,
             'pourcentage_paye' => $totalAttendu > 0 ? round(($totalPaye / $totalAttendu) * 100, 2) : 0,
         ];
 
@@ -1930,38 +1937,7 @@ class ESBTPInscriptionController extends Controller
             ->with(['fraisCategory'])
             ->get();
 
-        // Utiliser la même logique que la page show pour calculer les montants attendus
-        $affectationStatus = $inscription->affectation_status ?? 'affecté';
-        $totalAttendu = 0;
-
-        foreach ($fraisSouscrits as $souscription) {
-            $category = $souscription->fraisCategory;
-
-            if ($category->is_mandatory) {
-                // Pour les frais obligatoires, utiliser les règles selon le statut d'affectation
-                $rule = $category->getApplicableRule($inscription->filiere_id, $inscription->niveau_id, $inscription->annee_universitaire_id);
-                if ($rule) {
-                    $montantAttendu = $rule->getMontantByStatus($affectationStatus);
-                } else {
-                    $montantAttendu = $souscription->amount;
-                }
-            } else {
-                // Pour les frais optionnels, utiliser directement le montant de souscription
-                $montantAttendu = $souscription->amount;
-            }
-
-            $totalAttendu += $montantAttendu;
-        }
-
-        // Exclure les paiements de reliquats du calcul du total payé pour les frais de l'année courante
-        $totalPaye = $inscription->paiements
-            ->where('status', 'validé')
-            ->filter(function($paiement) {
-                return $paiement->type_paiement != 'reliquat' || is_null($paiement->type_paiement);
-            })
-            ->sum('montant');
-        $soldeRestant = $totalAttendu - $totalPaye;
-
+        // Récupérer les reliquats liés à cette inscription (entrants)
         $reliquats = \App\Models\ESBTPReliquatDetail::where('inscription_destination_id', $inscription->id)
             ->where('statut', 'actif')
             ->with(['inscriptionSource.etudiant', 'fraisSubscription.fraisCategory'])
@@ -1969,11 +1945,23 @@ class ESBTPInscriptionController extends Controller
 
         $totalReliquats = $reliquats->sum('montant_reliquat');
 
+        // Utiliser la même logique que la page show: PRIORITÉ à la souscription
+        $totalFraisAnnee = $fraisSouscrits->sum('amount'); // Frais année courante seulement
+        $totalAttendu = $totalFraisAnnee + $totalReliquats; // Total = Année courante + Reliquats
+
+        // Inclure TOUS les paiements validés (y compris reliquats)
+        $totalPaye = $inscription->paiements
+            ->where('status', 'validé')
+            ->sum('montant');
+
+        $soldeRestant = $totalAttendu - $totalPaye;
+
         $statistiques = [
-            'total_attendu' => $totalAttendu,
-            'total_paye' => $totalPaye,
+            'total_frais_annee' => $totalFraisAnnee, // Frais année courante uniquement
+            'total_attendu' => $totalAttendu, // Frais année + reliquats
+            'total_paye' => $totalPaye, // Tous les paiements validés
             'total_reliquats' => $totalReliquats,
-            'solde_restant' => $soldeRestant + $totalReliquats,
+            'solde_restant' => $soldeRestant,
             'pourcentage_paye' => $totalAttendu > 0 ? round(($totalPaye / $totalAttendu) * 100, 2) : 0,
         ];
 

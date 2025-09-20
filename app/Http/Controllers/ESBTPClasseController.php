@@ -547,10 +547,10 @@ class ESBTPClasseController extends Controller
     public function getEtudiants(ESBTPClasse $classe)
     {
         $etudiants = $classe->etudiants()
-            ->select('id', 'nom', 'prenom', 'matricule')
+            ->select('id', 'nom', 'prenoms', 'matricule')
             ->where('is_active', true)
             ->orderBy('nom')
-            ->orderBy('prenom')
+            ->orderBy('prenoms')
             ->get();
 
         return response()->json([
@@ -662,7 +662,7 @@ class ESBTPClasseController extends Controller
                 return $inscription->etudiant;
             })
             ->filter()
-            ->sortBy(['nom', 'prenom']);
+            ->sortBy(['nom', 'prenoms']);
 
         // Récupérer les paramètres de l'établissement
         $etablissement = [
@@ -700,7 +700,7 @@ class ESBTPClasseController extends Controller
                 return $inscription->etudiant;
             })
             ->filter()
-            ->sortBy(['nom', 'prenom']);
+            ->sortBy(['nom', 'prenoms']);
 
         // Récupérer les paramètres de l'établissement
         $etablissement = [
@@ -732,7 +732,7 @@ class ESBTPClasseController extends Controller
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
         $etudiants = $classe->inscriptions()
-            ->with(['etudiant.parent'])
+            ->with(['etudiant'])
             ->where('status', 'active')
             ->when($anneeCourante, function($query) use ($anneeCourante) {
                 return $query->where('annee_universitaire_id', $anneeCourante->id);
@@ -742,7 +742,7 @@ class ESBTPClasseController extends Controller
                 return $inscription->etudiant;
             })
             ->filter()
-            ->sortBy(['nom', 'prenom']);
+            ->sortBy(['nom', 'prenoms']);
 
         // Récupérer les paramètres de l'établissement
         $etablissement = [
@@ -770,7 +770,7 @@ class ESBTPClasseController extends Controller
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
         $etudiants = $classe->inscriptions()
-            ->with(['etudiant.parent'])
+            ->with(['etudiant'])
             ->where('status', 'active')
             ->when($anneeCourante, function($query) use ($anneeCourante) {
                 return $query->where('annee_universitaire_id', $anneeCourante->id);
@@ -780,7 +780,7 @@ class ESBTPClasseController extends Controller
                 return $inscription->etudiant;
             })
             ->filter()
-            ->sortBy(['nom', 'prenom']);
+            ->sortBy(['nom', 'prenoms']);
 
         // Récupérer les paramètres de l'établissement
         $etablissement = [
@@ -812,7 +812,7 @@ class ESBTPClasseController extends Controller
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
         $etudiants = $classe->inscriptions()
-            ->with(['etudiant.parent'])
+            ->with(['etudiant'])
             ->where('status', 'active')
             ->when($anneeCourante, function($query) use ($anneeCourante) {
                 return $query->where('annee_universitaire_id', $anneeCourante->id);
@@ -822,7 +822,7 @@ class ESBTPClasseController extends Controller
                 return $inscription->etudiant;
             })
             ->filter()
-            ->sortBy(['nom', 'prenom']);
+            ->sortBy(['nom', 'prenoms']);
 
         // Récupérer les paramètres de l'établissement
         $etablissement = [
