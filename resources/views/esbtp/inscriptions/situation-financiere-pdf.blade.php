@@ -560,8 +560,8 @@
             @endforeach
 
             {{-- Intégrer les reliquats comme des lignes de frais --}}
-            @if($reliquats->count() > 0)
-                @foreach($reliquats as $reliquat)
+            @if($reliquatsEntrants->count() > 0)
+                @foreach($reliquatsEntrants as $reliquat)
                     @if($reliquat->solde_restant > 0)
                         <tr style="background-color: #fef3c7;">
                             <td>

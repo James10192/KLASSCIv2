@@ -25,7 +25,7 @@ class LogRequests
         $response = $next($request);
 
         Log::info('Response', [
-            'status' => $response->status(),
+            'status' => method_exists($response, 'status') ? $response->status() : $response->getStatusCode(),
             'headers' => $response->headers->all(),
         ]);
 

@@ -285,8 +285,8 @@
                                 @endforeach
 
                                 {{-- Intégrer les reliquats comme des lignes de frais --}}
-                                @if($reliquats->count() > 0)
-                                    @foreach($reliquats as $reliquat)
+                                @if($reliquatsEntrantsEntrants->count() > 0)
+                                    @foreach($reliquatsEntrantsEntrants as $reliquat)
                                         @if($reliquat->solde_restant > 0)
                                             <tr class="table-warning">
                                                 <td>
@@ -339,7 +339,7 @@
         </div>
 
         <!-- Reliquats d'Années Précédentes -->
-        @if($reliquats->count() > 0)
+        @if($reliquatsEntrants->count() > 0)
         <div class="main-card">
             <div class="main-card-header">
                 <div class="main-card-title">
@@ -362,7 +362,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($reliquats as $reliquat)
+                            @foreach($reliquatsEntrants as $reliquat)
                             <tr>
                                 <td>
                                     <span class="badge bg-warning">{{ $reliquat->inscriptionSource->anneeUniversitaire->name ?? 'Non renseigné' }}</span>
