@@ -354,6 +354,9 @@
                                 $montantPaye = $inscription->paiements
                                     ->where('frais_category_id', $frais->frais_category_id)
                                     ->where('status', 'validé')
+                                    ->where(function($paiement) {
+                                        return $paiement->type_paiement != 'reliquat' || is_null($paiement->type_paiement);
+                                    })
                                     ->sum('montant');
                                 $solde = $frais->amount - $montantPaye;
                                 $pourcentagePaye = $frais->amount > 0 ? ($montantPaye / $frais->amount) * 100 : 0;

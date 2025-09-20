@@ -367,7 +367,10 @@
             @php
                 $montantPaye = $inscription->paiements
                     ->where('frais_category_id', $frais->frais_category_id)
-                    ->where('status', 'valide')
+                    ->where('status', 'validé')
+                    ->where(function($paiement) {
+                        return $paiement->type_paiement != 'reliquat' || is_null($paiement->type_paiement);
+                    })
                     ->sum('montant');
                 $solde = $frais->amount - $montantPaye;
             @endphp

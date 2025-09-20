@@ -1953,7 +1953,13 @@ class ESBTPInscriptionController extends Controller
             $totalAttendu += $montantAttendu;
         }
 
-        $totalPaye = $inscription->paiements->sum('montant');
+        // Exclure les paiements de reliquats du calcul du total payé pour les frais de l'année courante
+        $totalPaye = $inscription->paiements
+            ->where('status', 'validé')
+            ->filter(function($paiement) {
+                return $paiement->type_paiement != 'reliquat' || is_null($paiement->type_paiement);
+            })
+            ->sum('montant');
         $soldeRestant = $totalAttendu - $totalPaye;
 
         $reliquats = \App\Models\ESBTPReliquatDetail::where('inscription_destination_id', $inscription->id)
