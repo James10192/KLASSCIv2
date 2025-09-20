@@ -514,6 +514,7 @@
         <thead>
             <tr>
                 <th>Categorie de Frais</th>
+                <th>Type</th>
                 <th>Montant Attendu</th>
                 <th>Montant Paye</th>
                 <th>Solde</th>
@@ -534,6 +535,13 @@
             @endphp
             <tr>
                 <td>{{ $frais->fraisCategory->name ?? 'Non renseigne' }}</td>
+                <td style="text-align: center; font-size: 8px;">
+                    @if($frais->fraisCategory->is_mandatory)
+                        <span style="background: #dc3545; color: white; padding: 2px 4px; border-radius: 6px; font-size: 7px;">Obligatoire</span>
+                    @else
+                        <span style="background: #0dcaf0; color: white; padding: 2px 4px; border-radius: 6px; font-size: 7px;">Optionnel</span>
+                    @endif
+                </td>
                 <td class="amount">{{ number_format($frais->amount, 0, ',', ' ') }} FCFA</td>
                 <td class="amount positive">{{ number_format($montantPaye, 0, ',', ' ') }} FCFA</td>
                 <td class="amount {{ $solde > 0 ? 'negative' : 'positive' }}">
@@ -559,6 +567,13 @@
                             <td>
                                 {{ $reliquat->fraisSubscription->fraisCategory->name ?? 'Non renseigne' }}<br>
                                 <small style="color: #6b7280;">Reliquat {{ $reliquat->inscriptionSource->anneeUniversitaire->name ?? 'N/A' }}</small>
+                            </td>
+                            <td style="text-align: center; font-size: 8px;">
+                                @if($reliquat->fraisSubscription->fraisCategory->is_mandatory)
+                                    <span style="background: #f59e0b; color: white; padding: 2px 4px; border-radius: 6px; font-size: 7px;">Obligatoire</span>
+                                @else
+                                    <span style="background: #6b7280; color: white; padding: 2px 4px; border-radius: 6px; font-size: 7px;">Optionnel</span>
+                                @endif
                             </td>
                             <td class="amount">{{ number_format($reliquat->montant_reliquat, 0, ',', ' ') }} FCFA</td>
                             <td class="amount positive">{{ number_format($reliquat->montant_paye, 0, ',', ' ') }} FCFA</td>

@@ -224,6 +224,7 @@
                             <thead class="table-light">
                                 <tr>
                                     <th>Catégorie de Frais</th>
+                                    <th width="100" class="text-center">Type</th>
                                     <th width="150" class="text-end">Montant Attendu</th>
                                     <th width="150" class="text-end">Montant Payé</th>
                                     <th width="150" class="text-end">Solde</th>
@@ -248,6 +249,17 @@
                                             <i class="fas fa-tag me-2 text-primary"></i>
                                             <strong>{{ $frais->fraisCategory->name ?? 'Non renseigné' }}</strong>
                                         </div>
+                                    </td>
+                                    <td class="text-center">
+                                        @if($frais->fraisCategory->is_mandatory)
+                                            <span class="badge bg-danger">
+                                                <i class="fas fa-exclamation-circle me-1"></i>Obligatoire
+                                            </span>
+                                        @else
+                                            <span class="badge bg-info">
+                                                <i class="fas fa-star me-1"></i>Optionnel
+                                            </span>
+                                        @endif
                                     </td>
                                     <td class="text-end">
                                         <span class="fw-bold">{{ number_format($frais->amount, 0, ',', ' ') }} FCFA</span>
@@ -285,6 +297,17 @@
                                                             <br><small class="text-muted">Reliquat {{ $reliquat->inscriptionSource->anneeUniversitaire->name ?? 'N/A' }}</small>
                                                         </div>
                                                     </div>
+                                                </td>
+                                                <td class="text-center">
+                                                    @if($reliquat->fraisSubscription->fraisCategory->is_mandatory)
+                                                        <span class="badge bg-warning">
+                                                            <i class="fas fa-exclamation-circle me-1"></i>Obligatoire
+                                                        </span>
+                                                    @else
+                                                        <span class="badge bg-secondary">
+                                                            <i class="fas fa-star me-1"></i>Optionnel
+                                                        </span>
+                                                    @endif
                                                 </td>
                                                 <td class="text-end">
                                                     <span class="fw-bold">{{ number_format($reliquat->montant_reliquat, 0, ',', ' ') }} FCFA</span>
