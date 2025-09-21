@@ -1164,7 +1164,7 @@ class DashboardController extends Controller
         $recentActivity = [
             'new_users_this_month' => User::whereMonth('created_at', now()->month)->count(),
             'new_students_this_month' => ESBTPEtudiant::whereMonth('created_at', now()->month)->count(),
-            'recent_logins' => DB::table('sessions')->where('last_activity', '>=', now()->subHours(24)->timestamp)->count()
+            'total_active_users' => User::where('created_at', '>=', now()->subDays(30))->count()
         ];
 
         // Codes d'urgence actifs
