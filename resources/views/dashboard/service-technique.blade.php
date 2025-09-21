@@ -7,9 +7,9 @@
 <style>
     .service-technique-header {
         background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%);
-        border-radius: var(--radius-medium);
-        padding: var(--space-xl);
-        margin-bottom: var(--space-xl);
+        border-radius: 12px;
+        padding: 2rem;
+        margin-bottom: 2rem;
         color: white;
         position: relative;
         overflow: hidden;
@@ -30,18 +30,21 @@
     .stats-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: var(--space-lg);
-        margin-bottom: var(--space-xl);
+        gap: 1.5rem;
+        margin-bottom: 2rem;
     }
 
     .stat-card {
         background: white;
-        border-radius: var(--radius-medium);
-        padding: var(--space-lg);
-        border: 2px solid var(--border-light);
+        border-radius: 12px;
+        padding: 1.5rem;
+        border: 2px solid #e5e7eb;
         transition: all 0.3s ease;
         position: relative;
         overflow: hidden;
+        min-height: 160px;
+        display: flex;
+        flex-direction: column;
     }
 
     .stat-card::before {
@@ -51,17 +54,17 @@
         left: 0;
         right: 0;
         height: 4px;
-        border-radius: var(--radius-medium) var(--radius-medium) 0 0;
+        border-radius: 12px 12px 0 0;
     }
 
-    .stat-card.primary::before { background: var(--primary); }
-    .stat-card.success::before { background: var(--success); }
-    .stat-card.info::before { background: var(--accent-blue); }
-    .stat-card.warning::before { background: var(--warning); }
-    .stat-card.danger::before { background: var(--danger); }
+    .stat-card.primary::before { background: #2563eb; }
+    .stat-card.success::before { background: #10b981; }
+    .stat-card.info::before { background: #0ea5e9; }
+    .stat-card.warning::before { background: #f59e0b; }
+    .stat-card.danger::before { background: #ef4444; }
 
     .stat-card:hover {
-        border-color: var(--accent-blue);
+        border-color: #0ea5e9;
         box-shadow: 0 8px 25px rgba(33, 150, 243, 0.15);
         transform: translateY(-2px);
     }
@@ -75,42 +78,48 @@
         justify-content: center;
         font-size: 1.5rem;
         color: white;
-        margin-bottom: var(--space-md);
+        margin-bottom: 1rem;
+        flex-shrink: 0;
     }
 
     .stat-value {
         font-size: 2.5rem;
         font-weight: 700;
-        margin-bottom: 0.25rem;
-        background: linear-gradient(135deg, var(--accent-blue), var(--primary));
+        margin-bottom: 0.5rem;
+        background: linear-gradient(135deg, #0ea5e9, #2563eb);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
+        line-height: 1.2;
     }
 
     .stat-label {
-        color: var(--text-secondary);
-        font-weight: 500;
-        margin-bottom: var(--space-sm);
+        color: #6b7280;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        font-size: 1rem;
+        line-height: 1.4;
     }
 
     .stat-sublabel {
         font-size: 0.85rem;
-        color: var(--text-muted);
+        color: #9ca3af;
+        line-height: 1.3;
+        margin-top: auto;
     }
 
     .paywall-status {
         background: white;
-        border-radius: var(--radius-medium);
-        padding: var(--space-lg);
-        margin-bottom: var(--space-xl);
-        border: 2px solid var(--border-light);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        border: 2px solid #e5e7eb;
     }
 
     .status-header {
         display: flex;
         align-items: center;
-        margin-bottom: var(--space-md);
+        margin-bottom: 1rem;
     }
 
     .status-icon {
@@ -120,27 +129,27 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-right: var(--space-md);
+        margin-right: 1rem;
         font-size: 1.25rem;
         color: white;
     }
 
-    .status-icon.success { background: var(--success); }
-    .status-icon.warning { background: var(--warning); }
-    .status-icon.danger { background: var(--danger); }
+    .status-icon.success { background: #10b981; }
+    .status-icon.warning { background: #f59e0b; }
+    .status-icon.danger { background: #ef4444; }
 
     .quick-actions {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: var(--space-lg);
-        margin-bottom: var(--space-xl);
+        gap: 1.5rem;
+        margin-bottom: 2rem;
     }
 
     .action-card {
         background: white;
-        border: 2px solid var(--border-light);
-        border-radius: var(--radius-medium);
-        padding: var(--space-lg);
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 1.5rem;
         text-align: center;
         transition: all 0.3s ease;
         text-decoration: none;
@@ -148,7 +157,7 @@
     }
 
     .action-card:hover {
-        border-color: var(--accent-blue);
+        border-color: #0ea5e9;
         box-shadow: 0 8px 25px rgba(33, 150, 243, 0.15);
         transform: translateY(-2px);
         text-decoration: none;
@@ -159,11 +168,11 @@
         width: 70px;
         height: 70px;
         border-radius: 15px;
-        background: linear-gradient(135deg, var(--accent-blue), var(--primary));
+        background: linear-gradient(135deg, #0ea5e9, #2563eb);
         display: flex;
         align-items: center;
         justify-content: center;
-        margin: 0 auto var(--space-md);
+        margin: 0 auto 1rem;
         font-size: 1.75rem;
         color: white;
     }
@@ -171,35 +180,35 @@
     .action-title {
         font-weight: 600;
         margin-bottom: 0.5rem;
-        color: var(--text-primary);
+        color: #1f2937;
     }
 
     .action-description {
         font-size: 0.9rem;
-        color: var(--text-secondary);
+        color: #6b7280;
     }
 
     .emergency-codes {
         background: #fff8dc;
-        border: 2px solid var(--warning);
-        border-radius: var(--radius-medium);
-        padding: var(--space-lg);
-        margin-top: var(--space-xl);
+        border: 2px solid #f59e0b;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-top: 2rem;
     }
 
     .emergency-codes h5 {
-        color: var(--warning);
-        margin-bottom: var(--space-md);
+        color: #f59e0b;
+        margin-bottom: 1rem;
         display: flex;
         align-items: center;
     }
 
     .code-item {
         background: white;
-        border: 1px solid var(--border-light);
-        border-radius: var(--radius-small);
-        padding: var(--space-md);
-        margin-bottom: var(--space-sm);
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -208,17 +217,23 @@
     .code-value {
         font-family: monospace;
         font-weight: 600;
-        color: var(--primary);
+        color: #2563eb;
     }
 
     .code-expiry {
         font-size: 0.85rem;
-        color: var(--text-muted);
+        color: #9ca3af;
     }
 
     @media (max-width: 768px) {
         .stats-grid {
             grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        .stat-card {
+            min-height: 140px;
+            padding: 1.25rem;
         }
 
         .quick-actions {
@@ -227,6 +242,16 @@
 
         .stat-value {
             font-size: 2rem;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+        }
+
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            margin-bottom: 0.75rem;
         }
     }
 </style>
@@ -289,7 +314,7 @@
         <!-- Statistiques Établissement Actuel -->
         <div class="stats-grid">
             <div class="stat-card primary">
-                <div class="stat-icon" style="background: var(--primary);">
+                <div class="stat-icon" style="background: #2563eb;">
                     <i class="fas fa-users"></i>
                 </div>
                 <div class="stat-value">{{ $stats['total_users'] }}</div>
@@ -298,7 +323,7 @@
             </div>
 
             <div class="stat-card success">
-                <div class="stat-icon" style="background: var(--success);">
+                <div class="stat-icon" style="background: #10b981;">
                     <i class="fas fa-user-graduate"></i>
                 </div>
                 <div class="stat-value">{{ $stats['total_students'] }}</div>
@@ -307,7 +332,7 @@
             </div>
 
             <div class="stat-card info">
-                <div class="stat-icon" style="background: var(--accent-blue);">
+                <div class="stat-icon" style="background: #0ea5e9;">
                     <i class="fas fa-chalkboard-teacher"></i>
                 </div>
                 <div class="stat-value">{{ $stats['total_teachers'] }}</div>
@@ -316,7 +341,7 @@
             </div>
 
             <div class="stat-card warning">
-                <div class="stat-icon" style="background: var(--warning);">
+                <div class="stat-icon" style="background: #f59e0b;">
                     <i class="fas fa-user-plus"></i>
                 </div>
                 <div class="stat-value">{{ $stats['total_inscriptions_year'] }}</div>
