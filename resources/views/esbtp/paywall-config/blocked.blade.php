@@ -104,17 +104,55 @@
                     </div>
                 </div>
 
-                <!-- Accès d'urgence -->
+                <!-- Accès Service Technique -->
                 <div class="card-moderne mb-lg">
                     <div class="section-card-header info">
                         <h3 class="section-card-title">
-                            <i class="fas fa-key"></i>
-                            Accès d'Urgence Administrateur
+                            <i class="fas fa-tools"></i>
+                            Accès Service Technique (African Digit Consulting)
                         </h3>
                     </div>
                     <div class="section-card-body">
                         <div class="emergency-access">
-                            <p><strong>Pour l'administrateur :</strong> Si vous devez accéder à la configuration du paywall en urgence, utilisez le code d'accès :</p>
+                            <p><strong>Pour le service technique ADC :</strong> Connectez-vous avec votre compte de service technique pour configurer le paywall :</p>
+
+                            <div class="emergency-code-section">
+                                <div class="emergency-instructions">
+                                    <h6><i class="fas fa-info-circle me-2"></i>Instructions :</h6>
+                                    <ol>
+                                        <li>Connectez-vous avec votre compte ADC Service Technique</li>
+                                        <li>Email : <code>technique@africandigitconsulting.com</code></li>
+                                        <li>Accès direct à la configuration paywall après authentification</li>
+                                    </ol>
+                                </div>
+
+                                <div class="quick-access-button">
+                                    <a href="{{ route('login') }}" class="btn btn-success btn-lg">
+                                        <i class="fas fa-sign-in-alt me-2"></i>
+                                        Connexion Service Technique
+                                    </a>
+                                </div>
+                            </div>
+
+                            <div class="alert alert-info mt-3">
+                                <i class="fas fa-shield-alt me-2"></i>
+                                <strong>Réservé au Service Technique :</strong> L'accès à la configuration paywall nécessite un compte de service technique ADC.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Accès d'urgence pour déblocage -->
+                <div class="card-moderne mb-lg">
+                    <div class="section-card-header warning">
+                        <h3 class="section-card-title">
+                            <i class="fas fa-key"></i>
+                            Accès d'Urgence (Déblocage Temporaire)
+                        </h3>
+                    </div>
+                    <div class="section-card-body">
+                        <div class="emergency-access">
+                            <p><strong>Pour déblocage d'urgence :</strong> Si vous devez débloquer temporairement l'accès au système :</p>
 
                             <div class="emergency-code-section">
                                 <div class="emergency-instructions">
@@ -127,16 +165,16 @@
                                 </div>
 
                                 <div class="quick-access-button">
-                                    <a href="{{ route('esbtp.paywall-config.index') }}?emergency_code=ADMIN2024EMERGENCY" class="btn btn-warning btn-lg">
+                                    <a href="{{ url('/dashboard') }}?emergency_code=ADMIN2024EMERGENCY" class="btn btn-warning btn-lg">
                                         <i class="fas fa-unlock me-2"></i>
-                                        Accès d'Urgence Paywall
+                                        Déblocage d'Urgence
                                     </a>
                                 </div>
                             </div>
 
                             <div class="alert alert-warning mt-3">
                                 <i class="fas fa-exclamation-triangle me-2"></i>
-                                <strong>Attention :</strong> Ce code doit rester confidentiel et n'être utilisé qu'en cas d'urgence.
+                                <strong>Attention :</strong> Ce code permet un accès temporaire au système, mais pas à la configuration paywall.
                             </div>
                         </div>
                     </div>
@@ -145,14 +183,6 @@
                 <!-- Actions -->
                 <div class="text-center">
                     <div class="action-buttons">
-                        @auth
-                            @if(auth()->user()->hasRole(['superAdmin', 'secretaire']))
-                                <a href="{{ route('esbtp.paywall-config.index') }}" class="btn btn-primary btn-lg">
-                                    <i class="fas fa-cogs me-2"></i>
-                                    Configurer le Paywall
-                                </a>
-                            @endif
-                        @endauth
 
                         <a href="{{ route('dashboard') }}" class="btn btn-secondary btn-lg">
                             <i class="fas fa-home me-2"></i>

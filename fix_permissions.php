@@ -186,12 +186,20 @@ try {
         'view_settings',
         'edit_settings',
         'manage_system',
-        
+
         // Permissions spécifiques ESBTP
         'view_planning_general',
         'edit_planning_general',
         'view_resultats',
         'edit_resultats',
+
+        // Permissions Service Technique (African Digit Consulting)
+        'paywall.configure',
+        'paywall.manage_subscriptions',
+        'paywall.extend_subscriptions',
+        'paywall.view_all_stats',
+        'system.technical_access',
+        'system.emergency_override',
     ];
 
     echo "Création/vérification des permissions...\n";
@@ -210,6 +218,7 @@ try {
         'enseignant' => 'Enseignant',
         'etudiant' => 'Étudiant',
         'parent' => 'Parent',
+        'serviceTechnique' => 'Service Technique (African Digit Consulting)',
     ];
 
     echo "\nCréation/vérification des rôles...\n";
@@ -338,6 +347,14 @@ try {
     ];
     $parentRole->syncPermissions($parentPermissions);
     echo "✓ Parent: " . count($parentPermissions) . " permissions accordées\n";
+
+    // Service Technique - Toutes les permissions + permissions spéciales paywall
+    $serviceTechniqueRole = Role::findByName('serviceTechnique');
+    $serviceTechniquePermissions = array_merge($permissions, [
+        // Toutes les permissions existantes + permissions spéciales
+    ]);
+    $serviceTechniqueRole->syncPermissions($serviceTechniquePermissions);
+    echo "✓ Service Technique: " . count($serviceTechniquePermissions) . " permissions accordées (TOUTES + spéciales)\n";
 
     // Vérifier les utilisateurs sans rôle et leur attribuer un rôle par défaut
     echo "\nVérification des utilisateurs sans rôle...\n";

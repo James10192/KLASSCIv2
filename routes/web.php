@@ -244,7 +244,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     // Routes pour les fonctionnalités ESBTP
     Route::prefix('esbtp')->name('esbtp.')->group(function () {
         // Routes protégées pour les super-administrateurs, secrétaires et coordinateurs
-        Route::middleware(['auth', 'role:superAdmin|secretaire|coordinateur'])->group(function () {
+        Route::middleware(['auth', 'role:superAdmin|secretaire|coordinateur', 'paywall'])->group(function () {
             // Routes pour les paiements
             Route::resource('payments', \App\Http\Controllers\ESBTP\PaymentController::class);
             Route::get('payments/{payment}/receipt', [\App\Http\Controllers\ESBTP\PaymentController::class, 'generateReceipt'])
@@ -408,7 +408,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         });
 
         // Routes accessibles aux superAdmin et secrétaires
-        Route::middleware(['auth', 'role:superAdmin|secretaire'])->group(function () {
+        Route::middleware(['auth', 'role:superAdmin|secretaire', 'paywall'])->group(function () {
             // Routes pour les classes ESBTP - index et show avec permission view_classes
             Route::get('classes', [ESBTPClasseController::class, 'index'])
                 ->name('classes.index')
@@ -730,7 +730,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         });
 
         // Routes accessibles pour les secrétaires, super-admins et coordinateurs
-        Route::middleware(['auth', 'role:secretaire|superAdmin|coordinateur'])->group(function () {
+        Route::middleware(['auth', 'role:secretaire|superAdmin|coordinateur', 'paywall'])->group(function () {
             // Nouvelle route pour la vue fusionnée des étudiants et inscriptions
             Route::get('/etudiants-inscriptions', [ESBTPEtudiantController::class, 'indexFusionne'])
                 ->name('etudiants-inscriptions.index')
@@ -960,7 +960,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     });
 
     // Student Progression Routes
-    Route::prefix('esbtp')->middleware(['auth', 'role:superAdmin|secretaire|coordinateur'])->group(function () {
+    Route::prefix('esbtp')->middleware(['auth', 'role:superAdmin|secretaire|coordinateur', 'paywall'])->group(function () {
         Route::get('/progression', [StudentProgressionController::class, 'index'])->name('esbtp.progression.index');
         Route::get('/api/progression/recommendations/{classe}/{annee}', [StudentProgressionController::class, 'getRecommendations'])->name('esbtp.progression.recommendations');
         Route::post('/api/progression/process', [StudentProgressionController::class, 'processProgression'])->name('esbtp.progression.process');
@@ -1003,6 +1003,7 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'role:superAdmin'])-
 
     // Routes pour la configuration du paywall
     Route::get('/paywall-config', [ESBTPPaywallConfigController::class, 'index'])->name('paywall-config.index');
+    Route::get('/paywall-config/upgrade', [ESBTPPaywallConfigController::class, 'upgrade'])->name('paywall-config.upgrade');
     Route::post('/paywall-config', [ESBTPPaywallConfigController::class, 'store'])->name('paywall-config.store');
     Route::post('/paywall-config/extend', [ESBTPPaywallConfigController::class, 'extendSubscription'])->name('paywall-config.extend');
     Route::get('/paywall-config/status', [ESBTPPaywallConfigController::class, 'checkStatus'])->name('paywall-config.status');
@@ -1417,7 +1418,7 @@ Route::middleware(['auth', 'permission:access_comptabilite_module'])->prefix('es
 // Routes pour le système d'émargement
 Route::prefix('esbtp')->name('esbtp.')->middleware(['auth'])->group(function () {
     // Routes pour l'administration des codes (accès restreint aux administrateurs et secrétaires)
-    Route::middleware(['role:superAdmin|secretaire'])->group(function () {
+    Route::middleware(['role:superAdmin|secretaire', 'paywall'])->group(function () {
         Route::get('/attendance-codes', [ESBTPAttendanceCodeController::class, 'index'])
             ->name('attendance-codes.index');
         Route::post('/attendance-codes/generate', [ESBTPAttendanceCodeController::class, 'generate'])
@@ -1711,7 +1712,7 @@ Route::get('/comptabilite/paiements/{id}/recu', [ESBTPComptabiliteController::cl
 // ... existing code ...
 
 // Routes pour la gestion du personnel avec sliders
-Route::middleware(['auth', 'role:superAdmin|secretaire|coordinateur'])->prefix('esbtp')->name('esbtp.')->group(function () {
+Route::middleware(['auth', 'role:superAdmin|secretaire|coordinateur', 'paywall'])->prefix('esbtp')->name('esbtp.')->group(function () {
     // Vue combinée du personnel avec sliders
     Route::get('/personnel', [\App\Http\Controllers\ESBTPPersonnelController::class, 'index'])->name('personnel.index');
     Route::get('/personnel/data', [\App\Http\Controllers\ESBTPPersonnelController::class, 'getData'])->name('personnel.data');

@@ -23,7 +23,7 @@ class PaywallMiddleware
     ];
 
     /**
-     * Code d'urgence pour accéder à la configuration paywall
+     * Code d'urgence pour accéder temporairement au système (pas paywall)
      */
     protected $emergencyCode = 'ADMIN2024EMERGENCY';
 
@@ -43,6 +43,11 @@ class PaywallMiddleware
 
         // Vérifier le code d'urgence dans la session ou en paramètre
         if ($this->hasEmergencyAccess($request)) {
+            return $next($request);
+        }
+
+        // Vérifier si c'est une route paywall-config ET que l'utilisateur a les permissions service technique
+        if ($this->isPaywallConfigRoute($request) && $this->hasServiceTechniquePermissions($request)) {
             return $next($request);
         }
 
@@ -67,8 +72,8 @@ class PaywallMiddleware
                 ], 402); // 402 Payment Required
             }
 
-            // Rediriger vers la page de configuration paywall avec les raisons
-            return redirect()->route('esbtp.paywall-config.index')
+            // Rediriger vers la page d'upgrade pour les établissements
+            return redirect()->route('esbtp.paywall-config.upgrade')
                 ->with('error', 'Accès bloqué : ' . implode(', ', $status['reasons']))
                 ->with('paywall_blocked', true);
         }
@@ -203,5 +208,31 @@ class PaywallMiddleware
             'total_users' => $totalUsers,
             'total_inscriptions_current_year' => $totalInscriptionsAnnee,
         ];
+    }
+
+    /**
+     * Vérifier si la route actuelle est une route paywall-config
+     */
+    protected function isPaywallConfigRoute(Request $request)
+    {
+        $currentRoute = $request->route()->getName();
+        return str_starts_with($currentRoute, 'esbtp.paywall-config.');
+    }
+
+    /**
+     * Vérifier si l'utilisateur a les permissions du service technique
+     */
+    protected function hasServiceTechniquePermissions(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return false;
+        }
+
+        // Vérifier si l'utilisateur a le rôle serviceTechnique OU les permissions spéciales
+        return $user->hasRole('serviceTechnique') ||
+               $user->can('paywall.configure') ||
+               $user->can('system.technical_access');
     }
 }

@@ -4,6 +4,8 @@
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 @endsection
 
 @section('content')
@@ -191,6 +193,22 @@
                                min="1"
                                required>
                         <small class="form-help">Nombre maximum d'inscriptions actives pour l'année universitaire courante</small>
+                    </div>
+
+                    <div class="form-group-moderne">
+                        <label class="form-label-moderne">
+                            <i class="fas fa-crown me-1"></i>Plan d'abonnement
+                        </label>
+                        <select class="form-select-moderne"
+                                id="subscription_plan"
+                                name="subscription_plan"
+                                onchange="updatePlanFields()">
+                            <option value="custom" {{ $paywallConfig['plan_name'] && !in_array($paywallConfig['plan_name'], ['Plan Essentiel', 'Plan Pro', 'Plan Elite']) ? 'selected' : '' }}>Configuration personnalisée</option>
+                            <option value="essentiel" {{ $paywallConfig['plan_name'] == 'Plan Essentiel' ? 'selected' : '' }}>Plan Essentiel</option>
+                            <option value="pro" {{ $paywallConfig['plan_name'] == 'Plan Pro' ? 'selected' : '' }}>Plan Pro</option>
+                            <option value="elite" {{ $paywallConfig['plan_name'] == 'Plan Elite' ? 'selected' : '' }}>Plan Elite</option>
+                        </select>
+                        <small class="form-help">Sélectionnez un plan prédéfini ou configurez manuellement</small>
                     </div>
 
                     <div class="form-group-moderne">
@@ -474,7 +492,59 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+// Plan templates
+const planTemplates = {
+    essentiel: {
+        name: 'Plan Essentiel',
+        price: 75000,
+        max_users: 15,
+        max_inscriptions_per_year: 200
+    },
+    pro: {
+        name: 'Plan Pro',
+        price: 150000,
+        max_users: 50,
+        max_inscriptions_per_year: 500
+    },
+    elite: {
+        name: 'Plan Elite',
+        price: 300000,
+        max_users: 100,
+        max_inscriptions_per_year: 1000
+    }
+};
+
+function updatePlanFields() {
+    const planSelect = document.getElementById('subscription_plan');
+    const selectedPlan = planSelect.value;
+
+    if (selectedPlan !== 'custom' && planTemplates[selectedPlan]) {
+        const template = planTemplates[selectedPlan];
+
+        // Update form fields
+        document.getElementById('plan_name').value = template.name;
+        document.getElementById('plan_price').value = template.price;
+        document.getElementById('max_users').value = template.max_users;
+        document.getElementById('max_inscriptions_per_year').value = template.max_inscriptions_per_year;
+
+        // Show feedback
+        console.log('Plan template applied:', template.name);
+    }
+}
+
 function saveConfiguration() {
+    console.log('saveConfiguration called');
+
+    // Empêcher les multiples clics
+    const submitBtn = document.querySelector('#paywallConfigForm button[type="submit"]');
+    if (submitBtn.disabled) {
+        console.log('Save already in progress, ignoring click');
+        return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Sauvegarde...';
+
     const form = document.getElementById('paywallConfigForm');
     const formData = new FormData(form);
 
@@ -493,41 +563,37 @@ function saveConfiguration() {
         data['is_active'] = false;
     }
 
+    console.log('Data to send:', data);
+
     fetch('{{ route("esbtp.paywall-config.store") }}', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
         },
         body: JSON.stringify(data)
     })
     .then(response => response.json())
     .then(data => {
+        console.log('Response:', data);
+        // Réactiver le bouton
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-save me-2"></i>Sauvegarder Configuration';
+
         if (data.success) {
-            Swal.fire({
-                icon: 'success',
-                title: 'Succès',
-                text: data.message,
-                timer: 2000,
-                showConfirmButton: false
-            }).then(() => {
-                location.reload();
-            });
+            alert('Succès: ' + data.message);
+            location.reload();
         } else {
-            Swal.fire({
-                icon: 'error',
-                title: 'Erreur',
-                text: data.message
-            });
+            alert('Erreur: ' + data.message);
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        Swal.fire({
-            icon: 'error',
-            title: 'Erreur',
-            text: 'Erreur lors de la sauvegarde'
-        });
+        // Réactiver le bouton
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-save me-2"></i>Sauvegarder Configuration';
+
+        alert('Erreur lors de la sauvegarde: ' + error.message);
     });
 }
 
@@ -542,7 +608,7 @@ function extendSubscription() {
     fetch('{{ route("esbtp.paywall-config.extend") }}', {
         method: 'POST',
         headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
         },
         body: formData
     })
