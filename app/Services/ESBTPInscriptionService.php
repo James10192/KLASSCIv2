@@ -126,11 +126,14 @@ class ESBTPInscriptionService
             $inscription = ESBTPInscription::create($inscriptionData);
 
             // 6bis. Générer automatiquement les frais selon la nouvelle architecture
+            // IMPORTANT: Générer les frais pour TOUS les types d'inscription (première inscription ET réinscription)
             $generatedFees = $this->generateFeesForInscription($inscription, $selectedOptionals, $affectationStatus);
             Log::info('Frais générés automatiquement pour l\'inscription', [
                 'inscription_id' => $inscription->id,
+                'type_inscription' => $inscription->type_inscription,
                 'fees_count' => count($generatedFees),
-                'selected_optionals' => $selectedOptionals
+                'selected_optionals' => $selectedOptionals,
+                'affectation_status' => $affectationStatus
             ]);
 
             // 6bis-2. Sauvegarder les frais générés comme ESBTPFraisSubscription
@@ -765,6 +768,13 @@ class ESBTPInscriptionService
     private function saveGeneratedFeesAsSubscriptions(ESBTPInscription $inscription, array $generatedFees)
     {
         try {
+            Log::info('DÉBUT sauvegarde des frais comme souscriptions', [
+                'inscription_id' => $inscription->id,
+                'type_inscription' => $inscription->type_inscription,
+                'generated_fees_count' => count($generatedFees),
+                'generated_fees' => $generatedFees
+            ]);
+
             // Récupérer le statut d'affectation de l'inscription
             $affectationStatus = $inscription->affectation_status ?? 'affecté';
 
@@ -776,10 +786,21 @@ class ESBTPInscriptionService
             }
 
             foreach ($generatedFees as $fee) {
+                Log::info('Traitement frais individuel', [
+                    'fee' => $fee,
+                    'inscription_id' => $inscription->id
+                ]);
+
                 // Vérifier si la souscription existe déjà
                 $existingSubscription = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
                     ->where('frais_category_id', $fee['category_id'])
                     ->first();
+
+                Log::info('Vérification souscription existante', [
+                    'existing_subscription' => $existingSubscription ? $existingSubscription->id : 'none',
+                    'fee_amount' => $fee['amount'],
+                    'condition_met' => (!$existingSubscription && $fee['amount'] > 0)
+                ]);
 
                 if (!$existingSubscription && $fee['amount'] > 0) {
                     // VERIFICATION OBLIGATOIRE: Recalculer le montant selon le statut d'affectation
