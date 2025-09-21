@@ -37,8 +37,12 @@ class PaywallMiddleware
      */
     public function handle(Request $request, Closure $next)
     {
+        // Debug: Logger la route actuelle
+        \Log::info('PaywallMiddleware: Route=' . $request->route()->getName() . ', User=' . ($request->user() ? $request->user()->email : 'guest'));
+
         // Vérifier si la route est exclue
         if ($this->shouldExclude($request)) {
+            \Log::info('PaywallMiddleware: Route exclue, passage autorisé');
             return $next($request);
         }
 
@@ -49,10 +53,13 @@ class PaywallMiddleware
 
         // Vérifier si c'est une route paywall-config
         if ($this->isPaywallConfigRoute($request)) {
+            \Log::info('PaywallMiddleware: Route paywall-config détectée');
             // Seuls les utilisateurs avec permissions service technique peuvent accéder
             if ($this->hasServiceTechniquePermissions($request)) {
+                \Log::info('PaywallMiddleware: Permissions service technique OK, accès autorisé');
                 return $next($request);
             } else {
+                \Log::info('PaywallMiddleware: Permissions service technique manquantes, accès refusé');
                 // Rediriger vers la page de blocage avec un message d'accès refusé
                 return redirect()->route('esbtp.paywall-config.blocked')
                     ->with('error', 'Accès refusé : Cette section est réservée au Service Technique d\'African Digit Consulting')
