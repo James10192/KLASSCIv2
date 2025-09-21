@@ -23,10 +23,24 @@ class ESBTPPaywallConfigController extends Controller
             abort(401, 'Non authentifié');
         }
 
-        // Vérifier si l'utilisateur a le rôle serviceTechnique OU les permissions spéciales
-        $hasAccess = $user->hasRole('serviceTechnique') ||
-                     $user->can('paywall.configure') ||
-                     $user->can('system.technical_access');
+        // Debug: Logger les informations de l'utilisateur
+        \Log::info('PaywallConfig Access Check', [
+            'user_id' => $user->id,
+            'user_email' => $user->email,
+            'user_roles' => $user->roles->pluck('name')->toArray(),
+            'has_serviceTechnique_role' => $user->hasRole('serviceTechnique'),
+            'can_paywall_configure' => $user->can('paywall.configure'),
+            'can_system_technical_access' => $user->can('system.technical_access'),
+        ]);
+
+        // ACCÈS RÉSERVÉ EXCLUSIVEMENT AU SERVICE TECHNIQUE D'AFRICAN DIGIT CONSULTING
+        // Seul le rôle serviceTechnique est autorisé, pas les superAdmin
+        $hasAccess = $user->hasRole('serviceTechnique');
+
+        \Log::info('PaywallConfig Access Result', [
+            'hasAccess' => $hasAccess,
+            'will_block' => !$hasAccess
+        ]);
 
         if (!$hasAccess) {
             // Rediriger vers la page de blocage avec message d'erreur
@@ -43,11 +57,26 @@ class ESBTPPaywallConfigController extends Controller
      */
     public function index()
     {
+        // Debug: Logger l'accès au contrôleur
+        \Log::error('🚨 ACCÈS AU CONTRÔLEUR PAYWALL-CONFIG', [
+            'user_email' => auth()->user() ? auth()->user()->email : 'guest',
+            'user_id' => auth()->user() ? auth()->user()->id : null,
+            'user_roles' => auth()->user() ? auth()->user()->roles->pluck('name')->toArray() : [],
+            'has_serviceTechnique_role' => auth()->user() ? auth()->user()->hasRole('serviceTechnique') : false,
+            'can_paywall_configure' => auth()->user() ? auth()->user()->can('paywall.configure') : false,
+            'can_system_technical_access' => auth()->user() ? auth()->user()->can('system.technical_access') : false,
+            'request_ip' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+        ]);
+
         // Vérifier l'accès service technique
         $accessCheck = $this->checkServiceTechniqueAccess();
         if ($accessCheck) {
+            \Log::error('🚨 ACCÈS REFUSÉ PAR checkServiceTechniqueAccess()');
             return $accessCheck; // Redirection si accès refusé
         }
+
+        \Log::error('🚨 ACCÈS AUTORISÉ - CHARGEMENT DE LA PAGE PAYWALL-CONFIG');
 
         $currentEtablissementId = ESBTPSystemSetting::getCurrentEtablissementId();
         $etablissement = ESBTPEtablissement::find($currentEtablissementId);
@@ -325,6 +354,71 @@ class ESBTPPaywallConfigController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la prolongation: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Générer un code d'urgence temporaire
+     */
+    public function generateEmergencyCode(Request $request)
+    {
+        // Vérifier l'accès service technique
+        $accessCheck = $this->checkServiceTechniqueAccess();
+        if ($accessCheck) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Accès refusé : Cette section est réservée au Service Technique d\'African Digit Consulting'
+            ], 403);
+        }
+
+        try {
+            // Générer un code unique et sécurisé
+            $timestamp = time();
+            $random = bin2hex(random_bytes(4)); // 8 caractères hexadécimaux
+            $emergencyCode = 'EMERGENCY' . $timestamp . strtoupper($random);
+
+            // Stocker le code temporairement avec expiration (1 heure)
+            $codeData = [
+                'code' => $emergencyCode,
+                'created_at' => $timestamp,
+                'expires_at' => $timestamp + 3600, // 1 heure
+                'created_by' => auth()->user()->email,
+                'used' => false
+            ];
+
+            // Sauvegarder dans les settings système (sera nettoyé automatiquement à l'expiration)
+            ESBTPSystemSetting::setValue('emergency_code_' . $emergencyCode, json_encode($codeData));
+
+            // Générer l'URL d'accès d'urgence
+            $baseUrl = request()->getSchemeAndHttpHost();
+            $emergencyUrl = $baseUrl . '/esbtp?emergency_code=' . $emergencyCode;
+
+            // Log de sécurité
+            \Log::warning('Code d\'urgence généré', [
+                'code' => $emergencyCode,
+                'generated_by' => auth()->user()->email,
+                'expires_at' => date('Y-m-d H:i:s', $codeData['expires_at']),
+                'ip' => request()->ip()
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'code' => $emergencyCode,
+                'url' => $emergencyUrl,
+                'expires_in' => '1 heure',
+                'message' => 'Code d\'urgence généré avec succès'
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Erreur génération code d\'urgence', [
+                'error' => $e->getMessage(),
+                'user' => auth()->user()->email ?? 'unknown'
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la génération du code: ' . $e->getMessage()
             ], 500);
         }
     }

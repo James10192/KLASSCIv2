@@ -249,6 +249,41 @@
                             <i class="fas fa-calendar-plus me-2"></i>Prolonger Abonnement
                         </button>
                     @endif
+
+                    <button type="button" class="btn btn-warning" onclick="generateEmergencyCode()">
+                        <i class="fas fa-key me-2"></i>Générer Code d'Urgence
+                    </button>
+                </div>
+
+                <!-- Section Code d'Urgence -->
+                <div id="emergencyCodeSection" class="alert alert-warning mt-4" style="display: none;">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <h5 class="alert-heading mb-2">
+                                <i class="fas fa-key me-2"></i>Code d'Urgence Généré
+                            </h5>
+                            <p class="mb-2">
+                                <strong>Code :</strong>
+                                <span id="emergencyCodeDisplay" class="text-monospace fs-5 fw-bold"></span>
+                                <button type="button" class="btn btn-sm btn-outline-dark ms-2" onclick="copyEmergencyCode()">
+                                    <i class="fas fa-copy"></i> Copier
+                                </button>
+                            </p>
+                            <p class="mb-2">
+                                <strong>URL d'accès :</strong><br>
+                                <code id="emergencyUrlDisplay" class="user-select-all"></code>
+                                <button type="button" class="btn btn-sm btn-outline-dark ms-2" onclick="copyEmergencyUrl()">
+                                    <i class="fas fa-copy"></i> Copier URL
+                                </button>
+                            </p>
+                            <p class="mb-0 small">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Ce code permet à l'établissement d'accéder temporairement au système (1 heure) même si le paywall est bloqué.
+                                <strong>À utiliser uniquement en cas d'urgence.</strong>
+                            </p>
+                        </div>
+                        <button type="button" class="btn-close" onclick="hideEmergencyCode()"></button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -485,6 +520,25 @@
 <!-- JavaScript -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // DEBUG: Afficher les informations de chargement de la page
+    const pageLoadTime = new Date().toISOString();
+    const pageId = Math.random().toString(36).substr(2, 9);
+
+    console.log('🔥 PAGE PAYWALL-CONFIG CHARGÉE', {
+        timestamp: pageLoadTime,
+        pageId: pageId,
+        url: window.location.href,
+        userAgent: navigator.userAgent,
+        fromCache: performance.navigation.type === 2 ? 'YES' : 'NO'
+    });
+
+    // Afficher aussi dans la page
+    document.body.insertAdjacentHTML('afterbegin',
+        `<div style="position:fixed;top:0;left:0;right:0;background:red;color:white;padding:10px;z-index:9999;font-size:12px;">
+            🔥 DEBUG: Page chargée à ${pageLoadTime} - ID: ${pageId} - Cache: ${performance.navigation.type === 2 ? 'YES' : 'NO'}
+        </div>`
+    );
+
     // Configuration form
     document.getElementById('paywallConfigForm').addEventListener('submit', function(e) {
         e.preventDefault();
@@ -496,21 +550,21 @@ document.addEventListener('DOMContentLoaded', function() {
 const planTemplates = {
     essentiel: {
         name: 'Plan Essentiel',
-        price: 75000,
-        max_users: 15,
-        max_inscriptions_per_year: 200
+        price: 1200000,
+        max_users: 20,
+        max_inscriptions_per_year: 700
     },
     pro: {
         name: 'Plan Pro',
-        price: 150000,
-        max_users: 50,
-        max_inscriptions_per_year: 500
+        price: 2400000,
+        max_users: 30,
+        max_inscriptions_per_year: 3000
     },
     elite: {
         name: 'Plan Elite',
-        price: 300000,
-        max_users: 100,
-        max_inscriptions_per_year: 1000
+        price: 4800000,
+        max_users: 999999,
+        max_inscriptions_per_year: 999999
     }
 };
 
@@ -640,6 +694,72 @@ function extendSubscription() {
             text: 'Erreur lors de la prolongation'
         });
     });
+}
+
+function generateEmergencyCode() {
+    fetch('{{ route("esbtp.paywall-config.generate-emergency") }}', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('emergencyCodeDisplay').textContent = data.code;
+            document.getElementById('emergencyUrlDisplay').textContent = data.url;
+            document.getElementById('emergencyCodeSection').style.display = 'block';
+
+            // Auto-hide after 30 minutes for security
+            setTimeout(hideEmergencyCode, 30 * 60 * 1000);
+        } else {
+            alert('Erreur: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Erreur lors de la génération du code d\'urgence');
+    });
+}
+
+function copyEmergencyCode() {
+    const code = document.getElementById('emergencyCodeDisplay').textContent;
+    navigator.clipboard.writeText(code).then(() => {
+        // Show brief success feedback
+        const btn = event.target.closest('button');
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i> Copié!';
+        btn.classList.remove('btn-outline-dark');
+        btn.classList.add('btn-success');
+
+        setTimeout(() => {
+            btn.innerHTML = originalHTML;
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-outline-dark');
+        }, 2000);
+    });
+}
+
+function copyEmergencyUrl() {
+    const url = document.getElementById('emergencyUrlDisplay').textContent;
+    navigator.clipboard.writeText(url).then(() => {
+        // Show brief success feedback
+        const btn = event.target.closest('button');
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i> Copié!';
+        btn.classList.remove('btn-outline-dark');
+        btn.classList.add('btn-success');
+
+        setTimeout(() => {
+            btn.innerHTML = originalHTML;
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-outline-dark');
+        }, 2000);
+    });
+}
+
+function hideEmergencyCode() {
+    document.getElementById('emergencyCodeSection').style.display = 'none';
 }
 </script>
 @endsection

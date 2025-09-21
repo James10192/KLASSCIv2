@@ -1010,6 +1010,7 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'paywall'])->group(f
     Route::get('/paywall-config/upgrade', [ESBTPPaywallConfigController::class, 'upgrade'])->name('paywall-config.upgrade');
     Route::post('/paywall-config', [ESBTPPaywallConfigController::class, 'store'])->name('paywall-config.store');
     Route::post('/paywall-config/extend', [ESBTPPaywallConfigController::class, 'extendSubscription'])->name('paywall-config.extend');
+    Route::post('/paywall-config/generate-emergency', [ESBTPPaywallConfigController::class, 'generateEmergencyCode'])->name('paywall-config.generate-emergency');
     Route::get('/paywall-config/status', [ESBTPPaywallConfigController::class, 'checkStatus'])->name('paywall-config.status');
 });
 

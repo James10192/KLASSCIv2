@@ -23,10 +23,6 @@ class PaywallMiddleware
         'password.*',
     ];
 
-    /**
-     * Code d'urgence pour accéder temporairement au système (pas paywall)
-     */
-    protected $emergencyCode = 'ADMIN2024EMERGENCY';
 
     /**
      * Handle an incoming request.
@@ -37,8 +33,16 @@ class PaywallMiddleware
      */
     public function handle(Request $request, Closure $next)
     {
-        // Debug: Logger la route actuelle
-        \Log::info('PaywallMiddleware: Route=' . $request->route()->getName() . ', User=' . ($request->user() ? $request->user()->email : 'guest'));
+        // Debug: Logger la route actuelle avec tous les détails
+        \Log::warning('🔥 PAYWALL MIDDLEWARE DÉMARRÉ', [
+            'route_name' => $request->route() ? $request->route()->getName() : 'NO_ROUTE',
+            'url' => $request->fullUrl(),
+            'method' => $request->method(),
+            'user_email' => $request->user() ? $request->user()->email : 'guest',
+            'user_id' => $request->user() ? $request->user()->id : null,
+            'user_roles' => $request->user() ? $request->user()->roles->pluck('name')->toArray() : [],
+            'middleware_stack' => $request->route() ? $request->route()->gatherMiddleware() : [],
+        ]);
 
         // Vérifier si la route est exclue
         if ($this->shouldExclude($request)) {
@@ -46,25 +50,28 @@ class PaywallMiddleware
             return $next($request);
         }
 
-        // Vérifier le code d'urgence dans la session ou en paramètre
-        if ($this->hasEmergencyAccess($request)) {
-            return $next($request);
-        }
-
-        // Vérifier si c'est une route paywall-config
+        // Vérifier si c'est une route paywall-config (PRIORITÉ ABSOLUE)
         if ($this->isPaywallConfigRoute($request)) {
             \Log::info('PaywallMiddleware: Route paywall-config détectée');
+            // IMPORTANT: Les codes d'urgence ne fonctionnent PAS pour les routes paywall-config
             // Seuls les utilisateurs avec permissions service technique peuvent accéder
             if ($this->hasServiceTechniquePermissions($request)) {
                 \Log::info('PaywallMiddleware: Permissions service technique OK, accès autorisé');
                 return $next($request);
             } else {
                 \Log::info('PaywallMiddleware: Permissions service technique manquantes, accès refusé');
+                // Nettoyer tout accès d'urgence en session pour ces routes
+                session()->forget('emergency_access');
                 // Rediriger vers la page de blocage avec un message d'accès refusé
                 return redirect()->route('esbtp.paywall-config.blocked')
                     ->with('error', 'Accès refusé : Cette section est réservée au Service Technique d\'African Digit Consulting')
                     ->with('paywall_blocked', true);
             }
+        }
+
+        // Vérifier le code d'urgence dans la session ou en paramètre
+        if ($this->hasEmergencyAccess($request)) {
+            return $next($request);
         }
 
         // Vérifier si le paywall est actif
@@ -123,11 +130,38 @@ class PaywallMiddleware
      */
     protected function hasEmergencyAccess(Request $request)
     {
-        // Vérifier si le code d'urgence est fourni en paramètre GET
-        if ($request->get('emergency_code') === $this->emergencyCode) {
-            // Stocker en session pour 1 heure
-            session(['emergency_access' => time() + 3600]);
-            return true;
+        // Vérifier si c'est un code d'urgence généré dynamiquement
+        $providedCode = $request->get('emergency_code');
+        if ($providedCode && str_starts_with($providedCode, 'EMERGENCY')) {
+            $codeData = ESBTPSystemSetting::getValue('emergency_code_' . $providedCode, null);
+
+            if ($codeData) {
+                $codeInfo = json_decode($codeData, true);
+
+                // Vérifier si le code est valide et non expiré
+                if ($codeInfo &&
+                    !$codeInfo['used'] &&
+                    time() <= $codeInfo['expires_at']) {
+
+                    // Marquer le code comme utilisé
+                    $codeInfo['used'] = true;
+                    $codeInfo['used_at'] = time();
+                    $codeInfo['used_by_ip'] = $request->ip();
+                    ESBTPSystemSetting::setValue('emergency_code_' . $providedCode, json_encode($codeInfo));
+
+                    // Log de sécurité
+                    \Log::warning('Code d\'urgence utilisé', [
+                        'code' => $providedCode,
+                        'created_by' => $codeInfo['created_by'],
+                        'used_by_ip' => $request->ip(),
+                        'user_agent' => $request->userAgent()
+                    ]);
+
+                    // Stocker en session pour 1 heure
+                    session(['emergency_access' => time() + 3600]);
+                    return true;
+                }
+            }
         }
 
         // Vérifier si l'accès d'urgence est en session et encore valide
@@ -246,9 +280,8 @@ class PaywallMiddleware
             return false;
         }
 
-        // Vérifier si l'utilisateur a le rôle serviceTechnique OU les permissions spéciales
-        return $user->hasRole('serviceTechnique') ||
-               $user->can('paywall.configure') ||
-               $user->can('system.technical_access');
+        // ACCÈS RÉSERVÉ EXCLUSIVEMENT AU SERVICE TECHNIQUE D'AFRICAN DIGIT CONSULTING
+        // Seul le rôle serviceTechnique est autorisé, pas les superAdmin
+        return $user->hasRole('serviceTechnique');
     }
 }
