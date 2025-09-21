@@ -802,7 +802,10 @@ class ESBTPInscriptionService
                     'condition_met' => (!$existingSubscription && $fee['amount'] > 0)
                 ]);
 
-                if (!$existingSubscription && $fee['amount'] > 0) {
+                if ($fee['amount'] > 0) {
+                    // CORRECTION : Utiliser updateOrCreate comme dans regenererFraisInscription
+                    // pour garantir la création même si des problèmes de concurrence existent
+
                     // VERIFICATION OBLIGATOIRE: Recalculer le montant selon le statut d'affectation
                     $verifiedAmount = $fee['amount']; // Montant par défaut
 
@@ -827,26 +830,38 @@ class ESBTPInscriptionService
                         }
                     }
 
-                    // Créer la nouvelle souscription avec le montant vérifié
-                    \App\Models\ESBTPFraisSubscription::create([
-                        'inscription_id' => $inscription->id,
-                        'frais_category_id' => $fee['category_id'],
-                        'selected_option_id' => $fee['option_id'] ?? null,
-                        'amount' => $verifiedAmount, // Utiliser le montant vérifié
-                        'is_active' => true,
-                        'subscribed_at' => $inscription->date_inscription ?? now(),
-                        'created_by' => $inscription->created_by ?? auth()->id(),
-                        'notes' => 'Frais ' . $fee['type'] . ' créé automatiquement lors de l\'inscription - ' . $fee['description'] . ' (statut: ' . $affectationStatus . ')'
-                    ]);
+                    // CORRECTION : Utiliser updateOrCreate pour garantir la création (évite la duplication)
+                    $subscription = \App\Models\ESBTPFraisSubscription::updateOrCreate(
+                        [
+                            'inscription_id' => $inscription->id,
+                            'frais_category_id' => $fee['category_id'],
+                        ],
+                        [
+                            'selected_option_id' => $fee['option_id'] ?? null,
+                            'amount' => $verifiedAmount, // Utiliser le montant vérifié
+                            'is_active' => true,
+                            'subscribed_at' => $inscription->date_inscription ?? now(),
+                            'created_by' => $inscription->created_by ?? auth()->id(),
+                            'notes' => 'Frais ' . $fee['type'] . ' créé automatiquement lors de l\'inscription - ' . $fee['description'] . ' (statut: ' . $affectationStatus . ')'
+                        ]
+                    );
 
-                    Log::info('ESBTPFraisSubscription créée avec montant vérifié', [
+                    Log::info('ESBTPFraisSubscription créée/mise à jour avec updateOrCreate', [
                         'inscription_id' => $inscription->id,
+                        'subscription_id' => $subscription->id,
                         'category_id' => $fee['category_id'],
                         'amount_original' => $fee['amount'],
                         'amount_verified' => $verifiedAmount,
                         'affectation_status' => $affectationStatus,
                         'description' => $fee['description'],
-                        'type' => $fee['type']
+                        'type' => $fee['type'],
+                        'was_created' => $subscription->wasRecentlyCreated
+                    ]);
+                } else {
+                    Log::info('Souscription de frais ignorée - montant invalide', [
+                        'inscription_id' => $inscription->id,
+                        'category_id' => $fee['category_id'],
+                        'amount' => $fee['amount']
                     ]);
                 }
             }
