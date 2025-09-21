@@ -7,7 +7,7 @@
 <style>
     /* Styles identiques à emploi-temps.index */
     .emploi-temps-header {
-        background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
         border-radius: var(--radius-medium);
         padding: var(--space-xl);
         margin-bottom: var(--space-xl);

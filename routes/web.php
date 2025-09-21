@@ -1003,6 +1003,7 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'role:superAdmin'])-
 
     // Routes pour la configuration du paywall
     Route::get('/paywall-config', [ESBTPPaywallConfigController::class, 'index'])->name('paywall-config.index');
+    Route::get('/paywall-config/blocked', [ESBTPPaywallConfigController::class, 'blocked'])->name('paywall-config.blocked');
     Route::get('/paywall-config/upgrade', [ESBTPPaywallConfigController::class, 'upgrade'])->name('paywall-config.upgrade');
     Route::post('/paywall-config', [ESBTPPaywallConfigController::class, 'store'])->name('paywall-config.store');
     Route::post('/paywall-config/extend', [ESBTPPaywallConfigController::class, 'extendSubscription'])->name('paywall-config.extend');

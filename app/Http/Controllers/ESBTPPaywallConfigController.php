@@ -78,6 +78,38 @@ class ESBTPPaywallConfigController extends Controller
     }
 
     /**
+     * Afficher la page de blocage d'accès
+     */
+    public function blocked()
+    {
+        $currentEtablissementId = ESBTPSystemSetting::getCurrentEtablissementId();
+        $etablissement = ESBTPEtablissement::find($currentEtablissementId);
+
+        // Récupérer les paramètres du paywall pour affichage
+        $paywallConfig = [
+            'is_active' => ESBTPSystemSetting::getValue('paywall_active', false),
+            'subscription_end' => ESBTPSystemSetting::getValue('subscription_end_date', null),
+            'max_users' => ESBTPSystemSetting::getValue('paywall_max_users', 50),
+            'max_inscriptions_per_year' => ESBTPSystemSetting::getValue('paywall_max_inscriptions_per_year', 500),
+            'plan_name' => ESBTPSystemSetting::getValue('paywall_plan_name', 'Plan Standard'),
+            'plan_price' => ESBTPSystemSetting::getValue('paywall_plan_price', 0),
+        ];
+
+        // Calculer les statistiques actuelles
+        $currentStats = $this->getCurrentStats($currentEtablissementId);
+
+        // Vérifier le statut
+        $status = $this->checkPaywallStatus($paywallConfig, $currentStats);
+
+        return view('esbtp.paywall-config.blocked', [
+            'config' => $paywallConfig,
+            'stats' => $currentStats,
+            'reasons' => $status['reasons'],
+            'etablissement' => $etablissement
+        ]);
+    }
+
+    /**
      * Mettre à jour la configuration du paywall
      */
     public function store(Request $request)

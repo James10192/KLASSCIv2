@@ -15,7 +15,8 @@ class PaywallMiddleware
      * Routes exclues de la vérification paywall
      */
     protected $excludedRoutes = [
-        'esbtp.paywall-config.*',
+        'esbtp.paywall-config.blocked',
+        'esbtp.paywall-config.upgrade',
         'logout',
         'login',
         'register',
@@ -46,9 +47,17 @@ class PaywallMiddleware
             return $next($request);
         }
 
-        // Vérifier si c'est une route paywall-config ET que l'utilisateur a les permissions service technique
-        if ($this->isPaywallConfigRoute($request) && $this->hasServiceTechniquePermissions($request)) {
-            return $next($request);
+        // Vérifier si c'est une route paywall-config
+        if ($this->isPaywallConfigRoute($request)) {
+            // Seuls les utilisateurs avec permissions service technique peuvent accéder
+            if ($this->hasServiceTechniquePermissions($request)) {
+                return $next($request);
+            } else {
+                // Rediriger vers la page de blocage avec un message d'accès refusé
+                return redirect()->route('esbtp.paywall-config.blocked')
+                    ->with('error', 'Accès refusé : Cette section est réservée au Service Technique d\'African Digit Consulting')
+                    ->with('paywall_blocked', true);
+            }
         }
 
         // Vérifier si le paywall est actif
