@@ -54,6 +54,7 @@ use App\Http\Controllers\ESBTPPlanningGeneralController;
 use App\Http\Controllers\ESBTP\Admin\TeacherAdminController;
 use App\Http\Controllers\ESBTP\ESBTPSettingsController;
 use App\Http\Controllers\ESBTPMatriculeConfigController;
+use App\Http\Controllers\ESBTPPaywallConfigController;
 use App\Http\Controllers\ESBTPLogsController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\NavbarController;
@@ -999,6 +1000,12 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'role:superAdmin'])-
     Route::post('/matricule-config/change-etablissement', [ESBTPMatriculeConfigController::class, 'changeEtablissement'])->name('matricule-config.change-etablissement');
     Route::get('/matricule-config/mode-info', [ESBTPMatriculeConfigController::class, 'getModeInfo'])->name('matricule-config.mode-info');
     Route::post('/matricule-config/get-configurations', [ESBTPMatriculeConfigController::class, 'getConfigurations'])->name('matricule-config.get-configurations');
+
+    // Routes pour la configuration du paywall
+    Route::get('/paywall-config', [ESBTPPaywallConfigController::class, 'index'])->name('paywall-config.index');
+    Route::post('/paywall-config', [ESBTPPaywallConfigController::class, 'store'])->name('paywall-config.store');
+    Route::post('/paywall-config/extend', [ESBTPPaywallConfigController::class, 'extendSubscription'])->name('paywall-config.extend');
+    Route::get('/paywall-config/status', [ESBTPPaywallConfigController::class, 'checkStatus'])->name('paywall-config.status');
 });
 
     // Routes pour l'émargement - Administration

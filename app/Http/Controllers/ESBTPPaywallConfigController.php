@@ -1,0 +1,220 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\ESBTPSystemSetting;
+use App\Models\ESBTPEtablissement;
+use App\Models\User;
+use App\Models\ESBTPEtudiant;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
+
+class ESBTPPaywallConfigController extends Controller
+{
+    /**
+     * Afficher la page de configuration du paywall
+     */
+    public function index()
+    {
+        $currentEtablissementId = ESBTPSystemSetting::getCurrentEtablissementId();
+        $etablissement = ESBTPEtablissement::find($currentEtablissementId);
+
+        // Récupérer les paramètres du paywall
+        $paywallConfig = [
+            'is_active' => ESBTPSystemSetting::getValue('paywall_active', false),
+            'subscription_end' => ESBTPSystemSetting::getValue('subscription_end_date', null),
+            'max_users' => ESBTPSystemSetting::getValue('paywall_max_users', 50),
+            'max_students' => ESBTPSystemSetting::getValue('paywall_max_students', 500),
+            'plan_name' => ESBTPSystemSetting::getValue('paywall_plan_name', 'Plan Standard'),
+            'plan_price' => ESBTPSystemSetting::getValue('paywall_plan_price', 0),
+            'features' => json_decode(ESBTPSystemSetting::getValue('paywall_features', '[]'), true),
+        ];
+
+        // Calculer les statistiques actuelles
+        $currentStats = $this->getCurrentStats($currentEtablissementId);
+
+        // Vérifier le statut
+        $status = $this->checkPaywallStatus($paywallConfig, $currentStats);
+
+        return view('esbtp.paywall-config.index', compact(
+            'paywallConfig',
+            'currentStats',
+            'status',
+            'etablissement'
+        ));
+    }
+
+    /**
+     * Mettre à jour la configuration du paywall
+     */
+    public function store(Request $request)
+    {
+        $request->validate([
+            'is_active' => 'required|boolean',
+            'subscription_end' => 'nullable|date',
+            'max_users' => 'required|integer|min:1',
+            'max_students' => 'required|integer|min:1',
+            'plan_name' => 'required|string|max:255',
+            'plan_price' => 'required|numeric|min:0',
+            'features' => 'nullable|array',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // Sauvegarder les paramètres
+            ESBTPSystemSetting::setValue('paywall_active', $request->is_active);
+            ESBTPSystemSetting::setValue('subscription_end_date', $request->subscription_end);
+            ESBTPSystemSetting::setValue('paywall_max_users', $request->max_users);
+            ESBTPSystemSetting::setValue('paywall_max_students', $request->max_students);
+            ESBTPSystemSetting::setValue('paywall_plan_name', $request->plan_name);
+            ESBTPSystemSetting::setValue('paywall_plan_price', $request->plan_price);
+            ESBTPSystemSetting::setValue('paywall_features', json_encode($request->features ?? []));
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Configuration du paywall sauvegardée avec succès'
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la sauvegarde: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Obtenir les statistiques actuelles de l'école
+     */
+    private function getCurrentStats($etablissementId)
+    {
+        // Compter les utilisateurs (enseignants, coordinateurs, secrétaires)
+        $totalUsers = User::whereHas('roles', function($query) {
+            $query->whereIn('name', ['enseignant', 'coordinateur', 'secretaire']);
+        })->count();
+
+        // Compter les étudiants actifs
+        $totalStudents = ESBTPEtudiant::whereHas('inscriptions', function($query) {
+            $query->where('status', 'active');
+        })->count();
+
+        return [
+            'total_users' => $totalUsers,
+            'total_students' => $totalStudents,
+        ];
+    }
+
+    /**
+     * Vérifier le statut du paywall
+     */
+    private function checkPaywallStatus($config, $stats)
+    {
+        $status = [
+            'is_blocked' => false,
+            'reasons' => [],
+            'warnings' => [],
+            'is_expired' => false,
+            'days_remaining' => null,
+        ];
+
+        // Vérifier si le paywall est actif
+        if (!$config['is_active']) {
+            return $status;
+        }
+
+        // Vérifier l'expiration de l'abonnement
+        if ($config['subscription_end']) {
+            $endDate = Carbon::parse($config['subscription_end']);
+            $now = Carbon::now();
+
+            if ($now->gt($endDate)) {
+                $status['is_blocked'] = true;
+                $status['is_expired'] = true;
+                $status['reasons'][] = 'Abonnement expiré le ' . $endDate->format('d/m/Y');
+            } else {
+                $status['days_remaining'] = $now->diffInDays($endDate);
+
+                if ($status['days_remaining'] <= 7) {
+                    $status['warnings'][] = 'Abonnement expire dans ' . $status['days_remaining'] . ' jour(s)';
+                }
+            }
+        }
+
+        // Vérifier les limites d'utilisateurs
+        if ($stats['total_users'] > $config['max_users']) {
+            $status['is_blocked'] = true;
+            $status['reasons'][] = 'Limite d\'utilisateurs dépassée (' . $stats['total_users'] . '/' . $config['max_users'] . ')';
+        } elseif ($stats['total_users'] >= $config['max_users'] * 0.9) {
+            $status['warnings'][] = 'Proche de la limite d\'utilisateurs (' . $stats['total_users'] . '/' . $config['max_users'] . ')';
+        }
+
+        // Vérifier les limites d'étudiants
+        if ($stats['total_students'] > $config['max_students']) {
+            $status['is_blocked'] = true;
+            $status['reasons'][] = 'Limite d\'étudiants dépassée (' . $stats['total_students'] . '/' . $config['max_students'] . ')';
+        } elseif ($stats['total_students'] >= $config['max_students'] * 0.9) {
+            $status['warnings'][] = 'Proche de la limite d\'étudiants (' . $stats['total_students'] . '/' . $config['max_students'] . ')';
+        }
+
+        return $status;
+    }
+
+    /**
+     * API pour vérifier le statut (utilisé par le middleware)
+     */
+    public function checkStatus()
+    {
+        $currentEtablissementId = ESBTPSystemSetting::getCurrentEtablissementId();
+
+        $paywallConfig = [
+            'is_active' => ESBTPSystemSetting::getValue('paywall_active', false),
+            'subscription_end' => ESBTPSystemSetting::getValue('subscription_end_date', null),
+            'max_users' => ESBTPSystemSetting::getValue('paywall_max_users', 50),
+            'max_students' => ESBTPSystemSetting::getValue('paywall_max_students', 500),
+        ];
+
+        $currentStats = $this->getCurrentStats($currentEtablissementId);
+        $status = $this->checkPaywallStatus($paywallConfig, $currentStats);
+
+        return response()->json([
+            'is_blocked' => $status['is_blocked'],
+            'reasons' => $status['reasons'],
+            'warnings' => $status['warnings'],
+        ]);
+    }
+
+    /**
+     * Prolonger l'abonnement
+     */
+    public function extendSubscription(Request $request)
+    {
+        $request->validate([
+            'months' => 'required|integer|min:1|max:24'
+        ]);
+
+        try {
+            $currentEnd = ESBTPSystemSetting::getValue('subscription_end_date', null);
+            $startDate = $currentEnd ? Carbon::parse($currentEnd) : Carbon::now();
+            $newEndDate = $startDate->addMonths($request->months);
+
+            ESBTPSystemSetting::setValue('subscription_end_date', $newEndDate->format('Y-m-d'));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Abonnement prolongé jusqu\'au ' . $newEndDate->format('d/m/Y'),
+                'new_end_date' => $newEndDate->format('Y-m-d')
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la prolongation: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+}

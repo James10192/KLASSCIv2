@@ -80,6 +80,7 @@ class Kernel extends HttpKernel
         'validate.device' => \App\Http\Middleware\ValidateAttendanceDevice::class,
         'attendance.rate_limit' => \App\Http\Middleware\AttendanceRateLimiter::class,
         'force.password.change' => \App\Http\Middleware\ForcePasswordChange::class,
+        'paywall' => \App\Http\Middleware\PaywallMiddleware::class,
     ];
 
     /**
