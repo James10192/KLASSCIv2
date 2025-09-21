@@ -753,6 +753,7 @@ class ESBTPInscriptionController extends Controller
             $ancienneFiliere = $inscription->filiere_id;
             $ancienNiveau = $inscription->niveau_id;
             $ancienneClasse = $inscription->classe_id;
+            $ancienAffectationStatus = $inscription->affectation_status;
 
             if ($inscription->status === 'active' && !Auth::user()->hasRole('superAdmin')) {
                 // Empêcher la modification de la filière, niveau et classe pour les inscriptions actives (sauf superAdmin)
@@ -815,12 +816,13 @@ class ESBTPInscriptionController extends Controller
             $inscription->updated_by = Auth::id();
             $inscription->save();
 
-            // Mettre à jour les souscriptions de frais si la filière, niveau ou classe a changé
+            // Mettre à jour les souscriptions de frais si la filière, niveau, classe ou statut d'affectation a changé
             if ($ancienneFiliere != $inscription->filiere_id ||
                 $ancienNiveau != $inscription->niveau_id ||
-                $ancienneClasse != $inscription->classe_id) {
+                $ancienneClasse != $inscription->classe_id ||
+                $ancienAffectationStatus != $inscription->affectation_status) {
 
-                \Log::info('Mise à jour des frais après changement de classe/filière/niveau', [
+                \Log::info('Mise à jour des frais après changement de classe/filière/niveau/affectation', [
                     'inscription_id' => $inscription->id,
                     'ancienne_filiere' => $ancienneFiliere,
                     'nouvelle_filiere' => $inscription->filiere_id,
@@ -828,6 +830,8 @@ class ESBTPInscriptionController extends Controller
                     'nouveau_niveau' => $inscription->niveau_id,
                     'ancienne_classe' => $ancienneClasse,
                     'nouvelle_classe' => $inscription->classe_id,
+                    'ancien_affectation_status' => $ancienAffectationStatus,
+                    'nouveau_affectation_status' => $inscription->affectation_status,
                     'user_id' => Auth::id()
                 ]);
 

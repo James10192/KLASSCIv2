@@ -7,7 +7,7 @@
         </div>
         <div class="main-card-subtitle">
             @php
-                $periodeNom = 'Période ' . $periode;
+                $periodeNom = $periode == 1 ? 'Semestre 1' : 'Semestre 2';
                 if (isset($periodes)) {
                     foreach ($periodes as $p) {
                         if ($p->id == $periode) {

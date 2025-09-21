@@ -2514,18 +2514,33 @@ class ESBTPBulletinController extends Controller
     {
         $this->validate($request, [
             'semestre' => 'nullable|in:1,2',
-            'periode' => 'nullable|in:1,2', // Ajout du paramètre periode
+            'periode' => 'nullable|in:1,2,semestre1,semestre2', // Support des deux formats
             'annee_universitaire_id' => 'nullable|exists:esbtp_annee_universitaires,id',
             'include_all_statuses' => 'nullable|boolean',
         ]);
 
         // Gérer les deux paramètres: semestre et periode (compatibilité)
-        $semestre = $request->semestre ?? $request->periode;
+        $semestreRaw = $request->semestre ?? $request->periode;
         $annee_universitaire_id = $request->annee_universitaire_id;
 
         // CORRECTION: Conversion du format du semestre pour compatibilité avec le format attendu
-        // pour la génération de PDF (convertir '1' en 'semestre1')
-        $periode = $semestre ? 'semestre' . $semestre : 'semestre1';
+        // Gérer les formats : 1, 2, semestre1, semestre2
+        if ($semestreRaw == '1') {
+            $periode = 'semestre1';
+            $semestre = '1';
+        } elseif ($semestreRaw == '2') {
+            $periode = 'semestre2';
+            $semestre = '2';
+        } elseif ($semestreRaw == 'semestre1') {
+            $periode = 'semestre1';
+            $semestre = '1';
+        } elseif ($semestreRaw == 'semestre2') {
+            $periode = 'semestre2';
+            $semestre = '2';
+        } else {
+            $periode = 'semestre1';
+            $semestre = '1';
+        }
 
         \Log::debug('Valeurs des variables pour la génération de PDF:', [
             'semestre' => $semestre,
@@ -4373,18 +4388,39 @@ class ESBTPBulletinController extends Controller
      */
     public function updateMoyennes(Request $request)
     {
+        // Log détaillé pour diagnostiquer l'erreur de validation
+        \Log::info('🔍 BULLETIN updateMoyennes - Données reçues', [
+            'request_all' => $request->all(),
+            'periode_value' => $request->periode,
+            'periode_type' => gettype($request->periode),
+            'url' => $request->fullUrl(),
+            'method' => $request->method(),
+            'user_id' => auth()->id()
+        ]);
+
         // Vérifier les permissions et les rôles
         if (!auth()->user()->hasRole('superAdmin') && !auth()->user()->hasRole('secretaire')) {
             return redirect()->back()->with('error', 'Vous n\'avez pas les permissions nécessaires pour modifier les moyennes.');
         }
 
         // Validation basique des paramètres requis
-        $request->validate([
-            'etudiant_id' => 'required|exists:esbtp_etudiants,id',
-            'classe_id' => 'required|exists:esbtp_classes,id',
-            'periode' => 'required|in:semestre1,semestre2,annuel,1,2',
-            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
-        ]);
+        try {
+            $request->validate([
+                'etudiant_id' => 'required|exists:esbtp_etudiants,id',
+                'classe_id' => 'required|exists:esbtp_classes,id',
+                'periode' => 'required|in:semestre1,semestre2,annuel,1,2',
+                'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
+            ]);
+            \Log::info('✅ BULLETIN updateMoyennes - Validation basique réussie');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('❌ BULLETIN updateMoyennes - Validation basique échouée:', [
+                'errors' => $e->errors(),
+                'periode_value' => $request->periode,
+                'periode_type' => gettype($request->periode),
+                'validation_rules' => 'semestre1,semestre2,annuel,1,2',
+            ]);
+            throw $e;
+        }
 
         // Validation conditionnelle: au moins l'un des deux doit être présent
         if (!$request->has('resultats') && !$request->has('nouvelles_matieres')) {
@@ -4393,26 +4429,44 @@ class ESBTPBulletinController extends Controller
 
         // Validation des résultats existants si présents
         if ($request->has('resultats') && is_array($request->resultats)) {
-            $request->validate([
-                'resultats' => 'array',
-                'resultats.*.matiere_id' => 'required|exists:esbtp_matieres,id',
-                'resultats.*.moyenne' => 'required|numeric|min:0|max:20',
-                'resultats.*.coefficient' => 'required|numeric|min:0',
-                'resultats.*.appreciation' => 'nullable|string|max:255',
-            ]);
+            try {
+                $request->validate([
+                    'resultats' => 'array',
+                    'resultats.*.matiere_id' => 'required|exists:esbtp_matieres,id',
+                    'resultats.*.moyenne' => 'required|numeric|min:0|max:20',
+                    'resultats.*.coefficient' => 'required|numeric|min:0',
+                    'resultats.*.appreciation' => 'nullable|string|max:255',
+                ]);
+                \Log::info('✅ BULLETIN updateMoyennes - Validation résultats réussie');
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                \Log::error('❌ BULLETIN updateMoyennes - Validation résultats échouée:', [
+                    'errors' => $e->errors(),
+                    'resultats_data' => $request->resultats,
+                ]);
+                throw $e;
+            }
         }
 
         // Validation des nouvelles matières si présentes
         if ($request->has('nouvelles_matieres') && is_array($request->nouvelles_matieres)) {
-            $request->validate([
-                'nouvelles_matieres' => 'array',
-                'nouvelles_matieres.*.matiere_type' => 'required|string|in:existante,nouvelle',
-                'nouvelles_matieres.*.matiere_existante_id' => 'required_if:nouvelles_matieres.*.matiere_type,existante|nullable|exists:esbtp_matieres,id',
-                'nouvelles_matieres.*.nom_nouvelle' => 'required_if:nouvelles_matieres.*.matiere_type,nouvelle|nullable|string|max:255',
-                'nouvelles_matieres.*.moyenne' => 'required|numeric|min:0|max:20',
-                'nouvelles_matieres.*.coefficient' => 'required|numeric|min:0',
-                'nouvelles_matieres.*.appreciation' => 'nullable|string|max:255'
-            ]);
+            try {
+                $request->validate([
+                    'nouvelles_matieres' => 'array',
+                    'nouvelles_matieres.*.matiere_type' => 'required|string|in:existante,nouvelle',
+                    'nouvelles_matieres.*.matiere_existante_id' => 'required_if:nouvelles_matieres.*.matiere_type,existante|nullable|exists:esbtp_matieres,id',
+                    'nouvelles_matieres.*.nom_nouvelle' => 'required_if:nouvelles_matieres.*.matiere_type,nouvelle|nullable|string|max:255',
+                    'nouvelles_matieres.*.moyenne' => 'required|numeric|min:0|max:20',
+                    'nouvelles_matieres.*.coefficient' => 'required|numeric|min:0',
+                    'nouvelles_matieres.*.appreciation' => 'nullable|string|max:255'
+                ]);
+                \Log::info('✅ BULLETIN updateMoyennes - Validation nouvelles matières réussie');
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                \Log::error('❌ BULLETIN updateMoyennes - Validation nouvelles matières échouée:', [
+                    'errors' => $e->errors(),
+                    'nouvelles_matieres_data' => $request->nouvelles_matieres,
+                ]);
+                throw $e;
+            }
         }
 
         $etudiantId = $request->etudiant_id;

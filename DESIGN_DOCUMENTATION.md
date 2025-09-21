@@ -5,7 +5,27 @@ Ce document décrit les améliorations apportées au système ESBTP, incluant le
 
 ## Nouvelles Améliorations
 
-### 1. Correction des Paramètres de l'École
+### 1. Correction des Inscriptions - Statut d'Affectation
+
+#### Problème résolu : Synchronisation des frais
+- **Issue** : Les changements de `affectation_status` dans inscriptions.edit ne mettaient pas à jour les `esbtpfraissubscription`
+- **Solution** : Ajout de la détection des changements de statut d'affectation dans la méthode `update()`
+
+#### Code ajouté
+```php
+// AVANT (manquait affectation_status)
+if ($ancienneFiliere != $inscription->filiere_id ||
+    $ancienNiveau != $inscription->niveau_id ||
+    $ancienneClasse != $inscription->classe_id) {
+
+// APRÈS (inclut affectation_status)
+if ($ancienneFiliere != $inscription->filiere_id ||
+    $ancienNiveau != $inscription->niveau_id ||
+    $ancienneClasse != $inscription->classe_id ||
+    $ancienAffectationStatus != $inscription->affectation_status) {
+```
+
+### 2. Correction des Paramètres de l'École
 
 #### Problème résolu : Logo d'établissement
 - **Issue** : Le paramètre `school_logo` manquait en base de données, causant des erreurs lors de l'upload

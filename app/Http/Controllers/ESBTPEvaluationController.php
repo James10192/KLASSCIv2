@@ -171,8 +171,15 @@ class ESBTPEvaluationController extends Controller
      */
     public function store(Request $request)
     {
-        \Log::info('Début de la méthode store');
-        \Log::info('Données reçues:', $request->all());
+        \Log::info('🔍 ESBTPEvaluation STORE - Début de la méthode store');
+        \Log::info('🔍 ESBTPEvaluation STORE - Données reçues:', [
+            'request_all' => $request->all(),
+            'periode_value' => $request->periode,
+            'periode_type' => gettype($request->periode),
+            'url' => $request->fullUrl(),
+            'method' => $request->method(),
+            'user_id' => auth()->id()
+        ]);
 
         // Log l'état de la classe ESBTPEvaluation
         \Log::info('Attributs attendus dans ESBTPEvaluation:', [
@@ -191,7 +198,7 @@ class ESBTPEvaluationController extends Controller
             'bareme' => 'required|numeric|min:0',
             'duree_minutes' => 'nullable|integer|min:0',
             'is_published' => 'nullable|boolean',
-            'periode' => 'required|string|max:50',
+            'periode' => 'required|in:1,2,semestre1,semestre2,Semestre 1,Semestre 2',
         ], [
             'titre.required' => 'Le titre est obligatoire',
             'type.required' => 'Le type d\'évaluation est obligatoire',
@@ -207,7 +214,12 @@ class ESBTPEvaluationController extends Controller
         ]);
 
         if ($validator->fails()) {
-            \Log::warning('Validation échouée:', $validator->errors()->toArray());
+            \Log::error('❌ ESBTPEvaluation STORE - Validation échouée:', [
+                'errors' => $validator->errors()->toArray(),
+                'periode_value' => $request->periode,
+                'periode_type' => gettype($request->periode),
+                'request_all' => $request->all(),
+            ]);
             return redirect()->back()
                 ->withErrors($validator)
                 ->withInput();
@@ -370,18 +382,30 @@ class ESBTPEvaluationController extends Controller
      */
     public function update(Request $request, ESBTPEvaluation $evaluation)
     {
-        $request->validate([
-            'titre' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'type' => 'required|in:devoir,examen,projet,tp,controle',
-            'date_evaluation' => 'required|date',
-            'classe_id' => 'required|exists:esbtp_classes,id',
-            'matiere_id' => 'required|exists:esbtp_matieres,id',
-            'coefficient' => 'required|numeric|min:0',
-            'bareme' => 'required|numeric|min:0',
-            'duree_minutes' => 'nullable|integer|min:0',
-            'periode' => 'required|string|max:50',
-        ], [
+        // Log détaillé pour diagnostiquer l'erreur de validation
+        \Log::info('🔍 ESBTPEvaluation UPDATE - Données reçues', [
+            'request_all' => $request->all(),
+            'periode_value' => $request->periode,
+            'periode_type' => gettype($request->periode),
+            'evaluation_id' => $evaluation->id,
+            'url' => $request->fullUrl(),
+            'method' => $request->method(),
+            'user_id' => auth()->id()
+        ]);
+
+        try {
+            $request->validate([
+                'titre' => 'required|string|max:255',
+                'description' => 'nullable|string',
+                'type' => 'required|in:devoir,examen,projet,tp,controle',
+                'date_evaluation' => 'required|date',
+                'classe_id' => 'required|exists:esbtp_classes,id',
+                'matiere_id' => 'required|exists:esbtp_matieres,id',
+                'coefficient' => 'required|numeric|min:0',
+                'bareme' => 'required|numeric|min:0',
+                'duree_minutes' => 'nullable|integer|min:0',
+                'periode' => 'required|in:1,2,semestre1,semestre2,Semestre 1,Semestre 2',
+            ], [
             'titre.required' => 'Le titre est obligatoire',
             'type.required' => 'Le type d\'évaluation est obligatoire',
             'date_evaluation.required' => 'La date est obligatoire',
@@ -390,6 +414,15 @@ class ESBTPEvaluationController extends Controller
             'coefficient.required' => 'Le coefficient est obligatoire',
             'bareme.required' => 'Le barème est obligatoire',
         ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('❌ ESBTPEvaluation UPDATE - Erreur de validation', [
+                'errors' => $e->errors(),
+                'periode_value' => $request->periode,
+                'periode_type' => gettype($request->periode),
+                'request_all' => $request->all(),
+            ]);
+            throw $e; // Re-lancer l'exception pour que Laravel la gère normalement
+        }
 
         try {
             $hasNotes = $evaluation->notes()->count() > 0;
