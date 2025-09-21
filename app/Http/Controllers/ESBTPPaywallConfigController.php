@@ -13,10 +13,42 @@ use Carbon\Carbon;
 class ESBTPPaywallConfigController extends Controller
 {
     /**
+     * Vérifier si l'utilisateur a accès aux configurations paywall
+     */
+    protected function checkServiceTechniqueAccess()
+    {
+        $user = auth()->user();
+
+        if (!$user) {
+            abort(401, 'Non authentifié');
+        }
+
+        // Vérifier si l'utilisateur a le rôle serviceTechnique OU les permissions spéciales
+        $hasAccess = $user->hasRole('serviceTechnique') ||
+                     $user->can('paywall.configure') ||
+                     $user->can('system.technical_access');
+
+        if (!$hasAccess) {
+            // Rediriger vers la page de blocage avec message d'erreur
+            return redirect()->route('esbtp.paywall-config.blocked')
+                ->with('error', 'Accès refusé : Cette section est réservée au Service Technique d\'African Digit Consulting')
+                ->with('paywall_blocked', true);
+        }
+
+        return null; // Accès autorisé
+    }
+
+    /**
      * Afficher la page de configuration du paywall
      */
     public function index()
     {
+        // Vérifier l'accès service technique
+        $accessCheck = $this->checkServiceTechniqueAccess();
+        if ($accessCheck) {
+            return $accessCheck; // Redirection si accès refusé
+        }
+
         $currentEtablissementId = ESBTPSystemSetting::getCurrentEtablissementId();
         $etablissement = ESBTPEtablissement::find($currentEtablissementId);
 
@@ -114,6 +146,15 @@ class ESBTPPaywallConfigController extends Controller
      */
     public function store(Request $request)
     {
+        // Vérifier l'accès service technique
+        $accessCheck = $this->checkServiceTechniqueAccess();
+        if ($accessCheck) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Accès refusé : Cette section est réservée au Service Technique d\'African Digit Consulting'
+            ], 403);
+        }
+
         $request->validate([
             'is_active' => 'required|boolean',
             'subscription_end' => 'nullable|date',
