@@ -221,7 +221,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     });
 
     // Routes pour la gestion du profil admin
-    Route::middleware(['role:superAdmin|secretaire'])->group(function () {
+    Route::middleware(['role:superAdmin|secretaire|serviceTechnique'])->group(function () {
         Route::get('/admin/profile', [AdminProfileController::class, 'index'])->name('admin.profile');
         Route::put('/admin/profile/update', [AdminProfileController::class, 'update'])->name('admin.profile.update');
         Route::put('/admin/profile/update-professional', [AdminProfileController::class, 'updateProfessionalInfo'])->name('admin.profile.update.professional');
@@ -989,7 +989,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     });
 
 // Configuration des matricules - accès direct sans sidebar
-Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'role:superAdmin'])->group(function () {
+Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'role:serviceTechnique'])->group(function () {
     Route::get('/matricule-config', [ESBTPMatriculeConfigController::class, 'index'])->name('matricule-config.index');
     Route::post('/matricule-config', [ESBTPMatriculeConfigController::class, 'store'])->name('matricule-config.store');
     Route::delete('/matricule-config/{id}', [ESBTPMatriculeConfigController::class, 'destroy'])->name('matricule-config.destroy');

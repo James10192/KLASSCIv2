@@ -225,6 +225,196 @@
         color: #9ca3af;
     }
 
+    .etablissements-section {
+        background: white;
+        border-radius: 12px;
+        padding: 0;
+        border: 2px solid #e5e7eb;
+        overflow: hidden;
+    }
+
+    .etablissements-header {
+        background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+        padding: 1.5rem;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .etablissements-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #1f2937;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .etablissements-count {
+        background: #0ea5e9;
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 25px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .etablissement-card {
+        padding: 1.5rem;
+        border-bottom: 1px solid #f3f4f6;
+        transition: all 0.3s ease;
+    }
+
+    .etablissement-card:last-child {
+        border-bottom: none;
+    }
+
+    .etablissement-card:hover {
+        background: #f8fafc;
+    }
+
+    .etablissement-main {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+    }
+
+    .etablissement-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .etablissement-icon {
+        width: 50px;
+        height: 50px;
+        background: linear-gradient(135deg, #0ea5e9, #2563eb);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        color: white;
+        flex-shrink: 0;
+    }
+
+    .etablissement-details h4 {
+        margin: 0 0 0.25rem 0;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #1f2937;
+    }
+
+    .etablissement-subtitle {
+        font-size: 0.9rem;
+        color: #6b7280;
+        margin: 0;
+    }
+
+    .etablissement-status {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 25px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .status-badge.active {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .status-badge.inactive {
+        background: #f3f4f6;
+        color: #6b7280;
+    }
+
+    .etablissement-meta {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .meta-item {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .meta-label {
+        font-size: 0.75rem;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.25rem;
+        font-weight: 600;
+    }
+
+    .meta-value {
+        font-weight: 600;
+        color: #1f2937;
+    }
+
+    .meta-value code {
+        background: #f1f5f9;
+        color: #0ea5e9;
+        padding: 0.25rem 0.5rem;
+        border-radius: 6px;
+        font-size: 0.85rem;
+    }
+
+    .etablissement-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .action-btn {
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        text-decoration: none;
+        font-size: 0.85rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        border: 1px solid transparent;
+    }
+
+    .action-btn.primary {
+        background: #0ea5e9;
+        color: white;
+    }
+
+    .action-btn.primary:hover {
+        background: #0284c7;
+        color: white;
+        text-decoration: none;
+    }
+
+    .action-btn.secondary {
+        background: #f1f5f9;
+        color: #0ea5e9;
+        border-color: #e2e8f0;
+    }
+
+    .action-btn.secondary:hover {
+        background: #0ea5e9;
+        color: white;
+        text-decoration: none;
+    }
+
     @media (max-width: 768px) {
         .stats-grid {
             grid-template-columns: 1fr;
@@ -386,59 +576,52 @@
         </div>
 
         <!-- Établissements Gérés -->
-        <div class="card-moderne">
-            <div class="card-header-moderne">
-                <h3 class="card-title-moderne">
-                    <i class="fas fa-school me-2"></i>
+        <div class="etablissements-section">
+            <div class="etablissements-header">
+                <div class="etablissements-title">
+                    <i class="fas fa-school"></i>
                     Établissements Gérés
-                </h3>
-            </div>
-            <div class="card-body-moderne">
-                <div class="table-responsive">
-                    <table class="table table-moderne">
-                        <thead>
-                            <tr>
-                                <th>Établissement</th>
-                                <th>Branche Git</th>
-                                <th>Statut</th>
-                                <th>Créé le</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($etablissements as $etablissement)
-                                <tr>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <i class="fas fa-university text-primary me-2"></i>
-                                            <strong>{{ $etablissement->nom }}</strong>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <code>{{ $etablissement->branch }}</code>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-{{ $etablissement->status === 'active' ? 'success' : 'secondary' }}">
-                                            {{ ucfirst($etablissement->status) }}
-                                        </span>
-                                    </td>
-                                    <td>{{ $etablissement->created_at->format('d/m/Y') }}</td>
-                                    <td>
-                                        <div class="btn-group" role="group">
-                                            <a href="{{ route('esbtp.paywall-config.index') }}" class="btn btn-sm btn-outline-primary" title="Paywall">
-                                                <i class="fas fa-shield-alt"></i>
-                                            </a>
-                                            <a href="{{ route('esbtp.matricule-config.index') }}" class="btn btn-sm btn-outline-info" title="Matricule">
-                                                <i class="fas fa-id-card"></i>
-                                            </a>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
                 </div>
+                <div class="etablissements-count">{{ $etablissements->count() }} établissement{{ $etablissements->count() > 1 ? 's' : '' }}</div>
             </div>
+
+            @foreach($etablissements as $etablissement)
+                <div class="etablissement-card">
+                    <div class="etablissement-main">
+                        <div class="etablissement-info">
+                            <div class="etablissement-icon">
+                                <i class="fas fa-university"></i>
+                            </div>
+                            <div class="etablissement-details">
+                                <h4>{{ $etablissement->nom }}</h4>
+                                <p class="etablissement-subtitle">Établissement d'enseignement supérieur</p>
+                            </div>
+                        </div>
+                        <div class="etablissement-status">
+                            <span class="status-badge {{ $etablissement->status }}">
+                                {{ $etablissement->status === 'active' ? 'Actif' : 'Inactif' }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="etablissement-meta">
+                        <div class="meta-item">
+                            <div class="meta-label">Branche Git</div>
+                            <div class="meta-value"><code>{{ $etablissement->branch }}</code></div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-label">Date de création</div>
+                            <div class="meta-value">{{ $etablissement->created_at->format('d/m/Y') }}</div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-label">Type</div>
+                            <div class="meta-value">Multi-tenant</div>
+                        </div>
+                    </div>
+
+                    
+                </div>
+            @endforeach
         </div>
 
         <!-- Codes d'Urgence Actifs -->
