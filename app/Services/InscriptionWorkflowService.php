@@ -25,12 +25,23 @@ class InscriptionWorkflowService
     public function validateInscription(ESBTPInscription $inscription)
     {
         try {
-            // Vérifier que l'inscription est en attente
-            if ($inscription->status !== 'en_attente') {
-                return [
-                    'success' => false,
-                    'message' => 'Seules les inscriptions en attente peuvent être validées.'
-                ];
+            // Pour les réinscriptions, vérifier le workflow_step au lieu du status
+            if ($inscription->type_inscription === 'réinscription' || $inscription->type_inscription === 'reinscription') {
+                // Pour les réinscriptions, vérifier le workflow_step
+                if ($inscription->workflow_step !== 'en_validation') {
+                    return [
+                        'success' => false,
+                        'message' => 'Cette réinscription a déjà été traitée ou n\'est pas prête pour validation.'
+                    ];
+                }
+            } else {
+                // Pour les premières inscriptions, vérifier le status
+                if ($inscription->status !== 'en_attente') {
+                    return [
+                        'success' => false,
+                        'message' => 'Seules les inscriptions en attente peuvent être validées.'
+                    ];
+                }
             }
 
             // Vérifier qu'un paiement est associé
