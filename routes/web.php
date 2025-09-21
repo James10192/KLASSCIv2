@@ -1001,7 +1001,10 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'role:superAdmin'])-
     Route::get('/matricule-config/mode-info', [ESBTPMatriculeConfigController::class, 'getModeInfo'])->name('matricule-config.mode-info');
     Route::post('/matricule-config/get-configurations', [ESBTPMatriculeConfigController::class, 'getConfigurations'])->name('matricule-config.get-configurations');
 
-    // Routes pour la configuration du paywall
+});
+
+// Routes pour la configuration du paywall - Service Technique ADC seulement
+Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'paywall'])->group(function () {
     Route::get('/paywall-config', [ESBTPPaywallConfigController::class, 'index'])->name('paywall-config.index');
     Route::get('/paywall-config/blocked', [ESBTPPaywallConfigController::class, 'blocked'])->name('paywall-config.blocked');
     Route::get('/paywall-config/upgrade', [ESBTPPaywallConfigController::class, 'upgrade'])->name('paywall-config.upgrade');
