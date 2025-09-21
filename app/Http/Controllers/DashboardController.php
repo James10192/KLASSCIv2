@@ -32,6 +32,8 @@ use App\Models\ESBTPGrade;
 use App\Models\ESBTPSchedule;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPTeacher;
+use App\Models\ESBTPSystemSetting;
+use App\Models\ESBTPEtablissement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -55,6 +57,11 @@ class DashboardController extends Controller
     public function index()
     {
         $user = Auth::user();
+
+        // Vérifier si l'utilisateur est du service technique
+        if ($user->hasRole('serviceTechnique')) {
+            return $this->serviceTechniqueDashboard();
+        }
 
         // Vérifier si l'utilisateur est un super admin
         if ($user->hasRole('superAdmin')) {
@@ -1102,6 +1109,134 @@ class DashboardController extends Controller
                 'Jun' => 4300000,
             ]
         ];
+    }
+
+    /**
+     * Dashboard Service Technique
+     */
+    private function serviceTechniqueDashboard()
+    {
+        $user = Auth::user();
+
+        // Vérifier l'accès
+        if (!$user->hasRole('serviceTechnique')) {
+            abort(403, 'Accès refusé : Cette section est réservée au Service Technique d\'African Digit Consulting');
+        }
+
+        // Récupérer tous les établissements (simule multi-tenant via git branches)
+        $etablissements = collect([
+            (object)[
+                'id' => 1,
+                'nom' => 'École Actuelle',
+                'branch' => 'presentation', // Current branch
+                'status' => 'active',
+                'created_at' => Carbon::now()->subMonths(6)
+            ]
+        ]);
+
+        // Statistiques globales de l'établissement actuel
+        $stats = [
+            'total_users' => User::count(),
+            'total_students' => ESBTPEtudiant::count(),
+            'total_teachers' => User::whereHas('roles', function($query) {
+                $query->whereIn('name', ['enseignant', 'teacher']);
+            })->count(),
+            'total_classes' => ESBTPClasse::count(),
+            'total_inscriptions_year' => ESBTPInscription::whereHas('anneeUniversitaire', function($query) {
+                $query->where('is_current', true);
+            })->count(),
+        ];
+
+        // Configuration paywall actuelle
+        $paywallConfig = [
+            'is_active' => ESBTPSystemSetting::getValue('paywall_active', false),
+            'subscription_end' => ESBTPSystemSetting::getValue('subscription_end_date', null),
+            'max_users' => ESBTPSystemSetting::getValue('paywall_max_users', 50),
+            'max_inscriptions_per_year' => ESBTPSystemSetting::getValue('paywall_max_inscriptions_per_year', 500),
+            'plan_name' => ESBTPSystemSetting::getValue('paywall_plan_name', 'Non configuré'),
+            'plan_price' => ESBTPSystemSetting::getValue('paywall_plan_price', 0),
+        ];
+
+        // Statut paywall
+        $paywallStatus = $this->checkPaywallStatusForDashboard($paywallConfig, $stats);
+
+        // Activité récente
+        $recentActivity = [
+            'new_users_this_month' => User::whereMonth('created_at', now()->month)->count(),
+            'new_students_this_month' => ESBTPEtudiant::whereMonth('created_at', now()->month)->count(),
+            'recent_logins' => DB::table('sessions')->where('last_activity', '>=', now()->subHours(24)->timestamp)->count()
+        ];
+
+        // Codes d'urgence actifs
+        $activeCodes = collect();
+        $allSettings = ESBTPSystemSetting::where('key', 'LIKE', 'emergency_code_%')->get();
+        foreach ($allSettings as $setting) {
+            $codeData = json_decode($setting->value, true);
+            if ($codeData && !$codeData['used'] && time() <= $codeData['expires_at']) {
+                $activeCodes->push((object)[
+                    'code' => str_replace('emergency_code_', '', $setting->key),
+                    'expires_at' => Carbon::createFromTimestamp($codeData['expires_at']),
+                    'created_by' => $codeData['created_by']
+                ]);
+            }
+        }
+
+        return view('dashboard.service-technique', compact(
+            'etablissements',
+            'stats',
+            'paywallConfig',
+            'paywallStatus',
+            'recentActivity',
+            'activeCodes'
+        ));
+    }
+
+    /**
+     * Vérifier le statut paywall pour le dashboard
+     */
+    private function checkPaywallStatusForDashboard($config, $stats)
+    {
+        $status = [
+            'is_blocked' => false,
+            'is_warning' => false,
+            'message' => 'Système opérationnel',
+            'level' => 'success'
+        ];
+
+        if (!$config['is_active']) {
+            return $status;
+        }
+
+        // Vérifier expiration
+        if ($config['subscription_end']) {
+            $endDate = Carbon::parse($config['subscription_end']);
+            $now = Carbon::now();
+
+            if ($now->gt($endDate)) {
+                $status['is_blocked'] = true;
+                $status['message'] = 'Abonnement expiré';
+                $status['level'] = 'danger';
+            } elseif ($now->diffInDays($endDate) <= 7) {
+                $status['is_warning'] = true;
+                $status['message'] = 'Expiration proche (' . $now->diffInDays($endDate) . ' jours)';
+                $status['level'] = 'warning';
+            }
+        }
+
+        // Vérifier limites
+        if ($stats['total_users'] >= $config['max_users'] * 0.9) {
+            $status['is_warning'] = true;
+            $status['message'] = 'Limite utilisateurs bientôt atteinte';
+            $status['level'] = 'warning';
+        }
+
+        if ($stats['total_inscriptions_year'] >= $config['max_inscriptions_per_year'] * 0.9) {
+            $status['is_warning'] = true;
+            $status['message'] = 'Limite inscriptions bientôt atteinte';
+            $status['level'] = 'warning';
+        }
+
+        return $status;
     }
 
     /**

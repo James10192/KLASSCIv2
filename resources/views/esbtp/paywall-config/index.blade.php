@@ -532,12 +532,6 @@ document.addEventListener('DOMContentLoaded', function() {
         fromCache: performance.navigation.type === 2 ? 'YES' : 'NO'
     });
 
-    // Afficher aussi dans la page
-    document.body.insertAdjacentHTML('afterbegin',
-        `<div style="position:fixed;top:0;left:0;right:0;background:red;color:white;padding:10px;z-index:9999;font-size:12px;">
-            🔥 DEBUG: Page chargée à ${pageLoadTime} - ID: ${pageId} - Cache: ${performance.navigation.type === 2 ? 'YES' : 'NO'}
-        </div>`
-    );
 
     // Configuration form
     document.getElementById('paywallConfigForm').addEventListener('submit', function(e) {
