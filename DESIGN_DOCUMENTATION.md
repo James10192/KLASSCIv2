@@ -1,9 +1,125 @@
-# Documentation des Améliorations - Système d'Export des Classes
+# Documentation des Améliorations - Système ESBTP
 
 ## Vue d'ensemble
-Ce document décrit les améliorations apportées au système d'export des listes de classes, incluant la liste d'appel et la liste complète des étudiants. Les modifications suivent le design pattern d'evaluations.index avec une palette de couleurs bleue et blanche.
+Ce document décrit les améliorations apportées au système ESBTP, incluant les corrections d'interface utilisateur, les améliorations de design et les optimisations PDF. Les modifications couvrent plusieurs modules : bulletins, emplois du temps, paramètres et exports.
 
-## Changements Principaux
+## Nouvelles Améliorations
+
+### 1. Correction des Paramètres de l'École
+
+#### Problème résolu : Logo d'établissement
+- **Issue** : Le paramètre `school_logo` manquait en base de données, causant des erreurs lors de l'upload
+- **Solution** :
+  - Ajout du paramètre dans `SettingsSeeder.php`
+  - Création de scripts de déploiement (`deploy_settings.php`, `add_school_logo_setting.php`)
+  - Amélioration du logging dans `ESBTPSettingsController.php`
+
+#### Configuration automatisée
+```php
+// Nouveau paramètre ajouté
+[
+    'key' => 'school_logo',
+    'value' => '',
+    'type' => 'file',
+    'category' => 'establishment',
+    'validation_rules' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif', 'max:2048']
+]
+```
+
+### 2. Amélioration du Design des Emplois du Temps
+
+#### Interface create.blade.php modernisée
+- **Copie du design** d'evaluations.create vers emploi-temps.create
+- **CSS moderne** : Variables CSS pour espacement cohérent
+- **Composants** : Cards, sections, alerts avec design uniforme
+- **Responsive** : Adaptation mobile avec breakpoints
+
+#### Optimisations d'espacement
+```css
+:root {
+    --space-xs: 0.25rem;
+    --space-sm: 0.5rem;
+    --space-md: 0.75rem;
+    --space-lg: 1rem;
+    --space-xl: 1.25rem;
+    --space-xxl: 1.5rem;
+}
+```
+
+### 3. Corrections Critiques des Bulletins PDF
+
+#### Problème de mise en page photo/matricule
+- **Issue** : Dans pdf-configurable.blade.php, la photo n'était pas centrée et le matricule s'affichait verticalement
+- **Cause** : Structure tableau incorrecte avec `rowspan="2"` et styles CSS incompatibles DomPDF
+
+#### Solutions implémentées
+
+##### Structure tableau corrigée
+```html
+<!-- AVANT (2 colonnes avec rowspan) -->
+<td rowspan="2">Photo + Matricule</td>
+<td>Toutes les infos mélangées</td>
+
+<!-- APRÈS (3 colonnes propres) -->
+<td>Photo + Matricule</td>
+<td>Infos personnelles</td>
+<td>Infos académiques</td>
+```
+
+##### Centrage optimisé
+```css
+/* Pour la preview web */
+.student-info-table td:first-child img {
+    display: block;
+    margin: 0 auto;
+}
+
+/* Pour l'export PDF (DomPDF) */
+body.pdf-export .student-info-table td:first-child img {
+    position: relative !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+}
+```
+
+##### Affichage matricule horizontal
+```css
+.matricule-text {
+    white-space: nowrap !important;
+    word-break: keep-all !important;
+    text-align: center;
+    margin: 8px auto 0 auto;
+}
+```
+
+#### Nettoyage interface
+- **Suppression** des textes debug ("PHOTO TROUVÉE", "VAR NON DÉFINIE")
+- **CSS spécifique** pour différencier placeholder et image réelle
+- **Styles inline renforcés** pour garantir la compatibilité DomPDF
+
+## Corrections d'Erreurs Techniques
+
+### 1. Filtrage Emplois du Temps
+```php
+// AVANT (Incorrect)
+$emploisTemps = $emploisTemps->whereHas('classe', function($query) use ($anneeId) {
+    $query->where('annee_universitaire_id', $anneeId);
+});
+
+// APRÈS (Correct)
+$emploisTemps = $emploisTemps->where('annee_universitaire_id', $anneeId);
+```
+
+### 2. Sélecteurs CSS Optimisés
+```css
+/* AVANT (Trop large, causait des conflits) */
+.student-info-table td:first-child > div { }
+
+/* APRÈS (Spécifique, évite le matricule) */
+.student-info-table td:first-child > div:not(.matricule-text) { }
+```
+
+## Changements Antérieurs (Classes et Exports)
 
 ### 1. Interface Utilisateur - classes.show
 - **Ajout de boutons d'export professionnels** : Implémentation de dropdowns séparés pour Liste d'Appel et Liste Complète

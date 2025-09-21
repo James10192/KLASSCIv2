@@ -91,8 +91,62 @@
             vertical-align: top;
             word-wrap: break-word;
         }
+
+        /* Styles pour la colonne photo et matricule */
+        .student-info-table td:first-child {
+            width: 150px;
+            text-align: center;
+            vertical-align: top;
+            padding: 10px;
+            min-width: 150px;
+            display: table-cell;
+        }
+
+        .student-info-table td:first-child img {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #007bff;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .student-info-table td:first-child > div:not(.matricule-text) {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 2px solid #007bff;
+            display: block;
+            margin: 0 auto;
+            background: #f3f4f6;
+            text-align: center;
+            line-height: 100px;
+            font-size: 32px;
+            color: #6b7280;
+        }
+
+        .student-info-table td:first-child .matricule-text {
+            margin-top: 8px;
+            margin-left: auto;
+            margin-right: auto;
+            font-weight: bold;
+            font-size: 9px;
+            text-align: center;
+            width: 100%;
+            white-space: nowrap;
+            overflow: visible;
+            word-break: keep-all;
+            word-wrap: normal;
+            writing-mode: horizontal-tb;
+            display: block;
+            position: relative;
+            left: 0;
+            right: 0;
+        }
         .info-group {
-            width: 50%;
+            width: 40%;
+            vertical-align: top;
         }
         .info-row {
             margin-bottom: 5px;
@@ -267,6 +321,71 @@
         }
         
         /* Reset spécifique pour PDF */
+        body.pdf-export .student-info-table {
+            table-layout: fixed;
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        body.pdf-export .student-info-table td {
+            border: none;
+            padding: 8px;
+            vertical-align: top;
+            word-wrap: break-word;
+        }
+
+        /* Styles spécifiques pour la photo et matricule en PDF */
+        body.pdf-export .student-info-table td:first-child {
+            width: 150px !important;
+            min-width: 150px !important;
+            text-align: center !important;
+            vertical-align: top !important;
+            padding: 10px !important;
+        }
+
+        body.pdf-export .info-group {
+            width: 40% !important;
+            vertical-align: top !important;
+        }
+
+        body.pdf-export .student-info-table td:first-child img {
+            width: 100px !important;
+            height: 100px !important;
+            border-radius: 50% !important;
+            object-fit: cover !important;
+            border: 2px solid #007bff !important;
+            display: block !important;
+            margin: 0 auto !important;
+            margin-left: auto !important;
+            margin-right: auto !important;
+        }
+
+        /* Centrage spécifique pour DomPDF avec transform en fallback */
+        body.pdf-export .student-info-table td:first-child img,
+        body.pdf-export .student-info-table td:first-child > div:not(.matricule-text) {
+            position: relative !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+        }
+
+        body.pdf-export .student-info-table td:first-child .matricule-text {
+            margin-top: 8px !important;
+            margin-left: auto !important;
+            margin-right: auto !important;
+            font-weight: bold !important;
+            font-size: 9px !important;
+            text-align: center !important;
+            width: 100% !important;
+            white-space: nowrap !important;
+            overflow: visible !important;
+            word-break: keep-all !important;
+            word-wrap: normal !important;
+            writing-mode: horizontal-tb !important;
+            display: block !important;
+            position: relative !important;
+            left: 0 !important;
+            right: 0 !important;
+        }
         body.pdf-export th, 
         body.pdf-export td, 
         body.pdf-export p, 
@@ -384,27 +503,20 @@
             <table class="student-info-table">
                 <tr>
                     <!-- Photo de l'étudiant -->
-                    <td rowspan="2" style="width: 120px; text-align: center; vertical-align: top; padding: 10px;">
+                    <td style="width: 150px; min-width: 150px; text-align: center; vertical-align: top; padding: 10px; position: relative;">
                         @if(isset($photoEtudiantBase64) && $photoEtudiantBase64)
-                            <img src="{{ $photoEtudiantBase64 }}" alt="Photo" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid #007bff;">
-                            <div style="font-size: 8px; color: green;">PHOTO TROUVÉE</div>
+                            <img src="{{ $photoEtudiantBase64 }}" alt="Photo" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid #007bff; display: block; margin: 0 auto;">
                         @else
-                            <div style="width: 100px; height: 100px; border-radius: 50%; background: #f3f4f6; border: 2px solid #007bff; text-align: center; line-height: 100px; font-size: 32px; color: #6b7280;">
+                            <div style="width: 100px; height: 100px; border-radius: 50%; background: #f3f4f6; border: 2px solid #007bff; text-align: center; line-height: 100px; font-size: 32px; color: #6b7280; margin: 0 auto;">
                                 👤
-                            </div>
-                            <div style="font-size: 8px; color: red;">
-                                @if(!isset($photoEtudiantBase64))
-                                    VAR NON DÉFINIE
-                                @elseif(!$photoEtudiantBase64)
-                                    VAR VIDE
-                                @endif
                             </div>
                         @endif
                         @if(($settings['bulletin_show_matricule'] ?? '1') == '1')
-                        <div style="margin-top: 8px; font-weight: bold; font-size: 9px;">{{ $etudiant->matricule }}</div>
+                        <div class="matricule-text" style="white-space: nowrap; overflow: visible; word-break: keep-all; word-wrap: normal; display: block; text-align: center; margin: 8px auto 0 auto; width: 100%; position: relative; left: 0; right: 0;">{{ $etudiant->matricule }}</div>
                         @endif
                     </td>
-                    <td class="info-group">
+                    <!-- Informations personnelles -->
+                    <td class="info-group" style="width: 40%; vertical-align: top;">
                         <div class="info-row">
                             <span class="info-label">Nom et Prénoms :</span>
                             <span class="info-value">{{ $etudiant->nom }} {{ $etudiant->prenoms ?? $etudiant->prenom }}</span>
@@ -429,8 +541,13 @@
                             <span class="info-value">{{ $etudiant->inscriptions->first()->is_redoublant ?? false ? 'Oui' : 'Non' }}</span>
                         </div>
                         @endif
+                        <div class="info-row">
+                            <span class="info-label">Téléphone :</span>
+                            <span class="info-value">{{ $etudiant->telephone ?? 'Non renseigné' }}</span>
+                        </div>
                     </td>
-                    <td class="info-group">
+                    <!-- Informations académiques -->
+                    <td class="info-group" style="width: 40%; vertical-align: top;">
                         <div class="info-row">
                             <span class="info-label">Classe :</span>
                             <span class="info-value">{{ $classe->libelle ?? $classe->name }}</span>
@@ -446,10 +563,6 @@
                         <div class="info-row">
                             <span class="info-label">Effectif :</span>
                             <span class="info-value">{{ $effectif }}</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Téléphone :</span>
-                            <span class="info-value">{{ $etudiant->telephone ?? 'Non renseigné' }}</span>
                         </div>
                     </td>
                 </tr>

@@ -214,13 +214,13 @@ class ESBTPEvaluationController extends Controller
         }
 
         try {
-            // Récupérer l'année universitaire active
-            $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_active', true)->first();
+            // Récupérer l'année universitaire courante
+            $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
             if (!$anneeUniversitaire) {
-                \Log::error('Aucune année universitaire active trouvée');
+                \Log::error('Aucune année universitaire courante trouvée');
                 return redirect()->back()
-                    ->with('error', 'Aucune année universitaire active n\'a été trouvée. Veuillez en créer une avant d\'ajouter une évaluation.')
+                    ->with('error', 'Aucune année universitaire courante n\'a été trouvée. Veuillez en créer une avant d\'ajouter une évaluation.')
                     ->withInput();
             }
 

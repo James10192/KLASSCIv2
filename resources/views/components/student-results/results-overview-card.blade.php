@@ -5,7 +5,20 @@
             <i class="fas fa-chart-line"></i>
             Aperçu des résultats
         </div>
-        <div class="main-card-subtitle">{{ $periodes[array_search($periode, array_column($periodes, 'id'))]->nom ?? $periode }}</div>
+        <div class="main-card-subtitle">
+            @php
+                $periodeNom = 'Période ' . $periode;
+                if (isset($periodes)) {
+                    foreach ($periodes as $p) {
+                        if ($p->id == $periode) {
+                            $periodeNom = $p->nom;
+                            break;
+                        }
+                    }
+                }
+            @endphp
+            {{ $periodeNom }}
+        </div>
     </div>
     <div class="main-card-body">
         <div class="results-overview">

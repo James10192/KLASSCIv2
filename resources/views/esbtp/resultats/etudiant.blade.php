@@ -20,7 +20,7 @@
                     <i class="fas fa-arrow-left"></i>Retour aux résultats
                 </a>
                 @if(isset($classe) && $classe)
-                    <a href="{{ route('esbtp.resultats.etudiant.preview', ['etudiant' => $etudiant->id]) }}?classe_id={{ $classe->id }}&annee_universitaire_id={{ $annee_id }}" 
+                    <a href="{{ route('esbtp.resultats.etudiant.preview', ['etudiant' => $etudiant->id]) }}?classe_id={{ $classe->id }}&annee_universitaire_id={{ $annee_id }}&periode={{ $periode }}"
                        class="btn-acasi primary">
                         <i class="fas fa-eye"></i>Prévisualiser bulletin
                     </a>

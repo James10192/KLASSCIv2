@@ -151,10 +151,10 @@
                                     <select class="form-select border-primary"
                                             style="background-color: #f8f9ff;"
                                             onchange="selectEnseignant(this, 'professeur_{{ $resultat->matiere_id }}')">
-                                        <option value="">🔸 Cliquez pour sélectionner un enseignant...</option>
+                                        <option value="">Cliquez pour sélectionner un enseignant...</option>
                                         @foreach($enseignantsMatiere as $enseignant)
                                         <option value="{{ $enseignant->name }}">
-                                            👨‍🏫 {{ $enseignant->name }}
+                                            {{ $enseignant->name }}
                                         </option>
                                         @endforeach
                                     </select>
@@ -174,7 +174,7 @@
                                            id="professeur_{{ $resultat->matiere_id }}"
                                            name="professeurs[{{ $resultat->matiere_id }}]"
                                            value="{{ $professeurs[$resultat->matiere_id] ?? '' }}"
-                                           placeholder="💾 Nom qui apparaîtra sur le bulletin (sélectionnez ci-dessus ou tapez ici)"
+                                           placeholder="Nom qui apparaîtra sur le bulletin (sélectionnez ci-dessus ou tapez ici)"
                                            oninput="updateSaveIndicator('{{ $resultat->matiere_id }}')"
                                 </div>
 
@@ -233,10 +233,10 @@
                                     <select class="form-select border-primary"
                                             style="background-color: #f8f9ff;"
                                             onchange="selectEnseignant(this, 'professeur_{{ $resultat->matiere_id }}')">
-                                        <option value="">🔸 Cliquez pour sélectionner un enseignant...</option>
+                                        <option value="">Cliquez pour sélectionner un enseignant...</option>
                                         @foreach($enseignantsMatiere as $enseignant)
                                         <option value="{{ $enseignant->name }}">
-                                            👨‍🏫 {{ $enseignant->name }}
+                                            {{ $enseignant->name }}
                                         </option>
                                         @endforeach
                                     </select>
@@ -256,7 +256,7 @@
                                            id="professeur_{{ $resultat->matiere_id }}"
                                            name="professeurs[{{ $resultat->matiere_id }}]"
                                            value="{{ $professeurs[$resultat->matiere_id] ?? '' }}"
-                                           placeholder="💾 Nom qui apparaîtra sur le bulletin (sélectionnez ci-dessus ou tapez ici)"
+                                           placeholder="Nom qui apparaîtra sur le bulletin (sélectionnez ci-dessus ou tapez ici)"
                                            oninput="updateSaveIndicator('{{ $resultat->matiere_id }}')"
                                 </div>
 
@@ -311,8 +311,11 @@
                     </a>
                 </div>
                 <div class="d-flex gap-2">
-                    <button type="submit" class="btn-acasi success" name="action" value="edit">
-                        <i class="fas fa-save"></i> Enregistrer et continuer
+                    <button type="submit" class="btn-acasi success" name="action" value="save_and_return">
+                        <i class="fas fa-save"></i> Enregistrer et retourner
+                    </button>
+                    <button type="submit" class="btn-acasi primary" name="action" value="generate">
+                        <i class="fas fa-file-pdf"></i> Enregistrer et générer bulletin
                     </button>
                 </div>
             </div>
@@ -370,7 +373,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (form) {
         form.addEventListener('submit', function(e) {
-            console.log('🚀 Formulaire soumis !');
+            console.log('Formulaire soumis !');
             console.log('Action:', this.action);
             console.log('Méthode:', this.method);
 
@@ -391,7 +394,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const submitButtons = document.querySelectorAll('button[type="submit"]');
     submitButtons.forEach((button, index) => {
         button.addEventListener('click', function(e) {
-            console.log(`🖱️ Bouton ${index + 1} cliqué:`, this.name, '=', this.value);
+            console.log(`Bouton ${index + 1} cliqué:`, this.name, '=', this.value);
         });
     });
 

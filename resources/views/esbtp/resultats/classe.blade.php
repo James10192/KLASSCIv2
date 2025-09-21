@@ -230,7 +230,7 @@
                                                         <i class="fas fa-eye"></i>
                                                     </a>
                                                     @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire'))
-                                                    <a href="{{ route('esbtp.bulletins.moyennes-preview', ['etudiant_id' => $resultat['etudiant']->id, 'classe_id' => $classe->id, 'periode' => $periode, 'annee_universitaire_id' => $annee_id]) }}"
+                                                    <a href="{{ route('esbtp.bulletins.moyennes-preview', ['etudiant_id' => $resultat['etudiant']->id, 'classe_id' => $classe->id, 'periode' => ($periode == '1' ? 'semestre1' : ($periode == '2' ? 'semestre2' : $periode)), 'annee_universitaire_id' => $annee_id]) }}"
                                                        class="btn btn-sm btn-warning rounded-circle" data-bs-toggle="tooltip" title="Modifier les moyennes">
                                                         <i class="fas fa-edit"></i>
                                                     </a>

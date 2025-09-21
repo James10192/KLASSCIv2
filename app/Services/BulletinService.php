@@ -51,12 +51,13 @@ class BulletinService
             throw new \Exception('Aucune matière configurée dans le bulletin.');
         }
 
-        // Récupérer les notes avec évaluations
+        // Récupérer les notes avec évaluations pour la période spécifiée
         $notesAvecEvaluations = ESBTPNote::where('etudiant_id', $etudiant->id)
             ->with(['evaluation.matiere'])
-            ->whereHas('evaluation', function($q) use ($anneeUniversitaire) {
+            ->whereHas('evaluation', function($q) use ($anneeUniversitaire, $periode) {
                 $q->where('annee_universitaire_id', $anneeUniversitaire->id)
-                  ->where('status', '!=', 'cancelled');
+                  ->where('status', '!=', 'cancelled')
+                  ->where('periode', $periode);
             })
             ->get();
 
@@ -120,6 +121,7 @@ class BulletinService
         $resultats = ESBTPResultat::where('etudiant_id', $etudiantId)
             ->where('classe_id', $classeId)
             ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->where('periode', $periode)
             ->with('matiere')
             ->get();
 
@@ -202,7 +204,7 @@ class BulletinService
         })->count();
         
         // Calculer les vraies statistiques de classe
-        $statsClasse = $this->calculerStatistiquesClasse($classe->id, $anneeUniversitaire->id);
+        $statsClasse = $this->calculerStatistiquesClasse($classe->id, $anneeUniversitaire->id, $periode);
         
         // Calculer les rangs par matière - simplification pour un seul étudiant
         foreach ($resultatsGeneraux as $resultat) {
@@ -321,7 +323,7 @@ class BulletinService
     /**
      * Calcule les statistiques de la classe
      */
-    private function calculerStatistiquesClasse($classeId, $anneeUniversitaireId)
+    private function calculerStatistiquesClasse($classeId, $anneeUniversitaireId, $periode = 'semestre1')
     {
         // Récupérer tous les étudiants de la classe
         $etudiants = ESBTPEtudiant::whereHas('inscriptions', function($q) use ($classeId, $anneeUniversitaireId) {
@@ -342,7 +344,7 @@ class BulletinService
         foreach ($etudiants as $etudiant) {
             try {
                 // Calculer la moyenne globale de cet étudiant
-                $moyenneEtudiant = $this->calculerMoyenneGlobaleEtudiant($etudiant->id, $classeId, $anneeUniversitaireId);
+                $moyenneEtudiant = $this->calculerMoyenneGlobaleEtudiant($etudiant->id, $classeId, $anneeUniversitaireId, $periode);
                 
                 // Ajouter la note d'assiduité seulement si l'affichage est activé
                 $afficherNoteAssiduite = SettingsHelper::get('bulletin_show_attendance_note', '1') === '1';
@@ -390,12 +392,12 @@ class BulletinService
     /**
      * Calculer la moyenne globale d'un étudiant (utilisé pour les statistiques)
      */
-    private function calculerMoyenneGlobaleEtudiant($etudiantId, $classeId, $anneeUniversitaireId)
+    private function calculerMoyenneGlobaleEtudiant($etudiantId, $classeId, $anneeUniversitaireId, $periode = 'semestre1')
     {
         // Récupérer le bulletin pour la configuration
         $bulletin = ESBTPBulletin::where('etudiant_id', $etudiantId)
             ->where('classe_id', $classeId)
-            ->where('periode', 'semestre1')
+            ->where('periode', $periode)
             ->where('annee_universitaire_id', $anneeUniversitaireId)
             ->first();
 
@@ -412,6 +414,7 @@ class BulletinService
         $resultats = ESBTPResultat::where('etudiant_id', $etudiantId)
             ->where('classe_id', $classeId)
             ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->where('periode', $periode)
             ->with('matiere')
             ->get();
 
@@ -535,7 +538,7 @@ class BulletinService
                     // Récupérer le bulletin de l'étudiant
                     $bulletin = ESBTPBulletin::where('etudiant_id', $etudiant->id)
                         ->where('classe_id', $classeId)
-                        ->where('periode', 'semestre1')
+                        ->where('periode', $periode)
                         ->where('annee_universitaire_id', $anneeUniversitaireId)
                         ->first();
 

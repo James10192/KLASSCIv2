@@ -16,7 +16,7 @@
                 <p class="header-subtitle">Ajustez les moyennes et coefficients pour {{ $etudiant->nom }} {{ $etudiant->prenoms }}</p>
             </div>
             <div class="header-actions">
-                <a href="{{ route('esbtp.resultats.etudiant', $etudiant) }}?classe_id={{ $classe->id }}&periode={{ $periode }}&annee_universitaire_id={{ $anneeUniversitaire->id }}" class="btn btn-outline-secondary">
+                <a href="{{ route('esbtp.resultats.etudiant', $etudiant) }}?classe_id={{ $classe->id }}&periode={{ $periode == 'semestre1' ? '1' : ($periode == 'semestre2' ? '2' : $periode) }}&annee_universitaire_id={{ $anneeUniversitaire->id }}" class="btn btn-outline-secondary">
                     <i class="fas fa-times me-1"></i>Annuler
                 </a>
             </div>
@@ -267,7 +267,7 @@
                     <!-- Actions -->
                     <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
                         <div>
-                            <a href="{{ route('esbtp.resultats.etudiant', $etudiant) }}?classe_id={{ $classe->id }}&periode={{ $periode }}&annee_universitaire_id={{ $anneeUniversitaire->id }}" class="btn btn-outline-secondary">
+                            <a href="{{ route('esbtp.resultats.etudiant', $etudiant) }}?classe_id={{ $classe->id }}&periode={{ $periode == 'semestre1' ? '1' : ($periode == 'semestre2' ? '2' : $periode) }}&annee_universitaire_id={{ $anneeUniversitaire->id }}" class="btn btn-outline-secondary">
                                 <i class="fas fa-arrow-left me-1"></i>Annuler
                             </a>
                         </div>

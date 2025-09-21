@@ -4139,12 +4139,18 @@ class ESBTPBulletinController extends Controller
         }
 
         // Normaliser la période si nécessaire
-        if (!in_array($periode, ['semestre1', 'semestre2', 'annuel'])) {
-            // Utiliser semestre1 comme valeur par défaut si la période n'est pas reconnue
+        if ($periode == '1') {
+            $periode = 'semestre1';
             $periodePourBDD = 'semestre1';
-            // Mais conserver la période originale pour l'affichage
-        } else {
+        } elseif ($periode == '2') {
+            $periode = 'semestre2';
+            $periodePourBDD = 'semestre2';
+        } elseif (in_array($periode, ['semestre1', 'semestre2', 'annuel'])) {
             $periodePourBDD = $periode;
+        } else {
+            // Utiliser semestre1 comme valeur par défaut si la période n'est pas reconnue
+            $periode = 'semestre1';
+            $periodePourBDD = 'semestre1';
         }
 
         // Récupérer l'étudiant, la classe et l'année universitaire
@@ -4376,7 +4382,7 @@ class ESBTPBulletinController extends Controller
         $request->validate([
             'etudiant_id' => 'required|exists:esbtp_etudiants,id',
             'classe_id' => 'required|exists:esbtp_classes,id',
-            'periode' => 'required',
+            'periode' => 'required|in:semestre1,semestre2,annuel,1,2',
             'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
         ]);
 
@@ -4415,11 +4421,15 @@ class ESBTPBulletinController extends Controller
         $anneeUniversitaireId = $request->annee_universitaire_id;
 
         // Normaliser la période si nécessaire
-        if (!in_array($periode, ['semestre1', 'semestre2', 'annuel'])) {
+        if ($periode == '1') {
+            $periodePourBDD = 'semestre1';
+        } elseif ($periode == '2') {
+            $periodePourBDD = 'semestre2';
+        } elseif (in_array($periode, ['semestre1', 'semestre2', 'annuel'])) {
+            $periodePourBDD = $periode;
+        } else {
             // Utiliser semestre1 comme valeur par défaut si la période n'est pas reconnue
             $periodePourBDD = 'semestre1';
-        } else {
-            $periodePourBDD = $periode;
         }
 
         // Récupérer l'étudiant, la classe et l'année universitaire
@@ -5204,7 +5214,7 @@ class ESBTPBulletinController extends Controller
             ];
 
             // Redirection en fonction de l'action choisie
-            if ($action === 'save_and_back') {
+            if ($action === 'save_and_back' || $action === 'save_and_return') {
                 return redirect()->route('esbtp.resultats.etudiant', [
                     'etudiant' => $etudiant_id,
                     'classe_id' => $classe_id,

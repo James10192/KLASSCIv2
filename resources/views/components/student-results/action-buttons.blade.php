@@ -34,7 +34,7 @@
                             Modification
                         </h6>
                         <div class="button-group">
-                            <a href="{{ route('esbtp.bulletins.moyennes-preview', ['etudiant_id' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $periode, 'annee_universitaire_id' => $annee_id]) }}" 
+                            <a href="{{ route('esbtp.bulletins.moyennes-preview', ['etudiant_id' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => ($periode == '1' ? 'semestre1' : ($periode == '2' ? 'semestre2' : $periode)), 'annee_universitaire_id' => $annee_id]) }}" 
                                class="btn-acasi warning">
                                 <i class="fas fa-calculator"></i>Modifier les moyennes
                             </a>
