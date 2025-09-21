@@ -138,7 +138,7 @@ class PaywallMiddleware
         $config = [
             'subscription_end' => ESBTPSystemSetting::getValue('subscription_end_date', null),
             'max_users' => ESBTPSystemSetting::getValue('paywall_max_users', 50),
-            'max_students' => ESBTPSystemSetting::getValue('paywall_max_students', 500),
+            'max_inscriptions_per_year' => ESBTPSystemSetting::getValue('paywall_max_inscriptions_per_year', 500),
         ];
 
         // Obtenir les statistiques actuelles
@@ -168,12 +168,12 @@ class PaywallMiddleware
             $status['warnings'][] = 'Proche de la limite d\'utilisateurs (' . $stats['total_users'] . '/' . $config['max_users'] . ')';
         }
 
-        // Vérifier les limites d'étudiants
-        if ($stats['total_students'] > $config['max_students']) {
+        // Vérifier les limites d'inscriptions par année
+        if ($stats['total_inscriptions_current_year'] > $config['max_inscriptions_per_year']) {
             $status['is_blocked'] = true;
-            $status['reasons'][] = 'Limite d\'étudiants dépassée (' . $stats['total_students'] . '/' . $config['max_students'] . ')';
-        } elseif ($stats['total_students'] >= $config['max_students'] * 0.9) {
-            $status['warnings'][] = 'Proche de la limite d\'étudiants (' . $stats['total_students'] . '/' . $config['max_students'] . ')';
+            $status['reasons'][] = 'Limite d\'inscriptions dépassée pour l\'année (' . $stats['total_inscriptions_current_year'] . '/' . $config['max_inscriptions_per_year'] . ')';
+        } elseif ($stats['total_inscriptions_current_year'] >= $config['max_inscriptions_per_year'] * 0.9) {
+            $status['warnings'][] = 'Proche de la limite d\'inscriptions pour l\'année (' . $stats['total_inscriptions_current_year'] . '/' . $config['max_inscriptions_per_year'] . ')';
         }
 
         return $status;
@@ -189,14 +189,19 @@ class PaywallMiddleware
             $query->whereIn('name', ['enseignant', 'coordinateur', 'secretaire']);
         })->count();
 
-        // Compter les étudiants actifs
-        $totalStudents = ESBTPEtudiant::whereHas('inscriptions', function($query) {
-            $query->where('status', 'active');
-        })->count();
+        // Compter les inscriptions de l'année universitaire courante
+        $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', 1)->first();
+        $totalInscriptionsAnnee = 0;
+
+        if ($anneeCourante) {
+            $totalInscriptionsAnnee = \App\Models\ESBTPInscription::where('annee_universitaire_id', $anneeCourante->id)
+                ->where('status', 'active')
+                ->count();
+        }
 
         return [
             'total_users' => $totalUsers,
-            'total_students' => $totalStudents,
+            'total_inscriptions_current_year' => $totalInscriptionsAnnee,
         ];
     }
 }

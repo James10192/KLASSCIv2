@@ -73,11 +73,11 @@
 
                             <div class="solution-item">
                                 <div class="solution-icon">
-                                    <i class="fas fa-graduation-cap"></i>
+                                    <i class="fas fa-user-times"></i>
                                 </div>
                                 <div class="solution-content">
-                                    <h6>Archiver des étudiants</h6>
-                                    <p>Archivez ou supprimez les étudiants inactifs pour libérer de l'espace</p>
+                                    <h6>Gérer les inscriptions</h6>
+                                    <p>Archivez les inscriptions inactives ou supprimez les doublons pour l'année courante</p>
                                 </div>
                             </div>
 
@@ -159,20 +159,25 @@
                             Retour au Dashboard
                         </a>
 
-                        <a href="mailto:admin@votre-domaine.com" class="btn btn-info btn-lg">
+                        <a href="mailto:klassci@africandigitconsulting.com" class="btn btn-info btn-lg">
                             <i class="fas fa-envelope me-2"></i>
-                            Contacter l'Support
+                            Contacter African Digit Consulting
                         </a>
                     </div>
 
                     <div class="contact-info mt-4">
+                        <h6 class="text-center mb-3"><strong>African Digit Consulting</strong></h6>
                         <p class="text-muted">
-                            <i class="fas fa-phone me-2"></i>Pour toute question, contactez-nous au :
-                            <strong>+225 XX XX XX XX XX</strong>
+                            <i class="fas fa-phone me-2"></i>Service Technique :
+                            <strong>+225 05 95 459 843</strong>
                         </p>
                         <p class="text-muted">
                             <i class="fas fa-envelope me-2"></i>Email :
-                            <strong>support@votre-domaine.com</strong>
+                            <strong>klassci@africandigitconsulting.com</strong>
+                        </p>
+                        <p class="text-muted">
+                            <i class="fas fa-building me-2"></i>Services :
+                            <strong>Renouvellement • Augmentation quotas • Facturation</strong>
                         </p>
                     </div>
                 </div>

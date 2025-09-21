@@ -69,15 +69,15 @@
                     </div>
                 </div>
 
-                <div class="stat-card {{ $currentStats['total_students'] > $paywallConfig['max_students'] ? 'danger' : ($currentStats['total_students'] >= $paywallConfig['max_students'] * 0.9 ? 'warning' : 'success') }}">
+                <div class="stat-card {{ $currentStats['total_inscriptions_current_year'] > $paywallConfig['max_inscriptions_per_year'] ? 'danger' : ($currentStats['total_inscriptions_current_year'] >= $paywallConfig['max_inscriptions_per_year'] * 0.9 ? 'warning' : 'success') }}">
                     <div class="stat-icon">
-                        <i class="fas fa-graduation-cap"></i>
+                        <i class="fas fa-user-plus"></i>
                     </div>
                     <div class="stat-content">
-                        <div class="stat-value">{{ $currentStats['total_students'] }}/{{ $paywallConfig['max_students'] }}</div>
-                        <div class="stat-label">Étudiants</div>
+                        <div class="stat-value">{{ $currentStats['total_inscriptions_current_year'] }}/{{ $paywallConfig['max_inscriptions_per_year'] }}</div>
+                        <div class="stat-label">Inscriptions {{ $currentStats['current_year_name'] ?? 'année courante' }}</div>
                         <div class="stat-progress">
-                            <div class="progress-bar" style="width: {{ min(($currentStats['total_students'] / $paywallConfig['max_students']) * 100, 100) }}%"></div>
+                            <div class="progress-bar" style="width: {{ min(($currentStats['total_inscriptions_current_year'] / $paywallConfig['max_inscriptions_per_year']) * 100, 100) }}%"></div>
                         </div>
                     </div>
                 </div>
@@ -181,16 +181,16 @@
 
                     <div class="form-group-moderne">
                         <label class="form-label-moderne">
-                            <i class="fas fa-graduation-cap me-1"></i>Limite d'étudiants
+                            <i class="fas fa-user-plus me-1"></i>Limite d'inscriptions par année
                         </label>
                         <input type="number"
                                class="form-input-moderne"
-                               id="max_students"
-                               name="max_students"
-                               value="{{ $paywallConfig['max_students'] }}"
+                               id="max_inscriptions_per_year"
+                               name="max_inscriptions_per_year"
+                               value="{{ $paywallConfig['max_inscriptions_per_year'] }}"
                                min="1"
                                required>
-                        <small class="form-help">Nombre maximum d'étudiants actifs</small>
+                        <small class="form-help">Nombre maximum d'inscriptions actives pour l'année universitaire courante</small>
                     </div>
 
                     <div class="form-group-moderne">

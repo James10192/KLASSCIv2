@@ -25,7 +25,7 @@ class ESBTPPaywallConfigController extends Controller
             'is_active' => ESBTPSystemSetting::getValue('paywall_active', false),
             'subscription_end' => ESBTPSystemSetting::getValue('subscription_end_date', null),
             'max_users' => ESBTPSystemSetting::getValue('paywall_max_users', 50),
-            'max_students' => ESBTPSystemSetting::getValue('paywall_max_students', 500),
+            'max_inscriptions_per_year' => ESBTPSystemSetting::getValue('paywall_max_inscriptions_per_year', 500),
             'plan_name' => ESBTPSystemSetting::getValue('paywall_plan_name', 'Plan Standard'),
             'plan_price' => ESBTPSystemSetting::getValue('paywall_plan_price', 0),
             'features' => json_decode(ESBTPSystemSetting::getValue('paywall_features', '[]'), true),
@@ -54,7 +54,7 @@ class ESBTPPaywallConfigController extends Controller
             'is_active' => 'required|boolean',
             'subscription_end' => 'nullable|date',
             'max_users' => 'required|integer|min:1',
-            'max_students' => 'required|integer|min:1',
+            'max_inscriptions_per_year' => 'required|integer|min:1',
             'plan_name' => 'required|string|max:255',
             'plan_price' => 'required|numeric|min:0',
             'features' => 'nullable|array',
@@ -67,7 +67,7 @@ class ESBTPPaywallConfigController extends Controller
             ESBTPSystemSetting::setValue('paywall_active', $request->is_active);
             ESBTPSystemSetting::setValue('subscription_end_date', $request->subscription_end);
             ESBTPSystemSetting::setValue('paywall_max_users', $request->max_users);
-            ESBTPSystemSetting::setValue('paywall_max_students', $request->max_students);
+            ESBTPSystemSetting::setValue('paywall_max_inscriptions_per_year', $request->max_inscriptions_per_year);
             ESBTPSystemSetting::setValue('paywall_plan_name', $request->plan_name);
             ESBTPSystemSetting::setValue('paywall_plan_price', $request->plan_price);
             ESBTPSystemSetting::setValue('paywall_features', json_encode($request->features ?? []));
@@ -98,14 +98,20 @@ class ESBTPPaywallConfigController extends Controller
             $query->whereIn('name', ['enseignant', 'coordinateur', 'secretaire']);
         })->count();
 
-        // Compter les étudiants actifs
-        $totalStudents = ESBTPEtudiant::whereHas('inscriptions', function($query) {
-            $query->where('status', 'active');
-        })->count();
+        // Compter les inscriptions de l'année universitaire courante
+        $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', 1)->first();
+        $totalInscriptionsAnnee = 0;
+
+        if ($anneeCourante) {
+            $totalInscriptionsAnnee = \App\Models\ESBTPInscription::where('annee_universitaire_id', $anneeCourante->id)
+                ->where('status', 'active')
+                ->count();
+        }
 
         return [
             'total_users' => $totalUsers,
-            'total_students' => $totalStudents,
+            'total_inscriptions_current_year' => $totalInscriptionsAnnee,
+            'current_year_name' => $anneeCourante ? $anneeCourante->nom : 'Aucune année courante',
         ];
     }
 
@@ -153,12 +159,12 @@ class ESBTPPaywallConfigController extends Controller
             $status['warnings'][] = 'Proche de la limite d\'utilisateurs (' . $stats['total_users'] . '/' . $config['max_users'] . ')';
         }
 
-        // Vérifier les limites d'étudiants
-        if ($stats['total_students'] > $config['max_students']) {
+        // Vérifier les limites d'inscriptions par année
+        if ($stats['total_inscriptions_current_year'] > $config['max_inscriptions_per_year']) {
             $status['is_blocked'] = true;
-            $status['reasons'][] = 'Limite d\'étudiants dépassée (' . $stats['total_students'] . '/' . $config['max_students'] . ')';
-        } elseif ($stats['total_students'] >= $config['max_students'] * 0.9) {
-            $status['warnings'][] = 'Proche de la limite d\'étudiants (' . $stats['total_students'] . '/' . $config['max_students'] . ')';
+            $status['reasons'][] = 'Limite d\'inscriptions dépassée pour l\'année (' . $stats['total_inscriptions_current_year'] . '/' . $config['max_inscriptions_per_year'] . ')';
+        } elseif ($stats['total_inscriptions_current_year'] >= $config['max_inscriptions_per_year'] * 0.9) {
+            $status['warnings'][] = 'Proche de la limite d\'inscriptions pour l\'année (' . $stats['total_inscriptions_current_year'] . '/' . $config['max_inscriptions_per_year'] . ')';
         }
 
         return $status;
@@ -175,7 +181,7 @@ class ESBTPPaywallConfigController extends Controller
             'is_active' => ESBTPSystemSetting::getValue('paywall_active', false),
             'subscription_end' => ESBTPSystemSetting::getValue('subscription_end_date', null),
             'max_users' => ESBTPSystemSetting::getValue('paywall_max_users', 50),
-            'max_students' => ESBTPSystemSetting::getValue('paywall_max_students', 500),
+            'max_inscriptions_per_year' => ESBTPSystemSetting::getValue('paywall_max_inscriptions_per_year', 500),
         ];
 
         $currentStats = $this->getCurrentStats($currentEtablissementId);

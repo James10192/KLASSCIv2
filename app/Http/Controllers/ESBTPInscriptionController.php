@@ -188,11 +188,20 @@ class ESBTPInscriptionController extends Controller
             'parents_input' => $request->input('parents', [])
         ];
         
-        file_put_contents($debugFile, 
+        file_put_contents($debugFile,
             "=== INSCRIPTION DEBUG " . now() . " ===\n" .
-            json_encode($debugData, JSON_PRETTY_PRINT) . "\n\n", 
+            json_encode($debugData, JSON_PRETTY_PRINT) . "\n\n",
             FILE_APPEND | LOCK_EX
         );
+
+        // Vérification du paywall avant de permettre une nouvelle inscription
+        if ($this->checkPaywallLimitsForInscription()) {
+            return redirect()->back()
+                ->with('error', 'Limite d\'inscriptions atteinte pour l\'année courante. Contactez African Digit Consulting pour augmenter votre quota.')
+                ->with('paywall_contact', 'klassci@africandigitconsulting.com')
+                ->withInput();
+        }
+
         // Construction dynamique des règles de validation
         $rules = [
             'classe_id' => 'required|exists:esbtp_classes,id',
@@ -2026,5 +2035,46 @@ class ESBTPInscriptionController extends Controller
                    now()->format('Y-m-d') . '.pdf';
 
         return $pdf->download($filename);
+    }
+
+    /**
+     * Vérifier les limites du paywall pour les inscriptions
+     */
+    private function checkPaywallLimitsForInscription()
+    {
+        // Vérifier si le paywall est actif
+        $isPaywallActive = \App\Models\ESBTPSystemSetting::getValue('paywall_active', false);
+
+        if (!$isPaywallActive) {
+            return false; // Pas de limitation
+        }
+
+        // Obtenir les limites configurées
+        $maxInscriptionsPerYear = \App\Models\ESBTPSystemSetting::getValue('paywall_max_inscriptions_per_year', 500);
+
+        // Compter les inscriptions actuelles pour l'année courante
+        $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', 1)->first();
+
+        if (!$anneeCourante) {
+            return false; // Pas d'année courante, on laisse passer
+        }
+
+        $inscriptionsActuelles = \App\Models\ESBTPInscription::where('annee_universitaire_id', $anneeCourante->id)
+            ->where('status', 'active')
+            ->count();
+
+        // Vérifier si on dépasse la limite
+        if ($inscriptionsActuelles >= $maxInscriptionsPerYear) {
+            \Log::warning('Paywall: Limite d\'inscriptions atteinte', [
+                'inscriptions_actuelles' => $inscriptionsActuelles,
+                'limite_configuree' => $maxInscriptionsPerYear,
+                'annee_courante' => $anneeCourante->nom,
+                'user_id' => auth()->id()
+            ]);
+
+            return true; // Limite atteinte, bloquer
+        }
+
+        return false; // Limite pas atteinte, autoriser
     }
 }
