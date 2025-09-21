@@ -17,7 +17,7 @@ class AdminProfileController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('role:superAdmin|secretaire|coordinateur');
+        $this->middleware('role:superAdmin|secretaire|coordinateur|serviceTechnique');
     }
 
     /**
@@ -60,18 +60,38 @@ class AdminProfileController extends Controller
                 $request->validate([
                     'name' => 'required|string|max:255',
                     'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+                    'first_name' => 'nullable|string|max:255',
+                    'last_name' => 'nullable|string|max:255',
+                    'phone' => 'nullable|string|max:20',
+                    'address' => 'nullable|string|max:500',
+                    'city' => 'nullable|string|max:255',
                     'profile_photo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048'
                 ]);
             }
 
             \Log::info('Validation passée avec succès');
 
-            // Mise à jour du nom et de l'email seulement si fournis
+            // Mise à jour des champs du profil si fournis
             if ($request->has('name')) {
                 $user->name = $request->name;
             }
             if ($request->has('email')) {
                 $user->email = $request->email;
+            }
+            if ($request->has('first_name')) {
+                $user->first_name = $request->first_name;
+            }
+            if ($request->has('last_name')) {
+                $user->last_name = $request->last_name;
+            }
+            if ($request->has('phone')) {
+                $user->phone = $request->phone;
+            }
+            if ($request->has('address')) {
+                $user->address = $request->address;
+            }
+            if ($request->has('city')) {
+                $user->city = $request->city;
             }
 
             // Traitement de la photo de profil
