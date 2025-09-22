@@ -328,6 +328,20 @@ document.addEventListener('DOMContentLoaded', function() {
             // Mettre à jour les champs cachés avec les valeurs finales
             decisionFinale.value = decisionSelect.value;
             affectationFinale.value = affectationSelect.value;
+
+            console.log('🚀 TRACE AFFECTATION: Soumission formulaire');
+            console.log('🚀 TRACE AFFECTATION: Statut sélectionné dans select:', affectationSelect.value);
+            console.log('🚀 TRACE AFFECTATION: Valeur champ caché final:', affectationFinale.value);
+            console.log('🚀 TRACE AFFECTATION: Nom du champ envoyé:', affectationFinale.name);
+
+            // Vérifier tous les champs envoyés
+            const formData = new FormData(document.getElementById('reinscriptionForm'));
+            console.log('🚀 TRACE AFFECTATION: Tous les champs du formulaire:');
+            for (let [key, value] of formData.entries()) {
+                if (key.includes('affectation')) {
+                    console.log(`🚀 TRACE AFFECTATION: ${key} = ${value}`);
+                }
+            }
         });
     }
     @endif
@@ -368,7 +382,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (affectationSelect) {
         affectationSelect.addEventListener('change', function() {
-            console.log('🏛️ Changement statut affectation:', this.value);
+            console.log('🏛️ TRACE AFFECTATION: Changement statut affectation:', this.value);
+            console.log('🏛️ TRACE AFFECTATION: Mise à jour champ caché affectationFinale');
+            document.getElementById('affectationFinale').value = this.value;
+            console.log('🏛️ TRACE AFFECTATION: Valeur champ caché après mise à jour:', document.getElementById('affectationFinale').value);
+
             // Recharger les classes (l'affectation peut influencer les classes disponibles)
             updateClassesParDecision();
             // Recharger les frais si une classe est sélectionnée

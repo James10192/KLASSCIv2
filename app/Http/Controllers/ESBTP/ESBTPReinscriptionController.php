@@ -793,19 +793,38 @@ class ESBTPReinscriptionController extends Controller
             $affectationStatus = $request->input('affectation_status');
 
             // Log pour déboguer les valeurs reçues
-            \Log::info('RÉINSCRIPTION CONTROLLER: Statut d\'affectation reçu', [
+            \Log::info('🎯 TRACE AFFECTATION CONTROLLER: Réception des données', [
+                'method' => $request->method(),
                 'affectation_status_raw' => $request->affectation_status,
                 'affectation_status_input' => $request->input('affectation_status'),
-                'all_request' => $request->all()
+                'affectation_status_final' => $request->input('affectation_status_final'),
+                'has_affectation_status' => $request->has('affectation_status'),
+                'has_affectation_status_final' => $request->has('affectation_status_final'),
+                'all_affectation_fields' => array_filter($request->all(), function($key) {
+                    return str_contains($key, 'affectation');
+                }, ARRAY_FILTER_USE_KEY)
             ]);
 
             // Si aucun statut fourni, utiliser 'affecté' par défaut
             if (empty($affectationStatus)) {
-                $affectationStatus = 'affecté';
-                \Log::warning('RÉINSCRIPTION: Aucun statut d\'affectation fourni, utilisation du défaut', [
-                    'default_status' => $affectationStatus
-                ]);
+                // Essayer d'abord le champ final
+                $affectationStatus = $request->input('affectation_status_final');
+                if (empty($affectationStatus)) {
+                    $affectationStatus = 'affecté';
+                    \Log::warning('🎯 TRACE AFFECTATION CONTROLLER: Aucun statut fourni, utilisation du défaut', [
+                        'default_status' => $affectationStatus
+                    ]);
+                } else {
+                    \Log::info('🎯 TRACE AFFECTATION CONTROLLER: Statut récupéré depuis champ final', [
+                        'affectation_status_final' => $affectationStatus
+                    ]);
+                }
             }
+
+            \Log::info('🎯 TRACE AFFECTATION CONTROLLER: Statut final déterminé', [
+                'affectation_status_final' => $affectationStatus,
+                'sera_transmis_au_service' => true
+            ]);
 
             \Log::info('Début réinscription avec frais optionnels', [
                 'etudiant_id' => $etudiantId,
