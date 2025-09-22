@@ -373,6 +373,12 @@ class ReeinscriptionService
             $nouvelleClasse = ESBTPClasse::findOrFail($nouvelleClasseId);
 
             // 4. Créer nouvelle inscription
+            \Log::info('RÉINSCRIPTION: Création de l\'inscription avec statut', [
+                'etudiant_id' => $etudiantId,
+                'affectation_status_recu' => $affectationStatus,
+                'nouvelle_classe_id' => $nouvelleClasseId
+            ]);
+
             $nouvelleInscription = \App\Models\ESBTPInscription::create([
                 'etudiant_id' => $etudiantId,
                 'annee_universitaire_id' => $nouvelleAnnee->id,
@@ -391,6 +397,12 @@ class ReeinscriptionService
                 'numero_recu' => $this->genererNumeroRecu($nouvelleAnnee, $nouvelleClasse)
             ]);
 
+            \Log::info('RÉINSCRIPTION: Inscription créée, vérification du statut', [
+                'inscription_id' => $nouvelleInscription->id,
+                'affectation_status_apres_creation' => $nouvelleInscription->affectation_status,
+                'affectation_status_voulu' => $affectationStatus
+            ]);
+
             // 5. Générer nouveaux frais via service existant
             $inscriptionService = app(\App\Services\ESBTPInscriptionService::class);
             $generatedFees = $inscriptionService->generateFeesForInscription(
@@ -400,6 +412,14 @@ class ReeinscriptionService
             );
 
             // Note: Facture et paiements seront gérés via inscriptions.show comme d'habitude
+
+            // VÉRIFICATION: Le statut d'affectation a-t-il changé après génération des frais ?
+            $nouvelleInscription->refresh();
+            \Log::info('RÉINSCRIPTION: Statut après génération des frais', [
+                'inscription_id' => $nouvelleInscription->id,
+                'affectation_status_apres_frais' => $nouvelleInscription->affectation_status,
+                'affectation_status_original' => $affectationStatus
+            ]);
 
             // 5.5 Gérer les reliquats selon l'action choisie par le superAdmin
             $this->gererReliquats($inscriptionActuelle, $nouvelleInscription, $actionReliquat);
