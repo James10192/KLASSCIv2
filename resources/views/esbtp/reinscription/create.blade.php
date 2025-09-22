@@ -205,8 +205,8 @@
                     <div class="row mb-4">
                         <div class="col-md-6">
                             <div class="form-group-moderne">
-                                <label for="statut_affectation" class="form-label-moderne">Statut d'affectation *</label>
-                                <select name="statut_affectation" id="statut_affectation" class="form-select-moderne" required>
+                                <label for="affectation_status" class="form-label-moderne">Statut d'affectation *</label>
+                                <select name="affectation_status" id="affectation_status" class="form-select-moderne" required>
                                     <option value="affecté">Affecté</option>
                                     <option value="réaffecté">Réaffecté</option>
                                     <option value="non_affecté">Non affecté</option>
@@ -250,7 +250,7 @@
 
                     <!-- Champs cachés -->
                     <input type="hidden" name="decision_finale" id="decisionFinale" value="{{ $analyse['decision'] }}">
-                    <input type="hidden" name="statut_affectation_final" id="affectationFinale" value="affecté">
+                    <input type="hidden" name="affectation_status_final" id="affectationFinale" value="affecté">
                     <input type="hidden" name="selected_optionals" id="selectedOptionals" value="{}"
                     @if($isSuperAdmin)
                     <input type="hidden" name="has_reliquat" value="{{ !empty($fraisNonSoldes) ? '1' : '0' }}">
@@ -287,7 +287,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const classeSelect = document.getElementById('nouvelle_classe_id');
     const decisionSelect = document.getElementById('decision');
-    const affectationSelect = document.getElementById('statut_affectation');
+    const affectationSelect = document.getElementById('affectation_status');
     const fraisContainer = document.getElementById('fraisContainer');
     const btnConfirmer = document.getElementById('btnConfirmer');
     // Variables pour la gestion des reliquats gérées directement dans validateReliquat()
