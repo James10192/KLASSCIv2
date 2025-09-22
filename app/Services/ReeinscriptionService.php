@@ -411,6 +411,9 @@ class ReeinscriptionService
                 $affectationStatus
             );
 
+            // CORRECTION: Sauvegarder les frais générés comme souscriptions (MANQUANT!)
+            $inscriptionService->saveGeneratedFeesAsSubscriptions($nouvelleInscription, $generatedFees);
+
             // Note: Facture et paiements seront gérés via inscriptions.show comme d'habitude
 
             // VÉRIFICATION: Le statut d'affectation a-t-il changé après génération des frais ?

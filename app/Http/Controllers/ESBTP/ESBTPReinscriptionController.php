@@ -789,8 +789,23 @@ class ESBTPReinscriptionController extends Controller
                 $selectedOptionals = json_decode($request->selected_optionals, true) ?: [];
             }
 
-            // Récupérer le statut d'affectation ou utiliser 'affecté' par défaut
-            $affectationStatus = $request->affectation_status ?? 'affecté';
+            // CORRECTION: Récupérer le statut d'affectation sans forcer 'affecté' par défaut
+            $affectationStatus = $request->input('affectation_status');
+
+            // Log pour déboguer les valeurs reçues
+            \Log::info('RÉINSCRIPTION CONTROLLER: Statut d\'affectation reçu', [
+                'affectation_status_raw' => $request->affectation_status,
+                'affectation_status_input' => $request->input('affectation_status'),
+                'all_request' => $request->all()
+            ]);
+
+            // Si aucun statut fourni, utiliser 'affecté' par défaut
+            if (empty($affectationStatus)) {
+                $affectationStatus = 'affecté';
+                \Log::warning('RÉINSCRIPTION: Aucun statut d\'affectation fourni, utilisation du défaut', [
+                    'default_status' => $affectationStatus
+                ]);
+            }
 
             \Log::info('Début réinscription avec frais optionnels', [
                 'etudiant_id' => $etudiantId,
