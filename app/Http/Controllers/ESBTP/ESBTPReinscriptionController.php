@@ -789,50 +789,16 @@ class ESBTPReinscriptionController extends Controller
                 $selectedOptionals = json_decode($request->selected_optionals, true) ?: [];
             }
 
-            // CORRECTION: Récupérer le statut d'affectation sans forcer 'affecté' par défaut
+            // Récupérer le statut d'affectation
             $affectationStatus = $request->input('affectation_status');
-
-            // Log pour déboguer les valeurs reçues
-            \Log::info('🎯 TRACE AFFECTATION CONTROLLER: Réception des données', [
-                'method' => $request->method(),
-                'affectation_status_raw' => $request->affectation_status,
-                'affectation_status_input' => $request->input('affectation_status'),
-                'affectation_status_final' => $request->input('affectation_status_final'),
-                'has_affectation_status' => $request->has('affectation_status'),
-                'has_affectation_status_final' => $request->has('affectation_status_final'),
-                'all_affectation_fields' => array_filter($request->all(), function($key) {
-                    return str_contains($key, 'affectation');
-                }, ARRAY_FILTER_USE_KEY)
-            ]);
 
             // Si aucun statut fourni, utiliser 'affecté' par défaut
             if (empty($affectationStatus)) {
-                // Essayer d'abord le champ final
                 $affectationStatus = $request->input('affectation_status_final');
                 if (empty($affectationStatus)) {
                     $affectationStatus = 'affecté';
-                    \Log::warning('🎯 TRACE AFFECTATION CONTROLLER: Aucun statut fourni, utilisation du défaut', [
-                        'default_status' => $affectationStatus
-                    ]);
-                } else {
-                    \Log::info('🎯 TRACE AFFECTATION CONTROLLER: Statut récupéré depuis champ final', [
-                        'affectation_status_final' => $affectationStatus
-                    ]);
                 }
             }
-
-            \Log::info('🎯 TRACE AFFECTATION CONTROLLER: Statut final déterminé', [
-                'affectation_status_final' => $affectationStatus,
-                'sera_transmis_au_service' => true
-            ]);
-
-            \Log::info('Début réinscription avec frais optionnels', [
-                'etudiant_id' => $etudiantId,
-                'nouvelle_classe_id' => $request->nouvelle_classe_id,
-                'decision' => $request->decision,
-                'affectation_status' => $affectationStatus,
-                'selected_optionals' => $selectedOptionals
-            ]);
 
             $nouvelleInscription = $this->reinscriptionService->effectuerReinscription(
                 $etudiantId,
@@ -848,12 +814,6 @@ class ESBTPReinscriptionController extends Controller
             return redirect()->route('esbtp.inscriptions.show', $nouvelleInscription->id)
                 ->with('success', 'Réinscription effectuée avec succès ! Nouvelle inscription créée pour l\'année universitaire en cours.');
         } catch (\Exception $e) {
-            \Log::error('Erreur lors de la réinscription', [
-                'etudiant_id' => $etudiantId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            
             return back()->withErrors(['error' => 'Erreur lors de la réinscription: ' . $e->getMessage()]);
         }
     }

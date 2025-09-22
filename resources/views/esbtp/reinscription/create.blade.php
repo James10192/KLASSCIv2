@@ -283,8 +283,6 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Script réinscription create chargé - Version locale');
-
     const classeSelect = document.getElementById('nouvelle_classe_id');
     const decisionSelect = document.getElementById('decision');
     const affectationSelect = document.getElementById('affectation_status');
@@ -299,9 +297,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Données locales transmises depuis le contrôleur
     const classesParDecision = @json($classesParDecision ?? []);
     const fraisParClasse = @json($fraisParClasse ?? []);
-
-    console.log('📊 Classes par décision:', classesParDecision);
-    console.log('💰 Frais par classe:', fraisParClasse);
 
     // Validation du reliquat pour superadmin
     @if($isSuperAdmin && !empty($fraisNonSoldes))
@@ -328,20 +323,6 @@ document.addEventListener('DOMContentLoaded', function() {
             // Mettre à jour les champs cachés avec les valeurs finales
             decisionFinale.value = decisionSelect.value;
             affectationFinale.value = affectationSelect.value;
-
-            console.log('🚀 TRACE AFFECTATION: Soumission formulaire');
-            console.log('🚀 TRACE AFFECTATION: Statut sélectionné dans select:', affectationSelect.value);
-            console.log('🚀 TRACE AFFECTATION: Valeur champ caché final:', affectationFinale.value);
-            console.log('🚀 TRACE AFFECTATION: Nom du champ envoyé:', affectationFinale.name);
-
-            // Vérifier tous les champs envoyés
-            const formData = new FormData(document.getElementById('reinscriptionForm'));
-            console.log('🚀 TRACE AFFECTATION: Tous les champs du formulaire:');
-            for (let [key, value] of formData.entries()) {
-                if (key.includes('affectation')) {
-                    console.log(`🚀 TRACE AFFECTATION: ${key} = ${value}`);
-                }
-            }
         });
     }
     @endif
@@ -351,7 +332,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const decision = decisionSelect.value;
         const affectation = affectationSelect.value;
 
-        console.log('🔄 Mise à jour classes - Décision:', decision, 'Affectation:', affectation);
 
         // Réinitialiser le select des classes
         classeSelect.innerHTML = '<option value="">Chargement...</option>';
@@ -382,10 +362,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (affectationSelect) {
         affectationSelect.addEventListener('change', function() {
-            console.log('🏛️ TRACE AFFECTATION: Changement statut affectation:', this.value);
-            console.log('🏛️ TRACE AFFECTATION: Mise à jour champ caché affectationFinale');
             document.getElementById('affectationFinale').value = this.value;
-            console.log('🏛️ TRACE AFFECTATION: Valeur champ caché après mise à jour:', document.getElementById('affectationFinale').value);
 
             // Recharger les classes (l'affectation peut influencer les classes disponibles)
             updateClassesParDecision();
@@ -403,7 +380,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (classeSelect && fraisContainer) {
         classeSelect.addEventListener('change', function() {
             if (this.value) {
-                console.log('💰 Chargement frais pour classe:', this.value);
                 loadFraisForClasse(this.value);
             } else {
                 fraisContainer.innerHTML = '<div class="text-center py-4"><p class="text-muted">Sélectionnez une classe pour voir les frais applicables</p></div>';
@@ -425,10 +401,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const classeKey = `${classeId}_${affectation || 'affecté'}`;
 
         if (fraisParClasse && fraisParClasse[classeKey]) {
-            console.log('📋 Utilisation frais locaux pour:', classeKey);
             displayFrais(fraisParClasse[classeKey]);
         } else {
-            console.log('🌐 Chargement frais via AJAX pour:', classeKey);
             // Fallback AJAX si les données locales ne sont pas disponibles
             fetch(`/esbtp/inscriptions/frais-by-classe/${classeId}?affectation_status=${encodeURIComponent(affectation)}`, {
                 headers: {

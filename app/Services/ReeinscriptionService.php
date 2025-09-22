@@ -373,12 +373,6 @@ class ReeinscriptionService
             $nouvelleClasse = ESBTPClasse::findOrFail($nouvelleClasseId);
 
             // 4. Créer nouvelle inscription
-            \Log::info('🏗️ TRACE AFFECTATION SERVICE: Création de l\'inscription avec statut', [
-                'etudiant_id' => $etudiantId,
-                'affectation_status_recu_du_controller' => $affectationStatus,
-                'nouvelle_classe_id' => $nouvelleClasseId,
-                'fonction_appelee' => 'effectuerReinscription'
-            ]);
 
             $nouvelleInscription = \App\Models\ESBTPInscription::create([
                 'etudiant_id' => $etudiantId,
@@ -398,21 +392,6 @@ class ReeinscriptionService
                 'numero_recu' => $this->genererNumeroRecu($nouvelleAnnee, $nouvelleClasse)
             ]);
 
-            \Log::info('🏗️ TRACE AFFECTATION SERVICE: Inscription créée, vérification du statut', [
-                'inscription_id' => $nouvelleInscription->id,
-                'affectation_status_apres_creation' => $nouvelleInscription->affectation_status,
-                'affectation_status_voulu' => $affectationStatus,
-                'creation_reussie' => $nouvelleInscription->exists,
-                'verify_in_database' => true
-            ]);
-
-            // Vérification supplémentaire en base de données
-            $inscriptionFromDb = \App\Models\ESBTPInscription::find($nouvelleInscription->id);
-            \Log::info('🏗️ TRACE AFFECTATION SERVICE: Vérification en base de données', [
-                'inscription_id' => $nouvelleInscription->id,
-                'affectation_status_in_db' => $inscriptionFromDb->affectation_status,
-                'matches_expected' => $inscriptionFromDb->affectation_status === $affectationStatus
-            ]);
 
             // 5. Générer nouveaux frais via service existant
             $inscriptionService = app(\App\Services\ESBTPInscriptionService::class);
@@ -422,28 +401,11 @@ class ReeinscriptionService
                 $affectationStatus
             );
 
-            // CORRECTION: Sauvegarder les frais générés comme souscriptions (MANQUANT!)
+            // Sauvegarder les frais générés comme souscriptions
             $inscriptionService->saveGeneratedFeesAsSubscriptions($nouvelleInscription, $generatedFees);
 
             // Note: Facture et paiements seront gérés via inscriptions.show comme d'habitude
 
-            // VÉRIFICATION: Le statut d'affectation a-t-il changé après génération des frais ?
-            $nouvelleInscription->refresh();
-            \Log::info('🏗️ TRACE AFFECTATION SERVICE: Statut après génération des frais', [
-                'inscription_id' => $nouvelleInscription->id,
-                'affectation_status_apres_frais' => $nouvelleInscription->affectation_status,
-                'affectation_status_original' => $affectationStatus,
-                'frais_generes_count' => count($generatedFees)
-            ]);
-
-            // Vérification finale avant retour
-            $nouvelleInscription->refresh();
-            \Log::info('🏗️ TRACE AFFECTATION SERVICE: Statut final avant retour au contrôleur', [
-                'inscription_id' => $nouvelleInscription->id,
-                'affectation_status_final' => $nouvelleInscription->affectation_status,
-                'should_be' => $affectationStatus,
-                'operation_complete' => true
-            ]);
 
             // 5.5 Gérer les reliquats selon l'action choisie par le superAdmin
             $this->gererReliquats($inscriptionActuelle, $nouvelleInscription, $actionReliquat);
