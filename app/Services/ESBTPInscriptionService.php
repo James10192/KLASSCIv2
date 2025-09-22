@@ -765,7 +765,7 @@ class ESBTPInscriptionService
      * Sauvegarder les frais générés comme ESBTPFraisSubscription
      * IMPORTANT: Vérifier le statut d'affectation avant la sauvegarde
      */
-    private function saveGeneratedFeesAsSubscriptions(ESBTPInscription $inscription, array $generatedFees)
+    public function saveGeneratedFeesAsSubscriptions(ESBTPInscription $inscription, array $generatedFees)
     {
         try {
             Log::info('DÉBUT sauvegarde des frais comme souscriptions', [
