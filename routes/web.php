@@ -688,6 +688,10 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::post('/paiements/{paiement}/valider', [App\Http\Controllers\ESBTPPaiementController::class, 'valider'])->name('paiements.valider');
             Route::post('/paiements/{paiement}/rejeter', [App\Http\Controllers\ESBTPPaiementController::class, 'rejeter'])->name('paiements.rejeter');
 
+            // Routes pour validation/rejet groupés
+            Route::post('/paiements/bulk-valider', [App\Http\Controllers\ESBTPPaiementController::class, 'bulkValider'])->name('paiements.bulk-valider');
+            Route::post('/paiements/bulk-rejeter', [App\Http\Controllers\ESBTPPaiementController::class, 'bulkRejeter'])->name('paiements.bulk-rejeter');
+
             // Routes ESBTP Bulletins
             Route::prefix('bulletins')->name('bulletins.')->group(function () {
                 Route::get('/', [ESBTPBulletinController::class, 'index'])->name('index');

@@ -196,18 +196,21 @@ document.addEventListener("DOMContentLoaded", function () {
         console.error("❌ Bouton actions rapides non trouvé !");
     }
 
-    // 10. Vérifier les routes
+    // 10. Vérifier les routes (les routes sont définies dans le HTML via data-attributes)
     console.log("🛣️ Vérification des routes...");
-    const routes = {
-        notifications: '{{ route("navbar.notifications") }}',
-        messages: '{{ route("navbar.messages") }}',
-        quickActions: '{{ route("navbar.quick-actions") }}',
-        search: '{{ route("search.global") }}',
-    };
+    const notifBtn = document.getElementById('notificationsDropdown');
+    const msgBtn = document.getElementById('messagesDropdown');
+    const actionBtn = document.getElementById('quickActionsDropdown');
 
-    Object.keys(routes).forEach((routeName) => {
-        console.log(`🛣️ Route ${routeName}:`, routes[routeName]);
-    });
+    if (notifBtn) {
+        console.log('🛣️ Route notifications:', notifBtn.dataset.route || '/navbar/notifications');
+    }
+    if (msgBtn) {
+        console.log('🛣️ Route messages:', msgBtn.dataset.route || '/navbar/messages');
+    }
+    if (actionBtn) {
+        console.log('🛣️ Route quickActions:', actionBtn.dataset.route || '/navbar/quick-actions');
+    }
 
     console.log("🔍 DIAGNOSTIC NAVBAR ET SIDEBAR - FIN");
 });

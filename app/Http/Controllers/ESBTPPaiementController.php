@@ -1659,4 +1659,169 @@ class ESBTPPaiementController extends Controller
             return redirect()->back()->with('error', 'Erreur lors du rejet: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Valider plusieurs paiements en une fois
+     */
+    public function bulkValider(Request $request)
+    {
+        $request->validate([
+            'paiements' => 'required|array|min:1',
+            'paiements.*' => 'exists:esbtp_paiements,id'
+        ]);
+
+        $successCount = 0;
+        $errorCount = 0;
+        $alreadyProcessed = 0;
+
+        try {
+            DB::beginTransaction();
+
+            foreach ($request->paiements as $id) {
+                $paiement = ESBTPPaiement::find($id);
+
+                if (!$paiement) {
+                    $errorCount++;
+                    continue;
+                }
+
+                // Vérifier si le paiement peut être validé
+                if ($paiement->status === 'validé') {
+                    $alreadyProcessed++;
+                    continue;
+                }
+
+                if ($paiement->status === 'rejeté') {
+                    $errorCount++;
+                    continue;
+                }
+
+                // Valider le paiement
+                $paiement->update([
+                    'status' => 'validé',
+                    'date_validation' => now(),
+                    'validateur_id' => auth()->id()
+                ]);
+
+                // Si c'est un paiement de reliquat, mettre à jour le reliquat
+                if ($paiement->type_paiement === 'reliquat' && $paiement->reliquat_detail_id) {
+                    $reliquat = \App\Models\ESBTPReliquatDetail::find($paiement->reliquat_detail_id);
+                    if ($reliquat) {
+                        $nouveauMontantRegle = $reliquat->montant_regle + $paiement->montant;
+                        $nouveauSolde = $reliquat->montant_reliquat - $nouveauMontantRegle;
+
+                        $reliquat->update([
+                            'montant_regle' => $nouveauMontantRegle,
+                            'statut' => $nouveauSolde <= 0 ? 'totalement_regle' : 'partiellement_regle',
+                            'date_derniere_maj' => now()
+                        ]);
+                    }
+                }
+
+                $successCount++;
+            }
+
+            DB::commit();
+
+            // Construire le message de retour
+            $message = '';
+            if ($successCount > 0) {
+                $message = "$successCount paiement(s) validé(s) avec succès.";
+            }
+            if ($alreadyProcessed > 0) {
+                $message .= " $alreadyProcessed paiement(s) déjà validé(s).";
+            }
+            if ($errorCount > 0) {
+                $message .= " $errorCount paiement(s) n'ont pas pu être validés.";
+            }
+
+            return redirect()->back()->with('success', $message);
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            \Log::error('Erreur lors de la validation groupée des paiements', [
+                'paiements' => $request->paiements,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->back()->with('error', 'Erreur lors de la validation groupée: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Rejeter plusieurs paiements en une fois
+     */
+    public function bulkRejeter(Request $request)
+    {
+        $request->validate([
+            'paiements' => 'required|array|min:1',
+            'paiements.*' => 'exists:esbtp_paiements,id',
+            'motif_rejet' => 'required|string|max:500'
+        ]);
+
+        $successCount = 0;
+        $errorCount = 0;
+        $alreadyProcessed = 0;
+
+        try {
+            DB::beginTransaction();
+
+            foreach ($request->paiements as $id) {
+                $paiement = ESBTPPaiement::find($id);
+
+                if (!$paiement) {
+                    $errorCount++;
+                    continue;
+                }
+
+                // Vérifier si le paiement peut être rejeté
+                if ($paiement->status === 'validé') {
+                    $errorCount++;
+                    continue;
+                }
+
+                if ($paiement->status === 'rejeté') {
+                    $alreadyProcessed++;
+                    continue;
+                }
+
+                // Rejeter le paiement
+                $paiement->update([
+                    'status' => 'rejeté',
+                    'date_validation' => now(),
+                    'validateur_id' => auth()->id(),
+                    'commentaire' => $request->input('motif_rejet')
+                ]);
+
+                $successCount++;
+            }
+
+            DB::commit();
+
+            // Construire le message de retour
+            $message = '';
+            if ($successCount > 0) {
+                $message = "$successCount paiement(s) rejeté(s) avec succès.";
+            }
+            if ($alreadyProcessed > 0) {
+                $message .= " $alreadyProcessed paiement(s) déjà rejeté(s).";
+            }
+            if ($errorCount > 0) {
+                $message .= " $errorCount paiement(s) n'ont pas pu être rejetés (déjà validés ou introuvables).";
+            }
+
+            return redirect()->back()->with('success', $message);
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            \Log::error('Erreur lors du rejet groupé des paiements', [
+                'paiements' => $request->paiements,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->back()->with('error', 'Erreur lors du rejet groupé: ' . $e->getMessage());
+        }
+    }
 }

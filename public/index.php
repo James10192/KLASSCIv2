@@ -7,15 +7,6 @@
  * @author   Taylor Otwell <taylor@laravel.com>
  */
 
-// Force clear all caches on each request during development
-if (in_array($_SERVER['REMOTE_ADDR'], ['127.0.0.1', '::1', 'localhost'])) {
-    // Clear Laravel caches
-    if (file_exists(__DIR__.'/../artisan')) {
-        // Clear the view cache
-        passthru('php ../artisan view:clear 2>/dev/null');
-    }
-}
-
 define('LARAVEL_START', microtime(true));
 
 /*

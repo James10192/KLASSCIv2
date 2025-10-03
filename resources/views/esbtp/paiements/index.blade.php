@@ -246,6 +246,9 @@
                     <table class="table table-hover">
                         <thead class="table-light">
                             <tr>
+                                <th style="width: 40px;">
+                                    <input type="checkbox" id="select-all" class="form-check-input" title="Tout sélectionner">
+                                </th>
                                 <th>N° Reçu</th>
                                 <th>Étudiant</th>
                                 <th>Catégorie</th>
@@ -259,6 +262,13 @@
                         <tbody>
                             @forelse($paiements as $paiement)
                                 <tr>
+                                    <td>
+                                        @if($paiement->status == 'en_attente' && auth()->user()->hasRole('superAdmin'))
+                                            <input type="checkbox" class="form-check-input paiement-checkbox"
+                                                   value="{{ $paiement->id }}"
+                                                   data-status="{{ $paiement->status }}">
+                                        @endif
+                                    </td>
                                     <td>
                                         <strong class="color-primary">{{ $paiement->numero_recu }}</strong>
                                     </td>
@@ -430,7 +440,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" class="text-center py-4">
+                                    <td colspan="9" class="text-center py-4">
                                         <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
                                         <br><span class="text-muted">Aucun paiement trouvé</span>
                                     </td>
@@ -439,6 +449,29 @@
                         </tbody>
                     </table>
                 </div>
+
+                <!-- Barre d'actions groupées -->
+                @if(auth()->user()->hasRole('superAdmin'))
+                <div class="bulk-actions-bar" id="bulk-actions-bar" style="display: none;">
+                    <div class="bulk-actions-content">
+                        <div class="bulk-actions-info">
+                            <i class="fas fa-check-square me-2"></i>
+                            <span id="selected-count">0</span> paiement(s) sélectionné(s)
+                        </div>
+                        <div class="bulk-actions-buttons">
+                            <button type="button" class="btn btn-success" onclick="bulkValider()">
+                                <i class="fas fa-check me-1"></i>Valider la sélection
+                            </button>
+                            <button type="button" class="btn btn-danger" onclick="openBulkRejetModal()">
+                                <i class="fas fa-times me-1"></i>Rejeter la sélection
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="clearSelection()">
+                                <i class="fas fa-times-circle me-1"></i>Annuler
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                @endif
                 
                 <!-- Pagination -->
                 @if($paiements->hasPages())
@@ -509,6 +542,88 @@
     width: 14px;
     text-align: center;
 }
+
+/* Barre d'actions groupées */
+.bulk-actions-bar {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%);
+    color: white;
+    padding: 15px 30px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(4, 83, 203, 0.3);
+    z-index: 1000;
+    min-width: 600px;
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateX(-50%) translateY(100px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+    }
+}
+
+.bulk-actions-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.bulk-actions-info {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.bulk-actions-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.bulk-actions-buttons .btn {
+    padding: 8px 16px;
+    font-weight: 600;
+    border: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    transition: all 0.2s;
+}
+
+.bulk-actions-buttons .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+@media (max-width: 768px) {
+    .bulk-actions-bar {
+        min-width: 90%;
+        left: 5%;
+        transform: translateX(0);
+        padding: 12px 15px;
+    }
+
+    .bulk-actions-content {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .bulk-actions-buttons {
+        width: 100%;
+        flex-direction: column;
+    }
+
+    .bulk-actions-buttons .btn {
+        width: 100%;
+    }
+}
 </style>
 
 @endpush
@@ -552,6 +667,57 @@
         </div>
     </div>
 </div>
+
+<!-- Modal de rejet groupé -->
+@if(auth()->user()->hasRole('superAdmin'))
+<div class="modal fade" id="bulkRejetModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <form id="bulk-rejet-form" method="POST" action="{{ route('esbtp.paiements.bulk-rejeter') }}">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-times-circle text-danger me-2"></i>
+                        Rejeter les paiements sélectionnés
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Vous êtes sur le point de rejeter <strong><span id="bulk-rejet-count">0</span> paiement(s)</strong>.
+                    </div>
+
+                    <div class="form-group">
+                        <label for="bulk_motif_rejet">Motif du rejet <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="bulk_motif_rejet" name="motif_rejet" rows="4"
+                                  placeholder="Expliquez pourquoi ces paiements sont rejetés..." required></textarea>
+                    </div>
+
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="bulk_confirmer_rejet" required>
+                        <label class="form-check-label" for="bulk_confirmer_rejet">
+                            Je confirme le rejet de ces paiements
+                        </label>
+                    </div>
+
+                    <div id="bulk-selected-paiements"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>Annuler
+                    </button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-times-circle me-1"></i>Rejeter les paiements
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
 
 <!-- Modaux de rejet pour les paiements en attente -->
 @foreach($paiements as $paiement)
@@ -619,10 +785,132 @@ $(document).ready(function() {
     $('#yearChangeModal .close[data-dismiss="modal"]').on('click', function() {
         $('#yearChangeModal').modal('hide');
     });
-    
+
     // Gérer la fermeture avec le bouton Fermer
     $('#yearChangeModal button[data-dismiss="modal"]').on('click', function() {
         $('#yearChangeModal').modal('hide');
     });
+
+    // === GESTION DES ACTIONS GROUPÉES ===
+
+    // Sélectionner/Désélectionner tous les paiements
+    $('#select-all').on('change', function() {
+        const isChecked = $(this).prop('checked');
+        $('.paiement-checkbox').prop('checked', isChecked);
+        updateBulkActionsBar();
+    });
+
+    // Gérer le changement sur les checkboxes individuelles
+    $(document).on('change', '.paiement-checkbox', function() {
+        updateBulkActionsBar();
+
+        // Mettre à jour la checkbox "Tout sélectionner"
+        const totalCheckboxes = $('.paiement-checkbox').length;
+        const checkedCheckboxes = $('.paiement-checkbox:checked').length;
+        $('#select-all').prop('checked', totalCheckboxes === checkedCheckboxes && totalCheckboxes > 0);
+    });
 });
+
+// Mettre à jour la barre d'actions groupées
+function updateBulkActionsBar() {
+    const selectedCheckboxes = $('.paiement-checkbox:checked');
+    const count = selectedCheckboxes.length;
+
+    if (count > 0) {
+        $('#bulk-actions-bar').slideDown(200);
+        $('#selected-count').text(count);
+    } else {
+        $('#bulk-actions-bar').slideUp(200);
+    }
+}
+
+// Valider les paiements sélectionnés
+function bulkValider() {
+    const selectedIds = getSelectedPaiementIds();
+
+    if (selectedIds.length === 0) {
+        alert('Veuillez sélectionner au moins un paiement.');
+        return;
+    }
+
+    const confirmMessage = `Êtes-vous sûr de vouloir valider ${selectedIds.length} paiement(s) ?`;
+
+    if (!confirm(confirmMessage)) {
+        return;
+    }
+
+    // Créer et soumettre le formulaire
+    const form = $('<form>', {
+        'method': 'POST',
+        'action': "{{ route('esbtp.paiements.bulk-valider') }}"
+    });
+
+    // Ajouter le token CSRF
+    form.append($('<input>', {
+        'type': 'hidden',
+        'name': '_token',
+        'value': "{{ csrf_token() }}"
+    }));
+
+    // Ajouter les IDs sélectionnés
+    selectedIds.forEach(function(id) {
+        form.append($('<input>', {
+            'type': 'hidden',
+            'name': 'paiements[]',
+            'value': id
+        }));
+    });
+
+    // Ajouter au DOM et soumettre
+    $('body').append(form);
+    form.submit();
+}
+
+// Ouvrir le modal de rejet groupé
+function openBulkRejetModal() {
+    const selectedIds = getSelectedPaiementIds();
+
+    if (selectedIds.length === 0) {
+        alert('Veuillez sélectionner au moins un paiement.');
+        return;
+    }
+
+    // Mettre à jour le compteur dans le modal
+    $('#bulk-rejet-count').text(selectedIds.length);
+
+    // Ajouter les IDs sélectionnés comme champs cachés
+    const container = $('#bulk-selected-paiements');
+    container.empty();
+
+    selectedIds.forEach(function(id) {
+        container.append($('<input>', {
+            'type': 'hidden',
+            'name': 'paiements[]',
+            'value': id
+        }));
+    });
+
+    // Réinitialiser le formulaire
+    $('#bulk_motif_rejet').val('');
+    $('#bulk_confirmer_rejet').prop('checked', false);
+
+    // Afficher le modal
+    $('#bulkRejetModal').modal('show');
+}
+
+// Annuler la sélection
+function clearSelection() {
+    $('.paiement-checkbox').prop('checked', false);
+    $('#select-all').prop('checked', false);
+    updateBulkActionsBar();
+}
+
+// Obtenir les IDs des paiements sélectionnés
+function getSelectedPaiementIds() {
+    const ids = [];
+    $('.paiement-checkbox:checked').each(function() {
+        ids.push($(this).val());
+    });
+    return ids;
+}
 </script>
