@@ -3061,7 +3061,15 @@
             // Marquer les notifications comme vues quand on ouvre le dropdown
             document.getElementById('notificationsDropdown').addEventListener('shown.bs.dropdown', function () {
                 console.log('🔔 Dropdown notifications ouvert - marquage comme vu');
-                
+
+                // Vérifier s'il y a des notifications non lues avant d'appeler le serveur
+                const unreadNotifications = document.querySelectorAll('.notification-item.unread');
+
+                if (unreadNotifications.length === 0) {
+                    console.log('ℹ️ Aucune notification non lue, pas d\'appel serveur nécessaire');
+                    return;
+                }
+
                 // Marquer toutes les notifications comme vues (pas supprimées, juste vues)
                 fetch('{{ route("notifications.markAllAsRead") ?? "#" }}', {
                     method: 'POST',
@@ -3074,14 +3082,13 @@
                 .then(data => {
                     if (data.success) {
                         // Mettre à jour visuellement les notifications dans le dropdown
-                        const notificationItems = document.querySelectorAll('.notification-item.unread');
-                        notificationItems.forEach(item => {
+                        unreadNotifications.forEach(item => {
                             item.classList.remove('unread');
                         });
-                        
+
                         // Mettre à jour le badge en utilisant la nouvelle fonction
                         updateNotificationBadge();
-                        
+
                         console.log('✅ Notifications marquées comme vues');
                     }
                 })
