@@ -4737,14 +4737,25 @@ class ESBTPBulletinController extends Controller
                 ]);
 
                 if ($matieres->isEmpty()) {
-                    return back()->with('error', 'Aucune matière trouvée pour cette classe.');
+                    // Rediriger vers la page des résultats avec message explicite
+                    return redirect()->route('esbtp.resultats.etudiant', [
+                        'etudiant' => $etudiant_id,
+                        'classe_id' => $classe_id,
+                        'periode' => $periode == 'semestre1' ? '1' : ($periode == 'semestre2' ? '2' : $periode),
+                        'annee_universitaire_id' => $annee_universitaire_id
+                    ])->with('error', 'Les absences ont été enregistrées avec succès. Cependant, le bulletin ne peut pas être généré car aucune matière n\'a été trouvée pour cette classe. Veuillez d\'abord "Modifier les moyennes" pour configurer les notes.');
                 }
             } catch (\Exception $e) {
                 \Log::error('Erreur lors de la récupération des matières depuis la classe', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString()
                 ]);
-                return back()->with('error', 'Erreur lors de la récupération des matières.');
+                return redirect()->route('esbtp.resultats.etudiant', [
+                    'etudiant' => $etudiant_id,
+                    'classe_id' => $classe_id,
+                    'periode' => $periode == 'semestre1' ? '1' : ($periode == 'semestre2' ? '2' : $periode),
+                    'annee_universitaire_id' => $annee_universitaire_id
+                ])->with('error', 'Les absences ont été enregistrées avec succès. Cependant, une erreur est survenue lors de la génération du bulletin : ' . $e->getMessage());
             }
         }
 
@@ -5222,6 +5233,7 @@ class ESBTPBulletinController extends Controller
                 'classe_id' => 'required|exists:esbtp_classes,id',
                 'periode' => 'required|in:semestre1,semestre2,annuel',
                 'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
+                'appliquer_a_classe' => 'sometimes|boolean',
             ]);
 
             $etudiant_id = $request->input('etudiant_id');
@@ -5255,6 +5267,28 @@ class ESBTPBulletinController extends Controller
 
             Log::info('✅ Bulletin mis à jour avec succès', ['bulletin_id' => $bulletin->id, 'professeurs' => $professeurs]);
 
+            // Gestion de la propagation à toute la classe
+            $bulletinsPropages = 0;
+            if ($request->has('appliquer_a_classe') && $request->input('appliquer_a_classe') == '1') {
+                Log::info('🔄 Propagation des enseignants à toute la classe demandée');
+
+                // Récupérer tous les bulletins de la même classe, période et année (sauf celui qu'on vient de sauver)
+                $autresBulletins = ESBTPBulletin::where('classe_id', $classe_id)
+                    ->where('periode', $periode)
+                    ->where('annee_universitaire_id', $annee_universitaire_id)
+                    ->where('id', '!=', $bulletin->id)
+                    ->get();
+
+                foreach ($autresBulletins as $autreBulletin) {
+                    $autreBulletin->professeurs = json_encode($professeurs);
+                    $autreBulletin->updated_by = Auth::id();
+                    $autreBulletin->save();
+                    $bulletinsPropages++;
+                }
+
+                Log::info("✅ Propagation terminée: {$bulletinsPropages} bulletins mis à jour");
+            }
+
             // Vérifier quelle action a été choisie via le bouton submit
             $action = $request->input('action', '');
 
@@ -5267,6 +5301,12 @@ class ESBTPBulletinController extends Controller
                     'annee_universitaire_id' => $annee_universitaire_id
             ];
 
+            // Préparer le message de succès
+            $successMessage = 'Les noms des professeurs ont été enregistrés avec succès.';
+            if ($bulletinsPropages > 0) {
+                $successMessage .= " Ces enseignants ont également été appliqués à {$bulletinsPropages} autre(s) bulletin(s) de la classe.";
+            }
+
             // Redirection en fonction de l'action choisie
             if ($action === 'save_and_back' || $action === 'save_and_return') {
                 return redirect()->route('esbtp.resultats.etudiant', [
@@ -5274,7 +5314,7 @@ class ESBTPBulletinController extends Controller
                     'classe_id' => $classe_id,
                     'periode' => $periode,
                     'annee_universitaire_id' => $annee_universitaire_id
-                ])->with('success', 'Les noms des professeurs ont été enregistrés avec succès.');
+                ])->with('success', $successMessage);
             } elseif ($action === 'edit') {
                 // Rester sur la page d'édition des professeurs
                 return redirect()->route('esbtp.bulletins.edit-professeurs', [
@@ -5282,20 +5322,15 @@ class ESBTPBulletinController extends Controller
                     'classe_id' => $classe_id,
                     'periode' => $periode,
                     'annee_universitaire_id' => $annee_universitaire_id
-                ])->with('success', 'Les noms des professeurs ont été enregistrés avec succès.');
+                ])->with('success', $successMessage);
             } elseif ($action === 'generate') {
-                // Stocker tous les paramètres nécessaires dans la session
-                session(['etudiant_id' => $etudiant_id]);
-                session(['classe_id' => $classe_id]);
-                session(['periode' => $periode]);
-                session(['annee_universitaire_id' => $annee_universitaire_id]);
-                session(['params' => $queryParams]);
-
-                // Redirection vers la route de génération du bulletin avec l'ID de l'étudiant
-                // comme paramètre principal et le reste dans la session
-                return redirect()->route('esbtp.bulletins.generate', [
-                    'etudiant_id' => $etudiant_id
-                ])->with('success', 'Les noms des professeurs ont été enregistrés. Génération du bulletin en cours...');
+                // Redirection vers la route de génération du bulletin PDF
+                return redirect()->route('esbtp.bulletins.pdf-params', [
+                    'bulletin' => $etudiant_id,
+                    'classe_id' => $classe_id,
+                    'periode' => $periode,
+                    'annee_universitaire_id' => $annee_universitaire_id
+                ])->with('success', $successMessage . ' Génération du bulletin en cours...');
             }
 
             // Redirection par défaut vers la page des résultats de l'étudiant
@@ -5718,40 +5753,247 @@ class ESBTPBulletinController extends Controller
         }
     }
 
+    /**
+     * Affiche la page d'édition des absences pour un bulletin
+     *
+     * @param Request $request
+     * @return \Illuminate\View\View
+     */
+    public function editAbsences(Request $request)
+    {
+        // Vérifier les permissions
+        if (!Auth::check() || !Auth::user()->hasRole('superAdmin')) {
+            return redirect()->route('dashboard')->with('error', 'Accès non autorisé. Seul un SuperAdmin peut éditer les absences.');
+        }
+
+        // Récupérer les paramètres
+        $etudiant_id = $request->etudiant_id ?? $request->bulletin;
+        $classe_id = $request->classe_id;
+        $periode = $request->periode;
+        $annee_universitaire_id = $request->annee_universitaire_id;
+
+        // Journaliser les paramètres pour le débogage
+        \Log::info('Paramètres reçus pour editAbsences:', [
+            'etudiant_id' => $etudiant_id,
+            'classe_id' => $classe_id,
+            'periode' => $periode,
+            'annee_universitaire_id' => $annee_universitaire_id
+        ]);
+
+        // Vérifier que tous les paramètres requis sont présents
+        if (!$etudiant_id || !$classe_id || !$periode || !$annee_universitaire_id) {
+            return back()->with('error', 'Paramètres manquants pour l\'édition des absences.');
+        }
+
+        // Normaliser la période
+        if ($periode == '1') {
+            $periode = 'semestre1';
+        } elseif ($periode == '2') {
+            $periode = 'semestre2';
+        }
+
+        // Récupérer l'étudiant, la classe et l'année universitaire
+        $etudiant = ESBTPEtudiant::find($etudiant_id);
+        $classe = ESBTPClasse::find($classe_id);
+        $anneeUniversitaire = ESBTPAnneeUniversitaire::find($annee_universitaire_id);
+
+        if (!$etudiant || !$classe || !$anneeUniversitaire) {
+            return back()->with('error', 'Données introuvables.');
+        }
+
+        // Récupérer ou créer le bulletin
+        $bulletin = ESBTPBulletin::firstOrNew([
+            'etudiant_id' => $etudiant_id,
+            'classe_id' => $classe_id,
+            'periode' => $periode,
+            'annee_universitaire_id' => $annee_universitaire_id
+        ]);
+
+        // Si le bulletin n'existe pas encore, initialiser les propriétés de base
+        if (!$bulletin->exists) {
+            $bulletin->created_by = Auth::id();
+            $bulletin->save();
+        }
+
+        // Calculer les absences automatiquement via le système existant
+        try {
+            $absencesCalculees = $this->calculerAbsencesDetailes($bulletin);
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors du calcul automatique des absences: ' . $e->getMessage());
+            $absencesCalculees = [
+                'justifiees' => 0,
+                'non_justifiees' => 0,
+                'total' => 0
+            ];
+        }
+
+        // Récupérer les valeurs brutes des absences depuis la base de données (éviter les accesseurs)
+        $absencesJustifieesDB = $bulletin->getAttributes()['absences_justifiees'] ?? null;
+        $absencesNonJustifieesDB = $bulletin->getAttributes()['absences_non_justifiees'] ?? null;
+
+        // Si le bulletin n'a pas encore d'absences manuelles, utiliser les valeurs calculées
+        if ($absencesJustifieesDB === null && $absencesNonJustifieesDB === null) {
+            $bulletin->absences_justifiees = $absencesCalculees['justifiees'] ?? 0;
+            $bulletin->absences_non_justifiees = $absencesCalculees['non_justifiees'] ?? 0;
+            $bulletin->total_absences = $absencesCalculees['total'] ?? 0;
+            $bulletin->save();
+
+            // Mettre à jour les variables locales
+            $absencesJustifieesDB = $absencesCalculees['justifiees'] ?? 0;
+            $absencesNonJustifieesDB = $absencesCalculees['non_justifiees'] ?? 0;
+        }
+
+        // Déterminer la source des données (auto ou manuelle)
+        $source = 'auto';
+        if ($absencesJustifieesDB != $absencesCalculees['justifiees'] ||
+            $absencesNonJustifieesDB != $absencesCalculees['non_justifiees']) {
+            $source = 'manuelle';
+        }
+
+        // Calculer la note d'assiduité actuelle
+        $noteAssiduite = $this->calculerNoteAssiduite(
+            $absencesJustifieesDB ?? 0,
+            $absencesNonJustifieesDB ?? 0
+        );
+
+        return view('esbtp.bulletins.edit-absences', [
+            'etudiant' => $etudiant,
+            'classe' => $classe,
+            'anneeUniversitaire' => $anneeUniversitaire,
+            'periode' => $periode,
+            'bulletin' => $bulletin,
+            'absencesCalculees' => $absencesCalculees,
+            'noteAssiduite' => $noteAssiduite,
+            'source' => $source,
+            // Passer les valeurs directement pour éviter les accesseurs
+            'absencesJustifiees' => $absencesJustifieesDB ?? 0,
+            'absencesNonJustifiees' => $absencesNonJustifieesDB ?? 0,
+            'totalAbsences' => ($absencesJustifieesDB ?? 0) + ($absencesNonJustifieesDB ?? 0)
+        ]);
+    }
+
+    /**
+     * Sauvegarde les absences modifiées pour un bulletin
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function saveAbsences(Request $request)
+    {
+        try {
+            // Log au début de la méthode
+            Log::info('🔍 Début de saveAbsences', [
+                'request_path' => $request->path(),
+                'request_method' => $request->method(),
+                'user_authenticated' => Auth::check(),
+                'user_id' => Auth::id(),
+                'all_request_data' => $request->all()
+            ]);
+
+            // Valider les données d'entrée
+            $validated = $request->validate([
+                'absences_justifiees' => 'required|numeric|min:0',
+                'absences_non_justifiees' => 'required|numeric|min:0',
+                'etudiant_id' => 'required|exists:esbtp_etudiants,id',
+                'classe_id' => 'required|exists:esbtp_classes,id',
+                'periode' => 'required|in:semestre1,semestre2,annuel',
+                'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
+            ]);
+
+            $etudiant_id = $request->input('etudiant_id');
+            $classe_id = $request->input('classe_id');
+            $periode = $request->input('periode');
+            $annee_universitaire_id = $request->input('annee_universitaire_id');
+
+            $absencesJustifiees = (float) $request->input('absences_justifiees');
+            $absencesNonJustifiees = (float) $request->input('absences_non_justifiees');
+
+            // Récupérer le bulletin existant ou en créer un nouveau
+            $bulletin = ESBTPBulletin::firstOrNew([
+                'etudiant_id' => $etudiant_id,
+                'classe_id' => $classe_id,
+                'periode' => $periode,
+                'annee_universitaire_id' => $annee_universitaire_id
+            ]);
+
+            // Si le bulletin n'existe pas encore, initialiser les propriétés de base
+            if (!$bulletin->exists) {
+                $bulletin->created_by = Auth::id();
+            }
+
+            // Mettre à jour les absences
+            $bulletin->absences_justifiees = $absencesJustifiees;
+            $bulletin->absences_non_justifiees = $absencesNonJustifiees;
+            $bulletin->total_absences = $absencesJustifiees + $absencesNonJustifiees;
+
+            // Calculer et mettre à jour la note d'assiduité
+            $bulletin->note_assiduite = $this->calculerNoteAssiduite(
+                $absencesJustifiees,
+                $absencesNonJustifiees
+            );
+
+            $bulletin->updated_by = Auth::id();
+            $bulletin->save();
+
+            Log::info('✅ Bulletin mis à jour avec succès', [
+                'bulletin_id' => $bulletin->id,
+                'absences_justifiees' => $absencesJustifiees,
+                'absences_non_justifiees' => $absencesNonJustifiees,
+                'total_absences' => $bulletin->total_absences,
+                'note_assiduite' => $bulletin->note_assiduite
+            ]);
+
+            // Vérifier quelle action a été choisie via le bouton submit
+            $action = $request->input('action', '');
+
+            // Préparer les paramètres communs pour les redirections
+            $queryParams = [
+                'bulletin' => $etudiant_id,
+                'etudiant_id' => $etudiant_id,
+                'classe_id' => $classe_id,
+                'periode' => $periode,
+                'annee_universitaire_id' => $annee_universitaire_id
+            ];
+
+            // Redirection en fonction de l'action choisie
+            if ($action === 'save_and_back' || $action === 'save_and_return') {
+                return redirect()->route('esbtp.resultats.etudiant', [
+                    'etudiant' => $etudiant_id,
+                    'classe_id' => $classe_id,
+                    'periode' => $periode == 'semestre1' ? '1' : ($periode == 'semestre2' ? '2' : $periode),
+                    'annee_universitaire_id' => $annee_universitaire_id
+                ])->with('success', 'Les absences ont été enregistrées avec succès.');
+            } elseif ($action === 'edit') {
+                // Rester sur la page d'édition des absences
+                return redirect()->route('esbtp.bulletins.edit-absences', $queryParams)
+                    ->with('success', 'Les absences ont été enregistrées avec succès.');
+            } elseif ($action === 'generate') {
+                // Redirection vers la route de génération du bulletin PDF
+                return redirect()->route('esbtp.bulletins.pdf-params', [
+                    'bulletin' => $etudiant_id,
+                    'classe_id' => $classe_id,
+                    'periode' => $periode,
+                    'annee_universitaire_id' => $annee_universitaire_id
+                ])->with('success', 'Les absences ont été enregistrées. Génération du bulletin en cours...');
+            }
+
+            // Par défaut, retourner aux résultats de l'étudiant
+            return redirect()->route('esbtp.resultats.etudiant', [
+                'etudiant' => $etudiant_id,
+                'classe_id' => $classe_id,
+                'periode' => $periode == 'semestre1' ? '1' : ($periode == 'semestre2' ? '2' : $periode),
+                'annee_universitaire_id' => $annee_universitaire_id
+            ])->with('success', 'Les absences ont été enregistrées avec succès.');
+
+        } catch (\Exception $e) {
+            Log::error('❌ Erreur dans saveAbsences: ' . $e->getMessage(), [
+                'exception' => $e,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return back()
+                ->withInput()
+                ->with('error', 'Une erreur est survenue lors de l\'enregistrement des absences: ' . $e->getMessage());
+        }
+    }
 }
-// private function calculerNoteAssiduite($justifiees, $nonJustifiees)
-// {
-//     $totalAbsences = $justifiees + $nonJustifiees;
-
-//     switch ($totalAbsences) {
-//         case 0:
-//             return 0.13;
-//         case 1:
-//             return 0;
-//         case 2:
-//             return -0.13;
-//         case 3:
-//         case 4:
-//             return -0.39;
-//         default: // 5 ou plus
-//             return -0.5;
-//     }
-// }
-// private function calculerNoteAssiduite($justifiees, $nonJustifiees)
-//             {
-//                 $totalAbsences = $justifiees + $nonJustifiees;
-
-//                 if ($totalAbsences == 0) {
-//                     return 0.13;
-//                 } elseif ($totalAbsences == 1) {
-//                     return 0;
-//                 } elseif ($totalAbsences == 2) {
-//                     return -0.13;
-//                 } elseif ($totalAbsences == 3 || $totalAbsences == 4) {
-//                     return -0.39;
-//                 } else { // 5 ou plus
-//                     return -0.5;
-//                 }
-//             }
-
-

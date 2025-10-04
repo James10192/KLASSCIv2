@@ -280,6 +280,28 @@
             </div>
             @endif
 
+            <!-- Option de propagation à la classe -->
+            <div class="main-card mb-3">
+                <div class="main-card-body">
+                    <div class="form-check form-switch" style="padding-left: 3rem;">
+                        <input class="form-check-input"
+                               type="checkbox"
+                               name="appliquer_a_classe"
+                               id="appliquerAClasse"
+                               value="1"
+                               style="width: 3em; height: 1.5em; cursor: pointer;">
+                        <label class="form-check-label" for="appliquerAClasse" style="font-size: 1.1rem; font-weight: 600; cursor: pointer; margin-left: 0.5rem;">
+                            <i class="fas fa-users me-2" style="color: var(--primary);"></i>
+                            Appliquer ces enseignants à <strong>tous les étudiants de la classe {{ $classe->libelle ?? $classe->name }}</strong>
+                        </label>
+                        <div style="margin-left: 4rem; margin-top: 0.5rem; color: #6b7280; font-size: 0.9rem;">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Cela copiera automatiquement les noms des enseignants configurés ci-dessus pour tous les bulletins de cette classe (période: {{ $periode }})
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Actions -->
             <div class="main-card">
                 <div class="main-card-body">

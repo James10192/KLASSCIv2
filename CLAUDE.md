@@ -2,6 +2,263 @@
 
 ## Corrections récentes
 
+### Feature: Propagation automatique des enseignants pour toute la classe
+
+**Date:** 4 octobre 2025
+**Branche:** presentation
+
+#### Problème résolu
+
+Lors de la configuration des noms d'enseignants pour les bulletins, il fallait remplir les noms matière par matière **pour chaque étudiant** de la classe. Avec des classes de 30+ étudiants, cela devenait très fastidieux et répétitif.
+
+#### Solution implémentée
+
+Ajout d'une **checkbox "Appliquer à toute la classe"** sur la page d'édition des professeurs ([edit-professeurs.blade.php](resources/views/esbtp/bulletins/edit-professeurs.blade.php)) qui permet de **copier automatiquement** les noms des enseignants configurés vers tous les autres bulletins de la même classe (même période, même année universitaire).
+
+#### Fonctionnement
+
+1. **Interface** : Checkbox avec switch moderne placée juste avant les boutons d'action
+2. **Backend** : Logique dans [saveProfesseurs()](app/Http/Controllers/ESBTPBulletinController.php:5272-5290)
+   - Si checkbox cochée : récupère tous les bulletins de la classe (même `classe_id`, `periode`, `annee_universitaire_id`)
+   - Copie le JSON `professeurs` vers chaque bulletin
+   - Met à jour `updated_by` avec l'utilisateur actuel
+3. **Feedback** : Message indiquant combien de bulletins ont été mis à jour
+   - Ex: "Les noms des professeurs ont été enregistrés avec succès. Ces enseignants ont également été appliqués à 29 autre(s) bulletin(s) de la classe."
+
+#### Fichiers modifiés
+
+- [resources/views/esbtp/bulletins/edit-professeurs.blade.php:283-303](resources/views/esbtp/bulletins/edit-professeurs.blade.php:283) - Ajout checkbox propagation
+- [app/Http/Controllers/ESBTPBulletinController.php:5236](app/Http/Controllers/ESBTPBulletinController.php:5236) - Validation `appliquer_a_classe`
+- [app/Http/Controllers/ESBTPBulletinController.php:5270-5290](app/Http/Controllers/ESBTPBulletinController.php:5270) - Logique de propagation
+- [app/Http/Controllers/ESBTPBulletinController.php:5304-5308](app/Http/Controllers/ESBTPBulletinController.php:5304) - Message de feedback dynamique
+
+#### Avantages
+
+✅ **Gain de temps massif** : Configuration en une seule fois pour toute la classe
+✅ **Cohérence garantie** : Mêmes enseignants sur tous les bulletins de la classe
+✅ **Optionnel** : L'utilisateur choisit s'il veut propager ou non
+✅ **Transparent** : Feedback clair sur le nombre de bulletins mis à jour
+✅ **Audit trail** : Chaque mise à jour enregistre l'utilisateur (`updated_by`)
+
+---
+
+### Fix: Message d'erreur explicite lors de la génération de bulletin
+
+**Date:** 4 octobre 2025
+**Branche:** presentation
+
+#### Problème résolu
+
+Quand l'utilisateur enregistrait les absences et générait le bulletin, si une erreur survenait (ex: "Aucune matière trouvée"), le message n'était pas explicite et ne confirmait pas que les absences avaient bien été sauvegardées.
+
+#### Solution
+
+Modification des messages d'erreur dans [genererPDFParParamsUnified()](app/Http/Controllers/ESBTPBulletinController.php:4740-4758) pour :
+1. **Confirmer** que les absences sont bien enregistrées
+2. **Expliquer** pourquoi le bulletin ne peut pas être généré
+3. **Rediriger** vers la page des résultats de l'étudiant (au lieu d'un simple `back()`)
+4. **Indiquer** quelle action entreprendre ("Modifier les moyennes")
+
+**Nouveau message** :
+> "Les absences ont été enregistrées avec succès. Cependant, le bulletin ne peut pas être généré car aucune matière n'a été trouvée pour cette classe. Veuillez d'abord "Modifier les moyennes" pour configurer les notes."
+
+#### Fichiers modifiés
+
+- [app/Http/Controllers/ESBTPBulletinController.php:4740-4746](app/Http/Controllers/ESBTPBulletinController.php:4740) - Message cas "Aucune matière"
+- [app/Http/Controllers/ESBTPBulletinController.php:4753-4758](app/Http/Controllers/ESBTPBulletinController.php:4753) - Message cas "Erreur récupération"
+
+---
+
+### Feature: Édition manuelle des absences pour les bulletins
+
+**Date:** 4 octobre 2025
+**Branche:** presentation
+
+#### Fonctionnalités ajoutées
+
+Implémentation d'un système d'édition manuelle des absences pour les bulletins, similaire au système de modification des moyennes.
+
+**Flux de génération de bulletin mis à jour:**
+1. Configuration des matières
+2. Vérification des moyennes
+3. Édition des professeurs
+4. **[NOUVEAU]** Édition des absences (optionnel)
+5. Génération du PDF
+
+#### 1. Système automatique conservé
+
+- Le système de calcul automatique des absences via le module d'émargement reste actif
+- Les absences sont calculées automatiquement depuis `calculerAbsencesDetailes()`
+- L'édition manuelle est **optionnelle** et vient en complément
+
+#### 2. Interface d'édition des absences
+
+**Page:** [resources/views/esbtp/bulletins/edit-absences.blade.php](resources/views/esbtp/bulletins/edit-absences.blade.php)
+
+**Caractéristiques:**
+- Design moderne similaire à `moyennes-preview.blade.php`
+- KPI cards affichant: Étudiant, Classe, Période, Total absences
+- Vue comparative: Absences calculées automatiquement vs Absences à enregistrer
+- Badge indiquant la source des données (Auto/Manuel)
+- Calcul en temps réel du total et de la note d'assiduité via JavaScript
+- Affichage du barème de calcul de la note d'assiduité
+
+**Champs modifiables:**
+- Absences justifiées (heures, step 0.5)
+- Absences non justifiées (heures, step 0.5)
+- Total absences (calculé automatiquement)
+- Note d'assiduité (affichée, recalculée automatiquement)
+
+**Actions disponibles:**
+- Enregistrer (reste sur la page)
+- Enregistrer et retour (retourne aux résultats étudiant)
+- Enregistrer et générer PDF (enregistre puis génère le bulletin)
+
+#### 3. Backend
+
+**Controller:** [app/Http/Controllers/ESBTPBulletinController.php](app/Http/Controllers/ESBTPBulletinController.php)
+
+**Nouvelles méthodes:**
+- `editAbsences()` (ligne 5763) - Affiche la page d'édition
+  - Récupère ou crée le bulletin
+  - Calcule les absences automatiques via `calculerAbsencesDetailes()`
+  - Initialise avec valeurs auto si pas de données manuelles
+  - Détermine la source (auto/manuelle)
+  - Calcule la note d'assiduité
+
+- `saveAbsences()` (ligne 5870) - Sauvegarde les modifications
+  - Valide les données (absences_justifiees, absences_non_justifiees)
+  - Calcule `total_absences` = justifiées + non justifiées
+  - Calcule `note_assiduite` via `calculerNoteAssiduite()`
+  - Gère 3 actions: edit, save_and_back, generate
+  - Logging complet des opérations
+
+#### 4. Routes
+
+**Fichier:** [routes/web.php](routes/web.php#L1630-L1631)
+
+```php
+Route::get('/esbtp-special/bulletins/edit-absences', [ESBTPBulletinController::class, 'editAbsences'])
+    ->name('esbtp.bulletins.edit-absences');
+Route::post('/esbtp-special/bulletins/save-absences', [ESBTPBulletinController::class, 'saveAbsences'])
+    ->name('esbtp.bulletins.save-absences');
+```
+
+#### 5. Bouton d'accès
+
+**Fichier:** [resources/views/components/student-results/action-buttons.blade.php](resources/views/components/student-results/action-buttons.blade.php#L60-L63)
+
+- Visible uniquement pour les `superAdmin`
+- Placé après "Éditer professeurs"
+- Icône: `fas fa-user-clock`
+- Style: `btn-acasi warning`
+
+**Guide mis à jour:**
+- Étape 4 ajoutée: "Éditer les absences (optionnel)"
+- Indique que c'est facultatif
+
+#### 6. Barème de calcul de la note d'assiduité
+
+La note d'assiduité est calculée selon les absences **non justifiées** uniquement:
+
+| Absences non justifiées | Note d'assiduité |
+|------------------------|------------------|
+| 0                      | +0.13 point      |
+| 1                      | 0 point          |
+| 2                      | -0.13 point      |
+| 3-4                    | -0.39 point      |
+| 5+                     | -0.50 point      |
+
+**Implémentation:** [app/Http/Controllers/ESBTPBulletinController.php](app/Http/Controllers/ESBTPBulletinController.php#L4060-L4096)
+
+#### 7. Stockage des données
+
+**Table:** `esbtp_bulletins`
+
+**Champs concernés:**
+- `absences_justifiees` (float) - Heures d'absences justifiées
+- `absences_non_justifiees` (float) - Heures d'absences non justifiées
+- `total_absences` (float) - Total des heures d'absences
+- `note_assiduite` (float, nullable) - Note d'assiduité calculée
+- `details_absences` (json, nullable) - Détails au format JSON
+
+**Migration:** [database/migrations/2025_04_08_091936_add_absences_fields_to_esbtp_bulletins_table.php](database/migrations/2025_04_08_091936_add_absences_fields_to_esbtp_bulletins_table.php)
+
+#### Fichiers modifiés
+
+- [routes/web.php](routes/web.php#L1630-L1631) - Ajout des routes
+- [app/Http/Controllers/ESBTPBulletinController.php](app/Http/Controllers/ESBTPBulletinController.php#L5763-L5991) - Méthodes editAbsences() et saveAbsences()
+- [resources/views/components/student-results/action-buttons.blade.php](resources/views/components/student-results/action-buttons.blade.php) - Bouton et guide
+
+#### Fichiers créés
+
+- [resources/views/esbtp/bulletins/edit-absences.blade.php](resources/views/esbtp/bulletins/edit-absences.blade.php) - Interface d'édition
+
+#### Tests recommandés
+
+- [ ] Tester l'affichage des absences calculées automatiquement
+- [ ] Tester la modification manuelle des absences
+- [ ] Vérifier le calcul en temps réel du total et de la note
+- [ ] Tester les 3 boutons d'action (enregistrer, retour, générer)
+- [ ] Vérifier que les valeurs sont bien sauvegardées dans le bulletin
+- [ ] Générer un PDF et vérifier que les absences apparaissent correctement
+- [ ] Tester le badge Auto/Manuel selon la source des données
+
+#### Caractéristiques techniques
+
+- **Permissions:** Accessible uniquement aux `superAdmin`
+- **Validation:** Valeurs numériques ≥ 0, step 0.5h
+- **Calcul JS:** Mise à jour en temps réel sans rechargement
+- **Logging:** Tous les changements sont loggés
+- **Transaction-safe:** Utilisation de try-catch pour gestion d'erreurs
+- **Flexibilité:** Édition optionnelle, n'impacte pas le flux de base
+
+---
+
+## Fix: 404 error when generating bulletin from edit-absences page
+
+**Date:** 4 octobre 2025
+**Branche:** presentation
+
+### Problème résolu
+
+Lorsque l'utilisateur cliquait sur "Enregistrer et générer bulletin" depuis la page d'édition des absences, il obtenait une erreur 404 avec l'URL `http://localhost:8000/esbtp/bulletins/generate?etudiant_id=1`.
+
+### Cause racine
+
+La méthode `saveAbsences()` dans [ESBTPBulletinController.php](app/Http/Controllers/ESBTPBulletinController.php:5937) redirigait vers la route `esbtp.bulletins.generate` qui pointe vers une méthode `generateBulletin()` qui n'est qu'un stub avec des commentaires placeholder (`// ... existing code ...`).
+
+### Solution
+
+Changement de la route de redirection de `esbtp.bulletins.generate` vers `esbtp.bulletins.pdf-params` qui est la vraie route de génération de PDF définie à la ligne 1596 de [routes/web.php](routes/web.php:1596).
+
+**Avant:**
+```php
+return redirect()->route('esbtp.bulletins.generate', [
+    'etudiant_id' => $etudiant_id
+]);
+```
+
+**Après:**
+```php
+return redirect()->route('esbtp.bulletins.pdf-params', [
+    'bulletin' => $etudiant_id,
+    'classe_id' => $classe_id,
+    'periode' => $periode,
+    'annee_universitaire_id' => $annee_universitaire_id
+]);
+```
+
+### Fichiers modifiés
+
+- [app/Http/Controllers/ESBTPBulletinController.php:5937](app/Http/Controllers/ESBTPBulletinController.php:5937) - Correction de la route de redirection
+
+### Notes
+
+La route `esbtp.bulletins.pdf-params` est utilisée partout ailleurs dans l'application (notamment dans [action-buttons.blade.php:74](resources/views/components/student-results/action-buttons.blade.php:74)) pour générer les bulletins PDF.
+
+---
+
 ### Fix: Résolution de la fonctionnalité de sélection rapide d'enseignant
 
 **Date:** 21 septembre 2025

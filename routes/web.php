@@ -1627,6 +1627,8 @@ Route::get('/esbtp-special/bulletins/config-matieres', [ESBTPBulletinController:
 Route::post('/esbtp-special/bulletins/save-config-matieres', [ESBTPBulletinController::class, 'saveConfigMatieresTypeFormation'])->name('esbtp.bulletins.save-config-matieres');
 Route::get('/esbtp-special/bulletins/edit-professeurs', [ESBTPBulletinController::class, 'editProfesseurs'])->name('esbtp.bulletins.edit-professeurs');
 Route::post('/esbtp-special/bulletins/save-professeurs', [ESBTPBulletinController::class, 'saveProfesseurs'])->name('esbtp.bulletins.save-professeurs');
+Route::get('/esbtp-special/bulletins/edit-absences', [ESBTPBulletinController::class, 'editAbsences'])->name('esbtp.bulletins.edit-absences');
+Route::post('/esbtp-special/bulletins/save-absences', [ESBTPBulletinController::class, 'saveAbsences'])->name('esbtp.bulletins.save-absences');
 Route::get('/esbtp-special/bulletins/generate', [ESBTPBulletinController::class, 'generate'])->name('esbtp.bulletins.generate-special');
 
     // Routes pour les bulletins configurables

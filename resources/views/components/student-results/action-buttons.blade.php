@@ -49,13 +49,17 @@
                             Configuration
                         </h6>
                         <div class="button-group">
-                            <a href="{{ route('esbtp.bulletins.config-matieres', ['bulletin' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $periode, 'annee_universitaire_id' => $annee_id]) }}" 
+                            <a href="{{ route('esbtp.bulletins.config-matieres', ['bulletin' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $periode, 'annee_universitaire_id' => $annee_id]) }}"
                                class="btn-acasi info">
                                 <i class="fas fa-book"></i>Configurer matières
                             </a>
-                            <a href="{{ route('esbtp.bulletins.edit-professeurs', ['bulletin' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $periode, 'annee_universitaire_id' => $annee_id]) }}" 
+                            <a href="{{ route('esbtp.bulletins.edit-professeurs', ['bulletin' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $periode, 'annee_universitaire_id' => $annee_id]) }}"
                                class="btn-acasi primary">
                                 <i class="fas fa-chalkboard-teacher"></i>Éditer professeurs
+                            </a>
+                            <a href="{{ route('esbtp.bulletins.edit-absences', ['bulletin' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $periode, 'annee_universitaire_id' => $annee_id]) }}"
+                               class="btn-acasi warning">
+                                <i class="fas fa-user-clock"></i>Éditer absences
                             </a>
                         </div>
                     </div>
@@ -117,6 +121,13 @@
                         </div>
                         <div class="step">
                             <div class="step-number">4</div>
+                            <div class="step-content">
+                                <strong>Éditer les absences (optionnel)</strong>
+                                <span>Ajustez si nécessaire</span>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">5</div>
                             <div class="step-content">
                                 <strong>Générer le PDF</strong>
                                 <span>Créez le bulletin final</span>
