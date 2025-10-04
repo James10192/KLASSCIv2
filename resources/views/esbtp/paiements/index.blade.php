@@ -452,25 +452,45 @@
 
                 <!-- Barre d'actions groupées -->
                 @if(auth()->user()->hasRole('superAdmin'))
-                <div class="bulk-actions-bar" id="bulk-actions-bar" style="display: none;">
-                    <div class="bulk-actions-content">
-                        <div class="bulk-actions-info">
-                            <i class="fas fa-check-square me-2"></i>
-                            <span id="selected-count">0</span> paiement(s) sélectionné(s)
+                <div id="bulk-actions-bar" style="display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+                     background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color: white; padding: 15px 30px;
+                     border-radius: 50px; box-shadow: 0 10px 40px rgba(4, 83, 203, 0.4); z-index: 1050;
+                     animation: slideUp 0.3s ease-out;">
+                    <div style="display: flex; align-items: center; gap: 20px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-check-circle" style="font-size: 1.2rem;"></i>
+                            <span id="selected-count" style="font-weight: 600; font-size: 1.1rem;">0</span>
+                            <span style="opacity: 0.9;">paiement(s) sélectionné(s)</span>
                         </div>
-                        <div class="bulk-actions-buttons">
-                            <button type="button" class="btn btn-success" onclick="bulkValider()">
-                                <i class="fas fa-check me-1"></i>Valider la sélection
+                        <div style="display: flex; gap: 10px;">
+                            <button type="button" class="btn btn-light btn-sm" onclick="bulkValider()"
+                                    style="padding: 8px 20px; border-radius: 25px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                                <i class="fas fa-check-double me-1"></i>Valider la sélection
                             </button>
-                            <button type="button" class="btn btn-danger" onclick="openBulkRejetModal()">
+                            <button type="button" class="btn btn-outline-light btn-sm" onclick="openBulkRejetModal()"
+                                    style="padding: 8px 20px; border-radius: 25px; font-weight: 600;">
                                 <i class="fas fa-times me-1"></i>Rejeter la sélection
                             </button>
-                            <button type="button" class="btn btn-secondary" onclick="clearSelection()">
+                            <button type="button" class="btn btn-outline-light btn-sm" onclick="clearSelection()"
+                                    style="padding: 8px 20px; border-radius: 25px; font-weight: 600;">
                                 <i class="fas fa-times-circle me-1"></i>Annuler
                             </button>
                         </div>
                     </div>
                 </div>
+
+                <style>
+                @keyframes slideUp {
+                    from {
+                        bottom: -100px;
+                        opacity: 0;
+                    }
+                    to {
+                        bottom: 20px;
+                        opacity: 1;
+                    }
+                }
+                </style>
                 @endif
                 
                 <!-- Pagination -->
@@ -543,87 +563,6 @@
     text-align: center;
 }
 
-/* Barre d'actions groupées */
-.bulk-actions-bar {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%);
-    color: white;
-    padding: 15px 30px;
-    border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(4, 83, 203, 0.3);
-    z-index: 1000;
-    min-width: 600px;
-    animation: slideUp 0.3s ease-out;
-}
-
-@keyframes slideUp {
-    from {
-        transform: translateX(-50%) translateY(100px);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(-50%) translateY(0);
-        opacity: 1;
-    }
-}
-
-.bulk-actions-content {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 20px;
-}
-
-.bulk-actions-info {
-    display: flex;
-    align-items: center;
-    font-weight: 600;
-    font-size: 1rem;
-}
-
-.bulk-actions-buttons {
-    display: flex;
-    gap: 10px;
-}
-
-.bulk-actions-buttons .btn {
-    padding: 8px 16px;
-    font-weight: 600;
-    border: none;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    transition: all 0.2s;
-}
-
-.bulk-actions-buttons .btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-@media (max-width: 768px) {
-    .bulk-actions-bar {
-        min-width: 90%;
-        left: 5%;
-        transform: translateX(0);
-        padding: 12px 15px;
-    }
-
-    .bulk-actions-content {
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    .bulk-actions-buttons {
-        width: 100%;
-        flex-direction: column;
-    }
-
-    .bulk-actions-buttons .btn {
-        width: 100%;
-    }
-}
 </style>
 
 @endpush

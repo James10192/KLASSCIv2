@@ -208,39 +208,6 @@
     .current-logo {
         text-align: center;
     }
-
-    /* Tabs styles */
-    .nav-tabs-modern {
-        border-bottom: 2px solid var(--border);
-        margin-bottom: var(--space-xl);
-    }
-
-    .nav-tabs-modern .nav-link {
-        border: none;
-        color: var(--text-secondary);
-        padding: var(--space-md) var(--space-lg);
-        font-weight: 600;
-        transition: all 0.3s ease;
-        border-bottom: 3px solid transparent;
-        margin-bottom: -2px;
-    }
-
-    .nav-tabs-modern .nav-link:hover {
-        color: var(--primary);
-        background-color: transparent;
-    }
-
-    .nav-tabs-modern .nav-link.active {
-        color: var(--primary);
-        background-color: transparent;
-        border-bottom-color: var(--primary);
-    }
-
-    .nav-tabs-modern .nav-link i {
-        margin-right: var(--space-xs);
-    }
-
-    .section-icon.notifications { background: linear-gradient(135deg, #3498db, #2980b9); }
 </style>
 @endpush
 
@@ -282,32 +249,9 @@
             </div>
         @endif
 
-        <!-- Tabs Navigation -->
-        <ul class="nav nav-tabs nav-tabs-modern" id="settingsTabs" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button" role="tab">
-                    <i class="fas fa-university"></i> Général
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="pdf-tab" data-bs-toggle="tab" data-bs-target="#pdf" type="button" role="tab">
-                    <i class="fas fa-file-pdf"></i> Configuration PDF
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="notifications-tab" data-bs-toggle="tab" data-bs-target="#notifications" type="button" role="tab">
-                    <i class="fas fa-bell"></i> Notifications et Rappels
-                </button>
-            </li>
-        </ul>
-
         <form action="{{ route('esbtp.settings.update') }}" method="POST" enctype="multipart/form-data">
             @csrf
             @method('PUT')
-
-            <div class="tab-content" id="settingsTabContent">
-                <!-- Tab 1: Général -->
-                <div class="tab-pane fade show active" id="general" role="tabpanel">
 
             <!-- Section 1: Informations de l'École -->
             <div class="settings-section">
@@ -408,12 +352,6 @@
                     </div>
                 </div>
             </div>
-
-                </div>
-                <!-- End Tab 1: Général -->
-
-                <!-- Tab 2: Configuration PDF -->
-                <div class="tab-pane fade" id="pdf" role="tabpanel">
 
             <!-- Section 2: Configuration PDF de Base -->
             <div class="settings-section">
@@ -855,197 +793,6 @@
                 </div>
             </div>
 
-                </div>
-                <!-- End Tab 2: Configuration PDF -->
-
-                <!-- Tab 3: Notifications et Rappels -->
-                <div class="tab-pane fade" id="notifications" role="tabpanel">
-
-                    <!-- Section: Rappels Inscriptions -->
-                    <div class="settings-section">
-                        <div class="section-header">
-                            <div class="section-icon notifications">
-                                <i class="fas fa-user-graduate"></i>
-                            </div>
-                            <div>
-                                <h3 class="section-title">Rappels Inscriptions en Attente</h3>
-                                <p class="section-description">Configuration des rappels automatiques pour les inscriptions non validées</p>
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label-modern">
-                                <i class="fas fa-toggle-on text-primary"></i>
-                                Activer les rappels automatiques
-                            </label>
-                            <label class="form-switch-modern">
-                                <input type="checkbox" name="reminder_inscription_enabled" value="1"
-                                       {{ \App\Models\ESBTPSystemSetting::getValue('reminder_inscription_enabled', '1') == '1' ? 'checked' : '' }}>
-                                <span class="slider"></span>
-                            </label>
-                            <small class="text-muted d-block mt-2">
-                                <i class="fas fa-info-circle"></i>
-                                Active ou désactive l'envoi automatique de rappels pour les inscriptions en attente
-                            </small>
-                        </div>
-
-                        <div class="settings-grid-3">
-                            <div class="form-group">
-                                <label class="form-label-modern">
-                                    <i class="fas fa-hourglass-start text-primary"></i>
-                                    Délai avant 1er rappel (jours)
-                                </label>
-                                <input type="number" class="form-control form-control-modern threshold-input"
-                                       name="reminder_inscription_first_delay"
-                                       value="{{ \App\Models\ESBTPSystemSetting::getValue('reminder_inscription_first_delay', '3') }}"
-                                       min="1" max="30" step="1">
-                                <small class="text-muted">
-                                    Nombre de jours avant le premier rappel
-                                </small>
-                            </div>
-
-                            <div class="form-group">
-                                <label class="form-label-modern">
-                                    <i class="fas fa-redo text-primary"></i>
-                                    Fréquence entre rappels (jours)
-                                </label>
-                                <input type="number" class="form-control form-control-modern threshold-input"
-                                       name="reminder_inscription_frequency"
-                                       value="{{ \App\Models\ESBTPSystemSetting::getValue('reminder_inscription_frequency', '2') }}"
-                                       min="1" max="14" step="1">
-                                <small class="text-muted">
-                                    Nombre de jours entre chaque rappel
-                                </small>
-                            </div>
-
-                            <div class="form-group">
-                                <label class="form-label-modern">
-                                    <i class="fas fa-list-ol text-primary"></i>
-                                    Nombre maximum de rappels
-                                </label>
-                                <input type="number" class="form-control form-control-modern threshold-input"
-                                       name="reminder_inscription_max_count"
-                                       value="{{ \App\Models\ESBTPSystemSetting::getValue('reminder_inscription_max_count', '5') }}"
-                                       min="0" max="20" step="1">
-                                <small class="text-muted">
-                                    0 = illimité
-                                </small>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Section: Rappels Paiements -->
-                    <div class="settings-section">
-                        <div class="section-header">
-                            <div class="section-icon notifications">
-                                <i class="fas fa-money-bill-wave"></i>
-                            </div>
-                            <div>
-                                <h3 class="section-title">Rappels Paiements en Attente</h3>
-                                <p class="section-description">Configuration des rappels automatiques pour les paiements non validés</p>
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label-modern">
-                                <i class="fas fa-toggle-on text-primary"></i>
-                                Activer les rappels automatiques
-                            </label>
-                            <label class="form-switch-modern">
-                                <input type="checkbox" name="reminder_paiement_enabled" value="1"
-                                       {{ \App\Models\ESBTPSystemSetting::getValue('reminder_paiement_enabled', '1') == '1' ? 'checked' : '' }}>
-                                <span class="slider"></span>
-                            </label>
-                            <small class="text-muted d-block mt-2">
-                                <i class="fas fa-info-circle"></i>
-                                Active ou désactive l'envoi automatique de rappels pour les paiements en attente
-                            </small>
-                        </div>
-
-                        <div class="settings-grid-3">
-                            <div class="form-group">
-                                <label class="form-label-modern">
-                                    <i class="fas fa-hourglass-start text-primary"></i>
-                                    Délai avant 1er rappel (jours)
-                                </label>
-                                <input type="number" class="form-control form-control-modern threshold-input"
-                                       name="reminder_paiement_first_delay"
-                                       value="{{ \App\Models\ESBTPSystemSetting::getValue('reminder_paiement_first_delay', '2') }}"
-                                       min="1" max="30" step="1">
-                                <small class="text-muted">
-                                    Nombre de jours avant le premier rappel
-                                </small>
-                            </div>
-
-                            <div class="form-group">
-                                <label class="form-label-modern">
-                                    <i class="fas fa-redo text-primary"></i>
-                                    Fréquence entre rappels (jours)
-                                </label>
-                                <input type="number" class="form-control form-control-modern threshold-input"
-                                       name="reminder_paiement_frequency"
-                                       value="{{ \App\Models\ESBTPSystemSetting::getValue('reminder_paiement_frequency', '1') }}"
-                                       min="1" max="14" step="1">
-                                <small class="text-muted">
-                                    Nombre de jours entre chaque rappel
-                                </small>
-                            </div>
-
-                            <div class="form-group">
-                                <label class="form-label-modern">
-                                    <i class="fas fa-list-ol text-primary"></i>
-                                    Nombre maximum de rappels
-                                </label>
-                                <input type="number" class="form-control form-control-modern threshold-input"
-                                       name="reminder_paiement_max_count"
-                                       value="{{ \App\Models\ESBTPSystemSetting::getValue('reminder_paiement_max_count', '7') }}"
-                                       min="0" max="20" step="1">
-                                <small class="text-muted">
-                                    0 = illimité
-                                </small>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Section: Tester les rappels -->
-                    <div class="settings-section">
-                        <div class="section-header">
-                            <div class="section-icon notifications">
-                                <i class="fas fa-vial"></i>
-                            </div>
-                            <div>
-                                <h3 class="section-title">Test et Diagnostics</h3>
-                                <p class="section-description">Testez le système de rappels manuellement</p>
-                            </div>
-                        </div>
-
-                        <div class="alert alert-info">
-                            <i class="fas fa-info-circle me-2"></i>
-                            <strong>Planification automatique:</strong> Les rappels sont envoyés automatiquement chaque jour à 8h00 (heure d'Abidjan).
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label-modern">
-                                <i class="fas fa-terminal text-primary"></i>
-                                Exécuter les rappels manuellement
-                            </label>
-                            <p class="text-muted mb-3">
-                                Cliquez sur le bouton ci-dessous pour tester l'envoi des rappels immédiatement (mode test, aucune notification ne sera envoyée).
-                            </p>
-                            <button type="button" class="btn btn-outline-primary" onclick="testReminders()">
-                                <i class="fas fa-play-circle me-2"></i>
-                                Tester les rappels (mode simulation)
-                            </button>
-                            <div id="test-results" class="mt-3"></div>
-                        </div>
-                    </div>
-
-                </div>
-                <!-- End Tab 3: Notifications et Rappels -->
-
-            </div>
-            <!-- End Tab Content -->
-
             <!-- Bouton de sauvegarde -->
             <div class="text-center mt-xl">
                 <button type="submit" class="btn btn-save">
@@ -1158,70 +905,6 @@ function previewLogo(input) {
         };
         reader.readAsDataURL(file);
     }
-}
-
-// Fonction pour tester les rappels
-function testReminders() {
-    const button = event.target;
-    const resultsDiv = document.getElementById('test-results');
-
-    button.disabled = true;
-    button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Test en cours...';
-
-    resultsDiv.innerHTML = `
-        <div class="alert alert-info">
-            <i class="fas fa-info-circle me-2"></i>
-            Exécution de la commande de test en cours...
-        </div>
-    `;
-
-    // Appel AJAX pour exécuter la commande
-    fetch('{{ route("esbtp.settings.test-reminders") }}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        button.disabled = false;
-        button.innerHTML = '<i class="fas fa-play-circle me-2"></i> Tester les rappels (mode simulation)';
-
-        if (data.success) {
-            resultsDiv.innerHTML = `
-                <div class="alert alert-success">
-                    <h5><i class="fas fa-check-circle me-2"></i> Test terminé avec succès</h5>
-                    <ul class="mb-0">
-                        <li><strong>Inscriptions en attente :</strong> ${data.data.inscriptions_found} trouvées, ${data.data.inscriptions_sent} rappels auraient été envoyés</li>
-                        <li><strong>Paiements en attente :</strong> ${data.data.paiements_found} trouvés, ${data.data.paiements_sent} rappels auraient été envoyés</li>
-                    </ul>
-                    <hr>
-                    <small class="text-muted">
-                        <i class="fas fa-info-circle"></i>
-                        Mode simulation : Aucune notification n'a été réellement envoyée.
-                    </small>
-                </div>
-            `;
-        } else {
-            resultsDiv.innerHTML = `
-                <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    ${data.message || 'Erreur lors de l\'exécution du test'}
-                </div>
-            `;
-        }
-    })
-    .catch(error => {
-        button.disabled = false;
-        button.innerHTML = '<i class="fas fa-play-circle me-2"></i> Tester les rappels (mode simulation)';
-        resultsDiv.innerHTML = `
-            <div class="alert alert-danger">
-                <i class="fas fa-exclamation-triangle me-2"></i>
-                Erreur: ${error.message}
-            </div>
-        `;
-    });
 }
 </script>
 @endpush

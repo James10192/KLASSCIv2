@@ -80,6 +80,35 @@ class ESBTPSettingsController extends Controller
                 $updatedSettings[] = $setting->key;
             }
 
+            // Traiter les paramètres de rappels (ESBTPSystemSetting)
+            $reminderSettings = [
+                'reminder_inscription_enabled', 'reminder_inscription_first_delay',
+                'reminder_inscription_frequency', 'reminder_inscription_max_count',
+                'reminder_paiement_enabled', 'reminder_paiement_first_delay',
+                'reminder_paiement_frequency', 'reminder_paiement_max_count'
+            ];
+
+            foreach ($reminderSettings as $key) {
+                if ($request->has($key)) {
+                    $value = $request->input($key);
+
+                    // Pour les checkboxes
+                    if (in_array($key, ['reminder_inscription_enabled', 'reminder_paiement_enabled'])) {
+                        $value = $request->has($key) ? '1' : '0';
+                        $type = 'boolean';
+                    } else {
+                        $type = 'integer';
+                    }
+
+                    \App\Models\ESBTPSystemSetting::setValue($key, $value, $type);
+                    $updatedSettings[] = $key;
+                } elseif (in_array($key, ['reminder_inscription_enabled', 'reminder_paiement_enabled'])) {
+                    // Checkbox non cochée
+                    \App\Models\ESBTPSystemSetting::setValue($key, '0', 'boolean');
+                    $updatedSettings[] = $key;
+                }
+            }
+
             // Ensuite traiter les autres champs (texte, nombre, etc.)
             foreach ($request->all() as $key => $value) {
                 if (strpos($key, 'setting_') === 0) {
@@ -583,5 +612,64 @@ class ESBTPSettingsController extends Controller
             'missing_settings' => $missingSettings,
             'missing_count' => count($missingSettings)
         ]);
+    }
+
+    /**
+     * Tester l'envoi des rappels automatiques (mode simulation)
+     */
+    public function testReminders()
+    {
+        try {
+            // Exécuter la commande en mode test
+            \Illuminate\Support\Facades\Artisan::call('reminders:send-inscription-paiement', ['--test' => true]);
+
+            // Récupérer la sortie de la commande
+            $output = \Illuminate\Support\Facades\Artisan::output();
+
+            // Parser la sortie pour extraire les statistiques
+            $inscriptionsFound = \App\Models\ESBTPInscription::where('status', 'en_attente')->count();
+            $paiementsFound = \App\Models\ESBTPPaiement::where('status', 'en_attente')->count();
+
+            // Simuler le comptage de rappels qui auraient été envoyés
+            $inscriptionsSent = 0;
+            $paiementsSent = 0;
+
+            $firstDelayInscription = (int) \App\Models\ESBTPSystemSetting::getValue('reminder_inscription_first_delay', 3);
+            $firstDelayPaiement = (int) \App\Models\ESBTPSystemSetting::getValue('reminder_paiement_first_delay', 2);
+
+            foreach (\App\Models\ESBTPInscription::where('status', 'en_attente')->get() as $inscription) {
+                $daysPending = now()->diffInDays($inscription->created_at);
+                if ($daysPending >= $firstDelayInscription) {
+                    $inscriptionsSent++;
+                }
+            }
+
+            foreach (\App\Models\ESBTPPaiement::where('status', 'en_attente')->get() as $paiement) {
+                $daysPending = now()->diffInDays($paiement->created_at);
+                if ($daysPending >= $firstDelayPaiement) {
+                    $paiementsSent++;
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Test exécuté avec succès',
+                'data' => [
+                    'inscriptions_found' => $inscriptionsFound,
+                    'inscriptions_sent' => $inscriptionsSent,
+                    'paiements_found' => $paiementsFound,
+                    'paiements_sent' => $paiementsSent,
+                    'output' => $output
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur test rappels: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors du test: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

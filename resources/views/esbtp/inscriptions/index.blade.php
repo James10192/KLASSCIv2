@@ -7,6 +7,11 @@
 @endsection
 
 @section('content')
+<!-- Debug: Afficher les données de session -->
+@if(session('inscriptions_problemes'))
+    <script>console.log('Inscriptions avec problèmes:', @json(session('inscriptions_problemes')));</script>
+@endif
+
 <div class="dashboard-acasi">
     <div class="main-content">
         <!-- Header Section -->
@@ -152,6 +157,11 @@
                     <table class="table table-hover align-middle mb-0">
                         <thead class="bg-light">
                             <tr>
+                                @if(auth()->user()->hasRole('superAdmin'))
+                                <th style="width: 40px;">
+                                    <input type="checkbox" id="select-all-inscriptions" class="form-check-input">
+                                </th>
+                                @endif
                                 <th>N° Inscription</th>
                                 <th>Matricule</th>
                                 <th>Étudiant</th>
@@ -165,8 +175,35 @@
                         </thead>
                     <tbody>
                         @foreach($inscriptions as $inscription)
-                        <tr>
-                            <td>{{ $inscription->numero_inscription }}</td>
+                        @php
+                            $hasProbleme = session('inscriptions_problemes') && isset(session('inscriptions_problemes')[$inscription->id]);
+                            $problemeInfo = $hasProbleme ? session('inscriptions_problemes')[$inscription->id] : null;
+                            $problemeClass = $hasProbleme ? ($problemeInfo['type'] === 'error' ? 'table-danger' : 'table-warning') : '';
+                        @endphp
+                        <tr class="{{ $problemeClass }}">
+                            @if(auth()->user()->hasRole('superAdmin'))
+                            <td>
+                                @if($inscription->status == 'pending' || $inscription->status == 'en_attente')
+                                <input type="checkbox" class="form-check-input inscription-checkbox"
+                                       value="{{ $inscription->id }}"
+                                       data-inscription-id="{{ $inscription->id }}">
+                                @endif
+                            </td>
+                            @endif
+                            <td style="max-width: 180px;">
+                                @if($hasProbleme)
+                                    <span class="badge {{ $problemeInfo['type'] === 'error' ? 'bg-danger' : 'bg-warning text-dark' }} d-inline-flex align-items-start"
+                                          style="cursor: help; font-size: 0.75rem; white-space: normal; word-wrap: break-word; text-align: left; line-height: 1.3;"
+                                          data-bs-toggle="tooltip"
+                                          data-bs-placement="right"
+                                          title="{{ $problemeInfo['message'] }}">
+                                        <i class="fas {{ $problemeInfo['type'] === 'error' ? 'fa-exclamation-circle' : 'fa-exclamation-triangle' }} me-1 mt-1" style="flex-shrink: 0;"></i>
+                                        <span style="word-break: break-word;">{{ $problemeInfo['message'] }}</span>
+                                    </span>
+                                @else
+                                    {{ $inscription->numero_inscription }}
+                                @endif
+                            </td>
                             <td>{{ $inscription->etudiant->matricule ?? 'N/A' }}</td>
                             <td>{{ $inscription->etudiant->nom ?? '' }} {{ $inscription->etudiant->prenoms ?? '' }}</td>
                             <td>{{ $inscription->filiere->name ?? ($inscription->filiere->nom ?? 'N/A') }}</td>
@@ -302,6 +339,45 @@
         </div>
     </div>
 </div>
+
+<!-- Barre d'actions groupées pour validation (visible uniquement pour superAdmin) -->
+@if(auth()->user()->hasRole('superAdmin'))
+<div id="bulk-actions-bar" style="display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+     background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color: white; padding: 15px 30px;
+     border-radius: 50px; box-shadow: 0 10px 40px rgba(4, 83, 203, 0.4); z-index: 1050;
+     animation: slideUp 0.3s ease-out;">
+    <div style="display: flex; align-items: center; gap: 20px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-check-circle" style="font-size: 1.2rem;"></i>
+            <span id="selected-count" style="font-weight: 600; font-size: 1.1rem;">0</span>
+            <span style="opacity: 0.9;">inscription(s) sélectionnée(s)</span>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button type="button" class="btn btn-light btn-sm" onclick="bulkValiderInscriptions()"
+                    style="padding: 8px 20px; border-radius: 25px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                <i class="fas fa-check-double me-1"></i>Valider la sélection
+            </button>
+            <button type="button" class="btn btn-outline-light btn-sm" onclick="clearInscriptionSelection()"
+                    style="padding: 8px 20px; border-radius: 25px; font-weight: 600;">
+                <i class="fas fa-times me-1"></i>Annuler
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+@keyframes slideUp {
+    from {
+        bottom: -100px;
+        opacity: 0;
+    }
+    to {
+        bottom: 20px;
+        opacity: 1;
+    }
+}
+</style>
+@endif
 
 <!-- Modal pour les instructions de changement d'année -->
 <div class="modal fade" id="yearChangeModal" tabindex="-1" aria-labelledby="yearChangeModalLabel" aria-hidden="true">
@@ -510,6 +586,118 @@ $(document).ready(function() {
         placeholder: 'Sélectionnez une option',
         allowClear: true
     });
+
+    // Initialiser les tooltips Bootstrap pour les messages d'erreur
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
 });
+
+// ============================================================================
+// GESTION DES ACTIONS GROUPÉES POUR LES INSCRIPTIONS
+// ============================================================================
+
+// Fonction pour mettre à jour le compteur et afficher/masquer la barre d'actions
+function updateInscriptionSelectionCount() {
+    const checkboxes = document.querySelectorAll('.inscription-checkbox:checked');
+    const count = checkboxes.length;
+    const bulkBar = document.getElementById('bulk-actions-bar');
+    const selectedCountSpan = document.getElementById('selected-count');
+
+    if (selectedCountSpan) {
+        selectedCountSpan.textContent = count;
+    }
+
+    if (bulkBar) {
+        if (count > 0) {
+            bulkBar.style.display = 'block';
+        } else {
+            bulkBar.style.display = 'none';
+        }
+    }
+}
+
+// Sélectionner/désélectionner toutes les inscriptions
+const selectAllCheckbox = document.getElementById('select-all-inscriptions');
+if (selectAllCheckbox) {
+    selectAllCheckbox.addEventListener('change', function() {
+        const checkboxes = document.querySelectorAll('.inscription-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+        });
+        updateInscriptionSelectionCount();
+    });
+}
+
+// Écouter les changements sur chaque checkbox individuelle
+document.querySelectorAll('.inscription-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+        updateInscriptionSelectionCount();
+
+        // Mettre à jour le checkbox "Tout sélectionner"
+        const allCheckboxes = document.querySelectorAll('.inscription-checkbox');
+        const checkedCheckboxes = document.querySelectorAll('.inscription-checkbox:checked');
+        const selectAll = document.getElementById('select-all-inscriptions');
+
+        if (selectAll) {
+            selectAll.checked = allCheckboxes.length === checkedCheckboxes.length && allCheckboxes.length > 0;
+        }
+    });
+});
+
+// Fonction pour effacer la sélection
+function clearInscriptionSelection() {
+    document.querySelectorAll('.inscription-checkbox').forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    const selectAll = document.getElementById('select-all-inscriptions');
+    if (selectAll) {
+        selectAll.checked = false;
+    }
+    updateInscriptionSelectionCount();
+}
+
+// Fonction pour valider les inscriptions sélectionnées
+function bulkValiderInscriptions() {
+    const checkboxes = document.querySelectorAll('.inscription-checkbox:checked');
+    const inscriptionIds = Array.from(checkboxes).map(cb => cb.value);
+
+    if (inscriptionIds.length === 0) {
+        alert('Veuillez sélectionner au moins une inscription à valider.');
+        return;
+    }
+
+    const confirmMessage = `Êtes-vous sûr de vouloir valider ${inscriptionIds.length} inscription(s) ?\n\nLe système va automatiquement :\n• Valider les inscriptions avec paiements validés\n• Auto-valider les paiements en attente si nécessaire\n• Ignorer les inscriptions sans paiements\n• Envoyer les notifications aux étudiants concernés`;
+
+    if (!confirm(confirmMessage)) {
+        return;
+    }
+
+    // Créer et soumettre le formulaire
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{{ route("esbtp.inscriptions.bulk-valider") }}';
+
+    // Ajouter le token CSRF
+    const csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = '_token';
+    csrfInput.value = '{{ csrf_token() }}';
+    form.appendChild(csrfInput);
+
+    // Ajouter les IDs sélectionnés
+    inscriptionIds.forEach(function(id) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'inscription_ids[]';
+        input.value = id;
+        form.appendChild(input);
+    });
+
+    // Ajouter le formulaire au body et le soumettre
+    document.body.appendChild(form);
+    form.submit();
+}
 </script>
 @endpush 

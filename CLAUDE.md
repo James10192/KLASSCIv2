@@ -264,4 +264,145 @@ mkdir -p storage/app/public/profile-photos
 
 ---
 
-*Dernière mise à jour: 3 octobre 2025*
+## Feature: Système de notifications et rappels automatiques pour inscriptions et paiements
+
+**Date:** 4 octobre 2025
+**Branche:** presentation
+
+### Fonctionnalités ajoutées
+
+Implémentation complète d'un système de notifications en temps réel et de rappels automatiques pour les inscriptions et paiements en attente.
+
+#### 1. Notifications en temps réel
+
+**Notifications d'inscription :**
+- Envoyées à tous les `superAdmin`, `coordinateur` et `secretaire` (sauf celui qui a créé l'inscription)
+- Contiennent : nom étudiant, classe, statut inscription, étape workflow, état du paiement
+- Lien direct vers [inscriptions.show](app/Http/Controllers/ESBTPInscriptionController.php:485)
+- Icônes FontAwesome pour meilleure lisibilité
+
+**Notifications de paiement :**
+- **Création** : Notifie les `superAdmin` quand un paiement en attente est créé
+- **Validation** : Notifie l'étudiant concerné avec les détails (référence, numéro de reçu)
+- **Rejet** : Notifie l'étudiant avec le motif du rejet
+
+#### 2. Système de rappels automatiques
+
+**Table de suivi `notification_reminders` :**
+- Stocke l'état des rappels pour chaque inscription/paiement
+- Champs : `remindable_type`, `remindable_id`, `reminder_count`, `last_reminder_sent_at`, `next_reminder_at`, `is_active`
+- Désactivation automatique après validation/rejet
+
+**Paramètres configurables (via interface) :**
+- Délai avant premier rappel (jours)
+- Fréquence entre rappels (jours)
+- Nombre maximum de rappels (0 = illimité)
+- Activation/désactivation par type (inscriptions/paiements)
+
+**Valeurs par défaut :**
+- Inscriptions : 1er rappel après 3j, puis tous les 2j, max 5 rappels
+- Paiements : 1er rappel après 2j, puis tous les 1j, max 7 rappels
+
+#### 3. Interface de configuration
+
+**Nouvelle page settings avec onglets :**
+- Onglet "Général" : Informations établissement (inchangé)
+- Onglet "Configuration PDF" : Paramètres bulletins (inchangé)
+- **Nouveau** - Onglet "Notifications et Rappels" :
+  - Section rappels inscriptions
+  - Section rappels paiements
+  - Section test et diagnostics (bouton de test en mode simulation)
+
+**Route de test :** `POST /esbtp/settings/test-reminders`
+
+### Fichiers créés
+
+#### Modèles et migrations
+- [database/migrations/2025_10_04_092055_create_notification_reminders_table.php](database/migrations/2025_10_04_092055_create_notification_reminders_table.php)
+- [app/Models/NotificationReminder.php](app/Models/NotificationReminder.php)
+
+#### Commande et scheduler
+- [app/Console/Commands/SendInscriptionPaiementReminders.php](app/Console/Commands/SendInscriptionPaiementReminders.php)
+- [app/Console/Kernel.php](app/Console/Kernel.php:102) - Ajout de la tâche planifiée quotidienne à 8h00
+
+#### Seeder
+- [database/seeders/ReminderSettingsSeeder.php](database/seeders/ReminderSettingsSeeder.php)
+
+### Fichiers modifiés
+
+#### Services
+- [app/Services/NotificationService.php](app/Services/NotificationService.php:1847) - 6 nouvelles méthodes :
+  - `notifyInscriptionCreated()` - Notification création inscription
+  - `notifyPaiementCreated()` - Notification création paiement
+  - `notifyPaiementValide()` - Notification validation paiement
+  - `notifyPaiementRejete()` - Notification rejet paiement
+  - `sendInscriptionReminder()` - Envoi rappel inscription
+  - `sendPaiementReminder()` - Envoi rappel paiement
+
+#### Controllers
+- [app/Http/Controllers/ESBTPInscriptionController.php](app/Http/Controllers/ESBTPInscriptionController.php:458) - Appel `notifyInscriptionCreated()` après création
+- [app/Http/Controllers/ESBTPPaiementController.php](app/Http/Controllers/ESBTPPaiementController.php:464) - 3 intégrations :
+  - Ligne 464 : Notification création paiement
+  - Ligne 1618 : Notification validation + désactivation rappels
+  - Ligne 1680 : Notification rejet + désactivation rappels
+- [app/Http/Controllers/ESBTP/ESBTPSettingsController.php](app/Http/Controllers/ESBTP/ESBTPSettingsController.php:83) - Gestion paramètres rappels + méthode `testReminders()`
+
+#### Vues
+- [resources/views/esbtp/settings/index.blade.php](resources/views/esbtp/settings/index.blade.php) - Refonte complète avec système d'onglets :
+  - Lignes 285-302 : Navigation par onglets
+  - Lignes 864-1042 : Nouvel onglet "Notifications et Rappels"
+  - Lignes 1164-1225 : Fonction JavaScript `testReminders()`
+
+#### Routes
+- [routes/web.php](routes/web.php:1518) - Route `esbtp.settings.test-reminders`
+
+### Commandes disponibles
+
+```bash
+# Tester les rappels (mode simulation, n'envoie rien)
+php artisan reminders:send-inscription-paiement --test
+
+# Envoyer les rappels réellement
+php artisan reminders:send-inscription-paiement
+
+# Seed des paramètres par défaut
+php artisan db:seed --class=ReminderSettingsSeeder
+```
+
+### Planification automatique
+
+La commande `reminders:send-inscription-paiement` s'exécute automatiquement **chaque jour à 8h00** (heure d'Abidjan) via le scheduler Laravel.
+
+Pour activer le scheduler en production :
+```bash
+# Ajouter au crontab
+* * * * * cd /path-to-project && php artisan schedule:run >> /dev/null 2>&1
+```
+
+### Caractéristiques techniques
+
+- **Anti-auto-notification** : L'utilisateur qui crée une inscription/paiement ne reçoit pas la notification
+- **Icônes FontAwesome** : Toutes les notifications utilisent des icônes (pas d'emojis)
+- **Gestion intelligente des rappels** : Arrêt automatique après limite ou changement de statut
+- **Mode test intégré** : Permet de tester sans envoyer de vraies notifications
+- **Logging complet** : Toutes les opérations sont loguées pour audit
+- **Transaction-safe** : Utilisation de DB::beginTransaction() pour intégrité des données
+
+### Tests effectués
+
+- ✅ Migration `notification_reminders` exécutée avec succès
+- ✅ Seeder des paramètres par défaut exécuté avec succès
+- ✅ Commande test avec 226 inscriptions et 110 paiements en attente détectés
+- ✅ Interface settings avec onglets fonctionnelle
+- ✅ Système anti-auto-notification vérifié
+
+### Notes importantes
+
+- Les notifications utilisent la table `custom_notifications` (pas la table Laravel native `notifications`)
+- Les settings de rappels utilisent `ESBTPSystemSetting` (pas la table `settings`)
+- Le scheduler doit être activé via crontab pour le fonctionnement automatique en production
+- En développement, lancer manuellement : `php artisan schedule:work`
+
+---
+
+*Dernière mise à jour: 4 octobre 2025*

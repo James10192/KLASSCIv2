@@ -94,6 +94,18 @@ class Kernel extends ConsoleKernel
             ->description('Planification des relances urgentes')
             ->onOneServer();
 
+        // =====================================================================
+        // RAPPELS AUTOMATIQUES INSCRIPTIONS/PAIEMENTS
+        // =====================================================================
+
+        // Envoi des rappels pour inscriptions et paiements en attente (08h00 chaque jour)
+        $schedule->command('reminders:send-inscription-paiement')
+            ->dailyAt('08:00')
+            ->timezone('Africa/Abidjan')
+            ->name('rappels-inscriptions-paiements')
+            ->description('Envoi automatique des rappels pour inscriptions et paiements en attente')
+            ->onOneServer();
+
         // Calcul des KPIs temps réel (toutes les heures)
         $schedule->job(new CalculerKPIsJob('horaire'))
             ->hourly()
@@ -175,5 +187,6 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\MarkUnattendedTeacherSessions::class,
         \App\Console\Commands\RunQueueWorker::class,
         \App\Console\Commands\QueueMonitorCommand::class,
+        \App\Console\Commands\SendInscriptionPaiementReminders::class,
     ];
 }

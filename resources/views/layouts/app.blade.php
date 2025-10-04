@@ -1504,6 +1504,10 @@
                                     <div class="menu-icon"><i class="fas fa-list"></i></div>
                                     <div class="menu-text">Liste des Étudiants</div>
                                 </a>
+                                <a href="{{ route('esbtp.inscriptions.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.inscriptions.index') ? 'active' : '' }}">
+                                    <div class="menu-icon"><i class="fas fa-clipboard-list"></i></div>
+                                    <div class="menu-text">Inscriptions</div>
+                                </a>
                                 <a href="{{ route('esbtp.inscriptions.create') }}" class="menu-sublink {{ Request::routeIs('esbtp.inscriptions.create') ? 'active' : '' }}">
                                     <div class="menu-icon"><i class="fas fa-user-plus"></i></div>
                                     <div class="menu-text">Nouvelle Inscription</div>

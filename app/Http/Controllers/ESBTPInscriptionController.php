@@ -455,6 +455,14 @@ class ESBTPInscriptionController extends Controller
 
             DB::commit();
 
+            // Envoyer les notifications aux admins, coordonnateurs et secrétaires
+            try {
+                $notificationService = app(\App\Services\NotificationService::class);
+                $notificationService->notifyInscriptionCreated($inscription, auth()->user());
+            } catch (\Exception $e) {
+                Log::error('Erreur envoi notification inscription: ' . $e->getMessage());
+            }
+
             // Stocker les informations du compte dans la session
             if ($inscription && $inscription->etudiant && $inscription->etudiant->user) {
                 $user = $inscription->etudiant->user;
@@ -2076,5 +2084,318 @@ class ESBTPInscriptionController extends Controller
         }
 
         return false; // Limite pas atteinte, autoriser
+    }
+
+    /**
+     * Validation groupée d'inscriptions avec gestion intelligente des paiements
+     */
+    public function bulkValider(Request $request)
+    {
+        $request->validate([
+            'inscription_ids' => 'required|array',
+            'inscription_ids.*' => 'exists:esbtp_inscriptions,id'
+        ]);
+
+        $inscriptionIds = $request->input('inscription_ids', []);
+
+        $stats = [
+            'validees_direct' => 0,
+            'paiements_valides' => 0,
+            'validees_apres_paiement' => 0,
+            'inscriptions_deja_validees' => 0,
+            'ignorees' => [],
+            'erreurs' => []
+        ];
+
+        try {
+            DB::beginTransaction();
+
+            foreach ($inscriptionIds as $id) {
+                try {
+                    $inscription = ESBTPInscription::with(['paiements', 'etudiant'])->find($id);
+
+                    if (!$inscription) {
+                        $stats['erreurs'][] = [
+                            'id' => $id,
+                            'erreur' => 'Inscription introuvable'
+                        ];
+                        continue;
+                    }
+
+                    // Skip si déjà validée
+                    if ($inscription->status === 'active') {
+                        $stats['inscriptions_deja_validees']++;
+                        continue;
+                    }
+
+                    $etudiantNom = $inscription->etudiant->nom . ' ' . $inscription->etudiant->prenoms;
+
+                    // Cas 1: A déjà un paiement validé ET workflow = en_validation
+                    if ($inscription->paiement_validation_id && $inscription->workflow_step === 'en_validation') {
+                        $result = $this->workflowService->convertProspectToStudent($inscription, 'Validation groupée');
+
+                        if ($result['success']) {
+                            $stats['validees_direct']++;
+
+                            // Envoyer notification à l'étudiant
+                            if ($inscription->etudiant && $inscription->etudiant->user) {
+                                $notificationService = app(\App\Services\NotificationService::class);
+                                $notificationService->createNotification(
+                                    $inscription->etudiant->user,
+                                    "Inscription validée",
+                                    "Votre inscription a été validée avec succès. Vous pouvez maintenant accéder à votre espace étudiant.",
+                                    'success',
+                                    route('esbtp.inscriptions.show', $inscription->id),
+                                    auth()->user()
+                                );
+                            }
+
+                            // Désactiver les rappels
+                            $this->desactiverRappelsInscription($inscription->id);
+                        } else {
+                            $stats['erreurs'][] = [
+                                'id' => $id,
+                                'erreur' => $result['message']
+                            ];
+                        }
+                        continue;
+                    }
+
+                    // Cas 2: A un/des paiement(s) validé(s) mais pas encore en workflow "en_validation"
+                    $paiementsValides = $inscription->paiements->where('status', 'validé');
+                    if ($paiementsValides->count() > 0) {
+                        $premierPaiement = $paiementsValides->first();
+
+                        // Associer le paiement via le workflow
+                        $inscription->update([
+                            'paiement_validation_id' => $premierPaiement->id,
+                            'workflow_step' => 'en_validation'
+                        ]);
+
+                        // Enregistrer dans l'historique workflow
+                        \App\Models\ESBTPInscriptionWorkflowHistory::createEntry(
+                            $inscription->id,
+                            $inscription->workflow_step,
+                            'en_validation',
+                            'paiement_associe',
+                            auth()->id(),
+                            'Paiement associé lors de validation groupée',
+                            ['paiement_id' => $premierPaiement->id]
+                        );
+
+                        // Puis valider définitivement
+                        $result = $this->workflowService->convertProspectToStudent($inscription, 'Validation groupée');
+
+                        if ($result['success']) {
+                            $stats['validees_direct']++;
+
+                            // Notification
+                            if ($inscription->etudiant && $inscription->etudiant->user) {
+                                $notificationService = app(\App\Services\NotificationService::class);
+                                $notificationService->createNotification(
+                                    $inscription->etudiant->user,
+                                    "Inscription validée",
+                                    "Votre inscription a été validée avec succès. Vous pouvez maintenant accéder à votre espace étudiant.",
+                                    'success',
+                                    route('esbtp.inscriptions.show', $inscription->id),
+                                    auth()->user()
+                                );
+                            }
+
+                            // Désactiver les rappels
+                            $this->desactiverRappelsInscription($inscription->id);
+                        }
+                        continue;
+                    }
+
+                    // Cas 3: A des paiements EN ATTENTE → Valider automatiquement le premier
+                    $paiementsEnAttente = $inscription->paiements->where('status', 'en_attente');
+                    if ($paiementsEnAttente->count() > 0) {
+                        $premierPaiement = $paiementsEnAttente->first();
+
+                        // Valider le paiement
+                        $premierPaiement->update([
+                            'status' => 'validé',
+                            'date_validation' => now(),
+                            'validateur_id' => auth()->id()
+                        ]);
+                        $stats['paiements_valides']++;
+
+                        // Notifier l'étudiant de la validation du paiement
+                        try {
+                            $notificationService = app(\App\Services\NotificationService::class);
+                            $notificationService->notifyPaiementValide($premierPaiement, auth()->user());
+                        } catch (\Exception $e) {
+                            Log::error('Erreur notification paiement validé (bulk): ' . $e->getMessage());
+                        }
+
+                        // Désactiver les rappels du paiement
+                        $this->desactiverRappelsPaiement($premierPaiement->id);
+
+                        // Associer le paiement à l'inscription
+                        $inscription->update([
+                            'paiement_validation_id' => $premierPaiement->id,
+                            'workflow_step' => 'en_validation'
+                        ]);
+
+                        // Enregistrer dans l'historique
+                        \App\Models\ESBTPInscriptionWorkflowHistory::createEntry(
+                            $inscription->id,
+                            $inscription->workflow_step,
+                            'en_validation',
+                            'paiement_associe',
+                            auth()->id(),
+                            'Paiement validé et associé lors de validation groupée',
+                            ['paiement_id' => $premierPaiement->id]
+                        );
+
+                        // Valider définitivement l'inscription
+                        $result = $this->workflowService->convertProspectToStudent($inscription, 'Validation groupée avec paiement auto-validé');
+
+                        if ($result['success']) {
+                            $stats['validees_apres_paiement']++;
+
+                            // Notification inscription validée
+                            if ($inscription->etudiant && $inscription->etudiant->user) {
+                                $notificationService->createNotification(
+                                    $inscription->etudiant->user,
+                                    "Inscription validée",
+                                    "Votre inscription a été validée avec succès. Vous pouvez maintenant accéder à votre espace étudiant.",
+                                    'success',
+                                    route('esbtp.inscriptions.show', $inscription->id),
+                                    auth()->user()
+                                );
+                            }
+
+                            // Désactiver les rappels de l'inscription
+                            $this->desactiverRappelsInscription($inscription->id);
+                        }
+                        continue;
+                    }
+
+                    // Cas 4: Aucun paiement
+                    $stats['ignorees'][] = [
+                        'id' => $inscription->id,
+                        'etudiant' => $etudiantNom,
+                        'raison' => 'Aucun paiement associé'
+                    ];
+
+                } catch (\Exception $e) {
+                    Log::error('Erreur validation inscription bulk #' . $id . ': ' . $e->getMessage());
+                    $stats['erreurs'][] = [
+                        'id' => $id,
+                        'erreur' => $e->getMessage()
+                    ];
+                }
+            }
+
+            DB::commit();
+
+            $totalValidees = $stats['validees_direct'] + $stats['validees_apres_paiement'];
+            $totalIgnorees = count($stats['ignorees']);
+            $totalErreurs = count($stats['erreurs']);
+            $totalTraitees = count($inscriptionIds) - $stats['inscriptions_deja_validees'];
+
+            Log::info('Validation groupée inscriptions terminée', [
+                'user_id' => auth()->id(),
+                'total_selectionnees' => count($inscriptionIds),
+                'stats' => $stats
+            ]);
+
+            // Construire le message de retour
+            $message = '';
+            if ($stats['validees_direct'] > 0) {
+                $message .= "{$stats['validees_direct']} inscription(s) validée(s) directement. ";
+            }
+            if ($stats['paiements_valides'] > 0) {
+                $message .= "{$stats['paiements_valides']} paiement(s) auto-validé(s). ";
+            }
+            if ($stats['validees_apres_paiement'] > 0) {
+                $message .= "{$stats['validees_apres_paiement']} inscription(s) validée(s) après validation du paiement. ";
+            }
+            if ($stats['inscriptions_deja_validees'] > 0) {
+                $message .= "{$stats['inscriptions_deja_validees']} inscription(s) déjà validée(s) (ignorée(s)). ";
+            }
+            if (count($stats['ignorees']) > 0) {
+                $message .= count($stats['ignorees']) . " inscription(s) ignorée(s) (sans paiements). ";
+            }
+            if (count($stats['erreurs']) > 0) {
+                $message .= count($stats['erreurs']) . " erreur(s). ";
+            }
+
+            // Stocker les détails des erreurs et inscriptions ignorées en session pour affichage visuel
+            $inscriptionsAvecProblemes = [];
+
+            // Ajouter les erreurs avec leur message
+            if (is_array($stats['erreurs'])) {
+                foreach ($stats['erreurs'] as $erreur) {
+                    if (is_array($erreur) && isset($erreur['id']) && isset($erreur['erreur'])) {
+                        $inscriptionsAvecProblemes[$erreur['id']] = [
+                            'type' => 'error',
+                            'message' => $erreur['erreur']
+                        ];
+                    }
+                }
+            }
+
+            // Ajouter les ignorées avec leur raison
+            if (is_array($stats['ignorees'])) {
+                foreach ($stats['ignorees'] as $ignoree) {
+                    if (is_array($ignoree) && isset($ignoree['id']) && isset($ignoree['raison'])) {
+                        $inscriptionsAvecProblemes[$ignoree['id']] = [
+                            'type' => 'warning',
+                            'message' => $ignoree['raison']
+                        ];
+                    }
+                }
+            }
+
+            // Debug: Log pour vérifier les données
+            Log::info('Inscriptions avec problèmes:', ['problemes' => $inscriptionsAvecProblemes]);
+
+            return redirect()->back()
+                ->with('success', $message ?: 'Aucune inscription n\'a été traitée.')
+                ->with('inscriptions_problemes', $inscriptionsAvecProblemes);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur validation groupée inscriptions: ' . $e->getMessage());
+
+            return redirect()->back()->with('error', 'Erreur lors de la validation groupée: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Désactiver les rappels pour une inscription
+     */
+    private function desactiverRappelsInscription($inscriptionId)
+    {
+        try {
+            $reminder = \App\Models\NotificationReminder::where('remindable_type', 'App\Models\ESBTPInscription')
+                ->where('remindable_id', $inscriptionId)
+                ->first();
+            if ($reminder) {
+                $reminder->deactivate();
+            }
+        } catch (\Exception $e) {
+            Log::error('Erreur désactivation reminder inscription: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Désactiver les rappels pour un paiement
+     */
+    private function desactiverRappelsPaiement($paiementId)
+    {
+        try {
+            $reminder = \App\Models\NotificationReminder::where('remindable_type', 'App\Models\ESBTPPaiement')
+                ->where('remindable_id', $paiementId)
+                ->first();
+            if ($reminder) {
+                $reminder->deactivate();
+            }
+        } catch (\Exception $e) {
+            Log::error('Erreur désactivation reminder paiement: ' . $e->getMessage());
+        }
     }
 }

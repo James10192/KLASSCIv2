@@ -461,6 +461,16 @@ class ESBTPPaiementController extends Controller
 
             DB::commit();
 
+            // Envoyer notification aux super-admins si le paiement est en attente
+            if ($paiement->status === 'en_attente') {
+                try {
+                    $notificationService = app(\App\Services\NotificationService::class);
+                    $notificationService->notifyPaiementCreated($paiement, auth()->user());
+                } catch (\Exception $e) {
+                    Log::error('Erreur envoi notification paiement créé: ' . $e->getMessage());
+                }
+            }
+
             return redirect()->route('esbtp.paiements.show', $paiement->id)
                 ->with('success', 'Paiement enregistré avec succès. Numéro de reçu : ' . $numeroRecu);
 
@@ -1605,6 +1615,26 @@ class ESBTPPaiementController extends Controller
 
             DB::commit();
 
+            // Envoyer notification à l'étudiant
+            try {
+                $notificationService = app(\App\Services\NotificationService::class);
+                $notificationService->notifyPaiementValide($paiement, auth()->user());
+            } catch (\Exception $e) {
+                Log::error('Erreur envoi notification paiement validé: ' . $e->getMessage());
+            }
+
+            // Désactiver les rappels pour ce paiement
+            try {
+                $reminder = \App\Models\NotificationReminder::where('remindable_type', 'App\Models\ESBTPPaiement')
+                    ->where('remindable_id', $paiement->id)
+                    ->first();
+                if ($reminder) {
+                    $reminder->deactivate();
+                }
+            } catch (\Exception $e) {
+                Log::error('Erreur désactivation reminder paiement: ' . $e->getMessage());
+            }
+
             return redirect()->back()->with('success', 'Paiement validé avec succès.');
 
         } catch (\Exception $e) {
@@ -1646,6 +1676,26 @@ class ESBTPPaiementController extends Controller
                 'validateur_id' => auth()->id(),
                 'commentaire' => $request->input('motif_rejet')
             ]);
+
+            // Envoyer notification à l'étudiant
+            try {
+                $notificationService = app(\App\Services\NotificationService::class);
+                $notificationService->notifyPaiementRejete($paiement, auth()->user(), $request->input('motif_rejet'));
+            } catch (\Exception $e) {
+                Log::error('Erreur envoi notification paiement rejeté: ' . $e->getMessage());
+            }
+
+            // Désactiver les rappels pour ce paiement
+            try {
+                $reminder = \App\Models\NotificationReminder::where('remindable_type', 'App\Models\ESBTPPaiement')
+                    ->where('remindable_id', $paiement->id)
+                    ->first();
+                if ($reminder) {
+                    $reminder->deactivate();
+                }
+            } catch (\Exception $e) {
+                Log::error('Erreur désactivation reminder paiement: ' . $e->getMessage());
+            }
 
             return redirect()->back()->with('success', 'Paiement rejeté avec succès.');
 

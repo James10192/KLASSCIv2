@@ -763,7 +763,10 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::delete('/inscriptions/{inscription}', [ESBTPInscriptionController::class, 'destroy'])->name('inscriptions.destroy');
             Route::put('/inscriptions/{inscription}/valider', [ESBTPInscriptionController::class, 'valider'])->name('inscriptions.valider');
             Route::put('/inscriptions/{inscription}/annuler', [ESBTPInscriptionController::class, 'annuler'])->name('inscriptions.annuler');
-            
+
+            // Routes pour validation groupée des inscriptions
+            Route::post('/inscriptions/bulk-valider', [ESBTPInscriptionController::class, 'bulkValider'])->name('inscriptions.bulk-valider');
+
             // Routes pour l'administration des inscriptions
             Route::get('/inscriptions-administration', [ESBTPInscriptionController::class, 'administration'])->name('inscriptions.administration');
             Route::post('/inscriptions/{inscription}/valider-avec-paiement', [ESBTPInscriptionController::class, 'validerAvecPaiement'])->name('inscriptions.valider-avec-paiement');
@@ -1515,6 +1518,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/esbtp/settings/import', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'import'])->name('esbtp.settings.import');
     Route::get('/esbtp/settings/status', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'checkStatus'])->name('esbtp.settings.status');
     Route::post('/esbtp/settings/validate', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'checkStatus'])->name('esbtp.settings.validate');
+    Route::post('/esbtp/settings/test-reminders', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'testReminders'])->name('esbtp.settings.test-reminders');
 
     // ... existing code ...
 

@@ -1840,4 +1840,267 @@ class NotificationService
             ];
         }
     }
+
+    /**
+     * Notifier les super-admins, coordonnateurs et secrétaires lors d'une nouvelle inscription
+     */
+    public function notifyInscriptionCreated($inscription, ?User $createdBy = null): void
+    {
+        try {
+            $users = User::role(['superAdmin', 'coordinateur', 'secretaire'])->get();
+
+            $etudiant = $inscription->etudiant;
+            $classe = $inscription->classe;
+            $filiere = $inscription->filiere;
+
+            $workflowLabels = [
+                'prospect' => 'Prospect',
+                'documents_complets' => 'Documents complets',
+                'en_validation' => 'En validation',
+                'valide' => 'Validé',
+                'etudiant_cree' => 'Étudiant créé'
+            ];
+
+            $statusLabels = [
+                'en_attente' => 'En attente',
+                'active' => 'Active',
+                'annulée' => 'Annulée',
+                'terminée' => 'Terminée'
+            ];
+
+            $workflowLabel = $workflowLabels[$inscription->workflow_step] ?? $inscription->workflow_step;
+            $statusLabel = $statusLabels[$inscription->status] ?? $inscription->status;
+
+            $paiements = $inscription->paiements;
+            $paiementInfo = 'Non renseigné';
+
+            if ($paiements->count() > 0) {
+                $paiementsEnAttente = $paiements->where('status', 'en_attente')->count();
+                $paiementsValides = $paiements->where('status', 'validé')->count();
+
+                if ($paiementsEnAttente > 0) {
+                    $paiementInfo = $paiementsEnAttente . ' paiement(s) en attente';
+                } elseif ($paiementsValides > 0) {
+                    $paiementInfo = $paiementsValides . ' paiement(s) validé(s)';
+                }
+            }
+
+            $title = "Nouvelle inscription - {$workflowLabel}";
+            $message = "L'étudiant {$etudiant->nom} {$etudiant->prenoms} s'est inscrit en {$filiere->name} - {$classe->name}.\n";
+            $message .= "<i class='fas fa-info-circle'></i> Statut: {$statusLabel} | <i class='fas fa-clipboard-check'></i> Étape: {$workflowLabel}\n";
+            $message .= "<i class='fas fa-money-bill-wave'></i> Paiement: {$paiementInfo}\n";
+            $message .= "<i class='fas fa-arrow-right'></i> Cliquez pour consulter le dossier complet.";
+
+            $link = route('esbtp.inscriptions.show', $inscription->id);
+
+            foreach ($users as $user) {
+                if (!$createdBy || $user->id !== $createdBy->id) {
+                    $this->createNotification($user, $title, $message, 'info', $link, $createdBy);
+                }
+            }
+
+            Log::info('Notifications nouvelle inscription envoyées', [
+                'inscription_id' => $inscription->id,
+                'users_notified' => $users->count()
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur notification nouvelle inscription: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Notifier les super-admins d'un nouveau paiement en attente
+     */
+    public function notifyPaiementCreated(ESBTPPaiement $paiement, ?User $createdBy = null): void
+    {
+        try {
+            $superAdmins = User::role(['superAdmin'])->get();
+
+            $etudiant = $paiement->etudiant;
+            $montant = number_format($paiement->montant, 0, ',', ' ') . ' FCFA';
+
+            $title = "Nouveau paiement en attente de validation";
+            $message = "L'étudiant {$etudiant->nom} {$etudiant->prenoms} a effectué un paiement de {$montant}.\n";
+            $message .= "<i class='fas fa-credit-card'></i> Type: {$paiement->type_paiement} | <i class='fas fa-mobile-alt'></i> Mode: {$paiement->mode_paiement}\n";
+            $message .= "<i class='fas fa-calendar'></i> Date: " . $paiement->date_paiement->format('d/m/Y') . "\n";
+            $message .= "<i class='fas fa-exclamation-triangle'></i> Ce paiement nécessite votre validation.";
+
+            $link = route('paiements.show', $paiement->id);
+
+            foreach ($superAdmins as $admin) {
+                if (!$createdBy || $admin->id !== $createdBy->id) {
+                    $this->createNotification($admin, $title, $message, 'warning', $link, $createdBy);
+                }
+            }
+
+            Log::info('Notifications nouveau paiement envoyées', [
+                'paiement_id' => $paiement->id,
+                'admins_notified' => $superAdmins->count()
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur notification nouveau paiement: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Notifier l'étudiant de la validation de son paiement
+     */
+    public function notifyPaiementValide(ESBTPPaiement $paiement, User $validatedBy): void
+    {
+        try {
+            $etudiant = $paiement->etudiant;
+            if (!$etudiant || !$etudiant->user) return;
+
+            $montant = number_format($paiement->montant, 0, ',', ' ') . ' FCFA';
+
+            $title = "Paiement validé";
+            $message = "Votre paiement de {$montant} a été validé avec succès.\n";
+            $message .= "<i class='fas fa-receipt'></i> Référence: {$paiement->reference_paiement}\n";
+            $message .= "<i class='fas fa-file-invoice'></i> Numéro de reçu: {$paiement->numero_recu}";
+
+            $link = route('esbtp.mes-paiements.index');
+
+            $this->createNotification($etudiant->user, $title, $message, 'success', $link, $validatedBy);
+
+            Log::info('Notification validation paiement envoyée', [
+                'paiement_id' => $paiement->id,
+                'etudiant_id' => $etudiant->id
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur notification validation paiement: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Notifier l'étudiant du rejet de son paiement
+     */
+    public function notifyPaiementRejete(ESBTPPaiement $paiement, User $rejectedBy, ?string $motif = null): void
+    {
+        try {
+            $etudiant = $paiement->etudiant;
+            if (!$etudiant || !$etudiant->user) return;
+
+            $montant = number_format($paiement->montant, 0, ',', ' ') . ' FCFA';
+
+            $title = "Paiement rejeté";
+            $message = "Votre paiement de {$montant} a été rejeté.\n";
+
+            if ($motif) {
+                $message .= "<i class='fas fa-comment-dots'></i> Motif: {$motif}\n";
+            }
+
+            $message .= "<i class='fas fa-phone'></i> Veuillez contacter le service comptabilité.";
+
+            $link = route('esbtp.mes-paiements.index');
+
+            $this->createNotification($etudiant->user, $title, $message, 'error', $link, $rejectedBy);
+
+            Log::info('Notification rejet paiement envoyée', [
+                'paiement_id' => $paiement->id,
+                'etudiant_id' => $etudiant->id,
+                'motif' => $motif
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur notification rejet paiement: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Envoyer un rappel pour une inscription en attente
+     */
+    public function sendInscriptionReminder($inscription, int $daysPending, int $reminderCount): void
+    {
+        try {
+            $superAdmins = User::role(['superAdmin'])->get();
+
+            $etudiant = $inscription->etudiant;
+            $classe = $inscription->classe;
+            $filiere = $inscription->filiere;
+
+            $workflowLabels = [
+                'prospect' => 'Prospect',
+                'documents_complets' => 'Documents complets',
+                'en_validation' => 'En validation',
+                'valide' => 'Validé',
+                'etudiant_cree' => 'Étudiant créé'
+            ];
+
+            $workflowLabel = $workflowLabels[$inscription->workflow_step] ?? $inscription->workflow_step;
+
+            $paiements = $inscription->paiements;
+            $paiementInfo = 'Aucun paiement renseigné. Demandez à l\'étudiant d\'effectuer un paiement.';
+
+            if ($paiements->count() > 0) {
+                $paiementsEnAttente = $paiements->where('status', 'en_attente');
+                $paiementsValides = $paiements->where('status', 'validé');
+
+                if ($paiementsEnAttente->count() > 0) {
+                    $montantTotal = number_format($paiementsEnAttente->sum('montant'), 0, ',', ' ');
+                    $paiementInfo = "{$paiementsEnAttente->count()} paiement(s) en attente ({$montantTotal} FCFA)";
+                } elseif ($paiementsValides->count() > 0) {
+                    $montantTotal = number_format($paiementsValides->sum('montant'), 0, ',', ' ');
+                    $paiementInfo = "Paiement validé ({$montantTotal} FCFA). L'inscription peut maintenant être validée.";
+                }
+            }
+
+            $title = "<i class='fas fa-clock'></i> Rappel #{$reminderCount}: Inscription en attente depuis {$daysPending} jours";
+            $message = "L'inscription de {$etudiant->nom} {$etudiant->prenoms} ({$filiere->name} - {$classe->name}) est en attente depuis {$daysPending} jours.\n";
+            $message .= "<i class='fas fa-tasks'></i> Étape actuelle: {$workflowLabel}\n";
+            $message .= "<i class='fas fa-wallet'></i> {$paiementInfo}\n";
+            $message .= "<i class='fas fa-hand-point-right'></i> Action requise: Valider l'inscription ou le paiement.";
+
+            $link = route('esbtp.inscriptions.show', $inscription->id);
+
+            foreach ($superAdmins as $admin) {
+                $this->createNotification($admin, $title, $message, 'warning', $link, null);
+            }
+
+            Log::info('Rappel inscription envoyé', [
+                'inscription_id' => $inscription->id,
+                'days_pending' => $daysPending,
+                'reminder_count' => $reminderCount
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur envoi rappel inscription: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Envoyer un rappel pour un paiement en attente
+     */
+    public function sendPaiementReminder(ESBTPPaiement $paiement, int $daysPending, int $reminderCount): void
+    {
+        try {
+            $superAdmins = User::role(['superAdmin'])->get();
+
+            $etudiant = $paiement->etudiant;
+            $montant = number_format($paiement->montant, 0, ',', ' ') . ' FCFA';
+
+            $title = "<i class='fas fa-clock'></i> Rappel #{$reminderCount}: Paiement en attente depuis {$daysPending} jours";
+            $message = "Le paiement de {$montant} de {$etudiant->nom} {$etudiant->prenoms} attend validation depuis {$daysPending} jours.\n";
+            $message .= "<i class='fas fa-credit-card'></i> Type: {$paiement->type_paiement}\n";
+            $message .= "<i class='fas fa-calendar'></i> Date soumission: " . $paiement->created_at->format('d/m/Y') . "\n";
+            $message .= "<i class='fas fa-hand-point-right'></i> Action requise: Valider ou rejeter ce paiement.";
+
+            $link = route('paiements.show', $paiement->id);
+
+            foreach ($superAdmins as $admin) {
+                $this->createNotification($admin, $title, $message, 'warning', $link, null);
+            }
+
+            Log::info('Rappel paiement envoyé', [
+                'paiement_id' => $paiement->id,
+                'days_pending' => $daysPending,
+                'reminder_count' => $reminderCount
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur envoi rappel paiement: ' . $e->getMessage());
+        }
+    }
 }

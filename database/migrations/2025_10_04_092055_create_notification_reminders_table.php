@@ -15,7 +15,17 @@ return new class extends Migration
     {
         Schema::create('notification_reminders', function (Blueprint $table) {
             $table->id();
+            $table->string('remindable_type');
+            $table->unsignedBigInteger('remindable_id');
+            $table->integer('reminder_count')->default(0);
+            $table->timestamp('last_reminder_sent_at')->nullable();
+            $table->timestamp('next_reminder_at')->nullable();
+            $table->boolean('is_active')->default(true);
             $table->timestamps();
+
+            $table->index(['remindable_type', 'remindable_id']);
+            $table->index('next_reminder_at');
+            $table->index('is_active');
         });
     }
 
