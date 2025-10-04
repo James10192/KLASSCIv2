@@ -364,18 +364,24 @@ class DashboardController extends Controller
         for ($i = 11; $i >= 0; $i--) {
             $date = now()->subMonths($i);
             if ($anneeEnCours) {
+                // Courbe verte: uniquement les inscriptions avec workflow_step = 'etudiant_cree'
                 $studentsCount = ESBTPInscription::where('annee_universitaire_id', $anneeEnCours->id)
+                    ->where('workflow_step', 'etudiant_cree')
                     ->whereYear('created_at', $date->year)
                     ->whereMonth('created_at', $date->month)
                     ->count();
+                // Courbe bleue: toutes les inscriptions (tous workflow_step confondus)
                 $inscriptionsCount = ESBTPInscription::where('annee_universitaire_id', $anneeEnCours->id)
                     ->whereYear('created_at', $date->year)
                     ->whereMonth('created_at', $date->month)
                     ->count();
             } else {
-                $studentsCount = ESBTPEtudiant::whereYear('created_at', $date->year)
+                // Sans année en cours: courbe verte = inscriptions avec workflow_step = 'etudiant_cree'
+                $studentsCount = ESBTPInscription::where('workflow_step', 'etudiant_cree')
+                    ->whereYear('created_at', $date->year)
                     ->whereMonth('created_at', $date->month)
                     ->count();
+                // Courbe bleue: toutes les inscriptions
                 $inscriptionsCount = ESBTPInscription::whereYear('created_at', $date->year)
                     ->whereMonth('created_at', $date->month)
                     ->count();
@@ -890,18 +896,24 @@ class DashboardController extends Controller
         for ($i = 11; $i >= 0; $i--) {
             $date = now()->subMonths($i);
             if ($anneeEnCours) {
+                // Courbe verte: uniquement les inscriptions avec workflow_step = 'etudiant_cree'
                 $studentsCount = ESBTPInscription::where('annee_universitaire_id', $anneeEnCours->id)
+                    ->where('workflow_step', 'etudiant_cree')
                     ->whereYear('created_at', $date->year)
                     ->whereMonth('created_at', $date->month)
                     ->count();
+                // Courbe bleue: toutes les inscriptions (tous workflow_step confondus)
                 $inscriptionsCount = ESBTPInscription::where('annee_universitaire_id', $anneeEnCours->id)
                     ->whereYear('created_at', $date->year)
                     ->whereMonth('created_at', $date->month)
                     ->count();
             } else {
-                $studentsCount = ESBTPEtudiant::whereYear('created_at', $date->year)
+                // Sans année en cours: courbe verte = inscriptions avec workflow_step = 'etudiant_cree'
+                $studentsCount = ESBTPInscription::where('workflow_step', 'etudiant_cree')
+                    ->whereYear('created_at', $date->year)
                     ->whereMonth('created_at', $date->month)
                     ->count();
+                // Courbe bleue: toutes les inscriptions
                 $inscriptionsCount = ESBTPInscription::whereYear('created_at', $date->year)
                     ->whereMonth('created_at', $date->month)
                     ->count();

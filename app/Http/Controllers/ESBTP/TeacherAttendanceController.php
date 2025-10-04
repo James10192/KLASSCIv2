@@ -113,14 +113,21 @@ class TeacherAttendanceController extends Controller
 
             // Get the course (seance)
             $seanceCours = ESBTPSeanceCours::findOrFail($request->course_id);
-            
+
+            // Get the teacher record from esbtp_teachers table
+            $teacher = ESBTPTeacher::where('user_id', $user->id)->first();
+
+            if (!$teacher) {
+                return back()->with('error', 'Profil enseignant non trouvé.');
+            }
+
             // Check if teacher is assigned to this course
-            if ($seanceCours->teacher_id !== $user->id) {
+            if ($seanceCours->teacher_id !== $teacher->id) {
                 return back()->with('error', 'Vous n\'êtes pas assigné à ce cours.');
             }
-            
+
             // Check if teacher has already marked attendance for this course today
-            $existingAttendance = ESBTPTeacherAttendance::where('teacher_id', $user->id)
+            $existingAttendance = ESBTPTeacherAttendance::where('teacher_id', $teacher->id)
                 ->where('course_id', $seanceCours->id)
                 ->whereDate('date', today())
                 ->first();
@@ -131,7 +138,7 @@ class TeacherAttendanceController extends Controller
 
             // Create attendance record
             ESBTPTeacherAttendance::create([
-                'teacher_id' => $user->id,
+                'teacher_id' => $teacher->id,
                 'course_id' => $seanceCours->id,
                 'daily_code_id' => $dailyCode->id,
                 'date' => now()->toDateString(),
@@ -146,7 +153,7 @@ class TeacherAttendanceController extends Controller
             $dailyCode->recordAttempt(true);
 
             // **WORKFLOW** : Mettre à jour le workflow de la séance
-            $workflow = ESBTPSessionWorkflow::getOrCreateForSession($seanceCours->id, $user->id);
+            $workflow = ESBTPSessionWorkflow::getOrCreateForSession($seanceCours->id, $teacher->id);
             $workflow->markAttendanceSigned();
 
             // **NOTIFICATION** : Notifier le coordinateur de l'émargement effectué

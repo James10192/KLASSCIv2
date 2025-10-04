@@ -164,8 +164,16 @@ class TeacherDashboardController extends Controller
                 ->with('error', 'Vous devez d\'abord effectuer l\'appel de début avant de faire l\'appel de fin.');
         }
 
-        // Récupérer les étudiants de la classe
-        $etudiants = $seance->classe->etudiants()->with('user')->get();
+        // Récupérer l'année universitaire courante
+        $anneeUniversitaire = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        // Récupérer les étudiants de la classe inscrits pour l'année universitaire courante
+        $etudiants = $seance->classe->etudiants()
+            ->with('user')
+            ->whereHas('inscriptions', function($query) use ($anneeUniversitaire) {
+                $query->where('annee_universitaire_id', $anneeUniversitaire->id);
+            })
+            ->get();
 
         // Vérifier si l'appel a déjà été fait pour ce type
         $existingAttendances = ESBTPAttendance::where('seance_cours_id', $seanceId)
@@ -216,31 +224,83 @@ class TeacherDashboardController extends Controller
         try {
             DB::beginTransaction();
 
-            // Supprimer les anciens appels pour cette séance et ce type
-            ESBTPAttendance::where('seance_cours_id', $seanceId)
-                ->where('call_type', $callType)
-                ->delete();
-
-            // Enregistrer les nouveaux appels
-            foreach ($request->attendances as $etudiantId => $status) {
-                ESBTPAttendance::create([
-                    'etudiant_id' => $etudiantId,
-                    'seance_cours_id' => $seanceId,
-                    'classe_id' => $seance->classe_id,
-                    'matiere_id' => $seance->matiere_id,
-                    'teacher_id' => $teacher->id,
-                    'date' => Carbon::today(),
-                    'status' => $status,
-                    'call_type' => $callType,
-                    'is_justified' => false,
-                    'created_by' => $user->id
-                ]);
-            }
-
-            // **WORKFLOW** : Marquer cette étape comme terminée
             if ($callType === 'start') {
+                // APPEL DE DÉBUT : Supprimer et recréer
+                ESBTPAttendance::where('seance_cours_id', $seanceId)
+                    ->where('call_type', 'start')
+                    ->delete();
+
+                foreach ($request->attendances as $etudiantId => $status) {
+                    ESBTPAttendance::create([
+                        'etudiant_id' => $etudiantId,
+                        'seance_cours_id' => $seanceId,
+                        'classe_id' => $seance->classe_id,
+                        'matiere_id' => $seance->matiere_id,
+                        'teacher_id' => $teacher->id,
+                        'date' => Carbon::today(),
+                        'heure_debut' => $seance->heure_debut,
+                        'heure_fin' => $seance->heure_fin,
+                        'status' => $status,
+                        'call_type' => 'start',
+                        'is_justified' => false,
+                        'created_by' => $user->id
+                    ]);
+                }
+
                 $workflow->markCallStartDone();
+
             } elseif ($callType === 'end') {
+                // APPEL DE FIN : Fusion avec l'appel de début
+
+                // Récupérer les appels de début
+                $startAttendances = ESBTPAttendance::where('seance_cours_id', $seanceId)
+                    ->where('call_type', 'start')
+                    ->get()
+                    ->keyBy('etudiant_id');
+
+                // Supprimer les anciens appels de fin
+                ESBTPAttendance::where('seance_cours_id', $seanceId)
+                    ->where('call_type', 'end')
+                    ->delete();
+
+                // Créer les nouveaux appels de fin avec fusion
+                foreach ($request->attendances as $etudiantId => $endStatus) {
+                    $startAttendance = $startAttendances->get($etudiantId);
+                    $startStatus = $startAttendance ? $startAttendance->status : 'absent';
+
+                    // LOGIQUE DE FUSION :
+                    // Absent début + Présent fin = Retard (arrivé en retard)
+                    // Absent début + Absent fin = Absent
+                    // Présent début + Absent fin = Absent (parti avant la fin)
+                    // Présent début + Présent fin = Présent
+                    // Retard début + X = Retard (garde le retard)
+
+                    $finalStatus = $endStatus;
+
+                    if ($startStatus === 'absent' && $endStatus === 'present') {
+                        $finalStatus = 'late'; // Arrivé en retard
+                    } elseif ($startStatus === 'present' && $endStatus === 'absent') {
+                        $finalStatus = 'absent'; // Parti avant la fin
+                    } elseif ($startStatus === 'late') {
+                        $finalStatus = 'late'; // Garde le retard
+                    }
+
+                    ESBTPAttendance::create([
+                        'etudiant_id' => $etudiantId,
+                        'seance_cours_id' => $seanceId,
+                        'classe_id' => $seance->classe_id,
+                        'matiere_id' => $seance->matiere_id,
+                        'teacher_id' => $teacher->id,
+                        'date' => Carbon::today(),
+                        'heure_debut' => $seance->heure_debut,
+                        'heure_fin' => $seance->heure_fin,
+                        'status' => $finalStatus,
+                        'call_type' => 'end',
+                        'is_justified' => false,
+                        'created_by' => $user->id
+                    ]);
+                }
+
                 $workflow->markCallEndDone();
             }
 

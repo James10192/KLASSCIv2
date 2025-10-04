@@ -15,6 +15,7 @@
         "doctrine/dbal": "^3.0",
         "fruitcake/laravel-cors": "^3.0",
         "guzzlehttp/guzzle": "^7.2",
+        "jenssegers/agent": "^2.6",
         "laravel/framework": "^9.0|^10.0",
         "laravel/sanctum": "^3.0",
         "laravel/tinker": "^2.7",

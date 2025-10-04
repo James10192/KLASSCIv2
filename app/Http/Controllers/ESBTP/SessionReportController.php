@@ -18,15 +18,21 @@ class SessionReportController extends Controller
     public function create($seanceId)
     {
         $user = Auth::user();
-        
+
+        // Récupérer le teacher associé à l'utilisateur
+        $teacher = \App\Models\ESBTPTeacher::where('user_id', $user->id)->first();
+        if (!$teacher) {
+            abort(403, 'Vous n\'êtes pas enregistré comme enseignant.');
+        }
+
         $seance = ESBTPSeanceCours::with(['matiere', 'classe'])
             ->where('id', $seanceId)
-            ->where('teacher_id', $user->id)
+            ->where('teacher_id', $teacher->id)
             ->firstOrFail();
 
         // **WORKFLOW** : Vérifier que cette étape peut être exécutée
-        $workflow = ESBTPSessionWorkflow::getOrCreateForSession($seanceId, $user->id);
-        
+        $workflow = ESBTPSessionWorkflow::getOrCreateForSession($seanceId, $teacher->id);
+
         if (!$workflow->canExecuteStep('report')) {
             return redirect()->route('teacher.select-call-type', $seanceId)
                 ->with('error', 'Vous devez d\'abord compléter les appels avant de créer le rapport.');
@@ -34,7 +40,7 @@ class SessionReportController extends Controller
 
         // Vérifier s'il existe déjà un rapport pour cette séance
         $existingReport = ESBTPSessionReport::where('seance_cours_id', $seanceId)
-            ->where('teacher_id', $user->id)
+            ->where('teacher_id', $teacher->id)
             ->first();
 
         return view('teacher.session-report.create', compact('seance', 'workflow', 'existingReport'));
@@ -46,14 +52,20 @@ class SessionReportController extends Controller
     public function store(Request $request, $seanceId)
     {
         $user = Auth::user();
-        
+
+        // Récupérer le teacher associé à l'utilisateur
+        $teacher = \App\Models\ESBTPTeacher::where('user_id', $user->id)->first();
+        if (!$teacher) {
+            abort(403, 'Vous n\'êtes pas enregistré comme enseignant.');
+        }
+
         $seance = ESBTPSeanceCours::where('id', $seanceId)
-            ->where('teacher_id', $user->id)
+            ->where('teacher_id', $teacher->id)
             ->firstOrFail();
 
         // **WORKFLOW** : Vérifier que cette étape peut être exécutée
-        $workflow = ESBTPSessionWorkflow::getOrCreateForSession($seanceId, $user->id);
-        
+        $workflow = ESBTPSessionWorkflow::getOrCreateForSession($seanceId, $teacher->id);
+
         if (!$workflow->canExecuteStep('report')) {
             return redirect()->route('teacher.select-call-type', $seanceId)
                 ->with('error', 'Vous ne pouvez pas créer le rapport maintenant.');
@@ -82,7 +94,7 @@ class SessionReportController extends Controller
             $report = ESBTPSessionReport::updateOrCreate(
                 [
                     'seance_cours_id' => $seanceId,
-                    'teacher_id' => $user->id
+                    'teacher_id' => $teacher->id
                 ],
                 [
                     'content_summary' => $validated['content_summary'],

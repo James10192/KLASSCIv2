@@ -122,57 +122,70 @@
     }
 
     .attendance-btn {
-        display: flex;
+        display: inline-flex;
         align-items: center;
-        gap: var(--space-xs);
-        padding: var(--space-xs) var(--space-md);
-        border: 2px solid #e5e7eb;
-        border-radius: var(--radius-medium);
-        background: white;
+        justify-content: center;
+        gap: 6px;
+        padding: 8px 16px;
+        border: 2px solid transparent;
+        border-radius: 8px;
+        background: transparent;
         cursor: pointer;
-        transition: all 0.3s ease;
-        font-size: var(--text-small);
+        transition: all 0.2s ease;
+        font-size: 13px;
         font-weight: 500;
         min-width: 90px;
-        justify-content: center;
+        position: relative;
+    }
+
+    .attendance-btn input[type="radio"] {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
     }
 
     .attendance-btn.present {
-        border-color: var(--success);
-        color: var(--success);
+        border-color: #10b981;
+        color: #10b981;
+        background: rgba(16, 185, 129, 0.05);
     }
 
     .attendance-btn.present.active {
-        background: var(--success);
-        color: white;
-        transform: scale(1.05);
+        background: #10b981 !important;
+        color: white !important;
+        border-color: #10b981 !important;
+        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4) !important;
     }
 
     .attendance-btn.absent {
-        border-color: var(--danger);
-        color: var(--danger);
+        border-color: #ef4444;
+        color: #ef4444;
+        background: rgba(239, 68, 68, 0.05);
     }
 
     .attendance-btn.absent.active {
-        background: var(--danger);
-        color: white;
-        transform: scale(1.05);
+        background: #ef4444 !important;
+        color: white !important;
+        border-color: #ef4444 !important;
+        box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4) !important;
     }
 
     .attendance-btn.late {
-        border-color: var(--warning);
-        color: var(--warning);
+        border-color: #f59e0b;
+        color: #f59e0b;
+        background: rgba(245, 158, 11, 0.05);
     }
 
     .attendance-btn.late.active {
-        background: var(--warning);
-        color: white;
-        transform: scale(1.05);
+        background: #f59e0b !important;
+        color: white !important;
+        border-color: #f59e0b !important;
+        box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4) !important;
     }
 
-    .attendance-btn:hover {
-        transform: translateY(-1px);
-        box-shadow: var(--shadow-card);
+    .attendance-btn:hover:not(.active) {
+        transform: scale(1.02);
+        opacity: 0.8;
     }
 
     .action-buttons {
@@ -341,7 +354,7 @@
                             </div>
                             <div class="student-details">
                                 <h6>{{ $etudiant->user->name ?? 'Nom non défini' }}</h6>
-                                <small>{{ $etudiant->user->email ?? 'Email non défini' }}</small>
+                                <small>{{ $etudiant->matricule ?? 'Matricule non défini' }}</small>
                             </div>
                         </div>
                         <div class="attendance-options">
@@ -409,9 +422,13 @@
 </div>
 @endsection
 
-@section('scripts')
+@push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+(function() {
+    'use strict';
+
+    console.log('🎯 Initialisation du système d\'appel...');
+
     // Auto-hide alerts after 5 seconds
     setTimeout(function() {
         const alerts = document.querySelectorAll('.alert');
@@ -423,22 +440,47 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }, 5000);
 
-    // Handle attendance button clicks
-    document.querySelectorAll('.attendance-btn').forEach(button => {
-        button.addEventListener('click', function() {
+    // Handle attendance button clicks with SIMPLE event handling
+    const attendanceButtons = document.querySelectorAll('.attendance-btn');
+    console.log('📊 Nombre de boutons trouvés:', attendanceButtons.length);
+
+    attendanceButtons.forEach(function(button, index) {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            console.log('🖱️ Clic sur bouton', index + 1);
+
             // Get the student's other buttons
             const studentItem = this.closest('.student-item');
+            if (!studentItem) {
+                console.error('❌ Impossible de trouver student-item');
+                return;
+            }
+
             const allButtons = studentItem.querySelectorAll('.attendance-btn');
-            
+
             // Remove active class from all buttons for this student
-            allButtons.forEach(btn => btn.classList.remove('active'));
-            
+            allButtons.forEach(function(btn) {
+                btn.classList.remove('active');
+            });
+
             // Add active class to clicked button
             this.classList.add('active');
-            
+            console.log('✅ Classe active ajoutée');
+
+            // Check the radio button inside this label
+            const radioInput = this.querySelector('input[type="radio"]');
+            if (radioInput) {
+                radioInput.checked = true;
+                console.log('✅ Radio checked:', radioInput.value);
+            } else {
+                console.error('❌ Radio input non trouvé');
+            }
+
             // Update statistics
             updateStats();
-        });
+        }, true); // Use capture phase
     });
 
     // Function to update attendance statistics
@@ -487,20 +529,27 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initialize stats
     updateStats();
+    console.log('✅ Stats initialisées');
 
     // Form submission confirmation
-    form.addEventListener('submit', function(e) {
-        const activeButtons = document.querySelectorAll('.attendance-btn.active');
-        if (activeButtons.length === 0) {
-            e.preventDefault();
-            alert('Veuillez marquer au moins un étudiant avant d\'enregistrer.');
-            return;
-        }
-        
-        const submitButton = form.querySelector('button[type="submit"]');
-        submitButton.disabled = true;
-        submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Enregistrement...</span>';
-    });
-});
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const activeButtons = document.querySelectorAll('.attendance-btn.active');
+            if (activeButtons.length === 0) {
+                e.preventDefault();
+                alert('Veuillez marquer au moins un étudiant avant d\'enregistrer.');
+                return;
+            }
+
+            const submitButton = form.querySelector('button[type="submit"]');
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Enregistrement...</span>';
+            }
+        });
+    }
+
+    console.log('✅ Système d\'appel prêt !');
+})();
 </script>
-@endsection
+@endpush
