@@ -16,6 +16,8 @@
     "Bash(chmod:*)",
     "Bash(ps:*)",
     "Bash(kill:*)",
+    "Bash(node:*)",
+    "Bash(pnpm:*)",
     "Write",
     "Read",
     "Edit",
@@ -31,9 +33,24 @@
   "dangerouslySkipPermissions": true,
   "theme": "dark",
   "hasCompletedOnboarding": true,
+  "permissions": {
+    "allow": [
+      "Edit",
+      "Bash(npm run *)",
+      "Bash(git *)",
+      "Bash(pnpm *)",
+      "Bash(gh *)",
+      "Bash(cd *)",
+      "Bash(ls *)",
+      "Bash(node *)",
+      "Bash(php *)",
+      "Bash(composer *)"
+    ]
+  },
   "hooks": {
     "UserPromptSubmit": [
       {
+        "matcher": "",
         "hooks": [
           {
             "type": "command",
@@ -44,23 +61,38 @@
     ],
     "Stop": [
       {
+        "matcher": "",
         "hooks": [
           {
             "type": "command",
             "command": "bash .claude/notify-simple.sh 'Task Completed' 'Claude has finished the task'"
+          },
+          {
+            "type": "command",
+            "command": "afplay /home/levraimd/.claude/song/finish.mp3"
           }
         ]
       }
     ],
     "Notification": [
       {
+        "matcher": "",
         "hooks": [
           {
             "type": "command",
             "command": "bash .claude/notify-simple.sh 'Input Required' 'Claude is waiting for your response'"
+          },
+          {
+            "type": "command",
+            "command": "afplay /home/levraimd/.claude/song/need-human.mp3"
           }
         ]
       }
     ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "~/workspace/KLASSCIv2/.claude/statusbar.sh",
+    "padding": 0
   }
 }
