@@ -141,9 +141,13 @@ try {
         
         // Présences
         'view_attendances',
+        'create_attendance',
         'create_attendances',
         'edit_attendances',
+        'delete_attendances',
         'view_own_attendances',
+        'sign_attendance',
+        'view_own_attendance',
         
         // Paiements et comptabilité
         'view_payments',
@@ -253,7 +257,7 @@ try {
         'view_matieres',
         'view_notes', 'view_evaluations',
         'view_bulletins', 'generate_bulletins',
-        'view_attendances', 'create_attendances',
+        'view_attendances', 'create_attendance', 'create_attendances', 'edit_attendances', 'delete_attendances',
         'generate-attendance-codes',
         'view_payments', 'create_payments', 'edit_payments',
         'view_comptabilite',
@@ -288,7 +292,7 @@ try {
         'view_grades', 'create_grade', 'edit_grades', 'delete_grades',
         'view_evaluations', 'create_evaluations', 'edit_evaluations',
         'view_bulletins', 'generate_bulletins',
-        'view_attendances', 'edit_attendances',
+        'view_attendances', 'create_attendance', 'create_attendances', 'edit_attendances', 'delete_attendances',
         'generate-attendance-codes', 'manage-planning', 'view-all-timetables', 'view_timetables', 'edit_timetables',
         'view_payments',
         'view_teachers', 'edit_teachers',
@@ -311,7 +315,7 @@ try {
         'view_notes', 'create_notes', 'edit_notes', 'view_own_notes',
         'view_evaluations', 'create_evaluations', 'edit_evaluations',
         'view_bulletins',
-        'view_attendances', 'create_attendances', 'view_own_attendances',
+        'view_attendances', 'create_attendance', 'create_attendances', 'edit_attendances', 'view_own_attendances', 'view_own_attendance', 'sign_attendance',
         'view_own_schedule',
         'send_messages', 'receive_messages',
         'view_annonces',

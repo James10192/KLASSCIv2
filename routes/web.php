@@ -198,7 +198,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         Route::get('/dashboard/etudiant', [DashboardController::class, 'etudiant'])->name('dashboard.etudiant');
     });
 
-    Route::middleware(['role:teacher'])->group(function () {
+    Route::middleware(['role:enseignant'])->group(function () {
         Route::get('/dashboard/teacher', [TeacherDashboardController::class, 'index'])->name('teacher.dashboard');
         Route::get('/dashboard/teacher/timetable', [TeacherDashboardController::class, 'showTimetable'])->name('teacher.timetable');
         Route::get('/dashboard/teacher/grades', [TeacherDashboardController::class, 'showGrades'])->name('teacher.grades');
@@ -1035,21 +1035,21 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'paywall'])->group(f
     });
 
     // Routes pour l'émargement - Interface Enseignant
-    Route::prefix('esbtp/teacher/attendance')->name('esbtp.teacher.attendance.')->middleware(['auth', 'role:teacher'])->group(function () {
+    Route::prefix('esbtp/teacher/attendance')->name('esbtp.teacher.attendance.')->middleware(['auth', 'role:enseignant'])->group(function () {
         Route::get('/', [App\Http\Controllers\ESBTP\TeacherAttendanceController::class, 'index'])->name('index')->middleware('permission:view_own_attendance');
         Route::get('/history', [App\Http\Controllers\ESBTP\TeacherAttendanceController::class, 'history'])->name('history')->middleware('permission:view_own_attendance');
         Route::post('/sign', [App\Http\Controllers\ESBTP\TeacherAttendanceController::class, 'sign'])->name('sign')->middleware('permission:sign_attendance');
     });
 
     // Routes d'émargement pour les enseignants
-    Route::middleware(['role:teacher'])->group(function () {
+    Route::middleware(['role:enseignant'])->group(function () {
         Route::get('/attendance/mark', [ESBTPTeacherAttendanceController::class, 'index'])->name('attendance.mark');
         Route::post('/attendance/mark', [ESBTPTeacherAttendanceController::class, 'mark'])->name('attendance.mark.submit');
     });
 });
 
 // Routes pour les enseignants
-Route::middleware(['auth', 'role:teacher'])->group(function () {
+Route::middleware(['auth', 'role:enseignant'])->group(function () {
     // Routes pour l'émargement - Enseignants
     Route::prefix('attendance')->name('teacher.attendance.')->group(function () {
         Route::get('/', 'ESBTP\TeacherAttendanceController@index')->name('index');
@@ -1179,7 +1179,7 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'role:superAdmin'])-
 });
 
 // Routes pour l'espace enseignant et coordinateur
-Route::middleware(['auth', 'role:teacher|coordinateur'])->group(function () {
+Route::middleware(['auth', 'role:enseignant|coordinateur'])->group(function () {
     // Gestion des notes
     Route::prefix('esbtp/notes')->name('esbtp.notes.')->group(function () {
         Route::get('/', [ESBTPNoteController::class, 'index'])->name('index');
@@ -1452,7 +1452,7 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth'])->group(function () 
     });
 
     // Routes pour l'émargement des enseignants
-    Route::prefix('teacher-attendance')->name('teacher-attendance.')->middleware(['auth', 'role:teacher'])->group(function () {
+    Route::prefix('teacher-attendance')->name('teacher-attendance.')->middleware(['auth', 'role:enseignant'])->group(function () {
         Route::get('/', [TeacherAttendanceController::class, 'index'])->name('index');
         Route::get('/history', [TeacherAttendanceController::class, 'history'])->name('history');
         Route::post('/sign', [TeacherAttendanceController::class, 'sign'])->name('sign');
@@ -1461,7 +1461,7 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth'])->group(function () 
     // Route rapport accessible aux enseignants et superadmins
     Route::get('teacher-attendance/report', [TeacherAttendanceController::class, 'report'])
         ->name('teacher-attendance.report')
-        ->middleware(['auth', 'role:teacher|superAdmin']);
+        ->middleware(['auth', 'role:enseignant|superAdmin']);
 
     // ... autres routes ...
     Route::resource('payment-categories', \App\Http\Controllers\ESBTP\PaymentCategoryController::class);
