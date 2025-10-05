@@ -25,6 +25,7 @@ class ESBTPAttendance extends Model
     protected $fillable = [
         'seance_cours_id',
         'etudiant_id',
+        'annee_universitaire_id',
         'classe_id',
         'matiere_id',
         'teacher_id',
@@ -100,6 +101,16 @@ class ESBTPAttendance extends Model
     public function teacher()
     {
         return $this->belongsTo(ESBTPTeacher::class, 'teacher_id');
+    }
+
+    /**
+     * Relation avec l'année universitaire.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function anneeUniversitaire()
+    {
+        return $this->belongsTo(ESBTPAnneeUniversitaire::class, 'annee_universitaire_id');
     }
 
     /**

@@ -211,6 +211,9 @@ class TeacherDashboardController extends Controller
             ->where('teacher_id', $teacher->id)
             ->firstOrFail();
 
+        // Récupérer l'année universitaire courante
+        $anneeUniversitaire = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
         $request->validate([
             'attendances' => 'required|array',
             'attendances.*' => 'in:present,absent,late',
@@ -243,6 +246,7 @@ class TeacherDashboardController extends Controller
                     ESBTPAttendance::create([
                         'etudiant_id' => $etudiantId,
                         'seance_cours_id' => $seanceId,
+                        'annee_universitaire_id' => $anneeUniversitaire->id,
                         'classe_id' => $seance->classe_id,
                         'matiere_id' => $seance->matiere_id,
                         'teacher_id' => $teacher->id,
@@ -297,6 +301,7 @@ class TeacherDashboardController extends Controller
                     ESBTPAttendance::create([
                         'etudiant_id' => $etudiantId,
                         'seance_cours_id' => $seanceId,
+                        'annee_universitaire_id' => $anneeUniversitaire->id,
                         'classe_id' => $seance->classe_id,
                         'matiere_id' => $seance->matiere_id,
                         'teacher_id' => $teacher->id,
