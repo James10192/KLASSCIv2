@@ -534,6 +534,9 @@ class ESBTPAttendanceController extends Controller
             'commentaires.*' => 'nullable|string'
         ]);
 
+        // Récupérer l'année universitaire courante
+        $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
         // Vérifier que la date correspond au jour de la séance
         $seance = ESBTPSeanceCours::findOrFail($validatedData['seance_cours_id']);
         $dateCalculee = $seance->getDateSeance() ? $seance->getDateSeance()->format('Y-m-d') : null;
@@ -591,6 +594,7 @@ class ESBTPAttendanceController extends Controller
                     ESBTPAttendance::create([
                         'seance_cours_id' => $validatedData['seance_cours_id'],
                         'etudiant_id' => $etudiantId,
+                        'annee_universitaire_id' => $anneeUniversitaire->id,
                         'date' => $validatedData['date'],
                         'heure_debut' => $heureDebut,
                         'heure_fin' => $heureFin,
