@@ -25,11 +25,16 @@ class ESBTPAttendance extends Model
     protected $fillable = [
         'seance_cours_id',
         'etudiant_id',
+        'classe_id',
+        'matiere_id',
+        'teacher_id',
         'date',
         'heure_debut',
         'heure_fin',
         'statut', // 'present', 'absent', 'retard', 'excuse'
+        'status', // Alias for statut (for backward compatibility)
         'call_type', // 'start', 'end'
+        'is_justified',
         'commentaire',
         'document_path',
         'justified_at',
@@ -65,6 +70,36 @@ class ESBTPAttendance extends Model
     public function etudiant()
     {
         return $this->belongsTo(ESBTPEtudiant::class, 'etudiant_id');
+    }
+
+    /**
+     * Relation avec la classe.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function classe()
+    {
+        return $this->belongsTo(ESBTPClasse::class, 'classe_id');
+    }
+
+    /**
+     * Relation avec la matière.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function matiere()
+    {
+        return $this->belongsTo(ESBTPMatiere::class, 'matiere_id');
+    }
+
+    /**
+     * Relation avec l'enseignant.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function teacher()
+    {
+        return $this->belongsTo(ESBTPTeacher::class, 'teacher_id');
     }
 
     /**

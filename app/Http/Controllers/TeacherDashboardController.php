@@ -176,9 +176,16 @@ class TeacherDashboardController extends Controller
             ->get();
 
         // Vérifier si l'appel a déjà été fait pour ce type
-        $existingAttendances = ESBTPAttendance::where('seance_cours_id', $seanceId)
-            ->where('call_type', $callType)
-            ->get();
+        // Pour 'end', on vérifie aussi 'merged' car après fusion les records sont marqués 'merged'
+        if ($callType === 'end') {
+            $existingAttendances = ESBTPAttendance::where('seance_cours_id', $seanceId)
+                ->whereIn('call_type', ['end', 'merged'])
+                ->get();
+        } else {
+            $existingAttendances = ESBTPAttendance::where('seance_cours_id', $seanceId)
+                ->where('call_type', $callType)
+                ->get();
+        }
         $hasRollCall = $existingAttendances->isNotEmpty();
 
         return view('dashboard.teacher-roll-call', compact('seance', 'etudiants', 'existingAttendances', 'hasRollCall', 'callType'));
@@ -240,7 +247,7 @@ class TeacherDashboardController extends Controller
                         'date' => Carbon::today(),
                         'heure_debut' => $seance->heure_debut,
                         'heure_fin' => $seance->heure_fin,
-                        'status' => $status,
+                        'statut' => $status,
                         'call_type' => 'start',
                         'is_justified' => false,
                         'created_by' => $user->id
@@ -258,15 +265,15 @@ class TeacherDashboardController extends Controller
                     ->get()
                     ->keyBy('etudiant_id');
 
-                // Supprimer les anciens appels de fin
+                // Supprimer TOUS les appels existants (start ET end) pour éviter la duplication
                 ESBTPAttendance::where('seance_cours_id', $seanceId)
-                    ->where('call_type', 'end')
+                    ->whereIn('call_type', ['start', 'end'])
                     ->delete();
 
-                // Créer les nouveaux appels de fin avec fusion
+                // Créer les nouveaux appels FINAUX avec fusion (call_type = 'merged')
                 foreach ($request->attendances as $etudiantId => $endStatus) {
                     $startAttendance = $startAttendances->get($etudiantId);
-                    $startStatus = $startAttendance ? $startAttendance->status : 'absent';
+                    $startStatus = $startAttendance ? $startAttendance->statut : 'absent';
 
                     // LOGIQUE DE FUSION :
                     // Absent début + Présent fin = Retard (arrivé en retard)
@@ -294,8 +301,8 @@ class TeacherDashboardController extends Controller
                         'date' => Carbon::today(),
                         'heure_debut' => $seance->heure_debut,
                         'heure_fin' => $seance->heure_fin,
-                        'status' => $finalStatus,
-                        'call_type' => 'end',
+                        'statut' => $finalStatus,
+                        'call_type' => 'end', // ENUM n'accepte que 'start' ou 'end'
                         'is_justified' => false,
                         'created_by' => $user->id
                     ]);

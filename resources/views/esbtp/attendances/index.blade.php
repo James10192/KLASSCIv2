@@ -1150,16 +1150,16 @@
                             </td>
                             <td>
                                 <span class="badge bg-light text-dark">
-                                    {{ $attendance->etudiant->classe->name ?? 'N/A' }}
+                                    {{ $attendance->classe->name ?? ($attendance->etudiant->classe->name ?? 'N/A') }}
                                 </span>
                             </td>
-                            <td>{{ $attendance->matiere->name ?? 'N/A' }}</td>
+                            <td>{{ $attendance->matiere->name ?? ($attendance->seanceCours->matiere->name ?? 'N/A') }}</td>
                             <td>
                                 @if($attendance->statut === 'present')
                                     <span class="status-badge present">Présent</span>
                                 @elseif($attendance->statut === 'absent')
                                     <span class="status-badge absent">Absent</span>
-                                @elseif($attendance->statut === 'retard')
+                                @elseif($attendance->statut === 'retard' || $attendance->statut === 'late')
                                     <span class="status-badge late">Retard</span>
                                 @elseif($attendance->statut === 'excuse')
                                     <span class="status-badge excused">Excusé</span>
@@ -1169,7 +1169,7 @@
                             </td>
                             <td>
                                 <div class="small">
-                                    {{ $attendance->teacher->name ?? 'N/A' }}
+                                    {{ $attendance->teacher->user->name ?? 'N/A' }}
                                 </div>
                             </td>
                             <td>
@@ -1225,10 +1225,10 @@
                         <dd class="col-sm-8">{{ $attendance->etudiant->nom_complet }}</dd>
 
                         <dt class="col-sm-4">Classe</dt>
-                        <dd class="col-sm-8">{{ $attendance->etudiant->classe->name ?? 'N/A' }}</dd>
+                        <dd class="col-sm-8">{{ $attendance->classe->name ?? ($attendance->etudiant->classe->name ?? 'N/A') }}</dd>
 
                         <dt class="col-sm-4">Matière</dt>
-                        <dd class="col-sm-8">{{ $attendance->matiere->name ?? 'N/A' }}</dd>
+                        <dd class="col-sm-8">{{ $attendance->matiere->name ?? ($attendance->seanceCours->matiere->name ?? 'N/A') }}</dd>
 
                         <dt class="col-sm-4">Date</dt>
                         <dd class="col-sm-8">{{ $attendance->date->format('d/m/Y') }}</dd>
@@ -1239,7 +1239,7 @@
                                 <span class="status-badge present">Présent</span>
                             @elseif($attendance->statut === 'absent')
                                 <span class="status-badge absent">Absent</span>
-                            @elseif($attendance->statut === 'retard')
+                            @elseif($attendance->statut === 'retard' || $attendance->statut === 'late')
                                 <span class="status-badge late">Retard</span>
                             @elseif($attendance->statut === 'excuse')
                                 <span class="status-badge excused">Excusé</span>
@@ -1247,7 +1247,7 @@
                         </dd>
 
                         <dt class="col-sm-4">Enseignant</dt>
-                        <dd class="col-sm-8">{{ $attendance->teacher->name ?? 'N/A' }}</dd>
+                        <dd class="col-sm-8">{{ $attendance->teacher->user->name ?? 'N/A' }}</dd>
 
                         <dt class="col-sm-4">Créé le</dt>
                         <dd class="col-sm-8">{{ $attendance->created_at->format('d/m/Y H:i') }}</dd>

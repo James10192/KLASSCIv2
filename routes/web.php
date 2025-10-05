@@ -602,6 +602,10 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                     ->name('rapport')
                     ->middleware('permission:view_attendances');
 
+                Route::post('/attendances/rapport-pdf', [ESBTPAttendanceController::class, 'rapportPdf'])
+                    ->name('rapport-pdf')
+                    ->middleware('permission:view_attendances');
+
                 // Then parameter routes
                 Route::get('/attendances/{attendance}', [ESBTPAttendanceController::class, 'show'])
                     ->name('show')

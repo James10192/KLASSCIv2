@@ -363,11 +363,13 @@
                                 <i class="fas fa-check"></i>
                                 <span>Présent</span>
                             </label>
+                            @if($callType === 'start')
                             <label class="attendance-btn late {{ $currentStatus === 'late' ? 'active' : '' }}" for="late_{{ $etudiant->id }}">
                                 <input type="radio" name="attendances[{{ $etudiant->id }}]" value="late" id="late_{{ $etudiant->id }}" style="display: none;" {{ $currentStatus === 'late' ? 'checked' : '' }}>
                                 <i class="fas fa-clock"></i>
                                 <span>Retard</span>
                             </label>
+                            @endif
                             <label class="attendance-btn absent {{ $currentStatus === 'absent' ? 'active' : '' }}" for="absent_{{ $etudiant->id }}">
                                 <input type="radio" name="attendances[{{ $etudiant->id }}]" value="absent" id="absent_{{ $etudiant->id }}" style="display: none;" {{ $currentStatus === 'absent' ? 'checked' : '' }}>
                                 <i class="fas fa-times"></i>
