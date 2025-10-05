@@ -197,7 +197,7 @@
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" id="include_all_statuses" name="include_all_statuses" value="1" {{ isset($include_all_statuses) && $include_all_statuses ? 'checked' : '' }}>
                                 <label class="form-check-label" for="include_all_statuses">
-                                    Inclure tous les étudiants (même ceux avec des inscriptions inactives)
+                                    Inclure tous les statuts d'inscription (en attente, validée, rejetée, etc.)
                                 </label>
                             </div>
                         </div>
@@ -225,7 +225,7 @@
                         Toutes les périodes
                     @endif
                     @if(isset($anneeUniversitaire))
-                        - Année {{ $anneeUniversitaire->annee_debut }}-{{ $anneeUniversitaire->annee_fin }}
+                        - Année {{ $anneeUniversitaire->name ?? ($anneeUniversitaire->annee_debut . '-' . $anneeUniversitaire->annee_fin) }}
                     @endif
                 </div>
             </div>
