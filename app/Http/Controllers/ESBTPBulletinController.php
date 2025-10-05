@@ -2361,8 +2361,7 @@ class ESBTPBulletinController extends Controller
             if (!$include_all_statuses) {
                 $query->where('status', 'active');
             }
-        })
-        ->with(['user']);
+        });
 
         $students = $studentsQuery->get();
 

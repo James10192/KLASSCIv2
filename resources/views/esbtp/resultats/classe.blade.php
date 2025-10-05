@@ -280,11 +280,11 @@
                                             <td>
                                                 <div class="d-flex align-items-center">
                                                     <div class="avatar-circle bg-primary text-white me-2" style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-weight: bold;">
-                                                        {{ strtoupper(substr($etudiant->user->nom ?? 'N', 0, 1)) }}{{ strtoupper(substr($etudiant->user->prenoms ?? 'A', 0, 1)) }}
+                                                        {{ strtoupper(substr($etudiant->nom ?? 'N', 0, 1)) }}{{ strtoupper(substr($etudiant->prenoms ?? 'A', 0, 1)) }}
                                                     </div>
                                                     <div>
-                                                        <div class="fw-semibold">{{ $etudiant->user->nom ?? 'N/A' }} {{ $etudiant->user->prenoms ?? '' }}</div>
-                                                        <div class="text-muted small">{{ $etudiant->user->email ?? 'N/A' }}</div>
+                                                        <div class="fw-semibold">{{ $etudiant->nom ?? 'N/A' }} {{ $etudiant->prenoms ?? '' }}</div>
+                                                        <div class="text-muted small">{{ $etudiant->email ?? 'N/A' }}</div>
                                                     </div>
                                                 </div>
                                             </td>
