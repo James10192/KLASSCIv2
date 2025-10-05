@@ -240,9 +240,13 @@
             <div class="card-moderne p-lg">
                 <div class="section-title mb-lg" style="color: var(--primary); border-bottom: 2px solid var(--primary); padding-bottom: var(--space-sm);">
                     <i class="fas fa-chart-area"></i>
-                    Évolution des inscriptions
+                    Évolution des inscriptions et paiements
                 </div>
-                <p style="color: var(--text-secondary); margin-bottom: var(--space-lg);">Nombre d'étudiants inscrits par mois</p>
+                <p style="color: var(--text-secondary); margin-bottom: var(--space-lg);">
+                    <span style="color: #0453cb;">■</span> Toutes inscriptions (tous workflow)
+                    <span style="margin-left: 1rem; color: #10b981;">■</span> Étudiants créés (validés)
+                    <span style="margin-left: 1rem; color: #f59e0b;">■</span> Inscriptions avec paiement en attente
+                </p>
                 
                 <div class="chart-container">
                     <canvas id="inscriptionsChart"></canvas>
@@ -328,18 +332,25 @@
             data: {
                 labels: monthlyData.map(item => item.month + ' ' + item.year),
                 datasets: [{
-                        label: 'Inscriptions',
+                        label: 'Toutes inscriptions',
                     data: monthlyData.map(item => item.inscriptions),
                         borderColor: '#0453cb',
-                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        backgroundColor: 'rgba(4, 83, 203, 0.1)',
                         tension: 0.4,
                         fill: true
                 }, {
-                    label: 'Étudiants',
+                    label: 'Étudiants créés',
                     data: monthlyData.map(item => item.students),
                     borderColor: '#10b981',
                     backgroundColor: 'rgba(16, 185, 129, 0.1)',
                         tension: 0.4,
+                    fill: true
+                }, {
+                    label: 'Inscriptions avec paiement en attente',
+                    data: monthlyData.map(item => item.pending_payments),
+                    borderColor: '#f59e0b',
+                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                    tension: 0.4,
                     fill: true
                 }]
             },
@@ -349,6 +360,15 @@
                 plugins: {
                     legend: {
                         position: 'top',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            footer: function(tooltipItems) {
+                                const index = tooltipItems[0].dataIndex;
+                                const data = monthlyData[index];
+                                return 'Total: ' + data.inscriptions + ' | Validés: ' + data.students + ' | En attente: ' + data.pending_payments;
+                            }
+                        }
                     }
                 },
                 scales: {

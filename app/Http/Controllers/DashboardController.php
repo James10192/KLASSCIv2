@@ -375,6 +375,16 @@ class DashboardController extends Controller
                     ->whereYear('created_at', $date->year)
                     ->whereMonth('created_at', $date->month)
                     ->count();
+                // Courbe orange: inscriptions avec paiement en attente (non validé, workflow != etudiant_cree)
+                $pendingPaymentsCount = DB::table('esbtp_inscriptions')
+                    ->join('esbtp_paiements', 'esbtp_inscriptions.id', '=', 'esbtp_paiements.inscription_id')
+                    ->where('esbtp_inscriptions.annee_universitaire_id', $anneeEnCours->id)
+                    ->where('esbtp_paiements.status', 'en_attente')
+                    ->where('esbtp_inscriptions.workflow_step', '!=', 'etudiant_cree')
+                    ->whereYear('esbtp_inscriptions.created_at', $date->year)
+                    ->whereMonth('esbtp_inscriptions.created_at', $date->month)
+                    ->distinct()
+                    ->count('esbtp_inscriptions.id');
             } else {
                 // Sans année en cours: courbe verte = inscriptions avec workflow_step = 'etudiant_cree'
                 $studentsCount = ESBTPInscription::where('workflow_step', 'etudiant_cree')
@@ -385,6 +395,15 @@ class DashboardController extends Controller
                 $inscriptionsCount = ESBTPInscription::whereYear('created_at', $date->year)
                     ->whereMonth('created_at', $date->month)
                     ->count();
+                // Courbe orange: inscriptions avec paiement en attente (non validé, workflow != etudiant_cree)
+                $pendingPaymentsCount = DB::table('esbtp_inscriptions')
+                    ->join('esbtp_paiements', 'esbtp_inscriptions.id', '=', 'esbtp_paiements.inscription_id')
+                    ->where('esbtp_paiements.status', 'en_attente')
+                    ->where('esbtp_inscriptions.workflow_step', '!=', 'etudiant_cree')
+                    ->whereYear('esbtp_inscriptions.created_at', $date->year)
+                    ->whereMonth('esbtp_inscriptions.created_at', $date->month)
+                    ->distinct()
+                    ->count('esbtp_inscriptions.id');
             }
 
             $data['monthlyStats'][] = [
@@ -392,6 +411,7 @@ class DashboardController extends Controller
                 'year' => $date->format('Y'),
                 'students' => $studentsCount,
                 'inscriptions' => $inscriptionsCount,
+                'pending_payments' => $pendingPaymentsCount,
             ];
         }
 
@@ -907,6 +927,16 @@ class DashboardController extends Controller
                     ->whereYear('created_at', $date->year)
                     ->whereMonth('created_at', $date->month)
                     ->count();
+                // Courbe orange: inscriptions avec paiement en attente (non validé, workflow != etudiant_cree)
+                $pendingPaymentsCount = DB::table('esbtp_inscriptions')
+                    ->join('esbtp_paiements', 'esbtp_inscriptions.id', '=', 'esbtp_paiements.inscription_id')
+                    ->where('esbtp_inscriptions.annee_universitaire_id', $anneeEnCours->id)
+                    ->where('esbtp_paiements.status', 'en_attente')
+                    ->where('esbtp_inscriptions.workflow_step', '!=', 'etudiant_cree')
+                    ->whereYear('esbtp_inscriptions.created_at', $date->year)
+                    ->whereMonth('esbtp_inscriptions.created_at', $date->month)
+                    ->distinct()
+                    ->count('esbtp_inscriptions.id');
             } else {
                 // Sans année en cours: courbe verte = inscriptions avec workflow_step = 'etudiant_cree'
                 $studentsCount = ESBTPInscription::where('workflow_step', 'etudiant_cree')
@@ -917,6 +947,15 @@ class DashboardController extends Controller
                 $inscriptionsCount = ESBTPInscription::whereYear('created_at', $date->year)
                     ->whereMonth('created_at', $date->month)
                     ->count();
+                // Courbe orange: inscriptions avec paiement en attente (non validé, workflow != etudiant_cree)
+                $pendingPaymentsCount = DB::table('esbtp_inscriptions')
+                    ->join('esbtp_paiements', 'esbtp_inscriptions.id', '=', 'esbtp_paiements.inscription_id')
+                    ->where('esbtp_paiements.status', 'en_attente')
+                    ->where('esbtp_inscriptions.workflow_step', '!=', 'etudiant_cree')
+                    ->whereYear('esbtp_inscriptions.created_at', $date->year)
+                    ->whereMonth('esbtp_inscriptions.created_at', $date->month)
+                    ->distinct()
+                    ->count('esbtp_inscriptions.id');
             }
 
             $monthlyStats[] = [
@@ -924,6 +963,7 @@ class DashboardController extends Controller
                 'year' => $date->format('Y'),
                 'students' => $studentsCount,
                 'inscriptions' => $inscriptionsCount,
+                'pending_payments' => $pendingPaymentsCount,
             ];
         }
 
