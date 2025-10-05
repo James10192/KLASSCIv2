@@ -1427,7 +1427,8 @@ class ESBTPBulletinController extends Controller
             ->get();
 
         $periodes = ['1' => 'Semestre 1', '2' => 'Semestre 2'];
-        $annees_universitaires = ESBTPAnneeUniversitaire::orderBy('annee_debut', 'desc')->get();
+        // Récupérer toutes les années universitaires (on affiche name dans la vue)
+        $annees_universitaires = ESBTPAnneeUniversitaire::orderBy('id', 'desc')->get();
 
         // Get selected classe information
         $classeObj = null;

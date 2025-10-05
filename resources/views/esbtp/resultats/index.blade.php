@@ -185,7 +185,7 @@
                                 <option value="">Sélectionnez une année</option>
                                 @foreach($annees_universitaires ?? [] as $annee)
                                     <option value="{{ $annee->id }}" {{ isset($annee_universitaire_id) && $annee_universitaire_id == $annee->id ? 'selected' : '' }}>
-                                        {{ $annee->annee_debut }}-{{ $annee->annee_fin }}
+                                        {{ $annee->name ?? ($annee->annee_debut . '-' . $annee->annee_fin) }}{{ $annee->is_current ? ' (En cours)' : '' }}
                                     </option>
                                 @endforeach
                             </select>
