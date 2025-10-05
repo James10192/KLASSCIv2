@@ -326,16 +326,33 @@ class ESBTPSeanceCours extends Model
         // Récupérer la date de début de l'emploi du temps
         $dateDebut = \Carbon\Carbon::parse($this->emploiTemps->date_debut);
 
+        // Convertir le nom du jour en numéro (1 = lundi, 7 = dimanche)
+        $joursMapping = [
+            'lundi' => 1,
+            'mardi' => 2,
+            'mercredi' => 3,
+            'jeudi' => 4,
+            'vendredi' => 5,
+            'samedi' => 6,
+            'dimanche' => 7,
+        ];
+
+        $jourSeance = $joursMapping[strtolower($this->jour)] ?? null;
+
+        if (!$jourSeance) {
+            return null;
+        }
+
         // Calculer le décalage entre le jour de la semaine de la date de début (1 = lundi, 7 = dimanche)
         // et le jour de la séance (1 = lundi, 7 = dimanche)
         $jourDebutSemaine = $dateDebut->dayOfWeek ?: 7; // Carbon retourne 0 pour dimanche, on le convertit en 7
 
         // Calculer le nombre de jours à ajouter
         $joursAAjouter = 0;
-        if ($this->jour >= $jourDebutSemaine) {
-            $joursAAjouter = $this->jour - $jourDebutSemaine;
+        if ($jourSeance >= $jourDebutSemaine) {
+            $joursAAjouter = $jourSeance - $jourDebutSemaine;
         } else {
-            $joursAAjouter = 7 - $jourDebutSemaine + $this->jour;
+            $joursAAjouter = 7 - $jourDebutSemaine + $jourSeance;
         }
 
         // Si le jour calculé dépasse la date de fin, on retourne null

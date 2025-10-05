@@ -443,9 +443,16 @@ class ESBTPAttendanceController extends Controller
                         $debug['erreur'] = 'classe_manquante';
                     }
                     else {
+                        // Récupérer l'année universitaire courante
+                        $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
                         // Récupérer les étudiants directement de la classe sélectionnée
-                        // plutôt que de la classe associée à la séance
-                        $etudiants = $classe->etudiants;
+                        // filtrés par l'année universitaire courante
+                        $etudiants = $classe->etudiants()
+                            ->whereHas('inscriptions', function($q) use ($anneeUniversitaire) {
+                                $q->where('annee_universitaire_id', $anneeUniversitaire->id);
+                            })
+                            ->get();
                         $debug['nombre_etudiants'] = $etudiants->count();
                         $debug['etudiants_ids'] = $etudiants->pluck('id')->toArray();
 
@@ -469,7 +476,14 @@ class ESBTPAttendanceController extends Controller
                 } else {
                     // Si la classe est sélectionnée mais pas de séance, récupérer quand même les étudiants
                     // pour vérifier s'il y en a dans cette classe
-                    $etudiants = $classe->etudiants;
+                    // Récupérer l'année universitaire courante
+                    $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+                    $etudiants = $classe->etudiants()
+                        ->whereHas('inscriptions', function($q) use ($anneeUniversitaire) {
+                            $q->where('annee_universitaire_id', $anneeUniversitaire->id);
+                        })
+                        ->get();
                     $debug['nombre_etudiants_classe'] = $etudiants->count();
 
                     if ($etudiants->isEmpty()) {
