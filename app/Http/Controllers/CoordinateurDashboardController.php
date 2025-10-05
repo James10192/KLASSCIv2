@@ -64,13 +64,27 @@ class CoordinateurDashboardController extends Controller
                 ->whereHas('attendances')
                 ->count();
 
-            // 5. Étudiants présents aujourd'hui (statut = 'present')
+            // Récupérer l'année universitaire en cours
+            $anneeUniversitaire = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+            // 5. Étudiants présents aujourd'hui (statut = 'present' OU 'late'/'retard')
+            // Filtré par année universitaire en cours et inscriptions active
             $stats['students_present_today'] = \App\Models\ESBTPAttendance::whereDate('date', $date)
-                ->where('statut', 'present')
+                ->where('annee_universitaire_id', $anneeUniversitaire->id)
+                ->whereIn('statut', ['present', 'late', 'retard'])
+                ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire) {
+                    $q->where('annee_universitaire_id', $anneeUniversitaire->id)
+                      ->where('status', 'active');
+                })
                 ->count();
 
-            // 6. Total étudiants avec appel fait
+            // 6. Total étudiants avec appel fait (filtré par année et inscriptions active)
             $stats['students_total_today'] = \App\Models\ESBTPAttendance::whereDate('date', $date)
+                ->where('annee_universitaire_id', $anneeUniversitaire->id)
+                ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire) {
+                    $q->where('annee_universitaire_id', $anneeUniversitaire->id)
+                      ->where('status', 'active');
+                })
                 ->count();
 
             // 7. Taux de présence étudiants

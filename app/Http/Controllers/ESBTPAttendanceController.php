@@ -65,8 +65,10 @@ class ESBTPAttendanceController extends Controller
             'seanceCours.matiere',
             'seanceCours.emploiTemps.classe'
         ])
-        // FILTRE GLOBAL : uniquement les étudiants inscrits pour l'année universitaire courante
-        // ET avec un statut d'inscription 'active'
+        // FILTRE GLOBAL OPTIMISÉ : filtrage direct par annee_universitaire_id
+        // Plus besoin du whereHas indirect maintenant que la colonne existe
+        ->where('annee_universitaire_id', $anneeUniversitaire->id)
+        // ET vérifier que l'étudiant a une inscription active pour cette année
         ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire) {
             $q->where('annee_universitaire_id', $anneeUniversitaire->id)
               ->where('status', 'active');
