@@ -168,10 +168,12 @@ class TeacherDashboardController extends Controller
         $anneeUniversitaire = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
         // Récupérer les étudiants de la classe inscrits pour l'année universitaire courante
+        // ET avec un statut d'inscription 'active' uniquement
         $etudiants = $seance->classe->etudiants()
             ->with('user')
             ->whereHas('inscriptions', function($query) use ($anneeUniversitaire) {
-                $query->where('annee_universitaire_id', $anneeUniversitaire->id);
+                $query->where('annee_universitaire_id', $anneeUniversitaire->id)
+                      ->where('status', 'active');
             })
             ->get();
 
