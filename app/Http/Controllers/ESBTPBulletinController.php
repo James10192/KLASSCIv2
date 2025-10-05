@@ -2407,7 +2407,11 @@ class ESBTPBulletinController extends Controller
             'semestre2' => 'Deuxième Semestre'
         ];
 
-        $annees_universitaires = ESBTPAnneeUniversitaire::orderBy('annee_debut', 'desc')->get();
+        // Récupérer uniquement les années universitaires valides (avec annee_debut et annee_fin)
+        $annees_universitaires = ESBTPAnneeUniversitaire::whereNotNull('annee_debut')
+            ->whereNotNull('annee_fin')
+            ->orderBy('annee_debut', 'desc')
+            ->get();
 
         // Group notes by student and then by matière
         $notesByStudentMatiere = [];
