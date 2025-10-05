@@ -1,291 +1,348 @@
 @extends('layouts.app')
 
-@section('title', 'Résultats de la classe ' . $classe->name)
+@section('title', 'Résultats de la classe ' . $classe->name . ' - ESBTP-yAKRO')
+
+@section('styles')
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<style>
+/* Styles pour la page de résultats de classe */
+.content-container {
+    width: 100% !important;
+    min-height: 200px;
+}
+
+.content-container .table-responsive {
+    width: 100% !important;
+    margin: 0;
+}
+
+.content-container .table-responsive table {
+    width: 100% !important;
+    margin: 0;
+}
+
+.badge-success-custom {
+    background-color: #10b981;
+    color: white;
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.375rem;
+    font-weight: 500;
+}
+
+.badge-danger-custom {
+    background-color: #ef4444;
+    color: white;
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.375rem;
+    font-weight: 500;
+}
+
+.badge-warning-custom {
+    background-color: #f59e0b;
+    color: white;
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.375rem;
+    font-weight: 500;
+}
+</style>
+@endsection
 
 @section('content')
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card shadow-sm">
-                <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="fas fa-chart-bar me-2 text-primary"></i>Résultats de la classe {{ $classe->name }}</h5>
-                    <a href="{{ route('esbtp.resultats.index') }}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left me-1"></i>Retour à la liste
-                    </a>
+<div class="dashboard-acasi">
+    <div class="main-content">
+        <!-- Header Section -->
+        <div class="dashboard-header">
+            <div class="header-left">
+                <h1><i class="fas fa-chart-bar me-2"></i>Résultats de la classe {{ $classe->name }}</h1>
+                <p class="header-subtitle">Consultez les résultats scolaires de la classe</p>
+            </div>
+            <div class="header-actions">
+                <a href="{{ route('esbtp.resultats.index') }}" class="btn-acasi secondary">
+                    <i class="fas fa-arrow-left"></i>Retour à la liste
+                </a>
+            </div>
+        </div>
+
+        @if(session('success'))
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        @endif
+
+        @if(session('error'))
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-circle me-2"></i>{{ session('error') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        @endif
+
+        <!-- Statistiques KPI -->
+        @php
+            $totalMoyennes = 0;
+            $countMoyennes = 0;
+            $min = 20;
+            $max = 0;
+            $countSucces = 0;
+            $countEchec = 0;
+
+            foreach ($resultats as $resultat) {
+                if ($resultat['notes_count'] > 0) {
+                    $totalMoyennes += $resultat['moyenne'];
+                    $countMoyennes++;
+
+                    $min = min($min, $resultat['moyenne']);
+                    $max = max($max, $resultat['moyenne']);
+
+                    if ($resultat['moyenne'] >= 10) {
+                        $countSucces++;
+                    } else {
+                        $countEchec++;
+                    }
+                }
+            }
+
+            $moyenneClasse = $countMoyennes > 0 ? $totalMoyennes / $countMoyennes : 0;
+            $tauxReussite = $countMoyennes > 0 ? ($countSucces / $countMoyennes) * 100 : 0;
+        @endphp
+
+        <div class="kpi-grid">
+            <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
+                <div class="kpi-title" style="color: #000; font-weight: 600;">Total Étudiants</div>
+                <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ count($resultats) }}</div>
+                <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
+                    <i class="fas fa-users"></i>
+                    Dans la classe {{ $classe->name }}
                 </div>
-                <div class="card-body">
-                    @if(session('success'))
-                        <div class="alert alert-success">
-                            {{ session('success') }}
-                        </div>
-                    @endif
+            </div>
 
-                    @if(session('error'))
-                        <div class="alert alert-danger">
-                            {{ session('error') }}
-                        </div>
-                    @endif
+            <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
+                <div class="kpi-title" style="color: #000; font-weight: 600;">Moyenne Générale</div>
+                <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">
+                    {{ $countMoyennes > 0 ? number_format($moyenneClasse, 2) : 'N/A' }}
+                </div>
+                <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
+                    <i class="fas fa-calculator"></i>
+                    Sur 20 points
+                </div>
+            </div>
 
-                    <!-- Filtres -->
-                    <div class="row mb-4">
+            <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
+                <div class="kpi-title" style="color: #000; font-weight: 600;">Taux de Réussite</div>
+                <div class="kpi-value" style="color: #10b981; font-size: 2.5rem; font-weight: bold;">
+                    {{ $countMoyennes > 0 ? number_format($tauxReussite, 1) : '0' }}%
+                </div>
+                <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
+                    <i class="fas fa-graduation-cap"></i>
+                    Moyenne ≥ 10/20
+                </div>
+            </div>
+
+            <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
+                <div class="kpi-title" style="color: #000; font-weight: 600;">Meilleure Moyenne</div>
+                <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">
+                    {{ $countMoyennes > 0 ? number_format($max, 2) : 'N/A' }}
+                </div>
+                <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
+                    <i class="fas fa-trophy"></i>
+                    Note maximale
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters Section -->
+        <div class="main-card mb-4">
+            <div class="main-card-header">
+                <div class="main-card-title">
+                    <i class="fas fa-filter"></i>
+                    Filtres de recherche
+                </div>
+                <div class="main-card-subtitle">Affinez votre recherche de résultats</div>
+            </div>
+            <div class="main-card-body">
+                <form action="{{ route('esbtp.resultats.classe', $classe) }}" method="GET" class="filter-form">
+                    <div class="row g-3">
+                        <div class="col-md-5">
+                            <label class="form-label">Année Universitaire</label>
+                            <select class="form-select select2" id="annee_universitaire_id" name="annee_universitaire_id">
+                                @foreach($anneesUniversitaires ?? [] as $annee)
+                                    <option value="{{ $annee->id }}" {{ isset($annee_universitaire_id) && $annee_universitaire_id == $annee->id ? 'selected' : '' }}>
+                                        {{ $annee->annee_debut }}-{{ $annee->annee_fin }}
+                                        @if($annee->is_current)
+                                            <span>(En cours)</span>
+                                        @endif
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Période</label>
+                            <select class="form-select" id="periode" name="periode">
+                                @foreach($periodes ?? [] as $key => $nom)
+                                    <option value="{{ $key }}" {{ isset($periode) && $periode == $key ? 'selected' : '' }}>
+                                        {{ $nom }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-search me-1"></i>Filtrer
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
                         <div class="col-md-12">
-                            <div class="card border-0 bg-light">
-                                <div class="card-body">
-                                    <h6 class="mb-3"><i class="fas fa-filter me-2 text-secondary"></i>Filtrer les résultats</h6>
-                                    <form action="{{ route('esbtp.resultats.classe', $classe) }}" method="GET" class="row">
-                                        <div class="col-md-5 mb-2">
-                                            <label for="annee_universitaire_id" class="form-label">Année Universitaire :</label>
-                                            <select class="form-select shadow-sm" id="annee_universitaire_id" name="annee_universitaire_id">
-                                                @foreach($anneesUniversitaires ?? [] as $annee)
-                                                    <option value="{{ $annee->id }}" {{ isset($annee_id) && $annee_id == $annee->id ? 'selected' : '' }}>
-                                                        {{ $annee->annee_debut }}-{{ $annee->annee_fin }}
-                                                    </option>
-                                                @endforeach
-                                            </select>
-                                        </div>
-                                        <div class="col-md-4 mb-2">
-                                            <label for="periode" class="form-label">Période :</label>
-                                            <select class="form-select shadow-sm" id="periode" name="periode">
-                                                @foreach($periodes ?? [] as $p)
-                                                    <option value="{{ $p->id }}" {{ isset($periode) && $periode == $p->id ? 'selected' : '' }}>
-                                                        {{ $p->nom }}
-                                                    </option>
-                                                @endforeach
-                                            </select>
-                                        </div>
-                                        <div class="col-md-3 mb-2 d-flex align-items-end">
-                                            <button type="submit" class="btn btn-primary w-100 shadow-sm">
-                                                <i class="fas fa-filter me-1"></i>Appliquer
-                                            </button>
-                                        </div>
-                                        <div class="col-md-12 mt-2">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" id="include_all_statuses" name="include_all_statuses" value="1" {{ $include_all_statuses ? 'checked' : '' }}>
-                                                <label class="form-check-label" for="include_all_statuses">
-                                                    Afficher uniquement les étudiants actifs
-                                                </label>
-                                            </div>
-                                        </div>
-                                    </form>
-                                </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="include_all_statuses" name="include_all_statuses" value="1" {{ isset($include_all_statuses) && $include_all_statuses ? 'checked' : '' }}>
+                                <label class="form-check-label" for="include_all_statuses">
+                                    Inclure tous les étudiants (même ceux avec des inscriptions inactives)
+                                </label>
                             </div>
                         </div>
                     </div>
+                </form>
+            </div>
+        </div>
 
-                    <!-- Infos classe -->
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <div class="card h-100 border-0 shadow-sm">
-                                <div class="card-header bg-primary text-white">
-                                    <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Informations de la classe</h6>
-                                </div>
-                                <div class="card-body">
-                                    <div class="d-flex align-items-center mb-3">
-                                        <div class="bg-primary bg-opacity-10 p-3 rounded-circle me-3">
-                                            <i class="fas fa-graduation-cap text-primary fs-4"></i>
-                                        </div>
-                                        <div>
-                                            <h5 class="mb-0">{{ $classe->name }}</h5>
-                                            <p class="text-muted mb-0">{{ $classe->filiere->name ?? 'N/A' }} - {{ $classe->niveau->name ?? 'N/A' }}</p>
-                                        </div>
-                                    </div>
-                                    <div class="row mt-3">
-                                        <div class="col-6">
-                                            <div class="border-start border-4 border-primary ps-3 py-1">
-                                                <p class="text-muted mb-0">Étudiants</p>
-                                                <h4 class="mb-0">{{ count($resultats) }}</h4>
-                                            </div>
-                                        </div>
-                                        <div class="col-6">
-                                            <div class="border-start border-4 border-success ps-3 py-1">
-                                                <p class="text-muted mb-0">Période</p>
-                                                <h4 class="mb-0">
-                                                    @foreach($periodes ?? [] as $p)
-                                                        @if(isset($periode) && $periode == $p->id)
-                                                            {{ $p->nom }}
-                                                        @endif
-                                                    @endforeach
-                                                </h4>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="card h-100 border-0 shadow-sm">
-                                <div class="card-header bg-success text-white">
-                                    <h6 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Statistiques</h6>
-                                </div>
-                                <div class="card-body">
-                                    @php
-                                        $totalMoyennes = 0;
-                                        $countMoyennes = 0;
-                                        $min = 20;
-                                        $max = 0;
-                                        $countSucces = 0;
-                                        $countEchec = 0;
+        <!-- Section principale des résultats -->
+        <div class="main-card">
+            <div class="main-card-header">
+                <div class="main-card-title">
+                    <i class="fas fa-list"></i>
+                    Liste des résultats
+                </div>
+                <div class="main-card-subtitle">
+                    {{ $classe->name }} -
+                    @if(isset($periode))
+                        @foreach($periodes ?? [] as $key => $nom)
+                            @if($periode == $key)
+                                {{ $nom }}
+                            @endif
+                        @endforeach
+                    @else
+                        Toutes les périodes
+                    @endif
+                    @if(isset($anneeUniversitaire))
+                        - Année {{ $anneeUniversitaire->annee_debut }}-{{ $anneeUniversitaire->annee_fin }}
+                    @endif
+                </div>
+            </div>
 
-                                        foreach ($resultats as $resultat) {
-                                            if ($resultat['notes_count'] > 0) {
-                                                $totalMoyennes += $resultat['moyenne'];
-                                                $countMoyennes++;
+            <div class="main-card-body">
+                <div class="content-container">
+                    @if(count($resultats) > 0)
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 5%;">Rang</th>
+                                        <th style="width: 10%;">Matricule</th>
+                                        <th style="width: 25%;">Nom & Prénom</th>
+                                        <th style="width: 15%;" class="text-center">Moyenne</th>
+                                        <th style="width: 15%;" class="text-center">Nombre de notes</th>
+                                        <th style="width: 15%;" class="text-center">Statut</th>
+                                        <th style="width: 15%;" class="text-end">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($resultats as $index => $resultat)
+                                        @php
+                                            $etudiant = $resultat['etudiant'];
+                                            $moyenne = $resultat['moyenne'];
+                                            $notesCount = $resultat['notes_count'];
 
-                                                $min = min($min, $resultat['moyenne']);
-                                                $max = max($max, $resultat['moyenne']);
-
-                                                if ($resultat['moyenne'] >= 10) {
-                                                    $countSucces++;
-                                                } else {
-                                                    $countEchec++;
-                                                }
+                                            if ($moyenne >= 10) {
+                                                $badgeClass = 'badge-success-custom';
+                                                $badgeText = 'Admis';
+                                            } elseif ($moyenne >= 8) {
+                                                $badgeClass = 'badge-warning-custom';
+                                                $badgeText = 'Rattrapage';
+                                            } else {
+                                                $badgeClass = 'badge-danger-custom';
+                                                $badgeText = 'Échec';
                                             }
-                                        }
-
-                                        $moyenneClasse = $countMoyennes > 0 ? $totalMoyennes / $countMoyennes : 0;
-                                        $tauxReussite = $countMoyennes > 0 ? ($countSucces / $countMoyennes) * 100 : 0;
-                                    @endphp
-
-                                    <div class="row mb-3">
-                                        <div class="col-12">
-                                            <div class="bg-light p-3 rounded text-center mb-3">
-                                                <h6 class="text-muted mb-1">Moyenne de la classe</h6>
-                                                <h2 class="mb-0 {{ $moyenneClasse >= 10 ? 'text-success' : 'text-danger' }}">{{ number_format($moyenneClasse, 2) }}<small>/20</small></h2>
-                                                <div class="progress mt-2" style="height: 8px;">
-                                                    <div class="progress-bar {{ $moyenneClasse >= 10 ? 'bg-success' : 'bg-danger' }}" role="progressbar" style="width: {{ min($moyenneClasse * 5, 100) }}%" aria-valuenow="{{ $moyenneClasse }}" aria-valuemin="0" aria-valuemax="20"></div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="row">
-                                        <div class="col-6">
-                                            <div class="mb-3">
-                                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                                    <span class="text-muted">Note minimale</span>
-                                                    <span class="text-danger fw-bold">{{ $countMoyennes > 0 ? number_format($min, 2) : 'N/A' }}/20</span>
-                                                </div>
-                                                <div class="d-flex justify-content-between align-items-center">
-                                                    <span class="text-muted">Note maximale</span>
-                                                    <span class="text-success fw-bold">{{ $countMoyennes > 0 ? number_format($max, 2) : 'N/A' }}/20</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-6">
-                                            <div class="text-center">
-                                                <div class="d-inline-block position-relative" style="width: 80px; height: 80px;">
-                                                    <div class="position-absolute top-50 start-50 translate-middle text-center">
-                                                        <h3 class="mb-0">{{ number_format($tauxReussite, 0) }}%</h3>
-                                                        <small class="text-muted">Réussite</small>
-                                                    </div>
-                                                    <svg width="80" height="80" viewBox="0 0 80 80">
-                                                        <circle cx="40" cy="40" r="36" fill="none" stroke="#e9ecef" stroke-width="8"/>
-                                                        <circle cx="40" cy="40" r="36" fill="none" stroke="{{ $tauxReussite >= 50 ? '#28a745' : '#dc3545' }}" stroke-width="8" stroke-dasharray="{{ 226.2 * $tauxReussite / 100 }} 226.2" stroke-dashoffset="0" transform="rotate(-90 40 40)"/>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Tableau des résultats -->
-                    <div class="card border-0 shadow-sm">
-                        <div class="card-header bg-light">
-                            <h6 class="mb-0"><i class="fas fa-list me-2 text-primary"></i>Liste des étudiants et leurs résultats</h6>
-                        </div>
-                        <div class="card-body p-0">
-                            <div class="table-responsive">
-                                <table class="table table-hover mb-0">
-                                    <thead class="table-light">
+                                        @endphp
                                         <tr>
-                                            <th style="width: 5%">#</th>
-                                            <th style="width: 15%">Matricule</th>
-                                            <th style="width: 20%">Nom</th>
-                                            <th style="width: 20%">Prénom</th>
-                                            <th style="width: 15%" class="text-center">Moyenne</th>
-                                            <th style="width: 15%" class="text-center">Nb. Notes</th>
-                                            <th style="width: 10%" class="text-center">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @forelse($resultats as $index => $resultat)
-                                            <tr class="{{ $index % 2 == 0 ? 'bg-white' : 'bg-light' }}">
-                                                <td>{{ $index + 1 }}</td>
-                                                <td>{{ $resultat['etudiant']->matricule }}</td>
-                                                <td>{{ $resultat['etudiant']->nom }}</td>
-                                                <td>{{ $resultat['etudiant']->prenom }}</td>
-                                                <td class="text-center">
-                                                    <span class="badge rounded-pill {{ $resultat['moyenne'] >= 10 ? 'bg-success' : 'bg-danger' }} px-3 py-2">
-                                                        {{ number_format($resultat['moyenne'], 2) }}/20
-                                                    </span>
-                                                </td>
-                                                <td class="text-center">
-                                                    <span class="badge bg-info px-3 py-2 rounded-pill">{{ $resultat['notes_count'] }}</span>
-                                                </td>
-                                                <td class="text-center">
-                                                    <a href="{{ route('esbtp.resultats.etudiant', $resultat['etudiant']) }}?classe_id={{ $classe->id }}&periode={{ $periode }}&annee_universitaire_id={{ $annee_id }}"
-                                                       class="btn btn-sm btn-primary rounded-circle" data-bs-toggle="tooltip" title="Voir les détails">
-                                                        <i class="fas fa-eye"></i>
-                                                    </a>
-                                                    @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire'))
-                                                    <a href="{{ route('esbtp.bulletins.moyennes-preview', ['etudiant_id' => $resultat['etudiant']->id, 'classe_id' => $classe->id, 'periode' => ($periode == '1' ? 'semestre1' : ($periode == '2' ? 'semestre2' : $periode)), 'annee_universitaire_id' => $annee_id]) }}"
-                                                       class="btn btn-sm btn-warning rounded-circle" data-bs-toggle="tooltip" title="Modifier les moyennes">
-                                                        <i class="fas fa-edit"></i>
-                                                    </a>
-                                                    @endif
-                                                    <a href="#" class="btn btn-sm btn-success rounded-circle" data-bs-toggle="tooltip" title="Générer le bulletin"
-                                                       onclick="window.open('{{ route('esbtp.bulletins.pdf-params', ['bulletin' => $resultat['etudiant']->id, 'classe_id' => $classe->id, 'periode' => $periode, 'annee_universitaire_id' => $annee_id]) }}', '_blank')">
-                                                        <i class="fas fa-file-pdf"></i>
-                                                    </a>
-                                                </td>
-                                            </tr>
-                                        @empty
-                                            <tr>
-                                                <td colspan="7" class="text-center py-4">
-                                                    <div class="text-muted">
-                                                        <i class="fas fa-info-circle fa-2x mb-3"></i>
-                                                        <p>Aucun résultat trouvé pour cette classe</p>
+                                            <td class="fw-bold">
+                                                @if($index == 0)
+                                                    <i class="fas fa-trophy text-warning"></i>
+                                                @endif
+                                                {{ $index + 1 }}
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-secondary">{{ $etudiant->matricule }}</span>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="avatar-circle bg-primary text-white me-2" style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-weight: bold;">
+                                                        {{ strtoupper(substr($etudiant->user->nom ?? 'N', 0, 1)) }}{{ strtoupper(substr($etudiant->user->prenoms ?? 'A', 0, 1)) }}
                                                     </div>
-                                                </td>
-                                            </tr>
-                                        @endforelse
-                                    </tbody>
-                                </table>
-                            </div>
+                                                    <div>
+                                                        <div class="fw-semibold">{{ $etudiant->user->nom ?? 'N/A' }} {{ $etudiant->user->prenoms ?? '' }}</div>
+                                                        <div class="text-muted small">{{ $etudiant->user->email ?? 'N/A' }}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="text-center">
+                                                <div class="fw-bold fs-5" style="color: var(--primary);">
+                                                    {{ $notesCount > 0 ? number_format($moyenne, 2) : 'N/A' }}
+                                                </div>
+                                                <small class="text-muted">/ 20</small>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge bg-info">{{ $notesCount }} note(s)</span>
+                                            </td>
+                                            <td class="text-center">
+                                                @if($notesCount > 0)
+                                                    <span class="badge {{ $badgeClass }}">{{ $badgeText }}</span>
+                                                @else
+                                                    <span class="badge bg-secondary">Aucune note</span>
+                                                @endif
+                                            </td>
+                                            <td class="text-end">
+                                                <a href="{{ route('esbtp.resultats.etudiant', [
+                                                    'etudiant' => $etudiant->id,
+                                                    'classe_id' => $classe->id,
+                                                    'periode' => $periode ?? '',
+                                                    'annee_universitaire_id' => $annee_universitaire_id ?? ''
+                                                ]) }}" class="btn btn-sm btn-primary">
+                                                    <i class="fas fa-eye me-1"></i>Voir détails
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
                         </div>
-                    </div>
-
-                    <!-- Ajouter un bouton pour générer tous les bulletins PDF en bas de page -->
-                    <div class="d-flex justify-content-end mt-4">
-                        <a href="{{ route('esbtp.bulletins.generer-classe', ['classe_id' => $classe->id, 'periode' => $periode, 'annee_universitaire_id' => $annee_id]) }}"
-                           class="btn btn-danger shadow-sm"
-                           onclick="event.preventDefault(); document.getElementById('generate-bulletins-form').submit();">
-                            <i class="fas fa-file-pdf me-2"></i>Générer tous les bulletins
-                        </a>
-                        <form id="generate-bulletins-form" action="{{ route('esbtp.bulletins.generer-classe') }}" method="POST" style="display: none;">
-                            @csrf
-                            <input type="hidden" name="classe_id" value="{{ $classe->id }}">
-                            <input type="hidden" name="periode" value="{{ $periode }}">
-                            <input type="hidden" name="annee_universitaire_id" value="{{ $annee_id }}">
-                        </form>
-                    </div>
+                    @else
+                        <div class="text-center py-5">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">Aucun résultat trouvé</h5>
+                            <p class="text-muted">Aucun étudiant ne correspond aux critères sélectionnés.</p>
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
     </div>
 </div>
+@endsection
 
-@push('scripts')
+@section('scripts')
 <script>
-    // Activer les tooltips Bootstrap
-    document.addEventListener('DOMContentLoaded', function() {
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl)
+$(document).ready(function() {
+    // Initialize Select2 for better select dropdowns
+    if (typeof $.fn.select2 !== 'undefined') {
+        $('.select2').select2({
+            theme: 'bootstrap-5',
+            width: '100%'
         });
-    });
+    }
+});
 </script>
-@endpush
 @endsection

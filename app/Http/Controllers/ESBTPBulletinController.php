@@ -2342,9 +2342,9 @@ class ESBTPBulletinController extends Controller
         $annee_universitaire_id = $request->annee_universitaire_id;
         $include_all_statuses = $request->has('include_all_statuses');
 
-        // Get current academic year if not specified
+        // Get current academic year if not specified (utiliser is_current au lieu de is_active)
         if (!$annee_universitaire_id) {
-                $annee_universitaire_id = ESBTPAnneeUniversitaire::where('is_active', true)->first()->id ?? null;
+                $annee_universitaire_id = ESBTPAnneeUniversitaire::where('is_current', true)->first()->id ?? null;
         }
 
         $classe_id = $id;
@@ -2402,10 +2402,10 @@ class ESBTPBulletinController extends Controller
             ]);
         }
 
-        // Changed from associative array to array of objects for view compatibility
+        // Périodes disponibles (format compatible avec la vue)
         $periodes = [
-            (object)['id' => '1', 'nom' => 'Semestre 1'],
-            (object)['id' => '2', 'nom' => 'Semestre 2']
+            'semestre1' => 'Premier Semestre',
+            'semestre2' => 'Deuxième Semestre'
         ];
 
         $annees_universitaires = ESBTPAnneeUniversitaire::orderBy('annee_debut', 'desc')->get();
@@ -2488,6 +2488,12 @@ class ESBTPBulletinController extends Controller
         // Define annee_id for view consistency
         $annee_id = $annee_universitaire_id;
 
+        // Récupérer l'objet année universitaire pour la vue
+        $anneeUniversitaire = ESBTPAnneeUniversitaire::find($annee_universitaire_id);
+
+        // Utiliser le bon nom de variable pour compatibilité avec la vue
+        $anneesUniversitaires = $annees_universitaires;
+
         return view('esbtp.resultats.classe', compact(
             'classe',
             'students',
@@ -2497,9 +2503,10 @@ class ESBTPBulletinController extends Controller
             'periodes',
             'annee_universitaire_id',
             'annee_id',
-            'annees_universitaires',
+            'anneesUniversitaires',
+            'anneeUniversitaire',
             'resultats',
-            'include_all_statuses' // Ajouter cette ligne
+            'include_all_statuses'
         ));
     }
 
