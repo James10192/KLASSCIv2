@@ -684,7 +684,7 @@ class ESBTPPaiementController extends Controller
             if (file_exists($path)) {
                 $imageData = file_get_contents($path);
                 $extension = pathinfo($path, PATHINFO_EXTENSION);
-                return 'data:image/' . $extension . ';base64,' . base64encode($imageData);
+                return 'data:image/' . $extension . ';base64,' . base64_encode($imageData);
             }
         }
 
