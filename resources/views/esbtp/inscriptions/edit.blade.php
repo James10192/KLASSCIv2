@@ -76,7 +76,7 @@
                         <div class="alert alert-info">
                             <p class="mb-0"><strong>Étudiant :</strong> {{ $inscription->etudiant->nom }} {{ $inscription->etudiant->prenoms }}</p>
                             <p class="mb-0"><strong>Matricule :</strong> {{ $inscription->etudiant->matricule }}</p>
-                            <p class="mb-0"><strong>Date de naissance :</strong> {{ $inscription->etudiant->date_naissance->format('d/m/Y') }}</p>
+                            <p class="mb-0"><strong>Date de naissance :</strong> {{ $inscription->etudiant->date_naissance?->format('d/m/Y') ?? 'Non renseignée' }}</p>
                             <p class="mb-0"><strong>Pour modifier les informations de l'étudiant, veuillez utiliser la page de profil de l'étudiant.</strong></p>
                         </div>
                     </div>
