@@ -95,17 +95,30 @@ class ESBTPTeacherAttendanceController extends Controller
                 throw new \Exception('Cette séance a déjà été émargée.');
             }
 
-            // Vérifier la fenêtre horaire d'émargement
+            // **LOGIQUE DE FENÊTRE D'ÉMARGEMENT DÉBUT** (identique à TeacherAttendanceController)
             $now = Carbon::now();
-            $seanceStart = Carbon::parse($seance->heure_debut);
-            $seanceEnd = Carbon::parse($seance->heure_fin);
 
-            $earlyWindow = $seanceStart->copy()->subMinutes($settings['allowed_early_minutes'] ?? 30);
-            $lateWindow = $seanceEnd->copy()->addMinutes($settings['allowed_late_minutes'] ?? 15);
+            // heure_debut est déjà un DATETIME complet
+            $heureDebut = Carbon::parse($seance->heure_debut);
 
-            if ($now->lt($earlyWindow) || $now->gt($lateWindow)) {
-                throw new \Exception('L\'émargement n\'est pas disponible en dehors des horaires autorisés.');
+            // FENÊTRE 1 : AVANT heure_debut → ❌ IMPOSSIBLE d'émarger
+            if ($now < $heureDebut) {
+                throw new \Exception('Vous ne pouvez pas émarger avant le début du cours (' . $heureDebut->format('H:i') . ').');
             }
+
+            // FENÊTRE 2 : heure_debut → heure_debut + 20min → ✅ PRÉSENT
+            $limite20min = $heureDebut->copy()->addMinutes(20);
+
+            // FENÊTRE 3 : heure_debut + 20min → heure_debut + 45min → ⚠️ RETARD
+            $limite45min = $heureDebut->copy()->addMinutes(45);
+
+            // FENÊTRE 4 : heure_debut + 45min et plus → ❌ ABSENT (workflow fermé)
+            if ($now > $limite45min) {
+                throw new \Exception('Délai d\'émargement dépassé (45 minutes après le début). Vous êtes marqué ABSENT. La séance ne sera pas comptabilisée.');
+            }
+
+            // Déterminer le statut : present ou late
+            $status = ($now <= $limite20min) ? 'present' : 'late';
 
             // Récupérer le code actif
             $activeCode = ESBTPDailyCode::where('status', 'active')
@@ -138,7 +151,7 @@ class ESBTPTeacherAttendanceController extends Controller
                 throw new \Exception('Code d\'émargement invalide.');
             }
 
-            // Créer l'émargement
+            // Créer l'émargement avec le status calculé
             $agent = new Agent();
             $attendance = ESBTPTeacherAttendance::create([
                 'teacher_id' => $teacher->id,
@@ -146,7 +159,7 @@ class ESBTPTeacherAttendanceController extends Controller
                 'daily_code_id' => $activeCode->id,
                 'marked_at' => now(),
                 'date' => $seance->date_seance,
-                'status' => 'fait',
+                'status' => $status, // ← Utiliser le status calculé (present ou late)
                 'ip_address' => $request->ip(),
                 'device_info' => [
                     'device' => $agent->device(),

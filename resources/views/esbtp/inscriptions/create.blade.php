@@ -637,6 +637,7 @@
             <div class="p-lg">
                 <form id="inscriptionForm" method="POST" action="{{ route('esbtp.inscriptions.store') }}" enctype="multipart/form-data">
                     @csrf
+                    <input type="hidden" name="duplicate_override" id="duplicate_override" value="0">
                     
                     <!-- Affichage des erreurs de validation -->
                     @if ($errors->any())
@@ -664,6 +665,22 @@
                             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                         </div>
                     @endif
+
+                    <div id="duplicate-warning" class="alert alert-warning d-none mt-4" role="alert">
+                        <div class="d-flex align-items-start">
+                            <i class="fas fa-exclamation-triangle me-2 mt-1"></i>
+                            <div>
+                                <strong>Doublons potentiels détectés.</strong>
+                                <span id="duplicate-warning-text">Veuillez vérifier les informations avant de continuer.</span>
+                                <div class="mt-2">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" id="show-duplicates-modal">
+                                        Voir les doublons
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     
                     <!-- Informations personnelles -->
                     <div class="row">
@@ -729,114 +746,7 @@
                             <div class="form-group mb-3">
                                 <label class="form-label fw-bold">Nationalité</label>
                                 <select class="form-control @error('nationalite') is-invalid @enderror" name="nationalite" required>
-                                    <option value="">Sélectionner une nationalité</option>
-                                    <option value="Ivoirienne" {{ old('nationalite') == 'Ivoirienne' ? 'selected' : '' }}>🇨🇮 Ivoirienne</option>
-                                    <optgroup label="─────────── Pays africains ───────────">
-                                        <option value="Algérienne" {{ old('nationalite') == 'Algérienne' ? 'selected' : '' }}>🇩🇿 Algérienne</option>
-                                        <option value="Angolaise" {{ old('nationalite') == 'Angolaise' ? 'selected' : '' }}>🇦🇴 Angolaise</option>
-                                        <option value="Béninoise" {{ old('nationalite') == 'Béninoise' ? 'selected' : '' }}>🇧🇯 Béninoise</option>
-                                        <option value="Botswanaise" {{ old('nationalite') == 'Botswanaise' ? 'selected' : '' }}>🇧🇼 Botswanaise</option>
-                                        <option value="Burkinabè" {{ old('nationalite') == 'Burkinabè' ? 'selected' : '' }}>🇧🇫 Burkinabè</option>
-                                        <option value="Burundaise" {{ old('nationalite') == 'Burundaise' ? 'selected' : '' }}>🇧🇮 Burundaise</option>
-                                        <option value="Camerounaise" {{ old('nationalite') == 'Camerounaise' ? 'selected' : '' }}>🇨🇲 Camerounaise</option>
-                                        <option value="Cap-verdienne" {{ old('nationalite') == 'Cap-verdienne' ? 'selected' : '' }}>🇨🇻 Cap-verdienne</option>
-                                        <option value="Centrafricaine" {{ old('nationalite') == 'Centrafricaine' ? 'selected' : '' }}>🇨🇫 Centrafricaine</option>
-                                        <option value="Comorienne" {{ old('nationalite') == 'Comorienne' ? 'selected' : '' }}>🇰🇲 Comorienne</option>
-                                        <option value="Congolaise (RDC)" {{ old('nationalite') == 'Congolaise (RDC)' ? 'selected' : '' }}>🇨🇩 Congolaise (RDC)</option>
-                                        <option value="Congolaise (RC)" {{ old('nationalite') == 'Congolaise (RC)' ? 'selected' : '' }}>🇨🇬 Congolaise (RC)</option>
-                                        <option value="Djiboutienne" {{ old('nationalite') == 'Djiboutienne' ? 'selected' : '' }}>🇩🇯 Djiboutienne</option>
-                                        <option value="Égyptienne" {{ old('nationalite') == 'Égyptienne' ? 'selected' : '' }}>🇪🇬 Égyptienne</option>
-                                        <option value="Érythréenne" {{ old('nationalite') == 'Érythréenne' ? 'selected' : '' }}>🇪🇷 Érythréenne</option>
-                                        <option value="Éthiopienne" {{ old('nationalite') == 'Éthiopienne' ? 'selected' : '' }}>🇪🇹 Éthiopienne</option>
-                                        <option value="Gabonaise" {{ old('nationalite') == 'Gabonaise' ? 'selected' : '' }}>🇬🇦 Gabonaise</option>
-                                        <option value="Gambienne" {{ old('nationalite') == 'Gambienne' ? 'selected' : '' }}>🇬🇲 Gambienne</option>
-                                        <option value="Ghanéenne" {{ old('nationalite') == 'Ghanéenne' ? 'selected' : '' }}>🇬🇭 Ghanéenne</option>
-                                        <option value="Guinéenne" {{ old('nationalite') == 'Guinéenne' ? 'selected' : '' }}>🇬🇳 Guinéenne</option>
-                                        <option value="Bissau-Guinéenne" {{ old('nationalite') == 'Bissau-Guinéenne' ? 'selected' : '' }}>🇬🇼 Bissau-Guinéenne</option>
-                                        <option value="Équato-Guinéenne" {{ old('nationalite') == 'Équato-Guinéenne' ? 'selected' : '' }}>🇬🇶 Équato-Guinéenne</option>
-                                        <option value="Kényane" {{ old('nationalite') == 'Kényane' ? 'selected' : '' }}>🇰🇪 Kényane</option>
-                                        <option value="Lesothane" {{ old('nationalite') == 'Lesothane' ? 'selected' : '' }}>🇱🇸 Lesothane</option>
-                                        <option value="Libérienne" {{ old('nationalite') == 'Libérienne' ? 'selected' : '' }}>🇱🇷 Libérienne</option>
-                                        <option value="Libyenne" {{ old('nationalite') == 'Libyenne' ? 'selected' : '' }}>🇱🇾 Libyenne</option>
-                                        <option value="Malgache" {{ old('nationalite') == 'Malgache' ? 'selected' : '' }}>🇲🇬 Malgache</option>
-                                        <option value="Malawite" {{ old('nationalite') == 'Malawite' ? 'selected' : '' }}>🇲🇼 Malawite</option>
-                                        <option value="Malienne" {{ old('nationalite') == 'Malienne' ? 'selected' : '' }}>🇲🇱 Malienne</option>
-                                        <option value="Marocaine" {{ old('nationalite') == 'Marocaine' ? 'selected' : '' }}>🇲🇦 Marocaine</option>
-                                        <option value="Mauricienne" {{ old('nationalite') == 'Mauricienne' ? 'selected' : '' }}>🇲🇺 Mauricienne</option>
-                                        <option value="Mauritanienne" {{ old('nationalite') == 'Mauritanienne' ? 'selected' : '' }}>🇲🇷 Mauritanienne</option>
-                                        <option value="Mozambicaine" {{ old('nationalite') == 'Mozambicaine' ? 'selected' : '' }}>🇲🇿 Mozambicaine</option>
-                                        <option value="Namibienne" {{ old('nationalite') == 'Namibienne' ? 'selected' : '' }}>🇳🇦 Namibienne</option>
-                                        <option value="Nigérienne" {{ old('nationalite') == 'Nigérienne' ? 'selected' : '' }}>🇳🇪 Nigérienne</option>
-                                        <option value="Nigériane" {{ old('nationalite') == 'Nigériane' ? 'selected' : '' }}>🇳🇬 Nigériane</option>
-                                        <option value="Ougandaise" {{ old('nationalite') == 'Ougandaise' ? 'selected' : '' }}>🇺🇬 Ougandaise</option>
-                                        <option value="Rwandaise" {{ old('nationalite') == 'Rwandaise' ? 'selected' : '' }}>🇷🇼 Rwandaise</option>
-                                        <option value="Sao-Toméenne" {{ old('nationalite') == 'Sao-Toméenne' ? 'selected' : '' }}>🇸🇹 Sao-Toméenne</option>
-                                        <option value="Sénégalaise" {{ old('nationalite') == 'Sénégalaise' ? 'selected' : '' }}>🇸🇳 Sénégalaise</option>
-                                        <option value="Seychelloise" {{ old('nationalite') == 'Seychelloise' ? 'selected' : '' }}>🇸🇨 Seychelloise</option>
-                                        <option value="Sierra-Léonaise" {{ old('nationalite') == 'Sierra-Léonaise' ? 'selected' : '' }}>🇸🇱 Sierra-Léonaise</option>
-                                        <option value="Somalienne" {{ old('nationalite') == 'Somalienne' ? 'selected' : '' }}>🇸🇴 Somalienne</option>
-                                        <option value="Sud-Africaine" {{ old('nationalite') == 'Sud-Africaine' ? 'selected' : '' }}>🇿🇦 Sud-Africaine</option>
-                                        <option value="Sud-Soudanaise" {{ old('nationalite') == 'Sud-Soudanaise' ? 'selected' : '' }}>🇸🇸 Sud-Soudanaise</option>
-                                        <option value="Soudanaise" {{ old('nationalite') == 'Soudanaise' ? 'selected' : '' }}>🇸🇩 Soudanaise</option>
-                                        <option value="Swatilienne" {{ old('nationalite') == 'Swatilienne' ? 'selected' : '' }}>🇸🇿 Swatilienne</option>
-                                        <option value="Tanzanienne" {{ old('nationalite') == 'Tanzanienne' ? 'selected' : '' }}>🇹🇿 Tanzanienne</option>
-                                        <option value="Tchadienne" {{ old('nationalite') == 'Tchadienne' ? 'selected' : '' }}>🇹🇩 Tchadienne</option>
-                                        <option value="Togolaise" {{ old('nationalite') == 'Togolaise' ? 'selected' : '' }}>🇹🇬 Togolaise</option>
-                                        <option value="Tunisienne" {{ old('nationalite') == 'Tunisienne' ? 'selected' : '' }}>🇹🇳 Tunisienne</option>
-                                        <option value="Zambienne" {{ old('nationalite') == 'Zambienne' ? 'selected' : '' }}>🇿🇲 Zambienne</option>
-                                        <option value="Zimbabwéenne" {{ old('nationalite') == 'Zimbabwéenne' ? 'selected' : '' }}>🇿🇼 Zimbabwéenne</option>
-                                    </optgroup>
-                                    <optgroup label="─────────── Autres pays ───────────">
-                                        <option value="Française" {{ old('nationalite') == 'Française' ? 'selected' : '' }}>🇫🇷 Française</option>
-                                        <option value="Allemande" {{ old('nationalite') == 'Allemande' ? 'selected' : '' }}>🇩🇪 Allemande</option>
-                                        <option value="Américaine" {{ old('nationalite') == 'Américaine' ? 'selected' : '' }}>🇺🇸 Américaine</option>
-                                        <option value="Britannique" {{ old('nationalite') == 'Britannique' ? 'selected' : '' }}>🇬🇧 Britannique</option>
-                                        <option value="Chinoise" {{ old('nationalite') == 'Chinoise' ? 'selected' : '' }}>🇨🇳 Chinoise</option>
-                                        <option value="Espagnole" {{ old('nationalite') == 'Espagnole' ? 'selected' : '' }}>🇪🇸 Espagnole</option>
-                                        <option value="Italienne" {{ old('nationalite') == 'Italienne' ? 'selected' : '' }}>🇮🇹 Italienne</option>
-                                        <option value="Japonaise" {{ old('nationalite') == 'Japonaise' ? 'selected' : '' }}>🇯🇵 Japonaise</option>
-                                        <option value="Canadienne" {{ old('nationalite') == 'Canadienne' ? 'selected' : '' }}>🇨🇦 Canadienne</option>
-                                        <option value="Australienne" {{ old('nationalite') == 'Australienne' ? 'selected' : '' }}>🇦🇺 Australienne</option>
-                                        <option value="Brésilienne" {{ old('nationalite') == 'Brésilienne' ? 'selected' : '' }}>🇧🇷 Brésilienne</option>
-                                        <option value="Indienne" {{ old('nationalite') == 'Indienne' ? 'selected' : '' }}>🇮🇳 Indienne</option>
-                                        <option value="Russe" {{ old('nationalite') == 'Russe' ? 'selected' : '' }}>🇷🇺 Russe</option>
-                                        <option value="Mexicaine" {{ old('nationalite') == 'Mexicaine' ? 'selected' : '' }}>🇲🇽 Mexicaine</option>
-                                        <option value="Argentine" {{ old('nationalite') == 'Argentine' ? 'selected' : '' }}>🇦🇷 Argentine</option>
-                                        <option value="Belge" {{ old('nationalite') == 'Belge' ? 'selected' : '' }}>🇧🇪 Belge</option>
-                                        <option value="Suisse" {{ old('nationalite') == 'Suisse' ? 'selected' : '' }}>🇨🇭 Suisse</option>
-                                        <option value="Néerlandaise" {{ old('nationalite') == 'Néerlandaise' ? 'selected' : '' }}>🇳🇱 Néerlandaise</option>
-                                        <option value="Suédoise" {{ old('nationalite') == 'Suédoise' ? 'selected' : '' }}>🇸🇪 Suédoise</option>
-                                        <option value="Norvégienne" {{ old('nationalite') == 'Norvégienne' ? 'selected' : '' }}>🇳🇴 Norvégienne</option>
-                                        <option value="Danoise" {{ old('nationalite') == 'Danoise' ? 'selected' : '' }}>🇩🇰 Danoise</option>
-                                        <option value="Autrichienne" {{ old('nationalite') == 'Autrichienne' ? 'selected' : '' }}>🇦🇹 Autrichienne</option>
-                                        <option value="Portugaise" {{ old('nationalite') == 'Portugaise' ? 'selected' : '' }}>🇵🇹 Portugaise</option>
-                                        <option value="Grecque" {{ old('nationalite') == 'Grecque' ? 'selected' : '' }}>🇬🇷 Grecque</option>
-                                        <option value="Turque" {{ old('nationalite') == 'Turque' ? 'selected' : '' }}>🇹🇷 Turque</option>
-                                        <option value="Polonaise" {{ old('nationalite') == 'Polonaise' ? 'selected' : '' }}>🇵🇱 Polonaise</option>
-                                        <option value="Tchèque" {{ old('nationalite') == 'Tchèque' ? 'selected' : '' }}>🇨🇿 Tchèque</option>
-                                        <option value="Hongroise" {{ old('nationalite') == 'Hongroise' ? 'selected' : '' }}>🇭🇺 Hongroise</option>
-                                        <option value="Roumaine" {{ old('nationalite') == 'Roumaine' ? 'selected' : '' }}>🇷🇴 Roumaine</option>
-                                        <option value="Bulgare" {{ old('nationalite') == 'Bulgare' ? 'selected' : '' }}>🇧🇬 Bulgare</option>
-                                        <option value="Croate" {{ old('nationalite') == 'Croate' ? 'selected' : '' }}>🇭🇷 Croate</option>
-                                        <option value="Serbe" {{ old('nationalite') == 'Serbe' ? 'selected' : '' }}>🇷🇸 Serbe</option>
-                                        <option value="Slovène" {{ old('nationalite') == 'Slovène' ? 'selected' : '' }}>🇸🇮 Slovène</option>
-                                        <option value="Slovaque" {{ old('nationalite') == 'Slovaque' ? 'selected' : '' }}>🇸🇰 Slovaque</option>
-                                        <option value="Ukrainienne" {{ old('nationalite') == 'Ukrainienne' ? 'selected' : '' }}>🇺🇦 Ukrainienne</option>
-                                        <option value="Libanaise" {{ old('nationalite') == 'Libanaise' ? 'selected' : '' }}>🇱🇧 Libanaise</option>
-                                        <option value="Saoudienne" {{ old('nationalite') == 'Saoudienne' ? 'selected' : '' }}>🇸🇦 Saoudienne</option>
-                                        <option value="Iranienne" {{ old('nationalite') == 'Iranienne' ? 'selected' : '' }}>🇮🇷 Iranienne</option>
-                                        <option value="Israélienne" {{ old('nationalite') == 'Israélienne' ? 'selected' : '' }}>🇮🇱 Israélienne</option>
-                                        <option value="Coréenne" {{ old('nationalite') == 'Coréenne' ? 'selected' : '' }}>🇰🇷 Coréenne</option>
-                                        <option value="Thaïlandaise" {{ old('nationalite') == 'Thaïlandaise' ? 'selected' : '' }}>🇹🇭 Thaïlandaise</option>
-                                        <option value="Vietnamienne" {{ old('nationalite') == 'Vietnamienne' ? 'selected' : '' }}>🇻🇳 Vietnamienne</option>
-                                        <option value="Malaisienne" {{ old('nationalite') == 'Malaisienne' ? 'selected' : '' }}>🇲🇾 Malaisienne</option>
-                                        <option value="Singapourienne" {{ old('nationalite') == 'Singapourienne' ? 'selected' : '' }}>🇸🇬 Singapourienne</option>
-                                        <option value="Indonésienne" {{ old('nationalite') == 'Indonésienne' ? 'selected' : '' }}>🇮🇩 Indonésienne</option>
-                                        <option value="Philippine" {{ old('nationalite') == 'Philippine' ? 'selected' : '' }}>🇵🇭 Philippine</option>
-                                    </optgroup>
-                                    <optgroup label="─────────── Autre ───────────">
-                                        <option value="Autre" {{ old('nationalite') == 'Autre' ? 'selected' : '' }}>🌍 Autre</option>
-                                    </optgroup>
+                                    @include('esbtp.partials.nationality-options', ['selected' => old('nationalite')])
                                 </select>
                                 @error('nationalite')
                                     <div class="invalid-feedback">{{ $message }}</div>
@@ -1306,6 +1216,31 @@
 
 @endsection
 
+
+<!-- Modal Doublons -->
+<div class="modal fade" id="duplicateModal" tabindex="-1" aria-labelledby="duplicateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="duplicateModalLabel">Doublons potentiels détectés</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-3">Les étudiants suivants correspondent aux informations saisies. Vérifiez qu'il ne s'agit pas de la même personne.</p>
+                <div id="duplicate-modal-content">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>Aucun doublon détecté.
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fermer</button>
+                <button type="button" class="btn btn-primary" id="continue-with-duplicate">Continuer l'inscription</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @push('scripts')
 <!-- Choices.js (bibliothèque pour les selects modernes) -->
 <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
@@ -1314,6 +1249,272 @@
 document.addEventListener('DOMContentLoaded', function() {
     let parentIndex = 1; // Le premier parent a l'index 0
     let isLoadingFrais = false; // Flag pour éviter les déclenchements multiples
+
+    const duplicateState = { results: [], override: false };
+    const duplicateInitialData = @json(session('duplicate_suggestions', []));
+    const duplicateInitialOverride = {{ old('duplicate_override', '0') === '1' ? 'true' : 'false' }};
+    if (Array.isArray(duplicateInitialData) && duplicateInitialData.length) {
+        duplicateState.results = duplicateInitialData;
+    }
+    duplicateState.override = duplicateInitialOverride;
+    if (duplicateState.override && duplicateOverrideInput) {
+        duplicateOverrideInput.value = '1';
+    }
+    let duplicateTimer = null;
+    const duplicateForm = document.getElementById('inscriptionForm');
+    const duplicateOverrideInput = document.getElementById('duplicate_override');
+    const duplicateWarning = document.getElementById('duplicate-warning');
+    const duplicateWarningText = document.getElementById('duplicate-warning-text');
+    const duplicateModalElement = document.getElementById('duplicateModal');
+    const duplicateModalContent = document.getElementById('duplicate-modal-content');
+    const showDuplicatesBtn = document.getElementById('show-duplicates-modal');
+    const continueWithDuplicateBtn = document.getElementById('continue-with-duplicate');
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    const duplicateCheckUrl = "{{ route('esbtp.inscriptions.check-duplicates') }}";
+    let duplicateModalInstance = null;
+    if (duplicateModalElement && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        duplicateModalInstance = new bootstrap.Modal(duplicateModalElement);
+    }
+
+    function resetDuplicateOverride() {
+        duplicateState.override = false;
+        if (duplicateOverrideInput) {
+            duplicateOverrideInput.value = '0';
+        }
+    }
+
+    function scheduleDuplicateCheck() {
+        if (!duplicateCheckUrl || !csrfToken) {
+            return;
+        }
+        if (duplicateTimer) {
+            clearTimeout(duplicateTimer);
+        }
+        duplicateTimer = setTimeout(runDuplicateCheck, 600);
+        resetDuplicateOverride();
+    }
+
+    function runDuplicateCheck() {
+        if (!duplicateForm || !duplicateCheckUrl || !csrfToken) {
+            return;
+        }
+
+        const nomField = duplicateForm.querySelector('input[name="nom"]');
+        const prenomsField = duplicateForm.querySelector('input[name="prenoms"]');
+
+        if (!nomField || !prenomsField) {
+            return;
+        }
+
+        const nomValue = nomField.value.trim();
+        const prenomsValue = prenomsField.value.trim();
+
+        if (nomValue.length < 2 && prenomsValue.length < 2) {
+            duplicateState.results = [];
+            updateDuplicateUI();
+            return;
+        }
+
+        const dateField = duplicateForm.querySelector('input[name="date_naissance"]');
+        const sexeField = duplicateForm.querySelector('select[name="sexe"]');
+
+        fetch(duplicateCheckUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+                nom: nomValue,
+                prenoms: prenomsValue,
+                date_naissance: dateField ? dateField.value : null,
+                sexe: sexeField ? sexeField.value : null
+            })
+        })
+        .then(response => response.ok ? response.json() : Promise.reject(response))
+        .then(data => {
+            duplicateState.results = Array.isArray(data.duplicates) ? data.duplicates : [];
+            resetDuplicateOverride();
+            updateDuplicateUI();
+        })
+        .catch(() => {
+            duplicateState.results = [];
+            updateDuplicateUI();
+        });
+    }
+
+    function updateDuplicateUI() {
+        if (!duplicateWarning || !duplicateWarningText) {
+            return;
+        }
+
+        if (duplicateState.results.length > 0) {
+            if (duplicateState.override) {
+                duplicateWarning.classList.add('d-none');
+                if (duplicateOverrideInput) {
+                    duplicateOverrideInput.value = '1';
+                }
+                return;
+            }
+
+            duplicateWarning.classList.remove('d-none');
+            duplicateWarningText.textContent = `Nous avons trouvé ${duplicateState.results.length} étudiant(s) avec un profil similaire.`;
+            renderDuplicateModal();
+        } else {
+            duplicateWarning.classList.add('d-none');
+            if (duplicateOverrideInput) {
+                duplicateOverrideInput.value = '0';
+            }
+            if (duplicateModalInstance) {
+                duplicateModalInstance.hide();
+            }
+            if (duplicateModalContent) {
+                duplicateModalContent.innerHTML = `
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>Aucun doublon détecté.
+                    </div>
+                `;
+            }
+        }
+    }
+
+    function renderDuplicateModal() {
+        if (!duplicateModalContent) {
+            return;
+        }
+
+        if (duplicateState.results.length === 0) {
+            duplicateModalContent.innerHTML = `
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle me-2"></i>Aucun doublon détecté.
+                </div>
+            `;
+            return;
+        }
+
+        const rows = duplicateState.results.map(item => {
+            const score = Number(item.score ?? 0);
+            const badgeClass = score >= 80 ? 'bg-danger' : (score >= 60 ? 'bg-warning text-dark' : 'bg-secondary');
+            const tokensForDisplay = Array.isArray(item.matched_tokens) ? item.matched_tokens.map(token => token.toUpperCase()) : [];
+            const matchedTokens = tokensForDisplay.length
+                ? `<div class="text-muted small">Correspondances : ${tokensForDisplay.join(', ')}</div>`
+                : '';
+            const matricule = item.matricule ? item.matricule : 'N/A';
+            const date = item.date_naissance ? item.date_naissance : 'N/A';
+            const sexe = item.sexe ? item.sexe : 'N/A';
+
+            return `
+                <tr>
+                    <td>
+                        <div class="fw-semibold">${item.full_name ?? ''}</div>
+                        <div class="text-muted small">Matricule : ${matricule}</div>
+                        ${matchedTokens}
+                    </td>
+                    <td>${date}</td>
+                    <td>${sexe}</td>
+                    <td><span class="badge ${badgeClass}">${Math.round(score)}%</span></td>
+                    <td class="text-end">
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-success mark-duplicate" data-show-url="${item.show_url ?? '#'}">C'est la même personne</button>
+                            <button type="button" class="btn btn-link view-duplicate" data-show-url="${item.show_url ?? '#'}">Voir la fiche</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        duplicateModalContent.innerHTML = `
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Étudiant</th>
+                            <th>Date de naissance</th>
+                            <th>Genre</th>
+                            <th>Score</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    updateDuplicateUI();
+
+    const nomInput = duplicateForm ? duplicateForm.querySelector('input[name="nom"]') : null;
+    const prenomsInput = duplicateForm ? duplicateForm.querySelector('input[name="prenoms"]') : null;
+    const dateInput = duplicateForm ? duplicateForm.querySelector('input[name="date_naissance"]') : null;
+    const sexeSelect = duplicateForm ? duplicateForm.querySelector('select[name="sexe"]') : null;
+
+    if (nomInput) nomInput.addEventListener('input', scheduleDuplicateCheck);
+    if (prenomsInput) prenomsInput.addEventListener('input', scheduleDuplicateCheck);
+    if (dateInput) dateInput.addEventListener('change', scheduleDuplicateCheck);
+    if (sexeSelect) sexeSelect.addEventListener('change', scheduleDuplicateCheck);
+
+    if (showDuplicatesBtn) {
+        showDuplicatesBtn.addEventListener('click', function() {
+            renderDuplicateModal();
+            if (duplicateModalInstance) {
+                duplicateModalInstance.show();
+            }
+        });
+    }
+
+    if (continueWithDuplicateBtn) {
+        continueWithDuplicateBtn.addEventListener('click', function() {
+            duplicateState.override = true;
+            if (duplicateOverrideInput) {
+                duplicateOverrideInput.value = '1';
+            }
+            if (duplicateModalInstance) {
+                duplicateModalInstance.hide();
+            }
+            if (duplicateWarning) {
+                duplicateWarning.classList.add('d-none');
+            }
+        });
+    }
+
+    document.addEventListener('click', function(e) {
+        const markButton = e.target.closest('.mark-duplicate');
+        if (markButton) {
+            const url = markButton.getAttribute('data-show-url');
+            if (url) {
+                window.location.href = url;
+            }
+            return;
+        }
+
+        const viewButton = e.target.closest('.view-duplicate');
+        if (viewButton) {
+            const url = viewButton.getAttribute('data-show-url');
+            if (url) {
+                window.open(url, '_blank');
+            }
+        }
+    });
+
+    if (duplicateForm) {
+        duplicateForm.addEventListener('submit', function(e) {
+            if (duplicateState.results.length > 0 && !duplicateState.override) {
+                e.preventDefault();
+                renderDuplicateModal();
+                if (duplicateModalInstance) {
+                    duplicateModalInstance.show();
+                } else {
+                    alert('Des doublons potentiels ont été détectés. Veuillez vérifier avant de continuer.');
+                }
+            }
+        });
+    }
+
+    if ((nomInput && nomInput.value.trim().length > 1) || (prenomsInput && prenomsInput.value.trim().length > 1)) {
+        scheduleDuplicateCheck();
+    }
 
     // Fonction pour charger les parents existants
     function loadParentsExistants(selectElement) {

@@ -21,6 +21,13 @@ class Kernel extends ConsoleKernel
         // Tâches existantes
         $schedule->command('attendance:mark-unattended-teacher-sessions')->everyTenMinutes();
 
+        // Marquage automatique des absences enseignants (toutes les 15 minutes)
+        $schedule->command('teacher:mark-absences')
+            ->everyFifteenMinutes()
+            ->name('marquage-absences-enseignants')
+            ->description('Marque automatiquement les enseignants absents après expiration de la fenêtre de 45min')
+            ->onOneServer();
+
         // =====================================================================
         // NOUVELLES TÂCHES ASYNCHRONES - TASK #7
         // =====================================================================
@@ -188,5 +195,6 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\RunQueueWorker::class,
         \App\Console\Commands\QueueMonitorCommand::class,
         \App\Console\Commands\SendInscriptionPaiementReminders::class,
+        \App\Console\Commands\MarkTeacherAbsences::class,
     ];
 }

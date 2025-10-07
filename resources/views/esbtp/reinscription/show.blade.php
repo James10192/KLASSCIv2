@@ -466,12 +466,88 @@
             <div class="main-card-header" style="background-color: rgba(16, 185, 129, 0.1); border-bottom: 1px solid rgba(16, 185, 129, 0.2);">
                 <div class="main-card-title" style="color: var(--success);">
                     <i class="fas fa-graduation-cap"></i>
-                    Procéder à la Réinscription
+                    @if($validatedReinscription)
+                        Réinscription finalisée
+                    @else
+                        Procéder à la Réinscription
+                    @endif
                 </div>
             </div>
-            <div class="p-lg text-center">
-                @if($etudiant->peut_reinscrire)
+            <div class="p-lg">
+                @if($validatedReinscription)
+                    <div class="alert alert-success d-flex align-items-center" role="alert">
+                        <i class="fas fa-check-circle fa-2x me-3"></i>
+                        <div>
+                            <strong>Réinscription validée le {{ $validatedReinscription->reinscription_validated_at?->format('d/m/Y à H:i') ?? '—' }}</strong><br>
+                            @if($validatedReinscription->reinscriptionValidatedBy)
+                                Validée par {{ $validatedReinscription->reinscriptionValidatedBy->name }}.
+                            @endif
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-body">
+                                    <div class="text-muted text-uppercase small mb-1">Année universitaire</div>
+                                    <div class="fw-semibold">
+                                        {{ $validatedReinscription->anneeUniversitaire->name ?? $anneeAcademique }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-body">
+                                    <div class="text-muted text-uppercase small mb-1">Classe assignée</div>
+                                    <div class="fw-semibold">{{ $validatedReinscription->classe->name ?? 'Non renseignée' }}</div>
+                                    <div class="text-muted small">
+                                        {{ $validatedReinscription->classe->filiere->name ?? 'Filière n/a' }} •
+                                        {{ $validatedReinscription->classe->niveau->name ?? 'Niveau n/a' }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-body">
+                                    <div class="text-muted text-uppercase small mb-1">Statut d'affectation</div>
+                                    <div class="fw-semibold text-capitalize">
+                                        {{ str_replace('_', ' ', $validatedReinscription->affectation_status ?? 'affecté') }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="mb-4">
+                        <h6 class="text-uppercase text-muted small">Décision académique</h6>
+                        <p class="mb-0">
+                            @isset($analyse['decision'])
+                                {{ ucfirst($analyse['decision']) }}
+                            @else
+                                Non renseignée
+                            @endisset
+                        </p>
+                    </div>
+
+                    @if($validatedReinscription->reinscription_observations)
+                        <div class="mb-4">
+                            <h6 class="text-uppercase text-muted small">Observations</h6>
+                            <p class="mb-0 text-muted">{{ $validatedReinscription->reinscription_observations }}</p>
+                        </div>
+                    @endif
+
+                    <div class="d-flex flex-column flex-md-row gap-3">
+                        <a href="{{ route('esbtp.inscriptions.show', $validatedReinscription->id) }}" class="btn-acasi primary">
+                            <i class="fas fa-external-link-alt me-1"></i>Ouvrir la nouvelle inscription
+                        </a>
+                        <a href="{{ route('esbtp.inscriptions.index') }}" class="btn-acasi secondary">
+                            <i class="fas fa-list me-1"></i>Retour à la liste des inscriptions
+                        </a>
+                    </div>
+                @elseif($etudiant->peut_reinscrire)
+                    <div class="text-center">
                         <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
                         <h5 class="text-success mb-3">Réinscription Autorisée</h5>
                         <p class="text-muted mb-4">
@@ -486,16 +562,16 @@
                                 <li>Choix du statut d'affectation</li>
                                 <li>Configuration des frais applicables</li>
                                 @if(isset($etudiant->reliquat_possible) && $etudiant->reliquat_possible)
-                                <li class="text-warning"><strong>Gestion du reliquat de {{ number_format($etudiant->reliquat_montant, 0, ',', ' ') }} FCFA</strong></li>
+                                    <li class="text-warning"><strong>Gestion du reliquat de {{ number_format($etudiant->reliquat_montant, 0, ',', ' ') }} FCFA</strong></li>
                                 @endif
                             </ul>
                         </div>
+                        <a href="{{ route('esbtp.reinscription.create', $analyse['etudiant']->id) }}?annee_academique={{ $anneeAcademique }}" class="btn-acasi primary btn-lg mt-3">
+                            <i class="fas fa-arrow-right"></i>Procéder à la Finalisation
+                        </a>
                     </div>
-                    <a href="{{ route('esbtp.reinscription.create', $analyse['etudiant']->id) }}?annee_academique={{ $anneeAcademique }}" class="btn-acasi primary btn-lg">
-                        <i class="fas fa-arrow-right"></i>Procéder à la Finalisation
-                    </a>
                 @else
-                    <div class="mb-4">
+                    <div class="text-center">
                         <i class="fas fa-times-circle fa-3x text-danger mb-3"></i>
                         <h5 class="text-danger mb-3">Réinscription Bloquée</h5>
                         <p class="text-muted mb-4">
@@ -509,10 +585,10 @@
                                 <li>Ou demander à un superadministrateur d'autoriser le report en reliquat</li>
                             </ul>
                         </div>
+                        <button type="button" class="btn-acasi primary btn-lg" disabled>
+                            <i class="fas fa-lock"></i>Réinscription Bloquée
+                        </button>
                     </div>
-                    <button type="button" class="btn-acasi primary btn-lg" disabled>
-                        <i class="fas fa-lock"></i>Réinscription Bloquée
-                    </button>
                 @endif
             </div>
         </div>

@@ -361,15 +361,22 @@
                         <div class="course-status">
                             @php
                                 $now = \Carbon\Carbon::now();
+
+                                // heure_debut est déjà un DATETIME complet
                                 $courseStart = \Carbon\Carbon::parse($course->heure_debut);
-                                $courseEnd = \Carbon\Carbon::parse($course->heure_fin);
-                                $earlyWindow = $courseStart->copy()->subMinutes(30); // 30 min avant
-                                $lateWindow = $courseEnd->copy()->addMinutes(15); // 15 min après
-                                
-                                $isAttended = $course->teacherAttendance && $course->teacherAttendance->status === 'fait';
-                                $isInWindow = $now->between($earlyWindow, $lateWindow);
-                                $isExpired = $now->gt($lateWindow);
-                                $isTooEarly = $now->lt($earlyWindow);
+
+                                // FENÊTRES D'ÉMARGEMENT (selon nouvelle logique)
+                                $limite20min = $courseStart->copy()->addMinutes(20); // PRÉSENT jusqu'à +20min
+                                $limite45min = $courseStart->copy()->addMinutes(45); // RETARD jusqu'à +45min
+
+                                $isAttended = $course->teacherAttendance !== null;
+                                $isTooEarly = $now->lt($courseStart); // AVANT le début
+                                $isPresent = $now->gte($courseStart) && $now->lte($limite20min); // 0-20min = présent
+                                $isLate = $now->gt($limite20min) && $now->lte($limite45min); // 20-45min = retard
+                                $isAbsent = $now->gt($limite45min); // 45min+ = absent
+
+                                $isInWindow = $isPresent || $isLate; // Peut émarger si présent OU retard
+                                $isExpired = $isAbsent; // Expiré après 45min
                             @endphp
                             
                             @if($isAttended)
@@ -377,47 +384,47 @@
                                     <i class="fas fa-check-circle"></i>
                                     Émargé
                                 </span>
-                            @elseif($isExpired && !$isAttended)
+                            @elseif($isAbsent)
                                 <span class="status-badge danger">
-                                    <i class="fas fa-times-circle"></i>
-                                    Manqué
+                                    <i class="fas fa-ban"></i>
+                                    ABSENT - Délai dépassé
                                 </span>
-                            @elseif($isInWindow)
+                            @elseif($isPresent)
                                 <span class="status-badge success" style="background-color: rgba(34, 197, 94, 0.1); color: #16a34a; border: 1px solid rgba(34, 197, 94, 0.2);">
-                                    <i class="fas fa-play-circle"></i>
-                                    Disponible
+                                    <i class="fas fa-check"></i>
+                                    Disponible - PRÉSENT
+                                </span>
+                            @elseif($isLate)
+                                <span class="status-badge warning">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    Disponible - RETARD
                                 </span>
                             @elseif($isTooEarly)
-                                <span class="status-badge warning">
+                                <span class="status-badge" style="background-color: rgba(100, 116, 139, 0.1); color: #64748b; border: 1px solid rgba(100, 116, 139, 0.2);">
                                     <i class="fas fa-clock"></i>
-                                    Bientôt
-                                </span>
-                            @else
-                                <span class="status-badge warning">
-                                    <i class="fas fa-hourglass-half"></i>
-                                    En attente
+                                    Trop tôt
                                 </span>
                             @endif
                         </div>
 
                         <div class="course-actions">
                             @if(!$course->teacherAttendance && $isInWindow)
-                                <button type="button" class="action-btn primary btn-wide"
+                                <button type="button" class="action-btn {{ $isPresent ? 'primary' : 'warning' }} btn-wide"
                                         data-bs-toggle="modal"
                                         data-bs-target="#markAttendanceModal"
                                         data-course-id="{{ $course->id }}">
                                     <i class="fas fa-signature"></i>
-                                    Émarger maintenant
+                                    {{ $isPresent ? 'Émarger (Présent)' : 'Émarger (Retard)' }}
                                 </button>
                             @elseif($isAttended)
                                 <button type="button" class="action-btn success btn-wide" disabled>
                                     <i class="fas fa-check-circle"></i>
                                     Émargement fait
                                 </button>
-                            @elseif($isExpired && !$isAttended)
+                            @elseif($isAbsent)
                                 <button type="button" class="action-btn danger btn-wide" disabled>
-                                    <i class="fas fa-times-circle"></i>
-                                    Cours manqué
+                                    <i class="fas fa-ban"></i>
+                                    ABSENT - Trop tard
                                 </button>
                             @elseif($isTooEarly)
                                 <button type="button" class="action-btn secondary btn-wide" disabled>

@@ -152,16 +152,37 @@ class TeacherDashboardController extends Controller
 
         // **WORKFLOW** : Vérifier le workflow et les permissions
         $workflow = \App\Models\ESBTPSessionWorkflow::getOrCreateForSession($seanceId, $user->id);
-        
+
         // Vérifier si cette étape peut être exécutée
         if ($callType === 'start' && !$workflow->canExecuteStep('call_start')) {
             return redirect()->route('teacher.select-call-type', $seanceId)
                 ->with('error', 'Vous devez d\'abord compléter l\'émargement avant de faire l\'appel de début.');
         }
-        
+
         if ($callType === 'end' && !$workflow->canExecuteStep('call_end')) {
             return redirect()->route('teacher.select-call-type', $seanceId)
                 ->with('error', 'Vous devez d\'abord effectuer l\'appel de début avant de faire l\'appel de fin.');
+        }
+
+        // **LOGIQUE DE FENÊTRE D'ÉMARGEMENT FIN**
+        if ($callType === 'end') {
+            $now = Carbon::now();
+
+            // heure_fin est déjà un DATETIME complet
+            $heureFin = Carbon::parse($seance->heure_fin);
+
+            // FENÊTRE 1 : Avant heure_fin - 20min → ❌ TROP TÔT
+            $fenetreDebut = $heureFin->copy()->subMinutes(20);
+            if ($now < $fenetreDebut) {
+                return redirect()->route('teacher.select-call-type', $seanceId)
+                    ->with('error', 'L\'appel de fin ne peut être fait que 20 minutes avant la fin du cours (' . $fenetreDebut->format('H:i') . ').');
+            }
+
+            // FENÊTRE 2 : heure_fin - 20min → heure_fin + 30min → ✅ OK pour clôturer normalement
+            $fenetreFin = $heureFin->copy()->addMinutes(30);
+
+            // Stocker si on est dans la fenêtre normale ou pas
+            request()->merge(['within_close_window' => $now <= $fenetreFin]);
         }
 
         // Récupérer l'année universitaire courante
@@ -263,7 +284,8 @@ class TeacherDashboardController extends Controller
                 $workflow->markCallStartDone();
 
             } elseif ($callType === 'end') {
-                // APPEL DE FIN : Fusion avec l'appel de début
+                // APPEL DE FIN : Vérifier si on est dans la fenêtre de clôture
+                $withinCloseWindow = $request->input('within_close_window', true);
 
                 // Récupérer les appels de début
                 $startAttendances = ESBTPAttendance::where('seance_cours_id', $seanceId)
@@ -276,46 +298,81 @@ class TeacherDashboardController extends Controller
                     ->whereIn('call_type', ['start', 'end'])
                     ->delete();
 
-                // Créer les nouveaux appels FINAUX avec fusion (call_type = 'merged')
-                foreach ($request->attendances as $etudiantId => $endStatus) {
-                    $startAttendance = $startAttendances->get($etudiantId);
-                    $startStatus = $startAttendance ? $startAttendance->statut : 'absent';
+                if (!$withinCloseWindow) {
+                    // FENÊTRE DÉPASSÉE (30min+ après heure_fin) : Copier l'appel début avec retards → présents
+                    foreach ($startAttendances as $startAtt) {
+                        $finalStatus = $startAtt->statut;
 
-                    // LOGIQUE DE FUSION :
-                    // Absent début + Présent fin = Retard (arrivé en retard)
-                    // Absent début + Absent fin = Absent
-                    // Présent début + Absent fin = Absent (parti avant la fin)
-                    // Présent début + Présent fin = Présent
-                    // Retard début + X = Retard (garde le retard)
+                        // Convertir les retards en présents
+                        if (in_array($startAtt->statut, ['late', 'retard'])) {
+                            $finalStatus = 'present';
+                        }
 
-                    $finalStatus = $endStatus;
-
-                    if ($startStatus === 'absent' && $endStatus === 'present') {
-                        $finalStatus = 'late'; // Arrivé en retard
-                    } elseif ($startStatus === 'present' && $endStatus === 'absent') {
-                        $finalStatus = 'absent'; // Parti avant la fin
-                    } elseif ($startStatus === 'late') {
-                        $finalStatus = 'late'; // Garde le retard
+                        ESBTPAttendance::create([
+                            'etudiant_id' => $startAtt->etudiant_id,
+                            'seance_cours_id' => $seanceId,
+                            'annee_universitaire_id' => $anneeUniversitaire->id,
+                            'classe_id' => $seance->classe_id,
+                            'matiere_id' => $seance->matiere_id,
+                            'teacher_id' => $teacher->id,
+                            'date' => Carbon::today(),
+                            'heure_debut' => $seance->heure_debut,
+                            'heure_fin' => $seance->heure_fin,
+                            'statut' => $finalStatus,
+                            'call_type' => 'end',
+                            'is_justified' => false,
+                            'created_by' => $user->id
+                        ]);
                     }
 
-                    ESBTPAttendance::create([
-                        'etudiant_id' => $etudiantId,
-                        'seance_cours_id' => $seanceId,
-                        'annee_universitaire_id' => $anneeUniversitaire->id,
-                        'classe_id' => $seance->classe_id,
-                        'matiere_id' => $seance->matiere_id,
-                        'teacher_id' => $teacher->id,
-                        'date' => Carbon::today(),
-                        'heure_debut' => $seance->heure_debut,
-                        'heure_fin' => $seance->heure_fin,
-                        'statut' => $finalStatus,
-                        'call_type' => 'end', // ENUM n'accepte que 'start' ou 'end'
-                        'is_justified' => false,
-                        'created_by' => $user->id
-                    ]);
-                }
+                    // Marquer workflow comme incomplet
+                    $workflow->current_step = 'closed_incomplete';
+                    $workflow->call_end_done = true;
+                    $workflow->call_end_done_at = now();
+                    $workflow->save();
 
-                $workflow->markCallEndDone();
+                } else {
+                    // DANS LA FENÊTRE : Fusion normale avec appel de fin
+                    foreach ($request->attendances as $etudiantId => $endStatus) {
+                        $startAttendance = $startAttendances->get($etudiantId);
+                        $startStatus = $startAttendance ? $startAttendance->statut : 'absent';
+
+                        // LOGIQUE DE FUSION :
+                        // Absent début + Présent fin = Retard (arrivé en retard)
+                        // Absent début + Absent fin = Absent
+                        // Présent début + Absent fin = Absent (parti avant la fin)
+                        // Présent début + Présent fin = Présent
+                        // Retard début + X = Retard (garde le retard)
+
+                        $finalStatus = $endStatus;
+
+                        if ($startStatus === 'absent' && $endStatus === 'present') {
+                            $finalStatus = 'late'; // Arrivé en retard
+                        } elseif ($startStatus === 'present' && $endStatus === 'absent') {
+                            $finalStatus = 'absent'; // Parti avant la fin
+                        } elseif (in_array($startStatus, ['late', 'retard'])) {
+                            $finalStatus = 'late'; // Garde le retard
+                        }
+
+                        ESBTPAttendance::create([
+                            'etudiant_id' => $etudiantId,
+                            'seance_cours_id' => $seanceId,
+                            'annee_universitaire_id' => $anneeUniversitaire->id,
+                            'classe_id' => $seance->classe_id,
+                            'matiere_id' => $seance->matiere_id,
+                            'teacher_id' => $teacher->id,
+                            'date' => Carbon::today(),
+                            'heure_debut' => $seance->heure_debut,
+                            'heure_fin' => $seance->heure_fin,
+                            'statut' => $finalStatus,
+                            'call_type' => 'end',
+                            'is_justified' => false,
+                            'created_by' => $user->id
+                        ]);
+                    }
+
+                    $workflow->markCallEndDone();
+                }
             }
 
             DB::commit();
@@ -343,11 +400,26 @@ class TeacherDashboardController extends Controller
                 // Ne pas interrompre le processus principal
             }
 
-            $callTypeText = $callType === 'start' ? 'de début' : 'de fin';
-            $successMessage = "Appel {$callTypeText} enregistré avec succès pour le cours de " . $seance->matiere->name . ".";
-            
-            return redirect()->route('teacher.select-call-type', $seanceId)
-                ->with('success', $successMessage);
+            // **REDIRECTION SELON LE TYPE D'APPEL**
+            if ($callType === 'start') {
+                // Après appel DÉBUT → Dashboard avec message pour clôturer plus tard
+                return redirect()->route('teacher.dashboard')
+                    ->with('success', 'Appel de début enregistré avec succès. Vous pourrez clôturer le cours 20 minutes avant la fin.');
+
+            } else {
+                // Après appel FIN → Vérifier si workflow incomplet ou normal
+                $withinCloseWindow = $request->input('within_close_window', true);
+
+                if (!$withinCloseWindow) {
+                    // Fenêtre dépassée → Dashboard avec warning
+                    return redirect()->route('teacher.dashboard')
+                        ->with('warning', 'Appel de fin copié depuis l\'appel de début (délai dépassé). Workflow incomplet - séance marquée présent mais non clôturée.');
+                } else {
+                    // Normal → Rediriger vers rapport (ou select-call-type si rapport pas implémenté)
+                    return redirect()->route('teacher.select-call-type', $seanceId)
+                        ->with('success', 'Appel de fin enregistré avec succès. Veuillez maintenant rédiger le rapport de cours.');
+                }
+            }
                 
         } catch (\Exception $e) {
             DB::rollback();

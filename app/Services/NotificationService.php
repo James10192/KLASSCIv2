@@ -2103,4 +2103,80 @@ class NotificationService
             Log::error('Erreur envoi rappel paiement: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Envoyer des notifications pour les alertes critiques du dashboard coordinateur
+     *
+     * @param array $alerts - Tableau d'alertes avec type, title, message, details
+     * @param Carbon $date - Date des alertes
+     * @return void
+     */
+    public function notifyCoordinateurCriticalAlerts(array $alerts, Carbon $date): void
+    {
+        try {
+            if (empty($alerts)) {
+                return;
+            }
+
+            // Récupérer les superAdmin et coordinateurs
+            $recipients = User::role(['superAdmin', 'coordinateur'])->get();
+
+            if ($recipients->isEmpty()) {
+                Log::warning('Aucun destinataire trouvé pour les alertes critiques');
+                return;
+            }
+
+            $dateFormatted = $date->format('d/m/Y');
+
+            foreach ($alerts as $alert) {
+                // Ne notifier que les alertes de type 'danger' (critiques)
+                if ($alert['type'] !== 'danger') {
+                    continue;
+                }
+
+                $title = "🚨 " . ($alert['title'] ?? 'Alerte Critique');
+                $message = "Date: {$dateFormatted}\n\n";
+                $message .= ($alert['message'] ?? '') . "\n\n";
+
+                if (!empty($alert['details'])) {
+                    $message .= "Détails:\n";
+                    foreach ($alert['details'] as $detail) {
+                        $message .= "• {$detail}\n";
+                    }
+                }
+
+                $link = route('coordinateur.attendance-dashboard');
+
+                // Envoyer à tous les destinataires
+                foreach ($recipients as $recipient) {
+                    // Vérifier si une notification identique n'a pas déjà été envoyée aujourd'hui
+                    $existingNotification = Notification::where('user_id', $recipient->id)
+                        ->where('title', $title)
+                        ->whereDate('created_at', $date)
+                        ->first();
+
+                    if (!$existingNotification) {
+                        $this->createNotification(
+                            $recipient,
+                            $title,
+                            $message,
+                            'danger',
+                            $link,
+                            null
+                        );
+                    }
+                }
+
+                Log::info('Alerte critique envoyée', [
+                    'type' => $alert['type'],
+                    'title' => $alert['title'],
+                    'recipients_count' => $recipients->count(),
+                    'date' => $dateFormatted
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Erreur envoi notifications alertes critiques: ' . $e->getMessage());
+        }
+    }
 }

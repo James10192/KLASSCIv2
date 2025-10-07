@@ -2,6 +2,39 @@
 
 ## Corrections récentes
 
+### Feature: Détection de doublons & gestion parents unifiée
+
+**Date:** 5 octobre 2025  
+**Branche:** presentation
+
+#### Problème résolu
+
+1. Lors d’une nouvelle inscription, un doublon potentiel (orthographe approximative, inversion nom/prénoms) pouvait être enregistré sans alerte.
+2. Sur la fiche étudiant, la nationalité et la gestion des parents n’étaient pas harmonisées, et le bouton « Ajouter un parent » était instable.
+
+#### Solution implémentée
+
+- Création d’un service `StudentDuplicateDetector` (tokenisation + similarité + date/genre) exposé via une route AJAX `esbtp.inscriptions.check-duplicates`.
+- Le formulaire `inscriptions.create` enclenche une vérification asynchrone, affiche un bandeau d’avertissement et bloque la soumission jusqu’à confirmation explicite (modal récapitulant les fiches proches, bouton « C’est la même personne » redirigeant vers `etudiants.show`).
+- Facteurs front conservés via `duplicate_override` pour éviter les re-bloquages une fois l’utilisateur certain.
+- Centralisation de la liste des nationalités dans `resources/views/esbtp/partials/nationality-options.blade.php` et réutilisation sur les formulaires `create` et `edit`.
+- Refonte de la section Parents/Tuteurs sur `etudiants.edit` : cartes lisibles, ajout/suppression dynamique (max 2 entrées), synchronisation côté contrôleur.
+
+#### Fichiers modifiés
+
+- `app/Services/StudentDuplicateDetector.php` *(nouveau)* – logique fuzzy.
+- `app/Http/Controllers/ESBTPInscriptionController.php` & `routes/web.php` – vérification serveur et route AJAX.
+- `resources/views/esbtp/inscriptions/create.blade.php` – bandeau + modal + fetch JS.
+- `resources/views/esbtp/partials/nationality-options.blade.php` *(nouveau)* – options mutualisées.
+- `resources/views/esbtp/etudiants/edit.blade.php` & `resources/views/esbtp/etudiants/partials/parent-card.blade.php` *(nouveau)* – interface parents & select nationalité.
+
+#### Tests recommandés
+
+- Saisir un étudiant existant (prénoms/noms inversés ou faute volontaire) → le bandeau et la modal doivent apparaître.
+- Cliquer sur « C’est la même personne » → redirection vers `etudiants.show`.
+- Confirmer puis finaliser l’inscription → les doublons ne bloquent plus mais la création aboutit.
+- Sur `etudiants.edit`, ajouter puis supprimer un parent → vérification en base que les liens pivot sont mis à jour.
+
 ### Feature: Propagation automatique des enseignants pour toute la classe
 
 **Date:** 4 octobre 2025

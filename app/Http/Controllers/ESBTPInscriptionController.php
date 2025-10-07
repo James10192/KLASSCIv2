@@ -26,6 +26,7 @@ use App\Models\ESBTPFraisSubscription;
 use App\Models\ESBTP\Fee;
 use App\Models\Setting;
 use App\Services\ComptabiliteService;
+use App\Services\StudentDuplicateDetector;
 
 class ESBTPInscriptionController extends Controller
 {
@@ -174,9 +175,37 @@ class ESBTPInscriptionController extends Controller
     }
 
     /**
+     * Vérifie la présence potentielle de doublons étudiants.
+     */
+    public function checkDuplicates(Request $request, StudentDuplicateDetector $detector)
+    {
+        $validated = $request->validate([
+            'nom' => 'required|string|max:255',
+            'prenoms' => 'required|string|max:255',
+            'date_naissance' => 'nullable|date',
+            'sexe' => 'nullable|in:M,F',
+        ]);
+
+        $duplicates = $detector->find(
+            $validated['nom'],
+            $validated['prenoms'],
+            $validated['date_naissance'] ?? null,
+            $validated['sexe'] ?? null,
+            6
+        )->map(function (array $item) {
+            $item['show_url'] = route('esbtp.etudiants.show', $item['id']);
+            return $item;
+        });
+
+        return response()->json([
+            'duplicates' => $duplicates,
+        ]);
+    }
+
+    /**
      * Enregistrer une nouvelle inscription.
      */
-    public function store(Request $request)
+    public function store(Request $request, StudentDuplicateDetector $duplicateDetector)
     {
         // Créer un fichier de log dédié pour le debug
         $debugFile = storage_path('logs/inscription_debug.log');
@@ -200,6 +229,24 @@ class ESBTPInscriptionController extends Controller
                 ->with('error', 'Limite d\'inscriptions atteinte pour l\'année courante. Contactez African Digit Consulting pour augmenter votre quota.')
                 ->with('paywall_contact', 'klassci@africandigitconsulting.com')
                 ->withInput();
+        }
+
+        // Détection de doublons (blocage tant que non confirmé)
+        if (!$request->boolean('duplicate_override')) {
+            $duplicates = $duplicateDetector->find(
+                $request->input('nom', ''),
+                $request->input('prenoms', ''),
+                $request->input('date_naissance'),
+                $request->input('sexe')
+            );
+
+            if ($duplicates->isNotEmpty()) {
+                return redirect()
+                    ->back()
+                    ->withInput()
+                    ->withErrors(['duplicate' => 'Un étudiant avec des informations similaires existe déjà. Veuillez confirmer avant de créer une nouvelle inscription.'])
+                    ->with('duplicate_suggestions', $duplicates->toArray());
+            }
         }
 
         // Construction dynamique des règles de validation

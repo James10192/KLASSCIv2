@@ -115,10 +115,19 @@
 
                                             <div class="col-md-4 mb-3">
                                                 <label for="nationalite" class="form-label">Nationalité</label>
-                                                <input type="text" class="form-control" id="nationalite" name="nationalite" value="{{ old('nationalite', $etudiant->nationalite) }}" {{ auth()->user()->hasRole('superAdmin') ? '' : 'readonly' }}>
-                                                @if(!auth()->user()->hasRole('superAdmin'))
+                                                <select class="form-select @error('nationalite') is-invalid @enderror" id="nationalite" name="nationalite" {{ auth()->user()->hasRole('superAdmin') ? '' : 'disabled' }}>
+                                                    @include('esbtp.partials.nationality-options', ['selected' => old('nationalite', $etudiant->nationalite)])
+                                                </select>
+                                                @if(auth()->user()->hasRole('superAdmin'))
+                                                    @error('nationalite')
+                                                        <div class="invalid-feedback">{{ $message }}</div>
+                                                    @enderror
+                                                @else
                                                     <small class="form-text text-muted">La nationalité ne peut pas être modifiée.</small>
                                                 @endif
+                                                @unless(auth()->user()->hasRole('superAdmin'))
+                                                    <input type="hidden" name="nationalite" value="{{ old('nationalite', $etudiant->nationalite) }}">
+                                                @endunless
                                             </div>
                                         </div>
                                         <div class="row">
@@ -199,73 +208,26 @@
 
                         <div class="row mb-4">
                             <div class="col-12">
-                                <div class="card">
-                                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                        <h6 class="mb-0">Information(s) sur le(s) parent(s) / tuteur(s)</h6>
-                                        @if($etudiant->parents->count() < 2)
-                                            <button type="button" class="btn btn-sm btn-primary" id="add-parent">
+                                <div class="card-moderne">
+                                    <div class="p-lg">
+                                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
+                                            <div>
+                                                <h6 class="section-title mb-1">
+                                                    <i class="fas fa-user-friends me-2"></i>Parents / Tuteurs
+                                                </h6>
+                                                <p class="text-muted mb-0 small">Gérez les représentants légaux de l'étudiant. Deux entrées maximum (parents ou tuteur).</p>
+                                            </div>
+                                            <button type="button" class="btn btn-sm btn-primary mt-3 mt-md-0" id="add-parent" {{ $etudiant->parents->count() >= 2 ? 'style="display:none;"' : '' }}>
                                                 <i class="fas fa-plus me-1"></i>Ajouter un parent
                                             </button>
-                                        @endif
-                                    </div>
-                                    <div class="card-body">
+                                        </div>
+
                                         <div id="parents-container">
                                             @forelse($etudiant->parents as $index => $parent)
-                                                <div class="parent-item mb-4 p-3 border rounded">
-                                                    <div class="d-flex justify-content-between mb-3">
-                                                        <h6>Parent / Tuteur #{{ $index + 1 }}</h6>
-                                                        @if($index > 0 || $etudiant->parents->count() > 1)
-                                                            <button type="button" class="btn btn-sm btn-outline-danger remove-parent" data-parent-id="{{ $parent->id }}">
-                                                                <i class="fas fa-times"></i>
-                                                            </button>
-                                                        @endif
-                                                    </div>
-
-                                                    <input type="hidden" name="parents[{{ $index }}][id]" value="{{ $parent->id }}">
-
-                                                    <div class="row">
-                                                        <div class="col-md-4 mb-3">
-                                                            <label for="parent_nom_{{ $index }}" class="form-label">Nom <span class="text-danger">*</span></label>
-                                                            <input type="text" class="form-control" id="parent_nom_{{ $index }}" name="parents[{{ $index }}][nom]" value="{{ old('parents.'.$index.'.nom', $parent->nom) }}" required>
-                                                        </div>
-                                                        <div class="col-md-4 mb-3">
-                                                            <label for="parent_prenoms_{{ $index }}" class="form-label">Prénom(s) <span class="text-danger">*</span></label>
-                                                            <input type="text" class="form-control" id="parent_prenoms_{{ $index }}" name="parents[{{ $index }}][prenoms]" value="{{ old('parents.'.$index.'.prenoms', $parent->prenoms) }}" required>
-                                                        </div>
-                                                        <div class="col-md-4 mb-3">
-                                                            <label for="parent_relation_{{ $index }}" class="form-label">Relation <span class="text-danger">*</span></label>
-                                                            <select class="form-control" id="parent_relation_{{ $index }}" name="parents[{{ $index }}][relation]" required>
-                                                                <option value="Père" {{ old('parents.'.$index.'.relation', $parent->pivot->relation) == 'Père' ? 'selected' : '' }}>Père</option>
-                                                                <option value="Mère" {{ old('parents.'.$index.'.relation', $parent->pivot->relation) == 'Mère' ? 'selected' : '' }}>Mère</option>
-                                                                <option value="Tuteur" {{ old('parents.'.$index.'.relation', $parent->pivot->relation) == 'Tuteur' ? 'selected' : '' }}>Tuteur</option>
-                                                                <option value="Autre" {{ old('parents.'.$index.'.relation', $parent->pivot->relation) == 'Autre' ? 'selected' : '' }}>Autre</option>
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                    <div class="row">
-                                                        <div class="col-md-4 mb-3">
-                                                            <label for="parent_telephone_{{ $index }}" class="form-label">Téléphone <span class="text-danger">*</span></label>
-                                                            <input type="text" class="form-control" id="parent_telephone_{{ $index }}" name="parents[{{ $index }}][telephone]" value="{{ old('parents.'.$index.'.telephone', $parent->telephone) }}" required>
-                                                        </div>
-                                                        <div class="col-md-4 mb-3">
-                                                            <label for="parent_email_{{ $index }}" class="form-label">Email</label>
-                                                            <input type="email" class="form-control" id="parent_email_{{ $index }}" name="parents[{{ $index }}][email]" value="{{ old('parents.'.$index.'.email', $parent->email) }}">
-                                                        </div>
-                                                        <div class="col-md-4 mb-3">
-                                                            <label for="parent_profession_{{ $index }}" class="form-label">Profession</label>
-                                                            <input type="text" class="form-control" id="parent_profession_{{ $index }}" name="parents[{{ $index }}][profession]" value="{{ old('parents.'.$index.'.profession', $parent->profession) }}">
-                                                        </div>
-                                                    </div>
-                                                    <div class="row">
-                                                        <div class="col-md-12 mb-3">
-                                                            <label for="parent_adresse_{{ $index }}" class="form-label">Adresse</label>
-                                                            <textarea class="form-control" id="parent_adresse_{{ $index }}" name="parents[{{ $index }}][adresse]" rows="2">{{ old('parents.'.$index.'.adresse', $parent->adresse) }}</textarea>
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                                @include('esbtp.etudiants.partials.parent-card', ['parent' => $parent, 'index' => $index])
                                             @empty
                                                 <div class="alert alert-info">
-                                                    Aucun parent ou tuteur enregistré pour cet étudiant.
+                                                    <i class="fas fa-info-circle me-2"></i>Aucun parent enregistré pour le moment. Ajoutez un parent en utilisant le bouton ci-dessus.
                                                 </div>
                                             @endforelse
                                         </div>
@@ -335,128 +297,169 @@
 </div>
 @endsection
 
-@section('scripts')
+@push('scripts')
 <script>
     $(document).ready(function() {
-        // Prévention de double soumission
         let formSubmitted = false;
-        $('#editEtudiantForm').on('submit', function(e) {
+        const form = $('#editEtudiantForm');
+        form.on('submit', function(e) {
             if (formSubmitted) {
                 e.preventDefault();
                 return false;
             }
             formSubmitted = true;
-            $(this).find('button[type="submit"]').prop('{{ auth()->user()->hasRole('superAdmin') ? '' : 'disabled' }}', true);
+            $(this).find('button[type="submit"]').prop('disabled', true);
         });
 
-        // Validation de la taille de la photo avant soumission
         $('input[type="file"]').on('change', function() {
-            const maxSize = 2 * 1024 * 1024; // 2MB
+            const maxSize = 2 * 1024 * 1024;
             if (this.files[0] && this.files[0].size > maxSize) {
                 alert('La taille de la photo ne doit pas dépasser 2MB');
                 this.value = '';
             }
         });
 
-        // Initialisation de Select2 pour les sélecteurs si disponible
         if (typeof $.fn.select2 !== 'undefined') {
             $('#sexe, #statut').select2({
                 theme: 'bootstrap4',
                 minimumResultsForSearch: Infinity
             });
+
+            const nationaliteSelect = $('#nationalite');
+            if (nationaliteSelect.length) {
+                const wasDisabled = nationaliteSelect.prop('disabled');
+                nationaliteSelect.prop('disabled', false);
+                nationaliteSelect.select2({
+                    theme: 'bootstrap4',
+                    placeholder: 'Sélectionner une nationalité',
+                    allowClear: true
+                });
+                if (wasDisabled) {
+                    nationaliteSelect.prop('disabled', true);
+                }
+            }
         }
 
-        // Ajout de parents
-        let parentCount = {{ $etudiant->parents->count() }};
-        $('#add-parent').on('click', function() {
-            if (parentCount >= 2) {
+        const maxParents = 2;
+        const parentsContainer = $('#parents-container');
+        const addParentBtn = $('#add-parent');
+
+        function ensureEmptyState() {
+            if (parentsContainer.find('.parent-card').length === 0) {
+                if (parentsContainer.find('.alert').length === 0) {
+                    parentsContainer.html(`
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Aucun parent enregistré pour le moment. Ajoutez un parent en utilisant le bouton ci-dessus.
+                        </div>
+                    `);
+                }
+            } else {
+                parentsContainer.find('.alert').remove();
+            }
+        }
+
+        function recalculateParentCount() {
+            const count = parentsContainer.find('.parent-card').length;
+            if (count >= maxParents) {
+                addParentBtn.hide();
+            } else {
+                addParentBtn.show();
+            }
+        }
+
+        ensureEmptyState();
+        recalculateParentCount();
+
+        addParentBtn.on('click', function() {
+            if (parentsContainer.find('.parent-card').length >= maxParents) {
                 alert('Vous ne pouvez ajouter que 2 parents maximum.');
                 return;
             }
 
-            const parentHtml = `
-                <div class="parent-item mb-4 p-3 border rounded">
-                    <div class="d-flex justify-content-between mb-3">
-                        <h6>Nouveau parent / tuteur</h6>
-                        <button type="button" class="btn btn-sm btn-outline-danger remove-parent">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label for="parent_nom_new" class="form-label">Nom <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="parent_nom_new" name="new_parent[nom]" required>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label for="parent_prenoms_new" class="form-label">Prénom(s) <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="parent_prenoms_new" name="new_parent[prenoms]" required>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label for="parent_relation_new" class="form-label">Relation <span class="text-danger">*</span></label>
-                            <select class="form-control" id="parent_relation_new" name="new_parent[relation]" required>
-                                <option value="">Sélectionner une relation</option>
-                                <option value="Père">Père</option>
-                                <option value="Mère">Mère</option>
-                                <option value="Tuteur">Tuteur</option>
-                                <option value="Autre">Autre</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label for="parent_telephone_new" class="form-label">Téléphone <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="parent_telephone_new" name="new_parent[telephone]" placeholder="+225 XX XX XXX XXX" required>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label for="parent_email_new" class="form-label">Email</label>
-                            <input type="email" class="form-control" id="parent_email_new" name="new_parent[email]">
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label for="parent_profession_new" class="form-label">Profession</label>
-                            <input type="text" class="form-control" id="parent_profession_new" name="new_parent[profession]">
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-12 mb-3">
-                            <label for="parent_adresse_new" class="form-label">Adresse</label>
-                            <textarea class="form-control" id="parent_adresse_new" name="new_parent[adresse]" rows="2"></textarea>
-                        </div>
-                    </div>
-                </div>
-            `;
-
-            $('#parents-container').append(parentHtml);
-            parentCount++;
-
-            // Masquer le bouton d'ajout si on a atteint 2 parents
-            if (parentCount >= 2) {
-                $('#add-parent').hide();
-            }
+            parentsContainer.find('#new-parent-card').remove();
+            parentsContainer.append(createNewParentCard());
+            ensureEmptyState();
+            recalculateParentCount();
         });
 
-        // Suppression de parents
         $(document).on('click', '.remove-parent', function() {
-            const parentItem = $(this).closest('.parent-item');
             const parentId = $(this).data('parent-id');
+            const card = $(this).closest('.parent-card');
 
             if (parentId) {
-                // Si c'est un parent existant, ajouter un champ hidden pour la suppression
-                $('form').append(`<input type="hidden" name="delete_parents[]" value="${parentId}">`);
+                $('<input>', {
+                    type: 'hidden',
+                    name: 'delete_parents[]',
+                    value: parentId
+                }).appendTo(form);
             }
 
-            parentItem.remove();
-            parentCount--;
-
-            // Afficher le bouton d'ajout si on a moins de 2 parents
-            if (parentCount < 2) {
-                $('#add-parent').show();
-            }
+            card.remove();
+            ensureEmptyState();
+            recalculateParentCount();
         });
     });
-</script>
+
+    function createNewParentCard() {
+        return `
+<div class="parent-card card-moderne mb-4" id="new-parent-card" data-parent-index="new">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h6 class="mb-1 text-primary">
+                <i class="fas fa-user-friends me-2"></i>Nouveau parent / tuteur
+            </h6>
+            <small class="text-muted">Renseignez les informations du représentant.</small>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <div class="form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" role="switch" id="new_is_tuteur" name="new_parent[is_tuteur]">
+                <label class="form-check-label small" for="new_is_tuteur">Tuteur</label>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-danger remove-parent">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+    <div class="parent-card-body mt-3">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Nom <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" name="new_parent[nom]" required>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Prénom(s) <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" name="new_parent[prenoms]" required>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Relation <span class="text-danger">*</span></label>
+                <select class="form-select" name="new_parent[relation]" required>
+                    <option value="">Sélectionner une relation</option>
+                    <option value="Père">Père</option>
+                    <option value="Mère">Mère</option>
+                    <option value="Tuteur">Tuteur</option>
+                    <option value="Autre">Autre</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Téléphone <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" name="new_parent[telephone]" placeholder="+225 XX XX XXX XXX" required>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control" name="new_parent[email]">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Profession</label>
+                <input type="text" class="form-control" name="new_parent[profession]">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Adresse</label>
+                <textarea class="form-control" name="new_parent[adresse]" rows="1"></textarea>
             </div>
         </div>
     </div>
-</div>
-@endsection
+</div>`;
+    }
+</script>
+@endpush

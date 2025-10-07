@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Arr;
 use Spatie\Permission\Models\Role;
 use App\Models\ESBTPParent;
 use App\Models\ESBTPInscription;
@@ -464,6 +465,11 @@ class ESBTPEtudiantController extends Controller
             'etudiantCommune' => $etudiant->commune,
         ]);
 
+        \Log::info('Payload update etudiant', [
+            'etudiant_id' => $etudiant->id,
+            'input' => $request->all()
+        ]);
+
         // Validation des données - Exclus les champs non modifiables
         $validator = Validator::make($request->all(), [
             'telephone' => 'nullable|string|max:20',
@@ -579,6 +585,93 @@ class ESBTPEtudiantController extends Controller
                     $user->save();
                 }
             }
+
+            // Gestion des parents (maximum 2)
+            $syncParents = [];
+            $existingParentsInput = $request->input('parents', []);
+
+            foreach ($existingParentsInput as $parentInput) {
+                $parentId = (int) Arr::get($parentInput, 'id');
+                if (!$parentId) {
+                    continue;
+                }
+
+                $parent = ESBTPParent::find($parentId);
+                if (!$parent) {
+                    continue;
+                }
+
+                $parent->fill([
+                    'nom' => Arr::get($parentInput, 'nom', $parent->nom),
+                    'prenoms' => Arr::get($parentInput, 'prenoms', $parent->prenoms),
+                    'telephone' => Arr::get($parentInput, 'telephone', $parent->telephone),
+                    'email' => Arr::get($parentInput, 'email', $parent->email),
+                    'profession' => Arr::get($parentInput, 'profession', $parent->profession),
+                    'adresse' => Arr::get($parentInput, 'adresse', $parent->adresse),
+                ]);
+                $parent->updated_by = Auth::id();
+                $parent->save();
+
+                $syncParents[$parent->id] = [
+                    'relation' => Arr::get($parentInput, 'relation', 'Autre'),
+                    'is_tuteur' => Arr::has($parentInput, 'is_tuteur') ? 1 : 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+
+            $newParentInput = $request->input('new_parent', []);
+            $newParentHasData = collect($newParentInput)->only([
+                'nom', 'prenoms', 'telephone', 'email', 'profession', 'adresse', 'relation'
+            ])->filter(fn($value) => filled($value))->isNotEmpty();
+
+            if ($newParentHasData && filled(Arr::get($newParentInput, 'nom')) && filled(Arr::get($newParentInput, 'prenoms'))) {
+                $existingParentId = (int) Arr::get($newParentInput, 'parent_id');
+
+                if ($existingParentId) {
+                    $parent = ESBTPParent::find($existingParentId);
+                    if ($parent) {
+                        $syncParents[$parent->id] = [
+                            'relation' => Arr::get($newParentInput, 'relation', 'Autre'),
+                            'is_tuteur' => Arr::has($newParentInput, 'is_tuteur') ? 1 : 0,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ];
+                    }
+                } else {
+                    $parent = ESBTPParent::create([
+                        'nom' => Arr::get($newParentInput, 'nom'),
+                        'prenoms' => Arr::get($newParentInput, 'prenoms'),
+                        'telephone' => Arr::get($newParentInput, 'telephone'),
+                        'email' => Arr::get($newParentInput, 'email'),
+                        'profession' => Arr::get($newParentInput, 'profession'),
+                        'adresse' => Arr::get($newParentInput, 'adresse'),
+                        'created_by' => Auth::id(),
+                    ]);
+
+                    $syncParents[$parent->id] = [
+                        'relation' => Arr::get($newParentInput, 'relation', 'Autre'),
+                        'is_tuteur' => Arr::has($newParentInput, 'is_tuteur') ? 1 : 0,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }
+            }
+
+            if (count($syncParents) > 2) {
+                $syncParents = array_slice($syncParents, 0, 2, true);
+            }
+
+            $etudiant->parents()->sync($syncParents);
+            \Log::info('Parents synchronisés pour etudiant', [
+                'etudiant_id' => $etudiant->id,
+                'sync_payload' => $syncParents,
+                'total_parents' => $etudiant->parents()->count()
+            ]);
+
+            \Log::info('Synchronisation parents', [
+                'sync_payload' => $syncParents
+            ]);
 
             DB::commit();
             \Log::info('Transaction de mise à jour terminée avec succès', [

@@ -535,17 +535,17 @@ class ESBTPSeanceCours extends Model
         }
 
         $dateDebut = $this->emploiTemps->date_debut;
-        $jourSeance = $this->jour; // 1=lundi, 2=mardi, etc.
-        
+        $jourSeance = (int)$this->jour; // 1=lundi, 2=mardi, etc.
+
         // Convertir le jour de la séance en jour de la semaine ISO (1=lundi, 7=dimanche)
         $jourISO = $jourSeance === 7 ? 7 : $jourSeance;
-        
+
         // Trouver le premier occurrence de ce jour dans la période de l'emploi du temps
         $dateRecherche = clone $dateDebut;
-        
+
         // Obtenir le jour de la semaine de la date de début (1=lundi, 7=dimanche)
-        $jourDateDebut = $dateRecherche->dayOfWeekIso;
-        
+        $jourDateDebut = (int)$dateRecherche->dayOfWeekIso;
+
         // Calculer combien de jours ajouter pour atteindre le jour voulu dans la même semaine
         if ($jourISO >= $jourDateDebut) {
             // Le jour est dans la même semaine

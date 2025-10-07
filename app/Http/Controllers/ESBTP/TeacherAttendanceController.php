@@ -136,13 +136,60 @@ class TeacherAttendanceController extends Controller
                 return back()->with('warning', 'Vous avez déjà émargé pour ce cours aujourd\'hui.');
             }
 
+            // **LOGIQUE DE FENÊTRE D'ÉMARGEMENT DÉBUT**
+            $now = Carbon::now();
+
+            // heure_debut est déjà un DATETIME complet
+            $heureDebut = Carbon::parse($seanceCours->heure_debut);
+
+            // FENÊTRE 1 : AVANT heure_debut → ❌ IMPOSSIBLE d'émarger
+            if ($now < $heureDebut) {
+                $dailyCode->recordAttempt(false);
+                return back()->with('error', 'Vous ne pouvez pas émarger avant le début du cours (' . $heureDebut->format('H:i') . ').');
+            }
+
+            // FENÊTRE 2 : heure_debut → heure_debut + 20min → ✅ PRÉSENT
+            $limite20min = $heureDebut->copy()->addMinutes(20);
+
+            // FENÊTRE 3 : heure_debut + 20min → heure_debut + 45min → ⚠️ RETARD
+            $limite45min = $heureDebut->copy()->addMinutes(45);
+
+            // FENÊTRE 4 : heure_debut + 45min et plus → ❌ ABSENT (workflow fermé)
+            if ($now > $limite45min) {
+                // Marquer enseignant ABSENT
+                ESBTPTeacherAttendance::create([
+                    'teacher_id' => $teacher->id,
+                    'course_id' => $seanceCours->id,
+                    'daily_code_id' => $dailyCode->id,
+                    'date' => now()->toDateString(),
+                    'status' => 'absent',
+                    'attempts' => 1,
+                    'ip_address' => $request->ip(),
+                    'device_info' => json_encode(['user_agent' => $request->userAgent()]),
+                    'validated_at' => now()
+                ]);
+
+                // Fermer le workflow directement
+                $workflow = ESBTPSessionWorkflow::getOrCreateForSession($seanceCours->id, $teacher->id);
+                $workflow->current_step = 'closed_absent';
+                $workflow->save();
+
+                $dailyCode->recordAttempt(true);
+
+                return redirect()->route('teacher.dashboard')
+                    ->with('error', 'Délai d\'émargement dépassé (45 minutes après le début). Vous êtes marqué ABSENT. La séance ne sera pas comptabilisée.');
+            }
+
+            // Déterminer le statut : present ou late
+            $status = ($now <= $limite20min) ? 'present' : 'late';
+
             // Create attendance record
             ESBTPTeacherAttendance::create([
                 'teacher_id' => $teacher->id,
                 'course_id' => $seanceCours->id,
                 'daily_code_id' => $dailyCode->id,
                 'date' => now()->toDateString(),
-                'status' => 'present',
+                'status' => $status,
                 'attempts' => 1,
                 'ip_address' => $request->ip(),
                 'device_info' => json_encode(['user_agent' => $request->userAgent()]),
@@ -165,9 +212,13 @@ class TeacherAttendanceController extends Controller
                 // Ne pas interrompre le processus principal
             }
 
-            // **REDIRECTION** : Rediriger vers la sélection du type d'appel
+            // **REDIRECTION** : Rediriger vers select-call-type pour faire l'appel de début
+            $successMessage = $status === 'late'
+                ? 'Émargement enregistré avec RETARD. Veuillez maintenant effectuer l\'appel de début.'
+                : 'Émargement enregistré avec succès. Veuillez maintenant effectuer l\'appel de début.';
+
             return redirect()->route('teacher.select-call-type', $seanceCours->id)
-                ->with('success', 'Émargement enregistré avec succès. Veuillez maintenant effectuer l\'appel.');
+                ->with('success', $successMessage);
 
         } catch (\Exception $e) {
             \Log::error('Erreur lors de l\'émargement: ' . $e->getMessage());
@@ -258,14 +309,15 @@ class TeacherAttendanceController extends Controller
             $query->role('teacher');
         })->count();
         
-        $attendancesPresent = ESBTPTeacherAttendance::whereHas('course.emploiTemps', function($q) use ($anneeEnCours) {
+        // IMPORTANT: Compter d'abord les présents ET les retards séparément
+        $presentOnly = ESBTPTeacherAttendance::whereHas('course.emploiTemps', function($q) use ($anneeEnCours) {
             $q->where('annee_universitaire_id', $anneeEnCours->id);
         })->whereHas('course', function($q) {
             $q->where('type', 'course');
         })->whereHas('teacher', function($query) {
             $query->role('teacher');
         })->where('status', 'present')->count();
-        
+
         $attendancesLate = ESBTPTeacherAttendance::whereHas('course.emploiTemps', function($q) use ($anneeEnCours) {
             $q->where('annee_universitaire_id', $anneeEnCours->id);
         })->whereHas('course', function($q) {
@@ -273,6 +325,9 @@ class TeacherAttendanceController extends Controller
         })->whereHas('teacher', function($query) {
             $query->role('teacher');
         })->where('status', 'late')->count();
+
+        // Le KPI "Présents" doit inclure les retards car un retard = présence quand même
+        $attendancesPresent = $presentOnly + $attendancesLate;
         
         $attendancesToday = ESBTPTeacherAttendance::whereHas('course.emploiTemps', function($q) use ($anneeEnCours) {
             $q->where('annee_universitaire_id', $anneeEnCours->id);

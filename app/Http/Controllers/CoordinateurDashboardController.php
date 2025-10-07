@@ -7,6 +7,7 @@ use App\Models\ESBTPTeacherAttendance;
 use App\Models\ESBTPAttendance;
 use App\Models\Notification;
 use App\Models\User;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -14,12 +15,15 @@ use Carbon\Carbon;
 
 class CoordinateurDashboardController extends Controller
 {
+    protected $notificationService;
+
     /**
      * Constructeur avec middleware de rôle
      */
-    public function __construct()
+    public function __construct(NotificationService $notificationService)
     {
         $this->middleware(['auth', 'role:coordinateur']);
+        $this->notificationService = $notificationService;
     }
 
     /**
@@ -29,11 +33,16 @@ class CoordinateurDashboardController extends Controller
     {
         $today = Carbon::today();
         $stats = $this->calculateAttendanceStats($today);
-        
+
         // Nombre de notifications non lues
         $unreadNotifications = Notification::where('user_id', Auth::id())
             ->where('is_read', false)
             ->count();
+
+        // Envoyer des notifications pour les alertes critiques
+        if (!empty($stats['alerts'])) {
+            $this->notificationService->notifyCoordinateurCriticalAlerts($stats['alerts'], $today);
+        }
 
         return view('coordinateur.dashboard-attendance', compact('stats', 'unreadNotifications'));
     }
@@ -214,20 +223,59 @@ class CoordinateurDashboardController extends Controller
             }
 
             // Alerte taux de présence faible
-            $totalEtudiants = \App\Models\ESBTPAttendance::whereDate('date', $date)->count();
-            if ($totalEtudiants > 0) {
-                $presents = \App\Models\ESBTPAttendance::whereDate('date', $date)
-                    ->where('statut', 'present')->count();
-                $tauxPresence = round(($presents / $totalEtudiants) * 100, 1);
-                
-                if ($tauxPresence < 70) {
-                    $alerts[] = [
-                        'type' => 'danger',
-                        'title' => 'Taux de présence critique',
-                        'message' => "Seulement {$tauxPresence}% de présence étudiants aujourd'hui",
-                        'details' => ["{$presents} présents sur {$totalEtudiants} étudiants"]
-                    ];
+            // IMPORTANT: Filtrer par année universitaire en cours + inscriptions actives
+            $anneeUniversitaire = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+            if ($anneeUniversitaire) {
+                $totalEtudiants = \App\Models\ESBTPAttendance::whereDate('date', $date)
+                    ->where('annee_universitaire_id', $anneeUniversitaire->id)
+                    ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire) {
+                        $q->where('annee_universitaire_id', $anneeUniversitaire->id)
+                          ->where('status', 'active');
+                    })
+                    ->count();
+
+                if ($totalEtudiants > 0) {
+                    // IMPORTANT: Les retards comptent comme présence
+                    $presents = \App\Models\ESBTPAttendance::whereDate('date', $date)
+                        ->where('annee_universitaire_id', $anneeUniversitaire->id)
+                        ->whereIn('statut', ['present', 'late', 'retard'])
+                        ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire) {
+                            $q->where('annee_universitaire_id', $anneeUniversitaire->id)
+                              ->where('status', 'active');
+                        })
+                        ->count();
+                    $tauxPresence = round(($presents / $totalEtudiants) * 100, 1);
+
+                    if ($tauxPresence < 70) {
+                        $alerts[] = [
+                            'type' => 'danger',
+                            'title' => 'Taux de présence critique',
+                            'message' => "Seulement {$tauxPresence}% de présence étudiants aujourd'hui",
+                            'details' => ["{$presents} présents sur {$totalEtudiants} étudiants"]
+                        ];
+                    }
                 }
+            }
+
+            // Alerte : Enseignants présents mais workflow incomplet (séance non clôturée)
+            $enseignantsNonClotures = \App\Models\ESBTPSessionWorkflow::whereDate('attendance_signed_at', $date)
+                ->where('attendance_signed', true)
+                ->where('current_step', 'closed_incomplete')
+                ->with(['seanceCours.teacher.user', 'seanceCours.matiere', 'seanceCours.classe'])
+                ->get();
+
+            if ($enseignantsNonClotures->count() > 0) {
+                $alerts[] = [
+                    'type' => 'warning',
+                    'title' => 'Séances non clôturées',
+                    'message' => $enseignantsNonClotures->count() . ' enseignant(s) présent(s) mais n\'ont pas clôturé leur séance dans les délais',
+                    'details' => $enseignantsNonClotures->take(3)->map(fn($w) =>
+                        ($w->seanceCours->teacher->user->name ?? 'N/A') . ' - ' .
+                        ($w->seanceCours->matiere->name ?? 'N/A') . ' (' .
+                        ($w->seanceCours->classe->name ?? 'N/A') . ')'
+                    )->toArray()
+                ];
             }
 
             return $alerts;

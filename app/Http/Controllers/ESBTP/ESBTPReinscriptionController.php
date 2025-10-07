@@ -293,7 +293,20 @@ class ESBTPReinscriptionController extends Controller
             // Ajouter l'inscription pour l'accès aux données de classe dans la vue
             $analyse['inscription'] = $inscription;
             
-            return view('esbtp.reinscription.show', compact('analyse', 'classesProposees', 'anneeAcademique'));
+            $anneeCouranteModel = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+            $validatedReinscription = null;
+
+            if ($anneeCouranteModel) {
+                $validatedReinscription = \App\Models\ESBTPInscription::with(['classe.filiere', 'classe.niveau', 'anneeUniversitaire', 'reinscriptionValidatedBy'])
+                    ->where('etudiant_id', $etudiantId)
+                    ->where('annee_universitaire_id', $anneeCouranteModel->id)
+                    ->where('type_inscription', 'reinscription')
+                    ->where('reinscription_status', 'validated')
+                    ->latest()
+                    ->first();
+            }
+
+            return view('esbtp.reinscription.show', compact('analyse', 'classesProposees', 'anneeAcademique', 'validatedReinscription'));
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Erreur lors de l\'analyse: ' . $e->getMessage()]);
         }

@@ -156,24 +156,8 @@ class ESBTPStudentController extends Controller
 
     public function update(Request $request, ESBTPEtudiant $etudiant)
     {
-        $validated = $request->validate([
-            'matricule' => 'required|string|unique:esbtp_etudiants,matricule,' . $etudiant->id,
-            'nom' => 'required|string|max:255',
-            'prenoms' => 'required|string|max:255',
-            'sexe' => 'required|in:M,F',
-            'date_naissance' => 'required|date',
-            'lieu_naissance' => 'required|string|max:255',
-            'nationalite' => 'required|string|max:255',
-            'adresse' => 'required|string|max:255',
-            'telephone' => 'required|string|max:20',
-            'email_personnel' => 'required|email|max:255',
-            'statut' => 'required|in:actif,inactif'
-        ]);
-
-        $etudiant->update($validated);
-
-        return redirect()->route('esbtp.etudiants.show', $etudiant)
-            ->with('success', 'Étudiant modifié avec succès.');
+        // Déléguer à la version enrichie du contrôleur pour conserver l'unique flux (parents, photo, logs, etc.)
+        return app(ESBTPEtudiantController::class)->update($request, $etudiant);
     }
 
     public function destroy(ESBTPEtudiant $etudiant)
