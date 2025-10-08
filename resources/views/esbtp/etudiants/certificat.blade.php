@@ -204,6 +204,7 @@
                         <tr style="background-color: #f8fafc;">
                             <th style="border: 1px solid #1e40af; padding: 8px; text-align: center; font-weight: bold;">Année scolaire</th>
                             <th style="border: 1px solid #1e40af; padding: 8px; text-align: center; font-weight: bold;">Classe suivie</th>
+                            <th style="border: 1px solid #1e40af; padding: 8px; text-align: center; font-weight: bold;">Niveau d'étude</th>
                             <th style="border: 1px solid #1e40af; padding: 8px; text-align: center; font-weight: bold;">Filière</th>
                             <th style="border: 1px solid #1e40af; padding: 8px; text-align: center; font-weight: bold;">Moyenne/20</th>
                         </tr>
@@ -213,17 +214,20 @@
                         <tr>
                             <td style="border: 1px solid #1e40af; padding: 8px; text-align: center;">
                                 @php
-                                    $anneeText = $inscription->anneeUniversitaire->nom ?? $inscription->anneeUniversitaire->libelle ?? 'Non renseigné';
-                                    // Extraire seulement l'année au format 2024-2025
-                                    if (preg_match('/(\d{4}-\d{4})/', $anneeText, $matches)) {
-                                        echo $matches[1];
-                                    } else {
-                                        echo $anneeText;
-                                    }
+                                    $rawAcademicYear = $inscription->anneeUniversitaire?->libelle
+                                        ?? $inscription->anneeUniversitaire?->name
+                                        ?? null;
+                                    $displayAcademicYear = $rawAcademicYear
+                                        ? (preg_match('/(\d{4}-\d{4})/', $rawAcademicYear, $matches) ? $matches[1] : $rawAcademicYear)
+                                        : 'Non renseigné';
                                 @endphp
+                                {{ $displayAcademicYear }}
                             </td>
                             <td style="border: 1px solid #1e40af; padding: 8px; text-align: center;">
-                                {{ $inscription->classe->name ?? ($inscription->niveauEtude->name ?? 'Non renseigné') }}
+                                {{ $inscription->classe->name ?? 'Non renseigné' }}
+                            </td>
+                            <td style="border: 1px solid #1e40af; padding: 8px; text-align: center;">
+                                {{ $inscription->niveauEtude->name ?? 'Non renseigné' }}
                             </td>
                             <td style="border: 1px solid #1e40af; padding: 8px; text-align: center;">
                                 {{ strtoupper($inscription->filiere->name ?? 'Non renseigné') }}
@@ -238,7 +242,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="4" style="border: 1px solid #1e40af; padding: 8px; text-align: center;">Aucune inscription trouvée</td>
+                            <td colspan="5" style="border: 1px solid #1e40af; padding: 8px; text-align: center;">Aucune inscription trouvée</td>
                         </tr>
                         @endforelse
                     </tbody>

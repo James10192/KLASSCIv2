@@ -70,6 +70,7 @@
 - Pagination depuis une recherche fuzzy : s'assurer que l'URL se met à jour et que les filtres restent sélectionnés.
 - Simuler base partielle (suppression colonne optionnelle) : la recherche retombe sur le fallback et n'explose plus en 500.
 - Sur `/esbtp/paiements` : rejouer filtres, pagination et bouton « Rafraîchir » ; observer les logs `ESBTPPaiementController@index start/processing/completed` et vérifier que le poll compare bien `last_updated_at`.
+- Sur `etudiants.show` / certificats : vérifier que toutes les inscriptions affichent « Année scolaire 2025-2026 » (sans doublon de préfixe) + la nouvelle colonne « Niveau d'étude » sur la prévisualisation et le PDF.
 
 
 ### Feature: Détection de doublons & gestion parents unifiée

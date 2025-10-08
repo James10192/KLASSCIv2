@@ -356,11 +356,24 @@
                             @if($etudiant->inscriptions->count() > 0)
                                 <div class="row">
                                     @foreach($etudiant->inscriptions->sortByDesc('created_at') as $inscription)
+                                        @php
+                                            $rawAcademicYear = $inscription->anneeUniversitaire?->libelle
+                                                ?? $inscription->anneeUniversitaire?->name
+                                                ?? null;
+                                            if ($rawAcademicYear) {
+                                                $normalized = \Illuminate\Support\Str::of($rawAcademicYear)->lower();
+                                                $anneeUniversitaireLabel = $normalized->contains('année')
+                                                    ? $rawAcademicYear
+                                                    : 'Année Universitaire ' . $rawAcademicYear;
+                                            } else {
+                                                $anneeUniversitaireLabel = 'Année Universitaire non renseignée';
+                                            }
+                                        @endphp
                                         <div class="col-md-6 mb-4">
                                             <div class="card-moderne">
                                                 <div class="p-md">
                                                     <div class="d-flex justify-content-between align-items-center mb-3">
-                                                        <h6 class="mb-0 font-semibold">{{ $inscription->anneeUniversitaire ? $inscription->anneeUniversitaire->libelle : 'N/A' }}</h6>
+                                                        <h6 class="mb-0 font-semibold">{{ $anneeUniversitaireLabel }}</h6>
                                                         <div class="d-flex gap-2">
                                                             @switch($inscription->workflow_step ?? 'prospect')
                                                                 @case('prospect')
@@ -413,6 +426,18 @@
                                                         <div class="col-sm-6">
                                                             <strong>Date d'inscription:</strong><br>
                                                             <span class="text-secondary">{{ $inscription->created_at->format('d/m/Y') }}</span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="row mb-3">
+                                                        <div class="col-sm-6">
+                                                            <strong>Année universitaire:</strong><br>
+                                                            <span class="text-secondary">
+                                                                {{ $anneeUniversitaireLabel }}
+                                                            </span>
+                                                        </div>
+                                                        <div class="col-sm-6">
+                                                            &nbsp;
                                                         </div>
                                                     </div>
                                                     
