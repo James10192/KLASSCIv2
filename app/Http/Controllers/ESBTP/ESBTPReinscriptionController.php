@@ -4,20 +4,25 @@ namespace App\Http\Controllers\ESBTP;
 
 use App\Http\Controllers\Controller;
 use App\Services\ReeinscriptionService;
+use App\Services\FuzzyNameMatcher;
 use App\Models\ESBTPRegleAcademique;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPFiliere;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 class ESBTPReinscriptionController extends Controller
 {
     protected $reinscriptionService;
+    protected FuzzyNameMatcher $matcher;
 
-    public function __construct(ReeinscriptionService $reinscriptionService)
+    public function __construct(ReeinscriptionService $reinscriptionService, FuzzyNameMatcher $matcher)
     {
         $this->reinscriptionService = $reinscriptionService;
+        $this->matcher = $matcher;
     }
 
     public function index(Request $request)
@@ -294,19 +299,28 @@ class ESBTPReinscriptionController extends Controller
             $analyse['inscription'] = $inscription;
             
             $anneeCouranteModel = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+            $existingReinscription = null;
             $validatedReinscription = null;
 
             if ($anneeCouranteModel) {
-                $validatedReinscription = \App\Models\ESBTPInscription::with(['classe.filiere', 'classe.niveau', 'anneeUniversitaire', 'reinscriptionValidatedBy'])
+                $existingReinscription = \App\Models\ESBTPInscription::with([
+                        'classe.filiere',
+                        'classe.niveau',
+                        'anneeUniversitaire',
+                        'reinscriptionValidatedBy'
+                    ])
                     ->where('etudiant_id', $etudiantId)
                     ->where('annee_universitaire_id', $anneeCouranteModel->id)
                     ->where('type_inscription', 'reinscription')
-                    ->where('reinscription_status', 'validated')
                     ->latest()
                     ->first();
+
+                if ($existingReinscription && $existingReinscription->reinscription_status === 'validated') {
+                    $validatedReinscription = $existingReinscription;
+                }
             }
 
-            return view('esbtp.reinscription.show', compact('analyse', 'classesProposees', 'anneeAcademique', 'validatedReinscription'));
+            return view('esbtp.reinscription.show', compact('analyse', 'classesProposees', 'anneeAcademique', 'validatedReinscription', 'existingReinscription'));
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Erreur lors de l\'analyse: ' . $e->getMessage()]);
         }
@@ -586,6 +600,16 @@ class ESBTPReinscriptionController extends Controller
      */
     public function loadCategory(Request $request, $category)
     {
+        $startMicrotime = microtime(true);
+        $startTimestamp = now()->toIso8601String();
+        Log::info('Reinscription loadCategory start', [
+            'timestamp' => $startTimestamp,
+            'category' => $category,
+            'page' => $request->get('page', 1),
+            'per_page' => $request->get('per_page', 50),
+            'filters' => $request->all(),
+        ]);
+
         $page = $request->get('page', 1);
         $perPage = $request->get('per_page', 50);
         
@@ -635,7 +659,19 @@ class ESBTPReinscriptionController extends Controller
             }
             
             // Appliquer les filtres sur la collection d'étudiants
+            $initialCount = $etudiants instanceof Collection
+                ? $etudiants->count()
+                : (is_array($etudiants) ? count($etudiants) : 0);
+
             $etudiants = $this->applyFiltersToEtudiants($etudiants, $request);
+
+            Log::info('Reinscription loadCategory after filters', [
+                'timestamp' => now()->toIso8601String(),
+                'category' => $category,
+                'initial_count' => $initialCount,
+                'filtered_count' => $etudiants->count(),
+                'duration_ms' => round((microtime(true) - $startMicrotime) * 1000, 2),
+            ]);
             
             // Pagination manuelle
             $total = $etudiants->count();
@@ -664,6 +700,15 @@ class ESBTPReinscriptionController extends Controller
                     'type' => $category === 'passages' ? 'passage' : ($category === 'rattrapages' ? 'rattrapage' : 'redoublement')
                 ])->render();
             }
+
+            Log::info('Reinscription loadCategory completed', [
+                'timestamp' => now()->toIso8601String(),
+                'category' => $category,
+                'total' => $total,
+                'page_count' => $etudiantsAvecSoldes->count(),
+                'has_more' => ($page * $perPage) < $total,
+                'duration_ms' => round((microtime(true) - $startMicrotime) * 1000, 2),
+            ]);
             
             return response()->json([
                 'html' => $html,
@@ -674,6 +719,12 @@ class ESBTPReinscriptionController extends Controller
             ]);
             
         } catch (\Exception $e) {
+            Log::error('Reinscription loadCategory error', [
+                'timestamp' => now()->toIso8601String(),
+                'category' => $category,
+                'error' => $e->getMessage(),
+                'duration_ms' => round((microtime(true) - $startMicrotime) * 1000, 2),
+            ]);
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
@@ -907,21 +958,56 @@ class ESBTPReinscriptionController extends Controller
      */
     private function applyFiltersToEtudiants($etudiants, Request $request)
     {
+        if (!$etudiants instanceof Collection) {
+            $etudiants = collect($etudiants);
+        } else {
+            $etudiants = $etudiants->values();
+        }
+
         if ($request->filled('search')) {
-            $search = strtolower($request->search);
-            $etudiants = $etudiants->filter(function($item) use ($search) {
-                $etudiant = is_array($item) && isset($item['etudiant']) ? $item['etudiant'] : $item;
-                
-                if (!$etudiant || !is_object($etudiant)) return false;
-                
-                $nom = strtolower($etudiant->nom ?? '');
-                $prenoms = strtolower($etudiant->prenoms ?? '');
-                $matricule = strtolower($etudiant->matricule ?? '');
-                
-                return str_contains($nom, $search) || 
-                       str_contains($prenoms, $search) || 
-                       str_contains($matricule, $search);
-            });
+            $search = $request->input('search');
+
+            $etudiants = $this->matcher->match($search, $etudiants, function ($item) {
+                $etudiant = null;
+
+                if (is_array($item)) {
+                    $etudiant = $item['etudiant'] ?? null;
+                } elseif (is_object($item) && property_exists($item, 'etudiant')) {
+                    $etudiant = $item->etudiant;
+                } elseif (is_object($item)) {
+                    $etudiant = $item;
+                }
+
+                if (!$etudiant || !is_object($etudiant)) {
+                    return [];
+                }
+
+                return [
+                    'matricule' => $etudiant->matricule ?? null,
+                    'nom' => $etudiant->nom ?? null,
+                    'prenoms' => $etudiant->prenoms ?? null,
+                    'full_name' => trim(($etudiant->prenoms ?? '') . ' ' . ($etudiant->nom ?? '')),
+                    'reverse_full_name' => trim(($etudiant->nom ?? '') . ' ' . ($etudiant->prenoms ?? '')),
+                ];
+            }, [
+                'threshold' => 30,
+                'limit' => 400,
+                'boosts' => [
+                    'matricule' => 15,
+                    'full_name' => 6,
+                    'reverse_full_name' => 6,
+                ],
+            ]);
+
+            $etudiants = $etudiants->filter(function ($item) {
+                $score = null;
+                if (is_array($item)) {
+                    $score = $item['fuzzy_score'] ?? null;
+                } elseif (is_object($item) && property_exists($item, 'fuzzy_score')) {
+                    $score = $item->fuzzy_score;
+                }
+                return $score === null || $score >= 80;
+            })->values();
         }
         
         if ($request->filled('filiere_id')) {
@@ -966,14 +1052,14 @@ class ESBTPReinscriptionController extends Controller
                 if ($request->statut_paiement === 'solde') {
                     return $etudiant->solde_restant <= 0;
                 } elseif ($request->statut_paiement === 'impaye') {
-                    return $etudiant->solde_restant > 0;
+                return $etudiant->solde_restant > 0;
                 }
                 
                 return true;
             });
         }
         
-        return $etudiants;
+        return $etudiants->values();
     }
 
     public function exportResults(Request $request)

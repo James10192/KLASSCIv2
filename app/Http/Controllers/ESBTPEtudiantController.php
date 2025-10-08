@@ -16,12 +16,14 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Arr;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Spatie\Permission\Models\Role;
 use App\Models\ESBTPParent;
 use App\Models\ESBTPInscription;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Services\InscriptionWorkflowService;
 use App\Services\ClasseManagementService;
+use App\Services\FuzzyNameMatcher;
 
 class ESBTPEtudiantController extends Controller
 {
@@ -50,7 +52,7 @@ class ESBTPEtudiantController extends Controller
     /**
      * Afficher la liste des étudiants.
      */
-    public function index(Request $request)
+    public function index(Request $request, FuzzyNameMatcher $matcher)
     {
         // Récupérer les filtres de recherche
         $search = $request->input('search');
@@ -60,27 +62,17 @@ class ESBTPEtudiantController extends Controller
         $status = $request->input('status');
 
         // Construire la requête avec les filtres
-        $query = ESBTPEtudiant::query()
-            ->with(['user', 'inscriptions' => function($q) {
+        $baseQuery = ESBTPEtudiant::query()
+            ->with(['user', 'inscriptions' => function ($q) {
                 $q->with(['filiere', 'niveau', 'classe', 'anneeUniversitaire']);
             }]);
 
-        // Appliquer les filtres
-        if ($search) {
-            $query->where(function($q) use ($search) {
-                $q->where('matricule', 'like', "%{$search}%")
-                  ->orWhere('nom', 'like', "%{$search}%")
-                  ->orWhere('prenoms', 'like', "%{$search}%")
-                  ->orWhere('telephone', 'like', "%{$search}%");
-            });
-        }
-
         if ($status) {
-            $query->where('statut', $status);
+            $baseQuery->where('statut', $status);
         }
 
         if ($filiere || $niveau || $annee) {
-            $query->whereHas('inscriptions', function($q) use ($filiere, $niveau, $annee) {
+            $baseQuery->whereHas('inscriptions', function ($q) use ($filiere, $niveau, $annee) {
                 if ($filiere) {
                     $q->where('filiere_id', $filiere);
                 }
@@ -93,13 +85,75 @@ class ESBTPEtudiantController extends Controller
             });
         }
 
-        // Récupérer les étudiants paginés
-        $etudiants = $query->latest()->paginate(15);
+        $perPage = 15;
+        $currentPage = LengthAwarePaginator::resolveCurrentPage();
+
+        if ($search) {
+            $candidatesQuery = clone $baseQuery;
+
+            // Préfiltrage rapide pour limiter le volume de données à scorer
+            $candidatesQuery->where(function ($q) use ($search) {
+                $q->where('matricule', 'like', "%{$search}%")
+                  ->orWhere('nom', 'like', "%{$search}%")
+                  ->orWhere('prenoms', 'like', "%{$search}%")
+                  ->orWhere('telephone', 'like', "%{$search}%")
+                  ->orWhere('email_personnel', 'like', "%{$search}%");
+            });
+
+            $candidates = $candidatesQuery
+                ->limit(200)
+                ->get();
+
+            $scored = $matcher->match($search, $candidates, function ($etudiant) {
+                return [
+                    'matricule' => $etudiant->matricule,
+                    'nom' => $etudiant->nom,
+                    'prenoms' => $etudiant->prenoms,
+                    'full_name' => trim(($etudiant->prenoms ?? '') . ' ' . ($etudiant->nom ?? '')),
+                    'telephone' => $etudiant->telephone,
+                    'email' => $etudiant->email_personnel ?: $etudiant->email,
+                ];
+            }, [
+                'threshold' => 35,
+                'limit' => 150,
+                'boosts' => [
+                    'matricule' => 20,
+                    'full_name' => 8,
+                ],
+            ]);
+
+            $total = $scored->count();
+            $items = $scored->forPage($currentPage, $perPage)->values();
+
+            $etudiants = new LengthAwarePaginator(
+                $items,
+                $total,
+                $perPage,
+                $currentPage,
+                [
+                    'path' => $request->url(),
+                    'query' => $request->query(),
+                ]
+            );
+
+            $etudiants->appends($request->query());
+        } else {
+            $etudiants = $baseQuery->orderByDesc('created_at')->paginate($perPage)->appends($request->query());
+        }
 
         // Récupérer les listes pour les filtres
         $filieres = ESBTPFiliere::where('is_active', true)->get();
         $niveaux = ESBTPNiveauEtude::where('is_active', true)->get();
         $annees = ESBTPAnneeUniversitaire::orderBy('start_date', 'desc')->get();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('esbtp.etudiants.partials.results', [
+                    'etudiants' => $etudiants,
+                ])->render(),
+                'url' => $request->fullUrl(),
+            ]);
+        }
 
         return view('esbtp.etudiants.index', compact(
             'etudiants',

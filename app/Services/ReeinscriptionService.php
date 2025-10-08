@@ -372,11 +372,11 @@ class ReeinscriptionService
 
             $nouvelleClasse = ESBTPClasse::findOrFail($nouvelleClasseId);
 
-            // 4. Créer nouvelle inscription
+        // 4. Créer nouvelle inscription
 
-            $nouvelleInscription = \App\Models\ESBTPInscription::create([
-                'etudiant_id' => $etudiantId,
-                'annee_universitaire_id' => $nouvelleAnnee->id,
+        $nouvelleInscription = \App\Models\ESBTPInscription::create([
+            'etudiant_id' => $etudiantId,
+            'annee_universitaire_id' => $nouvelleAnnee->id,
                 'classe_id' => $nouvelleClasseId,
                 'filiere_id' => $nouvelleClasse->filiere_id,
                 'niveau_id' => $nouvelleClasse->niveau_etude_id,
@@ -387,10 +387,22 @@ class ReeinscriptionService
                 'date_inscription' => now(),
                 'status' => 'active',
                 'workflow_step' => 'documents_complets',
-                'observations' => $observations,
-                'created_by' => auth()->id(),
-                'numero_recu' => $this->genererNumeroRecu($nouvelleAnnee, $nouvelleClasse)
-            ]);
+            'observations' => $observations,
+            'created_by' => auth()->id(),
+            'numero_recu' => $this->genererNumeroRecu($nouvelleAnnee, $nouvelleClasse)
+        ]);
+
+        $decisionLabel = ucfirst($decision);
+        $observationText = trim((string) ($observations ?? ''));
+        $reinscriptionNote = $decisionLabel . ($observationText !== '' ? ' - ' . $observationText : '');
+
+        $nouvelleInscription->update([
+            'reinscription_status' => 'validated',
+            'reinscription_validated_at' => now(),
+            'reinscription_validated_by' => auth()->id(),
+            'reinscription_observations' => $reinscriptionNote,
+            'updated_by' => auth()->id(),
+        ]);
 
 
             // 5. Générer nouveaux frais via service existant

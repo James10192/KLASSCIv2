@@ -17,9 +17,17 @@ use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 use App\Models\ESBTPClasse;
 use Illuminate\Support\Str;
+use App\Support\MatriculeGenerator;
 
 class ESBTPInscriptionService
 {
+    protected MatriculeGenerator $matriculeGenerator;
+
+    public function __construct(MatriculeGenerator $matriculeGenerator)
+    {
+        $this->matriculeGenerator = $matriculeGenerator;
+    }
+
     /**
      * Créer une nouvelle inscription d'étudiant
      *
@@ -85,7 +93,7 @@ class ESBTPInscriptionService
             $etudiantData['statut'] = 'actif';
 
             // 4. Créer l'étudiant et récupérer son instance
-            $etudiant = $this->createEtudiant($etudiantData, $userId);
+            $etudiant = $this->createEtudiant($etudiantData, $userId, $classe->annee_universitaire_id);
 
             // Si le statut est 'actif', on active également le compte utilisateur
             if (isset($inscriptionData['status']) && $inscriptionData['status'] === 'active') {
@@ -221,13 +229,14 @@ class ESBTPInscriptionService
     }
 
     /**
-     * Créer un nouvel étudiant et son compte utilisateur
+     * Créer un nouvel étudiant et son compte utilisateur.
      *
-     * @param array $etudiantData Les données de l'étudiant
-     * @param int $userId ID de l'utilisateur qui crée l'étudiant
-     * @return ESBTPEtudiant Instance de l'étudiant créé
+     * @param array $etudiantData
+     * @param int $userId
+     * @param int|null $anneeUniversitaireId
+     * @return ESBTPEtudiant
      */
-    private function createEtudiant(array $etudiantData, int $userId)
+    private function createEtudiant(array $etudiantData, int $userId, ?int $anneeUniversitaireId = null)
     {
         // Ajouter un log pour déboguer la valeur du matricule reçue
         Log::info('Matricule reçu dans createEtudiant:', [
@@ -287,53 +296,15 @@ class ESBTPInscriptionService
 
         $etudiantData['user_id'] = $user->id;
 
-        // Ne pas générer de matricule s'il est déjà fourni et non vide
-        if (!isset($etudiantData['matricule']) || trim($etudiantData['matricule']) === '') {
+        if (!isset($etudiantData['matricule']) || trim((string) $etudiantData['matricule']) === '') {
             Log::info('Génération automatique d\'un matricule car aucun matricule n\'a été fourni ou le matricule est vide');
 
-            // Récupérer les références nécessaires pour générer le matricule
-            $filiereId = $etudiantData['filiere_id'] ?? null;
-            $niveauId = $etudiantData['niveau_etude_id'] ?? null;
-            $anneeId = $etudiantData['annee_universitaire_id'] ?? null;
-
-            // Si anneeId est null, essayer de récupérer l'année universitaire active
-            if ($anneeId === null) {
-                $anneeActive = ESBTPAnneeUniversitaire::where('is_current', true)->first();
-                if ($anneeActive) {
-                    $anneeId = $anneeActive->id;
-                    $etudiantData['annee_universitaire_id'] = $anneeId;
-                }
-            }
-
-            $filiere = $filiereId ? ESBTPFiliere::find($filiereId) : null;
-            $niveau = $niveauId ? ESBTPNiveauEtude::find($niveauId) : null;
-            $annee = $anneeId ? ESBTPAnneeUniversitaire::find($anneeId) : null;
-
-            // Générer les codes pour le matricule
-            $filiereCode = $filiere ? ($filiere->code ?? substr($filiere->nom, 0, 2)) : 'XX';
-            $niveauCode = $niveau ? ($niveau->code ?? ($niveau->annee ?? 'XX')) : 'XX';
-            $anneeCode = $annee ? substr($annee->code ?? date('Y'), 2, 2) : date('y');
-
-            // Construire le préfixe du matricule
-            $matriculePrefix = strtoupper($filiereCode . $niveauCode . $anneeCode);
-
-            // Rechercher le dernier numéro séquentiel pour ce préfixe
-            $lastMatricule = ESBTPEtudiant::where('matricule', 'like', "{$matriculePrefix}%")
-                ->orderByRaw('CAST(SUBSTRING(matricule, ' . (strlen($matriculePrefix) + 1) . ') AS UNSIGNED) DESC')
-                ->first();
-
-            // Déterminer le prochain numéro séquentiel
-            $seq = 1;
-            if ($lastMatricule) {
-                $seqStr = substr($lastMatricule->matricule, strlen($matriculePrefix));
-                $seq = (int)$seqStr + 1;
-            }
-
-            // Formater le numéro séquentiel
-            $seqFormatted = str_pad($seq, 6, '0', STR_PAD_LEFT);
-
-            // Construire le matricule complet
-            $etudiantData['matricule'] = $matriculePrefix . $seqFormatted;
+            $etudiantData['matricule'] = $this->matriculeGenerator->generate([
+                'genre' => $etudiantData['genre'] ?? $etudiantData['sexe'] ?? 'M',
+                'filiere_id' => $etudiantData['filiere_id'] ?? null,
+                'niveau_id' => $etudiantData['niveau_etude_id'] ?? null,
+                'annee_universitaire_id' => $anneeUniversitaireId,
+            ]);
 
             Log::info('Matricule généré automatiquement:', [
                 'matricule' => $etudiantData['matricule']

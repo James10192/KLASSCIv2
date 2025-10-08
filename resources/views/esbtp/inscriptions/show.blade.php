@@ -206,6 +206,10 @@ body.modal-open .card:hover {
                                     <td>{{ $inscription->etudiant->lieu_naissance ?: 'Non renseigné' }}</td>
                                 </tr>
                                 <tr>
+                                    <th>Nationalité</th>
+                                    <td>{{ $inscription->etudiant->nationalite ?: 'Non renseignée' }}</td>
+                                </tr>
+                                <tr>
                                     <th>Téléphone</th>
                                     <td>{{ $inscription->etudiant->telephone }}</td>
                                 </tr>
@@ -2476,4 +2480,3 @@ body.modal-open .card:hover {
 </script>
 
 <!-- Les styles z-index pour les modals sont gérés par modal-force-fix.css -->
-

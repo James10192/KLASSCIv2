@@ -1,6 +1,9 @@
 @extends('layouts.app')
 
 @section('title', 'Détails Réinscription - ' . $analyse['etudiant']->prenom . ' ' . $analyse['etudiant']->nom)
+@php
+    use Illuminate\Support\Str;
+@endphp
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
@@ -466,81 +469,145 @@
             <div class="main-card-header" style="background-color: rgba(16, 185, 129, 0.1); border-bottom: 1px solid rgba(16, 185, 129, 0.2);">
                 <div class="main-card-title" style="color: var(--success);">
                     <i class="fas fa-graduation-cap"></i>
-                    @if($validatedReinscription)
-                        Réinscription finalisée
+                    @if($existingReinscription)
+                        {{ $validatedReinscription ? 'Réinscription finalisée' : 'Réinscription enregistrée' }}
                     @else
                         Procéder à la Réinscription
                     @endif
                 </div>
             </div>
             <div class="p-lg">
-                @if($validatedReinscription)
-                    <div class="alert alert-success d-flex align-items-center" role="alert">
-                        <i class="fas fa-check-circle fa-2x me-3"></i>
+                @if($existingReinscription)
+                    @php
+                        $reinscriptionRecord = $validatedReinscription ?? $existingReinscription;
+                        $decisionLabel = null;
+                        if (!empty($reinscriptionRecord->reinscription_observations)) {
+                            $decisionLabel = Str::of($reinscriptionRecord->reinscription_observations)->before(' - ')->trim();
+                        } elseif (!empty($analyse['decision'])) {
+                            $decisionLabel = $analyse['decision'];
+                        }
+                        $decisionLabel = $decisionLabel ? ucfirst((string) $decisionLabel) : 'Non renseignée';
+                        $affectationLabel = $reinscriptionRecord->affectation_status
+                            ? ucfirst(str_replace('_', ' ', $reinscriptionRecord->affectation_status))
+                            : 'Non renseigné';
+                        $reliquatRestant = $etudiant->solde_restant ?? 0;
+                        $reliquatGere = $reliquatRestant <= 0;
+                        $statutLibelle = $reinscriptionRecord->reinscription_status
+                            ? match ($reinscriptionRecord->reinscription_status) {
+                                'validated' => 'Validée',
+                                'pending' => 'En attente',
+                                'draft' => 'Brouillon',
+                                default => ucfirst(str_replace('_', ' ', $reinscriptionRecord->reinscription_status)),
+                            }
+                            : ucfirst(str_replace('_', ' ', $reinscriptionRecord->status ?? 'en cours'));
+                    @endphp
+
+                    <div class="alert {{ $validatedReinscription ? 'alert-success' : 'alert-info' }} d-flex align-items-center" role="alert">
+                        <i class="fas {{ $validatedReinscription ? 'fa-check-circle' : 'fa-info-circle' }} fa-2x me-3"></i>
+                        @php
+                            $validatedAt = null;
+                            if ($validatedReinscription && $validatedReinscription->reinscription_validated_at) {
+                                $validatedAt = \Illuminate\Support\Carbon::parse($validatedReinscription->reinscription_validated_at);
+                            }
+                            $updatedAt = null;
+                            if ($reinscriptionRecord && $reinscriptionRecord->updated_at) {
+                                $updatedAt = \Illuminate\Support\Carbon::parse($reinscriptionRecord->updated_at);
+                            }
+                        @endphp
+
                         <div>
-                            <strong>Réinscription validée le {{ $validatedReinscription->reinscription_validated_at?->format('d/m/Y à H:i') ?? '—' }}</strong><br>
-                            @if($validatedReinscription->reinscriptionValidatedBy)
-                                Validée par {{ $validatedReinscription->reinscriptionValidatedBy->name }}.
+                            @if($validatedReinscription)
+                                <strong>Réinscription validée le {{ $validatedAt ? $validatedAt->format('d/m/Y à H:i') : '—' }}</strong><br>
+                                @if($validatedReinscription->reinscriptionValidatedBy)
+                                    Validée par {{ $validatedReinscription->reinscriptionValidatedBy->name }}.
+                                @endif
+                            @else
+                                <strong>Une réinscription est déjà enregistrée pour l'année {{ $reinscriptionRecord->anneeUniversitaire->name ?? $anneeAcademique }}</strong><br>
+                                Dernière mise à jour : {{ $updatedAt ? $updatedAt->format('d/m/Y à H:i') : '—' }}
                             @endif
                         </div>
                     </div>
 
                     <div class="row g-3 mb-4">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-body">
+                                    <div class="text-muted text-uppercase small mb-1">Statut</div>
+                                    <div class="fw-semibold">
+                                        {{ $statutLibelle }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
                             <div class="card border-0 shadow-sm h-100">
                                 <div class="card-body">
                                     <div class="text-muted text-uppercase small mb-1">Année universitaire</div>
                                     <div class="fw-semibold">
-                                        {{ $validatedReinscription->anneeUniversitaire->name ?? $anneeAcademique }}
+                                        {{ $reinscriptionRecord->anneeUniversitaire->name ?? $anneeAcademique }}
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="card border-0 shadow-sm h-100">
                                 <div class="card-body">
                                     <div class="text-muted text-uppercase small mb-1">Classe assignée</div>
-                                    <div class="fw-semibold">{{ $validatedReinscription->classe->name ?? 'Non renseignée' }}</div>
+                                    <div class="fw-semibold">{{ $reinscriptionRecord->classe->name ?? 'Non renseignée' }}</div>
                                     <div class="text-muted small">
-                                        {{ $validatedReinscription->classe->filiere->name ?? 'Filière n/a' }} •
-                                        {{ $validatedReinscription->classe->niveau->name ?? 'Niveau n/a' }}
+                                        {{ $reinscriptionRecord->classe->filiere->name ?? 'Filière n/a' }} •
+                                        {{ $reinscriptionRecord->classe->niveau->name ?? 'Niveau n/a' }}
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="card border-0 shadow-sm h-100">
                                 <div class="card-body">
                                     <div class="text-muted text-uppercase small mb-1">Statut d'affectation</div>
-                                    <div class="fw-semibold text-capitalize">
-                                        {{ str_replace('_', ' ', $validatedReinscription->affectation_status ?? 'affecté') }}
-                                    </div>
+                                    <div class="fw-semibold text-capitalize">{{ $affectationLabel }}</div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="mb-4">
-                        <h6 class="text-uppercase text-muted small">Décision académique</h6>
-                        <p class="mb-0">
-                            @isset($analyse['decision'])
-                                {{ ucfirst($analyse['decision']) }}
-                            @else
-                                Non renseignée
-                            @endisset
-                        </p>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-body">
+                                    <div class="text-muted text-uppercase small mb-1">Décision académique</div>
+                                    <div class="fw-semibold">{{ $decisionLabel }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-body">
+                                    <div class="text-muted text-uppercase small mb-1">Reliquat</div>
+                                    @if($reliquatGere)
+                                        <div class="fw-semibold text-success">
+                                            Aucun reliquat en attente
+                                        </div>
+                                    @else
+                                        <div class="fw-semibold text-warning">
+                                            {{ number_format($reliquatRestant, 0, ',', ' ') }} FCFA à régulariser
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    @if($validatedReinscription->reinscription_observations)
+                    @if($reinscriptionRecord->reinscription_observations)
                         <div class="mb-4">
                             <h6 class="text-uppercase text-muted small">Observations</h6>
-                            <p class="mb-0 text-muted">{{ $validatedReinscription->reinscription_observations }}</p>
+                            <p class="mb-0 text-muted">{{ $reinscriptionRecord->reinscription_observations }}</p>
                         </div>
                     @endif
 
                     <div class="d-flex flex-column flex-md-row gap-3">
-                        <a href="{{ route('esbtp.inscriptions.show', $validatedReinscription->id) }}" class="btn-acasi primary">
-                            <i class="fas fa-external-link-alt me-1"></i>Ouvrir la nouvelle inscription
+                        <a href="{{ route('esbtp.inscriptions.show', $reinscriptionRecord->id) }}" class="btn-acasi primary">
+                            <i class="fas fa-external-link-alt me-1"></i>Ouvrir l'inscription existante
                         </a>
                         <a href="{{ route('esbtp.inscriptions.index') }}" class="btn-acasi secondary">
                             <i class="fas fa-list me-1"></i>Retour à la liste des inscriptions

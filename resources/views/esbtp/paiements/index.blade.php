@@ -24,6 +24,9 @@
                 <p class="header-subtitle">Monitoring des paiements étudiants et relances automatiques</p>
             </div>
             <div class="header-actions">
+                <button type="button" class="btn-acasi secondary" id="paiements-refresh-btn" title="Rafraîchir les données">
+                    <i class="fas fa-sync-alt"></i>Rafraîchir
+                </button>
                 <a href="{{ route('esbtp.paiements.suivi-categories') }}" class="btn-acasi secondary">
                     <i class="fas fa-chart-bar"></i>Suivi par Catégorie
                 </a>
@@ -71,130 +74,8 @@
         </div>
 
         <!-- KPI Cards Harmonisées avec le Système de Catégories -->
-        <div class="kpi-grid">
-            <div class="card-moderne kpi-card">
-                <div class="kpi-title">Frais Académiques Payés</div>
-                <div class="kpi-value color-success">{{ number_format($stats['academic_paid'], 0, ',', ' ') }} FCFA</div>
-                <div class="kpi-trend positive">
-                    <i class="fas fa-graduation-cap"></i>
-                    @if($stats['academic_total'] > 0)
-                        {{ number_format(($stats['academic_paid'] / $stats['academic_total']) * 100, 1) }}% payé
-                    @else
-                        Aucun frais
-                    @endif
-                </div>
-            </div>
-            
-            <div class="card-moderne kpi-card">
-                <div class="kpi-title">Services Optionnels</div>
-                <div class="kpi-value color-warning">{{ number_format($stats['service_paid'], 0, ',', ' ') }} FCFA</div>
-                <div class="kpi-trend">
-                    <i class="fas fa-cogs"></i>
-                    @if($stats['service_total'] > 0)
-                        {{ number_format(($stats['service_paid'] / $stats['service_total']) * 100, 1) }}% payé
-                    @else
-                        Aucun service
-                    @endif
-                </div>
-            </div>
-            
-            <div class="card-moderne kpi-card">
-                <div class="kpi-title">Frais Administratifs</div>
-                <div class="kpi-value color-info">{{ number_format($stats['administrative_paid'], 0, ',', ' ') }} FCFA</div>
-                <div class="kpi-trend">
-                    <i class="fas fa-file-alt"></i>
-                    @if($stats['administrative_total'] > 0)
-                        {{ number_format(($stats['administrative_paid'] / $stats['administrative_total']) * 100, 1) }}% payé
-                    @else
-                        Aucun frais
-                    @endif
-                </div>
-            </div>
-
-            <div class="card-moderne kpi-card">
-                <div class="kpi-title">Taux de Recouvrement Global</div>
-                <div class="kpi-value color-primary">{{ $stats['recovery_rate'] }}%</div>
-                <div class="kpi-trend {{ $stats['recovery_rate'] >= 75 ? 'positive' : ($stats['recovery_rate'] >= 50 ? '' : 'negative') }}">
-                    <i class="fas fa-chart-line"></i>
-                    {{ number_format($stats['montant_valide'], 0, ',', ' ') }} / {{ number_format($stats['montant_total'], 0, ',', ' ') }} FCFA
-                </div>
-            </div>
-
-            @if($stats['reliquats_total'] > 0)
-            <div class="card-moderne kpi-card">
-                <div class="kpi-title">Reliquats à Recouvrer</div>
-                <div class="kpi-value color-danger">{{ number_format($stats['reliquats_total'], 0, ',', ' ') }} FCFA</div>
-                <div class="kpi-trend">
-                    <i class="fas fa-history"></i>
-                    Années précédentes
-                </div>
-            </div>
-            @endif
-        </div>
-
-        <!-- Statistiques Détaillées par Catégorie -->
-        <div class="card-moderne mb-lg">
-            <div class="p-lg">
-                <div class="d-flex justify-content-between align-items-center mb-md">
-                    <div class="section-title mb-0">
-                        <i class="fas fa-chart-pie me-2"></i>
-                        Répartition des Paiements par Catégorie
-                    </div>
-                    <a href="{{ route('esbtp.paiements.suivi-categories') }}" class="btn-acasi secondary small">
-                        <i class="fas fa-chart-bar me-1"></i>Vue détaillée
-                    </a>
-                </div>
-                
-                <div class="row">
-                    <div class="col-md-4">
-                        <div class="resultat-card border-start border-success border-3">
-                            <div class="resultat-title">Frais Académiques</div>
-                            <div class="resultat-montant color-success">{{ number_format($stats['academic_paid'], 0, ',', ' ') }} FCFA</div>
-                            <div class="progress mb-2" style="height: 8px;">
-                                <div class="progress-bar bg-success" style="width: {{ $stats['academic_total'] > 0 ? ($stats['academic_paid'] / $stats['academic_total']) * 100 : 0 }}%"></div>
-                            </div>
-                            <small class="text-muted">
-                                En attente: {{ number_format($stats['academic_pending'], 0, ',', ' ') }} FCFA
-                            </small>
-                        </div>
-                    </div>
-                    
-                    <div class="col-md-4">
-                        <div class="resultat-card border-start border-warning border-3">
-                            <div class="resultat-title">Services Optionnels</div>
-                            <div class="resultat-montant color-warning">{{ number_format($stats['service_paid'], 0, ',', ' ') }} FCFA</div>
-                            <div class="progress mb-2" style="height: 8px;">
-                                <div class="progress-bar bg-warning" style="width: {{ $stats['service_total'] > 0 ? ($stats['service_paid'] / $stats['service_total']) * 100 : 0 }}%"></div>
-                            </div>
-                            <small class="text-muted">
-                                En attente: {{ number_format($stats['service_pending'], 0, ',', ' ') }} FCFA
-                            </small>
-                        </div>
-                    </div>
-                    
-                    <div class="col-md-4">
-                        <div class="resultat-card border-start border-info border-3">
-                            <div class="resultat-title">Frais Administratifs</div>
-                            <div class="resultat-montant color-info">{{ number_format($stats['administrative_paid'], 0, ',', ' ') }} FCFA</div>
-                            <div class="progress mb-2" style="height: 8px;">
-                                <div class="progress-bar bg-info" style="width: {{ $stats['administrative_total'] > 0 ? ($stats['administrative_paid'] / $stats['administrative_total']) * 100 : 0 }}%"></div>
-                            </div>
-                            <small class="text-muted">
-                                En attente: {{ number_format($stats['administrative_pending'], 0, ',', ' ') }} FCFA
-                            </small>
-                        </div>
-                    </div>
-                </div>
-
-                @if($stats['reliquats_total'] > 0)
-                <div class="mt-3">
-                    <div class="alert alert-info alert-sm">
-                        <i class="fas fa-info-circle me-2"></i>
-                        <strong>Note :</strong> Les montants "En attente" incluent les reliquats des années précédentes ({{ number_format($stats['reliquats_total'], 0, ',', ' ') }} FCFA).
-                    </div>
-                </div>
-                @endif
-            </div>
+        <div id="paiements-metrics-container">
+            @include('esbtp.paiements.partials.metrics', ['stats' => $stats])
         </div>
 
         <!-- Filtres et Actions -->
@@ -235,278 +116,40 @@
         </div>
 
         <!-- Tableau des Paiements -->
-        <div class="card-moderne">
-            <div class="p-lg">
-                <div class="section-title mb-md">
-                    <i class="fas fa-list me-2"></i>
-                    Liste des Paiements
-                </div>
-                
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead class="table-light">
-                            <tr>
-                                <th style="width: 40px;">
-                                    <input type="checkbox" id="select-all" class="form-check-input" title="Tout sélectionner">
-                                </th>
-                                <th>N° Reçu</th>
-                                <th>Étudiant</th>
-                                <th>Catégorie</th>
-                                <th>Date</th>
-                                <th>Montant</th>
-                                <th>Mode</th>
-                                <th>Statut</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($paiements as $paiement)
-                                <tr>
-                                    <td>
-                                        @if($paiement->status == 'en_attente' && auth()->user()->hasRole('superAdmin'))
-                                            <input type="checkbox" class="form-check-input paiement-checkbox"
-                                                   value="{{ $paiement->id }}"
-                                                   data-status="{{ $paiement->status }}">
-                                        @endif
-                                    </td>
-                                    <td>
-                                        <strong class="color-primary">{{ $paiement->numero_recu }}</strong>
-                                    </td>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="avatar-circle bg-primary me-2">
-                                                {{ substr($paiement->etudiant->user->name ?? $paiement->etudiant->nom_complet, 0, 2) }}
-                                            </div>
-                                            <div>
-                                                <a href="{{ route('esbtp.etudiants.show', $paiement->etudiant_id) }}" class="text-decoration-none">
-                                                    <strong>{{ $paiement->etudiant->user->name ?? $paiement->etudiant->nom_complet }}</strong>
-                                                </a>
-                                                <br><small class="text-muted">{{ $paiement->etudiant->matricule }}</small>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        @php
-                                            // Logique harmonisée pour déterminer la catégorie
-                                            $categoryInfo = null;
-                                            $categoryColors = [
-                                                'academic' => 'success',
-                                                'service' => 'warning', 
-                                                'administrative' => 'info'
-                                            ];
-                                            $categoryIcons = [
-                                                'academic' => 'fas fa-graduation-cap',
-                                                'service' => 'fas fa-cogs',
-                                                'administrative' => 'fas fa-file-alt'
-                                            ];
-                                            
-                                            // D'abord essayer avec le nouveau système
-                                            if ($paiement->fraisCategory) {
-                                                $categoryInfo = [
-                                                    'name' => $paiement->fraisCategory->name,
-                                                    'type' => $paiement->fraisCategory->category_type ?? 'academic',
-                                                    'source' => 'Nouveau système'
-                                                ];
-                                            }
-                                            // Fallback sur l'ancien système
-                                            elseif ($paiement->categorie) {
-                                                $categoryInfo = [
-                                                    'name' => $paiement->categorie->nom ?? 'Catégorie ancienne',
-                                                    'type' => $paiement->categorie->nom && str_contains(strtolower($paiement->categorie->nom), 'cantine') ? 'service' : 'academic',
-                                                    'source' => 'Ancien système'
-                                                ];
-                                            }
-                                            // Fallback sur le motif
-                                            elseif ($paiement->motif) {
-                                                $motifLower = strtolower($paiement->motif);
-                                                $type = 'academic';
-                                                if (str_contains($motifLower, 'cantine') || str_contains($motifLower, 'transport')) {
-                                                    $type = 'service';
-                                                } elseif (str_contains($motifLower, 'documentation') || str_contains($motifLower, 'examen')) {
-                                                    $type = 'administrative';
-                                                }
-                                                $categoryInfo = [
-                                                    'name' => $paiement->motif,
-                                                    'type' => $type,
-                                                    'source' => 'Inféré du motif'
-                                                ];
-                                            }
-                                            
-                                            $color = $categoryColors[$categoryInfo['type'] ?? 'academic'] ?? 'secondary';
-                                            $icon = $categoryIcons[$categoryInfo['type'] ?? 'academic'] ?? 'fas fa-money-bill';
-                                        @endphp
-                                        
-                                        @if($categoryInfo)
-                                            <div class="badge bg-{{ $color }} d-flex align-items-center" style="max-width: 150px;">
-                                                <i class="{{ $icon }} me-1"></i>
-                                                <span class="text-truncate">{{ $categoryInfo['name'] }}</span>
-                                            </div>
-                                            <small class="text-muted d-block">{{ ucfirst($categoryInfo['type']) }}</small>
-                                        @else
-                                            <span class="badge bg-secondary">
-                                                <i class="fas fa-question me-1"></i>Non définie
-                                            </span>
-                                        @endif
-                                    </td>
-                                    <td>{{ $paiement->date_paiement->format('d/m/Y') }}</td>
-                                    <td>
-                                        <strong class="color-success">{{ number_format($paiement->montant, 0, ',', ' ') }} FCFA</strong>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-info">{{ $paiement->mode_paiement }}</span>
-                                    </td>
-                                    <td>
-                                        @php
-                                            $statusColors = [
-                                                'validé' => 'success',
-                                                'en_attente' => 'warning', 
-                                                'rejeté' => 'danger'
-                                            ];
-                                            $statusColor = $statusColors[$paiement->status] ?? 'secondary';
-                                        @endphp
-                                        <span class="badge bg-{{ $statusColor }}">
-                                            {{ $paiement->status_formatte }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div class="btn-group btn-group-sm">
-                                            <a href="{{ route('esbtp.paiements.show', $paiement->id) }}" 
-                                               class="btn btn-outline-info" title="Détails">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                            
-                                            @if($paiement->status != 'validé')
-                                                @can('edit-paiements')
-                                                <a href="{{ route('esbtp.paiements.edit', $paiement->id) }}" 
-                                                   class="btn btn-outline-warning" title="Modifier">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
-                                                @endcan
-                                                
-                                                @if(auth()->user()->hasRole('superAdmin'))
-                                                <form action="{{ route('esbtp.paiements.valider', $paiement->id) }}" method="POST" class="d-inline">
-                                                    @csrf
-                                                    <button type="submit"
-                                                            class="btn btn-outline-success"
-                                                            title="Valider"
-                                                            onclick="return confirm('Êtes-vous sûr de vouloir valider ce paiement ?')">
-                                                        <i class="fas fa-check"></i>
-                                                    </button>
-                                                </form>
+        <div id="paiements-table-container"
+             data-refresh-url="{{ route('esbtp.paiements.refresh') }}"
+             data-last-updated="{{ optional($lastUpdatedAt)->toIso8601String() }}">
+            @include('esbtp.paiements.partials.table', ['paiements' => $paiements])
+        </div>
 
-                                                @if($paiement->status == 'en_attente')
-                                                <button type="button"
-                                                        class="btn btn-outline-danger"
-                                                        title="Rejeter"
-                                                        data-bs-toggle="modal"
-                                                        data-bs-target="#rejetModal{{ $paiement->id }}">
-                                                    <i class="fas fa-times"></i>
-                                                </button>
-                                                @endif
-                                                @endif
-                                            @endif
-                                            
-                                            @if($paiement->status == 'validé')
-                                                <div class="dropdown pdf-dropdown">
-                                                    <button class="btn btn-outline-primary dropdown-toggle" type="button" 
-                                                            id="pdfDropdown{{ $paiement->id }}" data-bs-toggle="dropdown" 
-                                                            aria-expanded="false" title="Options PDF">
-                                                        <i class="fas fa-file-pdf"></i>
-                                                    </button>
-                                                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="pdfDropdown{{ $paiement->id }}">
-                                                        <li>
-                                                            <a class="dropdown-item" href="{{ route('esbtp.paiements.preview', $paiement->id) }}">
-                                                                <i class="fas fa-eye me-1"></i>Prévisualiser
-                                                            </a>
-                                                        </li>
-                                                        <li>
-                                                            <a class="dropdown-item" href="{{ route('esbtp.paiements.recu', $paiement->id) }}">
-                                                                <i class="fas fa-download me-1"></i>Télécharger
-                                                            </a>
-                                                        </li>
-                                                    </ul>
-                                                </div>
-                                            @endif
-
-                                            @if(auth()->user()->hasRole('superAdmin'))
-                                                <a href="{{ route('esbtp.paiements.edit', $paiement->id) }}"
-                                                   class="btn btn-outline-warning btn-sm"
-                                                   title="Modifier">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
-                                            @endif
-                                        </div>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="9" class="text-center py-4">
-                                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                                        <br><span class="text-muted">Aucun paiement trouvé</span>
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
+        @if(auth()->user()->hasRole('superAdmin'))
+        <div id="bulk-actions-bar" style="display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+             background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color: white; padding: 15px 30px;
+             border-radius: 50px; box-shadow: 0 10px 40px rgba(4, 83, 203, 0.4); z-index: 1050;
+             animation: slideUp 0.3s ease-out;">
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-check-circle" style="font-size: 1.2rem;"></i>
+                    <span id="selected-count" style="font-weight: 600; font-size: 1.1rem;">0</span>
+                    <span style="opacity: 0.9;">paiement(s) sélectionné(s)</span>
                 </div>
-
-                <!-- Barre d'actions groupées -->
-                @if(auth()->user()->hasRole('superAdmin'))
-                <div id="bulk-actions-bar" style="display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-                     background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color: white; padding: 15px 30px;
-                     border-radius: 50px; box-shadow: 0 10px 40px rgba(4, 83, 203, 0.4); z-index: 1050;
-                     animation: slideUp 0.3s ease-out;">
-                    <div style="display: flex; align-items: center; gap: 20px;">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <i class="fas fa-check-circle" style="font-size: 1.2rem;"></i>
-                            <span id="selected-count" style="font-weight: 600; font-size: 1.1rem;">0</span>
-                            <span style="opacity: 0.9;">paiement(s) sélectionné(s)</span>
-                        </div>
-                        <div style="display: flex; gap: 10px;">
-                            <button type="button" class="btn btn-light btn-sm" onclick="bulkValider()"
-                                    style="padding: 8px 20px; border-radius: 25px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                                <i class="fas fa-check-double me-1"></i>Valider la sélection
-                            </button>
-                            <button type="button" class="btn btn-outline-light btn-sm" onclick="openBulkRejetModal()"
-                                    style="padding: 8px 20px; border-radius: 25px; font-weight: 600;">
-                                <i class="fas fa-times me-1"></i>Rejeter la sélection
-                            </button>
-                            <button type="button" class="btn btn-outline-light btn-sm" onclick="clearSelection()"
-                                    style="padding: 8px 20px; border-radius: 25px; font-weight: 600;">
-                                <i class="fas fa-times-circle me-1"></i>Annuler
-                            </button>
-                        </div>
-                    </div>
+                <div style="display: flex; gap: 10px;">
+                    <button type="button" class="btn btn-light btn-sm" onclick="bulkValider()"
+                            style="padding: 8px 20px; border-radius: 25px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                        <i class="fas fa-check-double me-1"></i>Valider la sélection
+                    </button>
+                    <button type="button" class="btn btn-outline-light btn-sm" onclick="openBulkRejetModal()"
+                            style="padding: 8px 20px; border-radius: 25px; font-weight: 600;">
+                        <i class="fas fa-times me-1"></i>Rejeter la sélection
+                    </button>
+                    <button type="button" class="btn btn-outline-light btn-sm" onclick="clearSelection()"
+                            style="padding: 8px 20px; border-radius: 25px; font-weight: 600;">
+                        <i class="fas fa-times-circle me-1"></i>Annuler
+                    </button>
                 </div>
-
-                <style>
-                @keyframes slideUp {
-                    from {
-                        bottom: -100px;
-                        opacity: 0;
-                    }
-                    to {
-                        bottom: 20px;
-                        opacity: 1;
-                    }
-                }
-                </style>
-                @endif
-                
-                <!-- Pagination -->
-                @if($paiements->hasPages())
-                <div class="d-flex justify-content-between align-items-center mt-lg">
-                    <div class="text-muted">
-                        Affichage de {{ $paiements->firstItem() }} à {{ $paiements->lastItem() }} 
-                        sur {{ $paiements->total() }} paiements
-                    </div>
-                    <div>
-                        {{ $paiements->appends(request()->query())->links() }}
-                    </div>
-                </div>
-                @endif
             </div>
         </div>
+        @endif
     </div>
 </div>
 @endsection
@@ -561,6 +204,17 @@
 .pdf-dropdown .dropdown-item i {
     width: 14px;
     text-align: center;
+}
+
+@keyframes slideUp {
+    from {
+        bottom: -100px;
+        opacity: 0;
+    }
+    to {
+        bottom: 20px;
+        opacity: 1;
+    }
 }
 
 </style>
@@ -659,57 +313,6 @@
 @endif
 
 <!-- Modaux de rejet pour les paiements en attente -->
-@foreach($paiements as $paiement)
-    @if($paiement->status == 'en_attente')
-        <div class="modal fade" id="rejetModal{{ $paiement->id }}" tabindex="-1" role="dialog">
-            <div class="modal-dialog" role="document">
-                <div class="modal-content">
-                    <form action="{{ route('esbtp.paiements.rejeter', $paiement->id) }}" method="POST">
-                        @csrf
-                        <div class="modal-header">
-                            <h5 class="modal-title">
-                                <i class="fas fa-times-circle text-danger me-2"></i>
-                                Rejeter le paiement
-                            </h5>
-                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                <span aria-hidden="true">&times;</span>
-                            </button>
-                        </div>
-                        <div class="modal-body">
-                            <div class="alert alert-warning">
-                                <i class="fas fa-exclamation-triangle me-2"></i>
-                                Vous êtes sur le point de rejeter le paiement de <strong>{{ $paiement->etudiant->nom_complet ?? 'N/A' }}</strong>
-                                d'un montant de <strong>{{ number_format($paiement->montant, 0, ',', ' ') }} FCFA</strong>.
-                            </div>
-
-                            <div class="form-group">
-                                <label for="motif_rejet_{{ $paiement->id }}">Motif du rejet <span class="text-danger">*</span></label>
-                                <textarea class="form-control" id="motif_rejet_{{ $paiement->id }}" name="motif_rejet" rows="4"
-                                          placeholder="Expliquez pourquoi ce paiement est rejeté..." required></textarea>
-                            </div>
-
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="confirmer_rejet_{{ $paiement->id }}" required>
-                                <label class="form-check-label" for="confirmer_rejet_{{ $paiement->id }}">
-                                    Je confirme le rejet de ce paiement
-                                </label>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-dismiss="modal">
-                                <i class="fas fa-times me-1"></i>Annuler
-                            </button>
-                            <button type="submit" class="btn btn-danger">
-                                <i class="fas fa-times-circle me-1"></i>Rejeter le paiement
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    @endif
-@endforeach
-
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -718,52 +321,226 @@ function showYearChangeInfo() {
     $('#yearChangeModal').modal('show');
 }
 
-// Gérer la fermeture de la modal d'info année
-$(document).ready(function() {
-    // Gérer la fermeture avec le bouton X
-    $('#yearChangeModal .close[data-dismiss="modal"]').on('click', function() {
-        $('#yearChangeModal').modal('hide');
+(function () {
+    const pollingInterval = 60000;
+    let pollingTimer = null;
+    let lastUpdatedAt = null;
+    let currentUrl = window.location.href;
+
+    function getElements() {
+        return {
+            filterForm: document.getElementById('paiements-filter-form'),
+            tableContainer: document.getElementById('paiements-table-container'),
+            metricsContainer: document.getElementById('paiements-metrics-container'),
+            refreshButton: document.getElementById('paiements-refresh-btn'),
+            filterSubmit: document.querySelector('#paiements-filter-form button[type="submit"]')
+        };
+    }
+
+    function setLoading(isLoading) {
+        const $tableContainer = $('#paiements-table-container');
+        const $refreshBtn = $('#paiements-refresh-btn');
+        const $submitBtn = $('#paiements-filter-form button[type="submit"]');
+
+        $tableContainer.toggleClass('opacity-50', isLoading);
+        if ($refreshBtn.length) {
+            $refreshBtn.prop('disabled', isLoading);
+        }
+        if ($submitBtn.length) {
+            $submitBtn.prop('disabled', isLoading);
+        }
+    }
+
+    function buildIndexUrl() {
+        const elements = getElements();
+        const form = elements.filterForm;
+        const baseUrl = form?.getAttribute('action') || "{{ route('esbtp.paiements.index') }}";
+        if (!form) {
+            return baseUrl;
+        }
+        const params = new URLSearchParams(new FormData(form));
+        const query = params.toString();
+        return query ? `${baseUrl}?${query}` : baseUrl;
+    }
+
+    function buildRefreshUrl() {
+        const elements = getElements();
+        const refreshUrl = elements.tableContainer?.getAttribute('data-refresh-url');
+        if (!refreshUrl) {
+            return currentUrl;
+        }
+        const queryIndex = currentUrl.indexOf('?');
+        const query = queryIndex >= 0 ? currentUrl.substring(queryIndex + 1) : '';
+        return query ? `${refreshUrl}?${query}` : refreshUrl;
+    }
+
+    function refreshTooltips() {
+        if (typeof $ !== 'undefined' && $.fn.tooltip) {
+            $('[data-bs-toggle="tooltip"]').tooltip('dispose').tooltip();
+        }
+    }
+
+    function restartPolling() {
+        if (pollingTimer) {
+            clearInterval(pollingTimer);
+        }
+        pollingTimer = setInterval(function () {
+            triggerRefresh(true);
+        }, pollingInterval);
+    }
+
+    function fetchPaiements(url, { pushState = true, silent = false, skipIfSame = false } = {}) {
+        const elements = getElements();
+        if (!silent) {
+            setLoading(true);
+        }
+
+        return fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Erreur lors du chargement des paiements.');
+            }
+            return response.json();
+        })
+        .then(data => {
+            const incomingTimestamp = data.last_updated_at || null;
+            if (skipIfSame && incomingTimestamp && lastUpdatedAt && incomingTimestamp === lastUpdatedAt) {
+                return;
+            }
+
+            if (data.table && elements.tableContainer) {
+                elements.tableContainer.innerHTML = data.table;
+                $('#paiements-table-container').data('last-updated', incomingTimestamp);
+            }
+
+            if (data.metrics && elements.metricsContainer) {
+                elements.metricsContainer.innerHTML = data.metrics;
+            }
+
+            if (incomingTimestamp) {
+                lastUpdatedAt = incomingTimestamp;
+            }
+
+            if (data.url) {
+                currentUrl = data.url;
+                if (pushState) {
+                    window.history.pushState({ url: data.url }, '', data.url);
+                }
+            } else {
+                currentUrl = url;
+            }
+
+            refreshTooltips();
+            clearSelection();
+            updateBulkActionsBar();
+            restartPolling();
+        })
+        .catch(error => {
+            console.error(error);
+            if (!silent) {
+                alert(error.message || 'Impossible de charger les paiements pour le moment.');
+            }
+        })
+        .finally(() => {
+            if (!silent) {
+                setLoading(false);
+            }
+        });
+    }
+
+    function triggerRefresh(silent = true) {
+        const url = buildRefreshUrl();
+        fetchPaiements(url, { pushState: false, silent, skipIfSame: silent });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const elements = getElements();
+        if (!elements.tableContainer) {
+            return;
+        }
+
+        const $tableContainer = $('#paiements-table-container');
+        lastUpdatedAt = $tableContainer.data('last-updated') || null;
+
+        if (window.history && window.history.replaceState) {
+            window.history.replaceState({ url: window.location.href }, '', window.location.href);
+        }
+
+        // Modal handlers for year change
+        $('#yearChangeModal .close[data-dismiss="modal"]').on('click', function() {
+            $('#yearChangeModal').modal('hide');
+        });
+        $('#yearChangeModal button[data-dismiss="modal"]').on('click', function() {
+            $('#yearChangeModal').modal('hide');
+        });
+
+        $('#paiements-refresh-btn').on('click', function () {
+            triggerRefresh(false);
+        });
+
+        $('#paiements-filter-form').on('submit', function (event) {
+            event.preventDefault();
+            const url = buildIndexUrl();
+            fetchPaiements(url, { pushState: true, skipIfSame: false });
+        });
+
+        $('#paiements-filter-form').find('select,input[type="date"]').on('change', function () {
+            $('#paiements-filter-form').trigger('submit');
+        });
+
+        $(document).on('click', '#paiements-table-container .pagination a', function (event) {
+            event.preventDefault();
+            const href = $(this).attr('href');
+            if (href) {
+                fetchPaiements(href, { pushState: true, skipIfSame: false });
+            }
+        });
+
+        $(document).on('change', '#select-all', function () {
+            const isChecked = $(this).prop('checked');
+            $('.paiement-checkbox').prop('checked', isChecked);
+            updateBulkActionsBar();
+        });
+
+        $(document).on('change', '.paiement-checkbox', function () {
+            updateBulkActionsBar();
+            const totalCheckboxes = $('.paiement-checkbox').length;
+            const checkedCheckboxes = $('.paiement-checkbox:checked').length;
+            $('#select-all').prop('checked', totalCheckboxes === checkedCheckboxes && totalCheckboxes > 0);
+        });
+
+        window.addEventListener('popstate', function (event) {
+            const targetUrl = event.state?.url || window.location.href;
+            fetchPaiements(targetUrl, { pushState: false, skipIfSame: false });
+        });
+
+        restartPolling();
     });
 
-    // Gérer la fermeture avec le bouton Fermer
-    $('#yearChangeModal button[data-dismiss="modal"]').on('click', function() {
-        $('#yearChangeModal').modal('hide');
-    });
+    window.triggerRefreshPaiements = triggerRefresh;
+})();
 
-    // === GESTION DES ACTIONS GROUPÉES ===
-
-    // Sélectionner/Désélectionner tous les paiements
-    $('#select-all').on('change', function() {
-        const isChecked = $(this).prop('checked');
-        $('.paiement-checkbox').prop('checked', isChecked);
-        updateBulkActionsBar();
-    });
-
-    // Gérer le changement sur les checkboxes individuelles
-    $(document).on('change', '.paiement-checkbox', function() {
-        updateBulkActionsBar();
-
-        // Mettre à jour la checkbox "Tout sélectionner"
-        const totalCheckboxes = $('.paiement-checkbox').length;
-        const checkedCheckboxes = $('.paiement-checkbox:checked').length;
-        $('#select-all').prop('checked', totalCheckboxes === checkedCheckboxes && totalCheckboxes > 0);
-    });
-});
-
-// Mettre à jour la barre d'actions groupées
 function updateBulkActionsBar() {
-    const selectedCheckboxes = $('.paiement-checkbox:checked');
-    const count = selectedCheckboxes.length;
+    const $bar = $('#bulk-actions-bar');
+    if (!$bar.length) {
+        return;
+    }
+
+    const count = $('.paiement-checkbox:checked').length;
 
     if (count > 0) {
-        $('#bulk-actions-bar').slideDown(200);
+        $bar.stop(true, true).slideDown(200);
         $('#selected-count').text(count);
     } else {
-        $('#bulk-actions-bar').slideUp(200);
+        $bar.stop(true, true).slideUp(200);
     }
 }
 
-// Valider les paiements sélectionnés
 function bulkValider() {
     const selectedIds = getSelectedPaiementIds();
 
@@ -778,34 +555,29 @@ function bulkValider() {
         return;
     }
 
-    // Créer et soumettre le formulaire
     const form = $('<form>', {
-        'method': 'POST',
-        'action': "{{ route('esbtp.paiements.bulk-valider') }}"
+        method: 'POST',
+        action: "{{ route('esbtp.paiements.bulk-valider') }}"
     });
 
-    // Ajouter le token CSRF
     form.append($('<input>', {
-        'type': 'hidden',
-        'name': '_token',
-        'value': "{{ csrf_token() }}"
+        type: 'hidden',
+        name: '_token',
+        value: "{{ csrf_token() }}"
     }));
 
-    // Ajouter les IDs sélectionnés
     selectedIds.forEach(function(id) {
         form.append($('<input>', {
-            'type': 'hidden',
-            'name': 'paiements[]',
-            'value': id
+            type: 'hidden',
+            name: 'paiements[]',
+            value: id
         }));
     });
 
-    // Ajouter au DOM et soumettre
     $('body').append(form);
     form.submit();
 }
 
-// Ouvrir le modal de rejet groupé
 function openBulkRejetModal() {
     const selectedIds = getSelectedPaiementIds();
 
@@ -814,37 +586,31 @@ function openBulkRejetModal() {
         return;
     }
 
-    // Mettre à jour le compteur dans le modal
     $('#bulk-rejet-count').text(selectedIds.length);
 
-    // Ajouter les IDs sélectionnés comme champs cachés
     const container = $('#bulk-selected-paiements');
     container.empty();
 
     selectedIds.forEach(function(id) {
         container.append($('<input>', {
-            'type': 'hidden',
-            'name': 'paiements[]',
-            'value': id
+            type: 'hidden',
+            name: 'paiements[]',
+            value: id
         }));
     });
 
-    // Réinitialiser le formulaire
     $('#bulk_motif_rejet').val('');
     $('#bulk_confirmer_rejet').prop('checked', false);
 
-    // Afficher le modal
     $('#bulkRejetModal').modal('show');
 }
 
-// Annuler la sélection
 function clearSelection() {
     $('.paiement-checkbox').prop('checked', false);
     $('#select-all').prop('checked', false);
     updateBulkActionsBar();
 }
 
-// Obtenir les IDs des paiements sélectionnés
 function getSelectedPaiementIds() {
     const ids = [];
     $('.paiement-checkbox:checked').each(function() {

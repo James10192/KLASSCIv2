@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
+use App\Services\FuzzyNameMatcher;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class ESBTPPaiementController extends Controller
 {
@@ -34,100 +36,212 @@ class ESBTPPaiementController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function index(Request $request)
+    public function index(Request $request, FuzzyNameMatcher $matcher)
     {
-        // Récupérer les paramètres de filtrage
-        $search = $request->input('search');
+        $data = $this->preparePaiementListing($request, $matcher);
+
+        if ($request->ajax()) {
+            return response()->json([
+                'table' => view('esbtp.paiements.partials.table', [
+                    'paiements' => $data['paiements'],
+                ])->render(),
+                'metrics' => view('esbtp.paiements.partials.metrics', [
+                    'stats' => $data['stats'],
+                ])->render(),
+                'url' => $request->fullUrl(),
+                'last_updated_at' => optional($data['last_updated_at'])->toIso8601String(),
+            ]);
+        }
+
+        return view('esbtp.paiements.index', [
+            'paiements' => $data['paiements'],
+            'stats' => $data['stats'],
+            'lastUpdatedAt' => $data['last_updated_at'],
+        ]);
+    }
+
+    public function refresh(Request $request, FuzzyNameMatcher $matcher)
+    {
+        $data = $this->preparePaiementListing($request, $matcher);
+
+        return response()->json([
+            'table' => view('esbtp.paiements.partials.table', [
+                'paiements' => $data['paiements'],
+            ])->render(),
+            'metrics' => view('esbtp.paiements.partials.metrics', [
+                'stats' => $data['stats'],
+            ])->render(),
+            'url' => $request->fullUrl(),
+            'last_updated_at' => optional($data['last_updated_at'])->toIso8601String(),
+        ]);
+    }
+
+    /**
+     * Prépare les données de listing des paiements (liste, statistiques, timestamp).
+     */
+    private function preparePaiementListing(Request $request, FuzzyNameMatcher $matcher): array
+    {
+        $search = trim((string) $request->input('search'));
         $status = $request->input('status');
         $dateDebut = $request->input('date_debut');
         $dateFin = $request->input('date_fin');
 
-        // Toujours utiliser l'année en cours
         $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
-        $anneeId = $anneeEnCours ? $anneeEnCours->id : null;
+        $anneeId = $anneeEnCours?->id;
 
-        // Construire la requête avec toutes les relations nécessaires
-        $query = ESBTPPaiement::with([
-            'etudiant.user', 
-            'inscription.anneeUniversitaire', 
+        $baseQuery = ESBTPPaiement::with([
+            'etudiant.user',
+            'inscription.anneeUniversitaire',
             'inscription.filiere',
-            'inscription.niveauEtude', 
-            'validatedBy', 
+            'inscription.niveauEtude',
+            'validatedBy',
             'fraisCategory',
-            'categorie' // Ancien système pour compatibilité
-        ])->orderBy('created_at', 'desc');
-
-        // Appliquer les filtres
-        if ($search) {
-            $query->whereHas('etudiant', function ($q) use ($search) {
-                $q->whereHas('user', function ($q2) use ($search) {
-                    $q2->where('name', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%");
-                })
-                ->orWhere('matricule', 'like', "%{$search}%");
-            })
-            ->orWhere('numero_recu', 'like', "%{$search}%")
-            ->orWhere('reference_paiement', 'like', "%{$search}%");
-        }
+            'categorie',
+        ])->orderByDesc('created_at');
 
         if ($status) {
-            $query->where('status', $status);
+            $baseQuery->where('status', $status);
         }
 
         if ($dateDebut) {
-            $query->whereDate('date_paiement', '>=', $dateDebut);
+            $baseQuery->whereDate('date_paiement', '>=', $dateDebut);
         }
 
         if ($dateFin) {
-            $query->whereDate('date_paiement', '<=', $dateFin);
+            $baseQuery->whereDate('date_paiement', '<=', $dateFin);
         }
 
-        // Toujours filtrer par l'année en cours
         if ($anneeId) {
-            $query->whereHas('inscription', function ($q) use ($anneeId) {
+            $baseQuery->whereHas('inscription', function ($q) use ($anneeId) {
                 $q->where('annee_universitaire_id', $anneeId);
             });
         } else {
-            // Par défaut, afficher les paiements de l'année en cours
-            $query->anneeEnCours();
+            $baseQuery->anneeEnCours();
         }
 
-        // Paginer les résultats
-        $paiements = $query->paginate(15);
+        $perPage = 15;
+        $currentPage = LengthAwarePaginator::resolveCurrentPage();
 
-        // Calculer les vraies statistiques basées sur les inscriptions et leurs frais attendus
+        $applyQuickSearch = function ($builder) use ($search) {
+            $builder->where(function ($q) use ($search) {
+                $q->whereHas('etudiant', function ($etudiantQuery) use ($search) {
+                    $etudiantQuery->whereHas('user', function ($userQuery) use ($search) {
+                        $userQuery->where('name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                    })
+                    ->orWhere('matricule', 'like', "%{$search}%");
+                })
+                ->orWhere('numero_recu', 'like', "%{$search}%")
+                ->orWhere('reference_paiement', 'like', "%{$search}%");
+            });
+        };
+
+        $scored = collect();
+
+        if ($search !== '') {
+            $candidatesQuery = clone $baseQuery;
+            $applyQuickSearch($candidatesQuery);
+
+            $candidates = $candidatesQuery->limit(250)->get();
+
+            $scored = $matcher->match($search, $candidates, function ($paiement) {
+                $etudiant = $paiement->etudiant;
+
+                return [
+                    'matricule' => $etudiant?->matricule,
+                    'nom' => $etudiant?->nom,
+                    'prenoms' => $etudiant?->prenoms,
+                    'full_name' => $etudiant ? trim($etudiant->prenoms . ' ' . $etudiant->nom) : null,
+                    'numero_recu' => $paiement->numero_recu,
+                    'reference' => $paiement->reference_paiement,
+                ];
+            }, [
+                'threshold' => 35,
+                'limit' => 200,
+                'boosts' => [
+                    'numero_recu' => 20,
+                    'reference' => 15,
+                    'matricule' => 10,
+                ],
+            ]);
+
+            $total = $scored->count();
+            $items = $scored->forPage($currentPage, $perPage)->values();
+
+            $paiements = new LengthAwarePaginator(
+                $items,
+                $total,
+                $perPage,
+                $currentPage,
+                [
+                    'path' => $request->url(),
+                    'query' => $request->query(),
+                ]
+            );
+        } else {
+            $paiements = (clone $baseQuery)->paginate($perPage, ['*'], 'page', $currentPage);
+        }
+
+        $paiements->appends($request->query());
+
+        $statsQueryBase = clone $baseQuery;
+        if ($search !== '') {
+            $applyQuickSearch($statsQueryBase);
+        }
+
         $categoriesStats = $this->calculateCategoryStats(null);
-        
-        // Calculer le total attendu et payé à partir des catégories
+
         $totalAttendu = $categoriesStats['academic_total'] + $categoriesStats['service_total'] + $categoriesStats['administrative_total'];
         $totalPaye = $categoriesStats['academic_paid'] + $categoriesStats['service_paid'] + $categoriesStats['administrative_paid'];
         $totalEnAttente = $categoriesStats['academic_pending'] + $categoriesStats['service_pending'] + $categoriesStats['administrative_pending'];
-        
+
         $stats = [
-            // Statistiques générales basées sur les vraies données
-            'total' => $query->count(),
+            'total' => (clone $statsQueryBase)->count(),
             'montant_total' => $totalAttendu,
-            'valides' => $query->where('status', 'validé')->count(),
+            'valides' => (clone $statsQueryBase)->where('status', 'validé')->count(),
             'montant_valide' => $totalPaye,
-            'en_attente' => $query->where('status', 'en_attente')->count(),
+            'en_attente' => (clone $statsQueryBase)->where('status', 'en_attente')->count(),
             'montant_en_attente' => $totalEnAttente,
         ];
-        
-        // Ajouter les statistiques par catégorie
-        $stats = array_merge($stats, $categoriesStats);
-        
-        // Calcul du taux de recouvrement global corrigé
-        $stats['recovery_rate'] = $totalAttendu > 0 ?
-            round(($totalPaye / $totalAttendu) * 100, 1) : 0;
 
-        // Calculer les statistiques spécifiques aux reliquats pour affichage séparé
-        $inscriptions = \App\Models\ESBTPInscription::where('annee_universitaire_id', $anneeId)
+        $stats = array_merge($stats, $categoriesStats);
+        $stats['recovery_rate'] = $totalAttendu > 0
+            ? round(($totalPaye / $totalAttendu) * 100, 1)
+            : 0;
+
+        $inscriptions = ESBTPInscription::where('annee_universitaire_id', $anneeId)
             ->whereIn('status', ['active', 'en_attente', 'validée'])
             ->get();
         $reliquatsStats = $this->calculateReliquatsStats($inscriptions);
-        $stats['reliquats_total'] = $reliquatsStats['academic_pending'] + $reliquatsStats['service_pending'] + $reliquatsStats['administrative_pending'];
+        $stats['reliquats_total'] = $reliquatsStats['academic_pending']
+            + $reliquatsStats['service_pending']
+            + $reliquatsStats['administrative_pending'];
 
-        return view('esbtp.paiements.index', compact('paiements', 'stats'));
+        $lastUpdatedAt = null;
+
+        if ($search !== '') {
+            $lastUpdatedAt = $scored->map(function ($paiement) {
+                return $paiement->updated_at ?? $paiement->created_at;
+            })->filter()->max();
+        } else {
+            $latestUpdated = (clone $baseQuery)->max('updated_at');
+            if ($latestUpdated) {
+                $lastUpdatedAt = Carbon::parse($latestUpdated);
+            } else {
+                $latestCreated = (clone $baseQuery)->max('created_at');
+                $lastUpdatedAt = $latestCreated ? Carbon::parse($latestCreated) : null;
+            }
+        }
+
+        if ($lastUpdatedAt && ! $lastUpdatedAt instanceof Carbon) {
+            $lastUpdatedAt = Carbon::parse($lastUpdatedAt);
+        }
+
+        return [
+            'paiements' => $paiements,
+            'stats' => $stats,
+            'last_updated_at' => $lastUpdatedAt,
+        ];
     }
 
     /**

@@ -128,6 +128,10 @@
                                             <td>{{ $etudiant->lieu_naissance ?: 'Non renseigné' }}</td>
                                         </tr>
                                         <tr>
+                                            <th>Nationalité</th>
+                                            <td>{{ $etudiant->nationalite ?: 'Non renseignée' }}</td>
+                                        </tr>
+                                        <tr>
                                             <th>Téléphone</th>
                                             <td>{{ $etudiant->telephone }}</td>
                                         </tr>

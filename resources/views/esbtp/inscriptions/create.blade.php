@@ -1250,6 +1250,19 @@ document.addEventListener('DOMContentLoaded', function() {
     let parentIndex = 1; // Le premier parent a l'index 0
     let isLoadingFrais = false; // Flag pour éviter les déclenchements multiples
 
+    const duplicateForm = document.getElementById('inscriptionForm');
+    const duplicateOverrideInput = document.getElementById('duplicate_override');
+    const duplicateWarning = document.getElementById('duplicate-warning');
+    const duplicateWarningText = document.getElementById('duplicate-warning-text');
+    const duplicateModalElement = document.getElementById('duplicateModal');
+    const duplicateModalContent = document.getElementById('duplicate-modal-content');
+    const showDuplicatesBtn = document.getElementById('show-duplicates-modal');
+    const continueWithDuplicateBtn = document.getElementById('continue-with-duplicate');
+    const duplicateCheckUrl = "{{ route('esbtp.inscriptions.duplicates') }}";
+    let duplicateModalInstance = null;
+    if (duplicateModalElement && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        duplicateModalInstance = new bootstrap.Modal(duplicateModalElement);
+    }
     const duplicateState = { results: [], override: false };
     const duplicateInitialData = @json(session('duplicate_suggestions', []));
     const duplicateInitialOverride = {{ old('duplicate_override', '0') === '1' ? 'true' : 'false' }};
@@ -1261,20 +1274,6 @@ document.addEventListener('DOMContentLoaded', function() {
         duplicateOverrideInput.value = '1';
     }
     let duplicateTimer = null;
-    const duplicateForm = document.getElementById('inscriptionForm');
-    const duplicateOverrideInput = document.getElementById('duplicate_override');
-    const duplicateWarning = document.getElementById('duplicate-warning');
-    const duplicateWarningText = document.getElementById('duplicate-warning-text');
-    const duplicateModalElement = document.getElementById('duplicateModal');
-    const duplicateModalContent = document.getElementById('duplicate-modal-content');
-    const showDuplicatesBtn = document.getElementById('show-duplicates-modal');
-    const continueWithDuplicateBtn = document.getElementById('continue-with-duplicate');
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-    const duplicateCheckUrl = "{{ route('esbtp.inscriptions.check-duplicates') }}";
-    let duplicateModalInstance = null;
-    if (duplicateModalElement && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-        duplicateModalInstance = new bootstrap.Modal(duplicateModalElement);
-    }
 
     function resetDuplicateOverride() {
         duplicateState.override = false;
@@ -1284,7 +1283,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function scheduleDuplicateCheck() {
-        if (!duplicateCheckUrl || !csrfToken) {
+        if (!duplicateCheckUrl) {
             return;
         }
         if (duplicateTimer) {
@@ -1295,7 +1294,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function runDuplicateCheck() {
-        if (!duplicateForm || !duplicateCheckUrl || !csrfToken) {
+        if (!duplicateForm || !duplicateCheckUrl) {
             return;
         }
 
@@ -1318,20 +1317,22 @@ document.addEventListener('DOMContentLoaded', function() {
         const dateField = duplicateForm.querySelector('input[name="date_naissance"]');
         const sexeField = duplicateForm.querySelector('select[name="sexe"]');
 
-        fetch(duplicateCheckUrl, {
-            method: 'POST',
+        const params = new URLSearchParams();
+        params.append('nom', nomValue);
+        params.append('prenoms', prenomsValue);
+        if (dateField && dateField.value) {
+            params.append('date_naissance', dateField.value);
+        }
+        if (sexeField && sexeField.value) {
+            params.append('sexe', sexeField.value);
+        }
+
+        fetch(`${duplicateCheckUrl}?${params.toString()}`, {
+            method: 'GET',
             headers: {
-                'Content-Type': 'application/json',
                 'Accept': 'application/json',
-                'X-CSRF-TOKEN': csrfToken,
                 'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: JSON.stringify({
-                nom: nomValue,
-                prenoms: prenomsValue,
-                date_naissance: dateField ? dateField.value : null,
-                sexe: sexeField ? sexeField.value : null
-            })
+            }
         })
         .then(response => response.ok ? response.json() : Promise.reject(response))
         .then(data => {
@@ -1416,9 +1417,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     <td>${sexe}</td>
                     <td><span class="badge ${badgeClass}">${Math.round(score)}%</span></td>
                     <td class="text-end">
-                        <div class="btn-group btn-group-sm">
-                            <button type="button" class="btn btn-outline-success mark-duplicate" data-show-url="${item.show_url ?? '#'}">C'est la même personne</button>
-                            <button type="button" class="btn btn-link view-duplicate" data-show-url="${item.show_url ?? '#'}">Voir la fiche</button>
+                        <div class="d-flex justify-content-end flex-wrap gap-2">
+                            <button type="button" class="btn-acasi primary mark-duplicate" data-show-url="${item.show_url ?? '#'}">
+                                <i class="fas fa-user-check me-1"></i>C'est la même personne
+                            </button>
+                            <button type="button" class="btn-acasi secondary view-duplicate" data-show-url="${item.show_url ?? '#'}">
+                                <i class="fas fa-external-link-alt me-1"></i>Voir la fiche
+                            </button>
                         </div>
                     </td>
                 </tr>

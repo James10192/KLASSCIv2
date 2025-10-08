@@ -16,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Database\QueryException;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
@@ -27,6 +28,8 @@ use App\Models\ESBTP\Fee;
 use App\Models\Setting;
 use App\Services\ComptabiliteService;
 use App\Services\StudentDuplicateDetector;
+use App\Services\FuzzyNameMatcher;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class ESBTPInscriptionController extends Controller
 {
@@ -57,8 +60,18 @@ class ESBTPInscriptionController extends Controller
     /**
      * Afficher la liste des inscriptions.
      */
-    public function index(Request $request)
+    public function index(Request $request, FuzzyNameMatcher $matcher)
     {
+        $startMicrotime = microtime(true);
+        $startTimestamp = now()->toIso8601String();
+        $baseLogContext = [
+            'timestamp' => $startTimestamp,
+            'url' => $request->fullUrl(),
+            'query' => $request->query(),
+            'user_id' => optional($request->user())->id,
+        ];
+        \Log::info('ESBTPInscriptionController@index start', $baseLogContext);
+
         // Récupérer les filtres de recherche
         $search = $request->input('search');
         $filiere = $request->input('filiere');
@@ -67,43 +80,167 @@ class ESBTPInscriptionController extends Controller
         $status = $request->input('status', 'active');
 
         // Construire la requête avec les filtres
-        $query = ESBTPInscription::query()
+        $baseQuery = ESBTPInscription::query()
             ->with(['etudiant', 'filiere', 'niveau', 'classe', 'anneeUniversitaire']);
 
-        // Appliquer les filtres
-        if ($search) {
-            $query->whereHas('etudiant', function($q) use ($search) {
-                $q->where('matricule', 'like', "%{$search}%")
-                  ->orWhere('nom', 'like', "%{$search}%")
-                  ->orWhere('prenoms', 'like', "%{$search}%");
-            });
-        }
-
         if ($filiere) {
-            $query->where('filiere_id', $filiere);
+            $baseQuery->where('filiere_id', $filiere);
         }
 
         if ($niveau) {
-            $query->where('niveau_id', $niveau);
+            $baseQuery->where('niveau_id', $niveau);
         }
 
         if ($annee) {
-            $query->where('annee_universitaire_id', $annee);
+            $baseQuery->where('annee_universitaire_id', $annee);
         } else {
             // Par défaut, filtrer par année en cours
             $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
             if ($anneeEnCours) {
-                $query->where('annee_universitaire_id', $anneeEnCours->id);
+                $baseQuery->where('annee_universitaire_id', $anneeEnCours->id);
             }
         }
 
         if ($status && $status !== 'all') {
-            $query->where('status', $status);
+            $baseQuery->where('status', $status);
         }
 
-        // Récupérer les inscriptions paginées
-        $inscriptions = $query->latest()->paginate(15);
-        
+        $perPage = 15;
+        $currentPage = LengthAwarePaginator::resolveCurrentPage();
+
+        \Log::info('ESBTPInscriptionController@index processing', array_merge($baseLogContext, [
+            'has_search' => (bool) $search,
+            'filters' => [
+                'filiere' => $filiere,
+                'niveau' => $niveau,
+                'annee' => $annee,
+                'status' => $status,
+            ],
+            'page' => $currentPage,
+            'per_page' => $perPage,
+        ]));
+
+        $escapeLike = static fn (string $value): string => str_replace(
+            ['\\', '%', '_'],
+            ['\\\\', '\\%', '\\_'],
+            $value
+        );
+
+        if ($search) {
+            $candidatesQuery = clone $baseQuery;
+
+            $searchTokens = collect(preg_split('/[\s,]+/u', $search ?: '', -1, PREG_SPLIT_NO_EMPTY))
+                ->map(fn ($token) => trim($token))
+                ->filter();
+
+            $candidatesQuery->where(function ($q) use ($search, $searchTokens, $escapeLike) {
+                $escapedSearch = $escapeLike($search);
+                $likeSearch = "%{$escapedSearch}%";
+
+                $q->whereHas('etudiant', function ($etudiantQuery) use ($likeSearch, $searchTokens, $escapeLike) {
+                    $etudiantQuery->where('matricule', 'like', $likeSearch)
+                        ->orWhere('nom', 'like', $likeSearch)
+                        ->orWhere('prenoms', 'like', $likeSearch)
+                        ->orWhereRaw("CONCAT_WS(' ', prenoms, nom) LIKE ?", [$likeSearch])
+                        ->orWhereRaw("CONCAT_WS(' ', nom, prenoms) LIKE ?", [$likeSearch]);
+
+                    if ($searchTokens->isNotEmpty()) {
+                        $etudiantQuery->orWhere(function ($subQuery) use ($searchTokens, $escapeLike) {
+                            foreach ($searchTokens as $token) {
+                                $escapedToken = $escapeLike($token);
+                                $likeToken = "%{$escapedToken}%";
+                                $subQuery->orWhere('nom', 'like', $likeToken)
+                                         ->orWhere('prenoms', 'like', $likeToken)
+                                         ->orWhere('matricule', 'like', $likeToken)
+                                         ->orWhere('telephone', 'like', $likeToken)
+                                         ->orWhere('email_personnel', 'like', $likeToken);
+                            }
+                        });
+                    }
+                })
+                ->orWhere('numero_recu', 'like', $likeSearch)
+                ->orWhereHas('classe', function ($classeQuery) use ($likeSearch, $searchTokens, $escapeLike) {
+                    $classeQuery->where('name', 'like', $likeSearch);
+
+                    if ($searchTokens->isNotEmpty()) {
+                        $classeQuery->orWhere(function ($subQuery) use ($searchTokens, $escapeLike) {
+                            foreach ($searchTokens as $token) {
+                                $escapedToken = $escapeLike($token);
+                                $likeToken = "%{$escapedToken}%";
+                                $subQuery->orWhere('name', 'like', $likeToken);
+                            }
+                        });
+                    }
+                });
+            });
+
+            try {
+                $candidates = $candidatesQuery
+                    ->limit(200)
+                    ->get();
+            } catch (QueryException $exception) {
+                \Log::warning('ESBTPInscriptionController@index fallback search triggered', array_merge($baseLogContext, [
+                    'message' => $exception->getMessage(),
+                ]));
+
+                $fallbackQuery = clone $baseQuery;
+                $fallbackQuery->where(function ($q) use ($search, $escapeLike) {
+                    $escapedSearch = $escapeLike($search);
+                    $likeSearch = "%{$escapedSearch}%";
+
+                    $q->whereHas('etudiant', function ($etudiantQuery) use ($likeSearch) {
+                        $etudiantQuery->where('matricule', 'like', $likeSearch)
+                            ->orWhere('nom', 'like', $likeSearch)
+                            ->orWhere('prenoms', 'like', $likeSearch);
+                    })
+                    ->orWhere('numero_recu', 'like', $likeSearch);
+                });
+
+                $candidates = $fallbackQuery
+                    ->limit(200)
+                    ->get();
+            }
+
+            $scored = $matcher->match($search, $candidates, function ($inscription) {
+                $etudiant = $inscription->etudiant;
+
+                return [
+                    'matricule' => $etudiant?->matricule,
+                    'nom' => $etudiant?->nom,
+                    'prenoms' => $etudiant?->prenoms,
+                    'full_name' => $etudiant ? trim($etudiant->prenoms . ' ' . $etudiant->nom) : null,
+                    'classe' => $inscription->classe?->name,
+                    'numero_inscription' => $inscription->numero_inscription,
+                    'numero_recu' => $inscription->numero_recu,
+                ];
+            }, [
+                'threshold' => 35,
+                'limit' => 150,
+                'boosts' => [
+                    'matricule' => 18,
+                    'numero_inscription' => 12,
+                    'numero_recu' => 10,
+                    'full_name' => 6,
+                ],
+            ]);
+
+            $total = $scored->count();
+            $items = $scored->forPage($currentPage, $perPage)->values();
+
+            $inscriptions = new LengthAwarePaginator(
+                $items,
+                $total,
+                $perPage,
+                $currentPage,
+                [
+                    'path' => $request->url(),
+                    'query' => $request->query(),
+                ]
+            );
+            $inscriptions->appends($request->query());
+        } else {
+            $inscriptions = $baseQuery->latest()->paginate($perPage)->appends($request->query());
+        }
 
         // Récupérer les listes pour les filtres
         $filieres = ESBTPFiliere::where('is_active', true)->get();
@@ -135,6 +272,32 @@ class ESBTPInscriptionController extends Controller
             'annulees' => (clone $statsQuery)->where('status', 'annulée')->count(),
             'terminees' => (clone $statsQuery)->where('status', 'terminée')->count(),
         ];
+
+        \Log::info('ESBTPInscriptionController@index completed', array_merge($baseLogContext, [
+            'timestamp' => now()->toIso8601String(),
+            'total' => $inscriptions->total(),
+            'page' => $inscriptions->currentPage(),
+            'per_page' => $inscriptions->perPage(),
+            'duration_ms' => round((microtime(true) - $startMicrotime) * 1000, 2),
+        ]));
+
+        if ($request->ajax()) {
+            \Log::info('ESBTPInscriptionController@index returning AJAX response', array_merge($baseLogContext, [
+                'timestamp' => now()->toIso8601String(),
+                'duration_ms' => round((microtime(true) - $startMicrotime) * 1000, 2),
+            ]));
+            return response()->json([
+                'html' => view('esbtp.inscriptions.partials.results', [
+                    'inscriptions' => $inscriptions,
+                ])->render(),
+                'url' => $request->fullUrl(),
+            ]);
+        }
+
+        \Log::info('ESBTPInscriptionController@index returning view', array_merge($baseLogContext, [
+            'timestamp' => now()->toIso8601String(),
+            'duration_ms' => round((microtime(true) - $startMicrotime) * 1000, 2),
+        ]));
 
         return view('esbtp.inscriptions.index', compact(
             'inscriptions',
@@ -175,16 +338,19 @@ class ESBTPInscriptionController extends Controller
     }
 
     /**
-     * Vérifie la présence potentielle de doublons étudiants.
+     * Vérifie la présence potentielle de doublons étudiants (route historique).
      */
     public function checkDuplicates(Request $request, StudentDuplicateDetector $detector)
     {
-        $validated = $request->validate([
-            'nom' => 'required|string|max:255',
-            'prenoms' => 'required|string|max:255',
-            'date_naissance' => 'nullable|date',
-            'sexe' => 'nullable|in:M,F',
-        ]);
+        return $this->duplicates($request, $detector);
+    }
+
+    /**
+     * Nouvelle route de recherche de doublons étudiants.
+     */
+    public function duplicates(Request $request, StudentDuplicateDetector $detector)
+    {
+        $validated = $this->validateDuplicateRequest($request);
 
         $duplicates = $detector->find(
             $validated['nom'],
@@ -192,14 +358,44 @@ class ESBTPInscriptionController extends Controller
             $validated['date_naissance'] ?? null,
             $validated['sexe'] ?? null,
             6
-        )->map(function (array $item) {
+        )->filter(function (array $item) {
+            return ($item['score'] ?? 0) >= 80;
+        })->map(function (array $item) {
             $item['show_url'] = route('esbtp.etudiants.show', $item['id']);
             return $item;
-        });
+        })->values();
 
         return response()->json([
             'duplicates' => $duplicates,
         ]);
+    }
+
+    /**
+     * Valide les paramètres de recherche de doublons.
+     */
+    private function validateDuplicateRequest(Request $request): array
+    {
+        return $request->validate([
+            'nom' => 'required|string|max:255',
+            'prenoms' => 'required|string|max:255',
+            'date_naissance' => 'nullable|date',
+            'sexe' => 'nullable|in:M,F',
+        ]);
+    }
+
+    /**
+     * Détermine si une exception SQL correspond à un conflit d'unicité sur le matricule.
+     */
+    private function isMatriculeUniqueViolation(QueryException $exception): bool
+    {
+        $sqlState = $exception->errorInfo[0] ?? $exception->getCode();
+        $driverCode = $exception->errorInfo[1] ?? null;
+
+        if ($sqlState === '23000' && (int) $driverCode === 1062) {
+            return Str::contains(strtolower($exception->getMessage()), 'matricule');
+        }
+
+        return false;
     }
 
     /**
@@ -362,9 +558,6 @@ class ESBTPInscriptionController extends Controller
         try {
             // Log des données soumises pour débogage
             Log::info('Données reçues:', $request->all());
-
-            DB::beginTransaction();
-
             // Récupérer les informations complètes de la classe sélectionnée
             $classe = ESBTPClasse::with(['filiere', 'niveau', 'annee'])
                 ->findOrFail($request->classe_id);
@@ -489,18 +682,55 @@ class ESBTPInscriptionController extends Controller
                 'fraisVariants' => $fraisVariants
             ]);
 
-            // Créer l'inscription avec les frais sélectionnés selon la nouvelle architecture
-            $inscription = $this->inscriptionService->createInscription(
-                $etudiantData,
-                $inscriptionData,
-                $parentsData,
-                null, // Pas de paiement pour l'instant
-                auth()->id(),
-                $selectedOptionals, // Frais optionnels sélectionnés selon la nouvelle architecture
-                $affectationStatus // Statut d'affectation pour calculer les bons montants
-            );
+            $autoGenerateMatricule = empty(trim((string) $request->matricule));
+            if ($autoGenerateMatricule) {
+                $etudiantData['matricule'] = null;
+            }
 
-            DB::commit();
+            $inscription = null;
+            $maxAttempts = 3;
+
+            for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+                DB::beginTransaction();
+                try {
+                    if ($autoGenerateMatricule) {
+                        $etudiantData['matricule'] = null;
+                    }
+
+                    $inscription = $this->inscriptionService->createInscription(
+                        $etudiantData,
+                        $inscriptionData,
+                        $parentsData,
+                        null,
+                        auth()->id(),
+                        $selectedOptionals,
+                        $affectationStatus
+                    );
+
+                    DB::commit();
+                    break;
+                } catch (QueryException $exception) {
+                    DB::rollBack();
+
+                    if ($autoGenerateMatricule && $this->isMatriculeUniqueViolation($exception) && $attempt < $maxAttempts) {
+                        Log::warning('Conflit de matricule détecté, nouvelle tentative de génération.', [
+                            'attempt' => $attempt,
+                            'etudiant_nom' => $etudiantData['nom'],
+                            'etudiant_prenoms' => $etudiantData['prenoms'],
+                        ]);
+                        continue;
+                    }
+
+                    throw $exception;
+                } catch (\Exception $exception) {
+                    DB::rollBack();
+                    throw $exception;
+                }
+            }
+
+            if (!$inscription) {
+                throw new \RuntimeException('Impossible de générer un matricule unique pour cet étudiant.');
+            }
 
             // Envoyer les notifications aux admins, coordonnateurs et secrétaires
             try {
@@ -524,7 +754,9 @@ class ESBTPInscriptionController extends Controller
                 ->with('success', 'Inscription enregistrée avec succès. L\'administration pourra valider l\'inscription en associant un paiement.');
 
         } catch (\Exception $e) {
-            DB::rollBack();
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
             \Log::error('Erreur lors de l\'inscription: ' . $e->getMessage());
             \Log::error($e->getTraceAsString());
 

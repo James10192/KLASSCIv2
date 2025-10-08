@@ -674,6 +674,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
             // Paiements
             Route::get('/paiements', [App\Http\Controllers\ESBTPPaiementController::class, 'index'])->name('paiements.index');
+            Route::get('/paiements/refresh', [App\Http\Controllers\ESBTPPaiementController::class, 'refresh'])->name('paiements.refresh');
             Route::get('/paiements/suivi-categories', [App\Http\Controllers\ESBTPPaiementController::class, 'suiviCategories'])->name('paiements.suivi-categories');
             Route::get('/paiements/suivi-categories/load/{statut}', [App\Http\Controllers\ESBTPPaiementController::class, 'loadStudentsByStatut'])->name('paiements.suivi-categories.load');
             Route::get('/paiements/create', [App\Http\Controllers\ESBTPPaiementController::class, 'create'])->name('paiements.create');
@@ -758,6 +759,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::get('/inscriptions', [ESBTPInscriptionController::class, 'index'])->name('inscriptions.index');
             Route::get('/inscriptions/create', [ESBTPInscriptionController::class, 'create'])->name('inscriptions.create');
             Route::get('/inscriptions/getClasses', [ESBTPInscriptionController::class, 'getClasses'])->name('inscriptions.getClasses');
+            Route::get('/inscriptions/duplicates', [ESBTPInscriptionController::class, 'duplicates'])->name('inscriptions.duplicates');
             Route::post('/inscriptions/check-duplicates', [ESBTPInscriptionController::class, 'checkDuplicates'])->name('inscriptions.check-duplicates');
             Route::post('/inscriptions', [ESBTPInscriptionController::class, 'store'])->name('inscriptions.store');
             Route::get('/inscriptions/{inscription}', [ESBTPInscriptionController::class, 'show'])->name('inscriptions.show');

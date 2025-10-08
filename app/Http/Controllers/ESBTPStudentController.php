@@ -12,6 +12,8 @@ use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Pagination\LengthAwarePaginator;
+use App\Services\FuzzyNameMatcher;
 use PDF;
 
 class ESBTPStudentController extends Controller
@@ -25,8 +27,18 @@ class ESBTPStudentController extends Controller
         $this->middleware('permission:delete_students', ['only' => ['destroy']]);
     }
 
-    public function index(Request $request)
+    public function index(Request $request, FuzzyNameMatcher $matcher)
     {
+        $startMicrotime = microtime(true);
+        $startTimestamp = now()->toIso8601String();
+        $baseLogContext = [
+            'timestamp' => $startTimestamp,
+            'url' => $request->fullUrl(),
+            'query' => $request->query(),
+            'user_id' => optional($request->user())->id,
+        ];
+        \Log::info('ESBTPStudentController@index start', $baseLogContext);
+
         // Récupérer les filtres de recherche
         $search = $request->input('search');
         $filiere = $request->input('filiere');
@@ -34,28 +46,17 @@ class ESBTPStudentController extends Controller
         $annee = $request->input('annee');
         $status = $request->input('status');
 
-        // Construire la requête avec les filtres
-        $query = ESBTPEtudiant::query()
-            ->with(['user', 'inscriptions' => function($q) {
+        $baseQuery = ESBTPEtudiant::query()
+            ->with(['user', 'inscriptions' => function ($q) {
                 $q->with(['filiere', 'niveau', 'classe', 'anneeUniversitaire']);
             }]);
 
-        // Appliquer les filtres
-        if ($search) {
-            $query->where(function($q) use ($search) {
-                $q->where('matricule', 'like', "%{$search}%")
-                  ->orWhere('nom', 'like', "%{$search}%")
-                  ->orWhere('prenoms', 'like', "%{$search}%")
-                  ->orWhere('telephone', 'like', "%{$search}%");
-            });
-        }
-
         if ($status) {
-            $query->where('statut', $status);
+            $baseQuery->where('statut', $status);
         }
 
         if ($filiere || $niveau || $annee) {
-            $query->whereHas('inscriptions', function($q) use ($filiere, $niveau, $annee) {
+            $baseQuery->whereHas('inscriptions', function ($q) use ($filiere, $niveau, $annee) {
                 if ($filiere) {
                     $q->where('filiere_id', $filiere);
                 }
@@ -68,13 +69,141 @@ class ESBTPStudentController extends Controller
             });
         }
 
-        // Récupérer les étudiants paginés
-        $etudiants = $query->latest()->paginate(15);
+        $perPage = 15;
+        $currentPage = LengthAwarePaginator::resolveCurrentPage();
+
+        \Log::info('ESBTPStudentController@index processing', array_merge($baseLogContext, [
+            'has_search' => (bool) $search,
+            'filters' => [
+                'filiere' => $filiere,
+                'niveau' => $niveau,
+                'annee' => $annee,
+                'status' => $status,
+            ],
+            'page' => $currentPage,
+            'per_page' => $perPage,
+        ]));
+
+        $escapeLike = static fn (string $value): string => str_replace(
+            ['\\', '%', '_'],
+            ['\\\\', '\\%', '\\_'],
+            $value
+        );
+
+        if ($search) {
+            $candidatesQuery = clone $baseQuery;
+
+            $searchTokens = collect(preg_split('/[\s,]+/u', $search ?: '', -1, PREG_SPLIT_NO_EMPTY))
+                ->map(fn ($token) => trim($token))
+                ->filter();
+
+            $candidatesQuery->where(function ($q) use ($search, $searchTokens, $escapeLike) {
+                $escapedSearch = $escapeLike($search);
+                $likeSearch = "%{$escapedSearch}%";
+
+                $q->where('matricule', 'like', $likeSearch)
+                  ->orWhere('nom', 'like', $likeSearch)
+                  ->orWhere('prenoms', 'like', $likeSearch)
+                  ->orWhere('telephone', 'like', $likeSearch)
+                  ->orWhere('email_personnel', 'like', $likeSearch)
+                  ->orWhereRaw("CONCAT_WS(' ', prenoms, nom) LIKE ?", [$likeSearch])
+                  ->orWhereRaw("CONCAT_WS(' ', nom, prenoms) LIKE ?", [$likeSearch]);
+
+                if ($searchTokens->isNotEmpty()) {
+                    $q->orWhere(function ($subQuery) use ($searchTokens, $escapeLike) {
+                        foreach ($searchTokens as $token) {
+                            $escapedToken = $escapeLike($token);
+                            $likeToken = "%{$escapedToken}%";
+                            $subQuery->orWhere('nom', 'like', $likeToken)
+                                     ->orWhere('prenoms', 'like', $likeToken)
+                                     ->orWhere('matricule', 'like', $likeToken)
+                                     ->orWhere('email_personnel', 'like', $likeToken)
+                                     ->orWhere('telephone', 'like', $likeToken);
+                        }
+                    });
+                }
+            });
+
+            $candidates = $candidatesQuery
+                ->limit(200)
+                ->get();
+
+            $scored = $matcher->match($search, $candidates, function ($etudiant) {
+                return [
+                    'matricule' => $etudiant->matricule,
+                    'nom' => $etudiant->nom,
+                    'prenoms' => $etudiant->prenoms,
+                    'full_name' => trim(($etudiant->prenoms ?? '') . ' ' . ($etudiant->nom ?? '')),
+                    'reverse_full_name' => trim(($etudiant->nom ?? '') . ' ' . ($etudiant->prenoms ?? '')),
+                    'telephone' => $etudiant->telephone,
+                    'email' => $etudiant->email_personnel ?: $etudiant->email,
+                ];
+            }, [
+                'threshold' => 30,
+                'limit' => 150,
+                'boosts' => [
+                    'matricule' => 20,
+                    'full_name' => 8,
+                    'reverse_full_name' => 8,
+                ],
+            ])->filter(function ($item) {
+                $score = null;
+                if (is_array($item)) {
+                    $score = $item['fuzzy_score'] ?? null;
+                } elseif (is_object($item) && property_exists($item, 'fuzzy_score')) {
+                    $score = $item->fuzzy_score;
+                }
+                return $score === null || $score >= 80;
+            })->values();
+
+            $total = $scored->count();
+            $items = $scored->forPage($currentPage, $perPage)->values();
+
+            $etudiants = new LengthAwarePaginator(
+                $items,
+                $total,
+                $perPage,
+                $currentPage,
+                [
+                    'path' => $request->url(),
+                    'query' => $request->query(),
+                ]
+            );
+            $etudiants->appends($request->query());
+        } else {
+            $etudiants = $baseQuery->orderByDesc('created_at')->paginate($perPage)->appends($request->query());
+        }
 
         // Récupérer les listes pour les filtres
         $filieres = ESBTPFiliere::where('is_active', true)->get();
         $niveaux = ESBTPNiveauEtude::where('is_active', true)->get();
         $annees = ESBTPAnneeUniversitaire::orderBy('start_date', 'desc')->get();
+
+        \Log::info('ESBTPStudentController@index completed', array_merge($baseLogContext, [
+            'timestamp' => now()->toIso8601String(),
+            'total' => $etudiants->total(),
+            'page' => $etudiants->currentPage(),
+            'per_page' => $etudiants->perPage(),
+            'duration_ms' => round((microtime(true) - $startMicrotime) * 1000, 2),
+        ]));
+
+        if ($request->ajax()) {
+            \Log::info('ESBTPStudentController@index returning AJAX response', array_merge($baseLogContext, [
+                'timestamp' => now()->toIso8601String(),
+                'duration_ms' => round((microtime(true) - $startMicrotime) * 1000, 2),
+            ]));
+            return response()->json([
+                'html' => view('esbtp.etudiants.partials.results', [
+                    'etudiants' => $etudiants,
+                ])->render(),
+                'url' => $request->fullUrl(),
+            ]);
+        }
+
+        \Log::info('ESBTPStudentController@index returning view', array_merge($baseLogContext, [
+            'timestamp' => now()->toIso8601String(),
+            'duration_ms' => round((microtime(true) - $startMicrotime) * 1000, 2),
+        ]));
 
         return view('esbtp.etudiants.index', compact(
             'etudiants',

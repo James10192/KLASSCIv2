@@ -2,6 +2,75 @@
 
 ## Corrections récentes
 
+### Feature: Rafraîchissement paiements & matricules tolérants aux doublons
+
+**Date:** 6 octobre 2025  
+**Branche:** presentation
+
+#### Problèmes résolus
+
+1. La page `paiements.index` nécessitait un rechargement complet pour afficher les nouveaux paiements ou appliquer un filtre. Les indicateurs financiers n'étaient pas synchronisés avec les résultats paginés.
+2. Les détections de doublons côté inscription étaient liées à une route POST spécifique (`check-duplicates`), difficile à interroger depuis d'autres formulaires.
+3. En cas de concurrence lors de la génération automatique d'un matricule, une exception SQL stoppait définitivement l'inscription.
+4. Sur `reinscription.show`, lorsqu'une réinscription était déjà enregistrée, l'interface continuait d'afficher le bouton « Procéder ».
+
+#### Solutions implémentées
+
+- Scission de `paiements.index` en partiels `partials/metrics` et `partials/table`, exposition d'une route JSON `esbtp.paiements.refresh` et ajout d'un poll JavaScript (rafraîchissement manuel + intervalle) qui compare un `last_updated_at` et remplace le DOM sans rechargement global.
+- Harmonisation des recherches fuzzy : le contrôleur `ESBTPPaiementController@index` retourne désormais du JSON (table + KPI) en mode AJAX, le front intercepte soumissions/pagination et gère l'historique via `pushState`.
+- Nouvelle route GET `esbtp.inscriptions.duplicates` (toujours servie par `StudentDuplicateDetector`) utilisée par `inscriptions.create` avec `fetch` GET et conservation de l'ancien alias `check-duplicates` pour compatibilité.
+- Ajout d'un helper `MatriculeGenerator` + injection dans `ESBTPInscriptionService`. Lors d'une collision SQL (`QueryException` 1062), `ESBTPInscriptionController@store` retente jusqu'à 3 fois en régénérant automatiquement le matricule avant d'abandonner.
+- Détection côté `ESBTPReinscriptionController@show` d'une réinscription existante pour l'année courante : la carte affiche désormais un récapitulatif (décision, classe/filière/niveau, statut d'affectation, reliquat) et masque l'action.
+
+#### Fichiers modifiés / ajoutés
+
+- `app/Http/Controllers/ESBTPPaiementController.php`
+- `resources/views/esbtp/paiements/index.blade.php`
+- `resources/views/esbtp/paiements/partials/metrics.blade.php` *(nouveau)*
+- `resources/views/esbtp/paiements/partials/table.blade.php` *(nouveau)*
+- `routes/web.php` (routes `paiements.refresh`, `inscriptions.duplicates`)
+- `resources/views/esbtp/inscriptions/create.blade.php`
+- `app/Http/Controllers/ESBTPInscriptionController.php`
+- `app/Services/ESBTPInscriptionService.php`
+- `app/Support/MatriculeGenerator.php` *(nouveau)*
+- `app/Http/Controllers/ESBTP/ESBTPReinscriptionController.php`
+- `resources/views/esbtp/reinscription/show.blade.php`
+
+#### Tests recommandés
+
+- Sur `paiements.index` : appliquer un filtre, vérifier que la table et les KPI se mettent à jour sans rechargement et que le bouton « Rafraîchir » ainsi que le poll détectent un nouveau paiement (tester en validant un paiement dans un autre onglet).
+- Ouvrir la console réseau : la route `paiements.refresh` doit retourner un JSON contenant `table`, `metrics`, `last_updated_at`.
+- Soumettre un formulaire d'inscription sans matricule → provoquer volontairement un conflit (copier un matricule existant) et vérifier que la 2ᵉ tentative génère automatiquement un matricule unique.
+- Tester la route `GET /inscriptions/duplicates` (via le formulaire ou en appel direct) et s'assurer que la modal de doublons continue de fonctionner.
+- Consulter `reinscription.show` pour un étudiant déjà réinscrit : la carte doit afficher le récapitulatif et aucun bouton d'action n'apparaît.
+
+### Maintenance: Recherche Fuzzy & rafraîchissement AJAX généralisés
+
+**Date:** 8 octobre 2025  
+**Branche:** presentation
+
+#### Sujets traités
+
+1. Instrumentation des listes étudiants / inscriptions pour diagnostiquer les recherches lentes (logs `start / processing / completed` avec durée, URL, utilisateur).
+2. Durcissement du service `FuzzyNameMatcher` et harmonisation des contrôleurs `ESBTPStudentController@index` et `ESBTPInscriptionController@index` :
+   - extraction préalable d'un lot raisonnable côté SQL (protection `%` via escape),
+   - combinaison recherche exacte (matricule/nom/prénoms/concat + téléphone/email) + scoring fuzzy,
+   - pagination `LengthAwarePaginator` en mémoire lorsque `search` est présent,
+   - fallback automatique si une colonne optionnelle (ex. `numero_inscription`) est absente.
+3. Refonte AJAX des vues `esbtp.etudiants.index` et `esbtp.inscriptions.index` :
+   - interception formulaire / pagination via `fetch`,
+   - rafraîchissement partiel (`partials.results`) + `pushState`,
+   - restauration des filtres, gestion Select2/tooltips et reprise des sélections groupées,
+   - retour JSON spécifique si `request()->ajax()`.
+4. Journalisation des réponses AJAX pour suivre les requêtes côté back.
+
+#### Tests express
+
+- Recherche `DOSSO IBRAHIM` sur `/esbtp/etudiants` et `/esbtp/inscriptions` : vérifier apparition des logs `processing` + `completed`, absence de rechargement global, présence des résultats attendus.
+- Pagination depuis une recherche fuzzy : s'assurer que l'URL se met à jour et que les filtres restent sélectionnés.
+- Simuler base partielle (suppression colonne optionnelle) : la recherche retombe sur le fallback et n'explose plus en 500.
+
+
 ### Feature: Détection de doublons & gestion parents unifiée
 
 **Date:** 5 octobre 2025  
