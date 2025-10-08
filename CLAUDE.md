@@ -69,6 +69,7 @@
 - Recherche `DOSSO IBRAHIM` sur `/esbtp/etudiants` et `/esbtp/inscriptions` : vérifier apparition des logs `processing` + `completed`, absence de rechargement global, présence des résultats attendus.
 - Pagination depuis une recherche fuzzy : s'assurer que l'URL se met à jour et que les filtres restent sélectionnés.
 - Simuler base partielle (suppression colonne optionnelle) : la recherche retombe sur le fallback et n'explose plus en 500.
+- Sur `/esbtp/paiements` : rejouer filtres, pagination et bouton « Rafraîchir » ; observer les logs `ESBTPPaiementController@index start/processing/completed` et vérifier que le poll compare bien `last_updated_at`.
 
 
 ### Feature: Détection de doublons & gestion parents unifiée

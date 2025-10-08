@@ -81,7 +81,7 @@
         <!-- Filtres et Actions -->
         <div class="card-moderne mb-lg">
             <div class="p-lg">
-                <form action="{{ route('esbtp.paiements.index') }}" method="GET">
+                <form action="{{ route('esbtp.paiements.index') }}" method="GET" id="paiements-filter-form">
                     <div class="row align-items-end">
                         <div class="col-md-3">
                             <label for="search" class="form-label">Recherche</label>
@@ -399,7 +399,8 @@ function showYearChangeInfo() {
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
                 'Accept': 'application/json'
-            }
+            },
+            credentials: 'same-origin'
         })
         .then(response => {
             if (!response.ok) {

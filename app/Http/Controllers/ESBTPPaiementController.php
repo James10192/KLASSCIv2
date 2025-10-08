@@ -14,6 +14,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use App\Services\FuzzyNameMatcher;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Database\QueryException;
 
 class ESBTPPaiementController extends Controller
 {
@@ -38,9 +39,29 @@ class ESBTPPaiementController extends Controller
      */
     public function index(Request $request, FuzzyNameMatcher $matcher)
     {
-        $data = $this->preparePaiementListing($request, $matcher);
+        $startMicrotime = microtime(true);
+        $startTimestamp = now()->toIso8601String();
+        $baseLogContext = [
+            'timestamp' => $startTimestamp,
+            'url' => $request->fullUrl(),
+            'query' => $request->query(),
+            'user_id' => optional($request->user())->id,
+        ];
+        Log::info('ESBTPPaiementController@index start', $baseLogContext);
+
+        $data = $this->preparePaiementListing($request, $matcher, $baseLogContext, $startMicrotime, 'ESBTPPaiementController@index');
+
+        $completionContext = array_merge($baseLogContext, [
+            'timestamp' => now()->toIso8601String(),
+            'total' => $data['summary']['total'],
+            'page' => $data['summary']['page'],
+            'per_page' => $data['summary']['per_page'],
+            'duration_ms' => round((microtime(true) - $startMicrotime) * 1000, 2),
+        ]);
 
         if ($request->ajax()) {
+            Log::info('ESBTPPaiementController@index returning AJAX response', $completionContext);
+
             return response()->json([
                 'table' => view('esbtp.paiements.partials.table', [
                     'paiements' => $data['paiements'],
@@ -53,6 +74,8 @@ class ESBTPPaiementController extends Controller
             ]);
         }
 
+        Log::info('ESBTPPaiementController@index returning view', $completionContext);
+
         return view('esbtp.paiements.index', [
             'paiements' => $data['paiements'],
             'stats' => $data['stats'],
@@ -62,7 +85,25 @@ class ESBTPPaiementController extends Controller
 
     public function refresh(Request $request, FuzzyNameMatcher $matcher)
     {
-        $data = $this->preparePaiementListing($request, $matcher);
+        $startMicrotime = microtime(true);
+        $startTimestamp = now()->toIso8601String();
+        $baseLogContext = [
+            'timestamp' => $startTimestamp,
+            'url' => $request->fullUrl(),
+            'query' => $request->query(),
+            'user_id' => optional($request->user())->id,
+        ];
+        Log::info('ESBTPPaiementController@refresh start', $baseLogContext);
+
+        $data = $this->preparePaiementListing($request, $matcher, $baseLogContext, $startMicrotime, 'ESBTPPaiementController@refresh');
+
+        Log::info('ESBTPPaiementController@refresh returning AJAX response', array_merge($baseLogContext, [
+            'timestamp' => now()->toIso8601String(),
+            'total' => $data['summary']['total'],
+            'page' => $data['summary']['page'],
+            'per_page' => $data['summary']['per_page'],
+            'duration_ms' => round((microtime(true) - $startMicrotime) * 1000, 2),
+        ]));
 
         return response()->json([
             'table' => view('esbtp.paiements.partials.table', [
@@ -79,7 +120,7 @@ class ESBTPPaiementController extends Controller
     /**
      * Prépare les données de listing des paiements (liste, statistiques, timestamp).
      */
-    private function preparePaiementListing(Request $request, FuzzyNameMatcher $matcher): array
+    private function preparePaiementListing(Request $request, FuzzyNameMatcher $matcher, array $baseLogContext, float $startMicrotime, string $logPrefix): array
     {
         $search = trim((string) $request->input('search'));
         $status = $request->input('status');
@@ -122,17 +163,79 @@ class ESBTPPaiementController extends Controller
         $perPage = 15;
         $currentPage = LengthAwarePaginator::resolveCurrentPage();
 
-        $applyQuickSearch = function ($builder) use ($search) {
-            $builder->where(function ($q) use ($search) {
-                $q->whereHas('etudiant', function ($etudiantQuery) use ($search) {
-                    $etudiantQuery->whereHas('user', function ($userQuery) use ($search) {
-                        $userQuery->where('name', 'like', "%{$search}%")
-                            ->orWhere('email', 'like', "%{$search}%");
-                    })
-                    ->orWhere('matricule', 'like', "%{$search}%");
+        $escapeLike = static function (string $value): string {
+            return str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $value);
+        };
+
+        $searchTokens = collect(preg_split('/[\s,]+/u', $search, -1, PREG_SPLIT_NO_EMPTY))
+            ->map(fn ($token) => trim($token))
+            ->filter();
+
+        Log::info("{$logPrefix} processing", array_merge($baseLogContext, [
+            'has_search' => $search !== '',
+            'filters' => [
+                'status' => $status,
+                'date_debut' => $dateDebut,
+                'date_fin' => $dateFin,
+            ],
+        ]));
+
+        $applyQuickSearch = function ($builder) use ($search, $searchTokens, $escapeLike) {
+            $escapedSearch = $escapeLike($search);
+            $likeSearch = "%{$escapedSearch}%";
+
+            $builder->where(function ($q) use ($likeSearch, $searchTokens, $escapeLike) {
+                $q->whereHas('etudiant', function ($etudiantQuery) use ($likeSearch, $searchTokens, $escapeLike) {
+                    $etudiantQuery->where('matricule', 'like', $likeSearch)
+                        ->orWhere('nom', 'like', $likeSearch)
+                        ->orWhere('prenoms', 'like', $likeSearch)
+                        ->orWhereHas('user', function ($userQuery) use ($likeSearch) {
+                            $userQuery->where('name', 'like', $likeSearch)
+                                ->orWhere('email', 'like', $likeSearch);
+                        })
+                        ->orWhereRaw("CONCAT_WS(' ', prenoms, nom) LIKE ?", [$likeSearch])
+                        ->orWhereRaw("CONCAT_WS(' ', nom, prenoms) LIKE ?", [$likeSearch]);
+
+                    if ($searchTokens->isNotEmpty()) {
+                        $etudiantQuery->orWhere(function ($subQuery) use ($searchTokens, $escapeLike) {
+                            foreach ($searchTokens as $token) {
+                                $escapedToken = $escapeLike($token);
+                                $likeToken = "%{$escapedToken}%";
+                                $subQuery->orWhere('nom', 'like', $likeToken)
+                                         ->orWhere('prenoms', 'like', $likeToken)
+                                         ->orWhere('matricule', 'like', $likeToken);
+                            }
+                        });
+                    }
                 })
-                ->orWhere('numero_recu', 'like', "%{$search}%")
-                ->orWhere('reference_paiement', 'like', "%{$search}%");
+                ->orWhere('numero_recu', 'like', $likeSearch)
+                ->orWhere('reference_paiement', 'like', $likeSearch);
+
+                if ($searchTokens->isNotEmpty()) {
+                    $q->orWhere(function ($subQuery) use ($searchTokens, $escapeLike) {
+                        foreach ($searchTokens as $token) {
+                            $escapedToken = $escapeLike($token);
+                            $likeToken = "%{$escapedToken}%";
+                            $subQuery->orWhere('numero_recu', 'like', $likeToken)
+                                     ->orWhere('reference_paiement', 'like', $likeToken);
+                        }
+                    });
+                }
+            });
+        };
+
+        $applyFallbackQuickSearch = function ($builder) use ($search, $escapeLike) {
+            $escapedSearch = $escapeLike($search);
+            $likeSearch = "%{$escapedSearch}%";
+
+            $builder->where(function ($q) use ($likeSearch) {
+                $q->whereHas('etudiant', function ($etudiantQuery) use ($likeSearch) {
+                    $etudiantQuery->where('matricule', 'like', $likeSearch)
+                        ->orWhere('nom', 'like', $likeSearch)
+                        ->orWhere('prenoms', 'like', $likeSearch);
+                })
+                ->orWhere('numero_recu', 'like', $likeSearch)
+                ->orWhere('reference_paiement', 'like', $likeSearch);
             });
         };
 
@@ -142,7 +245,18 @@ class ESBTPPaiementController extends Controller
             $candidatesQuery = clone $baseQuery;
             $applyQuickSearch($candidatesQuery);
 
-            $candidates = $candidatesQuery->limit(250)->get();
+            try {
+                $candidates = $candidatesQuery->limit(250)->get();
+            } catch (QueryException $exception) {
+                Log::warning("{$logPrefix} fallback search triggered", array_merge($baseLogContext, [
+                    'message' => $exception->getMessage(),
+                ]));
+
+                $fallbackQuery = clone $baseQuery;
+                $applyFallbackQuickSearch($fallbackQuery);
+
+                $candidates = $fallbackQuery->limit(250)->get();
+            }
 
             $scored = $matcher->match($search, $candidates, function ($paiement) {
                 $etudiant = $paiement->etudiant;
@@ -186,7 +300,14 @@ class ESBTPPaiementController extends Controller
 
         $statsQueryBase = clone $baseQuery;
         if ($search !== '') {
-            $applyQuickSearch($statsQueryBase);
+            try {
+                $applyQuickSearch($statsQueryBase);
+            } catch (QueryException $exception) {
+                Log::warning("{$logPrefix} stats fallback triggered", array_merge($baseLogContext, [
+                    'message' => $exception->getMessage(),
+                ]));
+                $applyFallbackQuickSearch($statsQueryBase);
+            }
         }
 
         $categoriesStats = $this->calculateCategoryStats(null);
@@ -241,6 +362,11 @@ class ESBTPPaiementController extends Controller
             'paiements' => $paiements,
             'stats' => $stats,
             'last_updated_at' => $lastUpdatedAt,
+            'summary' => [
+                'total' => $paiements->total(),
+                'page' => $paiements->currentPage(),
+                'per_page' => $paiements->perPage(),
+            ],
         ];
     }
 
