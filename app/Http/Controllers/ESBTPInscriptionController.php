@@ -33,6 +33,8 @@ use Illuminate\Pagination\LengthAwarePaginator;
 
 class ESBTPInscriptionController extends Controller
 {
+    private const DUPLICATE_BLOCKING_SCORE = 80;
+
     protected $inscriptionService;
     protected $comptabiliteService;
     protected $workflowService;
@@ -359,7 +361,7 @@ class ESBTPInscriptionController extends Controller
             $validated['sexe'] ?? null,
             6
         )->filter(function (array $item) {
-            return ($item['score'] ?? 0) >= 80;
+            return ($item['score'] ?? 0) >= self::DUPLICATE_BLOCKING_SCORE;
         })->map(function (array $item) {
             $item['show_url'] = route('esbtp.etudiants.show', $item['id']);
             return $item;
@@ -436,12 +438,16 @@ class ESBTPInscriptionController extends Controller
                 $request->input('sexe')
             );
 
-            if ($duplicates->isNotEmpty()) {
+            $blockingDuplicates = $duplicates->filter(function ($duplicate) {
+                return ($duplicate['score'] ?? 0) >= self::DUPLICATE_BLOCKING_SCORE;
+            });
+
+            if ($blockingDuplicates->isNotEmpty()) {
                 return redirect()
                     ->back()
                     ->withInput()
                     ->withErrors(['duplicate' => 'Un étudiant avec des informations similaires existe déjà. Veuillez confirmer avant de créer une nouvelle inscription.'])
-                    ->with('duplicate_suggestions', $duplicates->toArray());
+                    ->with('duplicate_suggestions', $blockingDuplicates->toArray());
             }
         }
 
