@@ -277,7 +277,7 @@
                                     if (file_exists($path)) {
                                         $imageData = file_get_contents($path);
                                         $extension = pathinfo($path, PATHINFO_EXTENSION);
-                                        $logoBase64 = 'data:image/' . $extension . ';base64,' . base64encode($imageData);
+                                        $logoBase64 = 'data:image/' . $extension . ';base64,' . base64_encode($imageData);
                                         break;
                                     }
                                 }
