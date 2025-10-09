@@ -217,9 +217,14 @@
                                                 </h6>
                                                 <p class="text-muted mb-0 small">Gérez les représentants légaux de l'étudiant. Deux entrées maximum (parents ou tuteur).</p>
                                             </div>
-                                            <button type="button" class="btn btn-sm btn-primary mt-3 mt-md-0" id="add-parent" {{ $etudiant->parents->count() >= 2 ? 'style="display:none;"' : '' }}>
-                                                <i class="fas fa-plus me-1"></i>Ajouter un parent
-                                            </button>
+                                            <div class="btn-group mt-3 mt-md-0" role="group" id="add-parent-group" {{ $etudiant->parents->count() >= 2 ? 'style="display:none;"' : '' }}>
+                                                <button type="button" class="btn btn-sm btn-primary" id="add-new-parent">
+                                                    <i class="fas fa-plus me-1"></i>Nouveau parent
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-primary" id="add-existing-parent" data-bs-toggle="modal" data-bs-target="#searchParentModal">
+                                                    <i class="fas fa-search me-1"></i>Parent existant
+                                                </button>
+                                            </div>
                                         </div>
 
                                         <div id="parents-container">
@@ -236,48 +241,56 @@
                             </div>
                         </div>
 
-                        <div class="row mb-4">
-                            <div class="col-12">
-                                <div class="card">
-                                    <div class="card-header bg-light">
-                                        <h6 class="mb-0">Compte utilisateur</h6>
+                        <!-- Modal de recherche de parent existant -->
+                        <div class="modal fade" id="searchParentModal" tabindex="-1" aria-labelledby="searchParentModalLabel" aria-hidden="true">
+                            <div class="modal-dialog modal-xl">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="searchParentModalLabel">
+                                            <i class="fas fa-user-friends me-2"></i>Sélectionner un Parent Existant
+                                        </h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                     </div>
-                                    <div class="card-body">
-                                        @if(session('new_password'))
-                                            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                                                <strong>Mot de passe réinitialisé avec succès!</strong>
-                                                <p>Le nouveau mot de passe est : <span class="font-weight-bold">{{ session('new_password') }}</span></p>
-                                                <p>Veuillez communiquer ce mot de passe à l'étudiant.</p>
-                                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                    <div class="modal-body">
+                                        <!-- Filtres de recherche -->
+                                        <div class="row mb-3">
+                                            <div class="col-md-6">
+                                                <label for="parent_search_filter">Filtrer par :</label>
+                                                <select class="form-control" id="parent_search_filter">
+                                                    <option value="all">Tous les champs</option>
+                                                    <option value="nom">Nom</option>
+                                                    <option value="prenoms">Prénom(s)</option>
+                                                    <option value="telephone">Téléphone</option>
+                                                </select>
                                             </div>
-                                        @endif
+                                            <div class="col-md-6">
+                                                <label for="parent_search_query">Rechercher :</label>
+                                                <input type="text" class="form-control" id="parent_search_query" placeholder="Nom, prénom, téléphone...">
+                                            </div>
+                                        </div>
 
-                                        <div class="row">
-                                            <div class="col-md-6 mb-3">
-                                                <label class="form-label">Compte utilisateur</label>
-                                                @if($etudiant->user)
-                                                    <div class="d-flex align-items-center">
-                                                        <span class="badge bg-success me-2">Actif</span>
-                                                        <span><strong>Nom d'utilisateur:</strong> {{ $etudiant->user->username ?: $etudiant->user->email }}</span>
-                                                        <a href="{{ route('esbtp.etudiants.reset-password', $etudiant) }}" class="btn btn-sm btn-outline-secondary ms-2" onclick="return confirm('Êtes-vous sûr de vouloir réinitialiser le mot de passe de cet utilisateur ? Un nouveau mot de passe simple sera généré.')">
-                                                            <i class="fas fa-key me-1"></i>Réinitialiser le mot de passe
-                                                        </a>
-                                                    </div>
-                                                @else
-                                                    <div class="d-flex align-items-center">
-                                                        <span class="badge bg-warning me-2">Non créé</span>
-                                                        <div class="form-check form-switch ms-2">
-                                                            <input class="form-check-input" type="checkbox" id="create_account" name="create_account" value="1" {{ old('create_account') ? 'checked' : '' }}>
-                                                            <label class="form-check-label" for="create_account">
-                                                                Créer un compte utilisateur pour cet étudiant
-                                                            </label>
-                                                        </div>
-                                                    </div>
-                                                    <small class="form-text text-muted">
-                                                        Un compte sera créé avec un nom d'utilisateur basé sur le nom et prénom de l'étudiant. Un mot de passe temporaire sera généré.
-                                                    </small>
-                                                @endif
-                                            </div>
+                                        <!-- Tableau des parents -->
+                                        <div class="table-responsive">
+                                            <table class="table table-striped table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th class="sortable-parent" data-column="nom" style="cursor: pointer;">
+                                                            Nom <i class="fas fa-sort text-muted"></i>
+                                                        </th>
+                                                        <th class="sortable-parent" data-column="prenoms" style="cursor: pointer;">
+                                                            Prénom(s) <i class="fas fa-sort text-muted"></i>
+                                                        </th>
+                                                        <th class="sortable-parent" data-column="telephone" style="cursor: pointer;">
+                                                            Téléphone <i class="fas fa-sort text-muted"></i>
+                                                        </th>
+                                                        <th>Enfants</th>
+                                                        <th>Action</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="parents-table-body">
+                                                    <tr><td colspan="5" class="text-center">Chargement...</td></tr>
+                                                </tbody>
+                                            </table>
                                         </div>
                                     </div>
                                 </div>
@@ -342,7 +355,7 @@
 
         const maxParents = 2;
         const parentsContainer = $('#parents-container');
-        const addParentBtn = $('#add-parent');
+        const addParentGroup = $('#add-parent-group');
 
         function ensureEmptyState() {
             if (parentsContainer.find('.parent-card').length === 0) {
@@ -350,7 +363,7 @@
                     parentsContainer.html(`
                         <div class="alert alert-info">
                             <i class="fas fa-info-circle me-2"></i>
-                            Aucun parent enregistré pour le moment. Ajoutez un parent en utilisant le bouton ci-dessus.
+                            Aucun parent enregistré pour le moment. Ajoutez un parent en utilisant les boutons ci-dessus.
                         </div>
                     `);
                 }
@@ -362,16 +375,16 @@
         function recalculateParentCount() {
             const count = parentsContainer.find('.parent-card').length;
             if (count >= maxParents) {
-                addParentBtn.hide();
+                addParentGroup.hide();
             } else {
-                addParentBtn.show();
+                addParentGroup.show();
             }
         }
 
         ensureEmptyState();
         recalculateParentCount();
 
-        addParentBtn.on('click', function() {
+        $('#add-new-parent').on('click', function() {
             if (parentsContainer.find('.parent-card').length >= maxParents) {
                 alert('Vous ne pouvez ajouter que 2 parents maximum.');
                 return;
@@ -399,29 +412,132 @@
             ensureEmptyState();
             recalculateParentCount();
         });
+
+        // Ajouter un parent existant
+        $(document).on('click', '.add-existing-parent-btn', function() {
+            if (parentsContainer.find('.parent-card').length >= maxParents) {
+                alert('Vous ne pouvez ajouter que 2 parents maximum.');
+                return;
+            }
+
+            const parentData = {
+                id: $(this).data('parent-id'),
+                nom: $(this).data('parent-nom'),
+                prenoms: $(this).data('parent-prenoms'),
+                telephone: $(this).data('parent-telephone'),
+                email: $(this).data('parent-email'),
+                profession: $(this).data('parent-profession'),
+                adresse: $(this).data('parent-adresse')
+            };
+
+            // Vérifier si le parent n'est pas déjà ajouté
+            if (parentsContainer.find(`input[value="${parentData.id}"]`).length > 0) {
+                alert('Ce parent est déjà ajouté à cet étudiant.');
+                return;
+            }
+
+            const newIndex = parentsContainer.find('.parent-card').length;
+
+            const existingParentCard = `
+<div class="parent-card mb-4" data-parent-index="${newIndex}" style="background: #fff; border-radius: 12px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border: 1px solid #e9ecef;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h6 class="mb-1 text-primary" style="font-weight: 600;">
+                <i class="fas fa-user-friends me-2"></i>Parent / Tuteur #${newIndex + 1}
+            </h6>
+            <small class="text-muted">${parentData.prenoms} ${parentData.nom}</small>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-success">Existant</span>
+            <button type="button" class="btn btn-sm btn-outline-danger remove-parent" data-parent-id="${parentData.id}">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+    <div class="parent-card-body">
+        <input type="hidden" name="existing_parents[]" value="${parentData.id}">
+        <input type="hidden" name="existing_parents_relation[${parentData.id}]" value="Père" class="parent-relation-input">
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Nom</label>
+                <input type="text" class="form-control" value="${parentData.nom}" readonly>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Prénom(s)</label>
+                <input type="text" class="form-control" value="${parentData.prenoms}" readonly>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Relation <span class="text-danger">*</span></label>
+                <select class="form-select parent-relation-select" data-parent-id="${parentData.id}" required>
+                    <option value="Père">Père</option>
+                    <option value="Mère">Mère</option>
+                    <option value="Tuteur">Tuteur</option>
+                    <option value="Autre">Autre</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Téléphone</label>
+                <input type="text" class="form-control" value="${parentData.telephone}" readonly>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control" value="${parentData.email}" readonly>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Profession</label>
+                <input type="text" class="form-control" value="${parentData.profession}" readonly>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Adresse</label>
+                <textarea class="form-control" rows="1" readonly>${parentData.adresse}</textarea>
+            </div>
+        </div>
+    </div>
+</div>`;
+
+            parentsContainer.append(existingParentCard);
+            ensureEmptyState();
+            recalculateParentCount();
+
+            // Fermer la modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('searchParentModal'));
+            if (modal) {
+                modal.hide();
+            }
+
+            // Réinitialiser les champs de recherche
+            document.getElementById('parent_search_query').value = '';
+            document.getElementById('parent_search_filter').value = 'all';
+
+            console.log('Parent existant ajouté:', parentData);
+        });
+
+        // Mettre à jour la relation dans le input hidden quand le select change
+        $(document).on('change', '.parent-relation-select', function() {
+            const parentId = $(this).data('parent-id');
+            const relation = $(this).val();
+            $(this).closest('.parent-card').find('.parent-relation-input').val(relation);
+        });
     });
 
     function createNewParentCard() {
         return `
-<div class="parent-card card-moderne mb-4" id="new-parent-card" data-parent-index="new">
-    <div class="d-flex justify-content-between align-items-center">
+<div class="parent-card mb-4" id="new-parent-card" data-parent-index="new" style="background: #fff; border-radius: 12px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border: 1px solid #e9ecef;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
-            <h6 class="mb-1 text-primary">
+            <h6 class="mb-1 text-primary" style="font-weight: 600;">
                 <i class="fas fa-user-friends me-2"></i>Nouveau parent / tuteur
             </h6>
             <small class="text-muted">Renseignez les informations du représentant.</small>
         </div>
         <div class="d-flex align-items-center gap-2">
-            <div class="form-check form-switch mb-0">
-                <input class="form-check-input" type="checkbox" role="switch" id="new_is_tuteur" name="new_parent[is_tuteur]">
-                <label class="form-check-label small" for="new_is_tuteur">Tuteur</label>
-            </div>
             <button type="button" class="btn btn-sm btn-outline-danger remove-parent">
                 <i class="fas fa-times"></i>
             </button>
         </div>
     </div>
-    <div class="parent-card-body mt-3">
+    <div class="parent-card-body">
         <div class="row g-3">
             <div class="col-md-6">
                 <label class="form-label">Nom <span class="text-danger">*</span></label>
@@ -461,5 +577,173 @@
     </div>
 </div>`;
     }
+
+    // === GESTION DES PARENTS EXISTANTS (Style class-selector) ===
+    let allParents = [];
+    let currentParentSort = { column: null, direction: 'asc' };
+
+    // Fonction pour charger tous les parents
+    function loadParents() {
+        const tableBody = document.getElementById('parents-table-body');
+        tableBody.innerHTML = '<tr><td colspan="5" class="text-center">Chargement...</td></tr>';
+
+        fetch('{{ route("esbtp.parents.search") }}?q=&etudiant_id={{ $etudiant->id }}')
+            .then(response => response.json())
+            .then(parents => {
+                allParents = parents;
+                displayParentsTable(allParents);
+            })
+            .catch(error => {
+                console.error('Error loading parents:', error);
+                tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Erreur lors du chargement des parents.</td></tr>';
+            });
+    }
+
+    // Fonction pour afficher les parents dans le tableau
+    function displayParentsTable(parents) {
+        const tableBody = document.getElementById('parents-table-body');
+        tableBody.innerHTML = '';
+
+        if (parents.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Aucun parent trouvé</td></tr>';
+            return;
+        }
+
+        parents.forEach(parent => {
+            const enfants = parent.etudiants && parent.etudiants.length > 0
+                ? parent.etudiants.map(e => `${e.prenoms} ${e.nom}`).join(', ')
+                : '<em class="text-muted">Aucun</em>';
+
+            tableBody.innerHTML += `<tr>
+                <td>${parent.nom || ''}</td>
+                <td>${parent.prenoms || ''}</td>
+                <td>${parent.telephone || 'Non renseigné'}</td>
+                <td>${enfants}</td>
+                <td>
+                    <button type="button" class="btn btn-sm btn-primary add-existing-parent-btn"
+                            data-parent-id="${parent.id}"
+                            data-parent-nom="${parent.nom || ''}"
+                            data-parent-prenoms="${parent.prenoms || ''}"
+                            data-parent-telephone="${parent.telephone || ''}"
+                            data-parent-email="${parent.email || ''}"
+                            data-parent-profession="${parent.profession || ''}"
+                            data-parent-adresse="${parent.adresse || ''}">
+                        Sélectionner
+                    </button>
+                </td>
+            </tr>`;
+        });
+    }
+
+    // Fonction pour filtrer les parents
+    function filterParents() {
+        const filterType = document.getElementById('parent_search_filter').value;
+        const query = document.getElementById('parent_search_query').value.toLowerCase();
+
+        let filteredParents = allParents;
+
+        if (query) {
+            filteredParents = filteredParents.filter(parent => {
+                switch (filterType) {
+                    case 'nom':
+                        return (parent.nom || '').toLowerCase().includes(query);
+                    case 'prenoms':
+                        return (parent.prenoms || '').toLowerCase().includes(query);
+                    case 'telephone':
+                        return (parent.telephone || '').toLowerCase().includes(query);
+                    default: // 'all'
+                        return (parent.nom || '').toLowerCase().includes(query) ||
+                               (parent.prenoms || '').toLowerCase().includes(query) ||
+                               (parent.telephone || '').toLowerCase().includes(query);
+                }
+            });
+        }
+
+        if (currentParentSort.column) {
+            sortParents(filteredParents, currentParentSort.column, currentParentSort.direction);
+        } else {
+            displayParentsTable(filteredParents);
+        }
+    }
+
+    // Fonction pour trier les parents
+    function sortParents(parents, column, direction) {
+        const sortedParents = [...parents].sort((a, b) => {
+            let aValue = a[column] || '';
+            let bValue = b[column] || '';
+
+            if (direction === 'asc') {
+                return aValue.localeCompare(bValue);
+            } else {
+                return bValue.localeCompare(aValue);
+            }
+        });
+
+        displayParentsTable(sortedParents);
+        updateParentSortIcons(column, direction);
+    }
+
+    // Fonction pour mettre à jour les icônes de tri
+    function updateParentSortIcons(activeColumn, direction) {
+        document.querySelectorAll('.sortable-parent i').forEach(icon => {
+            icon.className = 'fas fa-sort text-muted';
+        });
+
+        const activeHeader = document.querySelector(`[data-column="${activeColumn}"] i`);
+        if (activeHeader) {
+            if (direction === 'asc') {
+                activeHeader.className = 'fas fa-sort-up text-primary';
+            } else {
+                activeHeader.className = 'fas fa-sort-down text-primary';
+            }
+        }
+    }
+
+    // Event listeners pour les filtres et la recherche
+    document.getElementById('parent_search_query').addEventListener('input', filterParents);
+    document.getElementById('parent_search_filter').addEventListener('change', filterParents);
+
+    // Event listeners pour le tri
+    document.querySelectorAll('.sortable-parent').forEach(header => {
+        header.addEventListener('click', function() {
+            const column = this.getAttribute('data-column');
+            let direction = 'asc';
+
+            if (currentParentSort.column === column) {
+                direction = currentParentSort.direction === 'asc' ? 'desc' : 'asc';
+            }
+
+            currentParentSort = { column, direction };
+
+            const filterType = document.getElementById('parent_search_filter').value;
+            const query = document.getElementById('parent_search_query').value.toLowerCase();
+
+            let filteredParents = allParents;
+
+            if (query) {
+                filteredParents = filteredParents.filter(parent => {
+                    switch (filterType) {
+                        case 'nom':
+                            return (parent.nom || '').toLowerCase().includes(query);
+                        case 'prenoms':
+                            return (parent.prenoms || '').toLowerCase().includes(query);
+                        case 'telephone':
+                            return (parent.telephone || '').toLowerCase().includes(query);
+                        default:
+                            return (parent.nom || '').toLowerCase().includes(query) ||
+                                   (parent.prenoms || '').toLowerCase().includes(query) ||
+                                   (parent.telephone || '').toLowerCase().includes(query);
+                    }
+                });
+            }
+
+            sortParents(filteredParents, column, direction);
+        });
+    });
+
+    // Charger les parents quand le modal s'ouvre
+    document.getElementById('searchParentModal').addEventListener('show.bs.modal', function() {
+        loadParents();
+    });
 </script>
 @endpush
