@@ -86,8 +86,13 @@ class MarkTeacherAbsences extends Command
             if (!$isTest) {
                 try {
                     // Créer l'émargement absent
+                    $teacherUserId = optional($seance->teacher->user)->id;
+                    if (!$teacherUserId) {
+                        $this->error("⚠️ Impossible de marquer la séance {$seance->id} : aucun utilisateur associé à l'enseignant.");
+                        continue;
+                    }
                     ESBTPTeacherAttendance::create([
-                        'teacher_id' => $seance->teacher_id,
+                        'teacher_id' => $teacherUserId,
                         'course_id' => $seance->id,
                         'daily_code_id' => null, // Pas de code car automatique
                         'date' => $today,
@@ -100,12 +105,13 @@ class MarkTeacherAbsences extends Command
                     ]);
 
                     // Fermer le workflow
-                    $workflow = ESBTPSessionWorkflow::getOrCreateForSession($seance->id, $seance->teacher_id);
+                    $workflow = ESBTPSessionWorkflow::getOrCreateForSession($seance->id, $teacherUserId);
                     $workflow->current_step = 'closed_absent';
                     $workflow->save();
 
                     Log::info("Enseignant marqué absent automatiquement", [
-                        'teacher_id' => $seance->teacher_id,
+                        'teacher_user_id' => $teacherUserId,
+                        'teacher_model_id' => $seance->teacher_id,
                         'course_id' => $seance->id,
                         'teacher_name' => $teacherName,
                         'course_start' => $courseStart->format('H:i'),

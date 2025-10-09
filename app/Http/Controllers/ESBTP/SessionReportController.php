@@ -31,7 +31,7 @@ class SessionReportController extends Controller
             ->firstOrFail();
 
         // **WORKFLOW** : Vérifier que cette étape peut être exécutée
-        $workflow = ESBTPSessionWorkflow::getOrCreateForSession($seanceId, $teacher->id);
+        $workflow = ESBTPSessionWorkflow::getOrCreateForSession($seanceId, $user->id);
 
         if (!$workflow->canExecuteStep('report')) {
             return redirect()->route('teacher.select-call-type', $seanceId)
@@ -40,7 +40,7 @@ class SessionReportController extends Controller
 
         // Vérifier s'il existe déjà un rapport pour cette séance
         $existingReport = ESBTPSessionReport::where('seance_cours_id', $seanceId)
-            ->where('teacher_id', $teacher->id)
+            ->where('teacher_id', $user->id)
             ->first();
 
         return view('teacher.session-report.create', compact('seance', 'workflow', 'existingReport'));
@@ -64,7 +64,7 @@ class SessionReportController extends Controller
             ->firstOrFail();
 
         // **WORKFLOW** : Vérifier que cette étape peut être exécutée
-        $workflow = ESBTPSessionWorkflow::getOrCreateForSession($seanceId, $teacher->id);
+        $workflow = ESBTPSessionWorkflow::getOrCreateForSession($seanceId, $user->id);
 
         if (!$workflow->canExecuteStep('report')) {
             return redirect()->route('teacher.select-call-type', $seanceId)
@@ -94,7 +94,7 @@ class SessionReportController extends Controller
             $report = ESBTPSessionReport::updateOrCreate(
                 [
                     'seance_cours_id' => $seanceId,
-                    'teacher_id' => $teacher->id
+                    'teacher_id' => $user->id
                 ],
                 [
                     'content_summary' => $validated['content_summary'],

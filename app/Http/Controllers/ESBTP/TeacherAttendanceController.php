@@ -127,7 +127,7 @@ class TeacherAttendanceController extends Controller
             }
 
             // Check if teacher has already marked attendance for this course today
-            $existingAttendance = ESBTPTeacherAttendance::where('teacher_id', $teacher->id)
+            $existingAttendance = ESBTPTeacherAttendance::where('teacher_id', $user->id)
                 ->where('course_id', $seanceCours->id)
                 ->whereDate('date', today())
                 ->first();
@@ -158,7 +158,7 @@ class TeacherAttendanceController extends Controller
             if ($now > $limite45min) {
                 // Marquer enseignant ABSENT
                 ESBTPTeacherAttendance::create([
-                    'teacher_id' => $teacher->id,
+                    'teacher_id' => $user->id,
                     'course_id' => $seanceCours->id,
                     'daily_code_id' => $dailyCode->id,
                     'date' => now()->toDateString(),
@@ -170,7 +170,7 @@ class TeacherAttendanceController extends Controller
                 ]);
 
                 // Fermer le workflow directement
-                $workflow = ESBTPSessionWorkflow::getOrCreateForSession($seanceCours->id, $teacher->id);
+                $workflow = ESBTPSessionWorkflow::getOrCreateForSession($seanceCours->id, $user->id);
                 $workflow->current_step = 'closed_absent';
                 $workflow->save();
 
@@ -185,7 +185,7 @@ class TeacherAttendanceController extends Controller
 
             // Create attendance record
             ESBTPTeacherAttendance::create([
-                'teacher_id' => $teacher->id,
+                'teacher_id' => $user->id,
                 'course_id' => $seanceCours->id,
                 'daily_code_id' => $dailyCode->id,
                 'date' => now()->toDateString(),
@@ -200,7 +200,7 @@ class TeacherAttendanceController extends Controller
             $dailyCode->recordAttempt(true);
 
             // **WORKFLOW** : Mettre à jour le workflow de la séance
-            $workflow = ESBTPSessionWorkflow::getOrCreateForSession($seanceCours->id, $teacher->id);
+            $workflow = ESBTPSessionWorkflow::getOrCreateForSession($seanceCours->id, $user->id);
             $workflow->markAttendanceSigned();
 
             // **NOTIFICATION** : Notifier le coordinateur de l'émargement effectué
@@ -292,7 +292,7 @@ class TeacherAttendanceController extends Controller
         }
 
         // Récupérer toutes les données pour les filtres
-        $teachers = \App\Models\User::role('teacher')->orderBy('name')->get();
+        $teachers = \App\Models\User::role(['enseignant', 'teacher'])->orderBy('name')->get();
         $matieres = \App\Models\ESBTPMatiere::orderBy('name')->get();
         $classes = \App\Models\ESBTPClasse::with('filiere', 'niveau')->orderBy('name')->get();
         
@@ -305,36 +305,34 @@ class TeacherAttendanceController extends Controller
             $q->where('annee_universitaire_id', $anneeEnCours->id);
         })->whereHas('course', function($q) {
             $q->where('type', 'course');
-        })->whereHas('teacher', function($query) {
-            $query->role('teacher');
-        })->count();
+        })->whereIn('status', ['present', 'late'])->count();
         
         // IMPORTANT: Compter d'abord les présents ET les retards séparément
         $presentOnly = ESBTPTeacherAttendance::whereHas('course.emploiTemps', function($q) use ($anneeEnCours) {
             $q->where('annee_universitaire_id', $anneeEnCours->id);
         })->whereHas('course', function($q) {
             $q->where('type', 'course');
-        })->whereHas('teacher', function($query) {
-            $query->role('teacher');
         })->where('status', 'present')->count();
 
         $attendancesLate = ESBTPTeacherAttendance::whereHas('course.emploiTemps', function($q) use ($anneeEnCours) {
             $q->where('annee_universitaire_id', $anneeEnCours->id);
         })->whereHas('course', function($q) {
             $q->where('type', 'course');
-        })->whereHas('teacher', function($query) {
-            $query->role('teacher');
         })->where('status', 'late')->count();
 
-        // Le KPI "Présents" doit inclure les retards car un retard = présence quand même
+        $attendancesAbsent = ESBTPTeacherAttendance::whereHas('course.emploiTemps', function($q) use ($anneeEnCours) {
+            $q->where('annee_universitaire_id', $anneeEnCours->id);
+        })->whereHas('course', function($q) {
+            $q->where('type', 'course');
+        })->where('status', 'absent')->count();
+
+        // Le KPI "Présents" doit inclure les retards car un retard = présence quand même pour la comptabilité globale
         $attendancesPresent = $presentOnly + $attendancesLate;
         
         $attendancesToday = ESBTPTeacherAttendance::whereHas('course.emploiTemps', function($q) use ($anneeEnCours) {
             $q->where('annee_universitaire_id', $anneeEnCours->id);
         })->whereHas('course', function($q) {
             $q->where('type', 'course');
-        })->whereHas('teacher', function($query) {
-            $query->role('teacher');
         })->whereDate('created_at', today())->count();
 
         // Récupérer toutes les séances de cours de l'année avec leur statut d'émargement
@@ -346,11 +344,7 @@ class TeacherAttendanceController extends Controller
             'emploiTemps.classe:id,name,filiere_id,niveau_etude_id',
             'emploiTemps.classe.filiere:id,name',
             'emploiTemps.classe.niveau:id,name',
-            'teacherAttendances' => function($q) {
-                $q->whereHas('teacher', function($query) {
-                    $query->role('teacher');
-                });
-            }
+            'teacherAttendances'
         ])
         ->where('type', 'course') // Filtrer seulement les cours
         ->whereHas('emploiTemps', function($q) use ($anneeEnCours, $request) {
@@ -409,6 +403,7 @@ class TeacherAttendanceController extends Controller
             'totalAttendances',
             'attendancesPresent', 
             'attendancesLate',
+            'attendancesAbsent',
             'attendancesToday'
         ));
     }

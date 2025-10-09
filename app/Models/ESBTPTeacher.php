@@ -94,7 +94,7 @@ class ESBTPTeacher extends Model
 
     public function attendances()
     {
-        return $this->hasMany(ESBTPTeacherAttendance::class, 'teacher_id');
+        return $this->hasMany(ESBTPTeacherAttendance::class, 'teacher_id', 'user_id');
     }
 
     // Accesseur pour obtenir le nom complet

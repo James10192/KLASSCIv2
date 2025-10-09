@@ -582,18 +582,29 @@ class ESBTPSeanceCours extends Model
      */
     public function getDateCompleteFormattee()
     {
+        $jourMapping = [
+            1 => 'Lundi', 2 => 'Mardi', 3 => 'Mercredi',
+            4 => 'Jeudi', 5 => 'Vendredi', 6 => 'Samedi', 7 => 'Dimanche'
+        ];
+
+        if (!empty($this->date_seance)) {
+            $date = $this->date_seance instanceof Carbon
+                ? $this->date_seance
+                : Carbon::parse($this->date_seance);
+
+            $jourIso = (int) $date->dayOfWeekIso;
+            $nomJour = $jourMapping[$jourIso] ?? $date->format('l');
+
+            return $nomJour . ' ' . $date->format('d/m/Y');
+        }
+
         $date = $this->getDateCompleteSeance();
         if (!$date) {
             return 'Date non disponible';
         }
-        
-        $jourMapping = [
-            1 => 'Lundi', 2 => 'Mardi', 3 => 'Mercredi', 
-            4 => 'Jeudi', 5 => 'Vendredi', 6 => 'Samedi', 7 => 'Dimanche'
-        ];
-        
-        $nomJour = $jourMapping[$this->jour] ?? 'Jour inconnu';
-        
+
+        $nomJour = $jourMapping[$this->jour] ?? $jourMapping[(int) $date->dayOfWeekIso] ?? 'Jour inconnu';
+
         return $nomJour . ' ' . $date->format('d/m/Y');
     }
 }

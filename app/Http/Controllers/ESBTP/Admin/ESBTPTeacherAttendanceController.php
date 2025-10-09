@@ -51,6 +51,7 @@ class ESBTPTeacherAttendanceController extends Controller
         // Récupérer le modèle enseignant associé à l'utilisateur
         $teacherModel = \App\Models\ESBTPTeacher::where('user_id', $user->id)->first();
         $teacherId = $teacherModel ? $teacherModel->id : null;
+        $teacherUserId = $user->id;
 
         // Get today's courses for the teacher  
         $today = now()->format('Y-m-d');
@@ -72,8 +73,8 @@ class ESBTPTeacherAttendanceController extends Controller
             ->get();
 
         // Load teacher attendance status for each course
-        $todayCourses->each(function($course) use ($teacherId, $today) {
-            $course->teacherAttendance = ESBTPTeacherAttendance::where('teacher_id', $teacherId)
+        $todayCourses->each(function($course) use ($teacherUserId, $today) {
+            $course->teacherAttendance = ESBTPTeacherAttendance::where('teacher_id', $teacherUserId)
                 ->where('course_id', $course->id)
                 ->whereDate('date', $today)
                 ->first();
@@ -149,7 +150,7 @@ class ESBTPTeacherAttendanceController extends Controller
         }
         
         // Check if teacher has already marked attendance for this course today
-        $existingAttendance = ESBTPTeacherAttendance::where('teacher_id', $teacherModel->id)
+        $existingAttendance = ESBTPTeacherAttendance::where('teacher_id', $user->id)
             ->where('course_id', $seanceCours->id)
             ->whereDate('date', today())
             ->first();
@@ -161,7 +162,7 @@ class ESBTPTeacherAttendanceController extends Controller
         // Create attendance record
         try {
             $attendance = ESBTPTeacherAttendance::create([
-                'teacher_id' => $teacherModel->id,
+                'teacher_id' => $user->id,
                 'course_id' => $seanceCours->id,
                 'daily_code_id' => $dailyCode->id,
                 'date' => now()->toDateString(),

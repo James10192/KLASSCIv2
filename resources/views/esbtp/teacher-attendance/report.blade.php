@@ -38,11 +38,15 @@
                 <div class="d-flex align-items-center gap-3">
                     <div class="d-flex align-items-center">
                         <i class="fas fa-calendar-check text-primary me-2"></i>
-                        <span>Du {{ $anneeEnCours->date_debut ? \Carbon\Carbon::parse($anneeEnCours->date_debut)->format('d/m/Y') : 'N/A' }}</span>
+                        <span>
+                            Du {{ $anneeEnCours?->start_date ? $anneeEnCours->start_date->format('d/m/Y') : 'N/A' }}
+                        </span>
                     </div>
                     <div class="d-flex align-items-center">
                         <i class="fas fa-calendar-times text-primary me-2"></i>
-                        <span>Au {{ $anneeEnCours->date_fin ? \Carbon\Carbon::parse($anneeEnCours->date_fin)->format('d/m/Y') : 'N/A' }}</span>
+                        <span>
+                            Au {{ $anneeEnCours?->end_date ? $anneeEnCours->end_date->format('d/m/Y') : 'N/A' }}
+                        </span>
                     </div>
                     <div class="ms-auto">
                         <span class="badge bg-primary">Année courante</span>
@@ -63,20 +67,20 @@
             </div>
             
             <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
-                <div class="kpi-title" style="color: #000; font-weight: 600;">Émargements Effectués</div>
+                <div class="kpi-title" style="color: #000; font-weight: 600;">Émargements validés</div>
                 <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ $totalAttendances ?? 0 }}</div>
                 <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
                     <i class="fas fa-clipboard-check"></i>
-                    Tous les émargements
+                    Présences confirmées (hors absents)
                 </div>
             </div>
             
             <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
-                <div class="kpi-title" style="color: #000; font-weight: 600;">Présents</div>
+                <div class="kpi-title" style="color: #000; font-weight: 600;">Présents (retards inclus)</div>
                 <div class="kpi-value" style="color: #10b981; font-size: 2.5rem; font-weight: bold;">{{ $attendancesPresent ?? 0 }}</div>
                 <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
                     <i class="fas fa-check-circle"></i>
-                    Confirmés présents
+                    Dont {{ $attendancesLate ?? 0 }} retard(s)
                 </div>
             </div>
             
@@ -85,7 +89,16 @@
                 <div class="kpi-value" style="color: #f59e0b; font-size: 2.5rem; font-weight: bold;">{{ $attendancesLate ?? 0 }}</div>
                 <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
                     <i class="fas fa-clock"></i>
-                    Retards signalés
+                    Retards signalés (inclus dans les présents)
+                </div>
+            </div>
+
+            <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
+                <div class="kpi-title" style="color: #000; font-weight: 600;">Absents</div>
+                <div class="kpi-value" style="color: #ef4444; font-size: 2.5rem; font-weight: bold;">{{ $attendancesAbsent ?? 0 }}</div>
+                <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
+                    <i class="fas fa-user-times"></i>
+                    Séances clôturées sans émargement
                 </div>
             </div>
             
@@ -158,6 +171,7 @@
                                 <option value="">Tous les statuts</option>
                                 <option value="present" {{ request('status') == 'present' ? 'selected' : '' }}>Présent</option>
                                 <option value="late" {{ request('status') == 'late' ? 'selected' : '' }}>En retard</option>
+                                <option value="absent" {{ request('status') == 'absent' ? 'selected' : '' }}>Absent</option>
                                 <option value="not_signed" {{ request('status') == 'not_signed' ? 'selected' : '' }}>Non émargé</option>
                             </select>
                         </div>
@@ -213,13 +227,19 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($seances as $seance)
-                                    @php
-                                        // Récupérer l'émargement pour cette séance (s'il existe)
-                                        $attendance = $seance->teacherAttendances->first();
-                                        $hasAttendance = $attendance !== null;
-                                        $attendanceStatus = $hasAttendance ? $attendance->status : 'not_signed';
-                                    @endphp
+@foreach($seances as $seance)
+    @php
+        // Récupérer l'émargement pour cette séance (s'il existe)
+        $attendance = $seance->teacherAttendances
+            ->first(function($attendance) use ($seance) {
+                $attendanceDate = $attendance->date instanceof \Carbon\Carbon
+                    ? $attendance->date
+                    : \Carbon\Carbon::parse($attendance->date);
+                return $attendanceDate->isSameDay(\Carbon\Carbon::parse($seance->date_seance));
+            }) ?? $seance->teacherAttendances->sortByDesc('created_at')->first();
+        $hasAttendance = $attendance !== null;
+        $attendanceStatus = $hasAttendance ? $attendance->status : 'not_signed';
+    @endphp
                                     <tr>
                                         <td>
                                             <div class="d-flex align-items-center">
@@ -290,6 +310,10 @@
                                             @elseif($attendanceStatus === 'late')
                                                 <span class="badge bg-warning">
                                                     <i class="fas fa-clock me-1"></i>En retard
+                                                </span>
+                                            @elseif($attendanceStatus === 'absent')
+                                                <span class="badge bg-danger">
+                                                    <i class="fas fa-user-times me-1"></i>Absent
                                                 </span>
                                             @elseif($attendanceStatus === 'not_signed')
                                                 <span class="badge bg-danger">
