@@ -2,6 +2,134 @@
 
 ## Corrections récentes
 
+### Feature: Colonne statut d'affectation et filtre inscription validée dans etudiants.index
+
+**Date:** 10 octobre 2025
+**Branche:** presentation
+
+#### Fonctionnalités ajoutées
+
+Implémentation d'un système de filtrage avancé et affichage du statut d'affectation pour les étudiants basé sur le workflow d'inscription.
+
+#### 1. Nouvelle colonne "Statut d'affectation"
+
+**Affichage basé sur le workflow_step :**
+
+**Si workflow terminé (`workflow_step = 'etudiant_cree')` :**
+- Badge simple du statut d'affectation :
+  - ✅ Badge vert "Affecté"
+  - 🔄 Badge bleu "Réaffecté"
+  - ❌ Badge rouge "Non affecté"
+
+**Si workflow en cours (autre étape) :**
+- Badge jaune avec étape du workflow : "📋 Prospect", "Documents complets", "En validation", "Validé"
+- **+** Badge du statut d'affectation en dessous (si défini)
+
+**Si pas d'inscription dans l'année courante :**
+- Texte grisé : "Pas d'inscription (2025-2026)"
+
+#### 2. Colonne "Classe actuelle" améliorée
+
+**Affichage des icônes basé sur workflow_step :**
+- ✅ **Check vert** : Si `workflow_step = 'etudiant_cree'` (inscription validée - workflow terminé)
+- ⏳ **Sablier orange** : Si `workflow_step != 'etudiant_cree'` (inscription en cours - workflow pas terminé)
+
+**Tooltip au survol :**
+- "Inscription validée - Workflow terminé"
+- "Inscription en cours - Workflow : prospect/documents_complets/en_validation/valide"
+
+#### 3. Nouveaux filtres
+
+**Filtre "Statut d'affectation (2025-2026)" :**
+- Tous les statuts d'affectation
+- Affecté
+- Réaffecté
+- Non affecté
+
+**Logique :** Filtre uniquement les étudiants avec `workflow_step = 'etudiant_cree'` (inscription validée)
+
+**Filtre "Inscription validée (2025-2026)" - 3 options distinctes :**
+
+**Option "Oui (Validée)"** :
+- Affiche les étudiants avec `workflow_step = 'etudiant_cree'`
+- Inscription complètement validée, prêts à suivre les cours
+
+**Option "En attente"** :
+- Affiche les étudiants avec `workflow_step != 'etudiant_cree'`
+- Inscription en cours (étapes: prospect, documents_complets, en_validation, valide)
+- Nécessitent un suivi pour terminer leur processus
+
+**Option "Absente"** :
+- Affiche les étudiants sans inscription dans l'année courante
+- Candidats potentiels à la réinscription ou anciens étudiants
+
+#### 4. Labels des étapes du workflow
+
+- `prospect` → "Prospect"
+- `documents_complets` → "Documents complets"
+- `en_validation` → "En validation"
+- `valide` → "Validé"
+- `etudiant_cree` → "Étudiant créé" (dernière étape)
+
+#### Fichiers modifiés
+
+**Backend :**
+- [app/Http/Controllers/ESBTPStudentController.php](app/Http/Controllers/ESBTPStudentController.php)
+  - Lignes 43-52 : Récupération année courante et filtres (affectation_status, inscrit_annee_courante)
+  - Lignes 59-65 : Eager loading inscriptions année courante
+  - Lignes 85-92 : Filtre par statut d'affectation (workflow terminé uniquement)
+  - Lignes 94-114 : Filtre inscription validée (3 options: validee, en_attente, absente)
+  - Ligne 250-263 : Passage variables à la vue
+
+**Frontend - Vues :**
+- [resources/views/esbtp/etudiants/index.blade.php](resources/views/esbtp/etudiants/index.blade.php)
+  - Lignes 98-115 : Ajout selects filtres (Statut d'affectation + Inscription validée)
+  - Ligne 152 : Intégration Select2 pour les nouveaux filtres
+
+- [resources/views/esbtp/etudiants/partials/results.blade.php](resources/views/esbtp/etudiants/partials/results.blade.php)
+  - Lignes 3-15 : Ajout colonne "Statut d'affectation" dans thead
+  - Lignes 49-88 : Colonne "Classe actuelle" avec icône basée sur workflow_step
+  - Lignes 89-137 : Colonne "Statut d'affectation" avec logique workflow
+  - Ligne 122 : Colspan mis à jour (10 colonnes au lieu de 9)
+
+#### Différence clé avec l'ancien système
+
+**Avant :**
+- Utilisation de `status` (active, pending, en_attente)
+- Filtrage binaire : inscrit ou pas inscrit
+
+**Après :**
+- Utilisation de `workflow_step` (5 étapes du processus d'inscription)
+- Filtrage tripartite : validée, en attente, absente
+- Affichage du statut d'affectation uniquement pour inscriptions validées
+- Labels explicites de l'étape du workflow pour inscriptions en cours
+
+#### Cas d'usage
+
+**"Inscription validée = Oui (Validée)" + "Statut d'affectation = Non affecté"** :
+- Liste des étudiants validés mais qui n'ont pas encore de classe assignée
+- Action requise : Affecter une classe
+
+**"Inscription validée = En attente"** :
+- Liste des étudiants en cours d'inscription
+- Action requise : Suivre et compléter le workflow
+
+**"Inscription validée = Absente"** :
+- Liste des anciens étudiants sans inscription pour l'année courante
+- Action potentielle : Campagne de réinscription
+
+#### Tests recommandés
+
+- [ ] Filtrer par "Inscription validée = Oui (Validée)" → Vérifier uniquement étudiants avec check vert
+- [ ] Filtrer par "Inscription validée = En attente" → Vérifier uniquement étudiants avec sablier orange
+- [ ] Filtrer par "Inscription validée = Absente" → Vérifier "Pas d'inscription (2025-2026)"
+- [ ] Filtrer par "Statut d'affectation = Non affecté" → Vérifier badge rouge
+- [ ] Combiner filtres : "Validée + Affecté" → Vérifier cohérence des résultats
+- [ ] Vérifier tooltips au survol des icônes (check/sablier)
+- [ ] Tester AJAX : Les filtres doivent fonctionner sans rechargement de page
+
+---
+
 ### Fix: Calcul incorrect du reliquat dans reinscriptions.show
 
 **Date:** 10 octobre 2025

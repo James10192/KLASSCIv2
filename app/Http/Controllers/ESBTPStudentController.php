@@ -39,17 +39,30 @@ class ESBTPStudentController extends Controller
         ];
         \Log::info('ESBTPStudentController@index start', $baseLogContext);
 
+        // Récupérer l'année universitaire courante
+        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
         // Récupérer les filtres de recherche
         $search = $request->input('search');
         $filiere = $request->input('filiere');
         $niveau = $request->input('niveau');
         $annee = $request->input('annee');
         $status = $request->input('status');
+        $affectationStatus = $request->input('affectation_status');
+        $inscritAnneeCourante = $request->input('inscrit_annee_courante');
 
         $baseQuery = ESBTPEtudiant::query()
             ->with(['user', 'inscriptions' => function ($q) {
                 $q->with(['filiere', 'niveau', 'classe', 'anneeUniversitaire']);
             }]);
+
+        // Charger l'inscription de l'année courante pour afficher le statut d'affectation
+        if ($anneeCourante) {
+            $baseQuery->with(['inscriptions' => function ($q) use ($anneeCourante) {
+                $q->where('annee_universitaire_id', $anneeCourante->id)
+                  ->with(['filiere', 'niveau', 'classe', 'anneeUniversitaire']);
+            }]);
+        }
 
         if ($status) {
             $baseQuery->where('statut', $status);
@@ -69,6 +82,37 @@ class ESBTPStudentController extends Controller
             });
         }
 
+        // Filtre par statut d'affectation (uniquement pour l'année courante avec workflow terminé)
+        if ($affectationStatus && $anneeCourante) {
+            $baseQuery->whereHas('inscriptions', function ($q) use ($affectationStatus, $anneeCourante) {
+                $q->where('annee_universitaire_id', $anneeCourante->id)
+                  ->where('workflow_step', 'etudiant_cree')
+                  ->where('affectation_status', $affectationStatus);
+            });
+        }
+
+        // Filtre par inscription validée dans l'année courante (workflow terminé)
+        if ($inscritAnneeCourante !== null && $inscritAnneeCourante !== '' && $anneeCourante) {
+            if ($inscritAnneeCourante == 'validee') {
+                // Inscription validée (workflow_step = etudiant_cree) dans l'année courante
+                $baseQuery->whereHas('inscriptions', function ($q) use ($anneeCourante) {
+                    $q->where('annee_universitaire_id', $anneeCourante->id)
+                      ->where('workflow_step', 'etudiant_cree');
+                });
+            } elseif ($inscritAnneeCourante == 'en_attente') {
+                // Inscription en cours (workflow pas terminé) dans l'année courante
+                $baseQuery->whereHas('inscriptions', function ($q) use ($anneeCourante) {
+                    $q->where('annee_universitaire_id', $anneeCourante->id)
+                      ->where('workflow_step', '!=', 'etudiant_cree');
+                });
+            } elseif ($inscritAnneeCourante == 'absente') {
+                // Aucune inscription dans l'année courante
+                $baseQuery->whereDoesntHave('inscriptions', function ($q) use ($anneeCourante) {
+                    $q->where('annee_universitaire_id', $anneeCourante->id);
+                });
+            }
+        }
+
         $perPage = 15;
         $currentPage = LengthAwarePaginator::resolveCurrentPage();
 
@@ -79,6 +123,8 @@ class ESBTPStudentController extends Controller
                 'niveau' => $niveau,
                 'annee' => $annee,
                 'status' => $status,
+                'affectation_status' => $affectationStatus,
+                'inscrit_annee_courante' => $inscritAnneeCourante,
             ],
             'page' => $currentPage,
             'per_page' => $perPage,
@@ -210,11 +256,14 @@ class ESBTPStudentController extends Controller
             'filieres',
             'niveaux',
             'annees',
+            'anneeCourante',
             'search',
             'filiere',
             'niveau',
             'annee',
-            'status'
+            'status',
+            'affectationStatus',
+            'inscritAnneeCourante'
         ));
     }
 

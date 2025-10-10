@@ -95,6 +95,24 @@
                                             <option value="inactif" {{ isset($status) && $status == 'inactif' ? 'selected' : '' }}>Inactif</option>
                                         </select>
                                     </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="affectation_status" class="form-label">Statut d'affectation ({{ $anneeCourante?->name ?? 'N/A' }})</label>
+                                        <select class="form-select year-selector" id="affectation_status" name="affectation_status">
+                                            <option value="">Tous les statuts d'affectation</option>
+                                            <option value="affecté" {{ isset($affectationStatus) && $affectationStatus == 'affecté' ? 'selected' : '' }}>Affecté</option>
+                                            <option value="réaffecté" {{ isset($affectationStatus) && $affectationStatus == 'réaffecté' ? 'selected' : '' }}>Réaffecté</option>
+                                            <option value="non_affecté" {{ isset($affectationStatus) && $affectationStatus == 'non_affecté' ? 'selected' : '' }}>Non affecté</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="inscrit_annee_courante" class="form-label">Inscription validée ({{ $anneeCourante?->name ?? 'N/A' }})</label>
+                                        <select class="form-select year-selector" id="inscrit_annee_courante" name="inscrit_annee_courante">
+                                            <option value="">Tous</option>
+                                            <option value="validee" {{ isset($inscritAnneeCourante) && $inscritAnneeCourante == 'validee' ? 'selected' : '' }}>Oui (Validée)</option>
+                                            <option value="en_attente" {{ isset($inscritAnneeCourante) && $inscritAnneeCourante == 'en_attente' ? 'selected' : '' }}>En attente</option>
+                                            <option value="absente" {{ isset($inscritAnneeCourante) && $inscritAnneeCourante == 'absente' ? 'selected' : '' }}>Absente</option>
+                                        </select>
+                                    </div>
                                     <div class="col-md-4 d-flex align-items-end mb-3">
                                         <button type="submit" class="btn-acasi primary me-2">
                                             <i class="fas fa-search"></i>Filtrer
@@ -132,7 +150,7 @@
         const filterInputs = form.querySelectorAll('select');
 
         if (typeof $ !== 'undefined' && typeof $.fn.select2 !== 'undefined') {
-            $('#filiere, #niveau, #annee, #status').select2({
+            $('#filiere, #niveau, #annee, #status, #affectation_status, #inscrit_annee_courante').select2({
                 theme: 'bootstrap4',
                 placeholder: 'Sélectionner une option',
                 allowClear: true

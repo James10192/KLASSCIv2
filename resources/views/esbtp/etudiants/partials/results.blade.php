@@ -9,6 +9,7 @@
                 <th>Contact</th>
                 <th>Résidence</th>
                 <th>Classe actuelle</th>
+                <th>Statut d'affectation</th>
                 <th>Statut</th>
                 <th>Actions</th>
             </tr>
@@ -46,29 +47,92 @@
                         @endif
                     </td>
                     <td>
-                        @if($etudiant->inscriptions->count() > 0)
-                            <?php $derniere = $etudiant->inscriptions->sortByDesc('created_at')->first(); ?>
+                        @php
+                            $anneeCouranteClasse = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+                            $inscriptionCouranteClasse = $etudiant->inscriptions->where('annee_universitaire_id', $anneeCouranteClasse?->id)->first();
+                        @endphp
+                        @if($inscriptionCouranteClasse)
                             <div class="d-flex align-items-center">
                                 <div class="flex-grow-1">
-                                    {{ $derniere->classe ? $derniere->classe->name : 'Non assigné' }}
+                                    {{ $inscriptionCouranteClasse->classe ? $inscriptionCouranteClasse->classe->name : 'Non assigné' }}
                                     <br>
                                     <small>
-                                        {{ $derniere->filiere ? $derniere->filiere->name : '' }}
-                                        {{ $derniere->niveau ? ' - '.$derniere->niveau->name : '' }}
+                                        {{ $inscriptionCouranteClasse->filiere ? $inscriptionCouranteClasse->filiere->name : '' }}
+                                        {{ $inscriptionCouranteClasse->niveau ? ' - '.$inscriptionCouranteClasse->niveau->name : '' }}
                                     </small>
                                 </div>
-                                @if($derniere->status == 'pending' || $derniere->status == 'en_attente')
-                                    <div class="ms-2" title="Inscription en attente de validation">
-                                        <i class="fas fa-hourglass-half text-warning"></i>
-                                    </div>
-                                @elseif($derniere->status == 'active')
-                                    <div class="ms-2" title="Inscription validée">
+                                @if($inscriptionCouranteClasse->workflow_step == 'etudiant_cree')
+                                    <div class="ms-2" title="Inscription validée - Workflow terminé">
                                         <i class="fas fa-check-circle text-success"></i>
+                                    </div>
+                                @else
+                                    <div class="ms-2" title="Inscription en cours - Workflow : {{ $inscriptionCouranteClasse->workflow_step }}">
+                                        <i class="fas fa-hourglass-half text-warning"></i>
                                     </div>
                                 @endif
                             </div>
+                        @elseif($etudiant->inscriptions->count() > 0)
+                            <?php $derniere = $etudiant->inscriptions->sortByDesc('created_at')->first(); ?>
+                            <div>
+                                {{ $derniere->classe ? $derniere->classe->name : 'Non assigné' }}
+                                <br>
+                                <small class="text-muted">
+                                    {{ $derniere->filiere ? $derniere->filiere->name : '' }}
+                                    {{ $derniere->niveau ? ' - '.$derniere->niveau->name : '' }}
+                                    ({{ $derniere->anneeUniversitaire ? $derniere->anneeUniversitaire->name : '' }})
+                                </small>
+                            </div>
                         @else
                             <span class="text-muted">Non inscrit</span>
+                        @endif
+                    </td>
+                    <td>
+                        @php
+                            $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+                            $inscriptionCourante = $etudiant->inscriptions->where('annee_universitaire_id', $anneeCourante?->id)->first();
+
+                            // Labels des étapes du workflow
+                            $workflowLabels = [
+                                'prospect' => 'Prospect',
+                                'documents_complets' => 'Documents complets',
+                                'en_validation' => 'En validation',
+                                'valide' => 'Validé',
+                                'etudiant_cree' => 'Étudiant créé'
+                            ];
+                        @endphp
+                        @if($inscriptionCourante)
+                            @if($inscriptionCourante->workflow_step == 'etudiant_cree')
+                                {{-- Workflow terminé: afficher uniquement le statut d'affectation --}}
+                                @if($inscriptionCourante->affectation_status == 'affecté')
+                                    <span class="badge bg-success px-3 py-2">Affecté</span>
+                                @elseif($inscriptionCourante->affectation_status == 'réaffecté')
+                                    <span class="badge bg-info px-3 py-2">Réaffecté</span>
+                                @elseif($inscriptionCourante->affectation_status == 'non_affecté')
+                                    <span class="badge bg-danger px-3 py-2">Non affecté</span>
+                                @else
+                                    <span class="text-muted">-</span>
+                                @endif
+                            @else
+                                {{-- Workflow en cours: afficher l'étape + statut d'affectation --}}
+                                <div class="d-flex flex-column gap-1">
+                                    <span class="badge bg-warning text-dark px-2 py-1" style="font-size: 0.75rem;">
+                                        <i class="fas fa-tasks me-1"></i>{{ $workflowLabels[$inscriptionCourante->workflow_step] ?? $inscriptionCourante->workflow_step }}
+                                    </span>
+                                    @if($inscriptionCourante->affectation_status)
+                                        <div>
+                                            @if($inscriptionCourante->affectation_status == 'affecté')
+                                                <span class="badge bg-success px-2 py-1" style="font-size: 0.7rem;">Affecté</span>
+                                            @elseif($inscriptionCourante->affectation_status == 'réaffecté')
+                                                <span class="badge bg-info px-2 py-1" style="font-size: 0.7rem;">Réaffecté</span>
+                                            @elseif($inscriptionCourante->affectation_status == 'non_affecté')
+                                                <span class="badge bg-danger px-2 py-1" style="font-size: 0.7rem;">Non affecté</span>
+                                            @endif
+                                        </div>
+                                    @endif
+                                </div>
+                            @endif
+                        @else
+                            <span class="text-muted small">Pas d'inscription ({{ $anneeCourante?->name ?? 'N/A' }})</span>
                         @endif
                     </td>
                     <td>
@@ -99,7 +163,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="9" class="text-center">Aucun étudiant trouvé</td>
+                    <td colspan="10" class="text-center">Aucun étudiant trouvé</td>
                 </tr>
             @endforelse
         </tbody>
