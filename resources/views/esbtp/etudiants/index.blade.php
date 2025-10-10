@@ -113,6 +113,14 @@
                                             <option value="absente" {{ isset($inscritAnneeCourante) && $inscritAnneeCourante == 'absente' ? 'selected' : '' }}>Absente</option>
                                         </select>
                                     </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="est_transfert" class="form-label">Transfert</label>
+                                        <select class="form-select year-selector" id="est_transfert" name="est_transfert">
+                                            <option value="">Tous</option>
+                                            <option value="1" {{ isset($estTransfert) && $estTransfert == '1' ? 'selected' : '' }}>Oui (Transferts)</option>
+                                            <option value="0" {{ isset($estTransfert) && $estTransfert == '0' ? 'selected' : '' }}>Non (Locaux)</option>
+                                        </select>
+                                    </div>
                                     <div class="col-md-4 d-flex align-items-end mb-3">
                                         <button type="submit" class="btn-acasi primary me-2">
                                             <i class="fas fa-search"></i>Filtrer

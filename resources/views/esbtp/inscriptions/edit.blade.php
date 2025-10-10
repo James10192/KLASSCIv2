@@ -131,6 +131,39 @@
                     </div>
                 </div>
 
+                <!-- Section Transfert (visible seulement si type_inscription = 'première_inscription') -->
+                <div class="row mb-3" id="transfert-section" style="display: {{ old('type_inscription', $inscription->type_inscription) == 'première_inscription' ? 'flex' : 'none' }}">
+                    <div class="col-md-12">
+                        <h6 class="font-weight-bold text-primary mb-3">
+                            <i class="fas fa-exchange-alt me-2"></i>Informations de transfert
+                        </h6>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="est_transfert">L'étudiant vient-il d'un autre établissement ?</label>
+                            <select class="form-control @error('est_transfert') is-invalid @enderror" id="est_transfert" name="est_transfert">
+                                <option value="0" {{ old('est_transfert', $inscription->est_transfert ? '1' : '0') == '0' ? 'selected' : '' }}>Non</option>
+                                <option value="1" {{ old('est_transfert', $inscription->est_transfert ? '1' : '0') == '1' ? 'selected' : '' }}>Oui</option>
+                            </select>
+                            @error('est_transfert')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                    </div>
+
+                    <div class="col-md-6" id="etablissement-origine-field" style="display: {{ old('est_transfert', $inscription->est_transfert ? '1' : '0') == '1' ? 'block' : 'none' }}">
+                        <div class="form-group">
+                            <label for="etablissement_origine">Nom de l'établissement d'origine</label>
+                            <input type="text" class="form-control @error('etablissement_origine') is-invalid @enderror" id="etablissement_origine" name="etablissement_origine" value="{{ old('etablissement_origine', $inscription->etablissement_origine) }}" placeholder="Ex: Lycée Technique d'Abidjan">
+                            <small class="form-text text-muted">Optionnel - Indiquez l'établissement d'où vient l'étudiant</small>
+                            @error('etablissement_origine')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                    </div>
+                </div>
+
                 <div class="row mb-3">
                     @if($inscription->status !== 'active' || auth()->user()->hasRole('superAdmin'))
                         <div class="col-md-4">
@@ -346,6 +379,39 @@
                 alert("Attention : Changer le statut à 'annulée' peut modifier le statut de l'étudiant à 'inactif' s'il n'a pas d'autres inscriptions actives.");
             }
         });
+
+        // Gestion de la visibilité de la section transfert
+        function toggleTransfertSection() {
+            const typeInscription = $('#type_inscription').val();
+            if (typeInscription === 'première_inscription') {
+                $('#transfert-section').show();
+            } else {
+                $('#transfert-section').hide();
+                // Réinitialiser les valeurs si on cache la section
+                $('#est_transfert').val('0');
+                $('#etablissement_origine').val('');
+                $('#etablissement-origine-field').hide();
+            }
+        }
+
+        // Gestion de la visibilité du champ établissement d'origine
+        function toggleEtablissementOrigine() {
+            const estTransfert = $('#est_transfert').val();
+            if (estTransfert === '1') {
+                $('#etablissement-origine-field').show();
+            } else {
+                $('#etablissement-origine-field').hide();
+                $('#etablissement_origine').val('');
+            }
+        }
+
+        // Event listeners
+        $('#type_inscription').change(toggleTransfertSection);
+        $('#est_transfert').change(toggleEtablissementOrigine);
+
+        // Initialiser l'état au chargement
+        toggleTransfertSection();
+        toggleEtablissementOrigine();
     });
 </script>
 @endpush

@@ -1079,6 +1079,8 @@ class ESBTPInscriptionController extends Controller
             'observations' => 'nullable|string',
             'status' => 'required|in:en_attente,active,annulée,terminée',
             'affectation_status' => 'nullable|in:affecté,réaffecté,non_affecté',
+            'est_transfert' => 'nullable|boolean',
+            'etablissement_origine' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -1125,6 +1127,16 @@ class ESBTPInscriptionController extends Controller
             $inscription->frais_inscription = $data['frais_inscription'] ?? $inscription->frais_inscription ?? 0;
             $inscription->observations = $data['observations'];
             $inscription->affectation_status = $data['affectation_status'] ?? null;
+
+            // Mettre à jour les champs de transfert (seulement si type_inscription = 'première_inscription')
+            if ($inscription->type_inscription === 'première_inscription') {
+                $inscription->est_transfert = $request->boolean('est_transfert', false);
+                $inscription->etablissement_origine = $request->input('etablissement_origine');
+            } else {
+                // Réinitialiser si ce n'est pas une première inscription
+                $inscription->est_transfert = false;
+                $inscription->etablissement_origine = null;
+            }
 
             // Mettre à jour le statut et les champs associés
             $nouveauStatut = $data['status'];

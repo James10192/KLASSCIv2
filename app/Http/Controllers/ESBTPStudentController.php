@@ -50,6 +50,7 @@ class ESBTPStudentController extends Controller
         $status = $request->input('status');
         $affectationStatus = $request->input('affectation_status');
         $inscritAnneeCourante = $request->input('inscrit_annee_courante');
+        $estTransfert = $request->input('est_transfert');
 
         $baseQuery = ESBTPEtudiant::query()
             ->with(['user', 'inscriptions' => function ($q) {
@@ -113,6 +114,14 @@ class ESBTPStudentController extends Controller
             }
         }
 
+        // Filtre par transfert (uniquement sur les inscriptions de type "première_inscription")
+        if ($estTransfert !== null && $estTransfert !== '') {
+            $baseQuery->whereHas('inscriptions', function ($q) use ($estTransfert) {
+                $q->where('type_inscription', 'première_inscription')
+                  ->where('est_transfert', $estTransfert == '1' ? true : false);
+            });
+        }
+
         $perPage = 15;
         $currentPage = LengthAwarePaginator::resolveCurrentPage();
 
@@ -125,6 +134,7 @@ class ESBTPStudentController extends Controller
                 'status' => $status,
                 'affectation_status' => $affectationStatus,
                 'inscrit_annee_courante' => $inscritAnneeCourante,
+                'est_transfert' => $estTransfert,
             ],
             'page' => $currentPage,
             'per_page' => $perPage,
@@ -263,7 +273,8 @@ class ESBTPStudentController extends Controller
             'annee',
             'status',
             'affectationStatus',
-            'inscritAnneeCourante'
+            'inscritAnneeCourante',
+            'estTransfert'
         ));
     }
 
