@@ -42,12 +42,15 @@
     .stat-card {
         background: white;
         border-radius: var(--radius-large);
-        padding: var(--space-lg);
+        padding: 1.25rem;
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
         border: 1px solid var(--absences-border);
         position: relative;
         overflow: hidden;
         transition: all 0.3s ease;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
     }
 
     .stat-card::before {
@@ -80,13 +83,18 @@
         box-shadow: 0 8px 25px rgba(var(--primary-rgb), 0.15);
     }
 
+    .stat-card .d-flex {
+        margin-bottom: 0 !important;
+    }
+
     .stat-card h6 {
-        font-size: var(--text-sm);
+        font-size: 0.75rem;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.5px;
         color: var(--text-secondary);
-        margin-bottom: var(--space-sm);
+        margin-bottom: 0;
+        line-height: 1.2;
     }
 
     .stat-value {
@@ -94,6 +102,16 @@
         font-weight: 700;
         color: var(--text-primary);
         line-height: 1;
+        margin: 0.5rem 0;
+    }
+
+    .stat-card .mt-2 {
+        margin-top: 0 !important;
+    }
+
+    .stat-card small {
+        font-size: 0.75rem;
+        line-height: 1.3;
     }
 
     .stat-icon {
@@ -170,23 +188,62 @@
 
     /* Responsive Design */
     @media (max-width: 768px) {
+        .dashboard-acasi {
+            padding: 0 !important;
+        }
+
+        .main-content {
+            padding: 1rem !important;
+            max-width: 100vw;
+            overflow-x: hidden;
+        }
+
         .stats-grid {
             grid-template-columns: 1fr;
-            gap: var(--space-md);
+            gap: 1rem;
+        }
+
+        .stat-card {
+            padding: 1rem;
+        }
+
+        .stat-card h6 {
+            font-size: 0.7rem;
+        }
+
+        .stat-value {
+            font-size: 1.75rem;
+        }
+
+        .stat-icon {
+            width: 36px;
+            height: 36px;
+        }
+
+        .student-header {
+            padding: 1.5rem 1rem !important;
+            margin-left: -1rem;
+            margin-right: -1rem;
+            margin-top: -1rem;
+            margin-bottom: 1rem;
         }
 
         .student-header .d-flex {
             flex-direction: column !important;
             align-items: flex-start !important;
-            gap: var(--space-md);
+            gap: 0.75rem;
         }
 
         .student-header h1 {
-            font-size: 1.5rem !important;
+            font-size: 1.35rem !important;
+        }
+
+        .student-header h1 i {
+            font-size: 1.2rem !important;
         }
 
         .student-header .header-subtitle {
-            font-size: 0.875rem !important;
+            font-size: 0.8rem !important;
         }
 
         .student-header .text-end {
@@ -197,10 +254,115 @@
         .student-header .badge {
             display: inline-block;
             width: auto;
+            font-size: 0.7rem !important;
+            padding: 0.4rem 0.75rem !important;
+        }
+
+        .filter-section {
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .filter-section h5 {
+            font-size: 0.95rem;
+            margin-bottom: 1rem;
+        }
+
+        .filter-section .row {
+            margin: 0 -0.5rem;
         }
 
         .filter-section .row > div {
-            margin-bottom: var(--space-sm);
+            padding: 0 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .filter-section label {
+            font-size: 0.85rem;
+            margin-bottom: 0.35rem;
+        }
+
+        .filter-section .form-control,
+        .filter-section .form-select,
+        .filter-section .btn {
+            font-size: 0.85rem;
+        }
+
+        .card-moderne {
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .card-moderne h5 {
+            font-size: 0.95rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .table {
+            font-size: 0.8rem;
+            min-width: 600px;
+        }
+
+        .table th,
+        .table td {
+            padding: 0.5rem 0.35rem;
+            white-space: nowrap;
+        }
+
+        .chart-container {
+            height: 250px !important;
+        }
+
+        .row.mb-4 {
+            margin-left: -0.5rem;
+            margin-right: -0.5rem;
+        }
+
+        .row.mb-4 > [class*='col-'] {
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
+        }
+
+        .alert {
+            font-size: 0.85rem;
+            padding: 0.75rem;
+        }
+
+        .badge {
+            font-size: 0.7rem;
+            padding: 0.35em 0.6em;
+        }
+
+        .btn-sm {
+            font-size: 0.75rem;
+            padding: 0.35rem 0.6rem;
+        }
+    }
+
+    @media (max-width: 400px) {
+        .main-content {
+            padding: 0.75rem !important;
+        }
+
+        .stat-card {
+            padding: 0.85rem;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+        }
+
+        .student-header h1 {
+            font-size: 1.2rem !important;
+        }
+
+        .table {
+            font-size: 0.75rem;
         }
     }
 </style>
@@ -276,46 +438,46 @@
         <!-- Statistiques -->
         <div class="stats-grid">
             <div class="stat-card danger">
-                <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex justify-content-between align-items-center">
                     <h6>Total Absences</h6>
                     <div class="stat-icon bg-danger-light">
                         <i class="fas fa-times text-danger"></i>
                     </div>
                 </div>
                 <div class="stat-value">{{ $absences->count() }}</div>
-                <div class="mt-2">
+                <div>
                     <small class="text-muted">Sur la période sélectionnée</small>
                 </div>
             </div>
 
             <div class="stat-card success">
-                <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex justify-content-between align-items-center">
                     <h6>Absences Justifiées</h6>
                     <div class="stat-icon bg-success-light">
                         <i class="fas fa-check text-success"></i>
                     </div>
                 </div>
                 <div class="stat-value">{{ $excuses->count() }}</div>
-                <div class="mt-2">
+                <div>
                     <small class="text-muted">{{ $absences->count() > 0 ? round(($excuses->count() / max($absences->count(), 1)) * 100) : 0 }}% des absences</small>
                 </div>
             </div>
 
             <div class="stat-card warning">
-                <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex justify-content-between align-items-center">
                     <h6>Retards</h6>
                     <div class="stat-icon bg-warning-light">
                         <i class="fas fa-clock text-warning"></i>
                     </div>
                 </div>
                 <div class="stat-value">{{ $retards->count() }}</div>
-                <div class="mt-2">
+                <div>
                     <small class="text-muted">Sur {{ $presences->count() + $absences->count() + $retards->count() + $excuses->count() }} séances</small>
                 </div>
             </div>
 
             <div class="stat-card info">
-                <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex justify-content-between align-items-center">
                     <h6>Taux de Présence</h6>
                     <div class="stat-icon bg-info-light">
                         <i class="fas fa-chart-line text-info"></i>
@@ -325,7 +487,7 @@
                     $totalDays = $presences->count() + $absences->count();
                     $presenceRate = $totalDays > 0 ? round(($presences->count() / $totalDays) * 100) : 100;
                 @endphp
-                <div class="d-flex align-items-center mb-2">
+                <div class="d-flex align-items-center">
                     <div class="progress flex-grow-1 me-2" style="height: 8px; background-color: #f8f9fa;">
                         <div class="progress-bar {{ $presenceRate >= 75 ? 'bg-success' : ($presenceRate >= 50 ? 'bg-warning' : 'bg-danger') }}"
                              role="progressbar"
@@ -337,7 +499,7 @@
                     </div>
                     <span class="fw-bold">{{ $presenceRate }}%</span>
                 </div>
-                <div class="mt-2">
+                <div>
                     <small class="text-muted">Objectif: minimum 75%</small>
                 </div>
             </div>
