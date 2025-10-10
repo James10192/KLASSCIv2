@@ -220,30 +220,18 @@
             height: 36px;
         }
 
-        .student-header {
-            padding: 1.5rem 1rem !important;
-            margin-left: -1rem;
-            margin-right: -1rem;
-            margin-top: -1rem;
-            margin-bottom: 1rem;
-        }
-
         .student-header .d-flex {
             flex-direction: column !important;
             align-items: flex-start !important;
-            gap: 0.75rem;
+            gap: var(--space-md);
         }
 
         .student-header h1 {
-            font-size: 1.35rem !important;
-        }
-
-        .student-header h1 i {
-            font-size: 1.2rem !important;
+            font-size: 1.5rem !important;
         }
 
         .student-header .header-subtitle {
-            font-size: 0.8rem !important;
+            font-size: 0.875rem !important;
         }
 
         .student-header .text-end {
@@ -254,8 +242,6 @@
         .student-header .badge {
             display: inline-block;
             width: auto;
-            font-size: 0.7rem !important;
-            padding: 0.4rem 0.75rem !important;
         }
 
         .filter-section {
@@ -341,6 +327,67 @@
         .btn-sm {
             font-size: 0.75rem;
             padding: 0.35rem 0.6rem;
+        }
+
+        /* Hide tables on mobile, show grid cards instead */
+        .table-responsive .table {
+            display: none;
+        }
+
+        .mobile-grid {
+            display: grid !important;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        .mobile-card {
+            background: white;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            border-left: 4px solid var(--primary);
+        }
+
+        .mobile-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        .mobile-card-title {
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+        }
+
+        .mobile-card-body {
+            display: grid;
+            gap: 0.5rem;
+        }
+
+        .mobile-card-row {
+            display: grid;
+            grid-template-columns: 100px 1fr;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .mobile-card-label {
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .mobile-card-value {
+            color: var(--text-primary);
+        }
+    }
+
+    @media (min-width: 769px) {
+        .mobile-grid {
+            display: none !important;
         }
     }
 
@@ -537,6 +584,8 @@
                 <i class="fas fa-table"></i>
                 Statistiques par matière
             </h5>
+
+            <!-- Table for desktop -->
             <div class="table-responsive">
                 <table class="table table-hover">
                     <thead class="table-light">
@@ -582,6 +631,50 @@
                     </tbody>
                 </table>
             </div>
+
+            <!-- Grid for mobile -->
+            <div class="mobile-grid" style="display: none;">
+                @forelse($absencesParMatiere as $matiereId => $statistiques)
+                    <div class="mobile-card">
+                        <div class="mobile-card-header">
+                            <div class="mobile-card-title">
+                                <i class="fas fa-book text-primary me-2"></i>
+                                {{ $statistiques['nom'] }}
+                            </div>
+                            <span class="badge {{ $statistiques['taux_presence'] >= 75 ? 'bg-success' : ($statistiques['taux_presence'] >= 50 ? 'bg-warning' : 'bg-danger') }}">
+                                {{ $statistiques['taux_presence'] }}%
+                            </span>
+                        </div>
+                        <div class="mobile-card-body">
+                            <div class="mobile-card-row">
+                                <span class="mobile-card-label">Séances</span>
+                                <span class="mobile-card-value">{{ $statistiques['total'] }}</span>
+                            </div>
+                            <div class="mobile-card-row">
+                                <span class="mobile-card-label">Présences</span>
+                                <span class="mobile-card-value text-success">{{ $statistiques['present'] }}</span>
+                            </div>
+                            <div class="mobile-card-row">
+                                <span class="mobile-card-label">Absences</span>
+                                <span class="mobile-card-value text-danger">{{ $statistiques['absent'] }}</span>
+                            </div>
+                            <div class="mobile-card-row">
+                                <span class="mobile-card-label">Retards</span>
+                                <span class="mobile-card-value text-warning">{{ $statistiques['retard'] }}</span>
+                            </div>
+                            <div class="mobile-card-row">
+                                <span class="mobile-card-label">Excusés</span>
+                                <span class="mobile-card-value text-info">{{ $statistiques['excuse'] }}</span>
+                            </div>
+                        </div>
+                    </div>
+                @empty
+                    <div class="alert alert-info mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Aucune donnée disponible
+                    </div>
+                @endforelse
+            </div>
         </div>
     </div>
 
@@ -597,6 +690,7 @@
                     Aucune absence enregistrée sur la période sélectionnée.
                 </div>
             @else
+                <!-- Table for desktop -->
                 <div class="table-responsive">
                     <table class="table table-hover align-middle">
                         <thead class="table-light">
@@ -689,6 +783,80 @@
                             @endforeach
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Grid for mobile -->
+                <div class="mobile-grid" style="display: none;">
+                    @foreach($absences as $absence)
+                        @php
+                            $hasAdminComment = false;
+                            $adminComment = '';
+                            $studentComment = $absence->commentaire ?? '';
+                            if (strpos($studentComment, "Commentaire de l'administration:") !== false) {
+                                $parts = explode("Commentaire de l'administration:", $studentComment);
+                                $studentComment = trim($parts[0]);
+                                $adminComment = trim($parts[1] ?? '');
+                                $hasAdminComment = true;
+                            }
+                        @endphp
+                        <div class="mobile-card" id="mobile_absence_{{ $absence->seanceCours->id ?? 'unknown' }}_{{ $absence->date ? $absence->date->format('Y-m-d') : 'unknown' }}">
+                            <div class="mobile-card-header">
+                                <div>
+                                    <div class="mobile-card-title">{{ $absence->seanceCours->matiere->name ?? 'N/A' }}</div>
+                                    <small class="text-muted">{{ $absence->date ? $absence->date->format('d/m/Y') : 'N/A' }} • {{ $absence->seanceCours->type_cours ?? 'N/A' }}</small>
+                                </div>
+                                @if($absence->statut == 'excuse')
+                                    <span class="badge bg-success">Justifiée</span>
+                                @elseif($absence->justified_at && $absence->statut == 'absent')
+                                    <span class="badge bg-warning">En attente</span>
+                                @else
+                                    <span class="badge bg-danger">Non justifiée</span>
+                                @endif
+                            </div>
+                            <div class="mobile-card-body">
+                                @if($studentComment)
+                                    <div class="mb-2">
+                                        <strong style="font-size: 0.8rem; color: var(--text-secondary);">Justification:</strong>
+                                        <p class="mb-0" style="font-size: 0.85rem;">{{ Str::limit($studentComment, 80) }}</p>
+                                    </div>
+                                @endif
+
+                                @if($hasAdminComment)
+                                    <div class="alert alert-danger py-2 px-2 mb-2" style="font-size: 0.8rem;">
+                                        <strong>Admin:</strong> {{ Str::limit($adminComment, 60) }}
+                                    </div>
+                                @endif
+
+                                @if($absence->document_path)
+                                    <div class="mb-2">
+                                        <a href="{{ asset('storage/' . $absence->document_path) }}" target="_blank" class="text-primary" style="font-size: 0.85rem;">
+                                            <i class="fas fa-paperclip"></i> Document
+                                        </a>
+                                    </div>
+                                @endif
+
+                                <div class="mt-2 d-flex gap-2">
+                                    @if($absence->statut != 'excuse' && !$absence->justified_at)
+                                        <button type="button" class="btn btn-sm btn-primary flex-grow-1" data-bs-toggle="modal" data-bs-target="#justifierModal{{ $absence->id }}">
+                                            <i class="fas fa-file-alt"></i> Justifier
+                                        </button>
+                                    @elseif($absence->justified_at && $absence->statut == 'absent' && $hasAdminComment)
+                                        <button type="button" class="btn btn-sm btn-warning flex-grow-1" data-bs-toggle="modal" data-bs-target="#resoumettreModal{{ $absence->id }}">
+                                            <i class="fas fa-redo"></i> Re-soumettre
+                                        </button>
+                                    @elseif($absence->justified_at && $absence->statut == 'absent')
+                                        <span class="badge bg-secondary">En attente d'examen</span>
+                                    @endif
+
+                                    @if(strlen($studentComment) > 80 || $hasAdminComment)
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#justificationModal{{ $absence->id }}">
+                                            <i class="fas fa-eye"></i> Détails
+                                        </button>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
                 </div>
             @endif
         </div>
