@@ -2,6 +2,96 @@
 
 ## Corrections récentes
 
+### Fix: Calcul incorrect du reliquat dans reinscriptions.show
+
+**Date:** 10 octobre 2025
+**Branche:** presentation
+
+#### Problème résolu
+
+Dans la page `reinscriptions.show`, la carte de validation affichait un reliquat erroné pour l'étudiant MESBTP22-0545 :
+- **Affiché** : "150 000 FCFA à régulariser"
+- **Attendu** : "Aucun reliquat en attente"
+
+**Cause racine :**
+Le calcul utilisait `$etudiant->solde_restant` qui représente le solde de l'inscription actuelle (année courante 2025-2026), incluant les frais non payés de l'année en cours. Pour cet étudiant :
+- Solde inscription actuelle = 150 000 FCFA (frais 2025-2026 non payés)
+- Reliquats entrants (années précédentes) = 0 FCFA
+
+**Définition correcte du reliquat :**
+Un reliquat = uniquement les dettes reportées des années précédentes via `ESBTPReliquatDetail`, PAS les frais impayés de l'année courante.
+
+#### Solution implémentée
+
+**1. Backend - ESBTPReinscriptionController@show (lignes 292-307)**
+
+Ajout du calcul du vrai reliquat basé sur `ESBTPReliquatDetail` :
+
+```php
+// Calculer le VRAI reliquat (uniquement les dettes des années précédentes via ESBTPReliquatDetail)
+// comme dans inscriptions.show
+$reliquatsEntrants = \App\Models\ESBTPReliquatDetail::where('inscription_destination_id', $inscription->id)
+    ->actifs()
+    ->get();
+
+$reliquatMontant = $reliquatsEntrants->sum('solde_restant');
+
+// ... autres calculs ...
+
+// IMPORTANT: Le reliquat affiché dans la carte de validation = uniquement années précédentes
+$etudiant->reliquat_reel = $reliquatMontant;
+```
+
+**2. Vue - reinscriptions/show.blade.php (ligne 493-495)**
+
+Remplacement de `solde_restant` par `reliquat_reel` :
+
+```blade
+// CORRECTION: Utiliser reliquat_reel (uniquement années précédentes) au lieu de solde_restant (année courante)
+$reliquatRestant = $etudiant->reliquat_reel ?? 0;
+$reliquatGere = $reliquatRestant <= 0;
+```
+
+#### Cohérence avec inscriptions.show
+
+Cette correction aligne la logique de `reinscriptions.show` avec celle de `inscriptions.show` (lignes 953-967) où le même calcul est appliqué :
+
+```php
+// Reliquats entrants (provenant d'inscriptions précédentes)
+$reliquatsEntrants = \App\Models\ESBTPReliquatDetail::where('inscription_destination_id', $inscription->id)
+    ->with([...])
+    ->actifs()
+    ->get();
+
+// Statistiques reliquats
+$statistiquesReliquats = [
+    'total_reliquats_entrants' => $reliquatsEntrants->sum('solde_restant'),
+    ...
+];
+```
+
+#### Résultat
+
+Pour l'étudiant MESBTP22-0545 :
+- ✅ **Avant** : "Reliquat : 150 000 FCFA à régulariser" (incorrect)
+- ✅ **Après** : "Reliquat : Aucun reliquat en attente" (correct)
+
+Le montant de 150 000 FCFA reste visible dans la section "Situation Financière & Réinscription" en tant que "Reste à Payer" pour l'année courante, ce qui est correct.
+
+#### Fichiers modifiés
+
+- [app/Http/Controllers/ESBTP/ESBTPReinscriptionController.php](app/Http/Controllers/ESBTP/ESBTPReinscriptionController.php:292-307) - Ajout calcul reliquat_reel
+- [resources/views/esbtp/reinscription/show.blade.php](resources/views/esbtp/reinscription/show.blade.php:493-495) - Utilisation reliquat_reel
+
+#### Différence clé
+
+| Variable | Signification | Utilisé pour |
+|----------|---------------|--------------|
+| `$etudiant->solde_restant` | Frais non payés de l'inscription actuelle (année courante) | KPI "Reste à Payer" |
+| `$etudiant->reliquat_reel` | Dettes reportées des années précédentes (via ESBTPReliquatDetail) | Carte "Reliquat" |
+
+---
+
 ### Fix: Boutons et modals de rejet de paiement non fonctionnels
 
 **Date:** 10 octobre 2025
