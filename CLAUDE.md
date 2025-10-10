@@ -2,6 +2,84 @@
 
 ## Corrections récentes
 
+### Feature: Accès en lecture seule aux classes pour les coordinateurs
+
+**Date:** 10 octobre 2025
+**Branche:** presentation
+
+#### Fonctionnalités ajoutées
+
+Ajout du menu "Classes" dans la sidebar des coordinateurs avec permissions en lecture seule uniquement, sans possibilité de créer ou modifier des classes.
+
+#### Modifications des permissions
+
+**Rôle coordinateur** (`fix_permissions.php` ligne 292):
+- ✅ **Conservé**: `view_classes` - Peut consulter les classes
+- ❌ **Supprimé**: `edit_classes` - Ne peut plus modifier les classes
+- ❌ **Supprimé**: `create_classes` - Ne peut plus créer de classes
+
+**Justification**: Les coordinateurs doivent pouvoir consulter les classes pour la coordination pédagogique (gestion étudiants, emplois du temps) mais la création/modification reste réservée aux superAdmin et secrétaires.
+
+#### Ajout dans la sidebar
+
+**Fichier**: `resources/views/layouts/app.blade.php` (lignes 1567-1573)
+
+**Nouveau menu item** dans la section "Coordination pédagogique":
+```blade
+<!-- Classes Management -->
+<div class="menu-item">
+    <a href="{{ route('esbtp.classes.index') }}" class="menu-link">
+        <div class="menu-icon"><i class="fas fa-chalkboard"></i></div>
+        <div class="menu-text">Classes</div>
+    </a>
+</div>
+```
+
+**Placement**: Entre "Gestion étudiants" et "Gestion du personnel"
+
+#### Protections existantes vérifiées
+
+Les vues sont déjà correctement protégées avec `@if(auth()->user()->hasRole('superAdmin'))`:
+
+- ✅ `classes/index.blade.php` (ligne 19) - Bouton "Nouvelle Classe"
+- ✅ `classes/partials/results.blade.php` (ligne 22) - Bouton "Créer une classe"
+- ✅ `classes/partials/items.blade.php` (ligne 70) - Bouton "Modifier"
+
+**Résultat**: Les coordinateurs ne voient aucun bouton de création/édition.
+
+#### Routes protégées
+
+Les routes utilisent déjà le middleware `permission:view_classes`:
+```php
+Route::get('classes', [ESBTPClasseController::class, 'index'])
+    ->middleware(['permission:view_classes|view classes']);
+
+Route::get('classes/{classe}', [ESBTPClasseController::class, 'show'])
+    ->middleware(['permission:view_classes|view classes']);
+```
+
+#### Résultat final
+
+**Pour les coordinateurs:**
+- ✅ **PEUT**: Voir le menu Classes, accéder à la liste, consulter les détails, voir listes d'appel
+- ❌ **NE PEUT PAS**: Créer, modifier ou supprimer des classes
+
+**Pour les superAdmin:**
+- ✅ Aucun changement - conserve tous les accès
+
+#### Fichiers modifiés
+
+- [fix_permissions.php:292](fix_permissions.php:292) - Suppression permissions create/edit
+- [resources/views/layouts/app.blade.php:1567-1573](resources/views/layouts/app.blade.php:1567) - Ajout menu Classes
+
+#### Tests effectués
+
+- ✅ Script permissions exécuté (61 permissions accordées au coordinateur)
+- ✅ Vérification Spatie: `view_classes` = OUI, `create_classes` = NON, `edit_classes` = NON
+- ✅ Caches vidés (cache, config, permissions)
+
+---
+
 ### Feature: Colonne statut d'affectation et filtre inscription validée dans etudiants.index
 
 **Date:** 10 octobre 2025

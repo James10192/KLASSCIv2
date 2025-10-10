@@ -289,7 +289,7 @@ try {
         'paiements.view',
         'frais.view',
         'view cycles', 'edit cycles',
-        'view_classes', 'edit_classes',
+        'view_classes', // REMOVED: 'edit_classes', 'create_classes' - coordinateurs can only view, not edit/create
         'view_matieres', 'edit_matieres',
         'view_notes', 'create_notes', 'edit_notes',
         'view_grades', 'create_grade', 'edit_grades', 'delete_grades',

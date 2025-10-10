@@ -1564,6 +1564,14 @@
                             </div>
                         </div>
 
+                        <!-- Classes Management -->
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.classes.index') }}" class="menu-link {{ Request::routeIs('esbtp.classes.index') || Request::routeIs('esbtp.classes.show') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-chalkboard"></i></div>
+                                <div class="menu-text">Classes</div>
+                            </a>
+                        </div>
+
                         <!-- Personnel Management -->
                         <div class="menu-item">
                             <a href="{{ route('esbtp.personnel.unified.index') }}" class="menu-link {{ Request::routeIs('esbtp.personnel.unified.*') ? 'active' : '' }}">
