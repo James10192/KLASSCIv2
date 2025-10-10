@@ -426,11 +426,60 @@ body.modal-open .card:hover {
                                         </tr>
                                         <tr>
                                             <th>Type d'inscription</th>
-                                            <td>{{ $inscription->type_inscription }}</td>
+                                            <td>
+                                                <span class="badge bg-{{ in_array($inscription->type_inscription, ['reinscription', 'réinscription']) ? 'info' : 'primary' }}">
+                                                    {{ in_array($inscription->type_inscription, ['reinscription', 'réinscription']) ? 'Réinscription' : ucfirst($inscription->type_inscription) }}
+                                                </span>
+                                            </td>
                                         </tr>
                                         <tr>
                                             <th>Observations</th>
-                                            <td>{{ $inscription->observations ?: 'Aucune' }}</td>
+                                            <td>
+                                                @if(in_array($inscription->type_inscription, ['reinscription', 'réinscription']) && $reinscriptionData)
+                                                    <div class="reinscription-details" style="font-size: 0.95em;">
+                                                        @if(isset($reinscriptionData['decision']))
+                                                        <div class="mb-2">
+                                                            <strong>Décision académique:</strong>
+                                                            <span class="badge bg-{{ strtolower($reinscriptionData['decision']) === 'passage' ? 'success' : (strtolower($reinscriptionData['decision']) === 'redoublement' ? 'danger' : 'warning') }}">
+                                                                {{ $reinscriptionData['decision_label'] ?? $reinscriptionData['decision'] }}
+                                                            </span>
+                                                        </div>
+                                                        @endif
+
+                                                        <div class="mb-2">
+                                                            <strong>Statut d'affectation:</strong>
+                                                            <span class="text-muted">{{ $reinscriptionData['affectation_label'] }}</span>
+                                                        </div>
+
+                                                        @if(!$reinscriptionData['reliquat_gere'])
+                                                        <div class="mb-2">
+                                                            <strong>Reliquat:</strong>
+                                                            <span class="text-warning">
+                                                                <i class="fas fa-exclamation-triangle"></i>
+                                                                {{ number_format($reinscriptionData['reliquat_montant'], 0, ',', ' ') }} FCFA à régulariser
+                                                            </span>
+                                                        </div>
+                                                        @else
+                                                        <div class="mb-2">
+                                                            <strong>Reliquat:</strong>
+                                                            <span class="text-success">
+                                                                <i class="fas fa-check-circle"></i>
+                                                                Aucun reliquat en attente
+                                                            </span>
+                                                        </div>
+                                                        @endif
+
+                                                        @if(isset($reinscriptionData['notes']) && $reinscriptionData['notes'])
+                                                        <div class="mt-2 pt-2" style="border-top: 1px solid #dee2e6;">
+                                                            <strong>Notes complémentaires:</strong><br>
+                                                            <span class="text-muted">{{ $reinscriptionData['notes'] }}</span>
+                                                        </div>
+                                                        @endif
+                                                    </div>
+                                                @else
+                                                    {{ $inscription->observations ?: 'Aucune' }}
+                                                @endif
+                                            </td>
                                         </tr>
                                     </table>
                                 </div>

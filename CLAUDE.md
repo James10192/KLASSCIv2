@@ -2,6 +2,77 @@
 
 ## Corrections récentes
 
+### Feature: Affichage détaillé des informations de réinscription dans inscriptions.show
+
+**Date:** 10 octobre 2025
+**Branche:** presentation
+
+#### Fonctionnalités ajoutées
+
+Affichage automatique des informations de réinscription dans la section "Observations" de `inscriptions.show` pour les inscriptions de type `réinscription`.
+
+**Informations affichées :**
+- ✅ **Décision académique** : Badge coloré (Passage=vert, Redoublement=rouge, Rattrapage=orange)
+- ✅ **Statut d'affectation** : Affecté/Non-affecté/Maintenant-affecté
+- ✅ **Reliquat** : Calcul automatique basé sur la situation financière (solde global + reliquats entrants)
+- ✅ **Notes complémentaires** : Si présentes dans les observations
+
+#### Logique de calcul du reliquat
+
+Pour une **réinscription**, le reliquat affiché correspond **uniquement aux reliquats entrants** de l'année précédente, PAS au solde de l'inscription actuelle :
+
+```php
+// Reliquat = Uniquement les reliquats entrants non soldés (ESBTPReliquatDetail)
+$reliquatMontant = $statistiquesReliquats['total_reliquats_entrants'] ?? 0;
+```
+
+**Différence importante :**
+- ❌ **PAS le solde de l'inscription actuelle** : Les frais non payés de l'année en cours (2025-2026) ne sont pas des "reliquats"
+- ✅ **UNIQUEMENT les reliquats entrants** : Les dettes reportées des années précédentes (via `ESBTPReliquatDetail`)
+
+**Exemple :**
+- Étudiant avec 150 000 FCFA de frais non payés en 2025-2026 → **Reliquat = 0 FCFA** (si aucun reliquat de 2024-2025)
+- Étudiant avec 50 000 FCFA de reliquat reporté de 2024-2025 → **Reliquat = 50 000 FCFA** (même si frais 2025-2026 soldés)
+
+#### Fichiers modifiés
+
+- [app/Http/Controllers/ESBTPInscriptionController.php:970-1003](app/Http/Controllers/ESBTPInscriptionController.php:970) - Ajout logique formatage données réinscription
+- [resources/views/esbtp/inscriptions/show.blade.php:438-478](resources/views/esbtp/inscriptions/show.blade.php:438) - Affichage conditionnel détails réinscription
+
+#### Caractéristiques techniques
+
+- **Parsing automatique** : Extraction de la décision depuis `reinscription_observations` (format: `"passage - notes"`)
+- **Compatibilité** : Support des deux orthographes (`reinscription` et `réinscription`)
+- **Design moderne** : Badges Bootstrap colorés, icônes FontAwesome, séparation visuelle
+- **Calcul cohérent** : Utilise la même logique que la section "Situation Financière"
+
+#### Exemple d'affichage
+
+Pour une réinscription avec reliquat :
+```
+Décision académique: [Passage au niveau supérieur]
+Statut d'affectation: Affecté
+Reliquat: ⚠ 500 000 FCFA à régulariser
+```
+
+Pour une réinscription sans reliquat :
+```
+Décision académique: [Redoublement]
+Statut d'affectation: Non-affecté
+Reliquat: ✓ Aucun reliquat en attente
+Notes complémentaires: Étudiant autorisé à redoubler
+```
+
+#### Tests effectués
+
+- ✅ Parsing de la décision depuis observations
+- ✅ Calcul du reliquat identique à la situation financière
+- ✅ Affichage conditionnel pour réinscriptions uniquement
+- ✅ Compatibilité avec les deux orthographes
+- ✅ Badges colorés selon décision et état reliquat
+
+---
+
 ### Fix: Comptage dynamique des étudiants et filtrage par classe sur classes.show
 
 **Date:** 10 octobre 2025

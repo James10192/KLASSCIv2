@@ -967,6 +967,36 @@ class ESBTPInscriptionController extends Controller
             'nombre_reliquats_actifs' => $reliquatsEntrants->where('statut', 'actif')->count(),
         ];
 
+        // Formater les données de réinscription si c'est une réinscription
+        $reinscriptionData = null;
+        if ($inscription->type_inscription === 'réinscription' || $inscription->type_inscription === 'reinscription') {
+            $reinscriptionData = [
+                'affectation_status' => $inscription->affectation_status,
+                'affectation_label' => ucfirst(str_replace('_', ' ', $inscription->affectation_status ?? 'Non renseigné')),
+                'observations' => $inscription->reinscription_observations,
+            ];
+
+            // Parser la décision depuis observations (format: "passage - observations")
+            if ($reinscriptionData['observations']) {
+                $parts = explode(' - ', $reinscriptionData['observations'], 2);
+                $reinscriptionData['decision'] = ucfirst(trim($parts[0]));
+                $reinscriptionData['decision_label'] = match(strtolower(trim($parts[0]))) {
+                    'passage' => 'Passage au niveau supérieur',
+                    'redoublement' => 'Redoublement',
+                    'rattrapage' => 'Session de rattrapage',
+                    default => ucfirst(trim($parts[0])),
+                };
+                $reinscriptionData['notes'] = isset($parts[1]) ? trim($parts[1]) : null;
+            }
+
+            // Pour une réinscription, le "reliquat" = uniquement les reliquats entrants de l'année précédente
+            // (pas le solde de l'inscription actuelle qui est juste les frais de l'année en cours)
+            $reliquatMontant = $statistiquesReliquats['total_reliquats_entrants'] ?? 0;
+
+            $reinscriptionData['reliquat_montant'] = $reliquatMontant;
+            $reinscriptionData['reliquat_gere'] = $reliquatMontant <= 0;
+        }
+
         return view('esbtp.inscriptions.show', compact(
             'inscription',
             'fees',
@@ -977,7 +1007,8 @@ class ESBTPInscriptionController extends Controller
             'availableOptionalCategories',
             'reliquatsEntrants',
             'reliquatsSortants',
-            'statistiquesReliquats'
+            'statistiquesReliquats',
+            'reinscriptionData'
         ));
     }
 
