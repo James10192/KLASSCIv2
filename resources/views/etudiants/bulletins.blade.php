@@ -3,424 +3,387 @@
 @section('title', 'Mes Bulletins')
 
 @push('styles')
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
-    .progress {
-        background-color: #f8f9fa;
-        height: 8px;
-    }
-    .card-header {
-        font-weight: 600;
-    }
-    .badge-pill {
-        padding: 0.35em 0.65em;
-        border-radius: 10rem;
-    }
-    .text-mention {
-        font-weight: 600;
-        font-size: 0.9rem;
+    /* Styles spécifiques pour la page bulletins */
+    .bulletins-container {
+        --bulletins-primary: var(--primary);
+        --bulletins-secondary: var(--secondary);
+        --bulletins-surface: var(--surface);
+        --bulletins-border: rgba(0, 0, 0, 0.08);
     }
 
-    /* Responsive fixes for mobile (390x844) */
+    .bulletin-card {
+        background: white;
+        border-radius: var(--radius-large);
+        padding: var(--space-lg);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        border: 1px solid var(--bulletins-border);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .bulletin-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+    }
+
+    .bulletin-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(var(--primary-rgb), 0.15);
+    }
+
+    .bulletin-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--bulletins-border);
+    }
+
+    .bulletin-title {
+        font-weight: 700;
+        font-size: 1.1rem;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+    }
+
+    .bulletin-subtitle {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+    }
+
+    .bulletin-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .bulletin-stat {
+        text-align: center;
+        padding: 0.75rem;
+        background: rgba(var(--primary-rgb), 0.05);
+        border-radius: var(--radius-medium);
+    }
+
+    .bulletin-stat-label {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.25rem;
+    }
+
+    .bulletin-stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .bulletin-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .empty-state {
+        background: white;
+        border-radius: var(--radius-large);
+        padding: 3rem 2rem;
+        text-align: center;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .empty-state-icon {
+        width: 80px;
+        height: 80px;
+        border-radius: var(--radius-circle);
+        background: linear-gradient(135deg, var(--neutral), var(--text-muted));
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        margin: 0 auto 1.5rem;
+    }
+
+    .empty-state-title {
+        font-size: var(--text-xl);
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+    }
+
+    .empty-state-text {
+        color: var(--text-secondary);
+        font-size: var(--text-base);
+        line-height: 1.6;
+        margin: 0;
+    }
+
+    .bulletins-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: var(--space-lg);
+    }
+
+    .mention-badge {
+        padding: 0.5rem 1rem;
+        border-radius: var(--radius-medium);
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+
+    .mention-excellent { background: #4c51bf; color: white; }
+    .mention-tres-bien { background: #667eea; color: white; }
+    .mention-bien { background: #4299e1; color: white; }
+    .mention-assez-bien { background: #48bb78; color: white; }
+    .mention-passable { background: #ed8936; color: white; }
+    .mention-echec { background: #f56565; color: white; }
+
+    /* Responsive Design */
     @media (max-width: 768px) {
-        .container-fluid {
-            padding-left: 1rem !important;
-            padding-right: 1rem !important;
+        .dashboard-acasi {
+            padding: 0 !important;
             max-width: 100vw;
             overflow-x: hidden;
+        }
+
+        .main-content {
+            padding: 1rem !important;
+            max-width: 100%;
+            overflow-x: hidden;
+            margin: 0 auto;
+            width: 100%;
         }
 
         * {
             max-width: 100%;
         }
 
-        .d-flex.justify-content-between {
+        .student-header .d-flex {
             flex-direction: column !important;
             align-items: flex-start !important;
-            gap: 1rem;
+            gap: var(--space-md);
         }
 
-        h1 {
+        .student-header h1 {
             font-size: 1.5rem !important;
-            margin: 1rem 0 !important;
         }
 
-        .breadcrumb {
-            font-size: 0.8rem;
+        .student-header .header-subtitle {
+            font-size: 0.875rem !important;
         }
 
-        .row {
-            margin-left: 0 !important;
-            margin-right: 0 !important;
-            max-width: 100%;
-        }
-
-        .row > [class*='col-'] {
-            padding-left: 0.5rem !important;
-            padding-right: 0.5rem !important;
-            max-width: 100%;
-        }
-
-        .card {
-            margin-bottom: 1rem !important;
-            max-width: 100%;
-        }
-
-        .table-responsive {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            max-width: 100%;
-        }
-
-        .table {
-            font-size: 0.8rem;
-            min-width: 700px;
-        }
-
-        .table th,
-        .table td {
-            padding: 0.5rem 0.35rem;
-            white-space: nowrap;
-        }
-
-        .btn-sm {
-            font-size: 0.75rem;
-            padding: 0.35rem 0.6rem;
-        }
-
-        .btn-group {
-            flex-direction: column !important;
-            gap: 0.25rem;
-        }
-
-        .btn-group .btn {
+        .student-header .text-end {
+            text-align: left !important;
             width: 100%;
         }
 
-        .badge {
-            font-size: 0.7rem;
-            padding: 0.35em 0.6em;
+        .student-header .badge {
+            display: inline-block;
+            width: auto;
         }
 
-        .alert {
-            font-size: 0.85rem;
-            padding: 0.75rem;
+        .bulletin-stats {
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
+        }
+
+        .bulletin-stat-value {
+            font-size: 1.25rem;
+        }
+
+        .bulletin-actions {
+            flex-direction: column;
+        }
+
+        .bulletin-actions .btn {
+            width: 100%;
+        }
+
+        .bulletin-card {
+            padding: 1rem;
+        }
+
+        .mention-badge {
+            font-size: 0.75rem;
+            padding: 0.4rem 0.8rem;
         }
     }
 
     @media (max-width: 400px) {
-        .container-fluid {
-            padding-left: 0.75rem !important;
-            padding-right: 0.75rem !important;
+        .main-content {
+            padding: 0.75rem !important;
         }
 
-        h1 {
+        .student-header h1 {
             font-size: 1.3rem !important;
         }
 
-        .table {
-            font-size: 0.75rem;
+        .bulletin-stat-value {
+            font-size: 1.1rem;
         }
     }
 </style>
 @endpush
 
 @section('content')
-<div class="container-fluid px-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="my-4">Mes Bulletins</h1>
-            <p class="text-muted">Consultez et téléchargez vos bulletins de notes</p>
-        </div>
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Tableau de bord</a></li>
-                <li class="breadcrumb-item active" aria-current="page">Mes Bulletins</li>
-            </ol>
-        </nav>
-    </div>
-
-    @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    @endif
-
-    @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            {{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    @endif
-
-    @if($bulletins->isEmpty())
-        <div class="card shadow-sm mb-4">
-            <div class="card-body text-center py-5">
-                <div class="mb-3">
-                    <i class="fas fa-file-alt fa-4x text-muted"></i>
+<div class="dashboard-acasi bulletins-container">
+    <div class="main-content">
+        <!-- Header Étudiant Moderne -->
+        <div class="student-header">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <h1>
+                        <i class="fas fa-file-alt me-3"></i>
+                        Mes Bulletins
+                    </h1>
+                    <p class="header-subtitle">
+                        Consultez et téléchargez vos bulletins de notes
+                    </p>
                 </div>
-                <h5 class="fw-bold">Aucun bulletin disponible</h5>
-                <p class="text-muted">Vos bulletins apparaîtront ici une fois qu'ils seront publiés par l'administration</p>
-            </div>
-        </div>
-    @else
-        <div class="row">
-            <div class="col-md-12">
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header bg-light">
-                        <h5 class="mb-0"><i class="fas fa-file-alt me-2 text-primary"></i>Liste de mes bulletins</h5>
-                    </div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-striped table-hover align-middle mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Année Universitaire</th>
-                                        <th>Semestre</th>
-                                        <th>Classe</th>
-                                        <th class="text-center">Moyenne Générale</th>
-                                        <th class="text-center">Rang</th>
-                                        <th class="text-center">Mention</th>
-                                        <th class="text-center">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($bulletins as $bulletin)
-                                        <tr>
-                                            <td>
-                                                <div class="d-flex align-items-center">
-                                                    <div class="bg-primary bg-opacity-10 p-2 rounded me-2">
-                                                        <i class="fas fa-calendar-alt text-primary"></i>
-                                                    </div>
-                                                    <span>{{ $bulletin->anneeUniversitaire->annee_debut ?? '' }}-{{ $bulletin->anneeUniversitaire->annee_fin ?? '' }}</span>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                @if($bulletin->periode == 'semestre1')
-                                                    Premier Semestre
-                                                @elseif($bulletin->periode == 'semestre2')
-                                                    Deuxième Semestre
-                                                @elseif($bulletin->periode == 'annuel')
-                                                    Annuel
-                                                @else
-                                                    {{ $bulletin->periode }}
-                                                @endif
-                                            </td>
-                                            <td>
-                                                <div class="d-flex align-items-center">
-                                                    <div class="bg-info bg-opacity-10 p-2 rounded me-2">
-                                                        <i class="fas fa-graduation-cap text-info"></i>
-                                                    </div>
-                                                    <span>{{ $bulletin->classe->name ?? 'N/A' }}</span>
-                                                </div>
-                                            </td>
-                                            <td class="text-center">
-                                                <span class="badge rounded-pill {{ $bulletin->moyenne_generale >= 10 ? 'bg-success' : 'bg-danger' }} px-3 py-2">
-                                                    {{ number_format($bulletin->moyenne_generale, 2) }}/20
-                                                </span>
-                                                <div class="progress mt-1 mx-auto" style="width: 80%;">
-                                                    <div class="progress-bar {{ $bulletin->moyenne_generale >= 10 ? 'bg-success' : 'bg-danger' }}" role="progressbar" style="width: {{ min($bulletin->moyenne_generale * 5, 100) }}%" aria-valuenow="{{ $bulletin->moyenne_generale }}" aria-valuemin="0" aria-valuemax="20"></div>
-                                                </div>
-                                            </td>
-                                            <td class="text-center">
-                                                <span class="badge rounded-pill bg-secondary">
-                                                    {{ $bulletin->rang ?? 'N/A' }}<small>/{{ $bulletin->effectif_classe ?? 'N/A' }}</small>
-                                                </span>
-                                            </td>
-                                            <td class="text-center">
-                                                @if($bulletin->mention)
-                                                    @if($bulletin->mention == 'Très Bien' || $bulletin->mention == 'Excellent')
-                                                        <span class="badge rounded-pill bg-primary px-3 py-2">{{ $bulletin->mention }}</span>
-                                                    @elseif($bulletin->mention == 'Bien')
-                                                        <span class="badge rounded-pill bg-info px-3 py-2">{{ $bulletin->mention }}</span>
-                                                    @elseif($bulletin->mention == 'Assez Bien')
-                                                        <span class="badge rounded-pill bg-success px-3 py-2">{{ $bulletin->mention }}</span>
-                                                    @elseif($bulletin->mention == 'Passable')
-                                                        <span class="badge rounded-pill bg-warning text-dark px-3 py-2">{{ $bulletin->mention }}</span>
-                                                    @else
-                                                        <span class="badge rounded-pill bg-danger px-3 py-2">{{ $bulletin->mention }}</span>
-                                                    @endif
-                                                @else
-                                                    <span class="badge rounded-pill bg-secondary px-3 py-2">Non définie</span>
-                                                @endif
-                                            </td>
-                                            <td class="text-center">
-                                                <div class="btn-group" role="group">
-                                                    <a href="{{ route('esbtp.bulletins.show', $bulletin->id) }}" class="btn btn-sm btn-primary">
-                                                        <i class="fas fa-eye me-1"></i>Voir
-                                                    </a>
-                                                    <a href="{{ route('esbtp.bulletins.download', $bulletin->id) }}" class="btn btn-sm btn-success">
-                                                        <i class="fas fa-download me-1"></i>Télécharger
-                                                    </a>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
+                <div class="text-end">
+                    <div class="badge" style="background: rgba(255, 255, 255, 0.2); color: white; padding: var(--space-sm) var(--space-md); border-radius: var(--radius-medium); font-size: var(--text-sm);">
+                        <i class="fas fa-calendar me-2"></i>
+                        Année {{ date('Y') }}-{{ date('Y')+1 }}
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Statistiques et résumé -->
-        <div class="row">
-            <div class="col-md-4">
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Évolution des moyennes</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-sm table-borderless">
-                                <thead>
-                                    <tr>
-                                        <th>Période</th>
-                                        <th class="text-center">Moyenne</th>
-                                        <th class="text-center">Progression</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
+        <!-- Alerts -->
+        @if(session('success'))
+            <div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
+                <i class="fas fa-check-circle me-2"></i>
+                {{ session('success') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+
+        @if(session('error'))
+            <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                {{ session('error') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+
+        <!-- Contenu -->
+        @if($bulletins->isEmpty())
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <i class="fas fa-file-alt"></i>
+                </div>
+                <div class="empty-state-title">Aucun bulletin disponible</div>
+                <p class="empty-state-text">
+                    Vos bulletins apparaîtront ici une fois qu'ils seront publiés par l'administration
+                </p>
+            </div>
+        @else
+            <div class="bulletins-grid">
+                @foreach($bulletins as $bulletin)
+                    <div class="bulletin-card">
+                        <div class="bulletin-header">
+                            <div>
+                                <div class="bulletin-title">
+                                    <i class="fas fa-calendar-alt text-primary me-2"></i>
+                                    {{ $bulletin->anneeUniversitaire->annee_debut ?? '' }}-{{ $bulletin->anneeUniversitaire->annee_fin ?? '' }}
+                                </div>
+                                <div class="bulletin-subtitle">
+                                    @if($bulletin->periode == 'semestre1')
+                                        Premier Semestre
+                                    @elseif($bulletin->periode == 'semestre2')
+                                        Deuxième Semestre
+                                    @elseif($bulletin->periode == 'annuel')
+                                        Annuel
+                                    @else
+                                        {{ $bulletin->periode }}
+                                    @endif
+                                    • {{ $bulletin->classe->name ?? 'N/A' }}
+                                </div>
+                            </div>
+                            <div>
+                                @if($bulletin->mention)
                                     @php
-                                        $previousMoyenne = null;
-                                        $bulletinsGrouped = $bulletins->sortBy('created_at');
+                                        $mentionClass = 'mention-echec';
+                                        if($bulletin->mention == 'Très Bien' || $bulletin->mention == 'Excellent') $mentionClass = 'mention-excellent';
+                                        elseif($bulletin->mention == 'Bien') $mentionClass = 'mention-bien';
+                                        elseif($bulletin->mention == 'Assez Bien') $mentionClass = 'mention-assez-bien';
+                                        elseif($bulletin->mention == 'Passable') $mentionClass = 'mention-passable';
                                     @endphp
-                                    @foreach($bulletinsGrouped as $bulletin)
-                                        @php
-                                            $periodeText = 'N/A';
-                                            if($bulletin->periode == 'semestre1') $periodeText = 'Semestre 1';
-                                            elseif($bulletin->periode == 'semestre2') $periodeText = 'Semestre 2';
-                                            elseif($bulletin->periode == 'annuel') $periodeText = 'Annuel';
+                                    <span class="mention-badge {{ $mentionClass }}">{{ $bulletin->mention }}</span>
+                                @else
+                                    <span class="badge bg-secondary">Non définie</span>
+                                @endif
+                            </div>
+                        </div>
 
-                                            $progression = null;
-                                            if ($previousMoyenne !== null && $bulletin->moyenne_generale !== null) {
-                                                $progression = $bulletin->moyenne_generale - $previousMoyenne;
-                                            }
-                                            $previousMoyenne = $bulletin->moyenne_generale;
-                                        @endphp
-                                        <tr>
-                                            <td>{{ $periodeText }}</td>
-                                            <td class="text-center">{{ number_format($bulletin->moyenne_generale, 2) }}</td>
-                                            <td class="text-center">
-                                                @if($progression !== null)
-                                                    @if($progression > 0)
-                                                        <span class="text-success"><i class="fas fa-arrow-up me-1"></i>+{{ number_format($progression, 2) }}</span>
-                                                    @elseif($progression < 0)
-                                                        <span class="text-danger"><i class="fas fa-arrow-down me-1"></i>{{ number_format($progression, 2) }}</span>
-                                                    @else
-                                                        <span class="text-secondary"><i class="fas fa-equals me-1"></i>0</span>
-                                                    @endif
-                                                @else
-                                                    <span class="text-muted">-</span>
-                                                @endif
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
+                        <div class="bulletin-stats">
+                            <div class="bulletin-stat">
+                                <div class="bulletin-stat-label">Moyenne</div>
+                                <div class="bulletin-stat-value" style="color: {{ $bulletin->moyenne_generale >= 10 ? 'var(--success)' : 'var(--danger)' }}">
+                                    {{ number_format($bulletin->moyenne_generale, 2) }}/20
+                                </div>
+                            </div>
+                            <div class="bulletin-stat">
+                                <div class="bulletin-stat-label">Rang</div>
+                                <div class="bulletin-stat-value">
+                                    {{ $bulletin->rang ?? 'N/A' }}<small style="font-size: 0.875rem; color: var(--text-secondary);">/{{ $bulletin->effectif_classe ?? 'N/A' }}</small>
+                                </div>
+                            </div>
+                            <div class="bulletin-stat">
+                                <div class="bulletin-stat-label">Progression</div>
+                                <div class="bulletin-stat-value">
+                                    @php
+                                        $progression = null;
+                                        $prevBulletin = $bulletins->where('periode', '<', $bulletin->periode)->sortByDesc('periode')->first();
+                                        if($prevBulletin && $prevBulletin->moyenne_generale) {
+                                            $progression = $bulletin->moyenne_generale - $prevBulletin->moyenne_generale;
+                                        }
+                                    @endphp
+                                    @if($progression !== null)
+                                        @if($progression > 0)
+                                            <span style="color: var(--success)">
+                                                <i class="fas fa-arrow-up"></i>
+                                                +{{ number_format($progression, 2) }}
+                                            </span>
+                                        @elseif($progression < 0)
+                                            <span style="color: var(--danger)">
+                                                <i class="fas fa-arrow-down"></i>
+                                                {{ number_format($progression, 2) }}
+                                            </span>
+                                        @else
+                                            <span style="color: var(--text-secondary)">
+                                                <i class="fas fa-equals"></i> 0
+                                            </span>
+                                        @endif
+                                    @else
+                                        <span style="color: var(--text-secondary); font-size: 1rem;">-</span>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bulletin-actions">
+                            <a href="{{ route('esbtp.bulletins.show', $bulletin->id) }}" class="btn btn-primary">
+                                <i class="fas fa-eye me-2"></i>Consulter
+                            </a>
+                            <a href="{{ route('esbtp.bulletins.download', $bulletin->id) }}" class="btn btn-success">
+                                <i class="fas fa-download me-2"></i>Télécharger PDF
+                            </a>
                         </div>
                     </div>
-                </div>
+                @endforeach
             </div>
-            <!--<div class="col-md-8">
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header bg-info text-white">
-                        <h5 class="mb-0"><i class="fas fa-clipboard-check me-2"></i>Résumé des décisions</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            @php
-                                $latestBulletin = $bulletins->sortByDesc('created_at')->first();
-                            @endphp
-                            @if($latestBulletin)
-                                <div class="col-md-6">
-                                    <div class="card h-100 border-0 shadow-sm">
-                                        <div class="card-body">
-                                            <h6 class="card-title">Dernier bulletin</h6>
-                                            <div class="d-flex align-items-center mb-2">
-                                                <div class="me-3">
-                                                    <span class="badge rounded-pill {{ $latestBulletin->moyenne_generale >= 10 ? 'bg-success' : 'bg-danger' }} px-3 py-2">
-                                                        {{ number_format($latestBulletin->moyenne_generale, 2) }}/20
-                                                    </span>
-                                                </div>
-                                                <div>
-                                                    <span class="d-block">{{ $latestBulletin->classe->name ?? 'N/A' }}</span>
-                                                    <small class="text-muted">
-                                                        @if($latestBulletin->periode == 'semestre1')
-                                                            Premier Semestre
-                                                        @elseif($latestBulletin->periode == 'semestre2')
-                                                            Deuxième Semestre
-                                                        @elseif($latestBulletin->periode == 'annuel')
-                                                            Annuel
-                                                        @else
-                                                            {{ $latestBulletin->periode }}
-                                                        @endif
-                                                    </small>
-                                                </div>
-                                            </div>
-                                            <p class="mb-1"><strong>Décision du conseil :</strong> {{ $latestBulletin->decision_conseil ?? 'Non spécifiée' }}</p>
-                                            <p class="mb-0"><strong>Appréciation :</strong> {{ $latestBulletin->appreciation_generale ?? 'Non spécifiée' }}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="card h-100 border-0 shadow-sm">
-                                        <div class="card-body">
-                                            <h6 class="card-title">Signatures</h6>
-                                            <div class="d-flex flex-column">
-                                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                                    <span>Directeur</span>
-                                                    @if($latestBulletin->signature_directeur)
-                                                        <span class="badge bg-success"><i class="fas fa-check me-1"></i>Signé</span>
-                                                    @else
-                                                        <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>En attente</span>
-                                                    @endif
-                                                </div>
-                                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                                    <span>Responsable pédagogique</span>
-                                                    @if($latestBulletin->signature_responsable)
-                                                        <span class="badge bg-success"><i class="fas fa-check me-1"></i>Signé</span>
-                                                    @else
-                                                        <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>En attente</span>
-                                                    @endif
-                                                </div>
-                                                <div class="d-flex justify-content-between align-items-center">
-                                                    <span>Parent</span>
-                                                    @if($latestBulletin->signature_parent)
-                                                        <span class="badge bg-success"><i class="fas fa-check me-1"></i>Signé</span>
-                                                    @else
-                                                        <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>En attente</span>
-                                                    @endif
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            @else
-                                <div class="col-12">
-                                    <div class="alert alert-info mb-0">
-                                        <i class="fas fa-info-circle me-2"></i>Aucun bulletin n'est disponible pour afficher un résumé.
-                                    </div>
-                                </div>
-                            @endif
-                        </div>
-                    </div>
-                </div>
-            </div>-->
-        </div>
-    @endif
+        @endif
+    </div>
 </div>
 @endsection
-
-@push('scripts')
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        // Activer les tooltips Bootstrap
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl)
-        });
-    });
-</script>
-@endpush
