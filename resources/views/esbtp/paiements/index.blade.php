@@ -263,19 +263,17 @@
 
 <!-- Modal de rejet groupé -->
 @if(auth()->user()->hasRole('superAdmin'))
-<div class="modal fade" id="bulkRejetModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
+<div class="modal fade" id="bulkRejetModal" tabindex="-1" aria-labelledby="bulkRejetModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
         <div class="modal-content">
             <form id="bulk-rejet-form" method="POST" action="{{ route('esbtp.paiements.bulk-rejeter') }}">
                 @csrf
-                <div class="modal-header">
-                    <h5 class="modal-title">
-                        <i class="fas fa-times-circle text-danger me-2"></i>
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="bulkRejetModalLabel">
+                        <i class="fas fa-times-circle me-2"></i>
                         Rejeter les paiements sélectionnés
                     </h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="alert alert-warning">
@@ -283,8 +281,8 @@
                         Vous êtes sur le point de rejeter <strong><span id="bulk-rejet-count">0</span> paiement(s)</strong>.
                     </div>
 
-                    <div class="form-group">
-                        <label for="bulk_motif_rejet">Motif du rejet <span class="text-danger">*</span></label>
+                    <div class="mb-3">
+                        <label for="bulk_motif_rejet" class="form-label">Motif du rejet <span class="text-danger">*</span></label>
                         <textarea class="form-control" id="bulk_motif_rejet" name="motif_rejet" rows="4"
                                   placeholder="Expliquez pourquoi ces paiements sont rejetés..." required></textarea>
                     </div>
@@ -299,7 +297,7 @@
                     <div id="bulk-selected-paiements"></div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                         <i class="fas fa-times me-1"></i>Annuler
                     </button>
                     <button type="submit" class="btn btn-danger">
@@ -312,9 +310,7 @@
 </div>
 @endif
 
-<!-- Modaux de rejet pour les paiements en attente -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Scripts sont déjà chargés dans le layout principal (Bootstrap 5) -->
 
 <script>
 function showYearChangeInfo() {
@@ -603,7 +599,9 @@ function openBulkRejetModal() {
     $('#bulk_motif_rejet').val('');
     $('#bulk_confirmer_rejet').prop('checked', false);
 
-    $('#bulkRejetModal').modal('show');
+    // Bootstrap 5 modal
+    const modal = new bootstrap.Modal(document.getElementById('bulkRejetModal'));
+    modal.show();
 }
 
 function clearSelection() {

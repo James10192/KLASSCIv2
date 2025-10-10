@@ -269,7 +269,7 @@
                                 </button>
                             </form>
 
-                            <button type="button" class="btn-action danger mb-2" data-bs-toggle="modal" data-bs-target="#rejectModal">
+                            <button type="button" class="btn-action danger mb-2" data-bs-toggle="modal" data-bs-target="#modalRejeter">
                                 <i class="fas fa-times me-1"></i>Rejeter
                             </button>
                         @endif
@@ -568,11 +568,11 @@
                         Vous êtes sur le point de rejeter ce paiement.
                     </div>
                     
-                    <div class="form-group-moderne mb-3">
-                        <label for="commentaire" class="form-label-moderne">
+                    <div class="mb-3">
+                        <label for="motif_rejet" class="form-label">
                             Motif du rejet <span class="text-danger">*</span>
                         </label>
-                        <textarea name="commentaire" id="commentaire" rows="4" class="form-control-moderne" required 
+                        <textarea name="motif_rejet" id="motif_rejet" rows="4" class="form-control" required
                                   placeholder="Veuillez expliquer la raison du rejet..."></textarea>
                     </div>
                     
@@ -627,55 +627,6 @@ $(function() {
             $('#validerForm').submit();
         }
     });
-
-    $('#rejeterBtn').click(function() {
-        $('#rejetModal').modal('show');
-    });
 });
 </script>
-
-<!-- Modal de rejet -->
-<div class="modal fade" id="rejetModal" tabindex="-1" aria-labelledby="rejetModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form action="{{ route('esbtp.paiements.rejeter', $paiement->id) }}" method="POST" id="rejetForm">
-                @csrf
-                <div class="modal-header">
-                    <h5 class="modal-title" id="rejetModalLabel">
-                        <i class="fas fa-times-circle text-danger me-2"></i>
-                        Rejeter le paiement
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="alert alert-warning">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        Vous êtes sur le point de rejeter ce paiement. Cette action nécessite une justification.
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="motif_rejet" class="form-label">Motif du rejet <span class="text-danger">*</span></label>
-                        <textarea class="form-control" id="motif_rejet" name="motif_rejet" rows="4"
-                                  placeholder="Expliquez pourquoi ce paiement est rejeté..." required></textarea>
-                    </div>
-
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="confirmer_rejet" required>
-                        <label class="form-check-label" for="confirmer_rejet">
-                            Je confirme le rejet de ce paiement
-                        </label>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="fas fa-times me-1"></i>Annuler
-                    </button>
-                    <button type="submit" class="btn btn-danger" id="confirmerRejet">
-                        <i class="fas fa-times-circle me-1"></i>Rejeter le paiement
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
 @endpush
