@@ -138,11 +138,11 @@
                         <button type="submit" class="btn-acasi primary">
                             <i class="fas fa-search me-1"></i>Filtrer
                         </button>
-                        <a href="{{ route('esbtp.classes.index') }}" class="btn-acasi secondary">
+                        <button type="button" id="reset-filters-btn" class="btn-acasi secondary">
                             <i class="fas fa-times me-1"></i>Réinitialiser
-                        </a>
+                        </button>
                         <div style="margin-left: auto; font-size: var(--text-small); color: var(--text-muted);">
-                            <i class="fas fa-list me-1"></i>{{ $classes->count() }} classe(s) trouvée(s)
+                            <i class="fas fa-list me-1"></i><span id="classes-count">{{ $classes->count() }}</span> classe(s) trouvée(s)
                         </div>
                     </div>
                 </form>
@@ -151,23 +151,14 @@
 
         <!-- Statistiques KPI -->
         <div class="kpi-grid">
-            @php
-                $totalClasses = $classes->count();
-                $classesActives = $classes->where('is_active', true)->count();
-                $totalEtudiants = $classes->sum('nombre_etudiants');
-                $totalPlaces = $classes->sum('places_totales');
-                $placesDisponibles = $classes->sum('places_disponibles');
-                $tauxOccupation = $totalPlaces > 0 ? round(($totalEtudiants / $totalPlaces) * 100, 1) : 0;
-            @endphp
-            
             <div class="card-moderne kpi-card animate-slide-up">
                 <div class="kpi-title">
-                    <i class="fas fa-graduation-cap me-1"></i>Total Classes
+                    <i class="fas fa-graduation-cap me-1"></i>Total Classes Actives
                 </div>
-                <div class="kpi-value color-primary">{{ $totalClasses }}</div>
-                <div class="kpi-trend {{ $classesActives == $totalClasses ? 'positive' : 'negative' }}">
-                    <i class="fas fa-{{ $classesActives == $totalClasses ? 'check' : 'exclamation' }}-circle"></i>
-                    {{ $classesActives }} actives
+                <div class="kpi-value color-primary">{{ $kpiStats['totalClasses'] }}</div>
+                <div class="kpi-trend {{ $kpiStats['classesActives'] == $kpiStats['totalClasses'] ? 'positive' : 'negative' }}">
+                    <i class="fas fa-{{ $kpiStats['classesActives'] == $kpiStats['totalClasses'] ? 'check' : 'exclamation' }}-circle"></i>
+                    {{ $kpiStats['classesActives'] }} actives
                 </div>
             </div>
 
@@ -175,10 +166,10 @@
                 <div class="kpi-title">
                     <i class="fas fa-users me-1"></i>Étudiants Inscrits
                 </div>
-                <div class="kpi-value color-accent">{{ $totalEtudiants }}</div>
+                <div class="kpi-value color-accent">{{ $kpiStats['totalEtudiants'] }}</div>
                 <div class="kpi-trend positive">
                     <i class="fas fa-chart-line"></i>
-                    {{ $totalPlaces }} places totales
+                    Année {{ $anneeAcademique }}
                 </div>
             </div>
 
@@ -186,10 +177,10 @@
                 <div class="kpi-title">
                     <i class="fas fa-chair me-1"></i>Places Disponibles
                 </div>
-                <div class="kpi-value color-{{ $placesDisponibles > 0 ? 'success' : 'danger' }}">{{ $placesDisponibles }}</div>
-                <div class="kpi-trend {{ $placesDisponibles > 0 ? 'positive' : 'negative' }}">
-                    <i class="fas fa-{{ $placesDisponibles > 0 ? 'arrow-up' : 'arrow-down' }}"></i>
-                    Disponibles
+                <div class="kpi-value color-{{ $kpiStats['placesDisponibles'] > 0 ? 'success' : 'danger' }}">{{ $kpiStats['placesDisponibles'] }}</div>
+                <div class="kpi-trend {{ $kpiStats['placesDisponibles'] > 0 ? 'positive' : 'negative' }}">
+                    <i class="fas fa-{{ $kpiStats['placesDisponibles'] > 0 ? 'arrow-up' : 'arrow-down' }}"></i>
+                    sur {{ $kpiStats['totalPlaces'] }} places
                 </div>
             </div>
 
@@ -197,8 +188,8 @@
                 <div class="kpi-title">
                     <i class="fas fa-percentage me-1"></i>Taux Occupation
                 </div>
-                <div class="kpi-value color-{{ $tauxOccupation > 90 ? 'danger' : ($tauxOccupation > 70 ? 'warning' : 'success') }}">{{ $tauxOccupation }}%</div>
-                <div class="kpi-trend {{ $tauxOccupation < 100 ? 'positive' : 'negative' }}">
+                <div class="kpi-value color-{{ $kpiStats['tauxOccupation'] > 90 ? 'danger' : ($kpiStats['tauxOccupation'] > 70 ? 'warning' : 'success') }}">{{ $kpiStats['tauxOccupation'] }}%</div>
+                <div class="kpi-trend {{ $kpiStats['tauxOccupation'] < 100 ? 'positive' : 'negative' }}">
                     <i class="fas fa-chart-pie"></i>
                     Occupation globale
                 </div>
@@ -210,159 +201,10 @@
             <div class="section-title">
                 <i class="fas fa-list me-2"></i>Classes par Filière et Niveau
             </div>
-            
-            @if($classes->count() > 0)
-                <div class="resultats-grid" style="margin-top: var(--space-lg);">
-                    @foreach($classes as $classe)
-                        <div class="card-moderne resultat-card animate-slide-up" style="border-left: 4px solid {{ $classe->is_active ? 'var(--success)' : 'var(--neutral)' }};">
-                            <!-- En-tête classe -->
-                            <div style="display: flex; justify-content: between; align-items: start; margin-bottom: var(--space-md);">
-                                <div style="flex: 1;">
-                                    <div style="display: flex; align-items: center; margin-bottom: var(--space-sm);">
-                                        <div style="width: 40px; height: 40px; background: {{ $classe->is_active ? 'var(--success)' : 'var(--neutral)' }}; border-radius: var(--radius-circle); display: flex; align-items: center; justify-content: center; margin-right: var(--space-sm);">
-                                            <i class="fas fa-graduation-cap" style="color: white; font-size: 16px;"></i>
-                                        </div>
-                                        <div>
-                                            <div class="font-bold color-primary" style="font-size: var(--text-normal);">{{ $classe->name }}</div>
-                                            <div style="font-size: var(--text-small); color: var(--text-secondary);">Code: {{ $classe->code }}</div>
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- Filière et niveau -->
-                                    <div style="margin-bottom: var(--space-md);">
-                                        @if ($classe->filiere)
-                                            <div style="font-size: var(--text-small); color: var(--text-primary); margin-bottom: var(--space-xs);">
-                                                <i class="fas fa-layer-group me-1"></i><strong>{{ $classe->filiere->name }}</strong>
-                                                @if ($classe->filiere->parent)
-                                                    <br><span style="color: var(--text-muted); margin-left: 16px;">Option de {{ $classe->filiere->parent->name }}</span>
-                                                @endif
-                                            </div>
-                                        @endif
-                                        @if ($classe->niveau)
-                                            <div style="font-size: var(--text-small); color: var(--text-secondary);">
-                                                <i class="fas fa-level-up-alt me-1"></i>{{ $classe->niveau->name }}
-                                            </div>
-                                        @endif
-                                    </div>
-                                </div>
-                                
-                                <!-- Statut -->
-                                <div>
-                                    <span class="badge {{ $classe->is_active ? 'success' : 'danger' }}">
-                                        {{ $classe->is_active ? 'Active' : 'Inactive' }}
-                                    </span>
-                                </div>
-                            </div>
 
-                            <!-- Statistiques -->
-                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-md); margin-bottom: var(--space-md); padding: var(--space-sm); background: rgba(248, 250, 252, 0.5); border-radius: var(--radius-small);">
-                                <div class="text-center">
-                                    <div style="font-size: var(--text-small); color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Capacité</div>
-                                    <div class="font-bold color-primary">{{ $classe->places_totales }}</div>
-                                </div>
-                                <div class="text-center">
-                                    <div style="font-size: var(--text-small); color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Inscrits</div>
-                                    <div class="font-bold color-accent">{{ $classe->nombre_etudiants }}</div>
-                                </div>
-                                <div class="text-center">
-                                    <div style="font-size: var(--text-small); color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Disponibles</div>
-                                    <div class="font-bold color-{{ $classe->places_disponibles > 0 ? 'success' : 'danger' }}">{{ $classe->places_disponibles }}</div>
-                                </div>
-                            </div>
-
-                            <!-- Actions -->
-                            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f3f4f6; padding-top: var(--space-md);">
-                                <div style="font-size: var(--text-small); color: var(--text-muted);">
-                                    @if ($classe->annee)
-                                        <i class="fas fa-calendar me-1"></i>{{ $classe->annee->name }}
-                                    @endif
-                                </div>
-                                <div style="display: flex; gap: var(--space-xs);">
-                                    <a href="{{ route('esbtp.classes.show', ['classe' => $classe->id]) }}" class="btn-acasi secondary" style="padding: var(--space-xs);" title="Voir les détails">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-
-                                    @if(auth()->user()->hasRole('superAdmin'))
-                                    <a href="{{ route('esbtp.classes.edit', ['classe' => $classe->id]) }}" class="btn-acasi primary" style="padding: var(--space-xs);" title="Modifier">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    @endif
-
-                                    @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire'))
-                                    <a href="{{ route('esbtp.classes.matieres', ['classe' => $classe->id]) }}" class="btn-acasi secondary" style="padding: var(--space-xs);" title="Gérer les matières">
-                                        <i class="fas fa-book"></i>
-                                    </a>
-                                    @endif
-
-                                    @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('enseignant'))
-                                    <a href="{{ route('esbtp.classes.liste-appel', ['classe' => $classe->id]) }}" class="btn-acasi primary" style="padding: var(--space-xs);" title="Liste d'appel" target="_blank">
-                                        <i class="fas fa-clipboard-list"></i>
-                                    </a>
-                                    <a href="{{ route('esbtp.classes.liste-complete', ['classe' => $classe->id]) }}" class="btn-acasi secondary" style="padding: var(--space-xs);" title="Liste complète des étudiants" target="_blank">
-                                        <i class="fas fa-users"></i>
-                                    </a>
-                                    @endif
-
-                                    @if(auth()->user()->hasRole('superAdmin'))
-                                        @if($classe->nombre_etudiants == 0)
-                                        <button type="button" class="btn-acasi danger" style="padding: var(--space-xs);" data-bs-toggle="modal" data-bs-target="#deleteModal{{ $classe->id }}" title="Supprimer">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                        @else
-                                        <button type="button" class="btn-acasi secondary" style="padding: var(--space-xs); opacity: 0.5; cursor: not-allowed;" title="Suppression impossible - Classe avec historique d'inscriptions préservé" disabled>
-                                            <i class="fas fa-lock"></i>
-                                        </button>
-                                        @endif
-                                    @endif
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Modal de suppression -->
-                        @if(auth()->user()->hasRole('superAdmin') && $classe->nombre_etudiants == 0)
-                        <div class="modal fade" id="deleteModal{{ $classe->id }}" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel{{ $classe->id }}" aria-hidden="true">
-                            <div class="modal-dialog" role="document">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title" id="deleteModalLabel{{ $classe->id }}">Archivage de la classe</h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                    </div>
-                                    <div class="modal-body">
-                                        <p>Êtes-vous sûr de vouloir archiver la classe <strong>{{ $classe->name }}</strong> ?</p>
-                                        <div class="alert alert-info">
-                                            <i class="fas fa-info-circle me-2"></i>
-                                            <strong>Note:</strong> La classe sera archivée mais l'historique des inscriptions sera préservé pour les rapports et statistiques des années universitaires passées.
-                                        </div>
-                                        <p class="text-warning"><strong>Important:</strong> Cette classe ne sera plus visible dans la liste active mais restera accessible dans l'historique.</p>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                                        <form action="{{ route('esbtp.classes.destroy', $classe->id) }}" method="POST" class="d-inline">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="btn btn-warning">
-                                                <i class="fas fa-archive me-1"></i>Archiver la classe
-                                            </button>
-                                        </form>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        @endif
-                    @endforeach
-                </div>
-            @else
-                <div class="text-center" style="padding: var(--space-xl); color: var(--text-secondary);">
-                    <i class="fas fa-graduation-cap" style="font-size: 48px; margin-bottom: var(--space-lg); color: var(--neutral);"></i>
-                    <h5 style="color: var(--text-secondary); margin-bottom: var(--space-sm);">Aucune classe trouvée</h5>
-                    <p style="color: var(--text-muted);">Commencez par créer votre première classe.</p>
-                    @if(auth()->user()->hasRole('superAdmin'))
-                        <a href="{{ route('esbtp.classes.create') }}" class="btn-acasi primary" style="margin-top: var(--space-md);">
-                            <i class="fas fa-plus-circle"></i>Créer une classe
-                        </a>
-                    @endif
-                </div>
-            @endif
+            <div id="classes-results">
+                @include('esbtp.classes.partials.results', ['classes' => $classes])
+            </div>
         </div>
 
     </div>
@@ -459,10 +301,210 @@ $(document).ready(function() {
     $('#yearChangeModal .close[data-dismiss="modal"]').on('click', function() {
         $('#yearChangeModal').modal('hide');
     });
-    
+
     // Gérer la fermeture avec le bouton Fermer
     $('#yearChangeModal button[data-dismiss="modal"]').on('click', function() {
         $('#yearChangeModal').modal('hide');
     });
 });
 </script>
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.getElementById('filtersForm');
+        const resultsContainer = document.getElementById('classes-results');
+        const classesGrid = document.getElementById('classes-grid');
+        const submitButton = form.querySelector('button[type="submit"]');
+        const filterInputs = form.querySelectorAll('select, input[name="search"]');
+        const resetBtn = document.getElementById('reset-filters-btn');
+        const classesCountSpan = document.getElementById('classes-count');
+
+        let currentPage = 1;
+        let hasMorePages = false;
+        let isLoading = false;
+        let currentFilters = {};
+
+        // Fonctions helper pour récupérer les éléments dynamiques
+        function getLoadMoreBtn() {
+            return document.getElementById('load-more-btn');
+        }
+
+        function getLoadMoreSpinner() {
+            return document.getElementById('load-more-spinner');
+        }
+
+        // Initialiser Select2 si disponible
+        if (typeof $ !== 'undefined' && typeof $.fn.select2 !== 'undefined') {
+            $('#filiere_id, #niveau_id, #statut, #capacite').select2({
+                theme: 'bootstrap4',
+                placeholder: 'Sélectionner une option',
+                allowClear: true
+            });
+        }
+
+        function setLoading(loading) {
+            isLoading = loading;
+            if (submitButton) {
+                submitButton.disabled = loading;
+            }
+        }
+
+        function updateLoadMoreButton(hasMore) {
+            hasMorePages = hasMore;
+            const btn = getLoadMoreBtn();
+            const spinner = getLoadMoreSpinner();
+
+            if (btn && spinner) {
+                if (hasMore) {
+                    btn.style.display = 'inline-flex';
+                    spinner.classList.add('d-none');
+                } else {
+                    btn.style.display = 'none';
+                    spinner.classList.add('d-none');
+                }
+            }
+        }
+
+        function fetchResults(reset = true) {
+            if (isLoading) return;
+
+            setLoading(true);
+
+            if (reset) {
+                currentPage = 1;
+                if (classesGrid) {
+                    classesGrid.innerHTML = '';
+                }
+            }
+
+            const formData = new FormData(form);
+            formData.set('page', currentPage);
+            const params = new URLSearchParams(formData);
+            const targetUrl = `${form.action}?${params.toString()}`;
+
+            // Sauvegarder les filtres courants
+            currentFilters = Object.fromEntries(formData);
+
+            fetch(targetUrl, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erreur lors du chargement des classes.');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (reset) {
+                    // Remplacer tout le contenu
+                    resultsContainer.innerHTML = `
+                        <div class="resultats-grid" id="classes-grid" style="margin-top: var(--space-lg);">
+                            ${data.html}
+                        </div>
+                        <div id="load-more-container" class="text-center" style="margin-top: var(--space-lg);">
+                            <button type="button" id="load-more-btn" class="btn-acasi primary" style="display: none;">
+                                <i class="fas fa-angle-down me-2"></i>Charger plus de classes
+                            </button>
+                            <div id="load-more-spinner" class="d-none" style="padding: var(--space-md);">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Chargement...</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    // Ajouter à la fin
+                    const grid = document.getElementById('classes-grid');
+                    if (grid) {
+                        grid.insertAdjacentHTML('beforeend', data.html);
+                    }
+                }
+
+                // Toujours rebinder et mettre à jour après chargement
+                bindLoadMore();
+                updateLoadMoreButton(data.hasMore);
+
+                // Mettre à jour le compteur si disponible
+                if (data.total && classesCountSpan) {
+                    classesCountSpan.textContent = data.total;
+                }
+
+                setLoading(false);
+            })
+            .catch(error => {
+                console.error(error);
+                alert('Impossible de charger les classes. Veuillez réessayer.');
+                setLoading(false);
+            });
+        }
+
+        function bindLoadMore() {
+            const btn = getLoadMoreBtn();
+            const spinner = getLoadMoreSpinner();
+
+            if (btn && spinner) {
+                // Supprimer ancien listener si existe
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+
+                newBtn.addEventListener('click', function() {
+                    if (isLoading || !hasMorePages) return;
+
+                    newBtn.style.display = 'none';
+                    spinner.classList.remove('d-none');
+
+                    currentPage++;
+                    fetchResults(false); // false = ne pas reset, juste ajouter
+                });
+            }
+        }
+
+        // Event listeners
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            fetchResults(true); // true = reset
+            return false;
+        });
+
+        filterInputs.forEach((input) => {
+            input.addEventListener('change', () => {
+                fetchResults(true); // true = reset
+            });
+        });
+
+        // Bouton Réinitialiser
+        if (resetBtn) {
+            resetBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+
+                // Réinitialiser le formulaire
+                form.reset();
+
+                // Réinitialiser les Select2 si présents
+                if (typeof $ !== 'undefined' && typeof $.fn.select2 !== 'undefined') {
+                    $('#filiere_id, #niveau_id, #statut, #capacite').val(null).trigger('change');
+                }
+
+                // Recharger les résultats
+                fetchResults(true);
+            });
+        }
+
+        // Bind initial load more button
+        bindLoadMore();
+
+        // Initialiser hasMorePages depuis l'attribut data du bouton
+        const initialBtn = getLoadMoreBtn();
+        if (initialBtn) {
+            const initialHasMore = initialBtn.getAttribute('data-has-more') === 'true';
+            updateLoadMoreButton(initialHasMore);
+        }
+    });
+</script>
+@endpush

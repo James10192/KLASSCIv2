@@ -23,29 +23,39 @@ class ESBTPClasseController extends Controller
      */
     public function index(Request $request)
     {
+        $startMicrotime = microtime(true);
+        $startTimestamp = now()->toIso8601String();
+        $baseLogContext = [
+            'timestamp' => $startTimestamp,
+            'url' => $request->fullUrl(),
+            'query' => $request->query(),
+            'user_id' => optional($request->user())->id,
+        ];
+        \Log::info('ESBTPClasseController@index start', $baseLogContext);
+
         $user = Auth::user();
-        
+
         // Récupérer l'année universitaire courante pour l'affichage
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
         $anneeAcademique = $anneeCourante ? $anneeCourante->name : date('Y') . '-' . (date('Y') + 1);
-        
+
         // Construction de la requête avec filtres
         $query = ESBTPClasse::with(['filiere', 'niveau', 'annee']);
-        
+
         // Filtres disponibles
         if ($request->filled('filiere_id')) {
             $query->where('filiere_id', $request->filiere_id);
         }
-        
+
         if ($request->filled('niveau_id')) {
             $query->where('niveau_etude_id', $request->niveau_id);
         }
-        
-        
+
+
         if ($request->filled('statut')) {
             $query->where('is_active', $request->statut === 'active');
         }
-        
+
         if ($request->filled('capacite')) {
             if ($request->capacite === 'disponible') {
                 $query->whereRaw('places_totales > (SELECT COUNT(*) FROM esbtp_inscriptions WHERE esbtp_inscriptions.classe_id = esbtp_classes.id AND esbtp_inscriptions.status != "annulée")');
@@ -53,7 +63,7 @@ class ESBTPClasseController extends Controller
                 $query->whereRaw('places_totales <= (SELECT COUNT(*) FROM esbtp_inscriptions WHERE esbtp_inscriptions.classe_id = esbtp_classes.id AND esbtp_inscriptions.status != "annulée")');
             }
         }
-        
+
         // Recherche par nom ou code
         if ($request->filled('search')) {
             $search = '%' . $request->search . '%';
@@ -62,20 +72,92 @@ class ESBTPClasseController extends Controller
                   ->orWhere('code', 'like', $search);
             });
         }
-        
-        $classes = $query->get();
-        
+
+        \Log::info('ESBTPClasseController@index processing', array_merge($baseLogContext, [
+            'has_search' => $request->filled('search'),
+            'filters' => [
+                'filiere_id' => $request->input('filiere_id'),
+                'niveau_id' => $request->input('niveau_id'),
+                'statut' => $request->input('statut'),
+                'capacite' => $request->input('capacite'),
+            ],
+        ]));
+
+        // Utiliser get() pour charger toutes les classes d'un coup
+        $allClasses = $query->get();
+
+        // Pour le chargement progressif via AJAX
+        $perPage = 12;
+        $page = $request->input('page', 1);
+        $offset = ($page - 1) * $perPage;
+
+        // Simuler la pagination manuelle
+        $classes = $allClasses->slice($offset, $perPage)->values();
+        $hasMore = $allClasses->count() > ($offset + $perPage);
+        $totalCount = $allClasses->count();
+
         // Données pour les filtres
         $filieres = ESBTPFiliere::where('is_active', true)->get();
         $niveaux = ESBTPNiveauEtude::where('is_active', true)->get();
 
+        // Calculer les KPI globaux sur TOUTES les classes actives (pas seulement celles filtrées)
+        // En tenant compte uniquement des inscriptions de l'année courante
+        $kpiQuery = ESBTPClasse::where('is_active', true);
+
+        // Charger les relations avec comptage des étudiants de l'année courante
+        if ($anneeCourante) {
+            $kpiQuery->withCount([
+                'inscriptions as nombre_etudiants_annee_courante' => function($q) use ($anneeCourante) {
+                    $q->where('annee_universitaire_id', $anneeCourante->id)
+                      ->where('status', 'active');
+                }
+            ]);
+        }
+
+        $allActiveClasses = $kpiQuery->get();
+
+        // Calculer les statistiques globales
+        $kpiStats = [
+            'totalClasses' => $allActiveClasses->count(),
+            'classesActives' => $allActiveClasses->where('is_active', true)->count(),
+            'totalEtudiants' => $anneeCourante
+                ? $allActiveClasses->sum('nombre_etudiants_annee_courante')
+                : $allActiveClasses->sum('nombre_etudiants'),
+            'totalPlaces' => $allActiveClasses->sum('places_totales'),
+        ];
+
+        $kpiStats['placesDisponibles'] = $kpiStats['totalPlaces'] - $kpiStats['totalEtudiants'];
+        $kpiStats['tauxOccupation'] = $kpiStats['totalPlaces'] > 0
+            ? round(($kpiStats['totalEtudiants'] / $kpiStats['totalPlaces']) * 100, 1)
+            : 0;
+
+        $duration = round((microtime(true) - $startMicrotime) * 1000, 2);
+        \Log::info('ESBTPClasseController@index completed', array_merge($baseLogContext, [
+            'duration_ms' => $duration,
+            'results_count' => $totalCount,
+            'page' => $page,
+            'has_more' => $hasMore,
+            'kpi_stats' => $kpiStats,
+        ]));
+
+        // Support AJAX pour "Charger plus"
+        if ($request->ajax()) {
+            $html = view('esbtp.classes.partials.items', compact('classes'))->render();
+            return response()->json([
+                'html' => $html,
+                'hasMore' => $hasMore,
+                'currentPage' => $page,
+                'total' => $totalCount,
+            ]);
+        }
+
         // Different view rendering based on user role
         if ($user->hasRole('etudiant')) {
             // For students - read-only view
-            return view('esbtp.classes.student_index', compact('classes', 'anneeAcademique', 'anneeCourante', 'filieres', 'niveaux'));
+            return view('esbtp.classes.student_index', compact('classes', 'anneeAcademique', 'anneeCourante', 'filieres', 'niveaux', 'hasMore', 'totalCount', 'kpiStats'));
         } else {
             // For admin and secretary - full functionality view
-            return view('esbtp.classes.index', compact('classes', 'anneeAcademique', 'anneeCourante', 'filieres', 'niveaux'));
+            return view('esbtp.classes.index', compact('classes', 'anneeAcademique', 'anneeCourante', 'filieres', 'niveaux', 'hasMore', 'totalCount', 'kpiStats'));
         }
     }
 
