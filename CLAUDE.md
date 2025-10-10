@@ -98,10 +98,140 @@ Sur la page `/esbtp/paiements/suivi-categories`, les filtres (filière, niveau, 
 - [ ] Changer le filtre "Catégorie détaillée" → Vérifier mise à jour AJAX
 - [ ] Cliquer sur une carte de catégorie → Vérifier passage au mode détails sans rechargement
 - [ ] Vérifier que l'URL change (inspect network tab: XHR request, pas de navigation)
-- [ ] Tester le bouton retour du navigateur
-- [ ] Vérifier que les tooltips fonctionnent après mise à jour AJAX
 
-#### Commandes utiles
+---
+
+### Fix: Résolution affichage onglets étudiants et ajout loading states sur suivi-categories
+
+**Date:** 10 octobre 2025
+**Branche:** presentation
+
+#### Problèmes résolus
+
+1. **Aucun feedback visuel pendant les requêtes AJAX**
+   - Les sections ne montraient pas d'état de chargement
+   - Utilisateur ne savait pas si le filtre était en cours de traitement
+
+2. **Onglets étudiants affichaient aucun contenu**
+   - Après avoir cliqué sur une catégorie, les onglets "Aucun paiement (94)", "Paiements partiels (120)", "À jour (66)" restaient vides
+   - Le système de lazy loading des onglets était incompatible avec le refresh AJAX
+
+#### Solutions implémentées
+
+**1. Loading states visuels (suivi-categories.blade.php)**
+
+Ajout d'un effet de "grisement" pendant les requêtes AJAX :
+
+```javascript
+// Avant le fetch (lignes 536-541)
+metricsContainer.style.opacity = '0.5';
+metricsContainer.style.pointerEvents = 'none';
+metricsContainer.style.transition = 'opacity 0.2s ease';
+contentContainer.style.opacity = '0.5';
+contentContainer.style.pointerEvents = 'none';
+contentContainer.style.transition = 'opacity 0.2s ease';
+
+// Après le fetch - dans finally (lignes 586-590)
+metricsContainer.style.opacity = '1';
+metricsContainer.style.pointerEvents = 'auto';
+contentContainer.style.opacity = '1';
+contentContainer.style.pointerEvents = 'auto';
+```
+
+**Effet obtenu :**
+- Sections grises (opacity 0.5) pendant le chargement
+- Interactions désactivées (pointer-events none)
+- Transition smooth de 0.2s
+- Restauration automatique après réception des données
+
+**2. Fix affichage onglets étudiants (suivi-content.blade.php)**
+
+**Problème identifié :** Le système de lazy loading avec `data-statut` et spinners ne fonctionnait pas avec le refresh AJAX.
+
+**Solution :** Remplacement complet par Bootstrap native tabs avec rendu immédiat :
+
+```blade
+{{-- AVANT (lazy loading) --}}
+<a class="nav-link" data-statut="non_payes">...</a>
+<div id="students-list-container">
+    <div class="spinner">Chargement...</div>
+</div>
+
+{{-- APRÈS (rendu direct) --}}
+<a class="nav-link active" data-bs-toggle="tab" href="#non_payes_{{ $detailsCategorie['category']->id }}">
+    Aucun paiement ({{ $detailsCategorie['etudiants_non_payes']->count() }})
+</a>
+
+<div class="tab-pane fade show active" id="non_payes_{{ $detailsCategorie['category']->id }}">
+    @if($detailsCategorie['etudiants_non_payes']->count() > 0)
+        @include('esbtp.paiements.partials.liste-etudiants', [
+            'etudiants' => $detailsCategorie['etudiants_non_payes'],
+            'statut' => 'non_payes',
+            'category' => $detailsCategorie['category']
+        ])
+    @else
+        <div>Aucun étudiant sans paiement</div>
+    @endif
+</div>
+```
+
+**Modifications clés (lignes 182-258) :**
+- Changement de `data-statut` vers `data-bs-toggle="tab"`
+- Ajout de `href="#non_payes_{{ $detailsCategorie['category']->id }}"` pour cibler le bon onglet
+- IDs uniques avec `{{ $detailsCategorie['category']->id }}` pour éviter les conflits
+- Utilisation de `@include('liste-etudiants')` avec les collections directement :
+  - `$detailsCategorie['etudiants_non_payes']`
+  - `$detailsCategorie['etudiants_en_retard']`
+  - `$detailsCategorie['etudiants_a_jour']`
+- Ajout d'états vides avec messages appropriés
+- Premier onglet (Aucun paiement) actif par défaut (`show active`)
+
+#### Fichiers modifiés
+
+- [resources/views/esbtp/paiements/suivi-categories.blade.php](resources/views/esbtp/paiements/suivi-categories.blade.php):
+  - Lignes 536-541 : Ajout loading state (opacity + pointer-events)
+  - Lignes 586-590 : Restauration état normal dans finally
+
+- [resources/views/esbtp/paiements/partials/suivi-content.blade.php](resources/views/esbtp/paiements/partials/suivi-content.blade.php):
+  - Lignes 182-258 : Refonte complète des onglets étudiants
+  - Suppression du système de lazy loading
+  - Ajout de Bootstrap native tabs avec `data-bs-toggle`
+  - Rendu immédiat via `@include` au lieu de chargement différé
+
+#### Caractéristiques techniques
+
+- **Loading feedback visuel** : Opacity 0.5 + pointer-events none pendant AJAX
+- **Transition CSS smooth** : 0.2s ease pour effet de grisement progressif
+- **Tabs Bootstrap 5** : Utilisation de `data-bs-toggle="tab"` natif
+- **Rendu immédiat** : Les étudiants sont déjà présents dans les collections, pas besoin de lazy load
+- **IDs uniques** : Utilisation de l'ID de catégorie pour éviter les conflits entre catégories
+- **État vide géré** : Messages d'information quand aucun étudiant dans une catégorie
+
+#### Résultat
+
+**Avant** :
+- ❌ Pas de feedback visuel pendant le chargement AJAX
+- ❌ Onglets étudiants vides après clic sur catégorie
+- ❌ Lazy loading incompatible avec refresh AJAX
+
+**Après** :
+- ✅ Sections grisées pendant le chargement (opacity 0.5)
+- ✅ Transitions smooth et professionnelles
+- ✅ Onglets étudiants affichent immédiatement le contenu
+- ✅ Bootstrap native tabs fonctionnelles
+- ✅ Compteurs corrects sur chaque onglet
+- ✅ États vides gérés avec messages appropriés
+
+#### Tests effectués
+
+- ✅ Effet de grisement visible lors du changement de filtre
+- ✅ Restauration de l'opacité après chargement des données
+- ✅ Onglets étudiants affichent les cartes correctement
+- ✅ Navigation entre les 3 onglets fonctionnelle
+- ✅ Compteurs d'étudiants corrects sur chaque onglet
+- ✅ Messages d'état vide affichés quand applicable
+
+---
 
 ```bash
 # Vérifier les routes
