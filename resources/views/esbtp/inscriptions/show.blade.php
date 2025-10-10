@@ -430,8 +430,24 @@ body.modal-open .card:hover {
                                                 <span class="badge bg-{{ in_array($inscription->type_inscription, ['reinscription', 'réinscription']) ? 'info' : 'primary' }}">
                                                     {{ in_array($inscription->type_inscription, ['reinscription', 'réinscription']) ? 'Réinscription' : ucfirst($inscription->type_inscription) }}
                                                 </span>
+
+                                                @if($inscription->est_transfert)
+                                                    <span class="badge bg-warning ms-2" title="Transfert d'un autre établissement">
+                                                        <i class="fas fa-exchange-alt me-1"></i>Transfert
+                                                    </span>
+                                                @endif
                                             </td>
                                         </tr>
+
+                                        @if($inscription->est_transfert && $inscription->etablissement_origine)
+                                        <tr>
+                                            <th>Établissement d'origine</th>
+                                            <td>
+                                                <i class="fas fa-school text-muted me-2"></i>{{ $inscription->etablissement_origine }}
+                                            </td>
+                                        </tr>
+                                        @endif
+
                                         <tr>
                                             <th>Observations</th>
                                             <td>

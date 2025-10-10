@@ -768,6 +768,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::get('/inscriptions', [ESBTPInscriptionController::class, 'index'])->name('inscriptions.index');
             Route::get('/inscriptions/create', [ESBTPInscriptionController::class, 'create'])->name('inscriptions.create');
             Route::get('/inscriptions/getClasses', [ESBTPInscriptionController::class, 'getClasses'])->name('inscriptions.getClasses');
+            Route::get('/inscriptions/check-transfert/{classe}', [ESBTPInscriptionController::class, 'checkTransfert'])->name('inscriptions.check-transfert');
             Route::get('/inscriptions/duplicates', [ESBTPInscriptionController::class, 'duplicates'])->name('inscriptions.duplicates');
             Route::post('/inscriptions/check-duplicates', [ESBTPInscriptionController::class, 'checkDuplicates'])->name('inscriptions.check-duplicates');
             Route::post('/inscriptions', [ESBTPInscriptionController::class, 'store'])->name('inscriptions.store');

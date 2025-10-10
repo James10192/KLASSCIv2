@@ -50,7 +50,9 @@ class ESBTPInscription extends Model
         'reinscription_status',
         'reinscription_validated_at',
         'reinscription_validated_by',
-        'reinscription_observations'
+        'reinscription_observations',
+        'est_transfert', // Transfert d'un autre établissement
+        'etablissement_origine' // Nom de l'établissement d'origine
     ];
 
     /**
@@ -67,6 +69,7 @@ class ESBTPInscription extends Model
         'frais_inscription' => 'float',
         'comptabilite_activee' => 'boolean',
         'affectation_status' => 'string',
+        'est_transfert' => 'boolean',
     ];
 
     /**

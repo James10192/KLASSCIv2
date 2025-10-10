@@ -17,6 +17,66 @@
     @enderror
 </div>
 
+<!-- Modal de confirmation de transfert -->
+<div class="modal fade" id="transfertConfirmationModal" tabindex="-1" aria-labelledby="transfertConfirmationModalLabel" aria-hidden="true" style="z-index: 10500 !important;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="transfertConfirmationModalLabel">
+                    <i class="fas fa-exchange-alt me-2"></i>Transfert d'établissement
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Vous avez sélectionné une classe de <strong id="transfert-niveau-nom"></strong>.
+                </div>
+                <p class="mb-3">L'étudiant vient-il d'un <strong>transfert d'un autre établissement</strong> ?</p>
+
+                <!-- Options de transfert -->
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="est_transfert_choice" id="transfert_oui" value="oui">
+                    <label class="form-check-label" for="transfert_oui">
+                        <strong>Oui</strong>, c'est un transfert d'un autre établissement
+                    </label>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="est_transfert_choice" id="transfert_non" value="non" checked>
+                    <label class="form-check-label" for="transfert_non">
+                        <strong>Non</strong>, l'étudiant était déjà inscrit ici l'année dernière
+                    </label>
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="radio" name="est_transfert_choice" id="transfert_inconnu" value="inconnu">
+                    <label class="form-check-label" for="transfert_inconnu">
+                        <strong>Je ne sais pas</strong> (à préciser plus tard)
+                    </label>
+                </div>
+
+                <!-- Champ établissement d'origine (visible si "Oui") -->
+                <div id="etablissement-origine-container" style="display: none;">
+                    <label for="etablissement_origine_input" class="form-label">
+                        Nom de l'établissement d'origine <small class="text-muted">(optionnel)</small>
+                    </label>
+                    <input type="text" class="form-control" id="etablissement_origine_input" placeholder="Ex: Lycée Technique d'Abidjan">
+                    <small class="text-muted">Vous pourrez modifier cette information plus tard si nécessaire.</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" id="confirmer-transfert-btn">
+                    <i class="fas fa-check me-1"></i>Confirmer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Champs cachés pour stocker les infos de transfert -->
+<input type="hidden" id="est_transfert" name="est_transfert" value="0">
+<input type="hidden" id="etablissement_origine" name="etablissement_origine" value="">
+
 <!-- Modal -->
 <div class="modal fade" id="classeSelectorModal" tabindex="-1" aria-labelledby="classeSelectorModalLabel" aria-hidden="true" 
      style="z-index: 1055 !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important;">
@@ -665,18 +725,161 @@ body.modal-open * {
     // RÉTABLIR LES ANIMATIONS quand le modal se ferme
     document.getElementById('classeSelectorModal').addEventListener('hidden.bs.modal', function () {
         console.log('Modal hidden - Restoring animations');
-        
+
         // Retirer la classe spéciale
         document.body.classList.remove('modal-open-safe');
-        
+
         // Supprimer le style anti-cursor
         const antiCursorStyle = document.getElementById('anti-cursor-style');
         if (antiCursorStyle) {
             antiCursorStyle.remove();
         }
-        
+
         // Rétablir le scroll
         document.body.style.overflow = '';
+    });
+
+    // ============================================
+    // GESTION DU MODAL DE TRANSFERT D'ÉTABLISSEMENT
+    // ============================================
+
+    // Fonction modifiée selectClasse pour vérifier le transfert
+    window.originalSelectClasse = window.selectClasse || selectClasse;
+
+    function selectClasse(classeId, classeName) {
+        console.log(`Classe sélectionnée : ${classeName} (ID: ${classeId})`);
+        document.getElementById('classe_id').value = classeId;
+        document.getElementById('classe_display').value = classeName;
+
+        // Fermer le modal de sélection
+        const modal = bootstrap.Modal.getInstance(document.getElementById('classeSelectorModal'));
+        modal.hide();
+
+        // Mettre à jour l'UI
+        const placesInfo = document.getElementById('available-places-info');
+        placesInfo.innerHTML = '<div class="spinner-border spinner-border-sm" role="status"><span class="visually-hidden">Loading...</span></div> Vérification des places...';
+
+        // Vérifier les places disponibles
+        fetch(`/esbtp/classes/${classeId}/available-places`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Erreur HTTP ! Statut: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Places disponibles:', data);
+                if (data.available_places !== undefined) {
+                    let message = `Places disponibles: <strong>${data.available_places}</strong> / ${data.capacity}`;
+                    let alertClass = 'alert-success';
+                    if (data.available_places <= 5) alertClass = 'alert-warning';
+                    if (data.available_places === 0) {
+                        alertClass = 'alert-danger';
+                        message = '<strong>Aucune place disponible !</strong>';
+                    }
+                    placesInfo.innerHTML = `<div class="alert ${alertClass} p-2 mt-2">${message}</div>`;
+                } else {
+                     placesInfo.innerHTML = `<div class="alert alert-danger p-2 mt-2">Réponse invalide du serveur.</div>`;
+                }
+            })
+            .catch(error => {
+                console.error('Erreur de vérification des places:', error);
+                placesInfo.innerHTML = `<div class="alert alert-danger p-2 mt-2">Erreur lors de la récupération des places.</div>`;
+            });
+
+        // NOUVEAU: Vérifier si la classe nécessite confirmation de transfert
+        fetch(`/esbtp/inscriptions/check-transfert/${classeId}`)
+            .then(response => response.json())
+            .then(data => {
+                console.log('Vérification transfert:', data);
+                if (data.success && data.necessite_confirmation) {
+                    // Classe de 2ème année ou plus -> afficher modal de transfert
+                    document.getElementById('transfert-niveau-nom').textContent = data.niveau_nom || data.niveau_code;
+
+                    // Ouvrir le modal de transfert
+                    const transfertModal = new bootstrap.Modal(document.getElementById('transfertConfirmationModal'));
+                    transfertModal.show();
+                } else {
+                    // Classe de 1ère année -> pas besoin de confirmation, déclencher événement change
+                    triggerClasseChangeEvent();
+                }
+            })
+            .catch(error => {
+                console.error('Erreur vérification transfert:', error);
+                // En cas d'erreur, on déclenche l'événement quand même
+                triggerClasseChangeEvent();
+            });
+    }
+
+    // Fonction helper pour déclencher l'événement de changement de classe
+    function triggerClasseChangeEvent() {
+        setTimeout(() => {
+            const classeElement = document.getElementById('classe_id');
+            if (classeElement) {
+                const changeEvent = new Event('change', { bubbles: true });
+                classeElement.dispatchEvent(changeEvent);
+            }
+        }, 100);
+    }
+
+    // Gestion de l'affichage du champ établissement d'origine
+    document.addEventListener('DOMContentLoaded', function() {
+        const radioButtons = document.querySelectorAll('input[name="est_transfert_choice"]');
+        const etablissementContainer = document.getElementById('etablissement-origine-container');
+
+        radioButtons.forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.value === 'oui') {
+                    etablissementContainer.style.display = 'block';
+                } else {
+                    etablissementContainer.style.display = 'none';
+                }
+            });
+        });
+
+        // Gestion du bouton de confirmation du modal de transfert
+        const confirmerBtn = document.getElementById('confirmer-transfert-btn');
+        if (confirmerBtn) {
+            confirmerBtn.addEventListener('click', function() {
+                const selectedChoice = document.querySelector('input[name="est_transfert_choice"]:checked').value;
+                const etablissementInput = document.getElementById('etablissement_origine_input').value;
+
+                // Stocker les valeurs dans les champs cachés
+                const estTransfertField = document.getElementById('est_transfert');
+                const etablissementOrigineField = document.getElementById('etablissement_origine');
+
+                if (selectedChoice === 'oui') {
+                    estTransfertField.value = '1';
+                    etablissementOrigineField.value = etablissementInput;
+                } else if (selectedChoice === 'non') {
+                    estTransfertField.value = '0';
+                    etablissementOrigineField.value = '';
+                } else { // inconnu
+                    estTransfertField.value = '0'; // Par défaut non
+                    etablissementOrigineField.value = '';
+                }
+
+                console.log('Transfert confirmé:', {
+                    est_transfert: estTransfertField.value,
+                    etablissement_origine: etablissementOrigineField.value
+                });
+
+                // Fermer le modal
+                const transfertModal = bootstrap.Modal.getInstance(document.getElementById('transfertConfirmationModal'));
+                transfertModal.hide();
+
+                // Déclencher l'événement de changement de classe pour charger les frais
+                triggerClasseChangeEvent();
+            });
+        }
+
+        // Reset du modal quand il se ferme
+        document.getElementById('transfertConfirmationModal')?.addEventListener('hidden.bs.modal', function() {
+            // Reset du formulaire
+            document.getElementById('transfert_non').checked = true;
+            document.getElementById('etablissement_origine_input').value = '';
+            document.getElementById('etablissement-origine-container').style.display = 'none';
+        });
     });
 
 </script> 

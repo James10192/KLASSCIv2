@@ -625,6 +625,8 @@ class ESBTPInscriptionController extends Controller
                 'montant_scolarite' => $request->montant_scolarite ?? 0,
                 'frais_inscription' => $request->frais_inscription ?? 0,
                 'affectation_status' => $affectationStatus, // Sauvegarder le statut d'affectation
+                'est_transfert' => $request->boolean('est_transfert', false), // Transfert d'établissement
+                'etablissement_origine' => $request->input('etablissement_origine'), // Nom de l'établissement d'origine
             ];
 
             // Si la classe a des relations filière et niveau, les ajouter aux données de l'étudiant
@@ -1324,6 +1326,45 @@ class ESBTPInscriptionController extends Controller
         ]);
 
         return response()->json($classes);
+    }
+
+    /**
+     * Vérifier si une classe nécessite la confirmation de transfert d'établissement
+     * (classes de 2ème année ou plus)
+     */
+    public function checkTransfert($classeId)
+    {
+        try {
+            $classe = ESBTPClasse::with('niveau')->findOrFail($classeId);
+
+            // Hiérarchie des niveaux (même logique que ReeinscriptionService)
+            $hierarchie = ['1A' => 1, '2A' => 2, 'L1' => 3, 'L2' => 4, 'L3' => 5, 'M1' => 6, 'M2' => 7];
+
+            $niveauCode = $classe->niveau->code ?? '';
+            $ordreNiveau = $hierarchie[$niveauCode] ?? 0;
+
+            // Si le niveau est > 1 (donc 2A, L1, L2, L3, M1, M2), c'est potentiellement un transfert
+            $necessiteConfirmation = $ordreNiveau > 1;
+
+            return response()->json([
+                'success' => true,
+                'necessite_confirmation' => $necessiteConfirmation,
+                'niveau_code' => $niveauCode,
+                'niveau_nom' => $classe->niveau->name ?? 'N/A',
+                'classe_nom' => $classe->name
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la vérification de transfert', [
+                'classe_id' => $classeId,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la vérification'
+            ], 500);
+        }
     }
 
     /**
