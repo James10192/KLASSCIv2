@@ -2,14 +2,249 @@
 
 @section('title', 'Mes Absences')
 
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<style>
+    /* Styles spécifiques pour la page absences */
+    .absences-container {
+        --absences-primary: var(--primary);
+        --absences-secondary: var(--secondary);
+        --absences-surface: var(--surface);
+        --absences-border: rgba(0, 0, 0, 0.08);
+    }
+
+    .filter-section {
+        background: white;
+        border-radius: var(--radius-large);
+        padding: var(--space-lg);
+        margin-bottom: var(--space-xl);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        border: 1px solid var(--absences-border);
+    }
+
+    .filter-section h5 {
+        font-weight: 700;
+        font-size: var(--text-lg);
+        color: var(--text-primary);
+        margin-bottom: var(--space-md);
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: var(--space-lg);
+        margin-bottom: var(--space-xl);
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: var(--radius-large);
+        padding: var(--space-lg);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        border: 1px solid var(--absences-border);
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+    }
+
+    .stat-card.danger::before {
+        background: linear-gradient(135deg, var(--danger), #dc3545);
+    }
+
+    .stat-card.success::before {
+        background: linear-gradient(135deg, var(--success), #28a745);
+    }
+
+    .stat-card.warning::before {
+        background: linear-gradient(135deg, var(--warning), #ffc107);
+    }
+
+    .stat-card.info::before {
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(var(--primary-rgb), 0.15);
+    }
+
+    .stat-card h6 {
+        font-size: var(--text-sm);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-secondary);
+        margin-bottom: var(--space-sm);
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        line-height: 1;
+    }
+
+    .stat-icon {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: var(--radius-circle);
+    }
+
+    .bg-danger-light {
+        background-color: rgba(220, 53, 69, 0.1);
+    }
+
+    .bg-success-light {
+        background-color: rgba(40, 167, 69, 0.1);
+    }
+
+    .bg-warning-light {
+        background-color: rgba(255, 193, 7, 0.1);
+    }
+
+    .bg-info-light {
+        background-color: rgba(23, 162, 184, 0.1);
+    }
+
+    .card-moderne {
+        background: white;
+        border-radius: var(--radius-large);
+        padding: var(--space-lg);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        border: 1px solid var(--absences-border);
+        margin-bottom: var(--space-xl);
+    }
+
+    .card-moderne h5 {
+        font-weight: 700;
+        font-size: var(--text-lg);
+        color: var(--text-primary);
+        margin-bottom: var(--space-md);
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
+    }
+
+    .subject-icon {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: var(--radius-circle);
+    }
+
+    .highlighted-row {
+        background-color: rgba(242, 148, 0, 0.2) !important;
+        animation: highlight-fade 2s ease-in-out;
+    }
+
+    @keyframes highlight-fade {
+        0%, 100% { background-color: rgba(242, 148, 0, 0.2); }
+        50% { background-color: rgba(242, 148, 0, 0.4); }
+    }
+
+    .chart-container {
+        position: relative;
+        width: 100%;
+    }
+
+    .table-hover tbody tr:hover {
+        background: rgba(var(--primary-rgb), 0.02);
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+            gap: var(--space-md);
+        }
+
+        .student-header .d-flex {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: var(--space-md);
+        }
+
+        .student-header h1 {
+            font-size: 1.5rem !important;
+        }
+
+        .student-header .header-subtitle {
+            font-size: 0.875rem !important;
+        }
+
+        .student-header .text-end {
+            text-align: left !important;
+            width: 100%;
+        }
+
+        .student-header .badge {
+            display: inline-block;
+            width: auto;
+        }
+
+        .filter-section .row > div {
+            margin-bottom: var(--space-sm);
+        }
+    }
+</style>
+@endpush
+
 @section('content')
-<div class="container-fluid">
-    <!-- Filtres -->
-    <div class="card border-0 shadow-sm mb-4">
-        <div class="card-header bg-white py-3">
-            <h5 class="card-title mb-0">Filtrer les données</h5>
+<div class="dashboard-acasi absences-container">
+    <div class="main-content">
+        <!-- Header Étudiant Moderne -->
+        <div class="student-header">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <h1>
+                        <i class="fas fa-user-clock me-3"></i>
+                        Mes Absences
+                    </h1>
+                    <p class="header-subtitle">
+                        Consultez vos absences, retards et justifications
+                    </p>
+                </div>
+                <div class="text-end">
+                    <div class="badge" style="background: rgba(255, 255, 255, 0.2); color: white; padding: var(--space-sm) var(--space-md); border-radius: var(--radius-medium); font-size: var(--text-sm);">
+                        <i class="fas fa-calendar me-2"></i>
+                        Année {{ date('Y') }}-{{ date('Y')+1 }}
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="card-body">
+
+        <!-- Notification si l'utilisateur vient d'une notification -->
+        @if(request()->has('highlight'))
+        <div class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>Notification d'absence :</strong> Veuillez justifier votre absence ci-dessous pour éviter les pénalités sur votre note d'assiduité.
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        @endif
+
+        <!-- Filtres -->
+        <div class="filter-section">
+            <h5>
+                <i class="fas fa-filter"></i>
+                Filtres de recherche
+            </h5>
             <form action="{{ route('esbtp.mes-absences.index') }}" method="GET" class="row g-3">
                 <div class="col-md-3">
                     <label class="form-label">Date de début</label>
@@ -37,137 +272,109 @@
                 </div>
             </form>
         </div>
-    </div>
 
-    <!-- Notification si l'utilisateur vient d'une notification -->
-    @if(request()->has('highlight'))
-    <div class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
-        <i class="fas fa-info-circle me-2"></i>
-        <strong>Notification d'absence :</strong> Veuillez justifier votre absence ci-dessous pour éviter les pénalités sur votre note d'assiduité.
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-    @endif
+        <!-- Statistiques -->
+        <div class="stats-grid">
+            <div class="stat-card danger">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6>Total Absences</h6>
+                    <div class="stat-icon bg-danger-light">
+                        <i class="fas fa-times text-danger"></i>
+                    </div>
+                </div>
+                <div class="stat-value">{{ $absences->count() }}</div>
+                <div class="mt-2">
+                    <small class="text-muted">Sur la période sélectionnée</small>
+                </div>
+            </div>
 
-    <!-- Statistiques -->
-    <div class="row mb-4">
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="text-uppercase fw-semibold text-muted mb-0">Total Absences</h6>
-                        <div class="stat-icon bg-danger-light rounded-circle p-2">
-                            <i class="fas fa-times text-danger"></i>
+            <div class="stat-card success">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6>Absences Justifiées</h6>
+                    <div class="stat-icon bg-success-light">
+                        <i class="fas fa-check text-success"></i>
+                    </div>
+                </div>
+                <div class="stat-value">{{ $excuses->count() }}</div>
+                <div class="mt-2">
+                    <small class="text-muted">{{ $absences->count() > 0 ? round(($excuses->count() / max($absences->count(), 1)) * 100) : 0 }}% des absences</small>
+                </div>
+            </div>
+
+            <div class="stat-card warning">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6>Retards</h6>
+                    <div class="stat-icon bg-warning-light">
+                        <i class="fas fa-clock text-warning"></i>
+                    </div>
+                </div>
+                <div class="stat-value">{{ $retards->count() }}</div>
+                <div class="mt-2">
+                    <small class="text-muted">Sur {{ $presences->count() + $absences->count() + $retards->count() + $excuses->count() }} séances</small>
+                </div>
+            </div>
+
+            <div class="stat-card info">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6>Taux de Présence</h6>
+                    <div class="stat-icon bg-info-light">
+                        <i class="fas fa-chart-line text-info"></i>
+                    </div>
+                </div>
+                @php
+                    $totalDays = $presences->count() + $absences->count();
+                    $presenceRate = $totalDays > 0 ? round(($presences->count() / $totalDays) * 100) : 100;
+                @endphp
+                <div class="d-flex align-items-center mb-2">
+                    <div class="progress flex-grow-1 me-2" style="height: 8px; background-color: #f8f9fa;">
+                        <div class="progress-bar {{ $presenceRate >= 75 ? 'bg-success' : ($presenceRate >= 50 ? 'bg-warning' : 'bg-danger') }}"
+                             role="progressbar"
+                             style="width: {{ $presenceRate }}%"
+                             aria-valuenow="{{ $presenceRate }}"
+                             aria-valuemin="0"
+                             aria-valuemax="100">
                         </div>
                     </div>
-                    <h2 class="mb-0 display-5 fw-bold">{{ $absences->count() }}</h2>
-                    <div class="mt-2">
-                        <small class="text-muted">Sur la période sélectionnée</small>
-                    </div>
+                    <span class="fw-bold">{{ $presenceRate }}%</span>
+                </div>
+                <div class="mt-2">
+                    <small class="text-muted">Objectif: minimum 75%</small>
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="text-uppercase fw-semibold text-muted mb-0">Absences Justifiées</h6>
-                        <div class="stat-icon bg-success-light rounded-circle p-2">
-                            <i class="fas fa-check text-success"></i>
-                        </div>
-                    </div>
-                    <h2 class="mb-0 display-5 fw-bold">{{ $excuses->count() }}</h2>
-                    <div class="mt-2">
-                        <small class="text-muted">{{ $absences->count() > 0 ? round(($excuses->count() / max($absences->count(), 1)) * 100) : 0 }}% des absences</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="text-uppercase fw-semibold text-muted mb-0">Retards</h6>
-                        <div class="stat-icon bg-warning-light rounded-circle p-2">
-                            <i class="fas fa-clock text-warning"></i>
-                        </div>
-                    </div>
-                    <h2 class="mb-0 display-5 fw-bold">{{ $retards->count() }}</h2>
-                    <div class="mt-2">
-                        <small class="text-muted">Sur {{ $presences->count() + $absences->count() + $retards->count() + $excuses->count() }} séances</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="text-uppercase fw-semibold text-muted mb-0">Taux de Présence</h6>
-                        <div class="stat-icon bg-info-light rounded-circle p-2">
-                            <i class="fas fa-chart-line text-info"></i>
-                        </div>
-                    </div>
-                    @php
-                        $totalDays = $presences->count() + $absences->count();
-                        $presenceRate = $totalDays > 0 ? round(($presences->count() / $totalDays) * 100) : 100;
-                    @endphp
-                    <div class="d-flex align-items-center">
-                        <div class="progress flex-grow-1 me-2" style="height: 8px;">
-                            <div class="progress-bar {{ $presenceRate >= 75 ? 'bg-success' : ($presenceRate >= 50 ? 'bg-warning' : 'bg-danger') }}"
-                                 role="progressbar"
-                                 style="width: {{ $presenceRate }}%"
-                                 aria-valuenow="{{ $presenceRate }}"
-                                 aria-valuemin="0"
-                                 aria-valuemax="100">
-                            </div>
-                        </div>
-                        <span class="fw-bold">{{ $presenceRate }}%</span>
-                    </div>
-                    <div class="mt-2">
-                        <small class="text-muted">Objectif: minimum 75%</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Graphiques -->
-    <div class="row mb-4">
-        <div class="col-xl-6 mb-4">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-header bg-white py-3">
-                    <h5 class="card-title mb-0">Absences par matière</h5>
-                </div>
-                <div class="card-body">
+        <!-- Graphiques -->
+        <div class="row mb-4">
+            <div class="col-xl-6 mb-4">
+                <div class="card-moderne">
+                    <h5>
+                        <i class="fas fa-chart-bar"></i>
+                        Absences par matière
+                    </h5>
                     <div class="chart-container" style="height: 300px;">
                         <canvas id="absencesParMatiereChart"></canvas>
                     </div>
                 </div>
             </div>
-        </div>
-        <div class="col-xl-6 mb-4">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-header bg-white py-3">
-                    <h5 class="card-title mb-0">Évolution des absences</h5>
-                </div>
-                <div class="card-body">
+            <div class="col-xl-6 mb-4">
+                <div class="card-moderne">
+                    <h5>
+                        <i class="fas fa-chart-line"></i>
+                        Évolution des absences
+                    </h5>
                     <div class="chart-container" style="height: 300px;">
                         <canvas id="evolutionAbsencesChart"></canvas>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Statistiques par matière -->
-    <div class="card border-0 shadow-sm mb-4">
-        <div class="card-header bg-white py-3">
-            <h5 class="card-title mb-0">Statistiques par matière</h5>
-        </div>
-        <div class="card-body">
+        <!-- Statistiques par matière -->
+        <div class="card-moderne">
+            <h5>
+                <i class="fas fa-table"></i>
+                Statistiques par matière
+            </h5>
             <div class="table-responsive">
                 <table class="table table-hover">
                     <thead class="table-light">
@@ -216,12 +423,12 @@
         </div>
     </div>
 
-    <!-- Liste des absences -->
-    <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white py-3">
-            <h5 class="card-title mb-0">Historique des absences</h5>
-        </div>
-        <div class="card-body">
+        <!-- Liste des absences -->
+        <div class="card-moderne">
+            <h5>
+                <i class="fas fa-history"></i>
+                Historique des absences
+            </h5>
             @if($absences->isEmpty())
                 <div class="alert alert-info mb-0">
                     <i class="fas fa-info-circle me-2"></i>
@@ -325,6 +532,7 @@
         </div>
     </div>
 </div>
+@endsection
 
 <!-- Modals de justification -->
 @foreach($absences as $absence)
@@ -491,58 +699,6 @@
         </div>
     </div>
 @endforeach
-
-@endsection
-
-@push('styles')
-<style>
-    .stat-icon {
-        width: 40px;
-        height: 40px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .subject-icon {
-        width: 32px;
-        height: 32px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .badge {
-        font-weight: 500;
-        padding: 0.5em 0.75em;
-    }
-    .bg-success-light {
-        background-color: rgba(40, 167, 69, 0.1);
-    }
-    .bg-danger-light {
-        background-color: rgba(220, 53, 69, 0.1);
-    }
-    .bg-warning-light {
-        background-color: rgba(255, 193, 7, 0.1);
-    }
-    .bg-info-light {
-        background-color: rgba(23, 162, 184, 0.1);
-    }
-    .progress {
-        background-color: #f8f9fa;
-    }
-    .chart-container {
-        position: relative;
-        width: 100%;
-    }
-    .highlighted-row {
-        background-color: rgba(242, 148, 0, 0.2) !important;
-        animation: highlight-fade 2s ease-in-out;
-    }
-    @keyframes highlight-fade {
-        0%, 100% { background-color: rgba(242, 148, 0, 0.2); }
-        50% { background-color: rgba(242, 148, 0, 0.4); }
-    }
-</style>
-@endpush
 
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
