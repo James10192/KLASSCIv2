@@ -96,22 +96,24 @@
             
             <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
                 <div class="kpi-title" style="color: #000; font-weight: 600;">Étudiants Inscrits</div>
-                <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ $classe->nombre_etudiants }}</div>
+                <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ $classe->etudiants->count() }}</div>
                 <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
                     <i class="fas fa-user-graduate"></i>
                     Année courante
                 </div>
             </div>
-            
+
             <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
                 <div class="kpi-title" style="color: #000; font-weight: 600;">Taux d'Occupation</div>
                 @php
-                    $pourcentage = $classe->places_totales > 0 ? round(($classe->nombre_etudiants / $classe->places_totales) * 100, 1) : 0;
+                    $nombreEtudiants = $classe->etudiants->count();
+                    $pourcentage = $classe->places_totales > 0 ? round(($nombreEtudiants / $classe->places_totales) * 100, 1) : 0;
+                    $placesLibres = max(0, $classe->places_totales - $nombreEtudiants);
                 @endphp
                 <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ $pourcentage }}%</div>
                 <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
                     <i class="fas fa-chart-pie"></i>
-                    {{ $classe->places_disponibles }} places libres
+                    {{ $placesLibres }} places libres
                 </div>
             </div>
         </div>
@@ -258,7 +260,7 @@
                     <i class="fas fa-users"></i>
                     Liste des étudiants inscrits
                 </div>
-                <div class="main-card-subtitle">{{ $classe->nombre_etudiants }} étudiant(s) inscrit(s) dans cette classe pour l'année courante</div>
+                <div class="main-card-subtitle">{{ $classe->etudiants->count() }} étudiant(s) inscrit(s) dans cette classe pour l'année courante</div>
             </div>
 
             <!-- Actions d'export -->
