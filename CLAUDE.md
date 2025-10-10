@@ -1565,4 +1565,249 @@ php artisan view:clear
 
 ---
 
-*Dernière mise à jour: 9 octobre 2025*
+### Feature: Système AJAX "Load More" pour la liste des classes
+
+**Date:** 10 octobre 2025
+**Branche:** presentation
+
+#### Problème résolu
+
+La page de liste des classes (`classes.index`) utilisait une pagination traditionnelle qui :
+- Désactivait les filtres lors du changement de page
+- Nécessitait un rechargement complet de la page
+- N'offrait pas d'expérience utilisateur fluide
+- Affichait des KPI incorrects (basés uniquement sur les classes chargées au lieu de toutes les classes actives)
+
+#### Solution implémentée
+
+Implémentation complète d'un système AJAX avec bouton "Charger plus" qui préserve l'état des filtres et offre une expérience utilisateur fluide, similaire à celui déjà implémenté pour la liste des étudiants.
+
+#### Architecture
+
+**Points clés :**
+- **Pagination manuelle** : Utilisation de `slice()` au lieu de `paginate()` pour un contrôle total
+- **AJAX complet** : Aucun rechargement de page, tout passe par `fetch()`
+- **Préservation des filtres** : Les filtres restent actifs lors du chargement de nouvelles classes
+- **KPI globaux** : Statistiques calculées sur TOUTES les classes actives, pas seulement celles affichées
+- **Gestion dynamique du DOM** : Utilisation de helper functions pour éviter les références obsolètes
+
+#### 1. Backend - ESBTPClasseController
+
+**Fichier :** [app/Http/Controllers/ESBTPClasseController.php](app/Http/Controllers/ESBTPClasseController.php)
+
+**Modifications clés :**
+
+- **Lignes 26-34** : Logging complet pour diagnostics
+  ```php
+  $startMicrotime = microtime(true);
+  $baseLogContext = [
+      'timestamp' => now()->toIso8601String(),
+      'url' => $request->fullUrl(),
+      'query' => $request->query(),
+      'user_id' => optional($request->user())->id,
+  ];
+  \Log::info('ESBTPClasseController@index start', $baseLogContext);
+  ```
+
+- **Lignes 86-97** : Pagination manuelle avec slice()
+  ```php
+  $allClasses = $query->get();
+  $perPage = 12;
+  $page = $request->input('page', 1);
+  $offset = ($page - 1) * $perPage;
+  $classes = $allClasses->slice($offset, $perPage)->values();
+  $hasMore = $allClasses->count() > ($offset + $perPage);
+  $totalCount = $allClasses->count();
+  ```
+
+- **Lignes 103-132** : Calcul séparé des KPI sur TOUTES les classes actives
+  ```php
+  $kpiQuery = ESBTPClasse::where('is_active', true);
+
+  if ($anneeCourante) {
+      $kpiQuery->withCount([
+          'inscriptions as nombre_etudiants_annee_courante' => function($q) use ($anneeCourante) {
+              $q->where('annee_universitaire_id', $anneeCourante->id)
+                ->where('status', 'active');
+          }
+      ]);
+  }
+
+  $allActiveClasses = $kpiQuery->get();
+
+  $kpiStats = [
+      'totalClasses' => $allActiveClasses->count(),
+      'totalEtudiants' => $anneeCourante
+          ? $allActiveClasses->sum('nombre_etudiants_annee_courante')
+          : $allActiveClasses->sum('nombre_etudiants'),
+      'totalPlaces' => $allActiveClasses->sum('places_totales'),
+  ];
+  ```
+
+- **Lignes 144-151** : Réponse AJAX avec JSON
+  ```php
+  if ($request->ajax()) {
+      $html = view('esbtp.classes.partials.items', compact('classes'))->render();
+      return response()->json([
+          'html' => $html,
+          'hasMore' => $hasMore,
+          'currentPage' => $page,
+          'total' => $totalCount,
+      ]);
+  }
+  ```
+
+#### 2. Nouvelles vues partielles
+
+**Fichier créé :** [resources/views/esbtp/classes/partials/results.blade.php](resources/views/esbtp/classes/partials/results.blade.php) (28 lignes)
+- Conteneur principal avec grille de classes
+- Bouton "Charger plus" avec visibilité conditionnelle
+- Spinner de chargement
+- État vide avec message et bouton de création
+
+**Fichier créé :** [resources/views/esbtp/classes/partials/items.blade.php](resources/views/esbtp/classes/partials/items.blade.php) (145 lignes)
+- Boucle foreach des cartes de classe uniquement
+- Aucun wrapper ou bouton (pour permettre l'append AJAX)
+- Contient les modals de suppression
+
+#### 3. Frontend - JavaScript AJAX
+
+**Fichier :** [resources/views/esbtp/classes/index.blade.php](resources/views/esbtp/classes/index.blade.php)
+
+**Modifications clés :**
+
+- **Lignes 141-143** : Bouton reset transformé de lien en bouton
+  ```blade
+  <button type="button" id="reset-filters-btn" class="btn-acasi secondary">
+      <i class="fas fa-times me-1"></i>Réinitialiser
+  </button>
+  ```
+
+- **Lignes 154-197** : KPI cards utilisant `$kpiStats`
+  ```blade
+  <div class="kpi-value color-primary">{{ $kpiStats['totalClasses'] }}</div>
+  <div class="kpi-value color-accent">{{ $kpiStats['totalEtudiants'] }}</div>
+  <div class="kpi-value color-success">{{ $kpiStats['totalPlaces'] }}</div>
+  ```
+
+- **Lignes 214-217** : Inclusion de la partial results
+  ```blade
+  <div id="classes-results">
+      @include('esbtp.classes.partials.results', ['classes' => $classes])
+  </div>
+  ```
+
+- **Lignes 328-335** : Helper functions pour références DOM dynamiques
+  ```javascript
+  function getLoadMoreBtn() {
+      return document.getElementById('load-more-btn');
+  }
+
+  function getLoadMoreSpinner() {
+      return document.getElementById('load-more-spinner');
+  }
+  ```
+
+- **Lignes 364-441** : Fonction principale fetchResults() avec logique reset/append
+  ```javascript
+  function fetchResults(reset = true) {
+      if (reset) {
+          currentPage = 1;
+          // Remplace tout le contenu avec nouvelle grille + bouton
+          resultsContainer.innerHTML = `<div class="resultats-grid" id="classes-grid">...`;
+      } else {
+          // Ajoute à la grille existante
+          const grid = document.getElementById('classes-grid');
+          grid.insertAdjacentHTML('beforeend', data.html);
+      }
+
+      // TOUJOURS rebind après chargement
+      bindLoadMore();
+      updateLoadMoreButton(data.hasMore);
+  }
+  ```
+
+- **Lignes 448-467** : Rebinding du bouton avec clone-and-replace
+  ```javascript
+  function bindLoadMore() {
+      const btn = getLoadMoreBtn();
+      const spinner = getLoadMoreSpinner();
+
+      if (btn && spinner) {
+          const newBtn = btn.cloneNode(true);
+          btn.parentNode.replaceChild(newBtn, btn);
+
+          newBtn.addEventListener('click', function() {
+              newBtn.style.display = 'none';
+              spinner.classList.remove('d-none');
+              currentPage++;
+              fetchResults(false); // Mode append
+          });
+      }
+  }
+  ```
+
+- **Lignes 478-494** : Handler du bouton reset
+  ```javascript
+  resetBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      form.reset();
+
+      if (typeof $ !== 'undefined' && typeof $.fn.select2 !== 'undefined') {
+          $('#filiere_id, #niveau_id, #statut, #capacite').val(null).trigger('change');
+      }
+
+      fetchResults(true);
+  });
+  ```
+
+#### Fichiers modifiés
+
+- [app/Http/Controllers/ESBTPClasseController.php](app/Http/Controllers/ESBTPClasseController.php) - AJAX support, KPI calculation, manual pagination
+- [resources/views/esbtp/classes/index.blade.php](resources/views/esbtp/classes/index.blade.php) - JavaScript AJAX, reset button, KPI display
+
+#### Fichiers créés
+
+- [resources/views/esbtp/classes/partials/results.blade.php](resources/views/esbtp/classes/partials/results.blade.php) - Container with load more button
+- [resources/views/esbtp/classes/partials/items.blade.php](resources/views/esbtp/classes/partials/items.blade.php) - Class cards for AJAX append
+
+#### Caractéristiques techniques
+
+- **Double query strategy** : Une query pour l'affichage paginé, une query séparée pour les KPI globaux
+- **Helper functions** : Accès dynamique aux éléments DOM au lieu de références cachées
+- **Clone-and-replace** : Pattern propre pour le rebinding des event listeners
+- **State management** : Variables `currentPage`, `hasMorePages`, `isLoading` pour tracking de pagination
+- **History API** : Utilisation de `pushState` pour mise à jour d'URL sans navigation
+- **Select2 integration** : Support des dropdowns Select2 avec reset
+- **Loading states** : Spinners et états de chargement pour feedback utilisateur
+
+#### Tests effectués
+
+- ✅ Filtrage AJAX sans rechargement de page
+- ✅ Bouton "Charger plus" préserve les filtres à travers les chargements
+- ✅ Bouton reset efface les filtres via AJAX (sans rechargement)
+- ✅ KPI cards affichent des statistiques globales précises (toutes les classes actives avec inscriptions année courante)
+- ✅ Rebinding correct du bouton après multiples clics
+- ✅ Gestion des états vides
+- ✅ Logging complet pour diagnostics
+
+#### Avantages
+
+✅ **Expérience utilisateur fluide** : Pas de rechargement de page
+✅ **Filtres persistants** : Les filtres restent actifs lors du chargement de nouvelles classes
+✅ **KPI précis** : Statistiques calculées sur l'ensemble des classes actives
+✅ **Performance optimisée** : Chargement incrémental par lots de 12
+✅ **Code maintenable** : Séparation claire des concerns avec partials
+✅ **Gestion robuste du DOM** : Pas de références obsolètes grâce aux helper functions
+
+#### Problèmes résolus pendant l'implémentation
+
+1. **HTML cassé** : HTML comment non fermé → Suppression du code commenté
+2. **Reset force le reload** : Lien `<a href>` → Bouton avec handler JavaScript
+3. **Bouton invisible** : `$hasMore` non passé à la vue → Ajout dans compact()
+4. **Bouton disparaît après clic** : Références DOM obsolètes → Helper functions + rebinding systématique
+5. **KPI incorrects** : Basés sur `$classes` (12 classes) → Query séparée sur toutes les classes actives
+
+---
+
+*Dernière mise à jour: 10 octobre 2025*
