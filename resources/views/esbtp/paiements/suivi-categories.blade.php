@@ -532,9 +532,13 @@
             return;
         }
 
-        // Show loading state (optional - could add spinner)
-        // metricsContainer.style.opacity = '0.5';
-        // contentContainer.style.opacity = '0.5';
+        // Show loading state - griser les sections
+        metricsContainer.style.opacity = '0.5';
+        metricsContainer.style.pointerEvents = 'none';
+        metricsContainer.style.transition = 'opacity 0.2s ease';
+        contentContainer.style.opacity = '0.5';
+        contentContainer.style.pointerEvents = 'none';
+        contentContainer.style.transition = 'opacity 0.2s ease';
 
         return fetch(url, {
             headers: {
@@ -579,8 +583,10 @@
         })
         .finally(() => {
             // Remove loading state
-            // metricsContainer.style.opacity = '1';
-            // contentContainer.style.opacity = '1';
+            metricsContainer.style.opacity = '1';
+            metricsContainer.style.pointerEvents = 'auto';
+            contentContainer.style.opacity = '1';
+            contentContainer.style.pointerEvents = 'auto';
         });
     }
 

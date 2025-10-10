@@ -179,25 +179,25 @@
                 </div>
             </div>
 
-            {{-- Navigation par onglets avec lazy loading --}}
+            {{-- Navigation par onglets --}}
             <div class="student-tabs-container">
-                <ul class="nav nav-tabs" id="myTab" role="tablist" style="border: none; display: flex; gap: var(--space-md);">
+                <ul class="nav nav-tabs" id="myTab_{{ $detailsCategorie['category']->id }}" role="tablist" style="border: none; display: flex; gap: var(--space-md);">
                     <li class="nav-item" style="border: none;">
-                        <a class="nav-link student-tab" data-statut="non_payes" href="#" role="tab"
+                        <a class="nav-link active" data-bs-toggle="tab" href="#non_payes_{{ $detailsCategorie['category']->id }}" role="tab"
                            style="border: none; border-radius: var(--radius-small); padding: var(--space-sm) var(--space-md); color: var(--text-secondary); font-weight: 500;">
                             <i class="fas fa-exclamation-triangle me-2"></i>
                             Aucun paiement ({{ $detailsCategorie['etudiants_non_payes']->count() }})
                         </a>
                     </li>
                     <li class="nav-item" style="border: none;">
-                        <a class="nav-link student-tab" data-statut="en_retard" href="#" role="tab"
+                        <a class="nav-link" data-bs-toggle="tab" href="#en_retard_{{ $detailsCategorie['category']->id }}" role="tab"
                            style="border: none; border-radius: var(--radius-small); padding: var(--space-sm) var(--space-md); color: var(--text-secondary); font-weight: 500;">
                             <i class="fas fa-clock me-2"></i>
                             Paiements partiels ({{ $detailsCategorie['etudiants_en_retard']->count() }})
                         </a>
                     </li>
                     <li class="nav-item" style="border: none;">
-                        <a class="nav-link student-tab" data-statut="a_jour" href="#" role="tab"
+                        <a class="nav-link" data-bs-toggle="tab" href="#a_jour_{{ $detailsCategorie['category']->id }}" role="tab"
                            style="border: none; border-radius: var(--radius-small); padding: var(--space-sm) var(--space-md); color: var(--text-secondary); font-weight: 500;">
                             <i class="fas fa-check-circle me-2"></i>
                             À jour ({{ $detailsCategorie['etudiants_a_jour']->count() }})
@@ -208,36 +208,51 @@
                 {{-- Contenu des onglets --}}
                 <div class="tab-content">
                     {{-- Onglet Aucun paiement --}}
-                    <div class="tab-pane fade" id="non_payes" data-statut="non_payes">
-                        <div class="paiement-spinner">
-                            <div class="paiement-spinner-icon">
-                                <i class="fas fa-spinner"></i>
+                    <div class="tab-pane fade show active" id="non_payes_{{ $detailsCategorie['category']->id }}" role="tabpanel">
+                        @if($detailsCategorie['etudiants_non_payes']->count() > 0)
+                            @include('esbtp.paiements.partials.liste-etudiants', [
+                                'etudiants' => $detailsCategorie['etudiants_non_payes'],
+                                'statut' => 'non_payes',
+                                'category' => $detailsCategorie['category']
+                            ])
+                        @else
+                            <div style="padding: 40px; text-align: center; color: #9ca3af;">
+                                <i class="fas fa-check-circle" style="font-size: 48px; margin-bottom: 16px; color: #10b981;"></i>
+                                <p style="font-size: 16px; font-weight: 500;">Aucun étudiant sans paiement</p>
                             </div>
-                            <div class="paiement-spinner-text">Chargement des étudiants sans paiement...</div>
-                        </div>
-                        <div class="content-container" style="display: none;"></div>
+                        @endif
                     </div>
 
                     {{-- Onglet Paiements partiels --}}
-                    <div class="tab-pane fade" id="en_retard" data-statut="en_retard">
-                        <div class="paiement-spinner">
-                            <div class="paiement-spinner-icon">
-                                <i class="fas fa-spinner"></i>
+                    <div class="tab-pane fade" id="en_retard_{{ $detailsCategorie['category']->id }}" role="tabpanel">
+                        @if($detailsCategorie['etudiants_en_retard']->count() > 0)
+                            @include('esbtp.paiements.partials.liste-etudiants', [
+                                'etudiants' => $detailsCategorie['etudiants_en_retard'],
+                                'statut' => 'en_retard',
+                                'category' => $detailsCategorie['category']
+                            ])
+                        @else
+                            <div style="padding: 40px; text-align: center; color: #9ca3af;">
+                                <i class="fas fa-check-circle" style="font-size: 48px; margin-bottom: 16px; color: #10b981;"></i>
+                                <p style="font-size: 16px; font-weight: 500;">Aucun étudiant avec paiement partiel</p>
                             </div>
-                            <div class="paiement-spinner-text">Chargement des étudiants avec paiements partiels...</div>
-                        </div>
-                        <div class="content-container" style="display: none;"></div>
+                        @endif
                     </div>
 
                     {{-- Onglet À jour --}}
-                    <div class="tab-pane fade" id="a_jour" data-statut="a_jour">
-                        <div class="paiement-spinner">
-                            <div class="paiement-spinner-icon">
-                                <i class="fas fa-spinner"></i>
+                    <div class="tab-pane fade" id="a_jour_{{ $detailsCategorie['category']->id }}" role="tabpanel">
+                        @if($detailsCategorie['etudiants_a_jour']->count() > 0)
+                            @include('esbtp.paiements.partials.liste-etudiants', [
+                                'etudiants' => $detailsCategorie['etudiants_a_jour'],
+                                'statut' => 'a_jour',
+                                'category' => $detailsCategorie['category']
+                            ])
+                        @else
+                            <div style="padding: 40px; text-align: center; color: #9ca3af;">
+                                <i class="fas fa-exclamation-circle" style="font-size: 48px; margin-bottom: 16px; color: #f59e0b;"></i>
+                                <p style="font-size: 16px; font-weight: 500;">Aucun étudiant à jour</p>
                             </div>
-                            <div class="paiement-spinner-text">Chargement des étudiants à jour...</div>
-                        </div>
-                        <div class="content-container" style="display: none;"></div>
+                        @endif
                     </div>
                 </div>
             </div>
