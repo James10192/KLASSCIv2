@@ -242,10 +242,11 @@ class ESBTPClasseController extends Controller
         if ($anneeCourante) {
             $classe->load([
                 'etudiants' => function ($query) use ($anneeCourante) {
-                    $query->whereHas('inscriptions', function ($inscriptionQuery) use ($anneeCourante) {
-                        $inscriptionQuery->where('annee_universitaire_id', $anneeCourante->id)
-                                       ->where('status', 'active');
-                    });
+                    $query->distinct()
+                          ->whereHas('inscriptions', function ($inscriptionQuery) use ($anneeCourante) {
+                              $inscriptionQuery->where('annee_universitaire_id', $anneeCourante->id)
+                                             ->where('status', 'active');
+                          });
                 },
                 'inscriptions' => function ($query) use ($anneeCourante) {
                     $query->where('annee_universitaire_id', $anneeCourante->id)
