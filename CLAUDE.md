@@ -2,6 +2,68 @@
 
 ## Corrections récentes
 
+### Fix: Comptage dynamique des étudiants et filtrage par classe sur classes.show
+
+**Date:** 10 octobre 2025
+**Branche:** presentation
+
+#### Problèmes résolus
+
+1. **KPI "Étudiants Inscrits" affichait 0 alors que des étudiants étaient visibles**
+   - **Cause:** La vue utilisait `$classe->nombre_etudiants` (attribut statique) au lieu de compter dynamiquement `$classe->etudiants`
+   - **Impact:** Incohérence entre les KPI et le contenu du tableau
+   - **Localisation:** `resources/views/esbtp/classes/show.blade.php` lignes 99, 109, 114, 263
+
+2. **Étudiants d'autres classes apparaissaient dans la liste**
+   - **Cause:** Le filtre `whereHas('inscriptions')` ne vérifiait pas le `classe_id`, donc tout étudiant avec une inscription active pour l'année courante apparaissait
+   - **Exemple:** YAO KOUASSI (inscrit en "1A BTS") apparaissait aussi dans "2A BTS S Bâtiment"
+   - **Localisation:** `app/Http/Controllers/ESBTPClasseController.php` ligne 246
+
+3. **Doublons d'étudiants si plusieurs inscriptions actives**
+   - **Cause:** Un étudiant avec plusieurs inscriptions actives (redoublement) apparaissait plusieurs fois
+   - **Solution:** Ajout de `distinct()` à la query
+
+#### Solutions implémentées
+
+**Backend - ESBTPClasseController@show (lignes 244-250) :**
+```php
+'etudiants' => function ($query) use ($anneeCourante, $classe) {
+    $query->distinct()  // ← Évite les doublons
+          ->whereHas('inscriptions', function ($inscriptionQuery) use ($anneeCourante, $classe) {
+              $inscriptionQuery->where('annee_universitaire_id', $anneeCourante->id)
+                               ->where('status', 'active')
+                               ->where('classe_id', $classe->id);  // ← Filtre crucial
+          });
+}
+```
+
+**Frontend - show.blade.php :**
+- Ligne 99 : `{{ $classe->nombre_etudiants }}` → `{{ $classe->etudiants->count() }}`
+- Lignes 109-111 : Calcul dynamique du taux d'occupation et places libres
+- Ligne 263 : Subtitle avec comptage dynamique
+
+#### Fichiers modifiés
+
+- [app/Http/Controllers/ESBTPClasseController.php](app/Http/Controllers/ESBTPClasseController.php:244-250) - Ajout `distinct()` + filtre `classe_id`
+- [resources/views/esbtp/classes/show.blade.php](resources/views/esbtp/classes/show.blade.php) - Remplacement `nombre_etudiants` par `etudiants->count()`
+
+#### Tests effectués
+
+- ✅ KPI affiche le bon nombre d'étudiants pour l'année courante
+- ✅ Aucun étudiant d'une autre classe n'apparaît
+- ✅ Pas de doublons même si plusieurs inscriptions actives
+- ✅ Taux d'occupation calculé correctement
+- ✅ Compteur "X étudiant(s) inscrit(s)" cohérent avec le tableau
+
+#### Avantages
+
+✅ **Cohérence garantie** : KPI et tableau affichent les mêmes données
+✅ **Isolation par classe** : Chaque classe affiche uniquement ses propres étudiants
+✅ **Pas de doublons** : Un étudiant n'apparaît qu'une fois même avec plusieurs inscriptions
+✅ **Calculs dynamiques** : Taux d'occupation et places libres toujours à jour
+
+---
+
 ### Fix: Accès étudiant et design moderne des pages étudiantes
 
 **Date:** 10 octobre 2025
