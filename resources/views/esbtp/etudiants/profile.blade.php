@@ -2,11 +2,272 @@
 
 @section('title', 'Mon Profil')
 
-@section('page_title', 'Mon Profil Étudiant')
-
 @push('styles')
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
-    /* Responsive fixes for mobile (390x844) */
+    /* Styles spécifiques pour la page profil */
+    .profile-container {
+        --profile-primary: var(--primary);
+        --profile-secondary: var(--secondary);
+        --profile-surface: var(--surface);
+        --profile-border: rgba(0, 0, 0, 0.08);
+    }
+
+    .profile-card {
+        background: white;
+        border-radius: var(--radius-large);
+        padding: var(--space-lg);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        border: 1px solid var(--profile-border);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        margin-bottom: var(--space-lg);
+    }
+
+    .profile-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+    }
+
+    .profile-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(var(--primary-rgb), 0.15);
+    }
+
+    .profile-header-section {
+        display: flex;
+        align-items: center;
+        gap: var(--space-lg);
+        padding-bottom: var(--space-lg);
+        margin-bottom: var(--space-lg);
+        border-bottom: 1px solid var(--profile-border);
+    }
+
+    .profile-photo-wrapper {
+        flex-shrink: 0;
+    }
+
+    .profile-photo {
+        width: 120px;
+        height: 120px;
+        border-radius: var(--radius-circle);
+        object-fit: cover;
+        border: 4px solid white;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .profile-photo-placeholder {
+        width: 120px;
+        height: 120px;
+        border-radius: var(--radius-circle);
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.5rem;
+        font-weight: 700;
+        border: 4px solid white;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .profile-header-info {
+        flex: 1;
+    }
+
+    .profile-name {
+        font-size: var(--text-2xl);
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: var(--space-xs);
+    }
+
+    .profile-matricule {
+        color: var(--text-secondary);
+        font-size: var(--text-base);
+        margin-bottom: var(--space-sm);
+    }
+
+    .profile-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-xs);
+        padding: var(--space-xs) var(--space-md);
+        background: rgba(var(--success-rgb), 0.1);
+        color: var(--success);
+        border-radius: var(--radius-medium);
+        font-size: var(--text-sm);
+        font-weight: 600;
+    }
+
+    .section-title {
+        font-size: var(--text-lg);
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: var(--space-lg);
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
+    }
+
+    .section-title i {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: var(--radius-circle);
+        background: rgba(var(--primary-rgb), 0.1);
+        color: var(--primary);
+        font-size: var(--text-sm);
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: var(--space-lg);
+    }
+
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-xs);
+    }
+
+    .info-label {
+        font-size: var(--text-xs);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-secondary);
+    }
+
+    .info-value {
+        font-size: var(--text-base);
+        color: var(--text-primary);
+        font-weight: 500;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: var(--space-md);
+        margin-bottom: var(--space-lg);
+    }
+
+    .stat-card {
+        background: rgba(var(--primary-rgb), 0.05);
+        border-radius: var(--radius-medium);
+        padding: var(--space-md);
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-md);
+    }
+
+    .stat-card:hover {
+        background: rgba(var(--primary-rgb), 0.1);
+        transform: translateX(4px);
+    }
+
+    .stat-left {
+        display: flex;
+        align-items: center;
+        gap: var(--space-md);
+    }
+
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: var(--radius-circle);
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: var(--text-lg);
+        flex-shrink: 0;
+    }
+
+    .stat-label {
+        font-size: var(--text-sm);
+        font-weight: 600;
+        color: var(--text-secondary);
+    }
+
+    .stat-value {
+        font-size: var(--text-lg);
+        font-weight: 700;
+        color: var(--text-primary);
+        text-align: right;
+    }
+
+    .alert-info-custom {
+        background: rgba(var(--primary-rgb), 0.05);
+        border-left: 4px solid var(--primary);
+        border-radius: var(--radius-medium);
+        padding: var(--space-md);
+        display: flex;
+        align-items: flex-start;
+        gap: var(--space-md);
+        margin-bottom: var(--space-lg);
+    }
+
+    .alert-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: var(--radius-circle);
+        background: var(--primary);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .alert-content h4 {
+        font-size: var(--text-base);
+        font-weight: 700;
+        color: var(--primary);
+        margin-bottom: var(--space-xs);
+    }
+
+    .alert-content p {
+        font-size: var(--text-sm);
+        color: var(--text-secondary);
+        margin: 0;
+    }
+
+    .btn-edit-profile {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-sm);
+        padding: var(--space-sm) var(--space-lg);
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        color: white;
+        border: none;
+        border-radius: var(--radius-medium);
+        font-weight: 600;
+        font-size: var(--text-sm);
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 6px rgba(var(--primary-rgb), 0.25);
+    }
+
+    .btn-edit-profile:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.35);
+        color: white;
+    }
+
+    /* Responsive Design */
     @media (max-width: 768px) {
         .dashboard-acasi {
             padding: 0 !important;
@@ -26,87 +287,82 @@
             max-width: 100%;
         }
 
-        .dashboard-header {
+        .student-header .d-flex {
             flex-direction: column !important;
             align-items: flex-start !important;
-            gap: 1rem;
+            gap: var(--space-md);
         }
 
-        .dashboard-header h1 {
+        .student-header h1 {
             font-size: 1.5rem !important;
         }
 
-        .dashboard-header .page-description {
+        .student-header .header-subtitle {
             font-size: 0.875rem !important;
         }
 
-        .header-actions {
+        .student-header .text-end {
+            text-align: left !important;
             width: 100%;
         }
 
-        .header-actions .btn-acasi {
-            width: 100%;
-            font-size: 0.875rem;
+        .student-header .badge {
+            display: inline-block;
+            width: auto;
         }
 
-        .dashboard-main-grid {
-            grid-template-columns: 1fr !important;
-            gap: 1rem !important;
+        .profile-header-section {
+            flex-direction: column;
+            text-align: center;
+            align-items: center;
         }
 
-        .main-card {
-            max-width: 100%;
-        }
-
-        .stats-grid {
-            grid-template-columns: 1fr !important;
-            gap: 1rem !important;
-        }
-
-        .info-grid {
-            grid-template-columns: 1fr !important;
-        }
-
-        .profile-photo {
-            width: 100px !important;
-            height: 100px !important;
+        .profile-photo,
+        .profile-photo-placeholder {
+            width: 100px;
+            height: 100px;
+            font-size: 2rem;
         }
 
         .profile-name {
-            font-size: 1.25rem !important;
+            font-size: 1.5rem;
         }
 
-        .profile-subtitle {
-            font-size: 0.8rem !important;
+        .info-grid {
+            grid-template-columns: 1fr;
+            gap: var(--space-md);
         }
 
-        .card-title {
-            font-size: 1rem !important;
+        .stats-grid {
+            grid-template-columns: 1fr;
+            gap: var(--space-md);
         }
 
-        .stat-item {
-            padding: 1rem !important;
+        .stat-card {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .stat-left {
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            width: 100%;
         }
 
         .stat-value {
-            font-size: 1rem !important;
+            text-align: center;
+            width: 100%;
+            margin-top: var(--space-sm);
         }
 
-        .stat-label {
-            font-size: 0.75rem !important;
+        .profile-card {
+            padding: 1rem;
         }
 
-        .alert {
-            padding: 0.75rem !important;
-            font-size: 0.85rem;
-        }
-
-        .alert-title {
-            font-size: 0.95rem !important;
-        }
-
-        .alert-message {
-            font-size: 0.8rem !important;
+        .btn-edit-profile {
+            width: 100%;
+            justify-content: center;
         }
     }
 
@@ -115,267 +371,191 @@
             padding: 0.75rem !important;
         }
 
-        .dashboard-header h1 {
+        .student-header h1 {
             font-size: 1.3rem !important;
         }
 
-        .profile-photo {
-            width: 80px !important;
-            height: 80px !important;
+        .profile-photo,
+        .profile-photo-placeholder {
+            width: 80px;
+            height: 80px;
+            font-size: 1.75rem;
         }
 
         .profile-name {
-            font-size: 1.1rem !important;
+            font-size: 1.25rem;
         }
     }
 </style>
 @endpush
 
 @section('content')
-<div class="dashboard-acasi">
+<div class="dashboard-acasi profile-container">
     <div class="main-content">
-        <div class="dashboard-header">
-            <div class="header-info">
-                <h1 class="page-title">Mon Profil</h1>
-                <p class="page-description">Informations personnelles et académiques</p>
-            </div>
-            <div class="header-actions">
-                <button type="button" class="btn-acasi btn-acasi-primary" data-bs-toggle="modal" data-bs-target="#editProfileModal">
-                    <i class="fas fa-pen"></i>
-                    Demander une modification
-                </button>
+        <!-- Header Étudiant Moderne -->
+        <div class="student-header">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <h1>
+                        <i class="fas fa-user-circle me-3"></i>
+                        Mon Profil
+                    </h1>
+                    <p class="header-subtitle">
+                        Informations personnelles et académiques
+                    </p>
+                </div>
+                <div class="text-end">
+                    <button type="button" class="btn-edit-profile" data-bs-toggle="modal" data-bs-target="#editProfileModal">
+                        <i class="fas fa-pen"></i>
+                        <span>Demander une modification</span>
+                    </button>
+                </div>
             </div>
         </div>
 
-        <div class="dashboard-main-grid" style="grid-template-columns: 1fr 2fr;">
-            <!-- Informations personnelles -->
-            <div class="main-card">
-                <div class="card-header">
-                    <h3 class="card-title">
-                        <i class="fas fa-user-circle"></i>
-                        Informations personnelles
-                    </h3>
+        <!-- Carte Profil Principal -->
+        <div class="profile-card">
+            <div class="profile-header-section">
+                <div class="profile-photo-wrapper">
+                    @if($etudiant->photo)
+                        <img src="{{ $etudiant->photo }}" alt="Photo de {{ $etudiant->prenoms }}" class="profile-photo">
+                    @else
+                        <div class="profile-photo-placeholder">
+                            <span>{{ strtoupper(substr($etudiant->prenoms, 0, 1) . substr($etudiant->nom, 0, 1)) }}</span>
+                        </div>
+                    @endif
                 </div>
-                <div class="card-body">
-                    <div class="profile-photo-section">
-                        @if($etudiant->photo)
-                            <img src="{{ $etudiant->photo }}" alt="Photo de {{ $etudiant->prenoms }}" class="profile-photo">
-                        @else
-                            <div class="profile-photo profile-photo-placeholder">
-                                <span>{{ strtoupper(substr($etudiant->prenoms, 0, 1) . substr($etudiant->nom, 0, 1)) }}</span>
-                            </div>
-                        @endif
-                        <div class="profile-info-basic">
-                            <h2 class="profile-name">{{ $etudiant->prenoms }} {{ $etudiant->nom }}</h2>
-                            <span class="status-badge status-badge-success">Étudiant</span>
-                            <p class="profile-subtitle">Matricule: {{ $etudiant->matricule }}</p>
-                        </div>
-                    </div>
-
-                    <div class="info-grid">
-                        <div class="info-item">
-                            <label>Date de naissance</label>
-                            <span>{{ $etudiant->date_naissance ? $etudiant->date_naissance->format('d/m/Y') : 'Non spécifiée' }}</span>
-                        </div>
-                        <div class="info-item">
-                            <label>Lieu de naissance</label>
-                            <span>{{ $etudiant->lieu_naissance ?: 'Non spécifié' }}</span>
-                        </div>
-                        <div class="info-item">
-                            <label>Nationalité</label>
-                            <span>{{ $etudiant->nationalite ?: 'Non spécifiée' }}</span>
-                        </div>
-                        <div class="info-item">
-                            <label>Sexe</label>
-                            <span>{{ $etudiant->sexe == 'M' ? 'Masculin' : 'Féminin' }}</span>
-                        </div>
-                        <div class="info-item">
-                            <label>Adresse</label>
-                            <span>{{ $etudiant->adresse ?: 'Non spécifiée' }}</span>
-                        </div>
-                        <div class="info-item">
-                            <label>Téléphone</label>
-                            <span>{{ $etudiant->telephone ?: 'Non spécifié' }}</span>
-                        </div>
-                        <div class="info-item">
-                            <label>Email personnel</label>
-                            <span>{{ $etudiant->email_personnel ?: 'Non spécifié' }}</span>
-                        </div>
-                    </div>
+                <div class="profile-header-info">
+                    <h2 class="profile-name">{{ $etudiant->prenoms }} {{ $etudiant->nom }}</h2>
+                    <p class="profile-matricule"><i class="fas fa-id-card me-2"></i>Matricule: {{ $etudiant->matricule }}</p>
+                    <span class="profile-badge">
+                        <i class="fas fa-check-circle"></i>
+                        Étudiant Actif
+                    </span>
                 </div>
             </div>
 
-            <!-- Informations académiques -->
-            <div class="dashboard-content-area">
-                <div class="main-card">
-                    <div class="card-header">
-                        <h3 class="card-title">
-                            <i class="fas fa-graduation-cap"></i>
-                            Informations académiques
-                        </h3>
-                    </div>
-                    <div class="card-body">
-                        @if($inscription)
-                            <div class="alert alert-success">
-                                <div class="alert-content">
-                                    <i class="fas fa-check-circle alert-icon"></i>
-                                    <div>
-                                        <h4 class="alert-title">Inscription active</h4>
-                                        <p class="alert-message">Vous êtes actuellement inscrit(e) pour l'année universitaire {{ $inscription->anneeUniversitaire->name ?? 'Non spécifiée' }}.</p>
-                                    </div>
-                                </div>
-                            </div>
+            <h3 class="section-title">
+                <i class="fas fa-user"></i>
+                Informations Personnelles
+            </h3>
 
-                            <div class="stats-grid" style="grid-template-columns: repeat(2, 1fr);">
-                                <div class="stat-item">
-                                    <div class="stat-icon">
-                                        <i class="fas fa-book-open"></i>
-                                    </div>
-                                    <div class="stat-content">
-                                        <span class="stat-label">Filière</span>
-                                        <span class="stat-value">{{ $inscription->filiere->name ?? 'Non spécifiée' }}</span>
-                                    </div>
-                                </div>
-                                <div class="stat-item">
-                                    <div class="stat-icon">
-                                        <i class="fas fa-layer-group"></i>
-                                    </div>
-                                    <div class="stat-content">
-                                        <span class="stat-label">Niveau</span>
-                                        <span class="stat-value">{{ $inscription->niveau->name ?? 'Non spécifié' }}</span>
-                                    </div>
-                                </div>
-                                <div class="stat-item">
-                                    <div class="stat-icon">
-                                        <i class="fas fa-chalkboard"></i>
-                                    </div>
-                                    <div class="stat-content">
-                                        <span class="stat-label">Classe</span>
-                                        <span class="stat-value">{{ $inscription->classe->name ?? 'Non spécifiée' }}</span>
-                                    </div>
-                                </div>
-                                <div class="stat-item">
-                                    <div class="stat-icon">
-                                        <i class="fas fa-calendar-alt"></i>
-                                    </div>
-                                    <div class="stat-content">
-                                        <span class="stat-label">Date d'inscription</span>
-                                        <span class="stat-value">{{ \Carbon\Carbon::parse($inscription->date_inscription)->format('d/m/Y') }}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        @else
-                            <div class="alert alert-warning">
-                                <div class="alert-content">
-                                    <i class="fas fa-exclamation-triangle alert-icon"></i>
-                                    <div>
-                                        <h4 class="alert-title">Aucune inscription active</h4>
-                                        <p class="alert-message">Vous n'avez pas d'inscription active pour l'année universitaire en cours. Veuillez contacter l'administration pour plus d'informations.</p>
-                                    </div>
-                                </div>
-                            </div>
-                        @endif
-                    </div>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label"><i class="fas fa-birthday-cake me-1"></i>Date de naissance</span>
+                    <span class="info-value">{{ $etudiant->date_naissance ? $etudiant->date_naissance->format('d/m/Y') : 'Non spécifiée' }}</span>
                 </div>
-
-                <div class="main-card">
-                    <div class="card-header">
-                        <h3 class="card-title">
-                            <i class="fas fa-history"></i>
-                            Historique des inscriptions
-                        </h3>
-                    </div>
-                    <div class="card-body">
-                        @if($etudiant->inscriptions->count() > 0)
-                            <div class="table-container">
-                                <table class="data-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Année universitaire</th>
-                                            <th>Filière</th>
-                                            <th>Niveau</th>
-                                            <th>Classe</th>
-                                            <th>Statut</th>
-                                            <th>Date d'inscription</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($etudiant->inscriptions as $inscription)
-                                        <tr>
-                                            <td>{{ $inscription->anneeUniversitaire->name ?? 'Non spécifiée' }}</td>
-                                            <td>{{ $inscription->filiere->name ?? 'Non spécifiée' }}</td>
-                                            <td>{{ $inscription->niveau->name ?? 'Non spécifié' }}</td>
-                                            <td>{{ $inscription->classe->name ?? 'Non spécifiée' }}</td>
-                                            <td>
-                                                @if($inscription->statut == 'active')
-                                                    <span class="status-badge status-badge-success">Active</span>
-                                                @elseif($inscription->statut == 'completed')
-                                                    <span class="status-badge status-badge-info">Terminée</span>
-                                                @elseif($inscription->statut == 'cancelled')
-                                                    <span class="status-badge status-badge-danger">Annulée</span>
-                                                @else
-                                                    <span class="status-badge status-badge-secondary">{{ ucfirst($inscription->statut) }}</span>
-                                                @endif
-                                            </td>
-                                            <td>{{ \Carbon\Carbon::parse($inscription->date_inscription)->format('d/m/Y') }}</td>
-                                        </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                        @else
-                            <div class="empty-state">
-                                <div class="empty-state-icon">
-                                    <i class="fas fa-file-alt"></i>
-                                </div>
-                                <h3 class="empty-state-title">Aucun historique</h3>
-                                <p class="empty-state-description">Aucun historique d'inscription disponible.</p>
-                            </div>
-                        @endif
-                    </div>
+                <div class="info-item">
+                    <span class="info-label"><i class="fas fa-map-marker-alt me-1"></i>Lieu de naissance</span>
+                    <span class="info-value">{{ $etudiant->lieu_naissance ?: 'Non spécifié' }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label"><i class="fas fa-flag me-1"></i>Nationalité</span>
+                    <span class="info-value">{{ $etudiant->nationalite ?: 'Non spécifiée' }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label"><i class="fas fa-venus-mars me-1"></i>Sexe</span>
+                    <span class="info-value">{{ $etudiant->sexe == 'M' ? 'Masculin' : 'Féminin' }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label"><i class="fas fa-home me-1"></i>Adresse</span>
+                    <span class="info-value">{{ $etudiant->adresse ?: 'Non spécifiée' }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label"><i class="fas fa-phone me-1"></i>Téléphone</span>
+                    <span class="info-value">{{ $etudiant->telephone ?: 'Non spécifié' }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label"><i class="fas fa-envelope me-1"></i>Email personnel</span>
+                    <span class="info-value">{{ $etudiant->email_personnel ?: 'Non spécifié' }}</span>
                 </div>
             </div>
+        </div>
+
+        <!-- Carte Informations Académiques -->
+        <div class="profile-card">
+            <h3 class="section-title">
+                <i class="fas fa-graduation-cap"></i>
+                Informations Académiques
+            </h3>
+
+            @if($inscription)
+                <div class="alert-info-custom">
+                    <div class="alert-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="alert-content">
+                        <h4>Inscription Active</h4>
+                        <p>Vous êtes actuellement inscrit(e) pour l'année universitaire {{ $inscription->anneeUniversitaire->name ?? 'Non spécifiée' }}.</p>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-left">
+                            <div class="stat-icon">
+                                <i class="fas fa-book-open"></i>
+                            </div>
+                            <div class="stat-label">Filière</div>
+                        </div>
+                        <div class="stat-value">{{ $inscription->filiere->name ?? 'N/A' }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-left">
+                            <div class="stat-icon">
+                                <i class="fas fa-layer-group"></i>
+                            </div>
+                            <div class="stat-label">Niveau</div>
+                        </div>
+                        <div class="stat-value">{{ $inscription->niveau->name ?? 'N/A' }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-left">
+                            <div class="stat-icon">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <div class="stat-label">Classe</div>
+                        </div>
+                        <div class="stat-value">{{ $inscription->classe->name ?? 'N/A' }}</div>
+                    </div>
+                </div>
+            @else
+                <div class="alert-info-custom" style="background: rgba(var(--danger-rgb), 0.05); border-left-color: var(--danger);">
+                    <div class="alert-icon" style="background: var(--danger);">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="alert-content">
+                        <h4 style="color: var(--danger);">Aucune Inscription Active</h4>
+                        <p>Vous n'avez pas d'inscription active pour cette année universitaire. Veuillez contacter l'administration.</p>
+                    </div>
+                </div>
+            @endif
         </div>
     </div>
 </div>
 
-<!-- Modal pour demande de modification -->
+<!-- Modal Demande de Modification -->
 <div class="modal fade" id="editProfileModal" tabindex="-1" aria-labelledby="editProfileModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="editProfileModalLabel">Demander une modification de profil</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle me-2"></i>
-                    Les modifications de profil doivent être validées par l'administration avant d'être appliquées.
-                </div>
-                <form>
-                    <div class="mb-3">
-                        <label for="modification_type" class="form-label">Type de modification</label>
-                        <select class="form-select" id="modification_type" name="modification_type">
-                            <option value="">Sélectionner le type de modification</option>
-                            <option value="contact">Informations de contact</option>
-                            <option value="personnel">Informations personnelles</option>
-                            <option value="photo">Photo de profil</option>
-                            <option value="autre">Autre</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="modification_details" class="form-label">Détails de la modification demandée</label>
-                        <textarea class="form-control" id="modification_details" name="modification_details" rows="4" placeholder="Décrivez précisément les modifications souhaitées..."></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label for="justification" class="form-label">Justification</label>
-                        <textarea class="form-control" id="justification" name="justification" rows="3" placeholder="Expliquez pourquoi cette modification est nécessaire..."></textarea>
-                    </div>
-                </form>
+                <p>Pour demander une modification de vos informations personnelles, veuillez contacter l'administration avec les détails suivants :</p>
+                <ul>
+                    <li>Votre matricule: <strong>{{ $etudiant->matricule }}</strong></li>
+                    <li>Les informations à modifier</li>
+                    <li>Les justificatifs nécessaires (si applicable)</li>
+                </ul>
+                <p class="text-muted mt-3">
+                    <i class="fas fa-info-circle me-1"></i>
+                    L'administration traitera votre demande dans les meilleurs délais.
+                </p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn-acasi btn-acasi-secondary" data-bs-dismiss="modal">Annuler</button>
-                <button type="button" class="btn-acasi btn-acasi-primary">Envoyer la demande</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
             </div>
         </div>
     </div>
