@@ -490,7 +490,8 @@
                         $affectationLabel = $reinscriptionRecord->affectation_status
                             ? ucfirst(str_replace('_', ' ', $reinscriptionRecord->affectation_status))
                             : 'Non renseigné';
-                        $reliquatRestant = $etudiant->solde_restant ?? 0;
+                        // CORRECTION: Utiliser reliquat_reel (uniquement années précédentes) au lieu de solde_restant (année courante)
+                        $reliquatRestant = $etudiant->reliquat_reel ?? 0;
                         $reliquatGere = $reliquatRestant <= 0;
                         $statutLibelle = $reinscriptionRecord->reinscription_status
                             ? match ($reinscriptionRecord->reinscription_status) {

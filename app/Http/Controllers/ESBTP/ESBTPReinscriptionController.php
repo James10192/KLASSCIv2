@@ -261,7 +261,7 @@ class ESBTPReinscriptionController extends Controller
     public function show($etudiantId, Request $request)
     {
         $anneeAcademique = $request->get('annee_academique', date('Y') . '-' . (date('Y') + 1));
-        
+
         try {
             // Chercher l'inscription de l'étudiant avec une classe assignée
             $inscription = \App\Models\ESBTPInscription::whereNotNull('classe_id')
@@ -270,30 +270,41 @@ class ESBTPReinscriptionController extends Controller
                 })
                 ->with(['etudiant', 'classe.niveau', 'classe.filiere'])
                 ->first();
-            
+
             if (!$inscription) {
                 throw new \Exception("Aucune inscription avec classe trouvée pour cet étudiant");
             }
-            
+
             $analyse = $this->reinscriptionService->analyserSituationEtudiantParInscription($inscription, $anneeAcademique);
             $classesProposees = $this->reinscriptionService->proposerNouvellesClasses($etudiantId, $analyse['decision']);
-            
+
             // Calculer les soldes financiers pour l'étudiant
             $etudiant = $analyse['etudiant'];
             $totalAttendu = $this->calculerTotalAttendu($inscription);
             $totalPaye = $this->calculerTotalPaye($inscription);
             $soldeRestant = $totalAttendu - $totalPaye;
-            
+
             // Ajouter les informations financières à l'étudiant
             $etudiant->montant_attendu = $totalAttendu;
             $etudiant->montant_paye = $totalPaye;
             $etudiant->solde_restant = $soldeRestant;
+
+            // Calculer le VRAI reliquat (uniquement les dettes des années précédentes via ESBTPReliquatDetail)
+            // comme dans inscriptions.show
+            $reliquatsEntrants = \App\Models\ESBTPReliquatDetail::where('inscription_destination_id', $inscription->id)
+                ->actifs()
+                ->get();
+
+            $reliquatMontant = $reliquatsEntrants->sum('solde_restant');
 
             // Logique d'éligibilité selon le rôle
             $isSuperAdmin = auth()->user() && auth()->user()->isSuperAdmin();
             $etudiant->peut_reinscrire = $soldeRestant <= 0 || $isSuperAdmin;
             $etudiant->reliquat_possible = $isSuperAdmin && $soldeRestant > 0;
             $etudiant->reliquat_montant = $isSuperAdmin ? max(0, $soldeRestant) : 0;
+
+            // IMPORTANT: Le reliquat affiché dans la carte de validation = uniquement années précédentes
+            $etudiant->reliquat_reel = $reliquatMontant;
             
             // Ajouter l'inscription pour l'accès aux données de classe dans la vue
             $analyse['inscription'] = $inscription;
