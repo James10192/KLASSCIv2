@@ -190,12 +190,30 @@
     @media (max-width: 768px) {
         .dashboard-acasi {
             padding: 0 !important;
+            max-width: 100vw;
+            overflow-x: hidden;
         }
 
         .main-content {
             padding: 1rem !important;
-            max-width: 100vw;
+            max-width: 100%;
             overflow-x: hidden;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        * {
+            max-width: 100%;
+        }
+
+        .row {
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+        }
+
+        .row > * {
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
         }
 
         .stats-grid {
@@ -247,6 +265,8 @@
         .filter-section {
             padding: 1rem;
             margin-bottom: 1rem;
+            max-width: 100%;
+            overflow-x: hidden;
         }
 
         .filter-section h5 {
@@ -255,12 +275,19 @@
         }
 
         .filter-section .row {
-            margin: 0 -0.5rem;
+            margin: 0 !important;
+            max-width: 100%;
         }
 
         .filter-section .row > div {
             padding: 0 0.5rem;
             margin-bottom: 0.75rem;
+            max-width: 100%;
+        }
+
+        .filter-section form {
+            max-width: 100%;
+            overflow-x: hidden;
         }
 
         .filter-section label {
@@ -277,11 +304,21 @@
         .card-moderne {
             padding: 1rem;
             margin-bottom: 1rem;
+            max-width: 100%;
+            overflow-x: hidden;
         }
 
         .card-moderne h5 {
             font-size: 0.95rem;
             margin-bottom: 0.75rem;
+        }
+
+        .stats-grid {
+            max-width: 100%;
+        }
+
+        .stat-card {
+            max-width: 100%;
         }
 
         .table-responsive {
@@ -302,16 +339,23 @@
 
         .chart-container {
             height: 250px !important;
+            max-width: 100%;
         }
 
         .row.mb-4 {
-            margin-left: -0.5rem;
-            margin-right: -0.5rem;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            max-width: 100%;
         }
 
         .row.mb-4 > [class*='col-'] {
-            padding-left: 0.5rem;
-            padding-right: 0.5rem;
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
+            max-width: 100%;
+        }
+
+        [class*='col-'] {
+            max-width: 100%;
         }
 
         .alert {
@@ -676,7 +720,6 @@
                 @endforelse
             </div>
         </div>
-    </div>
 
         <!-- Liste des absences -->
         <div class="card-moderne">
