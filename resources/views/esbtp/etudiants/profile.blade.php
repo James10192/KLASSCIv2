@@ -4,6 +4,133 @@
 
 @section('page_title', 'Mon Profil Étudiant')
 
+@push('styles')
+<style>
+    /* Responsive fixes for mobile (390x844) */
+    @media (max-width: 768px) {
+        .dashboard-acasi {
+            padding: 0 !important;
+            max-width: 100vw;
+            overflow-x: hidden;
+        }
+
+        .main-content {
+            padding: 1rem !important;
+            max-width: 100%;
+            overflow-x: hidden;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        * {
+            max-width: 100%;
+        }
+
+        .dashboard-header {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 1rem;
+        }
+
+        .dashboard-header h1 {
+            font-size: 1.5rem !important;
+        }
+
+        .dashboard-header .page-description {
+            font-size: 0.875rem !important;
+        }
+
+        .header-actions {
+            width: 100%;
+        }
+
+        .header-actions .btn-acasi {
+            width: 100%;
+            font-size: 0.875rem;
+        }
+
+        .dashboard-main-grid {
+            grid-template-columns: 1fr !important;
+            gap: 1rem !important;
+        }
+
+        .main-card {
+            max-width: 100%;
+        }
+
+        .stats-grid {
+            grid-template-columns: 1fr !important;
+            gap: 1rem !important;
+        }
+
+        .info-grid {
+            grid-template-columns: 1fr !important;
+        }
+
+        .profile-photo {
+            width: 100px !important;
+            height: 100px !important;
+        }
+
+        .profile-name {
+            font-size: 1.25rem !important;
+        }
+
+        .profile-subtitle {
+            font-size: 0.8rem !important;
+        }
+
+        .card-title {
+            font-size: 1rem !important;
+        }
+
+        .stat-item {
+            padding: 1rem !important;
+        }
+
+        .stat-value {
+            font-size: 1rem !important;
+        }
+
+        .stat-label {
+            font-size: 0.75rem !important;
+        }
+
+        .alert {
+            padding: 0.75rem !important;
+            font-size: 0.85rem;
+        }
+
+        .alert-title {
+            font-size: 0.95rem !important;
+        }
+
+        .alert-message {
+            font-size: 0.8rem !important;
+        }
+    }
+
+    @media (max-width: 400px) {
+        .main-content {
+            padding: 0.75rem !important;
+        }
+
+        .dashboard-header h1 {
+            font-size: 1.3rem !important;
+        }
+
+        .profile-photo {
+            width: 80px !important;
+            height: 80px !important;
+        }
+
+        .profile-name {
+            font-size: 1.1rem !important;
+        }
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="dashboard-acasi">
     <div class="main-content">

@@ -19,6 +19,108 @@
         font-weight: 600;
         font-size: 0.9rem;
     }
+
+    /* Responsive fixes for mobile (390x844) */
+    @media (max-width: 768px) {
+        .container-fluid {
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+            max-width: 100vw;
+            overflow-x: hidden;
+        }
+
+        * {
+            max-width: 100%;
+        }
+
+        .d-flex.justify-content-between {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 1rem;
+        }
+
+        h1 {
+            font-size: 1.5rem !important;
+            margin: 1rem 0 !important;
+        }
+
+        .breadcrumb {
+            font-size: 0.8rem;
+        }
+
+        .row {
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            max-width: 100%;
+        }
+
+        .row > [class*='col-'] {
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
+            max-width: 100%;
+        }
+
+        .card {
+            margin-bottom: 1rem !important;
+            max-width: 100%;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            max-width: 100%;
+        }
+
+        .table {
+            font-size: 0.8rem;
+            min-width: 700px;
+        }
+
+        .table th,
+        .table td {
+            padding: 0.5rem 0.35rem;
+            white-space: nowrap;
+        }
+
+        .btn-sm {
+            font-size: 0.75rem;
+            padding: 0.35rem 0.6rem;
+        }
+
+        .btn-group {
+            flex-direction: column !important;
+            gap: 0.25rem;
+        }
+
+        .btn-group .btn {
+            width: 100%;
+        }
+
+        .badge {
+            font-size: 0.7rem;
+            padding: 0.35em 0.6em;
+        }
+
+        .alert {
+            font-size: 0.85rem;
+            padding: 0.75rem;
+        }
+    }
+
+    @media (max-width: 400px) {
+        .container-fluid {
+            padding-left: 0.75rem !important;
+            padding-right: 0.75rem !important;
+        }
+
+        h1 {
+            font-size: 1.3rem !important;
+        }
+
+        .table {
+            font-size: 0.75rem;
+        }
+    }
 </style>
 @endpush
 
