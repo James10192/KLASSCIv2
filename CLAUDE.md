@@ -2,6 +2,77 @@
 
 ## Corrections récentes
 
+### Fix: Boutons et modals de rejet de paiement non fonctionnels
+
+**Date:** 10 octobre 2025
+**Branche:** presentation
+
+#### Problèmes résolus
+
+**1. paiements.index - Incompatibilité Bootstrap 4/5**
+- **Cause :** Modal utilisait des attributs Bootstrap 4 (`data-dismiss`, `class="close"`) alors que l'app utilise Bootstrap 5
+- **Impact :** Boutons "Annuler" et fermeture du modal ne fonctionnaient pas
+- **Conflit :** Chargement de Bootstrap 4.6.2 en plus de Bootstrap 5 (ligne 315)
+
+**2. paiements.show - Modal dupliqué**
+- **Cause :** Deux modals de rejet avec IDs différents (`#modalRejeter` et `#rejetModal`)
+- **Impact :** Bouton ligne 272 pointait vers `#rejectModal` (inexistant)
+- **Erreur :** Champ `name="commentaire"` alors que contrôleur attend `name="motif_rejet"`
+
+#### Solutions implémentées
+
+**paiements.index :**
+```blade
+<!-- Avant (Bootstrap 4) -->
+<button type="button" class="close" data-dismiss="modal">
+    <span>&times;</span>
+</button>
+$('#bulkRejetModal').modal('show');
+
+<!-- Après (Bootstrap 5) -->
+<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+const modal = new bootstrap.Modal(document.getElementById('bulkRejetModal'));
+modal.show();
+```
+
+**paiements.show :**
+- Supprimé modal dupliqué `#rejetModal` (lignes 638-680)
+- Corrigé `data-bs-target="#rejectModal"` → `data-bs-target="#modalRejeter"`
+- Corrigé `name="commentaire"` → `name="motif_rejet"`
+- Supprimé script jQuery obsolète `$('#rejeterBtn').click()`
+
+#### Fichiers modifiés
+
+- [resources/views/esbtp/paiements/index.blade.php](resources/views/esbtp/paiements/index.blade.php)
+  - Lignes 266-311 : Modal Bootstrap 5
+  - Ligne 313 : Suppression chargement Bootstrap 4
+  - Lignes 602-604 : API Bootstrap 5 pour modal
+
+- [resources/views/esbtp/paiements/show.blade.php](resources/views/esbtp/paiements/show.blade.php)
+  - Ligne 272 : Correction target modal
+  - Lignes 571-577 : Correction nom champ
+  - Lignes 631-680 : Suppression modal dupliqué
+
+#### Tests recommandés
+
+- [ ] Ouvrir paiements.index et cliquer sur "Rejeter la sélection"
+- [ ] Vérifier que le modal s'ouvre correctement
+- [ ] Vérifier que le bouton "Annuler" ferme le modal
+- [ ] Soumettre un rejet groupé avec motif
+- [ ] Ouvrir paiements.show et cliquer sur "Rejeter"
+- [ ] Vérifier que le modal s'ouvre sans erreur console
+- [ ] Soumettre le rejet et vérifier que le motif est envoyé
+
+#### Compatibilité Bootstrap
+
+L'application utilise **Bootstrap 5** :
+- Attributs modals : `data-bs-*` (pas `data-*`)
+- Bouton fermeture : `btn-close` (pas `close`)
+- API JavaScript : `new bootstrap.Modal(element).show()` (pas `$(element).modal('show')`)
+- Classes form : `mb-3` (pas `form-group`)
+
+---
+
 ### Feature: Affichage détaillé des informations de réinscription dans inscriptions.show
 
 **Date:** 10 octobre 2025
