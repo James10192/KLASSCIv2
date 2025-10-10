@@ -331,6 +331,31 @@
             gap: var(--space-sm);
             text-align: center;
         }
+
+        /* Fix responsive header */
+        .student-header .d-flex {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: var(--space-md);
+        }
+
+        .student-header h1 {
+            font-size: 1.5rem !important;
+        }
+
+        .student-header .header-subtitle {
+            font-size: 0.875rem !important;
+        }
+
+        .student-header .text-end {
+            text-align: left !important;
+            width: 100%;
+        }
+
+        .student-header .badge {
+            display: inline-block;
+            width: auto;
+        }
     }
 
     /* States des notes */
