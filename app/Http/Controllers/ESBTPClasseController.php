@@ -241,11 +241,12 @@ class ESBTPClasseController extends Controller
         // Charger les étudiants et inscriptions FILTRÉS par année courante
         if ($anneeCourante) {
             $classe->load([
-                'etudiants' => function ($query) use ($anneeCourante) {
+                'etudiants' => function ($query) use ($anneeCourante, $classe) {
                     $query->distinct()
-                          ->whereHas('inscriptions', function ($inscriptionQuery) use ($anneeCourante) {
+                          ->whereHas('inscriptions', function ($inscriptionQuery) use ($anneeCourante, $classe) {
                               $inscriptionQuery->where('annee_universitaire_id', $anneeCourante->id)
-                                             ->where('status', 'active');
+                                               ->where('status', 'active')
+                                               ->where('classe_id', $classe->id);
                           });
                 },
                 'inscriptions' => function ($query) use ($anneeCourante) {
@@ -745,7 +746,11 @@ class ESBTPClasseController extends Controller
                 return $inscription->etudiant;
             })
             ->filter()
-            ->sortBy(['nom', 'prenoms']);
+            // Trier alpha et réindexer pour obtenir 1, 2, 3... dans la vue
+            ->sortBy(function($etudiant) {
+                return Str::lower($etudiant->nom . ' ' . $etudiant->prenoms);
+            })
+            ->values();
 
         // Récupérer les paramètres de l'établissement
         $etablissement = [
@@ -783,7 +788,11 @@ class ESBTPClasseController extends Controller
                 return $inscription->etudiant;
             })
             ->filter()
-            ->sortBy(['nom', 'prenoms']);
+            // Tri identique à la version web afin de conserver la numérotation
+            ->sortBy(function($etudiant) {
+                return Str::lower($etudiant->nom . ' ' . $etudiant->prenoms);
+            })
+            ->values();
 
         // Récupérer les paramètres de l'établissement
         $etablissement = [
