@@ -2,6 +2,268 @@
 
 ## Corrections récentes
 
+### Fix: Calcul financier robuste et affichage logo dans emails parents
+
+**Date:** 10 octobre 2025
+**Branche:** presentation
+
+#### Problèmes résolus
+
+1. **Logo ne s'affichait pas dans les emails parents**
+   - **Cause:** Variable `schoolLogo` utilisée au lieu de `schoolLogoPath` dans `NotificationService`
+   - **Solution:** Remplacement de toutes les occurrences `'schoolLogo' => $schoolSettings['school_logo']` par `'schoolLogoPath' => $schoolSettings['schoolLogoPath']`
+   - **Fichiers modifiés:** `app/Services/NotificationService.php` (7 occurrences corrigées)
+
+2. **Calcul financier obsolète avec ESBTPReliquat (modèle inexistant)**
+   - **Cause:** Utilisation de `ESBTPReliquat::where()` qui n'existe plus dans la nouvelle architecture
+   - **Solution:** Remplacement par la vraie logique basée sur `ESBTPFraisSubscription` et `ESBTPReliquatDetail`
+   - **Logique appliquée:**
+     ```php
+     // 1. Frais souscrits année courante
+     $fraisSouscrits = ESBTPFraisSubscription::where('inscription_id', $inscription->id)
+         ->where('is_active', true)->get();
+     $totalFraisAnnee = $fraisSouscrits->sum('amount');
+
+     // 2. Reliquats entrants années précédentes
+     $reliquatsEntrants = ESBTPReliquatDetail::where('inscription_destination_id', $inscription->id)
+         ->actifs()->get();
+     $totalReliquats = $reliquatsEntrants->sum('solde_restant');
+
+     // 3. Total attendu
+     $totalAttendu = $totalFraisAnnee + $totalReliquats;
+
+     // 4. Total payé
+     $totalPaye = ESBTPPaiement::where('inscription_id', $inscription->id)
+         ->where('status', 'validé')->sum('montant');
+
+     // 5. Solde restant (jamais négatif)
+     $soldeRestant = max(0, $totalAttendu - $totalPaye);
+     ```
+   - **Gestion cas étudiants ayant tout soldé:** Utilisation de `max(0, $soldeRestant)` pour éviter montants négatifs
+   - **Protection division par zéro:** `$totalAttendu > 0 ? ... : 0`
+
+3. **Variables manquantes dans emails d'inscription**
+   - Ajout de toutes les variables financières (`montantTotal`, `montantPaye`, `montantDu`)
+   - Les templates affichent maintenant la situation financière complète
+
+#### Méthodes modifiées dans NotificationService
+
+1. **notifyParentsInscriptionCreated()** (ligne ~2245)
+   - Calcul complet de la situation financière
+   - Passage de `schoolLogoPath` au lieu de `schoolLogo`
+
+2. **notifyParentsPaiementValide()** (ligne ~2337)
+   - Calcul robuste des montants sans `ESBTPReliquat`
+   - Gestion taux de paiement avec protection division par zéro
+
+#### Tests effectués
+
+- ✅ Email envoyé à `djedjelipatrick@gmail.com` avec logo visible
+- ✅ Calcul financier fonctionne pour étudiants sans frais (totalAttendu = 0)
+- ✅ Calcul financier fonctionne pour étudiants ayant tout soldé (soldeRestant = 0)
+- ✅ Pas de division par zéro quand totalAttendu = 0
+- ✅ Montants jamais négatifs grâce à `max(0, $soldeRestant)`
+
+#### Référence
+
+Logique inspirée de `ESBTPInscriptionController@previewSituationFinanciere` (ligne 2174) qui utilise la même approche pour calculer la situation financière basée sur:
+- Frais souscrits actifs (`ESBTPFraisSubscription`)
+- Reliquats entrants (`ESBTPReliquatDetail`)
+- Paiements validés (`ESBTPPaiement`)
+
+---
+
+### Feature: Système de notifications multi-canal pour les parents
+
+**Date:** 9 octobre 2025
+**Branche:** presentation
+
+#### Fonctionnalités ajoutées
+
+Implémentation complète d'un système de notifications en temps réel et par email pour les parents, avec support futur pour WhatsApp/SMS.
+
+#### Architecture
+
+**Points clés :**
+- **IMPORTANT** : Les parents utilisent le même compte que leur enfant (pas de compte séparé)
+  - Les notifications in-app utilisent `$etudiant->user_id`
+  - Les emails sont envoyés à `$tuteur->email` (email du parent dans la table `esbtp_parents`)
+  - Le parent se connecte avec les identifiants de l'étudiant pour voir les infos
+- **Nom de la plateforme** : KLASSCI (et non ESBTP ou ESBTP-yAKRO)
+- **Configuration dynamique** : Toutes les informations de l'établissement (nom, adresse, téléphone, email, logo) sont chargées depuis `esbtp/settings` via `SettingsHelper::get()` - aucune valeur hardcodée
+- **Design** : Blanc (#ffffff) et Bleu (#007bff), sans gradients ni icônes
+
+#### Événements notifiés
+
+1. **Inscriptions** : Confirmation avec identifiants (nouveaux étudiants uniquement)
+2. **Réinscriptions** : Confirmation sans identifiants (étudiants existants)
+3. **Paiements** :
+   - Création (notification aux administrateurs)
+   - Validation (notification au parent avec détails financiers)
+   - Rejet (notification au parent avec motif)
+4. **Absences** : Notification quotidienne avec taux de présence mensuel
+5. **Bulletins** : Publication avec moyenne et rang
+6. **Notes faibles** : Alerte si moyenne < seuil configuré
+
+#### Fichiers créés
+
+##### Migrations et modèles
+- `database/migrations/2025_10_09_create_parent_notification_preferences_table.php` - Table préférences notifications
+- `app/Models/ParentNotificationPreference.php` - Modèle préférences
+
+##### Templates email (Blade)
+- `resources/views/esbtp/emails/parents/layout.blade.php` - Layout de base
+- `resources/views/esbtp/emails/parents/inscription-confirmation.blade.php` - Avec identifiants
+- `resources/views/esbtp/emails/parents/reinscription-confirmation.blade.php` - Sans identifiants
+- `resources/views/esbtp/emails/parents/paiement-created.blade.php` - Paiement en attente
+- `resources/views/esbtp/emails/parents/paiement-valide.blade.php` - Paiement validé
+- `resources/views/esbtp/emails/parents/paiement-rejete.blade.php` - Paiement rejeté
+- `resources/views/esbtp/emails/parents/paiement-relance.blade.php` - Relance paiement
+- `resources/views/esbtp/emails/parents/absence-notification.blade.php` - Absence quotidienne
+- `resources/views/esbtp/emails/parents/low-attendance.blade.php` - Alerte taux présence
+- `resources/views/esbtp/emails/parents/bulletin-published.blade.php` - Bulletin publié
+- `resources/views/esbtp/emails/parents/low-grades.blade.php` - Alerte notes faibles
+- `resources/views/esbtp/emails/parents/note-published.blade.php` - Note publiée
+
+##### Mailable classes
+- `app/Mail/Parents/InscriptionConfirmationMail.php`
+- `app/Mail/Parents/ReinscriptionConfirmationMail.php`
+- `app/Mail/Parents/PaiementCreatedMail.php`
+- `app/Mail/Parents/PaiementValideMail.php`
+- `app/Mail/Parents/PaiementRejeteMail.php`
+- `app/Mail/Parents/PaiementRelanceMail.php`
+- `app/Mail/Parents/AbsenceNotificationMail.php`
+- `app/Mail/Parents/LowAttendanceMail.php`
+- `app/Mail/Parents/BulletinPublishedMail.php`
+- `app/Mail/Parents/LowGradesMail.php`
+- `app/Mail/Parents/NotePublishedMail.php`
+
+#### Fichiers modifiés
+
+##### NotificationService
+- `app/Services/NotificationService.php` (lignes 2184-2650)
+  - **Import ajouté** : `use App\Models\ESBTPReliquat;`
+  - **Méthode helper** : `getSchoolSettings()` - Charge les paramètres depuis SettingsHelper
+  - **7 nouvelles méthodes** :
+    - `notifyParentsInscriptionCreated($inscription, $credentials)` - Ligne 2208
+    - `notifyParentsReinscriptionCreated($inscription, $decision, $reliquatMontant)` - Ligne 2594
+    - `notifyParentsPaiementValide($paiement)` - Ligne 2277
+    - `notifyParentsPaiementRejete($paiement)` - Ligne 2339
+    - `notifyParentsAbsence($attendance)` - Ligne 2386
+    - `notifyParentsBulletinPublished($bulletin)` - Ligne 2456
+    - `notifyParentsLowGrades($bulletin)` - Ligne 2513
+
+##### Controllers (intégrations)
+- `app/Http/Controllers/ESBTPInscriptionController.php` (ligne 746-753) - Notification inscription
+- `app/Http/Controllers/ESBTP/ESBTPReinscriptionController.php` (ligne 878-889) - Notification réinscription
+- `app/Http/Controllers/ESBTPPaiementController.php` :
+  - Ligne 714 : Notification création paiement
+  - Ligne 1871 : Notification validation paiement
+  - Ligne 1936 : Notification rejet paiement
+- `app/Http/Controllers/ESBTPAttendanceController.php` (ligne 1224) - Notification absence
+- `app/Http/Controllers/ESBTPBulletinController.php` (ligne 2289-2299) - Notifications bulletin/notes
+
+#### Configuration SMTP
+
+**.env configuré** :
+```env
+MAIL_MAILER=smtp
+MAIL_HOST=mail.klassci.com
+MAIL_PORT=465
+MAIL_USERNAME=support@klassci.com
+MAIL_PASSWORD=@FV@8BWyKk3JiPb
+MAIL_ENCRYPTION=ssl
+MAIL_FROM_ADDRESS=support@klassci.com
+MAIL_FROM_NAME="KLASSCI"
+```
+
+**Problème résolu** : Configuration SMTP dupliquée dans .env - la deuxième occurrence (lignes 80-87) écrasait la première
+
+#### Améliorations design (9 octobre 2025 - 23h)
+
+**Problèmes corrigés** :
+1. ❌ Email envoyé depuis "ESBTP-yAKRO" au lieu de "KLASSCI" → `MAIL_FROM_NAME="KLASSCI"` + config cache
+2. ❌ Design email basique et peu attrayant → Refonte complète inspirée du PDF liste-appel
+3. ❌ Beaucoup de N/A affichés (classe, filière, niveau manquants) → Conditions `@if` pour masquer les N/A
+4. ❌ Valeurs hardcodées dans template → Utilisation systématique des variables `$schoolName`, etc.
+5. ❌ Bouton bleu invisible sur fond bleu → Bouton blanc avec bordure bleue (#007bff)
+6. ❌ Manque de contraste/profondeur → Fond gris clair (#f2f2f2) + éléments blancs avec ombres
+
+**Nouveau design email** :
+- **Header bleu** (#007bff) avec section titre semi-transparente (inspiré PDF liste-appel)
+- **Contenu** : Fond gris clair (#f2f2f2) pour contraste
+- **Bouton** : Fond blanc, texte bleu, bordure bleue 2px, ombre portée (hover: inversé)
+- **Tables** : Fond blanc, en-têtes bleus, ombres subtiles (0 2px 4px)
+- **KPI cards** : Fond blanc, bordures arrondies, ombres
+- **Instruction-box** : Fond blanc, bordure grise, ombre
+- **Container principal** : Ombre prononcée (0 8px 16px) pour effet de profondeur
+- **Footer** : Fond gris (#f8f9fa), bordure bleue supérieure 3px
+- **Police monospace** (Courier New) pour identifiants (username/password)
+- **Responsive design** pour mobile
+- **Design 100% professionnel** - aucun emoji, design épuré et moderne
+- **Masquage automatique** des champs vides (N/A) via conditions `@if`
+- **Settings dynamiques** - aucune valeur hardcodée
+
+**Fichiers modifiés** :
+- `resources/views/esbtp/emails/parents/layout.blade.php` - Refonte complète (440 lignes)
+- `resources/views/esbtp/emails/parents/inscription-confirmation.blade.php` - Nouveau design + masquage N/A
+- `app/Services/NotificationService.php` - Encodage logo en base64 pour affichage email
+
+**Fix logo email (9 octobre 2025 - 23h30 → 00h15)** :
+- ❌ Logo ne s'affichait pas dans les emails (chemin relatif invalide)
+- ❌ Base64 encodé mais **bloqué par Gmail** (politique de sécurité)
+- ❌ `storage_path()` avec `$message->embed()` → Image non trouvée
+- ✅ **Solution finale** : `public_path('storage/' . $logoPath)` avec `$message->embed()`
+- ✅ Migration de **tous les Mailable** vers méthode `build()` au lieu de `content()/envelope()`
+- ✅ Le logo est attaché comme image inline (CID - Content-ID)
+- ✅ Changement dans **tous les templates** : `$schoolLogo` → `$schoolLogoPath`
+- ✅ Compatible avec tous les clients email (Gmail, Outlook, Apple Mail, etc.)
+
+**Point crucial** :
+- `$message->embed()` nécessite **`public_path()`** et non `storage_path()`
+- Le logo est accessible via le symlink : `public/storage/logos/xxx.png`
+
+**Fichiers modifiés** :
+- **11 Mailable classes** migrées vers `build()` method (app/Mail/Parents/*.php)
+- **11 templates Blade** mis à jour avec `$schoolLogoPath` (resources/views/esbtp/emails/parents/*.blade.php)
+- **NotificationService** : `getSchoolSettings()` utilise `public_path('storage/' . $logoPath)`
+
+#### Tests effectués
+
+✅ Notification in-app créée correctement (table `custom_notifications`)
+✅ Email envoyé avec succès (test : djedjelipatrick@gmail.com)
+✅ Settings dynamiques chargés depuis SettingsHelper
+✅ Layout email utilise les variables `$schoolName`, `$schoolAddress`, etc.
+✅ Pas de valeurs hardcodées
+✅ MAIL_FROM_NAME = "KLASSCI" (vérifié via config:cache)
+✅ Design moderne inspiré du PDF liste-appel
+✅ Champs N/A masqués automatiquement
+✅ Logo affiché correctement via `$message->embed()` (CID attachment)
+
+#### Compte test créé
+
+- **Étudiant** : Patrick Jean KOUAME (ID: 2775)
+- **Username** : patrick.kouame
+- **Password** : Patrick2025!
+- **Email parent** : djedjelipatrick@gmail.com
+- **Rôle** : etudiant (via Spatie Permission)
+
+#### Phase future (non implémenté)
+
+1. **WhatsApp** : Intégration Meta Cloud API avec templates pré-approuvés
+2. **SMS** : Gateway SMS local
+3. **Interface settings** : Page configuration préférences notifications par défaut
+4. **Statistiques** : Dashboard historique notifications envoyées
+
+#### Notes techniques
+
+- Table `custom_notifications` utilisée (pas `notifications` Laravel native)
+- Méthode `getOrCreateNotificationPreferences()` sur modèle `ESBTPParent`
+- Canal email uniquement pour l'instant (champ `preferred_channels` JSON prévu pour multi-canal)
+- Logging complet de toutes les opérations
+
+---
+
 ### Feature: Rafraîchissement paiements & matricules tolérants aux doublons
 
 **Date:** 6 octobre 2025  
@@ -767,3 +1029,439 @@ Pour activer le scheduler en production :
 ---
 
 *Dernière mise à jour: 4 octobre 2025*
+## Feature: Système de notifications emails pour les parents
+
+**Date:** 9 octobre 2025  
+**Branche:** presentation
+
+### Fonctionnalités ajoutées
+
+Implémentation complète d'un système de notifications par email pour les parents concernant tous les événements importants liés à la scolarité de leurs enfants.
+
+#### Vue d'ensemble
+
+Les parents reçoivent des emails automatiques pour :
+1. **Inscription** - Confirmation avec identifiants de connexion
+2. **Paiements** - Création, validation, rejet
+3. **Absences** - Notifications quotidiennes avec statistiques mensuelles
+4. **Bulletins** - Publication et alertes de notes faibles
+5. **Système de préférences** - Configuration personnalisable par parent
+
+**Points clés :**
+- **IMPORTANT** : Les parents utilisent le même compte que leur enfant (pas de compte séparé)
+  - Les notifications in-app utilisent `$etudiant->user_id`
+  - Les emails sont envoyés à `$tuteur->email` (email du parent dans la table `esbtp_parents`)
+  - Le parent se connecte avec les identifiants de l'étudiant pour voir les infos
+- Design uniforme : blanc (#ffffff) et bleu (#007bff), sans gradient ni icône
+- Envoi multi-canal : notification in-app + email (WhatsApp/SMS en Phase 2/3)
+- Système de préférences avec opt-in/opt-out par type d'événement
+
+### 1. Table de préférences des notifications
+
+**Migration :** `database/migrations/2025_10_09_182704_create_parent_notification_preferences_table.php`
+
+**Champs :**
+- `parent_id` - ID du parent (FK vers esbtp_parents)
+- `notify_inscriptions` - Activer notifications d'inscription (défaut: true)
+- `notify_paiements` - Activer notifications de paiement (défaut: true)
+- `notify_absences` - Activer notifications d'absence (défaut: true)
+- `notify_notes` - Activer notifications de notes (défaut: true)
+- `notify_bulletins` - Activer notifications de bulletins (défaut: true)
+- `notify_annonces` - Activer notifications d'annonces (défaut: true)
+- `preferred_channels` - Canaux préférés (JSON: ["app", "email"], extensible pour WhatsApp/SMS)
+- `absence_threshold` - Seuil d'absences pour alerte (défaut: 3)
+- `grade_threshold` - Seuil de moyenne pour alerte (défaut: 10.0)
+- `attendance_rate_threshold` - Seuil de taux de présence pour alerte (défaut: 80)
+- `notification_count` - Compteur de notifications envoyées
+- `last_notification_sent_at` - Date de dernière notification
+
+**Index :** `pnp_absences_paiements_idx` sur (notify_absences, notify_paiements)
+
+### 2. Modèle ParentNotificationPreference
+
+**Fichier :** `app/Models/ParentNotificationPreference.php`
+
+**Méthodes principales :**
+```php
+hasChannel($channel)               // Vérifie si un canal est activé
+isNotificationEnabled($type)       // Vérifie si un type de notification est activé
+incrementNotificationCount()       // Incrémente le compteur
+getOrCreateForParent($parentId)   // Récupère ou crée les préférences
+```
+
+**Relation avec ESBTPParent :**
+```php
+// Dans app/Models/ESBTPParent.php
+public function notificationPreferences()
+{
+    return $this->hasOne(ParentNotificationPreference::class, 'parent_id');
+}
+
+public function getOrCreateNotificationPreferences()
+{
+    return ParentNotificationPreference::getOrCreateForParent($this->id);
+}
+```
+
+### 3. Templates d'emails
+
+**Layout de base :** `resources/views/esbtp/emails/parents/layout.blade.php`
+- Design blanc et bleu sans gradient
+- Header bleu (#007bff) avec logo et nom de l'établissement
+- Corps blanc avec sections clairement délimitées
+- Footer gris clair (#f8f9fa) avec informations de contact
+- Responsive design pour mobile
+
+**10 templates spécialisés :**
+
+1. **inscription-confirmation.blade.php**
+   - Confirmation d'inscription avec année universitaire, classe, filière, niveau
+   - Table d'identifiants (nom d'utilisateur + mot de passe)
+   - Lien vers la plateforme
+
+2. **paiement-valide.blade.php**
+   - Confirmation de validation avec montant, référence, numéro de reçu
+   - KPI financiers : Total payé, Reliquat restant, Taux de paiement
+   - Situation financière complète
+
+3. **paiement-created.blade.php**
+   - Notification de paiement en attente de validation
+   - Détails : montant, mode, référence
+
+4. **paiement-rejete.blade.php**
+   - Notification de rejet avec motif détaillé
+   - Informations du paiement rejeté
+
+5. **paiement-relance.blade.php**
+   - Rappel de paiement avec montant dû
+   - Situation financière et solde restant
+
+6. **absence-notification.blade.php**
+   - Notification d'absence avec date, heure, matière
+   - Statistiques mensuelles : total absences, justifiées, non justifiées, taux de présence
+   - Badge coloré pour le taux (vert ≥80%, orange ≥60%, rouge <60%)
+
+7. **low-attendance.blade.php**
+   - Alerte de taux de présence faible (<80%)
+   - Statistiques détaillées du mois
+   - Invitation à contacter l'établissement
+
+8. **bulletin-published.blade.php**
+   - Notification de disponibilité du bulletin
+   - Résumé : moyenne générale, rang, mention
+   - Lien vers le bulletin PDF
+
+9. **low-grades.blade.php**
+   - Alerte de performance académique faible
+   - Liste des matières avec moyenne <10
+   - Encouragement au soutien scolaire
+
+10. **note-published.blade.php**
+    - Notification de publication d'une note individuelle
+    - Détails : matière, note, coefficient
+
+### 4. Classes Mailable
+
+**Emplacement :** `app/Mail/Parents/`
+
+**Liste des Mailables :**
+- `InscriptionConfirmationMail.php`
+- `PaiementValideMail.php`
+- `PaiementCreatedMail.php`
+- `PaiementRejeteMail.php`
+- `PaiementRelanceMail.php`
+- `AbsenceNotificationMail.php`
+- `LowAttendanceMail.php`
+- `BulletinPublishedMail.php`
+- `LowGradesMail.php`
+- `NotePublishedMail.php`
+
+**Structure commune :**
+```php
+class [Event]Mail extends Mailable
+{
+    use Queueable, SerializesModels;
+
+    public $data;
+
+    public function __construct($data)
+    {
+        $this->data = $data;
+    }
+
+    public function build()
+    {
+        return $this->subject('[Sujet]')
+                    ->view('esbtp.emails.parents.[template]');
+    }
+}
+```
+
+### 5. Extension du NotificationService
+
+**Fichier :** `app/Services/NotificationService.php`
+
+**6 nouvelles méthodes pour les parents :**
+
+1. **notifyParentsInscriptionCreated($inscription, $credentials)**
+   - Envoyée après création d'inscription réussie
+   - Paramètres : objet inscription, array credentials (username, password)
+   - Notification in-app + email avec identifiants de connexion
+
+2. **notifyParentsPaiementValide($paiement)**
+   - Envoyée après validation d'un paiement
+   - Calcule situation financière complète (montants, reliquat, taux)
+   - Notification in-app + email avec KPI financiers
+
+3. **notifyParentsPaiementRejete($paiement)**
+   - Envoyée après rejet d'un paiement
+   - Inclut le motif du rejet
+   - Notification in-app + email
+
+4. **notifyParentsAbsence($attendance)**
+   - Envoyée lors d'une nouvelle absence
+   - Calcule statistiques mensuelles (absences justifiées/non justifiées, taux de présence)
+   - Notification in-app + email avec stats
+   - Alerte automatique si taux < seuil configuré
+
+5. **notifyParentsBulletinPublished($bulletin)**
+   - Envoyée lors de la publication d'un bulletin
+   - Inclut moyenne générale, rang, mention
+   - Notification in-app + email avec lien PDF
+
+6. **notifyParentsLowGrades($bulletin)**
+   - Alerte automatique si moyenne < 10 ou matières en échec
+   - Liste les matières concernées
+   - Notification in-app + email d'encouragement
+
+**Méthode helper :**
+```php
+private function getMentionColor($mention)
+{
+    // Retourne couleur selon mention : vert (TB/B), orange (AB), rouge (P), gris (E)
+}
+```
+
+**Logique commune à toutes les méthodes :**
+1. Récupération de l'étudiant et ses parents (tuteurs)
+2. **Vérification existence compte utilisateur de l'étudiant** (`$etudiant->user`)
+3. Vérification existence du tuteur
+4. Récupération ou création des préférences de notification du parent
+5. Vérification activation du type de notification
+6. Préparation des données
+7. **Création notification in-app avec `$etudiant->user_id`** (le parent utilise le compte étudiant)
+8. **Envoi email à `$tuteur->email`** si canal activé et adresse présente
+9. Incrémentation compteur de notifications
+10. Logging des erreurs éventuelles
+
+### 6. Intégrations dans les contrôleurs
+
+**ESBTPInscriptionController.php (ligne ~746)**
+```php
+// Après création de l'inscription
+if ($inscription->etudiant && $inscription->etudiant->user && session('generated_password')) {
+    $credentials = [
+        'username' => $inscription->etudiant->user->username,
+        'password' => session('generated_password'),
+    ];
+    $notificationService->notifyParentsInscriptionCreated($inscription, $credentials);
+}
+```
+
+**ESBTPPaiementController.php (3 intégrations)**
+
+1. **Création de paiement (ligne ~714)**
+```php
+// Notifier les parents de la création du paiement
+$notificationService->notifyParentsPaiementValide($paiement);
+```
+
+2. **Validation de paiement (ligne ~1871)**
+```php
+// Envoyer notification aux parents
+$notificationService->notifyParentsPaiementValide($paiement);
+```
+
+3. **Rejet de paiement (ligne ~1936)**
+```php
+// Envoyer notification aux parents
+$notificationService->notifyParentsPaiementRejete($paiement);
+```
+
+**ESBTPAttendanceController.php (ligne ~1224)**
+```php
+// Dans la méthode sendAbsenceNotification()
+// Après notification à l'étudiant
+$this->notificationService->notifyParentsAbsence($absence);
+```
+
+**ESBTPBulletinController.php (ligne ~2289)**
+```php
+// Dans togglePublication(), après publication
+if (!$wasPublished && $bulletin->is_published) {
+    $notificationService->notifyParentsBulletinPublished($bulletin);
+    $notificationService->notifyParentsLowGrades($bulletin);
+}
+```
+
+### 7. Fichiers créés
+
+**Migrations :**
+- `database/migrations/2025_10_09_182704_create_parent_notification_preferences_table.php`
+
+**Modèles :**
+- `app/Models/ParentNotificationPreference.php`
+
+**Templates Blade :**
+- `resources/views/esbtp/emails/parents/layout.blade.php`
+- `resources/views/esbtp/emails/parents/inscription-confirmation.blade.php`
+- `resources/views/esbtp/emails/parents/paiement-valide.blade.php`
+- `resources/views/esbtp/emails/parents/paiement-created.blade.php`
+- `resources/views/esbtp/emails/parents/paiement-rejete.blade.php`
+- `resources/views/esbtp/emails/parents/paiement-relance.blade.php`
+- `resources/views/esbtp/emails/parents/absence-notification.blade.php`
+- `resources/views/esbtp/emails/parents/low-attendance.blade.php`
+- `resources/views/esbtp/emails/parents/bulletin-published.blade.php`
+- `resources/views/esbtp/emails/parents/low-grades.blade.php`
+- `resources/views/esbtp/emails/parents/note-published.blade.php`
+
+**Mailables :**
+- `app/Mail/Parents/InscriptionConfirmationMail.php`
+- `app/Mail/Parents/PaiementValideMail.php`
+- `app/Mail/Parents/PaiementCreatedMail.php`
+- `app/Mail/Parents/PaiementRejeteMail.php`
+- `app/Mail/Parents/PaiementRelanceMail.php`
+- `app/Mail/Parents/AbsenceNotificationMail.php`
+- `app/Mail/Parents/LowAttendanceMail.php`
+- `app/Mail/Parents/BulletinPublishedMail.php`
+- `app/Mail/Parents/LowGradesMail.php`
+- `app/Mail/Parents/NotePublishedMail.php`
+
+### 8. Fichiers modifiés
+
+**Modèles :**
+- `app/Models/ESBTPParent.php` - Ajout relations notificationPreferences
+
+**Services :**
+- `app/Services/NotificationService.php` - 6 méthodes parent + helper getMentionColor()
+
+**Contrôleurs :**
+- `app/Http/Controllers/ESBTPInscriptionController.php` - Notification inscription
+- `app/Http/Controllers/ESBTPPaiementController.php` - Notifications paiements (création, validation, rejet)
+- `app/Http/Controllers/ESBTPAttendanceController.php` - Notification absences
+- `app/Http/Controllers/ESBTPBulletinController.php` - Notifications bulletins et notes faibles
+
+### 9. Tests recommandés
+
+**Migration et modèle :**
+- [ ] Exécuter la migration : `php artisan migrate`
+- [ ] Vérifier la table `parent_notification_preferences` dans la BDD
+- [ ] Tester création de préférences via `ParentNotificationPreference::getOrCreateForParent()`
+
+**Templates d'emails :**
+- [ ] Tester le rendu de chaque template individuellement
+- [ ] Vérifier le design : blanc/bleu, sans gradient, sans icône
+- [ ] Tester le responsive sur mobile
+
+**Envoi de notifications :**
+- [ ] Créer une inscription → vérifier email inscription avec identifiants
+- [ ] Valider un paiement → vérifier email paiement validé avec KPI
+- [ ] Rejeter un paiement → vérifier email rejet avec motif
+- [ ] Enregistrer une absence → vérifier email absence avec stats mensuelles
+- [ ] Publier un bulletin → vérifier email bulletin + alerte notes faibles si applicable
+
+**Préférences :**
+- [ ] Désactiver un type de notification → vérifier que l'email n'est plus envoyé
+- [ ] Retirer "email" de preferred_channels → vérifier notification in-app seulement
+- [ ] Modifier les seuils (absence_threshold, grade_threshold) → vérifier alertes
+
+**Configuration mail :**
+- [ ] Vérifier configuration SMTP dans `.env` :
+  ```
+  MAIL_MAILER=smtp
+  MAIL_HOST=smtp.gmail.com
+  MAIL_PORT=587
+  MAIL_USERNAME=your_email@gmail.com
+  MAIL_PASSWORD=your_app_password
+  MAIL_ENCRYPTION=tls
+  MAIL_FROM_ADDRESS=your_email@gmail.com
+  MAIL_FROM_NAME="${APP_NAME}"
+  ```
+- [ ] Tester connexion : `php artisan tinker` puis `Mail::raw('Test', function($msg) { $msg->to('test@example.com')->subject('Test'); });`
+
+### 10. Commandes utiles
+
+```bash
+# Exécuter la migration
+php artisan migrate
+
+# Tester envoi d'email en console
+php artisan tinker
+>>> $parent = App\Models\ESBTPParent::first();
+>>> $inscription = App\Models\ESBTPInscription::first();
+>>> $credentials = ['username' => 'test', 'password' => 'test123'];
+>>> app(\App\Services\NotificationService::class)->notifyParentsInscriptionCreated($inscription, $credentials);
+
+# Vérifier la queue (si configurée)
+php artisan queue:work
+
+# Effacer le cache
+php artisan config:clear
+php artisan cache:clear
+php artisan view:clear
+```
+
+### 11. Prochaines étapes (Phase 2/3)
+
+**Phase 2 - WhatsApp via Meta Cloud API (payant) :**
+- [ ] Créer compte Meta Business Manager
+- [ ] Créer application WhatsApp Business
+- [ ] Obtenir token d'accès et Phone Number ID
+- [ ] Créer templates WhatsApp (doivent être pré-approuvés)
+- [ ] Créer service `WhatsAppService` pour gestion API
+- [ ] Ajouter configuration dans `esbtp/settings`
+- [ ] Tester envoi de messages WhatsApp
+
+**Phase 3 - SMS (payant) :**
+- [ ] Choisir provider SMS (Twilio, Vonage, AfricasTalking, etc.)
+- [ ] Créer compte et obtenir credentials
+- [ ] Créer service `SmsService` pour gestion API
+- [ ] Ajouter configuration dans `esbtp/settings`
+- [ ] Limiter nombre de caractères (160 chars standard)
+- [ ] Tester envoi de SMS
+
+**Améliorations futures :**
+- [ ] Interface de gestion des préférences pour les parents dans leur profil
+- [ ] Statistiques d'emails envoyés dans `esbtp/settings`
+- [ ] Historique des notifications dans le profil parent
+- [ ] Support de langues multiples (français, anglais)
+- [ ] Système de templates personnalisables depuis l'interface admin
+- [ ] Planification d'envoi (digest quotidien/hebdomadaire)
+
+### 12. Notes techniques
+
+**Architecture :**
+- Toutes les notifications passent par `NotificationService` (centralisé)
+- Chaque méthode vérifie les préférences avant envoi
+- Les emails sont envoyés de manière synchrone (à mettre en queue si volume élevé)
+- Les échecs d'envoi sont loggés mais ne bloquent pas le flux principal
+
+**Sécurité :**
+- Les mots de passe ne sont stockés qu'en session temporaire
+- Les emails ne contiennent jamais de mots de passe après l'inscription initiale
+- Les parents ne reçoivent que les infos de leurs propres enfants
+
+**Performance :**
+- Prévoir mise en queue si volume > 100 emails/jour
+- Index sur `parent_notification_preferences` pour accès rapide
+- Lazy loading des relations pour éviter N+1 queries
+
+**Dépendances :**
+- Laravel Mail (natif)
+- Configuration SMTP requise
+- Table `custom_notifications` pour notifications in-app
+- Table `esbtp_parents` avec relation vers `esbtp_etudiants`
+
+---
+
+*Dernière mise à jour: 9 octobre 2025*

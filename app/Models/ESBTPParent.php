@@ -108,6 +108,26 @@ class ESBTPParent extends Model
     }
 
     /**
+     * Relation avec les préférences de notification.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasOne
+     */
+    public function notificationPreferences()
+    {
+        return $this->hasOne(ParentNotificationPreference::class, 'parent_id');
+    }
+
+    /**
+     * Obtenir ou créer les préférences de notification pour ce parent.
+     *
+     * @return ParentNotificationPreference
+     */
+    public function getOrCreateNotificationPreferences()
+    {
+        return ParentNotificationPreference::getOrCreateForParent($this->id);
+    }
+
+    /**
      * Générer un username unique basé sur le prénom et le nom.
      *
      * @param string $prenom

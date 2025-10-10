@@ -712,6 +712,22 @@ class ESBTPEtudiantController extends Controller
                 }
             }
 
+            // Gérer les parents existants ajoutés
+            $existingParents = $request->input('existing_parents', []);
+            $existingParentsRelation = $request->input('existing_parents_relation', []);
+
+            foreach ($existingParents as $parentId) {
+                if (!isset($syncParents[$parentId])) {
+                    $relation = $existingParentsRelation[$parentId] ?? 'Autre';
+                    $syncParents[$parentId] = [
+                        'relation' => $relation,
+                        'is_tuteur' => 0,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }
+            }
+
             if (count($syncParents) > 2) {
                 $syncParents = array_slice($syncParents, 0, 2, true);
             }
@@ -794,6 +810,92 @@ class ESBTPEtudiantController extends Controller
             return redirect()
                 ->back()
                 ->with('error', 'Erreur lors de la suppression: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Créer un compte utilisateur pour l'étudiant.
+     */
+    public function createUserAccount(ESBTPEtudiant $etudiant)
+    {
+        try {
+            if ($etudiant->user_id) {
+                return redirect()
+                    ->back()
+                    ->with('error', 'Cet étudiant possède déjà un compte utilisateur.');
+            }
+
+            // Générer un username unique basé sur le prénom et le nom
+            $prenoms = explode(' ', $etudiant->prenoms);
+            $prenom = strtolower($prenoms[0] ?? '');
+            $nom = strtolower($etudiant->nom ?? '');
+
+            // Créer un username basé sur le prénom et le nom
+            $baseUsername = $prenom . '.' . $nom;
+            $baseUsername = preg_replace('/[^a-z0-9.]/', '', $baseUsername);
+            $username = $baseUsername;
+
+            // Si le username existe déjà, ajouter un nombre
+            $count = 1;
+            while (User::where('username', $username)->exists()) {
+                $username = $baseUsername . '.' . $count;
+                $count++;
+            }
+
+            // Générer un email basé sur le username
+            $baseEmail = $username . '@esbtp.edu';
+            $email = $baseEmail;
+            $count = 1;
+            while (User::where('email', $email)->exists()) {
+                $email = str_replace('@', '.' . $count . '@', $baseEmail);
+                $count++;
+            }
+
+            // Générer un mot de passe simple
+            // 6 caractères: 4 lettres majuscules + 2 chiffres
+            $lettres = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+            $chiffres = '23456789';
+
+            $password = '';
+            for ($i = 0; $i < 4; $i++) {
+                $password .= $lettres[rand(0, strlen($lettres) - 1)];
+            }
+            for ($i = 0; $i < 2; $i++) {
+                $password .= $chiffres[rand(0, strlen($chiffres) - 1)];
+            }
+
+            // Créer le compte utilisateur
+            $user = User::create([
+                'name' => $etudiant->prenoms . ' ' . $etudiant->nom,
+                'first_name' => $etudiant->prenoms,
+                'last_name' => $etudiant->nom,
+                'email' => $email,
+                'username' => $username,
+                'password' => Hash::make($password),
+                'is_active' => true
+            ]);
+
+            // Assigner le rôle étudiant
+            $role = Role::where('name', 'etudiant')->first();
+            if ($role) {
+                $user->assignRole($role);
+            }
+
+            // Lier le compte à l'étudiant
+            $etudiant->user_id = $user->id;
+            $etudiant->save();
+
+            return redirect()
+                ->back()
+                ->with('success', 'Compte utilisateur créé avec succès!')
+                ->with('account_created', true)
+                ->with('new_username', $username)
+                ->with('new_password', $password);
+
+        } catch (\Exception $e) {
+            return redirect()
+                ->back()
+                ->with('error', 'Erreur lors de la création du compte: ' . $e->getMessage());
         }
     }
 
@@ -1077,24 +1179,13 @@ class ESBTPEtudiantController extends Controller
      */
     public function searchParents(Request $request)
     {
-        \Log::info('Recherche de parents - Début', [
-            'request' => $request->all(),
-            'headers' => $request->headers->all()
-        ]);
-
         $search = $request->input('q', '');
+        $etudiantId = $request->input('etudiant_id');
         $page = $request->input('page', 1);
         $perPage = 10;
 
-        \Log::info('Paramètres de recherche', [
-            'search' => $search,
-            'page' => $page,
-            'perPage' => $perPage
-        ]);
-
-        // Si la recherche est trop courte, renvoyer un résultat vide
-        if (strlen($search) < 2) {
-            \Log::info('Recherche trop courte');
+        // Si la recherche est trop courte pour Select2, renvoyer un résultat vide
+        if (strlen($search) < 2 && $request->has('page')) {
             return response()->json([
                 'items' => [],
                 'pagination' => ['more' => false]
@@ -1102,27 +1193,34 @@ class ESBTPEtudiantController extends Controller
         }
 
         try {
-            // Rechercher les parents correspondant à la requête
-            $query = ESBTPParent::where(function($query) use ($search) {
-                $query->where('nom', 'like', "%{$search}%")
+            // Construire la requête
+            $query = ESBTPParent::query();
+
+            // Si une recherche est fournie (même 1 caractère), filtrer
+            if (strlen($search) > 0) {
+                $query->where(function($q) use ($search) {
+                    $q->where('nom', 'like', "%{$search}%")
                       ->orWhere('prenoms', 'like', "%{$search}%")
                       ->orWhere('telephone', 'like', "%{$search}%");
-            })
-            ->select('id', 'nom', 'prenoms', 'telephone');
+                });
+            }
 
-            \Log::info('Requête SQL', [
-                'sql' => $query->toSql(),
-                'bindings' => $query->getBindings()
-            ]);
+            // Si etudiant_id est fourni, charger les étudiants liés
+            if ($etudiantId) {
+                $query->with(['etudiants' => function($q) use ($etudiantId) {
+                    $q->where('esbtp_etudiants.id', '!=', $etudiantId);
+                }]);
+            }
+
+            // Pour la modal simple (sans pagination), limiter à 100 parents
+            if (!$request->has('page') && strlen($search) == 0) {
+                $parents = $query->limit(100)->get();
+                return response()->json($parents);
+            }
 
             $parents = $query->skip(($page - 1) * $perPage)
                             ->take($perPage + 1)
                             ->get();
-
-            \Log::info('Résultats de la recherche', [
-                'count' => $parents->count(),
-                'parents' => $parents->toArray()
-            ]);
 
             $hasMorePages = $parents->count() > $perPage;
 
@@ -1130,25 +1228,27 @@ class ESBTPEtudiantController extends Controller
                 $parents = $parents->take($perPage);
             }
 
-            // Formater les résultats pour Select2
-            $formattedParents = $parents->map(function($parent) {
-                return [
-                    'id' => $parent->id,
-                    'nom' => $parent->nom,
-                    'prenoms' => $parent->prenoms,
-                    'telephone' => $parent->telephone,
-                    'text' => $parent->nom . ' ' . $parent->prenoms . ' (' . $parent->telephone . ')'
-                ];
-            });
+            // Format Select2 (pour les anciens formulaires)
+            if ($request->has('page')) {
+                $formattedParents = $parents->map(function($parent) {
+                    return [
+                        'id' => $parent->id,
+                        'nom' => $parent->nom,
+                        'prenoms' => $parent->prenoms,
+                        'telephone' => $parent->telephone,
+                        'text' => $parent->nom . ' ' . $parent->prenoms . ' (' . $parent->telephone . ')'
+                    ];
+                });
 
-            $response = [
-                'items' => $formattedParents,
-                'pagination' => ['more' => $hasMorePages]
-            ];
+                return response()->json([
+                    'items' => $formattedParents,
+                    'pagination' => ['more' => $hasMorePages]
+                ]);
+            }
 
-            \Log::info('Réponse finale', $response);
+            // Format simple (pour la modal de recherche)
+            return response()->json($parents);
 
-            return response()->json($response);
         } catch (\Exception $e) {
             \Log::error('Erreur lors de la recherche des parents', [
                 'error' => $e->getMessage(),

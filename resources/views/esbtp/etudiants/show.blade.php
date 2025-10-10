@@ -160,32 +160,88 @@
                             <div class="section-title mb-md">
                                 <i class="fas fa-user-cog"></i>Compte utilisateur
                             </div>
-                                    @if($etudiant->user)
-                                        <div class="d-flex align-items-center mb-3">
-                                            <span class="badge bg-success me-2">Actif</span>
-                                            <span>{{ $etudiant->user->email }}</span>
-                                        </div>
-                                        <div>
-                                            <p><strong>Nom d'utilisateur:</strong> {{ $etudiant->user->username ?: $etudiant->user->email }}</p>
-                                        </div>
-                                        <div class="d-grid gap-2">
-                                            <a href="{{ route('esbtp.etudiants.reset-password', ['etudiant' => $etudiant->id]) }}" class="btn btn-sm btn-outline-secondary" onclick="return confirm('Êtes-vous sûr de vouloir réinitialiser le mot de passe de cet utilisateur ?')">
-                                                <i class="fas fa-key me-1"></i>Réinitialiser le mot de passe
-                                            </a>
-                                        </div>
-                                    @else
-                                        <div class="alert alert-warning mb-0">
-                                            <i class="fas fa-exclamation-triangle me-2"></i>
-                                            Aucun compte utilisateur n'est associé à cet étudiant.
-                                            <div class="mt-2">
-                                                <a href="{{ route('esbtp.etudiants.edit', ['etudiant' => $etudiant->id]) }}" class="btn btn-sm btn-outline-primary">
-                                                    <i class="fas fa-user-plus me-1"></i>Créer un compte
-                                                </a>
-                                            </div>
-                                        </div>
-                                    @endif
+
+                            @if(session('account_created'))
+                                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                    <h5 class="alert-heading"><i class="fas fa-check-circle me-2"></i>Compte créé avec succès!</h5>
+                                    <hr>
+                                    <p class="mb-2"><strong>Nom d'utilisateur:</strong> <code class="text-dark">{{ session('new_username') }}</code></p>
+                                    <p class="mb-0"><strong>Mot de passe:</strong> <code class="text-dark">{{ session('new_password') }}</code></p>
+                                    <hr>
+                                    <p class="mb-0 small"><i class="fas fa-info-circle me-1"></i>Veuillez communiquer ces identifiants à l'étudiant.</p>
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            @endif
+
+                            @if($etudiant->user)
+                                <div class="d-flex align-items-center mb-3">
+                                    <span class="badge bg-success me-2">Actif</span>
+                                    <span>{{ $etudiant->user->email }}</span>
+                                </div>
+                                <div>
+                                    <p><strong>Nom d'utilisateur:</strong> {{ $etudiant->user->username ?: $etudiant->user->email }}</p>
+                                </div>
+                                <div class="d-grid gap-2">
+                                    <a href="{{ route('esbtp.etudiants.reset-password', ['etudiant' => $etudiant->id]) }}" class="btn btn-sm btn-outline-secondary" onclick="return confirm('Êtes-vous sûr de vouloir réinitialiser le mot de passe de cet utilisateur ?')">
+                                        <i class="fas fa-key me-1"></i>Réinitialiser le mot de passe
+                                    </a>
+                                </div>
+                            @else
+                                <div class="alert alert-warning mb-3">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    Aucun compte utilisateur n'est associé à cet étudiant.
+                                </div>
+                                <div class="d-grid gap-2">
+                                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#createAccountModal">
+                                        <i class="fas fa-user-plus me-1"></i>Créer un compte
+                                    </button>
+                                </div>
+                            @endif
                         </div>
                     </div>
+
+                    <!-- Modal de création de compte -->
+                    @if(!$etudiant->user)
+                    <div class="modal fade" id="createAccountModal" tabindex="-1" aria-labelledby="createAccountModalLabel" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header bg-primary text-white">
+                                    <h5 class="modal-title" id="createAccountModalLabel">
+                                        <i class="fas fa-user-plus me-2"></i>Créer un compte utilisateur
+                                    </h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        Un compte sera créé avec les informations suivantes :
+                                    </div>
+                                    <ul class="list-unstyled mb-3">
+                                        <li class="mb-2"><i class="fas fa-user text-primary me-2"></i><strong>Nom d'utilisateur:</strong> Basé sur le prénom et nom</li>
+                                        <li class="mb-2"><i class="fas fa-envelope text-primary me-2"></i><strong>Email:</strong> Format @esbtp.edu</li>
+                                        <li class="mb-2"><i class="fas fa-key text-primary me-2"></i><strong>Mot de passe:</strong> Généré automatiquement (6 caractères)</li>
+                                        <li class="mb-2"><i class="fas fa-id-badge text-primary me-2"></i><strong>Rôle:</strong> Étudiant</li>
+                                    </ul>
+                                    <div class="alert alert-warning mb-0">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                        <small>Le mot de passe sera affiché une seule fois. Notez-le pour le communiquer à l'étudiant.</small>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                        <i class="fas fa-times me-1"></i>Annuler
+                                    </button>
+                                    <form action="{{ route('esbtp.etudiants.create-account', $etudiant) }}" method="POST" class="d-inline">
+                                        @csrf
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fas fa-check me-1"></i>Créer le compte
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
 
                     <!-- Statistiques rapides -->
                     @if(isset($statistiques))

@@ -742,6 +742,15 @@ class ESBTPInscriptionController extends Controller
             try {
                 $notificationService = app(\App\Services\NotificationService::class);
                 $notificationService->notifyInscriptionCreated($inscription, auth()->user());
+
+                // Envoyer notification aux parents avec identifiants
+                if ($inscription->etudiant && $inscription->etudiant->user && session('generated_password')) {
+                    $credentials = [
+                        'username' => $inscription->etudiant->user->username,
+                        'password' => session('generated_password'),
+                    ];
+                    $notificationService->notifyParentsInscriptionCreated($inscription, $credentials);
+                }
             } catch (\Exception $e) {
                 Log::error('Erreur envoi notification inscription: ' . $e->getMessage());
             }

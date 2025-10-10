@@ -747,9 +747,18 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
 
 
-            // Routes pour réinitialiser le mot de passe d'un étudiant
+            // Routes pour la gestion des comptes utilisateurs étudiants
+            Route::post('/etudiants/{etudiant}/create-account', [ESBTPEtudiantController::class, 'createUserAccount'])
+                ->name('etudiants.create-account')
+                ->middleware(['permission:edit_students']);
+
             Route::get('/etudiants/{etudiant}/reset-password', [ESBTPEtudiantController::class, 'resetPassword'])
                 ->name('etudiants.reset-password')
+                ->middleware(['permission:edit_students']);
+
+            // Route pour rechercher des parents existants
+            Route::get('/parents/search', [ESBTPEtudiantController::class, 'searchParents'])
+                ->name('parents.search')
                 ->middleware(['permission:edit_students']);
 
             // Route pour générer un certificat de scolarité

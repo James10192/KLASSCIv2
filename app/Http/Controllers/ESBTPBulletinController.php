@@ -2282,8 +2282,22 @@ class ESBTPBulletinController extends Controller
     public function togglePublication(ESBTPBulletin $bulletin)
     {
         try {
+            $wasPublished = $bulletin->is_published;
             $bulletin->is_published = !$bulletin->is_published;
             $bulletin->save();
+
+            // Si le bulletin vient d'être publié, notifier les parents
+            if (!$wasPublished && $bulletin->is_published) {
+                try {
+                    $notificationService = app(\App\Services\NotificationService::class);
+                    $notificationService->notifyParentsBulletinPublished($bulletin);
+
+                    // Vérifier si l'étudiant a des notes faibles et envoyer une alerte si nécessaire
+                    $notificationService->notifyParentsLowGrades($bulletin);
+                } catch (\Exception $e) {
+                    \Log::error('Erreur envoi notification bulletin aux parents: ' . $e->getMessage());
+                }
+            }
 
             $message = $bulletin->is_published
                 ? 'Le bulletin a été publié avec succès.'

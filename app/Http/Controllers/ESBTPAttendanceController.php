@@ -1221,6 +1221,9 @@ class ESBTPAttendanceController extends Controller
             // Utiliser le service de notifications
             $this->notificationService->notifyNewAbsence($absence, $etudiant);
 
+            // Notifier les parents de l'absence
+            $this->notificationService->notifyParentsAbsence($absence);
+
             \Log::info("Notification d'absence enrichie envoyée pour le cours", [
                 'etudiant_id' => $etudiantId,
                 'seance_cours_id' => $seanceCours->id,

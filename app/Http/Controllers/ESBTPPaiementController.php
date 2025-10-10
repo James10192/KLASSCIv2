@@ -711,6 +711,14 @@ class ESBTPPaiementController extends Controller
                 }
             }
 
+            // Notifier les parents de la création du paiement
+            try {
+                $notificationService = app(\App\Services\NotificationService::class);
+                $notificationService->notifyParentsPaiementValide($paiement);
+            } catch (\Exception $e) {
+                Log::error('Erreur envoi notification paiement aux parents: ' . $e->getMessage());
+            }
+
             return redirect()->route('esbtp.paiements.show', $paiement->id)
                 ->with('success', 'Paiement enregistré avec succès. Numéro de reçu : ' . $numeroRecu);
 
@@ -1859,6 +1867,9 @@ class ESBTPPaiementController extends Controller
             try {
                 $notificationService = app(\App\Services\NotificationService::class);
                 $notificationService->notifyPaiementValide($paiement, auth()->user());
+
+                // Envoyer notification aux parents
+                $notificationService->notifyParentsPaiementValide($paiement);
             } catch (\Exception $e) {
                 Log::error('Erreur envoi notification paiement validé: ' . $e->getMessage());
             }
@@ -1921,6 +1932,9 @@ class ESBTPPaiementController extends Controller
             try {
                 $notificationService = app(\App\Services\NotificationService::class);
                 $notificationService->notifyPaiementRejete($paiement, auth()->user(), $request->input('motif_rejet'));
+
+                // Envoyer notification aux parents
+                $notificationService->notifyParentsPaiementRejete($paiement);
             } catch (\Exception $e) {
                 Log::error('Erreur envoi notification paiement rejeté: ' . $e->getMessage());
             }

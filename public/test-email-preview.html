@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notification KLASSCI</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            font-size: 14px;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            line-height: 1.6;
+            background: #f8f9fa;
+        }
+
+        .email-container {
+            max-width: 650px;
+            margin: 20px auto;
+            background: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Header bleu moderne inspiré du PDF */
+        .email-header {
+            background: #007bff;
+            color: #ffffff;
+            padding: 30px 25px;
+            text-align: center;
+        }
+
+        .email-header .logo {
+            max-height: 70px;
+            max-width: 180px;
+            margin-bottom: 12px;
+            filter: brightness(0) invert(1);
+        }
+
+        .school-name {
+            font-size: 20px;
+            font-weight: 700;
+            margin: 0 0 8px 0;
+            letter-spacing: 0.3px;
+        }
+
+        .school-info {
+            font-size: 13px;
+            opacity: 0.95;
+            margin: 0 0 15px 0;
+        }
+
+        .document-title-section {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .email-title {
+            font-size: 22px;
+            font-weight: 600;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Contenu */
+        .email-content {
+            padding: 35px 30px;
+            background: #f2f2f2;
+        }
+
+        .greeting {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 25px;
+            font-weight: 500;
+        }
+
+        .message-intro {
+            background: #ffffff;
+            border-left: 4px solid #007bff;
+            padding: 15px 18px;
+            margin: 25px 0;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+        }
+
+        .message-intro p {
+            margin: 0;
+            color: #0056b3;
+            font-weight: 500;
+        }
+
+        /* KPI Cards inspirés du PDF */
+        .kpi-section {
+            display: table;
+            width: 100%;
+            margin: 25px 0;
+            border-collapse: separate;
+            border-spacing: 8px 0;
+        }
+
+        .kpi-row {
+            display: table-row;
+        }
+
+        .kpi-card {
+            display: table-cell;
+            width: 50%;
+            padding: 18px;
+            background: #ffffff;
+            border: 2px solid #e9ecef;
+            text-align: center;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+        }
+
+        .kpi-card:first-child {
+            border-radius: 8px 0 0 8px;
+        }
+
+        .kpi-card:last-child {
+            border-radius: 0 8px 8px 0;
+        }
+
+        .kpi-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .kpi-value {
+            font-size: 26px;
+            font-weight: 700;
+            color: #007bff;
+            margin-bottom: 4px;
+        }
+
+        .kpi-desc {
+            font-size: 12px;
+            color: #9ca3af;
+        }
+
+        /* Tableaux d'informations */
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #e9ecef;
+            background: #ffffff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+        }
+
+        .info-table tr:nth-child(even) {
+            background: #fafbfc;
+        }
+
+        .info-table th,
+        .info-table td {
+            padding: 14px 16px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .info-table th {
+            background: #007bff;
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .info-table td {
+            color: #495057;
+        }
+
+        .info-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .badge-danger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .badge-info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        /* Boutons */
+        .button-container {
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        .button {
+            display: inline-block;
+            padding: 14px 35px;
+            background: #ffffff;
+            color: #007bff;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 15px;
+            border: 2px solid #007bff;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .button:hover {
+            background: #007bff;
+            color: #ffffff;
+            box-shadow: 0 6px 8px rgba(0, 123, 255, 0.3);
+        }
+
+        /* Alert boxes */
+        .alert {
+            padding: 16px 18px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border-left: 4px solid;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            border-color: #ffc107;
+            color: #856404;
+        }
+
+        .alert-danger {
+            background: #f8d7da;
+            border-color: #dc3545;
+            color: #721c24;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            border-color: #17a2b8;
+            color: #0c5460;
+        }
+
+        /* Section d'instructions */
+        .instruction-box {
+            background: #ffffff;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 25px 0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+        }
+
+        .instruction-box h3 {
+            color: #007bff;
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
+        .instruction-box ol,
+        .instruction-box ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .instruction-box li {
+            margin-bottom: 8px;
+            color: #495057;
+        }
+
+        /* Footer moderne */
+        .email-footer {
+            background: #f8f9fa;
+            padding: 25px 30px;
+            text-align: center;
+            color: #6c757d;
+            font-size: 12px;
+            border-top: 3px solid #007bff;
+        }
+
+        .footer-brand {
+            font-size: 16px;
+            font-weight: 700;
+            color: #007bff;
+            margin-bottom: 10px;
+        }
+
+        .footer-contact {
+            margin: 8px 0;
+            color: #495057;
+        }
+
+        .footer-contact a {
+            color: #007bff;
+            text-decoration: none;
+        }
+
+        .footer-contact a:hover {
+            text-decoration: underline;
+        }
+
+        .divider {
+            height: 2px;
+            background: linear-gradient(to right, transparent, #dee2e6, transparent);
+            margin: 15px 0;
+        }
+
+        .footer-disclaimer {
+            font-size: 11px;
+            color: #999;
+            font-style: italic;
+            margin-top: 12px;
+        }
+
+        /* Responsive */
+        @media only screen and (max-width: 600px) {
+            .email-container {
+                margin: 0;
+                border-radius: 0;
+            }
+
+            .email-header,
+            .email-content,
+            .email-footer {
+                padding: 20px 18px;
+            }
+
+            .kpi-card {
+                display: block;
+                width: 100%;
+                margin-bottom: 10px;
+                border-radius: 8px !important;
+            }
+
+            .info-table th,
+            .info-table td {
+                padding: 10px;
+                font-size: 13px;
+            }
+
+            .email-title {
+                font-size: 18px;
+            }
+
+            .school-name {
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <!-- Header bleu moderne -->
+        <div class="email-header">
+            <!-- DEBUG: schoolLogoPath = /home/levraimd/workspace/KLASSCIv2/public/storage/logos/PhHs39w4TgCXj2jOPG63yWTLPSNXiP0XKO4PEOB9.png -->
+            <!-- DEBUG: message exists = YES -->
+                            <!-- DEBUG: Attempting to embed logo -->
+                <img src="cid:F6iyhvQ78D" alt="Logo École Spéciale du Bâtiment et des Travaux Publics" class="logo">
+                        <h1 class="school-name">École Spéciale du Bâtiment et des Travaux Publics</h1>
+                            <p class="school-info">Abidjan, Côte d&#039;Ivoire</p>
+            
+                            <div class="document-title-section">
+                    <h2 class="email-title">Confirmation d&#039;Inscription</h2>
+                </div>
+                    </div>
+
+        <!-- Contenu -->
+        <div class="email-content">
+                            <p class="greeting">Bonjour DOSSO Ibrahim,</p>
+            
+                <div class="message-intro">
+        <p><strong>Inscription réussie!</strong> Votre enfant DOSSO Karim a été inscrit(e) avec succès pour l&#039;année universitaire 2025-2026.</p>
+    </div>
+
+    <h3 style="color: #007bff; margin-top: 30px; margin-bottom: 15px; font-size: 18px;">Informations de l'inscription</h3>
+
+    <table class="info-table">
+        <tr>
+            <th style="width: 40%;">Étudiant</th>
+            <td><strong>DOSSO Karim</strong></td>
+        </tr>
+                <tr>
+            <th>Matricule</th>
+            <td><span class="badge badge-info">ESBTP-2025-001</span></td>
+        </tr>
+                        <tr>
+            <th>Classe</th>
+            <td>Terminal BTP</td>
+        </tr>
+                        <tr>
+            <th>Filière</th>
+            <td>Bâtiment et Travaux Publics</td>
+        </tr>
+                        <tr>
+            <th>Niveau d'étude</th>
+            <td>Terminal</td>
+        </tr>
+                        <tr>
+            <th>Année universitaire</th>
+            <td><strong>2025-2026</strong></td>
+        </tr>
+                <tr>
+            <th>Date d'inscription</th>
+            <td>10/10/2025</td>
+        </tr>
+    </table>
+
+    <div class="instruction-box">
+        <h3>Identifiants de connexion</h3>
+        <p style="margin-bottom: 15px; color: #495057;">
+            Vous pouvez désormais accéder à la plateforme École Spéciale du Bâtiment et des Travaux Publics pour suivre la scolarité de votre enfant, consulter les notes, les absences et effectuer les paiements.
+        </p>
+
+        <table class="info-table" style="margin: 15px 0;">
+            <tr>
+                <th style="width: 40%; background: #f8f9fa; color: #495057;">Nom d'utilisateur</th>
+                <td><strong style="color: #007bff; font-size: 16px; font-family: 'Courier New', monospace;">karim.dosso</strong></td>
+            </tr>
+            <tr>
+                <th style="background: #f8f9fa; color: #495057;">Mot de passe</th>
+                <td><strong style="color: #007bff; font-size: 16px; font-family: 'Courier New', monospace;">TempPass123</strong></td>
+            </tr>
+        </table>
+
+        <div class="alert alert-warning" style="margin-top: 15px;">
+            <strong>Important:</strong> Changez votre mot de passe lors de votre première connexion pour sécuriser votre compte.
+        </div>
+    </div>
+
+    <div class="button-container">
+        <a href="http://localhost:8000" class="button">Accéder à la plateforme</a>
+    </div>
+
+    <h3 style="color: #007bff; margin-top: 35px; margin-bottom: 15px; font-size: 18px;">Que faire ensuite?</h3>
+
+    <ol style="color: #495057; line-height: 2; font-size: 14px;">
+        <li><strong>Connectez-vous</strong> à la plateforme avec vos identifiants</li>
+        <li><strong>Changez votre mot de passe</strong> dans les paramètres de sécurité</li>
+        <li><strong>Consultez le profil</strong> et les informations de scolarité de votre enfant</li>
+        <li><strong>Vérifiez les paiements</strong> et effectuez les règlements si nécessaire</li>
+    </ol>
+
+        <div class="kpi-section" style="margin-top: 30px;">
+        <div class="kpi-row">
+            <div class="kpi-card">
+                <div class="kpi-title">Total à payer</div>
+                <div class="kpi-value">500 000</div>
+                <div class="kpi-desc">FCFA</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-title">Déjà payé</div>
+                <div class="kpi-value" style="color: #28a745;">200 000</div>
+                <div class="kpi-desc">FCFA</div>
+            </div>
+        </div>
+        <div class="kpi-row" style="margin-top: 8px;">
+            <div class="kpi-card" style="border-radius: 8px; background: #fff3cd; border-color: #ffc107;">
+                <div class="kpi-title" style="color: #856404;">Reste à payer</div>
+                <div class="kpi-value" style="color: #dc3545; font-size: 32px;">300 000</div>
+                <div class="kpi-desc" style="color: #856404; font-weight: 600;">FCFA</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="divider"></div>
+
+    <div style="background: #e7f3ff; border: 2px solid #007bff; border-radius: 8px; padding: 18px; margin-top: 25px; text-align: center;">
+        <p style="margin: 0; color: #0056b3; font-size: 14px;">
+            <strong>Besoin d'aide?</strong><br>
+            Si vous avez des questions ou rencontrez des difficultés, contactez notre service administratif.
+        </p>
+    </div>
+        </div>
+
+        <!-- Footer moderne -->
+        <div class="email-footer">
+            <div class="footer-brand">École Spéciale du Bâtiment et des Travaux Publics</div>
+
+                            <div class="footer-contact">
+                                            <div>Abidjan, Côte d&#039;Ivoire</div>
+                                                                <div style="margin-top: 5px;">
+                                                            <span>Tél: +225 27 XX XX XX XX</span>
+                                                                                        <span> | </span>
+                                                                                        <span>Email: <a href="mailto:contact@esbtp.edu.ci">contact@esbtp.edu.ci</a></span>
+                                                    </div>
+                                    </div>
+            
+            <div class="divider"></div>
+
+            <div class="footer-disclaimer">
+                Ceci est un email automatique, merci de ne pas y répondre directement.<br>
+                Pour toute question, veuillez contacter l'administration.
+            </div>
+        </div>
+    </div>
+</body>
+</html>

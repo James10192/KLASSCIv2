@@ -1,23 +1,16 @@
 @php
     $relation = $parent->pivot->relation ?? 'Autre';
-    $isTuteur = (bool) ($parent->pivot->is_tuteur ?? false);
 @endphp
-<div class="parent-card card-moderne mb-4" data-parent-index="{{ $index }}">
-    <div class="d-flex justify-content-between align-items-center">
+<div class="parent-card mb-4" data-parent-index="{{ $index }}" style="background: #fff; border-radius: 12px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border: 1px solid #e9ecef;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
-            <h6 class="mb-1 text-primary">
+            <h6 class="mb-1 text-primary" style="font-weight: 600;">
                 <i class="fas fa-user-friends me-2"></i>Parent / Tuteur #{{ $index + 1 }}
             </h6>
             <small class="text-muted">{{ $parent->prenoms }} {{ $parent->nom }}</small>
         </div>
         <div class="d-flex align-items-center gap-2">
             <span class="badge bg-light text-dark border">{{ $relation }}</span>
-            <div class="form-check form-switch mb-0">
-                <input class="form-check-input is-tuteur-switch" type="checkbox" role="switch"
-                       id="is_tuteur_{{ $index }}" name="parents[{{ $index }}][is_tuteur]"
-                       {{ $isTuteur ? 'checked' : '' }}>
-                <label class="form-check-label small" for="is_tuteur_{{ $index }}">Tuteur</label>
-            </div>
             <button type="button" class="btn btn-sm btn-outline-danger remove-parent"
                     data-parent-id="{{ $parent->id }}" title="Retirer ce parent">
                 <i class="fas fa-times"></i>
@@ -25,7 +18,7 @@
         </div>
     </div>
 
-    <div class="parent-card-body mt-3">
+    <div class="parent-card-body">
         <input type="hidden" name="parents[{{ $index }}][id]" value="{{ $parent->id }}">
 
         <div class="row g-3">

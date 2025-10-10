@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ESBTPRelance;
+use App\Models\ESBTPReliquat;
 use App\Models\User;
 use App\Models\Notification;
 use App\Models\ESBTPEtudiant;
@@ -2177,6 +2178,575 @@ class NotificationService
 
         } catch (\Exception $e) {
             Log::error('Erreur envoi notifications alertes critiques: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * =================================================================
+     * MÉTHODES DE NOTIFICATION PARENTS
+     * Ajoutées le 9 octobre 2025
+     * =================================================================
+     */
+
+    /**
+     * Récupérer les paramètres de l'établissement depuis les settings
+     */
+    private function getSchoolSettings()
+    {
+        $logoPath = \App\Helpers\SettingsHelper::get('school_logo', '');
+        $logoFullPath = null;
+
+        // Récupérer le chemin complet du logo pour embed dans les emails
+        // IMPORTANT: Utiliser public_path() au lieu de storage_path() pour $message->embed()
+        if ($logoPath) {
+            // Le logo est dans storage/app/public/logos/xxx.png
+            // Accessible via public/storage/logos/xxx.png grâce au symlink
+            $publicPath = public_path('storage/' . $logoPath);
+            if (file_exists($publicPath)) {
+                $logoFullPath = $publicPath;
+            }
+        }
+
+        return [
+            'school_name' => \App\Helpers\SettingsHelper::get('school_name', 'KLASSCI'),
+            'school_address' => \App\Helpers\SettingsHelper::get('school_address', ''),
+            'school_phone' => \App\Helpers\SettingsHelper::get('school_phone', ''),
+            'school_email' => \App\Helpers\SettingsHelper::get('school_email', ''),
+            'school_logo' => null, // Pour le template (on utilisera $message->embed)
+            'schoolLogoPath' => $logoFullPath, // Chemin complet pour embed
+        ];
+    }
+
+    /**
+     * Notifier les parents lors de la création d'une inscription
+     */
+    public function notifyParentsInscriptionCreated($inscription, $credentials)
+    {
+        try {
+            $etudiant = $inscription->etudiant;
+
+            // Le parent utilise le compte de l'étudiant
+            if (!$etudiant->user) {
+                Log::info('Pas de compte utilisateur pour l\'étudiant', ['etudiant_id' => $etudiant->id]);
+                return;
+            }
+
+            $tuteur = $etudiant->tuteur;
+            if (!$tuteur) {
+                Log::info('Pas de tuteur pour l\'étudiant', ['etudiant_id' => $etudiant->id]);
+                return;
+            }
+
+            $preferences = $tuteur->getOrCreateNotificationPreferences();
+            if (!$preferences->isNotificationEnabled('inscriptions')) {
+                return;
+            }
+
+            $schoolSettings = $this->getSchoolSettings();
+
+            // Calculer situation financière (comme dans previewSituationFinanciere)
+            // 1. Frais souscrits pour l'année courante
+            $fraisSouscrits = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
+                ->where('is_active', true)
+                ->get();
+            $totalFraisAnnee = $fraisSouscrits->sum('amount');
+
+            // 2. Reliquats entrants d'années précédentes
+            $reliquatsEntrants = \App\Models\ESBTPReliquatDetail::where('inscription_destination_id', $inscription->id)
+                ->actifs()
+                ->get();
+            $totalReliquats = $reliquatsEntrants->sum('solde_restant');
+
+            // 3. Total attendu = Frais année + Reliquats
+            $totalAttendu = $totalFraisAnnee + $totalReliquats;
+
+            // 4. Total payé (tous les paiements validés)
+            $totalPaye = \App\Models\ESBTPPaiement::where('inscription_id', $inscription->id)
+                ->where('status', 'validé')
+                ->sum('montant');
+
+            // 5. Solde restant
+            $soldeRestant = $totalAttendu - $totalPaye;
+
+            $data = [
+                'parentName' => $tuteur->prenoms . ' ' . $tuteur->nom,
+                'studentName' => $etudiant->prenoms . ' ' . $etudiant->nom,
+                'matricule' => $etudiant->matricule ?? 'N/A',
+                'classe' => $inscription->classe->nom ?? 'N/A',
+                'filiere' => $inscription->classe->filiere->nom ?? 'N/A',
+                'niveauEtude' => $inscription->classe->niveau->nom ?? 'N/A',
+                'anneeUniversitaire' => $inscription->anneeUniversitaire->annee ?? 'N/A',
+                'dateInscription' => $inscription->created_at ? $inscription->created_at->format('d/m/Y') : date('d/m/Y'),
+                'username' => $credentials['username'],
+                'password' => $credentials['password'],
+                'platformUrl' => config('app.url'),
+                'montantTotal' => $totalAttendu,
+                'montantPaye' => $totalPaye,
+                'montantDu' => max(0, $soldeRestant), // Pas de montant négatif
+                'schoolName' => $schoolSettings['school_name'],
+                'schoolAddress' => $schoolSettings['school_address'],
+                'schoolPhone' => $schoolSettings['school_phone'],
+                'schoolEmail' => $schoolSettings['school_email'],
+                'schoolLogoPath' => $schoolSettings['schoolLogoPath'],
+            ];
+
+            // Notification in-app (utilise le compte de l'étudiant)
+            Notification::create([
+                'user_id' => $etudiant->user_id,
+                'type' => 'inscription_confirmation',
+                'title' => 'Inscription confirmée',
+                'message' => "L'inscription de {$etudiant->prenoms} {$etudiant->nom} a été enregistrée pour l'année {$data['anneeUniversitaire']}.",
+                'is_read' => false,
+            ]);
+
+            // Email envoyé au parent si canal activé
+            if ($preferences->hasChannel('email') && $tuteur->email) {
+                Mail::to($tuteur->email)->send(new \App\Mail\Parents\InscriptionConfirmationMail($data));
+            }
+
+            $preferences->incrementNotificationCount();
+
+            Log::info('Notification inscription envoyée aux parents', ['parent_id' => $tuteur->id, 'email' => $tuteur->email]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur notification inscription parent: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Notifier les parents lors de la validation d'un paiement
+     */
+    public function notifyParentsPaiementValide($paiement)
+    {
+        try {
+            $inscription = $paiement->inscription;
+            if (!$inscription) return;
+
+            $etudiant = $inscription->etudiant;
+            $tuteur = $etudiant->tuteur;
+
+            if (!$etudiant->user || !$tuteur) {
+                return;
+            }
+
+            $preferences = $tuteur->getOrCreateNotificationPreferences();
+            if (!$preferences->isNotificationEnabled('paiements')) {
+                return;
+            }
+
+            $schoolSettings = $this->getSchoolSettings();
+
+            // Calculer situation financière (comme dans previewSituationFinanciere)
+            $fraisSouscrits = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
+                ->where('is_active', true)
+                ->get();
+            $totalFraisAnnee = $fraisSouscrits->sum('amount');
+
+            $reliquatsEntrants = \App\Models\ESBTPReliquatDetail::where('inscription_destination_id', $inscription->id)
+                ->actifs()
+                ->get();
+            $totalReliquats = $reliquatsEntrants->sum('solde_restant');
+
+            $totalAttendu = $totalFraisAnnee + $totalReliquats;
+
+            $totalPaye = \App\Models\ESBTPPaiement::where('inscription_id', $inscription->id)
+                ->where('status', 'validé')
+                ->sum('montant');
+
+            $soldeRestant = $totalAttendu - $totalPaye;
+
+            $data = [
+                'parent_nom' => $tuteur->nom,
+                'etudiant_nom' => $etudiant->nom,
+                'etudiant_prenoms' => $etudiant->prenoms,
+                'montant' => $paiement->montant,
+                'reference' => $paiement->reference,
+                'numero_recu' => $paiement->numero_recu,
+                'total_paye' => $totalPaye,
+                'reliquat' => max(0, $soldeRestant),
+                'taux_paiement' => $totalAttendu > 0
+                    ? round(($totalPaye / $totalAttendu) * 100, 2)
+                    : 0,
+
+                'schoolName' => $schoolSettings['school_name'],
+                'schoolAddress' => $schoolSettings['school_address'],
+                'schoolPhone' => $schoolSettings['school_phone'],
+                'schoolEmail' => $schoolSettings['school_email'],
+                'schoolLogoPath' => $schoolSettings['schoolLogoPath'],
+            ];
+
+            // Notification in-app
+            Notification::create([
+                'user_id' => $etudiant->user_id,
+                'type' => 'paiement_valide',
+                'title' => 'Paiement validé',
+                'message' => "Le paiement de {$paiement->montant} FCFA pour {$etudiant->prenoms} {$etudiant->nom} a été validé.",
+                'is_read' => false,
+            ]);
+
+            // Email
+            if ($preferences->hasChannel('email') && $tuteur->email) {
+                Mail::to($tuteur->email)->send(new \App\Mail\Parents\PaiementValideMail($data));
+            }
+
+            $preferences->incrementNotificationCount();
+
+        } catch (\Exception $e) {
+            Log::error('Erreur notification paiement validé parent: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Notifier les parents lors du rejet d'un paiement
+     */
+    public function notifyParentsPaiementRejete($paiement)
+    {
+        try {
+            $inscription = $paiement->inscription;
+            if (!$inscription) return;
+
+            $etudiant = $inscription->etudiant;
+            $tuteur = $etudiant->tuteur;
+
+            if (!$etudiant->user || !$tuteur) return;
+
+            $preferences = $tuteur->getOrCreateNotificationPreferences();
+            if (!$preferences->isNotificationEnabled('paiements')) return;
+            $schoolSettings = $this->getSchoolSettings();
+
+
+            $data = [
+                'parent_nom' => $tuteur->nom,
+                'etudiant_nom' => $etudiant->nom,
+                'etudiant_prenoms' => $etudiant->prenoms,
+                'montant' => $paiement->montant,
+                'reference' => $paiement->reference,
+                'motif_rejet' => $paiement->commentaire ?? 'Aucun motif spécifié',
+            
+                'schoolName' => $schoolSettings['school_name'],
+                'schoolAddress' => $schoolSettings['school_address'],
+                'schoolPhone' => $schoolSettings['school_phone'],
+                'schoolEmail' => $schoolSettings['school_email'],
+                'schoolLogoPath' => $schoolSettings['schoolLogoPath'],
+            ];
+
+            // Notification in-app
+            Notification::create([
+                'user_id' => $etudiant->user_id,
+                'type' => 'paiement_rejete',
+                'title' => 'Paiement rejeté',
+                'message' => "Le paiement de {$paiement->montant} FCFA a été rejeté. Motif: {$data['motif_rejet']}",
+                'is_read' => false,
+            ]);
+
+            // Email
+            if ($preferences->hasChannel('email') && $tuteur->email) {
+                Mail::to($tuteur->email)->send(new \App\Mail\Parents\PaiementRejeteMail($data));
+            }
+
+            $preferences->incrementNotificationCount();
+
+        } catch (\Exception $e) {
+            Log::error('Erreur notification paiement rejeté parent: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Notifier les parents d'une absence
+     */
+    public function notifyParentsAbsence($attendance)
+    {
+        try {
+            $etudiant = ESBTPEtudiant::find($attendance->etudiant_id);
+            if (!$etudiant) return;
+
+            $tuteur = $etudiant->tuteur;
+            if (!$etudiant->user || !$tuteur) return;
+
+            $preferences = $tuteur->getOrCreateNotificationPreferences();
+            if (!$preferences->isNotificationEnabled('absences')) return;
+
+            // Calculer stats mensuelles
+            $moisActuel = now()->startOfMonth();
+            $absences = ESBTPAttendance::where('etudiant_id', $etudiant->id)
+                ->where('date', '>=', $moisActuel)
+                ->where('statut', 'absent')
+                ->get();
+
+            $justifiees = $absences->where('justification_status', 'approuve')->count();
+            $nonJustifiees = $absences->where('justification_status', '!=', 'approuve')->count();
+            $totalPresences = ESBTPAttendance::where('etudiant_id', $etudiant->id)
+                ->where('date', '>=', $moisActuel)
+                ->count();
+            $tauxPresence = $totalPresences > 0 ? round((($totalPresences - $absences->count()) / $totalPresences) * 100, 2) : 100;
+            $schoolSettings = $this->getSchoolSettings();
+
+
+            $data = [
+                'parent_nom' => $tuteur->nom,
+                'etudiant_nom' => $etudiant->nom,
+                'etudiant_prenoms' => $etudiant->prenoms,
+                'date' => $attendance->date->format('d/m/Y'),
+                'heure' => $attendance->heure_debut ? substr($attendance->heure_debut, 0, 5) : 'N/A',
+                'matiere' => $attendance->commentaire ?? 'Cours',
+                'total_absences_mois' => $absences->count(),
+                'absences_justifiees' => $justifiees,
+                'absences_non_justifiees' => $nonJustifiees,
+                'taux_presence' => $tauxPresence,
+            
+                'schoolName' => $schoolSettings['school_name'],
+                'schoolAddress' => $schoolSettings['school_address'],
+                'schoolPhone' => $schoolSettings['school_phone'],
+                'schoolEmail' => $schoolSettings['school_email'],
+                'schoolLogoPath' => $schoolSettings['schoolLogoPath'],
+            ];
+
+            // Notification in-app
+            Notification::create([
+                'user_id' => $etudiant->user_id,
+                'type' => 'absence',
+                'title' => 'Absence enregistrée',
+                'message' => "{$etudiant->prenoms} {$etudiant->nom} a été absent(e) le {$data['date']}.",
+                'is_read' => false,
+            ]);
+
+            // Email
+            if ($preferences->hasChannel('email') && $tuteur->email) {
+                Mail::to($tuteur->email)->send(new \App\Mail\Parents\AbsenceNotificationMail($data));
+            }
+
+            // Alerte si taux de présence faible
+            if ($tauxPresence < $preferences->attendance_rate_threshold) {
+                if ($preferences->hasChannel('email') && $tuteur->email) {
+                    Mail::to($tuteur->email)->send(new \App\Mail\Parents\LowAttendanceMail($data));
+                }
+            }
+
+            $preferences->incrementNotificationCount();
+
+        } catch (\Exception $e) {
+            Log::error('Erreur notification absence parent: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Notifier les parents de la publication d'un bulletin
+     */
+    public function notifyParentsBulletinPublished($bulletin)
+    {
+        try {
+            $etudiant = $bulletin->etudiant;
+            if (!$etudiant) return;
+
+            $tuteur = $etudiant->tuteur;
+            if (!$etudiant->user || !$tuteur) return;
+
+            $preferences = $tuteur->getOrCreateNotificationPreferences();
+            if (!$preferences->isNotificationEnabled('bulletins')) return;
+
+            $mention = $bulletin->mention ?? 'N/A';
+            $mentionColor = $this->getMentionColor($mention);
+            $schoolSettings = $this->getSchoolSettings();
+
+
+            $data = [
+                'parent_nom' => $tuteur->nom,
+                'etudiant_nom' => $etudiant->nom,
+                'etudiant_prenoms' => $etudiant->prenoms,
+                'periode' => $bulletin->periode,
+                'annee_universitaire' => $bulletin->anneeUniversitaire->annee ?? 'N/A',
+                'moyenne_generale' => $bulletin->moyenne_generale ?? 'N/A',
+                'rang' => $bulletin->rang ?? 'N/A',
+                'mention' => $mention,
+                'mention_color' => $mentionColor,
+                'bulletin_url' => route('esbtp.bulletins.pdf-params', [
+                    'bulletin' => $bulletin->etudiant_id,
+                    'classe_id' => $bulletin->classe_id,
+                    'periode' => $bulletin->periode,
+                    'annee_universitaire_id' => $bulletin->annee_universitaire_id,
+                ]),
+                'schoolName' => $schoolSettings['school_name'],
+                'schoolAddress' => $schoolSettings['school_address'],
+                'schoolPhone' => $schoolSettings['school_phone'],
+                'schoolEmail' => $schoolSettings['school_email'],
+                'schoolLogoPath' => $schoolSettings['schoolLogoPath'],
+            ];
+
+            // Notification in-app
+            Notification::create([
+                'user_id' => $etudiant->user_id,
+                'type' => 'bulletin_publie',
+                'title' => 'Bulletin disponible',
+                'message' => "Le bulletin de {$etudiant->prenoms} {$etudiant->nom} est disponible (Moyenne: {$bulletin->moyenne_generale}).",
+                'is_read' => false,
+            ]);
+
+            // Email
+            if ($preferences->hasChannel('email') && $tuteur->email) {
+                Mail::to($tuteur->email)->send(new \App\Mail\Parents\BulletinPublishedMail($data));
+            }
+
+            $preferences->incrementNotificationCount();
+
+        } catch (\Exception $e) {
+            Log::error('Erreur notification bulletin publié parent: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Notifier les parents de notes faibles
+     */
+    public function notifyParentsLowGrades($bulletin)
+    {
+        try {
+            $etudiant = $bulletin->etudiant;
+            if (!$etudiant) return;
+
+            $tuteur = $etudiant->tuteur;
+            if (!$etudiant->user || !$tuteur) return;
+
+            $preferences = $tuteur->getOrCreateNotificationPreferences();
+            if (!$preferences->isNotificationEnabled('notes')) return;
+
+            // Vérifier si moyenne < seuil OU matières en échec
+            $seuilNote = $preferences->grade_threshold;
+            $moyenneGenerale = $bulletin->moyenne_generale ?? 0;
+
+            $matieresFaibles = [];
+            if ($bulletin->notes && is_array($bulletin->notes)) {
+                foreach ($bulletin->notes as $note) {
+                    if (isset($note['moyenne']) && $note['moyenne'] < 10) {
+                        $matieresFaibles[] = [
+                            'matiere' => $note['matiere'] ?? 'N/A',
+                            'moyenne' => $note['moyenne'],
+                        ];
+                    }
+                }
+            }
+
+            $schoolSettings = $this->getSchoolSettings();
+
+            // Envoyer alerte seulement si performance faible
+            if ($moyenneGenerale < 10 || count($matieresFaibles) > 0) {
+                $data = [
+                    'parent_nom' => $tuteur->nom,
+                    'etudiant_nom' => $etudiant->nom,
+                    'etudiant_prenoms' => $etudiant->prenoms,
+                    'periode' => $bulletin->periode,
+                    'moyenne_generale' => $moyenneGenerale,
+                    'matieres_faibles' => $matieresFaibles,
+                    'nombre_matieres_faibles' => count($matieresFaibles),
+                    'schoolName' => $schoolSettings['school_name'],
+                    'schoolAddress' => $schoolSettings['school_address'],
+                    'schoolPhone' => $schoolSettings['school_phone'],
+                    'schoolEmail' => $schoolSettings['school_email'],
+                    'schoolLogoPath' => $schoolSettings['schoolLogoPath'],
+                ];
+
+                // Notification in-app
+                Notification::create([
+                    'user_id' => $etudiant->user_id,
+                    'type' => 'notes_faibles',
+                    'title' => 'Alerte notes faibles',
+                    'message' => "{$etudiant->prenoms} {$etudiant->nom} a des difficultés académiques (Moyenne: {$moyenneGenerale}).",
+                    'is_read' => false,
+                ]);
+
+                // Email
+                if ($preferences->hasChannel('email') && $tuteur->email) {
+                    Mail::to($tuteur->email)->send(new \App\Mail\Parents\LowGradesMail($data));
+                }
+
+                $preferences->incrementNotificationCount();
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Erreur notification moyennes faibles parent: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Obtenir la couleur de la mention
+     */
+    private function getMentionColor($mention)
+    {
+        $colors = [
+            'Excellent' => 'success',
+            'Très Bien' => 'success',
+            'Bien' => 'info',
+            'Assez Bien' => 'info',
+            'Passable' => 'warning',
+            'Insuffisant' => 'danger',
+        ];
+        return $colors[$mention] ?? 'secondary';
+    }
+
+    /**
+     * Notifier les parents lors d'une réinscription
+     */
+    public function notifyParentsReinscriptionCreated($inscription, $decision = 'passage', $reliquatMontant = 0)
+    {
+        try {
+            $etudiant = $inscription->etudiant;
+
+            // Le parent utilise le compte de l'étudiant
+            if (!$etudiant->user) {
+                Log::info('Pas de compte utilisateur pour l\'étudiant (réinscription)', ['etudiant_id' => $etudiant->id]);
+                return;
+            }
+
+            $tuteur = $etudiant->tuteur;
+            if (!$tuteur) {
+                Log::info('Pas de tuteur pour l\'étudiant (réinscription)', ['etudiant_id' => $etudiant->id]);
+                return;
+            }
+
+            $preferences = $tuteur->getOrCreateNotificationPreferences();
+            if (!$preferences->isNotificationEnabled('inscriptions')) {
+                return;
+            }
+
+            $schoolSettings = $this->getSchoolSettings();
+
+            $data = [
+                'parentName' => $tuteur->prenoms . ' ' . $tuteur->nom,
+                'studentName' => $etudiant->prenoms . ' ' . $etudiant->nom,
+                'matricule' => $etudiant->matricule ?? 'N/A',
+                'classe' => $inscription->classe->nom ?? 'N/A',
+                'filiere' => $inscription->classe->filiere->nom ?? 'N/A',
+                'niveauEtude' => $inscription->classe->niveau->nom ?? 'N/A',
+                'anneeUniversitaire' => $inscription->anneeUniversitaire->annee ?? 'N/A',
+                'dateReinscription' => $inscription->created_at ? $inscription->created_at->format('d/m/Y') : date('d/m/Y'),
+                'decision' => $decision,
+                'reliquatMontant' => $reliquatMontant,
+                'platformUrl' => config('app.url'),
+                'schoolName' => $schoolSettings['school_name'],
+                'schoolAddress' => $schoolSettings['school_address'],
+                'schoolPhone' => $schoolSettings['school_phone'],
+                'schoolEmail' => $schoolSettings['school_email'],
+                'schoolLogoPath' => $schoolSettings['schoolLogoPath'],
+            ];
+
+            // Notification in-app (utilise le compte de l'étudiant)
+            Notification::create([
+                'user_id' => $etudiant->user_id,
+                'type' => 'reinscription_confirmation',
+                'title' => 'Réinscription confirmée',
+                'message' => "La réinscription de {$etudiant->prenoms} {$etudiant->nom} a été enregistrée pour l'année {$data['anneeUniversitaire']} en classe {$data['classe']}.",
+                'is_read' => false,
+            ]);
+
+            // Email envoyé au parent si canal activé
+            if ($preferences->hasChannel('email') && $tuteur->email) {
+                Mail::to($tuteur->email)->send(new \App\Mail\Parents\ReinscriptionConfirmationMail($data));
+            }
+
+            $preferences->incrementNotificationCount();
+
+            Log::info('Notification réinscription envoyée aux parents', ['parent_id' => $tuteur->id, 'email' => $tuteur->email]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur notification réinscription parent: ' . $e->getMessage());
         }
     }
 }

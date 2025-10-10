@@ -875,6 +875,19 @@ class ESBTPReinscriptionController extends Controller
                 $request->action_reliquat // Gestion des reliquats pour superAdmin
             );
 
+            // Envoyer notification aux parents
+            try {
+                $notificationService = app(\App\Services\NotificationService::class);
+                $reliquatMontant = $request->action_reliquat === 'report' ? $request->reliquat_montant : 0;
+                $notificationService->notifyParentsReinscriptionCreated(
+                    $nouvelleInscription,
+                    $request->decision ?? 'passage',
+                    $reliquatMontant ?? 0
+                );
+            } catch (\Exception $e) {
+                \Log::error('Erreur envoi notification réinscription parent: ' . $e->getMessage());
+            }
+
             return redirect()->route('esbtp.inscriptions.show', $nouvelleInscription->id)
                 ->with('success', 'Réinscription effectuée avec succès ! Nouvelle inscription créée pour l\'année universitaire en cours.');
         } catch (\Exception $e) {
