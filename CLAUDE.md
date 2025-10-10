@@ -2,6 +2,126 @@
 
 ## Corrections récentes
 
+### Feature: Filtrage AJAX sans rechargement pour suivi-categories
+
+**Date:** 10 octobre 2025
+**Branche:** presentation
+
+#### Fonctionnalités ajoutées
+
+Implémentation d'un système de filtrage AJAX complet sur la page de suivi des paiements par catégorie, similaire à celui déjà implémenté sur `paiements.index`.
+
+#### Problème résolu
+
+Sur la page `/esbtp/paiements/suivi-categories`, les filtres (filière, niveau, catégorie) et les clics sur les cartes de catégories déclenchaient un rechargement complet de la page, causant une expérience utilisateur lourde.
+
+#### Solution implémentée
+
+**1. Création de partiels Blade** :
+- `partials/suivi-metrics.blade.php` - KPI cards (étudiants en règle, partiels, impayés, taux de recouvrement)
+- `partials/suivi-content.blade.php` - Contenu (répartition, catégories grid, détails catégorie)
+
+**2. Backend - Nouvelle route et méthode** :
+- Route: `GET /paiements/suivi-categories/refresh` → `esbtp.paiements.suivi-categories.refresh`
+- Méthode: `ESBTPPaiementController@suiviCategoriesRefresh()`
+- Réutilise la même logique que `suiviCategories()` (filtrage, pré-chargement optimisé)
+- Retourne JSON: `{metrics, content, url, last_updated_at}`
+
+**3. Frontend - AJAX avec fetch()** :
+- Interception du formulaire de filtres
+- Interception des clics sur les cartes de catégories (via classe `.category-card-ajax`)
+- Fonction `buildRefreshUrl()` - construit l'URL avec les filtres actuels
+- Fonction `fetchSuiviData()` - effectue la requête AJAX et met à jour le DOM
+- Fonction `bindCategoryCardClicks()` - re-bind les événements après mise à jour du DOM
+- Support de `pushState` pour mettre à jour l'URL sans rechargement
+- Support du bouton retour du navigateur (event `popstate`)
+
+**4. Auto-submission des filtres** :
+- Les selects (filière, niveau, catégorie) soumettent automatiquement le formulaire via AJAX au changement
+- Pas besoin de cliquer sur le bouton "Filtrer"
+
+#### Architecture technique
+
+**Pattern utilisé** : Similaire à `paiements.index` avec quelques adaptations
+
+- **Partiels** au lieu de HTML monolithique
+- **AJAX complet** sans jQuery (vanilla JavaScript + fetch)
+- **Event delegation** pour les cartes de catégories dynamiques
+- **History API** pour navigation navigateur fonctionnelle
+- **Réutilisation du code backend** (pas de duplication de logique)
+
+#### Fichiers créés
+
+- [resources/views/esbtp/paiements/partials/suivi-metrics.blade.php](resources/views/esbtp/paiements/partials/suivi-metrics.blade.php) - KPI cards
+- [resources/views/esbtp/paiements/partials/suivi-content.blade.php](resources/views/esbtp/paiements/partials/suivi-content.blade.php) - Contenu principal
+
+#### Fichiers modifiés
+
+- [routes/web.php:679](routes/web.php:679) - Ajout route `paiements.suivi-categories.refresh`
+- [app/Http/Controllers/ESBTPPaiementController.php:1060-1168](app/Http/Controllers/ESBTPPaiementController.php:1060) - Méthode `suiviCategoriesRefresh()`
+- [resources/views/esbtp/paiements/suivi-categories.blade.php](resources/views/esbtp/paiements/suivi-categories.blade.php):
+  - Ligne 446 : Suppression `onchange="this.form.submit()"` des selects (remplacé par AJAX)
+  - Lignes 492-494 : Remplacement KPI section par `@include('suivi-metrics')`
+  - Lignes 497-499 : Remplacement contenu par `@include('suivi-content')`
+  - Lignes 506-645 : Ajout système AJAX complet (145 lignes de JavaScript)
+  - Modification de la classe des cartes : `category-card` → `category-card category-card-ajax`
+  - Suppression de l'attribut `onclick` sur les cartes (remplacé par event listener)
+
+#### Différences clés avec paiements.index
+
+| Aspect | paiements.index | suivi-categories |
+|--------|-----------------|------------------|
+| **Partiels** | `partials/metrics.blade.php`<br>`partials/table.blade.php` | `partials/suivi-metrics.blade.php`<br>`partials/suivi-content.blade.php` |
+| **Route refresh** | `paiements.refresh` | `paiements.suivi-categories.refresh` |
+| **Polling** | ✅ Auto-refresh toutes les 30s | ❌ Pas implémenté |
+| **Élément cliquable** | Pagination | Cartes de catégories |
+| **Event binding** | jQuery `.on('click')` | Vanilla JS `addEventListener` |
+
+#### Résultat
+
+**Avant** :
+- Changement de filtre → Rechargement complet de la page
+- Clic sur une carte de catégorie → Rechargement complet de la page
+- Expérience lente et non fluide
+
+**Après** :
+- ✅ Changement de filtre → Mise à jour instantanée sans rechargement
+- ✅ Clic sur une carte → Mise à jour instantanée sans rechargement
+- ✅ URL mise à jour automatiquement (partage du lien possible)
+- ✅ Bouton retour du navigateur fonctionnel
+- ✅ Expérience utilisateur fluide et moderne
+
+#### Tests recommandés
+
+- [ ] Changer le filtre "Filière" → Vérifier mise à jour AJAX sans rechargement
+- [ ] Changer le filtre "Niveau" → Vérifier mise à jour AJAX
+- [ ] Changer le filtre "Catégorie détaillée" → Vérifier mise à jour AJAX
+- [ ] Cliquer sur une carte de catégorie → Vérifier passage au mode détails sans rechargement
+- [ ] Vérifier que l'URL change (inspect network tab: XHR request, pas de navigation)
+- [ ] Tester le bouton retour du navigateur
+- [ ] Vérifier que les tooltips fonctionnent après mise à jour AJAX
+
+#### Commandes utiles
+
+```bash
+# Vérifier les routes
+php artisan route:list --name=suivi-categories
+
+# Vider le cache si nécessaire
+php artisan view:clear
+php artisan cache:clear
+```
+
+#### Notes techniques
+
+- **fetch() API** utilisée au lieu de XMLHttpRequest ou jQuery.ajax
+- **ImmediatelyInvokedFunctionExpression (IIFE)** pour isoler le scope JavaScript
+- **Event delegation** avec `bindCategoryCardClicks()` appelé après chaque mise à jour
+- **pushState** préserve l'état de navigation (URL, filtres)
+- **Promise chain** pour gestion asynchrone propre
+
+---
+
 ### Feature: Accès en lecture seule aux classes pour les coordinateurs
 
 **Date:** 10 octobre 2025

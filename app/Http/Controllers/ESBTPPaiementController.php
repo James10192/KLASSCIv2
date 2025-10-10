@@ -1058,6 +1058,116 @@ class ESBTPPaiementController extends Controller
     }
 
     /**
+     * Rafraîchir les données de suivi par catégorie via AJAX
+     */
+    public function suiviCategoriesRefresh(Request $request)
+    {
+        // Récupérer les paramètres de filtrage
+        $filiereId = $request->input('filiere_id');
+        $niveauId = $request->input('niveau_id');
+        $anneeId = $request->input('annee_id');
+        $categoryId = $request->input('category_id');
+
+        // Récupérer les données nécessaires pour les filtres
+        $categories = \App\Models\ESBTPFraisCategory::where('is_active', true)->get();
+
+        // Année par défaut (année en cours)
+        if (!$anneeId) {
+            $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+            $anneeId = $anneeEnCours ? $anneeEnCours->id : null;
+        }
+
+        // Construire la requête pour les inscriptions actives avec toutes les relations nécessaires
+        $inscriptionsQuery = \App\Models\ESBTPInscription::with([
+            'etudiant.user',
+            'filiere',
+            'niveauEtude',
+            'anneeUniversitaire'
+        ])->whereIn('status', ['active', 'en_attente', 'validée']);
+
+        // Appliquer les filtres
+        if ($anneeId) {
+            $inscriptionsQuery->where('annee_universitaire_id', $anneeId);
+        }
+        if ($filiereId) {
+            $inscriptionsQuery->where('filiere_id', $filiereId);
+        }
+        if ($niveauId) {
+            $inscriptionsQuery->where('niveau_id', $niveauId);
+        }
+
+        $inscriptions = $inscriptionsQuery->get();
+
+        // OPTIMISATION: Pré-charger toutes les données nécessaires en une seule fois
+        $inscriptionIds = $inscriptions->pluck('id')->toArray();
+
+        // Pré-charger toutes les configurations de frais
+        $configurations = collect();
+        if (!empty($inscriptions)) {
+            $configurations = \App\Models\ESBTPFraisConfiguration::where('is_active', true)
+                ->whereIn('frais_category_id', $categories->pluck('id'))
+                ->get()
+                ->groupBy(function($config) {
+                    return $config->frais_category_id . '_' . $config->filiere_id . '_' . $config->niveau_id;
+                });
+        }
+
+        // Pré-charger toutes les souscriptions
+        $subscriptions = collect();
+        if (!empty($inscriptionIds)) {
+            $subscriptions = \App\Models\ESBTPFraisSubscription::where('is_active', true)
+                ->whereIn('inscription_id', $inscriptionIds)
+                ->get()
+                ->groupBy('inscription_id');
+        }
+
+        // Pré-charger tous les paiements validés
+        $paiements = collect();
+        if (!empty($inscriptionIds)) {
+            $paiements = ESBTPPaiement::where('status', 'validé')
+                ->whereIn('inscription_id', $inscriptionIds)
+                ->where(function($query) {
+                    $query->where('type_paiement', '!=', 'reliquat')
+                          ->orWhereNull('type_paiement');
+                })
+                ->get()
+                ->groupBy(function($paiement) {
+                    return $paiement->inscription_id . '_' . $paiement->frais_category_id;
+                });
+        }
+
+        // Si une catégorie spécifique est sélectionnée, analyser en détail
+        $detailsCategorie = null;
+        if ($categoryId) {
+            $category = $categories->firstWhere('id', $categoryId);
+            if ($category) {
+                $detailsCategorie = $this->analyserCategorieDetaille($category, $inscriptions);
+            }
+        }
+
+        // Statistiques globales par catégorie - version optimisée
+        $statistiquesCategories = $this->calculerStatistiquesCategoriesOptimisees($inscriptions, $categories, $configurations, $subscriptions, $paiements);
+
+        // Vue d'ensemble des étudiants par statut de paiement - version optimisée
+        // Si un filtre par catégorie est appliqué, les KPIs doivent refléter seulement cette catégorie
+        $categoriesForKPI = $categoryId ? $categories->where('id', $categoryId) : $categories;
+        $vueEnsemble = $this->calculerVueEnsembleOptimisee($inscriptions, $categoriesForKPI, $configurations, $subscriptions, $paiements);
+
+        // Retourner JSON avec les partiels rendus
+        return response()->json([
+            'metrics' => view('esbtp.paiements.partials.suivi-metrics', compact('vueEnsemble'))->render(),
+            'content' => view('esbtp.paiements.partials.suivi-content', compact(
+                'vueEnsemble',
+                'statistiquesCategories',
+                'detailsCategorie',
+                'categoryId'
+            ))->render(),
+            'url' => $request->fullUrl(),
+            'last_updated_at' => now()->toIso8601String(),
+        ]);
+    }
+
+    /**
      * Analyser une catégorie en détail
      */
     private function analyserCategorieDetaille($category, $inscriptions)

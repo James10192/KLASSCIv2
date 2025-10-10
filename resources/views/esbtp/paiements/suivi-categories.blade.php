@@ -443,11 +443,11 @@
         <!-- Filtres et Actions -->
         <div class="card-moderne mb-lg">
             <div class="p-lg">
-                <form action="{{ route('esbtp.paiements.suivi-categories') }}" method="GET">
+                <form id="suivi-filter-form" method="GET">
                     <div class="row align-items-end">
                         <div class="col-md-2">
                             <label for="filiere_id" class="form-label">Filière</label>
-                            <select name="filiere_id" id="filiere_id" class="form-select" onchange="this.form.submit()">
+                            <select name="filiere_id" id="filiere_id" class="form-select">
                                 <option value="">Toutes les filières</option>
                                 @foreach($filieres as $filiere)
                                     <option value="{{ $filiere->id }}" {{ $filiereId == $filiere->id ? 'selected' : '' }}>
@@ -458,7 +458,7 @@
                         </div>
                         <div class="col-md-2">
                             <label for="niveau_id" class="form-label">Niveau d'étude</label>
-                            <select name="niveau_id" id="niveau_id" class="form-select" onchange="this.form.submit()">
+                            <select name="niveau_id" id="niveau_id" class="form-select">
                                 <option value="">Tous les niveaux</option>
                                 @foreach($niveaux as $niveau)
                                     <option value="{{ $niveau->id }}" {{ $niveauId == $niveau->id ? 'selected' : '' }}>
@@ -469,7 +469,7 @@
                         </div>
                         <div class="col-md-3">
                             <label for="category_id" class="form-label">Catégorie détaillée</label>
-                            <select name="category_id" id="category_id" class="form-select" onchange="this.form.submit()">
+                            <select name="category_id" id="category_id" class="form-select">
                                 <option value="">Vue d'ensemble</option>
                                 @foreach($categories as $category)
                                     <option value="{{ $category->id }}" {{ $categoryId == $category->id ? 'selected' : '' }}>
@@ -488,314 +488,163 @@
             </div>
         </div>
 
-        <!-- KPI Cards comme dans la page index -->
-        <div class="kpi-grid">
-            <div class="card-moderne kpi-card">
-                <div class="kpi-title">Étudiants en Règle</div>
-                <div class="kpi-value color-success">{{ $vueEnsemble['etudiants_en_regle'] }}</div>
-                <div class="kpi-trend positive">
-                    <i class="fas fa-check-circle me-2"></i>
-                    @php
-                        $totalEtudiants = $vueEnsemble['etudiants_en_regle'] + $vueEnsemble['etudiants_en_retard'] + $vueEnsemble['etudiants_non_payes'];
-                    @endphp
-                    @if($totalEtudiants > 0)
-                        {{ round(($vueEnsemble['etudiants_en_regle'] / $totalEtudiants) * 100, 1) }}% du total
-                    @else
-                        Aucun étudiant
-                    @endif
-                </div>
-            </div>
-            
-            <div class="card-moderne kpi-card">
-                <div class="kpi-title">Paiements Partiels</div>
-                <div class="kpi-value color-warning">{{ $vueEnsemble['etudiants_en_retard'] }}</div>
-                <div class="kpi-trend">
-                    <i class="fas fa-clock me-2"></i>
-                    @if($totalEtudiants > 0)
-                        {{ round(($vueEnsemble['etudiants_en_retard'] / $totalEtudiants) * 100, 1) }}% du total
-                    @else
-                        Aucun étudiant
-                    @endif
-                </div>
-            </div>
-            
-            <div class="card-moderne kpi-card">
-                <div class="kpi-title">Impayés</div>
-                <div class="kpi-value color-danger">{{ $vueEnsemble['etudiants_non_payes'] }}</div>
-                <div class="kpi-trend negative">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    @if($totalEtudiants > 0)
-                        {{ round(($vueEnsemble['etudiants_non_payes'] / $totalEtudiants) * 100, 1) }}% du total
-                    @else
-                        Aucun étudiant
-                    @endif
-                </div>
-            </div>
-
-            <div class="card-moderne kpi-card">
-                <div class="kpi-title">Taux de Recouvrement Global</div>
-                <div class="kpi-value color-primary">{{ $vueEnsemble['taux_recouvrement_global'] }}%</div>
-                <div class="kpi-trend {{ $vueEnsemble['taux_recouvrement_global'] >= 75 ? 'positive' : ($vueEnsemble['taux_recouvrement_global'] >= 50 ? '' : 'negative') }}">
-                    <i class="fas fa-chart-line me-2"></i>
-                    {{ number_format($vueEnsemble['montant_total_recu'], 0, ',', ' ') }} / {{ number_format($vueEnsemble['montant_total_attendu'], 0, ',', ' ') }} FCFA
-                </div>
-            </div>
+        <!-- KPI Cards -->
+        <div id="suivi-metrics-container">
+            @include('esbtp.paiements.partials.suivi-metrics')
         </div>
 
-        <!-- Répartition des étudiants - Style moderne avec barre pleine largeur -->
-        <div class="card-moderne mb-lg">
-            <div class="p-lg">
-                <div class="d-flex justify-content-between align-items-center mb-md">
-                    <div class="section-title mb-0">
-                        <i class="fas fa-chart-pie me-2"></i>
-                        Répartition des Étudiants et Recouvrement
-                    </div>
-                </div>
-                
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="resultat-card border-start border-success border-3">
-                            <div class="resultat-title">Répartition par Statut</div>
-                            @php
-                                $totalConcernes = $vueEnsemble['etudiants_en_regle'] + $vueEnsemble['etudiants_en_retard'] + $vueEnsemble['etudiants_non_payes'];
-                                $enReglePercent = $totalConcernes > 0 ? ($vueEnsemble['etudiants_en_regle'] / $totalConcernes) * 100 : 0;
-                                $enRetardPercent = $totalConcernes > 0 ? ($vueEnsemble['etudiants_en_retard'] / $totalConcernes) * 100 : 0;
-                                $nonPayesPercent = 100 - $enReglePercent - $enRetardPercent;
-                            @endphp
-                            
-                            <div class="progress mb-3" style="height: 20px;">
-                                <div class="progress-bar bg-success" style="width: {{ $enReglePercent }}%" 
-                                     title="{{ $vueEnsemble['etudiants_en_regle'] }} étudiants en règle"></div>
-                                <div class="progress-bar bg-warning" style="width: {{ $enRetardPercent }}%" 
-                                     title="{{ $vueEnsemble['etudiants_en_retard'] }} paiements partiels"></div>
-                                <div class="progress-bar bg-danger" style="width: {{ $nonPayesPercent }}%" 
-                                     title="{{ $vueEnsemble['etudiants_non_payes'] }} impayés"></div>
-                            </div>
-                            
-                            <div class="d-flex justify-content-between text-small">
-                                <span class="text-success">{{ round($enReglePercent, 1) }}% en règle</span>
-                                <span class="text-warning">{{ round($enRetardPercent, 1) }}% partiels</span>
-                                <span class="text-danger">{{ round($nonPayesPercent, 1) }}% impayés</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-md-6">
-                        <div class="resultat-card border-start border-primary border-3">
-                            <div class="resultat-title">Recouvrement Financier</div>
-                            <div class="progress mb-3" style="height: 20px;">
-                                <div class="progress-bar bg-primary" style="width: {{ $vueEnsemble['taux_recouvrement_global'] }}%"></div>
-                            </div>
-                            <div class="d-flex justify-content-between">
-                                <span class="text-success fw-bold">{{ number_format($vueEnsemble['montant_total_recu'], 0, ',', ' ') }} FCFA</span>
-                                <span class="text-muted">/ {{ number_format($vueEnsemble['montant_total_attendu'], 0, ',', ' ') }} FCFA</span>
-                            </div>
-                            <small class="text-muted">
-                                Restant : {{ number_format($vueEnsemble['montant_total_attendu'] - $vueEnsemble['montant_total_recu'], 0, ',', ' ') }} FCFA
-                            </small>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <!-- Content Section -->
+        <div id="suivi-content-container">
+            @include('esbtp.paiements.partials.suivi-content')
         </div>
-
-        <!-- Statistiques par catégorie avec style visuel original -->
-        @if(!$categoryId)
-        <div class="card-moderne mb-lg">
-            <div class="p-lg">
-                <div class="section-title mb-lg">
-                    <i class="fas fa-tags me-2"></i>
-                    Suivi par Catégorie de Frais
-                </div>
-                
-                <div class="categories-grid">
-                    @foreach($statistiquesCategories as $stats)
-                    @php
-                        $category = $stats['category'];
-                        $progressClass = $stats['taux_recouvrement'] >= 80 ? 'success' : ($stats['taux_recouvrement'] >= 50 ? 'warning' : 'danger');
-                        $categoryIcons = [
-                            'academic' => 'fas fa-graduation-cap',
-                            'service' => 'fas fa-cogs',
-                            'administrative' => 'fas fa-file-alt'
-                        ];
-                        $categoryType = $category->category_type ?? 'academic';
-                        $icon = $categoryIcons[$categoryType] ?? 'fas fa-money-bill';
-                    @endphp
-                    <div class="category-card" onclick="window.location.href='{{ route('esbtp.paiements.suivi-categories') }}?{{ http_build_query(array_merge(request()->query(), ['category_id' => $category->id])) }}'">
-                        <div class="p-lg">
-                            <div class="category-header">
-                                <div>
-                                    <div class="category-icon">
-                                        <i class="{{ $icon }}"></i>
-                                    </div>
-                                </div>
-                                <div class="text-right">
-                                    <div class="font-bold color-primary" style="font-size: var(--amount-medium);">{{ $stats['taux_recouvrement'] }}%</div>
-                                    <div class="text-small color-secondary">Recouvrement</div>
-                                </div>
-                            </div>
-                            
-                            <h5 class="font-semibold mb-sm">{{ $category->name }}</h5>
-                            
-                            <div class="category-stats">
-                                <div class="mini-stat">
-                                    <span class="mini-stat-value color-success">{{ $stats['etudiants_a_jour'] }}</span>
-                                    <div class="mini-stat-label">À jour</div>
-                                </div>
-                                <div class="mini-stat">
-                                    <span class="mini-stat-value color-warning">{{ $stats['etudiants_en_retard'] }}</span>
-                                    <div class="mini-stat-label">Partiels</div>
-                                </div>
-                                <div class="mini-stat">
-                                    <span class="mini-stat-value color-danger">{{ $stats['etudiants_non_payes'] }}</span>
-                                    <div class="mini-stat-label">{{ $category->is_mandatory ? 'Impayés' : 'Souscrits impayés' }}</div>
-                                </div>
-                            </div>
-                            
-                            <!-- Indicateur du type de frais -->
-                            <div style="margin-bottom: var(--space-sm);">
-                                @if($category->is_mandatory)
-                                    <span class="badge bg-primary">
-                                        <i class="fas fa-star me-1"></i>Frais obligatoire
-                                    </span>
-                                    <small class="text-muted d-block mt-1">{{ $stats['total_etudiants'] }} étudiants concernés</small>
-                                @else
-                                    <span class="badge bg-secondary">
-                                        <i class="fas fa-plus-circle me-1"></i>Service optionnel
-                                    </span>
-                                    <small class="text-muted d-block mt-1">{{ $stats['etudiants_concernes'] }} souscriptions sur {{ $stats['total_etudiants'] }} étudiants</small>
-                                @endif
-                            </div>
-                            
-                            <div class="progress-bar-modern">
-                                <div class="progress-fill-modern {{ $progressClass }}" style="width: {{ $stats['taux_recouvrement'] }}%;"></div>
-                            </div>
-                            
-                            <div style="display: flex; justify-content: space-between; font-size: var(--text-small);">
-                                <span class="color-success font-medium">{{ number_format($stats['montant_total_recu'], 0, ',', ' ') }} FCFA</span>
-                                <span class="color-secondary">/ {{ number_format($stats['montant_total_attendu'], 0, ',', ' ') }} FCFA</span>
-                            </div>
-                        </div>
-                    </div>
-                    @endforeach
-                </div>
-            </div>
-        </div>
-        @endif
-
-        <!-- Détails d'une catégorie spécifique -->
-        @if($detailsCategorie)
-        <div class="details-section">
-            <div class="card-moderne mb-lg">
-                <div class="p-lg">
-                    <div class="section-title mb-lg">
-                        <i class="{{ $detailsCategorie['category']->icon ?? 'fas fa-money-bill' }} me-2"></i>
-                        Détails : {{ $detailsCategorie['category']->name }}
-                    </div>
-                    
-                    <!-- Statistiques de la catégorie -->
-                    <div class="stats-overview">
-                        <div class="card-moderne stat-card success">
-                            <div class="p-lg">
-                                <div class="stat-value color-success">{{ $detailsCategorie['etudiants_a_jour']->count() }}</div>
-                                <div class="stat-label">Étudiants à jour</div>
-                            </div>
-                        </div>
-                        <div class="card-moderne stat-card warning">
-                            <div class="p-lg">
-                                <div class="stat-value color-warning">{{ $detailsCategorie['etudiants_en_retard']->count() }}</div>
-                                <div class="stat-label">Paiements partiels</div>
-                            </div>
-                        </div>
-                        <div class="card-moderne stat-card danger">
-                            <div class="p-lg">
-                                <div class="stat-value color-danger">{{ $detailsCategorie['etudiants_non_payes']->count() }}</div>
-                                <div class="stat-label">Aucun paiement</div>
-                            </div>
-                        </div>
-                        <div class="card-moderne stat-card primary">
-                            <div class="p-lg">
-                                <div class="stat-value color-primary">
-                                    {{ $detailsCategorie['montant_total_attendu'] > 0 ? round(($detailsCategorie['montant_total_recu'] / $detailsCategorie['montant_total_attendu']) * 100, 1) : 0 }}%
-                                </div>
-                                <div class="stat-label">Taux de recouvrement</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Navigation par onglets avec lazy loading -->
-                    <div class="student-tabs-container">
-                        <ul class="nav nav-tabs" id="myTab" role="tablist" style="border: none; display: flex; gap: var(--space-md);">
-                            <li class="nav-item" style="border: none;">
-                                <a class="nav-link student-tab" data-statut="non_payes" href="#" role="tab"
-                                   style="border: none; border-radius: var(--radius-small); padding: var(--space-sm) var(--space-md); color: var(--text-secondary); font-weight: 500;">
-                                    <i class="fas fa-exclamation-triangle me-2"></i>
-                                    Aucun paiement ({{ $detailsCategorie['etudiants_non_payes']->count() }})
-                                </a>
-                            </li>
-                            <li class="nav-item" style="border: none;">
-                                <a class="nav-link student-tab" data-statut="en_retard" href="#" role="tab"
-                                   style="border: none; border-radius: var(--radius-small); padding: var(--space-sm) var(--space-md); color: var(--text-secondary); font-weight: 500;">
-                                    <i class="fas fa-clock me-2"></i>
-                                    Paiements partiels ({{ $detailsCategorie['etudiants_en_retard']->count() }})
-                                </a>
-                            </li>
-                            <li class="nav-item" style="border: none;">
-                                <a class="nav-link student-tab" data-statut="a_jour" href="#" role="tab"
-                                   style="border: none; border-radius: var(--radius-small); padding: var(--space-sm) var(--space-md); color: var(--text-secondary); font-weight: 500;">
-                                    <i class="fas fa-check-circle me-2"></i>
-                                    À jour ({{ $detailsCategorie['etudiants_a_jour']->count() }})
-                                </a>
-                            </li>
-                        </ul>
-
-                        <!-- Contenu des onglets -->
-                        <div class="tab-content">
-                            <!-- Onglet Aucun paiement -->
-                            <div class="tab-pane fade" id="non_payes" data-statut="non_payes">
-                                <div class="paiement-spinner">
-                                    <div class="paiement-spinner-icon">
-                                        <i class="fas fa-spinner"></i>
-                                    </div>
-                                    <div class="paiement-spinner-text">Chargement des étudiants sans paiement...</div>
-                                </div>
-                                <div class="content-container" style="display: none;"></div>
-                            </div>
-
-                            <!-- Onglet Paiements partiels -->
-                            <div class="tab-pane fade" id="en_retard" data-statut="en_retard">
-                                <div class="paiement-spinner">
-                                    <div class="paiement-spinner-icon">
-                                        <i class="fas fa-spinner"></i>
-                                    </div>
-                                    <div class="paiement-spinner-text">Chargement des étudiants avec paiements partiels...</div>
-                                </div>
-                                <div class="content-container" style="display: none;"></div>
-                            </div>
-
-                            <!-- Onglet À jour -->
-                            <div class="tab-pane fade" id="a_jour" data-statut="a_jour">
-                                <div class="paiement-spinner">
-                                    <div class="paiement-spinner-icon">
-                                        <i class="fas fa-spinner"></i>
-                                    </div>
-                                    <div class="paiement-spinner-text">Chargement des étudiants à jour...</div>
-                                </div>
-                                <div class="content-container" style="display: none;"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-        </div>
-        @endif
     </div>
 </div>
 @endsection
 
 @push('scripts')
 <script>
+// ===== AJAX FILTERING SYSTEM =====
+(function() {
+    'use strict';
+
+    // Build refresh URL with current filters
+    function buildRefreshUrl() {
+        const form = document.getElementById('suivi-filter-form');
+        const formData = new FormData(form);
+        const params = new URLSearchParams(formData);
+        return '{{ route("esbtp.paiements.suivi-categories.refresh") }}?' + params.toString();
+    }
+
+    // Build index URL with current filters
+    function buildIndexUrl() {
+        const form = document.getElementById('suivi-filter-form');
+        const formData = new FormData(form);
+        const params = new URLSearchParams(formData);
+        return '{{ route("esbtp.paiements.suivi-categories") }}?' + params.toString();
+    }
+
+    // Fetch and update content via AJAX
+    function fetchSuiviData(url, { pushState = true } = {}) {
+        const metricsContainer = document.getElementById('suivi-metrics-container');
+        const contentContainer = document.getElementById('suivi-content-container');
+
+        if (!metricsContainer || !contentContainer) {
+            return;
+        }
+
+        // Show loading state (optional - could add spinner)
+        // metricsContainer.style.opacity = '0.5';
+        // contentContainer.style.opacity = '0.5';
+
+        return fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Erreur lors du chargement des données.');
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Update metrics
+            if (data.metrics && metricsContainer) {
+                metricsContainer.innerHTML = data.metrics;
+            }
+
+            // Update content
+            if (data.content && contentContainer) {
+                contentContainer.innerHTML = data.content;
+
+                // Re-bind category card clicks after content update
+                bindCategoryCardClicks();
+            }
+
+            // Update URL if needed
+            if (data.url && pushState) {
+                window.history.pushState({ url: data.url }, '', data.url);
+            }
+
+            // Reinitialize tooltips if needed
+            if (typeof $ !== 'undefined' && typeof $.fn.tooltip !== 'undefined') {
+                $('[data-bs-toggle="tooltip"]').tooltip();
+            }
+        })
+        .catch(error => {
+            console.error(error);
+            alert(error.message || 'Impossible de charger les données pour le moment.');
+        })
+        .finally(() => {
+            // Remove loading state
+            // metricsContainer.style.opacity = '1';
+            // contentContainer.style.opacity = '1';
+        });
+    }
+
+    // Bind clicks on category cards to filter by category via AJAX
+    function bindCategoryCardClicks() {
+        const categoryCards = document.querySelectorAll('.category-card-ajax');
+        categoryCards.forEach(card => {
+            card.addEventListener('click', function(e) {
+                e.preventDefault();
+                const categoryId = this.dataset.categoryId;
+
+                // Update the category_id select
+                const categorySelect = document.getElementById('category_id');
+                if (categorySelect) {
+                    categorySelect.value = categoryId;
+                }
+
+                // Trigger form submission via AJAX
+                document.getElementById('suivi-filter-form').dispatchEvent(new Event('submit'));
+            });
+        });
+    }
+
+    // Initialize on DOM ready
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('suivi-filter-form');
+
+        if (!form) {
+            return;
+        }
+
+        // Bind form submission
+        form.addEventListener('submit', function(event) {
+            event.preventDefault();
+            const url = buildRefreshUrl();
+            fetchSuiviData(url, { pushState: true });
+        });
+
+        // Bind filter selects to auto-submit
+        const filterSelects = form.querySelectorAll('select');
+        filterSelects.forEach(select => {
+            select.addEventListener('change', function() {
+                form.dispatchEvent(new Event('submit'));
+            });
+        });
+
+        // Initial binding of category cards
+        bindCategoryCardClicks();
+
+        // Handle browser back/forward buttons
+        window.addEventListener('popstate', function(event) {
+            if (event.state && event.state.url) {
+                fetchSuiviData(event.state.url, { pushState: false });
+            }
+        });
+
+        // Set initial history state
+        if (window.history && window.history.replaceState) {
+            window.history.replaceState({ url: window.location.href }, '', window.location.href);
+        }
+    });
+})();
+
+// ===== EXISTING SCRIPTS =====
 $(function() {
     // Tooltip pour les pourcentages
     $('.percentage-badge').each(function() {
