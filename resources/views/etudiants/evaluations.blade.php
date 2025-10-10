@@ -288,6 +288,45 @@
         .toggle-btn {
             text-align: center;
         }
+
+        /* Header responsive */
+        .student-header .d-flex {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: var(--space-md);
+        }
+
+        .student-header h1 {
+            font-size: 1.5rem !important;
+        }
+
+        .student-header .header-subtitle {
+            font-size: 0.875rem !important;
+        }
+
+        .student-header .text-end {
+            text-align: left !important;
+            width: 100%;
+        }
+
+        .student-header .badge {
+            display: inline-block;
+            width: auto;
+        }
+
+        .evaluation-card {
+            padding: var(--space-md);
+        }
+
+        .evaluation-type-badge {
+            position: static;
+            margin-bottom: var(--space-sm);
+            display: inline-block;
+        }
+
+        .evaluation-title {
+            font-size: var(--text-base);
+        }
     }
 
     /* States d'évaluations */

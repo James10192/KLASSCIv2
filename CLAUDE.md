@@ -2,6 +2,107 @@
 
 ## Corrections récentes
 
+### Fix: Accès étudiant et design moderne des pages étudiantes
+
+**Date:** 10 octobre 2025
+**Branche:** presentation
+
+#### Problèmes résolus
+
+1. **Erreur 403 sur les pages étudiantes**
+   - **Cause:** Permissions manquantes (`view_own_profile`, `view_own_grades`, `view_own_exams`, `view_own_timetable`) pour le rôle `etudiant`
+   - **Pages concernées:**
+     - `/esbtp/mon-profil`
+     - `/esbtp/mes-notes`
+     - `/esbtp/mes-evaluations`
+     - `/esbtp/mon-emploi-temps`
+     - `/esbtp/esbtp/mes-absences`
+   - **Solution:** Ajout des permissions manquantes dans `fix_permissions.php` et exécution du script
+
+2. **Design obsolète de la page "Mes Absences"**
+   - **Problème:** Interface Bootstrap basique ne correspondant pas au design moderne du dashboard étudiant
+   - **Solution:** Refonte complète avec le système `dashboard-acasi` (cartes modernes, stat-cards, badges, etc.)
+
+3. **Header "Mes Évaluations" non responsive**
+   - **Problème:** Sur mobile, le titre et le badge année se chevauchaient
+   - **Solution:** Ajout de media queries pour layout vertical sur mobile
+
+#### Fichiers modifiés
+
+**Permissions:**
+- [fix_permissions.php:127-136](fix_permissions.php:127) - Ajout des permissions globales:
+  - `view_own_grades`
+  - `view_own_exams`
+  - `view_own_profile`
+- [fix_permissions.php:328-342](fix_permissions.php:328) - Mise à jour du rôle étudiant (11 permissions au total)
+
+**Views:**
+- [resources/views/esbtp/attendances/mes-absences.blade.php](resources/views/esbtp/attendances/mes-absences.blade.php) - Refonte complète:
+  - Structure `dashboard-acasi` avec `main-content`
+  - Header moderne avec titre et description
+  - Stat cards (`stat-card-primary`, `stat-card-success`, `stat-card-danger`)
+  - Tableau moderne (`table-modern`)
+  - Badges de statut (`status-badge`)
+  - Boutons modernes (`btn-acasi`)
+  - Layout en grid (`dashboard-main-grid`)
+  - Alertes stylisées
+  - Modals Bootstrap 5
+
+- [resources/views/etudiants/evaluations.blade.php:272-330](resources/views/etudiants/evaluations.blade.php:272) - Amélioration responsive:
+  - Header en colonne sur mobile
+  - Badge année aligné à gauche
+  - Taille de police réduite
+  - Badge type d'évaluation en position statique
+  - Padding réduit des cartes
+
+#### Permissions ajoutées (rôle étudiant)
+
+Liste complète des 11 permissions du rôle `etudiant`:
+1. `view_dashboard`
+2. `view_own_notes`
+3. `view_own_grades` ✨ (nouveau)
+4. `view_own_bulletin`
+5. `view_own_attendances`
+6. `view_own_schedule`
+7. `view_own_timetable` ✨ (nouveau)
+8. `view_own_profile` ✨ (nouveau)
+9. `view_own_exams` ✨ (nouveau)
+10. `receive_messages`
+11. `view_annonces`
+
+#### Tests effectués
+
+- ✅ Permissions appliquées avec succès (script `fix_permissions.php`)
+- ✅ Cache nettoyé (`php artisan cache:clear && config:clear && permission:cache-reset`)
+- ✅ Étudiant PRINCE MARC-ARTHUR ZEWOU a toutes les permissions
+- ✅ Accès aux 5 pages étudiantes vérifié (pas d'erreur 403)
+- ✅ Design moderne de "Mes Absences" cohérent avec le profil étudiant
+- ✅ Header "Mes Évaluations" responsive sur mobile
+
+#### Pages étudiantes accessibles
+
+Toutes les pages suivantes sont maintenant accessibles pour le rôle `etudiant`:
+- ✅ `/esbtp/mon-profil` (Profil étudiant)
+- ✅ `/esbtp/mes-notes` (Notes et moyennes)
+- ✅ `/esbtp/mes-evaluations` (Évaluations programmées)
+- ✅ `/esbtp/mon-emploi-temps` (Emploi du temps)
+- ✅ `/esbtp/esbtp/mes-absences` (Absences et justifications)
+
+#### Design moderne appliqué
+
+**Structure commune à toutes les pages étudiantes:**
+- Container `dashboard-acasi`
+- Header avec titre et description (`dashboard-header`)
+- Cartes modernes (`main-card`)
+- Grilles de statistiques (`stats-grid`, `stat-card`)
+- Tableaux stylisés (`table-modern`)
+- Badges de statut (`status-badge-success/danger/warning`)
+- Boutons cohérents (`btn-acasi btn-acasi-primary/secondary`)
+- Alertes modernes avec icônes
+- Responsive design complet
+
+---
+
 ### Fix: Calcul financier robuste et affichage logo dans emails parents
 
 **Date:** 10 octobre 2025

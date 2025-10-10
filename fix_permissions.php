@@ -126,10 +126,12 @@ try {
 
         // Grades (alias for notes)
         'view_grades',
+        'view_own_grades',
         'create_grade',
         'edit_grades',
         'delete_grades',
         'view_evaluations',
+        'view_own_exams',
         'create_evaluations',
         'edit_evaluations',
         
@@ -162,6 +164,7 @@ try {
         'edit_teachers',
         'view_personnel',
         'manage_personnel',
+        'view_own_profile',
 
         // Coordinateurs
         'view_coordinateurs',
@@ -328,9 +331,13 @@ try {
     $etudiantPermissions = [
         'view_dashboard',
         'view_own_notes',
+        'view_own_grades',
         'view_own_bulletin',
         'view_own_attendances',
         'view_own_schedule',
+        'view_own_timetable',
+        'view_own_profile',
+        'view_own_exams',
         'receive_messages',
         'view_annonces',
     ];
