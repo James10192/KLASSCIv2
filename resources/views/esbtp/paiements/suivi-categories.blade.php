@@ -647,6 +647,166 @@
         if (window.history && window.history.replaceState) {
             window.history.replaceState({ url: window.location.href }, '', window.location.href);
         }
+
+        // ===== LAZY LOADING DES ONGLETS =====
+        function initStudentTabsLazyLoading() {
+            const tabLinks = document.querySelectorAll('.students-tabs a[data-statut]');
+
+            tabLinks.forEach(tabLink => {
+                tabLink.addEventListener('shown.bs.tab', function(event) {
+                    const targetId = event.target.getAttribute('href');
+                    const targetPane = document.querySelector(targetId);
+
+                    // Vérifier si déjà chargé
+                    if (targetPane && targetPane.getAttribute('data-loaded') === 'false') {
+                        const statut = event.target.getAttribute('data-statut');
+                        const categoryId = event.target.getAttribute('data-category-id');
+                        const count = parseInt(event.target.getAttribute('data-count'));
+
+                        // Si count = 0, afficher message vide directement
+                        if (count === 0) {
+                            const container = targetPane.querySelector('.students-list-container');
+                            container.innerHTML = `
+                                <div style="padding: 40px; text-align: center; color: #9ca3af;">
+                                    <i class="fas fa-check-circle" style="font-size: 48px; margin-bottom: 16px; color: #10b981;"></i>
+                                    <p style="font-size: 16px; font-weight: 500;">Aucun étudiant dans cette catégorie</p>
+                                </div>
+                            `;
+                            targetPane.setAttribute('data-loaded', 'true');
+                            return;
+                        }
+
+                        // Charger les étudiants via AJAX
+                        loadStudentsByStatut(statut, categoryId, targetPane);
+                    }
+                });
+            });
+
+            // Charger automatiquement le premier onglet actif
+            const firstActiveTab = document.querySelector('.students-tabs a.active[data-statut]');
+            if (firstActiveTab) {
+                const targetId = firstActiveTab.getAttribute('href');
+                const targetPane = document.querySelector(targetId);
+                const statut = firstActiveTab.getAttribute('data-statut');
+                const categoryId = firstActiveTab.getAttribute('data-category-id');
+                const count = parseInt(firstActiveTab.getAttribute('data-count'));
+
+                if (targetPane && targetPane.getAttribute('data-loaded') === 'false') {
+                    if (count === 0) {
+                        const container = targetPane.querySelector('.students-list-container');
+                        container.innerHTML = `
+                            <div style="padding: 40px; text-align: center; color: #9ca3af;">
+                                <i class="fas fa-check-circle" style="font-size: 48px; margin-bottom: 16px; color: #10b981;"></i>
+                                <p style="font-size: 16px; font-weight: 500;">Aucun étudiant dans cette catégorie</p>
+                            </div>
+                        `;
+                        targetPane.setAttribute('data-loaded', 'true');
+                    } else {
+                        loadStudentsByStatut(statut, categoryId, targetPane);
+                    }
+                }
+            }
+        }
+
+        function loadStudentsByStatut(statut, categoryId, targetPane) {
+            const container = targetPane.querySelector('.students-list-container');
+            const currentPage = parseInt(targetPane.getAttribute('data-current-page') || '0');
+            const nextPage = currentPage + 1;
+
+            // Construire l'URL avec les filtres actuels
+            const urlParams = new URLSearchParams(window.location.search);
+            const url = `/esbtp/paiements/suivi-categories/load/${statut}?` + new URLSearchParams({
+                category_id: categoryId,
+                page: nextPage,
+                per_page: 20,
+                filiere_id: urlParams.get('filiere_id') || '',
+                niveau_id: urlParams.get('niveau_id') || '',
+                annee_id: urlParams.get('annee_id') || ''
+            }).toString();
+
+            fetch(url, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (nextPage === 1) {
+                    // Première page : remplacer tout le contenu
+                    container.innerHTML = data.html;
+                } else {
+                    // Pages suivantes : ajouter à la fin
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = data.html;
+                    container.querySelector('.students-list').appendChild(...tempDiv.children);
+                }
+
+                // Mettre à jour l'état
+                targetPane.setAttribute('data-loaded', 'true');
+                targetPane.setAttribute('data-current-page', data.current_page);
+                targetPane.setAttribute('data-has-more', data.has_more);
+
+                // Ajouter bouton "Charger plus" si nécessaire
+                if (data.has_more) {
+                    addLoadMoreButton(container, statut, categoryId, targetPane);
+                }
+            })
+            .catch(error => {
+                console.error('Erreur lors du chargement des étudiants:', error);
+                container.innerHTML = `
+                    <div class="alert alert-danger" style="margin: 20px;">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Erreur lors du chargement des étudiants. Veuillez réessayer.
+                    </div>
+                `;
+            });
+        }
+
+        function addLoadMoreButton(container, statut, categoryId, targetPane) {
+            // Supprimer l'ancien bouton s'il existe
+            const oldBtn = container.querySelector('.load-more-btn');
+            if (oldBtn) oldBtn.remove();
+
+            const btn = document.createElement('div');
+            btn.className = 'load-more-btn';
+            btn.style.cssText = 'text-align: center; margin-top: 24px; padding: 20px;';
+            btn.innerHTML = `
+                <button class="btn btn-primary" style="padding: 12px 32px; font-weight: 600;">
+                    <i class="fas fa-chevron-down me-2"></i>
+                    Charger plus d'étudiants
+                </button>
+            `;
+
+            btn.querySelector('button').addEventListener('click', function() {
+                this.disabled = true;
+                this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Chargement...';
+                loadStudentsByStatut(statut, categoryId, targetPane);
+            });
+
+            container.appendChild(btn);
+        }
+
+        // Initialiser après le premier chargement
+        initStudentTabsLazyLoading();
+
+        // Réinitialiser après chaque refresh AJAX
+        const originalFetchSuiviData = fetchSuiviData;
+        fetchSuiviData = function(url, options = {}) {
+            return originalFetchSuiviData(url, options).then(() => {
+                // Attendre que le DOM soit mis à jour
+                setTimeout(() => {
+                    initStudentTabsLazyLoading();
+                }, 100);
+            });
+        };
     });
 })();
 
