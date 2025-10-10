@@ -458,7 +458,7 @@ body.modal-open * {
                 <td>${classe.name || ''}</td>
                 <td>${classe.filiere_name || 'N/A'}</td>
                 <td>${classe.niveau_name || 'N/A'}</td>
-                <td><button class="btn btn-sm btn-primary" onclick="selectClasse(${classe.id}, '${displayText.replace(/'/g, "\\'")}\')">Sélectionner</button></td>
+                <td><button type="button" class="btn btn-sm btn-primary" onclick="selectClasse(${classe.id}, '${displayText.replace(/'/g, "\\'")}\')">Sélectionner</button></td>
             </tr>`;
         });
     }
