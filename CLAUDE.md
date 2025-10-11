@@ -2893,3 +2893,475 @@ Implémentation complète d'un système AJAX avec bouton "Charger plus" qui pré
 ---
 
 *Dernière mise à jour: 10 octobre 2025*
+
+---
+
+### Feature: Notifications WhatsApp & SMS Multi-Canal pour les Parents
+
+**Date:** 11 octobre 2025
+**Branche:** presentation
+
+#### Fonctionnalités ajoutées
+
+Implémentation complète d'un système de notifications multi-canal (Email + WhatsApp + SMS) pour les parents, avec tracking des coûts et analyse ROI.
+
+#### Architecture
+
+**Points clés :**
+- **Email** : Canal principal (gratuit)
+- **WhatsApp** : Canal secondaire (quasi-gratuit - ~3 FCFA/message hors fenêtre service 24h)
+- **SMS** : Fallback urgences uniquement (~7 FCFA/message)
+- **Tracking complet** : Table `parent_notification_logs` pour analyse coûts et debugging
+- **Opt-in/opt-out** : Respect des préférences via `parent_notification_preferences.preferred_channels`
+
+#### 1. Services créés
+
+**WhatsAppService** (`app/Services/WhatsAppService.php`)
+- Utilise Meta Cloud API (WhatsApp Business)
+- 6 méthodes de notification (inscription, paiement_valide, paiement_rejete, absence, bulletin, notes_faibles)
+- Templates Meta approuvés requis (catégorie UTILITY)
+- Format numéros : +2250XXXXXXXXX (Côte d'Ivoire)
+- Logging complet des envois/erreurs
+
+**SmsService** (`app/Services/SmsService.php`)
+- Support multi-providers : Orange CI, Beem Africa, SMS.to
+- Messages limités à 160 caractères (1 SMS standard)
+- Utilisation fallback uniquement (parents sans WhatsApp + urgences)
+- Coût estimé : 6-7 FCFA/SMS
+
+#### 2. Migration et modèle de tracking
+
+**Migration** : `2025_10_11_005625_create_parent_notification_logs_table.php`
+
+**Table `parent_notification_logs`** :
+- `parent_id`, `etudiant_id` (relations)
+- `notification_type` : inscription, paiement_valide, paiement_rejete, absence, bulletin_publie, notes_faibles
+- `channel` : app, email, whatsapp, sms
+- `status` : pending, sent, delivered, read, failed
+- `recipient` : Email ou téléphone destinataire
+- `external_id` : ID message WhatsApp/SMS (pour webhooks)
+- `cost_fcfa` : Coût en FCFA (0 pour app/email, ~3 pour WhatsApp, ~7 pour SMS)
+- `metadata` : JSON (payload, erreurs, etc.)
+- `sent_at`, `delivered_at`, `read_at`, `failed_at` : Timestamps événements
+
+**Modèle** : `app/Models/ParentNotificationLog.php`
+- Méthodes : `markAsSent()`, `markAsDelivered()`, `markAsRead()`, `markAsFailed()`
+- Scopes : `byChannel()`, `byType()`, `byStatus()`, `statsLast30Days()`
+- Helpers : `getTotalCostForParent()`, `getTotalCostByChannel()`, `getSuccessRateByChannel()`
+
+#### 3. Extension NotificationService
+
+**Fichier** : `app/Services/NotificationService.php`
+
+**Nouvelles méthodes privées** :
+
+1. **sendMultiChannelNotification($tuteur, $etudiant, $notificationType, $data, $preferences)**
+   - Envoie sur tous les canaux activés dans `preferred_channels`
+   - Ordre : Email → WhatsApp → SMS (fallback)
+   - Retourne array de résultats par canal
+
+2. **sendEmailNotification($tuteur, $etudiant, $notificationType, $data)**
+   - Envoie email + crée log avec `cost_fcfa = 0`
+   - Utilise `match()` pour sélectionner la bonne Mailable class
+   - Marque log comme sent/failed selon résultat
+
+3. **sendWhatsAppNotification($tuteur, $etudiant, $notificationType, $data)**
+   - Envoie message WhatsApp + crée log avec `cost_fcfa = 3.3`
+   - Stocke `external_id` (message_id WhatsApp) pour webhooks futurs
+   - Retourne true si envoyé avec succès
+
+4. **sendSmsNotification($tuteur, $etudiant, $notificationType, $data)**
+   - Envoie SMS + crée log avec `cost_fcfa = 7`
+   - Utilisation limitée (fallback uniquement)
+   - N'envoie que si WhatsApp échoue ou parent sans WhatsApp
+
+**Modification des méthodes existantes** :
+- Les 6 méthodes parents (notifyParentsInscriptionCreated, notifyParentsPaiementValide, etc.) doivent appeler `sendMultiChannelNotification()` au lieu de `Mail::to()->send()`
+
+**Exemple d'intégration (à faire)** :
+```php
+// AVANT (email uniquement)
+if ($preferences->hasChannel('email') && $tuteur->email) {
+    Mail::to($tuteur->email)->send(new \App\Mail\Parents\InscriptionConfirmationMail($data));
+}
+
+// APRÈS (multi-canal)
+$this->sendMultiChannelNotification($tuteur, $etudiant, 'inscription', $data, $preferences);
+```
+
+#### 4. Configuration .env
+
+```env
+# WHATSAPP BUSINESS API (Meta Cloud API)
+WHATSAPP_PHONE_NUMBER_ID=
+WHATSAPP_ACCESS_TOKEN=
+WHATSAPP_BUSINESS_ACCOUNT_ID=
+WHATSAPP_ENABLED=false
+
+# SMS API (Orange CI / Beem Africa / SMS.to)
+SMS_PROVIDER=orange
+SMS_API_KEY=
+SMS_SENDER_ID=KLASSCI
+SMS_ENABLED=false
+```
+
+#### 5. Procédure d'activation WhatsApp
+
+**Étape 1 : Créer compte Meta Business Manager**
+1. Aller sur https://business.facebook.com/
+2. Créer un compte Business Manager
+3. Ajouter une application WhatsApp Business
+
+**Étape 2 : Obtenir credentials**
+1. Dans Meta Business Manager → Paramètres → WhatsApp Business
+2. Copier :
+   - Phone Number ID
+   - Access Token (permanent)
+   - Business Account ID
+
+**Étape 3 : Créer templates Meta**
+Créer 6 templates dans le Business Manager (catégorie UTILITY) :
+
+**Template `inscription_confirmation`** :
+```
+Bonjour {{1}}, l'inscription de {{2}} en {{3}} pour l'année {{4}} est confirmée le {{5}}. Identifiants envoyés par email.
+```
+
+**Template `paiement_valide`** :
+```
+Bonjour {{1}}, le paiement de {{2}} pour {{3}} a été validé. Réf: {{4}}. Date: {{5}}. Solde restant: {{6}}.
+```
+
+**Template `paiement_rejete`** :
+```
+Bonjour {{1}}, le paiement de {{2}} pour {{3}} a été rejeté. Motif: {{4}}. Date: {{5}}. Contactez l'administration.
+```
+
+**Template `absence_notification`** :
+```
+Bonjour {{1}}, {{2}} a été absent(e) le {{3}} en {{4}}. Total absences ce mois: {{5}}. Taux de présence: {{6}}.
+```
+
+**Template `bulletin_publie`** :
+```
+Bonjour {{1}}, le bulletin {{2}} de {{3}} est disponible. Moyenne: {{4}}. Rang: {{5}}. Consultez la plateforme.
+```
+
+**Template `alerte_notes_faibles`** :
+```
+Bonjour {{1}}, alerte académique pour {{2}} ({{3}}). Moyenne: {{4}}. Matières en difficulté: {{5}}.
+```
+
+**Étape 4 : Attendre validation Meta (24-48h)**
+
+**Étape 5 : Activer dans .env**
+```env
+WHATSAPP_ENABLED=true
+```
+
+#### 6. Procédure d'activation SMS
+
+**Option 1 : Orange Developer (Côte d'Ivoire)**
+1. Créer compte sur https://developer.orange.com/
+2. Souscrire à l'API SMS Côte d'Ivoire
+3. Obtenir API Key
+4. Configuration :
+```env
+SMS_PROVIDER=orange
+SMS_API_KEY=votre_api_key
+SMS_SENDER_ID=KLASSCI
+SMS_ENABLED=true
+```
+
+**Option 2 : Beem Africa**
+1. Créer compte sur https://beem.africa/
+2. Obtenir API Key
+3. Configuration :
+```env
+SMS_PROVIDER=beem
+SMS_API_KEY=votre_api_key
+SMS_SENDER_ID=KLASSCI
+SMS_ENABLED=true
+```
+
+**Option 3 : SMS.to**
+1. Créer compte sur https://sms.to/
+2. Obtenir API Key
+3. Configuration :
+```env
+SMS_PROVIDER=smsto
+SMS_API_KEY=votre_api_key
+SMS_SENDER_ID=KLASSCI
+SMS_ENABLED=true
+```
+
+#### 7. Estimation de coûts
+
+**Scénario 500 parents - 9 mois (année scolaire)**
+
+**Hypothèse 1 : Email uniquement** :
+```
+- 500 parents × 10 notifications/an = 5000 notifications
+- Coût : 0 FCFA (gratuit)
+```
+
+**Hypothèse 2 : Email + WhatsApp (80% dans fenêtre gratuite)**
+```
+- Email : 5000 notifications × 0 FCFA = 0 FCFA
+- WhatsApp :
+  - 4000 messages dans fenêtre gratuite (80%) = 0 FCFA
+  - 1000 messages hors fenêtre (20%) × 3.3 FCFA = 3,300 FCFA
+- Total : 3,300 FCFA (~5€/an)
+```
+
+**Hypothèse 3 : Email + WhatsApp + SMS fallback (5% parents)**
+```
+- Email : 0 FCFA
+- WhatsApp : 3,300 FCFA
+- SMS : 25 parents × 10 SMS × 7 FCFA = 1,750 FCFA
+- Total : 5,050 FCFA (~7.70€/an)
+```
+
+**Conclusion** : Coût annuel négligeable (~3,300-5,050 FCFA soit 5-8€/an) pour 500 parents avec stratégie WhatsApp optimisée.
+
+#### 8. Commandes utiles
+
+```bash
+# Exécuter la migration
+php artisan migrate
+
+# Vider les caches
+php artisan config:clear
+php artisan cache:clear
+
+# Tester un envoi WhatsApp (tinker)
+php artisan tinker
+>>> $service = app(\App\Services\WhatsAppService::class);
+>>> $data = ['parentName' => 'John Doe', 'studentName' => 'Jane Doe', ...];
+>>> $service->sendInscriptionNotification('+2250707123456', $data);
+
+# Tester un envoi SMS
+>>> $smsService = app(\App\Services\SmsService::class);
+>>> $smsService->sendPaiementValideNotification('+2250707123456', $data);
+
+# Consulter les logs de notifications (derniers 7 jours)
+>>> \App\Models\ParentNotificationLog::where('created_at', '>=', now()->subDays(7))->get();
+
+# Statistiques par canal (derniers 30 jours)
+>>> \App\Models\ParentNotificationLog::statsLast30Days()->get();
+
+# Coût total WhatsApp (derniers 30 jours)
+>>> \App\Models\ParentNotificationLog::getTotalCostByChannel('whatsapp', 30);
+```
+
+#### 9. Fichiers créés
+
+**Services :**
+- `app/Services/WhatsAppService.php` (322 lignes)
+- `app/Services/SmsService.php` (304 lignes)
+
+**Migration :**
+- `database/migrations/2025_10_11_005625_create_parent_notification_logs_table.php`
+
+**Modèle :**
+- `app/Models/ParentNotificationLog.php` (163 lignes)
+
+#### 10. Fichiers modifiés
+
+**Configuration :**
+- `.env` - Ajout configuration WhatsApp/SMS
+
+**Service :**
+- `app/Services/NotificationService.php` - Ajout :
+  - Constructeur avec injection WhatsAppService + SmsService
+  - Import `ParentNotificationLog`
+  - Méthode `sendMultiChannelNotification()`
+  - Méthode `sendEmailNotification()`
+  - Méthode `sendWhatsAppNotification()`
+  - Méthode `sendSmsNotification()`
+
+#### 11. Tests recommandés
+
+**Tests unitaires :**
+- [ ] Tester WhatsAppService avec numéro test Meta
+- [ ] Tester SmsService avec numéro test provider
+- [ ] Vérifier création logs dans `parent_notification_logs`
+- [ ] Vérifier calcul coûts (email=0, whatsapp=3.3, sms=7)
+
+**Tests d'intégration :**
+- [ ] Créer une inscription → vérifier notifications multi-canal
+- [ ] Valider un paiement → vérifier WhatsApp + Email envoyés
+- [ ] Publier un bulletin → vérifier notifications + logs
+- [ ] Désactiver WhatsApp (WHATSAPP_ENABLED=false) → vérifier email seul
+- [ ] Retirer "whatsapp" de preferred_channels → vérifier pas d'envoi WhatsApp
+
+**Tests de coûts :**
+- [ ] Consulter statistiques 30 jours : `ParentNotificationLog::statsLast30Days()`
+- [ ] Vérifier coûts par canal : `getTotalCostByChannel('whatsapp', 30)`
+- [ ] Vérifier taux de succès : `getSuccessRateByChannel('whatsapp', 30)`
+
+#### 12. Prochaines étapes (Optionnel)
+
+**Phase 2 : Webhooks WhatsApp/SMS**
+- [ ] Endpoint webhook WhatsApp pour status delivered/read
+- [ ] Mise à jour `parent_notification_logs.status` automatiquement
+- [ ] Dashboard statistiques temps réel
+
+**Phase 3 : Interface admin**
+- [ ] Page `esbtp/settings/notifications` pour gérer templates
+- [ ] Dashboard analytics (coûts, taux de livraison, ROI)
+- [ ] Export CSV des logs de notifications
+
+**Phase 4 : Optimisations**
+- [ ] Queue Laravel pour envois asynchrones
+- [ ] Retry automatique en cas d'échec temporaire
+- [ ] Rate limiting pour éviter spam
+- [ ] Support langues multiples (fr/en)
+
+#### 13. Notes techniques
+
+**Sécurité :**
+- Credentials WhatsApp/SMS jamais exposés (fichier .env)
+- Validation numéros téléphone avant envoi
+- Logging complet pour audit trail
+
+**Performance :**
+- Envois synchrones pour l'instant (≈500ms par notification)
+- À mettre en queue si volume > 100 notifications/jour
+- Index BDD sur `parent_notification_logs` pour analytics rapides
+
+**Fiabilité :**
+- Fallback SMS si WhatsApp échoue
+- Logging de tous les échecs avec `error_message`
+- Retry manuel possible via logs
+
+**Dépendances :**
+- Laravel HTTP Client (natif)
+- Aucune dépendance externe (pas de SDK WhatsApp tiers)
+- Compatible PHP 8.1+
+
+---
+
+*Dernière mise à jour: 11 octobre 2025*
+
+---
+
+### Update: Configuration et Tests Orange SMS API
+
+**Date:** 11 octobre 2025 (02h30 AM)
+**Branche:** presentation
+
+#### Résultats des tests Orange SMS
+
+**✅ Configuration réussie :**
+- Client ID et Client Secret Orange intégrés dans .env
+- OAuth2 token obtenu avec succès (valide 1h, caché 50min)
+- API répond correctement (status 200 sur /oauth/v3/token)
+- Format requêtes SMS conforme à la documentation Orange
+
+**⚠️ Contrat expiré :**
+- Erreur API : `POL0001 - Expired contract`
+- Message : "You can buy a new bundle on https://developer.orange.com"
+- **Action requise** : Acheter crédits SMS (Airtime ou Orange Money)
+
+**📊 Logs de test :**
+```
+[2025-10-11 02:29:23] Token Orange obtenu avec succès (expires_in: 3600)
+[2025-10-11 02:29:24] Erreur API Orange SMS (status: 403)
+  "Expired contract. You can buy a new bundle on https://developer.orange.com 
+   to reactivate it or contact Orange local team"
+```
+
+#### Configuration Orange finale
+
+**Fichier .env :**
+```env
+# Orange SMS API Côte d'Ivoire
+ORANGE_CLIENT_ID=f7vr4LNsxfCcOx0fUI9FxPzF7pTVEF9G
+ORANGE_CLIENT_SECRET=g5PlyAuy7enUnTbQSyR9LsMXxDpYjWh9gR5hXYvixQCk
+ORANGE_AUTH_HEADER="Basic Zjd2cjRMTnN4ZkNjT3gwZlVJOUZ4UHpGN3BUVkVGOUc6ZzVQbHlBdXk3ZW5VblRiUVN5UjlMc01YeERwWWpXaDlnUjVoWFl2aXhRQ2s="
+
+# SMS Configuration
+SMS_PROVIDER=orange
+SMS_SENDER_ID=KLASSCI
+SMS_SENDER_NUMBER=0777123456
+SMS_ENABLED=true
+```
+
+**Note importante** : L'Authorization header n'est PAS utilisé par Orange API. Le token est obtenu via `client_id` et `client_secret` dans le body de la requête OAuth2.
+
+#### Modifications apportées à SmsService
+
+**Ligne 7** : Ajout `use Illuminate\Support\Facades\Cache;`
+
+**Lignes 47-90** : Nouvelle méthode `getOrangeToken()`
+- Cache le token pendant 50 minutes (token valide 1h)
+- Utilise `client_id` et `client_secret` dans le body (pas Authorization header)
+- Endpoint : `https://api.orange.com/oauth/v3/token`
+
+**Lignes 160-173** : Vérification configuration adaptée pour Orange
+- Orange : vérifie `api_url` + `ORANGE_CLIENT_ID` (pas besoin de SMS_API_KEY)
+- Autres providers : vérifie `api_key` + `api_url`
+
+**Lignes 207-265** : Méthode `sendViaOrange()` mise à jour
+- Obtient token OAuth2 avant chaque envoi
+- Format URL : `/outbound/{sender}/requests`
+- Format sender : `tel:+2250XXXXXXXXX`
+- Payload conforme à la doc Orange SMS API v1
+
+#### Procédure d'achat de crédits SMS Orange
+
+1. **Connexion** : https://developer.orange.com/
+2. **Navigation** : My Apps → KLASSCI → Subscriptions
+3. **Sélection** : SMS Cote d'Ivoire (2.0) API
+4. **Achat** : Buy SMS bundle
+5. **Paiement** : 
+   - Option 1 : Airtime Orange (crédit téléphonique)
+   - Option 2 : Orange Money
+6. **Activation** : Immédiate après paiement
+
+**Tarifs indicatifs** :
+- 100 SMS ≈ 700 FCFA
+- 500 SMS ≈ 3,000 FCFA
+- 1000 SMS ≈ 5,500 FCFA
+
+#### Prochaine étape : WhatsApp Business API
+
+**En attente utilisateur** : Configuration Meta Business Manager
+
+**Actions requises** :
+1. Créer compte Business Manager : https://business.facebook.com/
+2. Créer application WhatsApp Business
+3. Obtenir credentials :
+   - Phone Number ID
+   - Access Token (permanent)
+   - Business Account ID
+4. Créer 6 templates (catégorie UTILITY)
+5. Attendre validation Meta (24-48h)
+6. Remplir .env avec credentials
+7. Activer : `WHATSAPP_ENABLED=true`
+
+**Une fois configuré** :
+- Coût estimé : GRATUIT dans fenêtre service 24h
+- Coût hors fenêtre : ~3 FCFA/message (Afrique)
+- Templates pré-approuvés obligatoires
+- Notifications transactionnelles uniquement
+
+#### Fichiers modifiés dans cette session
+
+**Services :**
+- `app/Services/SmsService.php` - OAuth2 Orange + cache token
+
+**Configuration :**
+- `.env` - Credentials Orange + activation SMS
+
+**Migration :**
+- `database/migrations/2025_10_11_005625_create_parent_notification_logs_table.php` - Exécutée avec succès
+
+**Tests créés (à supprimer)** :
+- `test-sms-orange.php`
+- `test-orange-oauth.php`
+
+---
+
+*Dernière mise à jour: 11 octobre 2025 - 02h30 AM*

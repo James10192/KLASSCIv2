@@ -13,6 +13,7 @@ use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPPaiement;
 use App\Models\ESBTPFacture;
 use App\Models\ESBTPBonSortie;
+use App\Models\ParentNotificationLog;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
@@ -20,6 +21,15 @@ use Carbon\Carbon;
 
 class NotificationService
 {
+    protected $whatsappService;
+    protected $smsService;
+
+    public function __construct()
+    {
+        $this->whatsappService = new WhatsAppService();
+        $this->smsService = new SmsService();
+    }
+
     /**
      * Envoie une relance par email
      */
@@ -2215,6 +2225,189 @@ class NotificationService
             'school_logo' => null, // Pour le template (on utilisera $message->embed)
             'schoolLogoPath' => $logoFullPath, // Chemin complet pour embed
         ];
+    }
+
+    /**
+     * Envoyer notification multi-canal avec tracking
+     *
+     * @param object $tuteur Le parent/tuteur
+     * @param object $etudiant L'étudiant concerné
+     * @param string $notificationType Type de notification (inscription, paiement_valide, etc.)
+     * @param array $data Données pour les templates
+     * @param object $preferences Préférences de notification du parent
+     * @return array Résultat par canal ['email' => bool, 'whatsapp' => bool, 'sms' => bool]
+     */
+    private function sendMultiChannelNotification($tuteur, $etudiant, $notificationType, $data, $preferences)
+    {
+        $results = [
+            'email' => false,
+            'whatsapp' => false,
+            'sms' => false,
+        ];
+
+        try {
+            // 1. EMAIL (toujours prioritaire si activé)
+            if ($preferences->hasChannel('email') && $tuteur->email) {
+                $results['email'] = $this->sendEmailNotification($tuteur, $etudiant, $notificationType, $data);
+            }
+
+            // 2. WHATSAPP (si activé et configuré)
+            if (env('WHATSAPP_ENABLED', false) && $preferences->hasChannel('whatsapp') && $tuteur->telephone) {
+                $results['whatsapp'] = $this->sendWhatsAppNotification($tuteur, $etudiant, $notificationType, $data);
+            }
+
+            // 3. SMS (fallback uniquement si WhatsApp échoue ou parent sans WhatsApp)
+            if (env('SMS_ENABLED', false) && $preferences->hasChannel('sms') && $tuteur->telephone) {
+                // Envoyer SMS uniquement si WhatsApp a échoué OU si pas de WhatsApp
+                if (!$preferences->hasChannel('whatsapp') || !$results['whatsapp']) {
+                    $results['sms'] = $this->sendSmsNotification($tuteur, $etudiant, $notificationType, $data);
+                }
+            }
+
+            return $results;
+
+        } catch (\Exception $e) {
+            Log::error('Erreur notification multi-canal', [
+                'error' => $e->getMessage(),
+                'type' => $notificationType,
+                'parent_id' => $tuteur->id ?? null,
+            ]);
+            return $results;
+        }
+    }
+
+    /**
+     * Envoyer notification par email avec logging
+     */
+    private function sendEmailNotification($tuteur, $etudiant, $notificationType, $data)
+    {
+        try {
+            $log = ParentNotificationLog::create([
+                'parent_id' => $tuteur->id,
+                'etudiant_id' => $etudiant->id,
+                'notification_type' => $notificationType,
+                'channel' => 'email',
+                'status' => 'pending',
+                'recipient' => $tuteur->email,
+                'cost_fcfa' => 0, // Email gratuit
+            ]);
+
+            // Envoyer l'email selon le type
+            $mailClass = match($notificationType) {
+                'inscription' => \App\Mail\Parents\InscriptionConfirmationMail::class,
+                'paiement_valide' => \App\Mail\Parents\PaiementValideMail::class,
+                'paiement_rejete' => \App\Mail\Parents\PaiementRejeteMail::class,
+                'absence' => \App\Mail\Parents\AbsenceNotificationMail::class,
+                'bulletin_publie' => \App\Mail\Parents\BulletinPublishedMail::class,
+                'notes_faibles' => \App\Mail\Parents\LowGradesMail::class,
+                default => null,
+            };
+
+            if ($mailClass) {
+                Mail::to($tuteur->email)->send(new $mailClass($data));
+                $log->markAsSent();
+                return true;
+            }
+
+            $log->markAsFailed('Type de notification non supporté');
+            return false;
+
+        } catch (\Exception $e) {
+            if (isset($log)) {
+                $log->markAsFailed($e->getMessage());
+            }
+            Log::error('Erreur envoi email parent', ['error' => $e->getMessage()]);
+            return false;
+        }
+    }
+
+    /**
+     * Envoyer notification par WhatsApp avec logging
+     */
+    private function sendWhatsAppNotification($tuteur, $etudiant, $notificationType, $data)
+    {
+        try {
+            $log = ParentNotificationLog::create([
+                'parent_id' => $tuteur->id,
+                'etudiant_id' => $etudiant->id,
+                'notification_type' => $notificationType,
+                'channel' => 'whatsapp',
+                'status' => 'pending',
+                'recipient' => $tuteur->telephone,
+                'cost_fcfa' => 3.3, // Coût moyen utility message Afrique (hors fenêtre gratuite)
+            ]);
+
+            // Envoyer via WhatsApp selon le type
+            $result = match($notificationType) {
+                'inscription' => $this->whatsappService->sendInscriptionNotification($tuteur->telephone, $data),
+                'paiement_valide' => $this->whatsappService->sendPaiementValideNotification($tuteur->telephone, $data),
+                'paiement_rejete' => $this->whatsappService->sendPaiementRejeteNotification($tuteur->telephone, $data),
+                'absence' => $this->whatsappService->sendAbsenceNotification($tuteur->telephone, $data),
+                'bulletin_publie' => $this->whatsappService->sendBulletinPublishedNotification($tuteur->telephone, $data),
+                'notes_faibles' => $this->whatsappService->sendLowGradesNotification($tuteur->telephone, $data),
+                default => false,
+            };
+
+            if ($result) {
+                $externalId = $result['messages'][0]['id'] ?? null;
+                $log->markAsSent($externalId);
+                return true;
+            }
+
+            $log->markAsFailed('Échec envoi WhatsApp');
+            return false;
+
+        } catch (\Exception $e) {
+            if (isset($log)) {
+                $log->markAsFailed($e->getMessage());
+            }
+            Log::error('Erreur envoi WhatsApp parent', ['error' => $e->getMessage()]);
+            return false;
+        }
+    }
+
+    /**
+     * Envoyer notification par SMS avec logging
+     */
+    private function sendSmsNotification($tuteur, $etudiant, $notificationType, $data)
+    {
+        try {
+            $log = ParentNotificationLog::create([
+                'parent_id' => $tuteur->id,
+                'etudiant_id' => $etudiant->id,
+                'notification_type' => $notificationType,
+                'channel' => 'sms',
+                'status' => 'pending',
+                'recipient' => $tuteur->telephone,
+                'cost_fcfa' => 7, // Coût moyen SMS Côte d'Ivoire
+            ]);
+
+            // Envoyer via SMS selon le type
+            $result = match($notificationType) {
+                'inscription' => $this->smsService->sendInscriptionNotification($tuteur->telephone, $data),
+                'paiement_valide' => $this->smsService->sendPaiementValideNotification($tuteur->telephone, $data),
+                'paiement_rejete' => $this->smsService->sendPaiementRejeteNotification($tuteur->telephone, $data),
+                'absence' => $this->smsService->sendAbsenceNotification($tuteur->telephone, $data),
+                'bulletin_publie' => $this->smsService->sendBulletinPublishedNotification($tuteur->telephone, $data),
+                'notes_faibles' => $this->smsService->sendLowGradesNotification($tuteur->telephone, $data),
+                default => false,
+            };
+
+            if ($result) {
+                $log->markAsSent();
+                return true;
+            }
+
+            $log->markAsFailed('Échec envoi SMS');
+            return false;
+
+        } catch (\Exception $e) {
+            if (isset($log)) {
+                $log->markAsFailed($e->getMessage());
+            }
+            Log::error('Erreur envoi SMS parent', ['error' => $e->getMessage()]);
+            return false;
+        }
     }
 
     /**
