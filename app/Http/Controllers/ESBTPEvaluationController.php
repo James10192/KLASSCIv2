@@ -576,15 +576,43 @@ class ESBTPEvaluationController extends Controller
                 ->with('error', 'Accès non autorisé.');
         }
 
+        // 1. Récupérer l'année universitaire courante
+        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        if (!$anneeCourante) {
+            return view('etudiants.evaluations', [
+                'evaluations' => collect([]),
+                'anneeCourante' => null,
+                'inscription' => null,
+            ]);
+        }
+
+        // 2. Vérifier si l'étudiant a une inscription active pour l'année courante
+        $inscription = $student->inscriptions()
+            ->where('status', 'active')
+            ->where('annee_universitaire_id', $anneeCourante->id)
+            ->with(['classe.filiere', 'classe.niveauEtude', 'anneeUniversitaire'])
+            ->first();
+
+        if (!$inscription) {
+            return view('etudiants.evaluations', [
+                'evaluations' => collect([]),
+                'anneeCourante' => $anneeCourante,
+                'inscription' => null,
+            ])->with('warning', 'Vous n\'avez pas d\'inscription active pour l\'année en cours. Veuillez contacter l\'administration.');
+        }
+
+        // 3. Récupérer les évaluations de l'année courante uniquement
         $evaluations = ESBTPEvaluation::with(['matiere', 'classe'])
             ->forStudent($student->id)
             ->where('is_published', true)
+            ->where('annee_universitaire_id', $anneeCourante->id)
             ->whereIn('status', ['scheduled', 'in_progress', 'completed'])
             ->orderBy('date_evaluation', 'desc')
             ->get()
             ->groupBy('type');
 
-        return view('etudiants.evaluations', compact('evaluations'));
+        return view('etudiants.evaluations', compact('evaluations', 'anneeCourante', 'inscription'));
     }
 
     public function updateStatus(Request $request, ESBTPEvaluation $evaluation)

@@ -2,7 +2,7 @@
 
 ## Corrections récentes
 
-### Fix: Notifications affichant "N/A" + Fallback pour pages dashboard étudiant sans inscription
+### Fix: Filtrage année courante et fallback complet pour TOUTES les pages dashboard étudiant
 
 **Date:** 10 octobre 2025
 **Branche:** presentation
@@ -16,7 +16,18 @@
 
 2. **Pages dashboard étudiant crashaient si pas d'inscription année courante**
    - **Cause**: Aucune gestion du cas où `$inscription = null`
-   - **Impact**: Erreurs "Trying to get property of non-object" sur mes-paiements, emploi-temps, etc.
+   - **Impact**: Erreurs "Trying to get property of non-object" sur mes-paiements, mes-absences, mes-notes, mes-evaluations, mon-bulletin
+
+3. **Mauvaise année universitaire récupérée (is_active vs is_current)**
+   - **Cause**: Utilisation de `where('is_active', true)` au lieu de `where('is_current', true)`
+   - **Problème**: Plusieurs années peuvent avoir `is_active = true` (2023-2024, 2024-2025, 2025-2026)
+   - **Impact**: `->first()` retournait la première année active au lieu de l'année courante
+   - **Résultat**: Pas d'inscription trouvée car l'étudiant est inscrit dans une autre année
+
+4. **Affichage de données historiques sur notes et évaluations**
+   - **Cause**: Pas de filtre par `annee_universitaire_id` dans les requêtes
+   - **Impact**: Les étudiants voyaient TOUTES leurs notes/évaluations de toutes les années
+   - **Attendu**: Afficher uniquement les données de l'année courante
 
 #### Solutions implémentées
 
@@ -76,7 +87,64 @@ Ajout d'un bloc conditionnel si pas d'inscription :
 @endif
 ```
 
+**2. Correction is_active → is_current dans TOUS les contrôleurs dashboard**
+
+Changement systématique dans tous les contrôleurs :
+```php
+// ❌ AVANT
+$anneeCourante = ESBTPAnneeUniversitaire::where('is_active', true)->first();
+
+// ✅ APRÈS
+$anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+```
+
+**3. Ajout du filtrage par année courante pour notes et évaluations**
+
+```php
+// Filtrer les notes par année courante via la relation evaluation
+$notes = ESBTPNote::where('etudiant_id', $etudiant->id)
+    ->whereHas('evaluation', function($query) use ($anneeCourante) {
+        $query->where('annee_universitaire_id', $anneeCourante->id);
+    })
+    ->with(['evaluation', 'matiere'])
+    ->get();
+
+// Filtrer les évaluations par année courante
+$evaluations = ESBTPEvaluation::with(['matiere', 'classe'])
+    ->forStudent($student->id)
+    ->where('is_published', true)
+    ->where('annee_universitaire_id', $anneeCourante->id)
+    ->whereIn('status', ['scheduled', 'in_progress', 'completed'])
+    ->get();
+```
+
+**4. Ajout du fallback pour toutes les pages dashboard**
+
+Pattern standard appliqué à TOUTES les pages :
+```php
+// 1. Récupérer année courante
+$anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+// 2. Vérifier inscription active
+$inscription = $etudiant->inscriptions()
+    ->where('status', 'active')
+    ->where('annee_universitaire_id', $anneeCourante->id)
+    ->with(['classe.filiere', 'classe.niveauEtude', 'anneeUniversitaire'])
+    ->first();
+
+// 3. Retourner fallback si pas d'inscription
+if (!$inscription) {
+    return view('page', [
+        'data' => collect([]),
+        'inscription' => null,
+        'anneeCourante' => $anneeCourante,
+    ])->with('warning', 'Vous n\'avez pas d\'inscription active...');
+}
+```
+
 #### Fichiers modifiés
+
+**Controllers:**
 
 - [app/Services/NotificationService.php](app/Services/NotificationService.php):
   - Ligne 2227: Ajout eager loading `notifyParentsInscriptionCreated()`
@@ -85,19 +153,81 @@ Ajout d'un bloc conditionnel si pas d'inscription :
   - Lignes 2742-2745: Correction noms de champs
 
 - [app/Http/Controllers/ESBTP/MesPaiementsController.php](app/Http/Controllers/ESBTP/MesPaiementsController.php):
+  - Ligne 33: `where('is_active', true)` → `where('is_current', true)`
   - Ligne 53: Ajout `->with(['classe.filiere', 'classe.niveauEtude', 'anneeUniversitaire'])`
   - Lignes 56-69: Ajout fallback si `!$inscription` avec message warning
+
+- [app/Http/Controllers/ESBTPAttendanceController.php](app/Http/Controllers/ESBTPAttendanceController.php):
+  - Ligne 913: `where('is_active', true)` → `where('is_current', true)`
+  - Lignes 916-922: Ajout eager loading et vérification inscription
+  - Lignes 924-937: Ajout fallback si pas d'inscription
+
+- [app/Http/Controllers/ESBTPNoteController.php](app/Http/Controllers/ESBTPNoteController.php):
+  - Ligne 507: Ajout récupération année courante avec `is_current`
+  - Ligne 515: Ajout vérification inscription avec eager loading
+  - Lignes 526-532: Ajout fallback si pas d'inscription
+  - Lignes 535-540: **Filtrage des notes par année courante** via `whereHas('evaluation')`
+
+- [app/Http/Controllers/ESBTPEvaluationController.php](app/Http/Controllers/ESBTPEvaluationController.php):
+  - Ligne 580: Ajout récupération année courante avec `is_current`
+  - Ligne 591: Ajout vérification inscription avec eager loading
+  - Lignes 597-602: Ajout fallback si pas d'inscription
+  - Ligne 609: **Filtrage des évaluations par année courante** avec `where('annee_universitaire_id', $anneeCourante->id)`
+
+- [app/Http/Controllers/ESBTPBulletinController.php](app/Http/Controllers/ESBTPBulletinController.php):
+  - Ligne 2172: Ajout récupération année courante avec `is_current`
+  - Ligne 2184: Ajout vérification inscription avec eager loading
+  - Lignes 2190-2196: Ajout fallback si pas d'inscription
+  - Ligne 2201: **Filtrage des bulletins par année courante** avec `where('annee_universitaire_id', $anneeCourante->id)`
+  - Ligne 2231: Ajout `anneeCourante` et `inscription` dans compact()
+
+**Views:**
 
 - [resources/views/etudiants/mes-paiements/index.blade.php](resources/views/etudiants/mes-paiements/index.blade.php):
   - Lignes 381-386: Ajout alerte warning session
   - Lignes 388-403: Bloc conditionnel si pas d'inscription
   - Ligne 579: Fermeture `@endif` pour le bloc d'inscription
 
+- [resources/views/esbtp/attendances/mes-absences.blade.php](resources/views/esbtp/attendances/mes-absences.blade.php):
+  - Lignes 147-152: Ajout alerte warning session
+  - Lignes 154-169: Bloc conditionnel si pas d'inscription
+  - Ligne 322: Fermeture `@endif` pour le bloc d'inscription
+
+- [resources/views/etudiants/notes.blade.php](resources/views/etudiants/notes.blade.php):
+  - Lignes 393-398: Ajout alerte warning session
+  - Lignes 400-415: Bloc conditionnel si pas d'inscription
+  - Ligne 583: Fermeture `@endif` pour le bloc d'inscription
+
+- [resources/views/etudiants/evaluations.blade.php](resources/views/etudiants/evaluations.blade.php):
+  - Lignes 381-386: Ajout alerte warning session
+  - Lignes 388-403: Bloc conditionnel si pas d'inscription
+  - Ligne 632: Fermeture `@endif` pour le bloc d'inscription
+
+- [resources/views/esbtp/bulletins/mon-bulletin.blade.php](resources/views/esbtp/bulletins/mon-bulletin.blade.php):
+  - Lignes 271-277: Ajout alerte warning session
+  - Lignes 279-294: Bloc conditionnel si pas d'inscription
+  - Ligne 408: Fermeture `@endif` pour le bloc d'inscription
+
+#### Récapitulatif des pages corrigées
+
+| Page | Contrôleur | Filtrage année courante | Fallback inscription |
+|------|-----------|------------------------|---------------------|
+| Mes Paiements | MesPaiementsController | ✅ is_current | ✅ Oui |
+| Mes Absences | ESBTPAttendanceController | ✅ is_current | ✅ Oui |
+| Mes Notes | ESBTPNoteController | ✅ is_current + whereHas | ✅ Oui |
+| Mes Évaluations | ESBTPEvaluationController | ✅ is_current + where | ✅ Oui |
+| Mon Bulletin | ESBTPBulletinController | ✅ is_current + where | ✅ Oui |
+| Mon Emploi du Temps | - | ✅ Déjà OK | ✅ Déjà OK |
+
 #### Tests effectués
 
-✅ Suppression anciennes notifications avec "N/A"
-✅ Envoi nouvelles notifications avec eager loading
-✅ Vérification affichage correct : "Année 2025-2026", "Classe 2A BTS L Batiment"
+✅ Notifications : Vérification affichage correct "Année 2025-2026", "Classe 2A BTS L Batiment"
+✅ Année courante : Utilisation de `is_current` sur toutes les pages (pas `is_active`)
+✅ Filtrage notes : Uniquement notes de l'année courante via `whereHas('evaluation')`
+✅ Filtrage évaluations : Uniquement évaluations de l'année courante via `where('annee_universitaire_id')`
+✅ Filtrage bulletins : Uniquement bulletins de l'année courante
+✅ Fallback inscription : Message d'avertissement si pas d'inscription active pour année courante
+✅ Eager loading : Toutes les relations chargées correctement (classe, filiere, niveauEtude, anneeUniversitaire)
 ✅ Test page mes-paiements sans inscription (affiche message d'alerte)
 ✅ Test page mes-paiements avec inscription (affiche KPI et tableau)
 

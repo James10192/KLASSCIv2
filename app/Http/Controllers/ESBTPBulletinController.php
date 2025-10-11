@@ -2168,8 +2168,37 @@ class ESBTPBulletinController extends Controller
             return redirect()->route('dashboard')->with('error', 'Profil étudiant non trouvé.');
         }
 
-        // Récupérer les bulletins avec les relations nécessaires
+        // 1. Récupérer l'année universitaire courante
+        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        if (!$anneeCourante) {
+            return view('esbtp.bulletins.mon-bulletin', [
+                'bulletins' => collect([]),
+                'etudiant' => $etudiant,
+                'anneeCourante' => null,
+                'inscription' => null,
+            ]);
+        }
+
+        // 2. Vérifier si l'étudiant a une inscription active pour l'année courante
+        $inscription = $etudiant->inscriptions()
+            ->where('status', 'active')
+            ->where('annee_universitaire_id', $anneeCourante->id)
+            ->with(['classe.filiere', 'classe.niveauEtude', 'anneeUniversitaire'])
+            ->first();
+
+        if (!$inscription) {
+            return view('esbtp.bulletins.mon-bulletin', [
+                'bulletins' => collect([]),
+                'etudiant' => $etudiant,
+                'anneeCourante' => $anneeCourante,
+                'inscription' => null,
+            ])->with('warning', 'Vous n\'avez pas d\'inscription active pour l\'année en cours. Veuillez contacter l\'administration.');
+        }
+
+        // 3. Récupérer les bulletins de l'année courante uniquement
         $bulletins = ESBTPBulletin::where('etudiant_id', $etudiant->id)
+            ->where('annee_universitaire_id', $anneeCourante->id)
             ->with(['classe', 'anneeUniversitaire'])
             ->orderBy('created_at', 'desc')
             ->get();
@@ -2199,7 +2228,7 @@ class ESBTPBulletinController extends Controller
             }
         }
 
-        return view('esbtp.bulletins.mon-bulletin', compact('bulletins', 'etudiant'));
+        return view('esbtp.bulletins.mon-bulletin', compact('bulletins', 'etudiant', 'anneeCourante', 'inscription'));
     }
 
     /**

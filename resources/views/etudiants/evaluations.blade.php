@@ -378,6 +378,29 @@
             </div>
         @endif
 
+        @if(session('warning'))
+            <div class="alert alert-warning" style="margin: var(--space-lg) 0;">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                {{ session('warning') }}
+            </div>
+        @endif
+
+        @if(!isset($inscription) || !$inscription)
+            <div class="card-moderne" style="margin: var(--space-xl) 0;">
+                <div class="card-body text-center" style="padding: var(--space-3xl) var(--space-2xl);">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 3.5rem; color: var(--warning); margin-bottom: var(--space-lg);"></i>
+                    <h4 style="font-weight: 700; margin-bottom: var(--space-md); color: var(--text-primary);">Aucune inscription active</h4>
+                    <p style="color: var(--text-secondary); margin-bottom: var(--space-xl); max-width: 600px; margin-left: auto; margin-right: auto;">
+                        Vous n'avez pas d'inscription active pour l'année universitaire <strong>{{ $anneeCourante->name ?? 'en cours' }}</strong>.
+                        Veuillez contacter l'administration pour régulariser votre situation.
+                    </p>
+                    <a href="{{ route('esbtp.mon-profil.index') }}" class="btn-acasi primary">
+                        <i class="fas fa-user me-2"></i>
+                        Voir mon profil
+                    </a>
+                </div>
+            </div>
+        @else
         <!-- Section Toggle -->
         <div class="toggle-section">
             <div class="toggle-buttons">
@@ -605,6 +628,7 @@
                     </div>
                 </div>
             </div>
+        @endif
         @endif
     </div>
 </div>

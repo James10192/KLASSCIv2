@@ -510,12 +510,38 @@ class ESBTPNoteController extends Controller
             return redirect()->route('dashboard')->with('error', 'Profil étudiant non trouvé.');
         }
 
+        // Récupérer l'année universitaire courante
+        $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        // Vérifier si l'étudiant a une inscription active pour l'année courante
+        $inscription = null;
+        if ($anneeCourante) {
+            $inscription = $etudiant->inscriptions()
+                ->where('status', 'active')
+                ->where('annee_universitaire_id', $anneeCourante->id)
+                ->with(['classe.filiere', 'classe.niveauEtude', 'anneeUniversitaire'])
+                ->first();
+        }
+
+        if (!$inscription) {
+            return view('esbtp.etudiants.notes', [
+                'notes' => collect([]),
+                'etudiant' => $etudiant,
+                'inscription' => null,
+                'anneeCourante' => $anneeCourante,
+            ])->with('warning', 'Vous n\'avez pas d\'inscription active pour l\'année en cours. Veuillez contacter l\'administration.');
+        }
+
+        // Récupérer les notes de l'année courante uniquement
         $notes = ESBTPNote::where('etudiant_id', $etudiant->id)
+            ->whereHas('evaluation', function($query) use ($anneeCourante) {
+                $query->where('annee_universitaire_id', $anneeCourante->id);
+            })
             ->with(['evaluation', 'matiere'])
             ->orderBy('created_at', 'desc')
             ->get();
 
-        return view('esbtp.etudiants.notes', compact('notes', 'etudiant'));
+        return view('esbtp.etudiants.notes', compact('notes', 'etudiant', 'inscription', 'anneeCourante'));
     }
 
     /**

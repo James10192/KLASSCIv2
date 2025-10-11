@@ -268,6 +268,30 @@
             </div>
         @endif
 
+        @if(session('warning'))
+            <div class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                {{ session('warning') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+
+        @if(!isset($inscription) || !$inscription)
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <i class="fas fa-exclamation-triangle" style="color: var(--warning);"></i>
+                </div>
+                <div class="empty-state-title">Aucune inscription active</div>
+                <p class="empty-state-text">
+                    Vous n'avez pas d'inscription active pour l'année universitaire <strong>{{ $anneeCourante->name ?? 'en cours' }}</strong>.<br>
+                    Veuillez contacter l'administration pour régulariser votre situation.
+                </p>
+                <a href="{{ route('esbtp.mon-profil.index') }}" class="btn-acasi primary" style="margin-top: var(--space-lg);">
+                    <i class="fas fa-user me-2"></i>
+                    Voir mon profil
+                </a>
+            </div>
+        @else
         <!-- Contenu -->
         @if($bulletins->isEmpty())
             <div class="empty-state">
@@ -380,6 +404,7 @@
                     </div>
                 @endforeach
             </div>
+        @endif
         @endif
     </div>
 </div>
