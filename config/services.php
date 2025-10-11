@@ -30,4 +30,22 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | KLASSCI Master API Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration pour l'API Master qui gère le paywall centralisé.
+    | L'API Master vérifie les quotas d'abonnement et les limites d'usage
+    | pour tous les tenants (établissements scolaires).
+    |
+    | Cache: 5 minutes pour limiter les appels API
+    | Fallback: Système local si API Master indisponible
+    |
+    */
+    'master' => [
+        'api_url' => env('MASTER_API_URL'),
+        'api_token' => env('MASTER_API_TOKEN'),
+    ],
+
 ];

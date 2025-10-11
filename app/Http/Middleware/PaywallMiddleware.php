@@ -4,6 +4,8 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
 use App\Models\ESBTPSystemSetting;
 use App\Models\User;
 use App\Models\ESBTPEtudiant;
@@ -81,7 +83,7 @@ class PaywallMiddleware
             return $next($request);
         }
 
-        // Vérifier le statut du paywall
+        // Vérifier le statut du paywall (via API Master ou fallback local)
         $status = $this->checkPaywallStatus();
 
         if ($status['is_blocked']) {
@@ -180,8 +182,160 @@ class PaywallMiddleware
 
     /**
      * Vérifier le statut du paywall
+     * Nouvelle version : Appelle l'API Master avec cache + fallback local
      */
     protected function checkPaywallStatus()
+    {
+        // Essayer d'obtenir les limites depuis l'API Master (avec cache 5 min)
+        $limitsFromMaster = $this->getLimitsFromMaster();
+
+        if ($limitsFromMaster) {
+            \Log::info('PaywallMiddleware: Utilisation des limites depuis API Master');
+            return $this->buildStatusFromMasterApi($limitsFromMaster);
+        }
+
+        // Fallback : Utiliser le système local
+        \Log::warning('PaywallMiddleware: API Master indisponible, fallback vers système local');
+        return $this->checkPaywallStatusLocal();
+    }
+
+    /**
+     * Récupérer les limites depuis l'API Master (avec cache 5min)
+     */
+    protected function getLimitsFromMaster()
+    {
+        // Vérifier si l'API Master est configurée
+        $masterApiUrl = config('services.master.api_url');
+        $masterApiToken = config('services.master.api_token');
+        $tenantCode = config('app.tenant_code');
+
+        if (!$masterApiUrl || !$masterApiToken || !$tenantCode) {
+            \Log::warning('PaywallMiddleware: Configuration API Master manquante', [
+                'has_url' => !empty($masterApiUrl),
+                'has_token' => !empty($masterApiToken),
+                'has_code' => !empty($tenantCode),
+            ]);
+            return null;
+        }
+
+        // Utiliser le cache pour éviter trop d'appels API (5 minutes)
+        $cacheKey = 'paywall_limits_' . $tenantCode;
+
+        return Cache::remember($cacheKey, 300, function () use ($masterApiUrl, $masterApiToken, $tenantCode) {
+            try {
+                \Log::info('PaywallMiddleware: Appel API Master', [
+                    'url' => $masterApiUrl . '/tenants/' . $tenantCode . '/limits',
+                ]);
+
+                $response = Http::withToken($masterApiToken)
+                    ->timeout(10)
+                    ->get($masterApiUrl . '/tenants/' . $tenantCode . '/limits');
+
+                if ($response->successful()) {
+                    $data = $response->json();
+                    \Log::info('PaywallMiddleware: API Master réponse OK', [
+                        'is_over_quota' => $data['quota_status']['is_over_quota'] ?? null,
+                        'blocked_features' => $data['blocked_features'] ?? [],
+                    ]);
+                    return $data;
+                }
+
+                \Log::error('PaywallMiddleware: API Master erreur HTTP', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+
+                return null;
+            } catch (\Exception $e) {
+                \Log::error('PaywallMiddleware: Erreur appel API Master', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                return null;
+            }
+        });
+    }
+
+    /**
+     * Construire le statut depuis la réponse de l'API Master
+     */
+    protected function buildStatusFromMasterApi($apiData)
+    {
+        $status = [
+            'is_blocked' => false,
+            'reasons' => [],
+            'warnings' => [],
+        ];
+
+        // Vérifier l'expiration de l'abonnement
+        if ($apiData['subscription']['is_expired'] ?? false) {
+            $status['is_blocked'] = true;
+            $endDate = $apiData['subscription']['end_date'] ?? 'date inconnue';
+            $status['reasons'][] = 'Abonnement expiré le ' . Carbon::parse($endDate)->format('d/m/Y');
+        } elseif (isset($apiData['subscription']['days_remaining'])) {
+            $daysRemaining = (int) $apiData['subscription']['days_remaining'];
+            if ($daysRemaining <= 7 && $daysRemaining > 0) {
+                $status['warnings'][] = 'Abonnement expire dans ' . $daysRemaining . ' jour(s)';
+            }
+        }
+
+        // Vérifier si le quota est dépassé (is_over_quota)
+        if ($apiData['quota_status']['is_over_quota'] ?? false) {
+            $status['is_blocked'] = true;
+
+            // Ajouter des raisons détaillées selon les limites dépassées
+            if ($apiData['quota_status']['users_over_limit'] ?? false) {
+                $current = $apiData['current_usage']['users'] ?? 0;
+                $max = $apiData['limits']['max_users'] ?? 0;
+                $status['reasons'][] = "Limite d'utilisateurs dépassée ($current/$max)";
+            }
+
+            if ($apiData['quota_status']['staff_over_limit'] ?? false) {
+                $current = $apiData['current_usage']['staff'] ?? 0;
+                $max = $apiData['limits']['max_staff'] ?? 0;
+                $status['reasons'][] = "Limite de personnel dépassée ($current/$max)";
+            }
+
+            if ($apiData['quota_status']['students_over_limit'] ?? false) {
+                $current = $apiData['current_usage']['students'] ?? 0;
+                $max = $apiData['limits']['max_students'] ?? 0;
+                $status['reasons'][] = "Limite d'étudiants dépassée ($current/$max)";
+            }
+
+            if ($apiData['quota_status']['inscriptions_over_limit'] ?? false) {
+                $current = $apiData['current_usage']['inscriptions_per_year'] ?? 0;
+                $max = $apiData['limits']['max_inscriptions_per_year'] ?? 0;
+                $status['reasons'][] = "Limite d'inscriptions pour l'année dépassée ($current/$max)";
+            }
+
+            if ($apiData['quota_status']['storage_over_limit'] ?? false) {
+                $current = $apiData['current_usage']['storage_mb'] ?? 0;
+                $max = $apiData['limits']['max_storage_mb'] ?? 0;
+                $status['reasons'][] = "Limite de stockage dépassée ($current/$max Mo)";
+            }
+        }
+
+        // Ajouter des avertissements si proche des limites (>= 90%)
+        foreach (['users', 'staff', 'students', 'inscriptions', 'storage'] as $type) {
+            $usagePercent = $apiData['usage_percentage'][$type] ?? 0;
+            if ($usagePercent >= 90 && $usagePercent < 100) {
+                $limitKey = $type === 'inscriptions' ? 'max_inscriptions_per_year' : 'max_' . $type;
+                $usageKey = $type === 'inscriptions' ? 'inscriptions_per_year' : $type;
+
+                $current = $apiData['current_usage'][$usageKey] ?? 0;
+                $max = $apiData['limits'][$limitKey] ?? 0;
+
+                $status['warnings'][] = "Proche de la limite de $type ($current/$max - {$usagePercent}%)";
+            }
+        }
+
+        return $status;
+    }
+
+    /**
+     * Vérifier le statut du paywall (ancien système local - fallback)
+     */
+    protected function checkPaywallStatusLocal()
     {
         $status = [
             'is_blocked' => false,

@@ -58,6 +58,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Tenant Code
+    |--------------------------------------------------------------------------
+    |
+    | Code unique identifiant cet établissement (tenant) dans le système
+    | multi-tenant KLASSCI. Utilisé pour les appels API vers Master.
+    |
+    */
+
+    'tenant_code' => env('TENANT_CODE', 'default'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |
