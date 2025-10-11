@@ -909,8 +909,19 @@ class ESBTPAttendanceController extends Controller
             abort(403, 'Profil étudiant non trouvé');
         }
 
-        // Check if student has an associated class
-        if (!$etudiant->classe) {
+        // Check if student has an active inscription for current year
+        $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $inscription = null;
+
+        if ($anneeCourante) {
+            $inscription = $etudiant->inscriptions()
+                ->where('status', 'active')
+                ->where('annee_universitaire_id', $anneeCourante->id)
+                ->with(['classe.filiere', 'classe.niveauEtude', 'anneeUniversitaire'])
+                ->first();
+        }
+
+        if (!$inscription) {
             return view('etudiants.attendances', [
                 'absences' => collect(),
                 'presences' => collect(),
@@ -919,8 +930,11 @@ class ESBTPAttendanceController extends Controller
                 'matieres' => collect(),
                 'absencesParMatiere' => [],
                 'absencesMensuelles' => collect(),
-                'error' => 'Vous n\'êtes pas encore assigné à une classe.'
-            ]);
+                'inscription' => null,
+                'anneeCourante' => $anneeCourante,
+                'etudiant' => $etudiant,
+                'error' => 'Vous n\'avez pas d\'inscription active pour l\'année en cours.'
+            ])->with('warning', 'Vous n\'avez pas d\'inscription active pour l\'année en cours. Veuillez contacter l\'administration.');
         }
 
         // Build the base query

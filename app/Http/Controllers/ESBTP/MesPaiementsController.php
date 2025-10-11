@@ -30,7 +30,7 @@ class MesPaiementsController extends Controller
             }
 
             // 2. Récupérer l'année universitaire courante
-            $anneeCourante = ESBTPAnneeUniversitaire::where('is_active', true)->first();
+            $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
             if (!$anneeCourante) {
                 return view('etudiants.mes-paiements.index', [

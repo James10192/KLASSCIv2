@@ -386,11 +386,11 @@
         @endif
 
         @if(!$inscription)
-            <div class="card-moderne">
-                <div class="card-body text-center" style="padding: var(--space-2xl);">
-                    <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: var(--warning); margin-bottom: var(--space-lg);"></i>
-                    <h4>Aucune inscription active</h4>
-                    <p style="color: var(--text-secondary); margin-bottom: var(--space-lg);">
+            <div class="card-moderne" style="margin: var(--space-xl) 0;">
+                <div class="card-body text-center" style="padding: var(--space-3xl) var(--space-2xl);">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 3.5rem; color: var(--warning); margin-bottom: var(--space-xl); display: inline-block;"></i>
+                    <h4 style="margin-bottom: var(--space-md); font-weight: 700;">Aucune inscription active</h4>
+                    <p style="color: var(--text-secondary); margin-bottom: var(--space-xl); max-width: 600px; margin-left: auto; margin-right: auto;">
                         Vous n'avez pas d'inscription active pour l'année en cours.
                         Veuillez contacter l'administration pour régulariser votre situation.
                     </p>

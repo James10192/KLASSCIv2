@@ -111,13 +111,26 @@ Ajout d'un bloc conditionnel si pas d'inscription :
 - Notifications : "L'inscription de Patrick Jean KOUAME a été enregistrée pour l'année 2025-2026."
 - Pages dashboard : Message d'alerte clair + fallback données vides
 
+#### Fix critique : Utilisation de `is_current` au lieu de `is_active`
+
+**Problème identifié après commit :**
+- Plusieurs années universitaires ont `is_active = true` (2023-2024, 2024-2025, 2025-2026)
+- Le filtre `where('is_active', true)` retournait la première année (ID 1: 2024-2025)
+- L'inscription de l'étudiant est dans l'année 2025-2026 (ID 4)
+- **Solution** : Utiliser `where('is_current', true)` pour récupérer l'année courante unique
+
+**Fichiers corrigés :**
+- `MesPaiementsController.php` ligne 33 : `is_active` → `is_current`
+- `ESBTPAttendanceController.php` ligne 913 : `is_active` → `is_current`
+- `mes-paiements/index.blade.php` : Amélioration padding/margin carte "Aucune inscription"
+
 #### Prochaines étapes
 
 Appliquer le même pattern (eager loading + fallback) sur les autres pages dashboard étudiant :
 - [ ] Mes Notes
 - [ ] Mes Évaluations
 - [ ] Mon Emploi du Temps (déjà géré partiellement)
-- [ ] Mes Absences
+- [x] Mes Absences (fait)
 - [ ] Mon Bulletin
 
 ---
