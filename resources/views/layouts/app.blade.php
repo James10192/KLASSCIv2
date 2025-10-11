@@ -1933,6 +1933,13 @@
                             <div class="menu-text">Mes résultats et bulletin</div>
                         </a>
                     </div>
+
+                    <div class="menu-item">
+                        <a href="{{ route('esbtp.mes-paiements.index') }}" class="menu-link {{ request()->routeIs('esbtp.mes-paiements.*') ? 'active' : '' }}">
+                            <div class="menu-icon"><i class="fas fa-wallet"></i></div>
+                            <div class="menu-text">Mes paiements</div>
+                        </a>
+                    </div>
                     @endrole
 
                     <!-- Section profil utilisateur -->

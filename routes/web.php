@@ -868,6 +868,11 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->name('mes-evaluations.index')
                 ->middleware(['permission:view_own_exams|view_exams']);
 
+            // Route pour accéder à la page des paiements de l'étudiant
+            Route::get('/mes-paiements', [\App\Http\Controllers\ESBTP\MesPaiementsController::class, 'index'])
+                ->name('mes-paiements.index')
+                ->middleware(['permission:view_own_profile|view_own_notes']);
+
             // Routes pour les notifications des étudiants
             Route::get('/mes-notifications', [ESBTPNotificationController::class, 'index'])->name('mes-notifications.index');
             Route::post('/mes-notifications/{id}/read', [ESBTPNotificationController::class, 'markAsRead'])

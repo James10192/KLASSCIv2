@@ -2223,6 +2223,9 @@ class NotificationService
     public function notifyParentsInscriptionCreated($inscription, $credentials)
     {
         try {
+            // Charger toutes les relations nécessaires
+            $inscription->load(['classe.filiere', 'classe.niveauEtude', 'anneeUniversitaire', 'etudiant']);
+
             $etudiant = $inscription->etudiant;
 
             // Le parent utilise le compte de l'étudiant
@@ -2272,14 +2275,14 @@ class NotificationService
                 'parentName' => $tuteur->prenoms . ' ' . $tuteur->nom,
                 'studentName' => $etudiant->prenoms . ' ' . $etudiant->nom,
                 'matricule' => $etudiant->matricule ?? 'N/A',
-                'classe' => $inscription->classe->nom ?? 'N/A',
-                'filiere' => $inscription->classe->filiere->nom ?? 'N/A',
-                'niveauEtude' => $inscription->classe->niveau->nom ?? 'N/A',
-                'anneeUniversitaire' => $inscription->anneeUniversitaire->annee ?? 'N/A',
+                'classe' => $inscription->classe->name ?? 'N/A',
+                'filiere' => $inscription->classe->filiere->name ?? 'N/A',
+                'niveauEtude' => $inscription->classe->niveauEtude->name ?? 'N/A',
+                'anneeUniversitaire' => $inscription->anneeUniversitaire->name ?? 'N/A',
                 'dateInscription' => $inscription->created_at ? $inscription->created_at->format('d/m/Y') : date('d/m/Y'),
                 'username' => $credentials['username'],
                 'password' => $credentials['password'],
-                'platformUrl' => config('app.url'),
+                'platformUrl' => route('dashboard'),
                 'montantTotal' => $totalAttendu,
                 'montantPaye' => $totalPaye,
                 'montantDu' => max(0, $soldeRestant), // Pas de montant négatif
@@ -2356,17 +2359,22 @@ class NotificationService
             $soldeRestant = $totalAttendu - $totalPaye;
 
             $data = [
-                'parent_nom' => $tuteur->nom,
-                'etudiant_nom' => $etudiant->nom,
-                'etudiant_prenoms' => $etudiant->prenoms,
+                'parentName' => $tuteur->nom . ' ' . $tuteur->prenoms,
+                'studentName' => $etudiant->prenoms . ' ' . $etudiant->nom,
                 'montant' => $paiement->montant,
-                'reference' => $paiement->reference,
-                'numero_recu' => $paiement->numero_recu,
-                'total_paye' => $totalPaye,
-                'reliquat' => max(0, $soldeRestant),
-                'taux_paiement' => $totalAttendu > 0
+                'reference' => $paiement->reference_paiement ?? 'N/A',
+                'numeroRecu' => $paiement->numero_recu ?? 'En cours de génération',
+                'modePaiement' => $paiement->mode_paiement,
+                'datePaiement' => $paiement->date_paiement ? \Carbon\Carbon::parse($paiement->date_paiement)->format('d/m/Y') : 'N/A',
+                'dateValidation' => $paiement->updated_at ? $paiement->updated_at->format('d/m/Y H:i') : 'N/A',
+                'validePar' => $paiement->validatedBy ? $paiement->validatedBy->name : 'Système',
+                'montantTotal' => $totalAttendu,
+                'montantPaye' => $totalPaye,
+                'resteDu' => max(0, $soldeRestant),
+                'pourcentagePaye' => $totalAttendu > 0
                     ? round(($totalPaye / $totalAttendu) * 100, 2)
                     : 0,
+                'recuUrl' => route('esbtp.mes-paiements.index'),
 
                 'schoolName' => $schoolSettings['school_name'],
                 'schoolAddress' => $schoolSettings['school_address'],
@@ -2416,13 +2424,15 @@ class NotificationService
 
 
             $data = [
-                'parent_nom' => $tuteur->nom,
-                'etudiant_nom' => $etudiant->nom,
-                'etudiant_prenoms' => $etudiant->prenoms,
+                'parentName' => $tuteur->nom . ' ' . $tuteur->prenoms,
+                'studentName' => $etudiant->prenoms . ' ' . $etudiant->nom,
                 'montant' => $paiement->montant,
-                'reference' => $paiement->reference,
-                'motif_rejet' => $paiement->commentaire ?? 'Aucun motif spécifié',
-            
+                'reference' => $paiement->reference_paiement ?? 'N/A',
+                'dateSoumission' => $paiement->created_at ? $paiement->created_at->format('d/m/Y H:i') : 'N/A',
+                'dateRejet' => $paiement->updated_at ? $paiement->updated_at->format('d/m/Y H:i') : 'N/A',
+                'motifRejet' => $paiement->motif_rejet ?? $paiement->commentaire ?? 'Aucun motif spécifié',
+                'paiementUrl' => route('esbtp.mes-paiements.index'),
+
                 'schoolName' => $schoolSettings['school_name'],
                 'schoolAddress' => $schoolSettings['school_address'],
                 'schoolPhone' => $schoolSettings['school_phone'],
@@ -2435,7 +2445,7 @@ class NotificationService
                 'user_id' => $etudiant->user_id,
                 'type' => 'paiement_rejete',
                 'title' => 'Paiement rejeté',
-                'message' => "Le paiement de {$paiement->montant} FCFA a été rejeté. Motif: {$data['motif_rejet']}",
+                'message' => "Le paiement de {$paiement->montant} FCFA a été rejeté. Motif: {$data['motifRejet']}",
                 'is_read' => false,
             ]);
 
@@ -2483,17 +2493,22 @@ class NotificationService
 
 
             $data = [
-                'parent_nom' => $tuteur->nom,
-                'etudiant_nom' => $etudiant->nom,
-                'etudiant_prenoms' => $etudiant->prenoms,
-                'date' => $attendance->date->format('d/m/Y'),
-                'heure' => $attendance->heure_debut ? substr($attendance->heure_debut, 0, 5) : 'N/A',
-                'matiere' => $attendance->commentaire ?? 'Cours',
-                'total_absences_mois' => $absences->count(),
-                'absences_justifiees' => $justifiees,
-                'absences_non_justifiees' => $nonJustifiees,
-                'taux_presence' => $tauxPresence,
-            
+                'parentName' => $tuteur->nom . ' ' . $tuteur->prenoms,
+                'studentName' => $etudiant->prenoms . ' ' . $etudiant->nom,
+                'classe' => $etudiant->inscriptions()->latest()->first()->classe->nom ?? 'N/A',
+                'date' => \Carbon\Carbon::parse($attendance->date)->format('d/m/Y'),
+                'heureDebut' => $attendance->heure_debut ?? '08:00',
+                'heureFin' => $attendance->heure_fin ?? '17:00',
+                'matiere' => $attendance->matiere->nom ?? $attendance->commentaire ?? 'Cours',
+                'typeActivite' => $attendance->type_activite ?? 'Cours magistral',
+                'commentaire' => $attendance->commentaire,
+                'periodeStats' => now()->format('F Y'),
+                'absencesJustifiees' => $justifiees,
+                'absencesNonJustifiees' => $nonJustifiees,
+                'totalAbsences' => $absences->count(),
+                'tauxPresence' => $tauxPresence,
+                'justificationUrl' => route('esbtp.mes-absences.index'),
+
                 'schoolName' => $schoolSettings['school_name'],
                 'schoolAddress' => $schoolSettings['school_address'],
                 'schoolPhone' => $schoolSettings['school_phone'],
@@ -2550,21 +2565,23 @@ class NotificationService
 
 
             $data = [
-                'parent_nom' => $tuteur->nom,
-                'etudiant_nom' => $etudiant->nom,
-                'etudiant_prenoms' => $etudiant->prenoms,
+                'parentName' => $tuteur->nom . ' ' . $tuteur->prenoms,
+                'studentName' => $etudiant->prenoms . ' ' . $etudiant->nom,
+                'classe' => $bulletin->classe->nom ?? 'N/A',
                 'periode' => $bulletin->periode,
-                'annee_universitaire' => $bulletin->anneeUniversitaire->annee ?? 'N/A',
-                'moyenne_generale' => $bulletin->moyenne_generale ?? 'N/A',
+                'anneeUniversitaire' => $bulletin->anneeUniversitaire->annee ?? 'N/A',
+                'moyenneGenerale' => $bulletin->moyenne_generale ?? 0,
                 'rang' => $bulletin->rang ?? 'N/A',
+                'effectifClasse' => $bulletin->classe->nombre_etudiants ?? 'N/A',
+                'totalAbsences' => $bulletin->total_absences ?? 0,
+                'noteAssiduite' => $bulletin->note_assiduite,
                 'mention' => $mention,
-                'mention_color' => $mentionColor,
-                'bulletin_url' => route('esbtp.bulletins.pdf-params', [
-                    'bulletin' => $bulletin->etudiant_id,
-                    'classe_id' => $bulletin->classe_id,
-                    'periode' => $bulletin->periode,
-                    'annee_universitaire_id' => $bulletin->annee_universitaire_id,
-                ]),
+                'mentionColor' => $mentionColor,
+                'appreciationGenerale' => $bulletin->appreciation_generale,
+                'decision' => $bulletin->decision,
+                'requiresSignature' => true,
+                'bulletinUrl' => route('esbtp.mon-bulletin.index'),
+
                 'schoolName' => $schoolSettings['school_name'],
                 'schoolAddress' => $schoolSettings['school_address'],
                 'schoolPhone' => $schoolSettings['school_phone'],
@@ -2629,13 +2646,20 @@ class NotificationService
             // Envoyer alerte seulement si performance faible
             if ($moyenneGenerale < 10 || count($matieresFaibles) > 0) {
                 $data = [
-                    'parent_nom' => $tuteur->nom,
-                    'etudiant_nom' => $etudiant->nom,
-                    'etudiant_prenoms' => $etudiant->prenoms,
+                    'parentName' => $tuteur->nom . ' ' . $tuteur->prenoms,
+                    'studentName' => $etudiant->prenoms . ' ' . $etudiant->nom,
+                    'classe' => $bulletin->classe->nom ?? 'N/A',
                     'periode' => $bulletin->periode,
-                    'moyenne_generale' => $moyenneGenerale,
-                    'matieres_faibles' => $matieresFaibles,
-                    'nombre_matieres_faibles' => count($matieresFaibles),
+                    'moyenneGenerale' => $moyenneGenerale,
+                    'rang' => $bulletin->rang ?? 'N/A',
+                    'effectifClasse' => $bulletin->classe->nombre_etudiants ?? 'N/A',
+                    'decision' => $bulletin->decision,
+                    'matieresEnDifficulte' => $matieresFaibles,
+                    'tauxPresence' => 85,  // À calculer depuis les absences si nécessaire
+                    'coursDisponibles' => true,
+                    'bulletinUrl' => route('esbtp.mes-notes.index'),
+                    'contactUrl' => route('esbtp.mon-profil.index'),
+
                     'schoolName' => $schoolSettings['school_name'],
                     'schoolAddress' => $schoolSettings['school_address'],
                     'schoolPhone' => $schoolSettings['school_phone'],
@@ -2687,6 +2711,9 @@ class NotificationService
     public function notifyParentsReinscriptionCreated($inscription, $decision = 'passage', $reliquatMontant = 0)
     {
         try {
+            // Charger toutes les relations nécessaires
+            $inscription->load(['classe.filiere', 'classe.niveauEtude', 'anneeUniversitaire', 'etudiant']);
+
             $etudiant = $inscription->etudiant;
 
             // Le parent utilise le compte de l'étudiant
@@ -2712,14 +2739,14 @@ class NotificationService
                 'parentName' => $tuteur->prenoms . ' ' . $tuteur->nom,
                 'studentName' => $etudiant->prenoms . ' ' . $etudiant->nom,
                 'matricule' => $etudiant->matricule ?? 'N/A',
-                'classe' => $inscription->classe->nom ?? 'N/A',
-                'filiere' => $inscription->classe->filiere->nom ?? 'N/A',
-                'niveauEtude' => $inscription->classe->niveau->nom ?? 'N/A',
-                'anneeUniversitaire' => $inscription->anneeUniversitaire->annee ?? 'N/A',
+                'classe' => $inscription->classe->name ?? 'N/A',
+                'filiere' => $inscription->classe->filiere->name ?? 'N/A',
+                'niveauEtude' => $inscription->classe->niveauEtude->name ?? 'N/A',
+                'anneeUniversitaire' => $inscription->anneeUniversitaire->name ?? 'N/A',
                 'dateReinscription' => $inscription->created_at ? $inscription->created_at->format('d/m/Y') : date('d/m/Y'),
                 'decision' => $decision,
                 'reliquatMontant' => $reliquatMontant,
-                'platformUrl' => config('app.url'),
+                'platformUrl' => route('dashboard'),
                 'schoolName' => $schoolSettings['school_name'],
                 'schoolAddress' => $schoolSettings['school_address'],
                 'schoolPhone' => $schoolSettings['school_phone'],

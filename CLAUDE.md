@@ -2,6 +2,126 @@
 
 ## Corrections récentes
 
+### Fix: Notifications affichant "N/A" + Fallback pour pages dashboard étudiant sans inscription
+
+**Date:** 10 octobre 2025
+**Branche:** presentation
+
+#### Problèmes résolus
+
+1. **Notifications parents affichaient "Année N/A", "Classe N/A", "Filière N/A"**
+   - **Cause**: Les relations `classe`, `filiere`, `niveauEtude`, `anneeUniversitaire` n'étaient pas chargées avec eager loading
+   - **Cause**: Utilisation de noms de champs incorrects (`nom` au lieu de `name`, `annee` au lieu de `name`, `niveau` au lieu de `niveauEtude`)
+   - **Localisation**: `app/Services/NotificationService.php` - Méthodes `notifyParentsInscriptionCreated()` et `notifyParentsReinscriptionCreated()`
+
+2. **Pages dashboard étudiant crashaient si pas d'inscription année courante**
+   - **Cause**: Aucune gestion du cas où `$inscription = null`
+   - **Impact**: Erreurs "Trying to get property of non-object" sur mes-paiements, emploi-temps, etc.
+
+#### Solutions implémentées
+
+**1. NotificationService.php - Eager loading et correction des champs**
+
+Ajout de `->load()` au début de chaque méthode de notification parent :
+```php
+// Charger toutes les relations nécessaires
+$inscription->load(['classe.filiere', 'classe.niveauEtude', 'anneeUniversitaire', 'etudiant']);
+```
+
+Correction des noms de champs :
+- `$inscription->classe->nom` → `$inscription->classe->name`
+- `$inscription->classe->filiere->nom` → `$inscription->classe->filiere->name`
+- `$inscription->classe->niveau->nom` → `$inscription->classe->niveauEtude->name`
+- `$inscription->anneeUniversitaire->annee` → `$inscription->anneeUniversitaire->name`
+
+**2. MesPaiementsController.php - Eager loading et fallback**
+
+Ajout de `->with()` lors de la récupération de l'inscription :
+```php
+$inscription = ESBTPInscription::where('etudiant_id', $etudiant->id)
+    ->where('annee_universitaire_id', $anneeCourante->id)
+    ->where('status', 'active')
+    ->with(['classe.filiere', 'classe.niveauEtude', 'anneeUniversitaire'])
+    ->first();
+
+if (!$inscription) {
+    return view('etudiants.mes-paiements.index', [
+        'etudiant' => $etudiant,
+        'inscription' => null,
+        'anneeCourante' => $anneeCourante,
+        'paiements' => collect([]),
+        'kpiStats' => [...],
+    ])->with('warning', 'Vous n\'avez pas d\'inscription active...');
+}
+```
+
+**3. mes-paiements/index.blade.php - Message d'alerte**
+
+Ajout d'un bloc conditionnel si pas d'inscription :
+```blade
+@if(!$inscription)
+    <div class="card-moderne">
+        <div class="card-body text-center">
+            <i class="fas fa-exclamation-triangle"></i>
+            <h4>Aucune inscription active</h4>
+            <p>Vous n'avez pas d'inscription active pour l'année en cours.
+               Veuillez contacter l'administration.</p>
+            <a href="{{ route('esbtp.mon-profil.index') }}" class="btn-acasi primary">
+                Voir mon profil
+            </a>
+        </div>
+    </div>
+@else
+    <!-- Contenu normal -->
+@endif
+```
+
+#### Fichiers modifiés
+
+- [app/Services/NotificationService.php](app/Services/NotificationService.php):
+  - Ligne 2227: Ajout eager loading `notifyParentsInscriptionCreated()`
+  - Lignes 2278-2281: Correction noms de champs (nom→name, niveau→niveauEtude, annee→name)
+  - Ligne 2715: Ajout eager loading `notifyParentsReinscriptionCreated()`
+  - Lignes 2742-2745: Correction noms de champs
+
+- [app/Http/Controllers/ESBTP/MesPaiementsController.php](app/Http/Controllers/ESBTP/MesPaiementsController.php):
+  - Ligne 53: Ajout `->with(['classe.filiere', 'classe.niveauEtude', 'anneeUniversitaire'])`
+  - Lignes 56-69: Ajout fallback si `!$inscription` avec message warning
+
+- [resources/views/etudiants/mes-paiements/index.blade.php](resources/views/etudiants/mes-paiements/index.blade.php):
+  - Lignes 381-386: Ajout alerte warning session
+  - Lignes 388-403: Bloc conditionnel si pas d'inscription
+  - Ligne 579: Fermeture `@endif` pour le bloc d'inscription
+
+#### Tests effectués
+
+✅ Suppression anciennes notifications avec "N/A"
+✅ Envoi nouvelles notifications avec eager loading
+✅ Vérification affichage correct : "Année 2025-2026", "Classe 2A BTS L Batiment"
+✅ Test page mes-paiements sans inscription (affiche message d'alerte)
+✅ Test page mes-paiements avec inscription (affiche KPI et tableau)
+
+#### Résultat
+
+**Avant** :
+- Notifications : "L'inscription de Patrick Jean KOUAME a été enregistrée pour l'année N/A."
+- Pages dashboard : Crash avec erreur "property of non-object"
+
+**Après** :
+- Notifications : "L'inscription de Patrick Jean KOUAME a été enregistrée pour l'année 2025-2026."
+- Pages dashboard : Message d'alerte clair + fallback données vides
+
+#### Prochaines étapes
+
+Appliquer le même pattern (eager loading + fallback) sur les autres pages dashboard étudiant :
+- [ ] Mes Notes
+- [ ] Mes Évaluations
+- [ ] Mon Emploi du Temps (déjà géré partiellement)
+- [ ] Mes Absences
+- [ ] Mon Bulletin
+
+---
+
 ### Feature: Filtrage AJAX sans rechargement pour suivi-categories
 
 **Date:** 10 octobre 2025
