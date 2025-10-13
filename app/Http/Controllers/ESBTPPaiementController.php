@@ -2285,6 +2285,17 @@ class ESBTPPaiementController extends Controller
                 $message .= " $errorCount paiement(s) n'ont pas pu être validés.";
             }
 
+            // Si c'est une requête AJAX, retourner JSON
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                    'successCount' => $successCount,
+                    'alreadyProcessed' => $alreadyProcessed,
+                    'errorCount' => $errorCount
+                ]);
+            }
+
             return redirect()->back()->with('success', $message);
 
         } catch (\Exception $e) {
@@ -2294,6 +2305,14 @@ class ESBTPPaiementController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
+
+            // Si c'est une requête AJAX, retourner JSON
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erreur lors de la validation groupée: ' . $e->getMessage()
+                ], 500);
+            }
 
             return redirect()->back()->with('error', 'Erreur lors de la validation groupée: ' . $e->getMessage());
         }
@@ -2361,6 +2380,17 @@ class ESBTPPaiementController extends Controller
                 $message .= " $errorCount paiement(s) n'ont pas pu être rejetés (déjà validés ou introuvables).";
             }
 
+            // Si c'est une requête AJAX, retourner JSON
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                    'successCount' => $successCount,
+                    'alreadyProcessed' => $alreadyProcessed,
+                    'errorCount' => $errorCount
+                ]);
+            }
+
             return redirect()->back()->with('success', $message);
 
         } catch (\Exception $e) {
@@ -2370,6 +2400,14 @@ class ESBTPPaiementController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
+
+            // Si c'est une requête AJAX, retourner JSON
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erreur lors du rejet groupé: ' . $e->getMessage()
+                ], 500);
+            }
 
             return redirect()->back()->with('error', 'Erreur lors du rejet groupé: ' . $e->getMessage());
         }
