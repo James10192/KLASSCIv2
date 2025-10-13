@@ -2482,7 +2482,13 @@ class ESBTPInscriptionController extends Controller
             'validees_apres_paiement' => 0,
             'inscriptions_deja_validees' => 0,
             'ignorees' => [],
-            'erreurs' => []
+            'erreurs' => [],
+            'raisons_ignorees' => [
+                'sans_paiement' => 0,
+                'paiement_non_valide' => 0,
+                'classe_pleine' => 0,
+                'inscription_existante' => 0,
+            ]
         ];
 
         try {
@@ -2510,6 +2516,50 @@ class ESBTPInscriptionController extends Controller
 
                     // Cas 1: A déjà un paiement validé ET workflow = en_validation
                     if ($inscription->paiement_validation_id && $inscription->workflow_step === 'en_validation') {
+                        // Vérifications en amont pour éviter les erreurs
+
+                        // 1. Vérifier que le paiement est validé
+                        $paiement = ESBTPPaiement::find($inscription->paiement_validation_id);
+                        if (!$paiement || $paiement->status !== 'validé') {
+                            $stats['ignorees'][] = [
+                                'id' => $inscription->id,
+                                'etudiant' => $etudiantNom,
+                                'raison' => 'Le paiement associé n\'est pas validé'
+                            ];
+                            $stats['raisons_ignorees']['paiement_non_valide']++;
+                            continue;
+                        }
+
+                        // 2. Vérifier la disponibilité de la classe
+                        $classAvailability = $this->workflowService->checkClassAvailability($inscription->classe_id);
+                        if (!$classAvailability['available']) {
+                            $stats['ignorees'][] = [
+                                'id' => $inscription->id,
+                                'etudiant' => $etudiantNom,
+                                'raison' => 'Classe pleine - ' . $classAvailability['message']
+                            ];
+                            $stats['raisons_ignorees']['classe_pleine']++;
+                            continue;
+                        }
+
+                        // 3. Vérifier inscription active existante
+                        $existingInscription = ESBTPInscription::where('etudiant_id', $inscription->etudiant_id)
+                            ->where('annee_universitaire_id', $inscription->annee_universitaire_id)
+                            ->where('status', 'active')
+                            ->where('id', '!=', $inscription->id)
+                            ->first();
+
+                        if ($existingInscription) {
+                            $stats['ignorees'][] = [
+                                'id' => $inscription->id,
+                                'etudiant' => $etudiantNom,
+                                'raison' => 'L\'étudiant a déjà une inscription active pour cette année'
+                            ];
+                            $stats['raisons_ignorees']['inscription_existante']++;
+                            continue;
+                        }
+
+                        // Toutes les vérifications passées, on peut valider
                         $result = $this->workflowService->convertProspectToStudent($inscription, 'Validation groupée');
 
                         if ($result['success']) {
@@ -2531,9 +2581,11 @@ class ESBTPInscriptionController extends Controller
                             // Désactiver les rappels
                             $this->desactiverRappelsInscription($inscription->id);
                         } else {
-                            $stats['erreurs'][] = [
+                            // Si malgré tout ça échoue, on ignore au lieu de créer une erreur bloquante
+                            $stats['ignorees'][] = [
                                 'id' => $id,
-                                'erreur' => $result['message']
+                                'etudiant' => $etudiantNom,
+                                'raison' => $result['message']
                             ];
                         }
                         continue;
@@ -2543,6 +2595,37 @@ class ESBTPInscriptionController extends Controller
                     $paiementsValides = $inscription->paiements->where('status', 'validé');
                     if ($paiementsValides->count() > 0) {
                         $premierPaiement = $paiementsValides->first();
+
+                        // Vérifications en amont
+
+                        // 1. Vérifier la disponibilité de la classe
+                        $classAvailability = $this->workflowService->checkClassAvailability($inscription->classe_id);
+                        if (!$classAvailability['available']) {
+                            $stats['ignorees'][] = [
+                                'id' => $inscription->id,
+                                'etudiant' => $etudiantNom,
+                                'raison' => 'Classe pleine - ' . $classAvailability['message']
+                            ];
+                            $stats['raisons_ignorees']['classe_pleine']++;
+                            continue;
+                        }
+
+                        // 2. Vérifier inscription active existante
+                        $existingInscription = ESBTPInscription::where('etudiant_id', $inscription->etudiant_id)
+                            ->where('annee_universitaire_id', $inscription->annee_universitaire_id)
+                            ->where('status', 'active')
+                            ->where('id', '!=', $inscription->id)
+                            ->first();
+
+                        if ($existingInscription) {
+                            $stats['ignorees'][] = [
+                                'id' => $inscription->id,
+                                'etudiant' => $etudiantNom,
+                                'raison' => 'L\'étudiant a déjà une inscription active pour cette année'
+                            ];
+                            $stats['raisons_ignorees']['inscription_existante']++;
+                            continue;
+                        }
 
                         // Associer le paiement via le workflow
                         $inscription->update([
@@ -2582,6 +2665,13 @@ class ESBTPInscriptionController extends Controller
 
                             // Désactiver les rappels
                             $this->desactiverRappelsInscription($inscription->id);
+                        } else {
+                            // Si ça échoue, on ignore au lieu de créer une erreur
+                            $stats['ignorees'][] = [
+                                'id' => $id,
+                                'etudiant' => $etudiantNom,
+                                'raison' => $result['message']
+                            ];
                         }
                         continue;
                     }
@@ -2590,6 +2680,37 @@ class ESBTPInscriptionController extends Controller
                     $paiementsEnAttente = $inscription->paiements->where('status', 'en_attente');
                     if ($paiementsEnAttente->count() > 0) {
                         $premierPaiement = $paiementsEnAttente->first();
+
+                        // Vérifications en amont
+
+                        // 1. Vérifier la disponibilité de la classe
+                        $classAvailability = $this->workflowService->checkClassAvailability($inscription->classe_id);
+                        if (!$classAvailability['available']) {
+                            $stats['ignorees'][] = [
+                                'id' => $inscription->id,
+                                'etudiant' => $etudiantNom,
+                                'raison' => 'Classe pleine - ' . $classAvailability['message']
+                            ];
+                            $stats['raisons_ignorees']['classe_pleine']++;
+                            continue;
+                        }
+
+                        // 2. Vérifier inscription active existante
+                        $existingInscription = ESBTPInscription::where('etudiant_id', $inscription->etudiant_id)
+                            ->where('annee_universitaire_id', $inscription->annee_universitaire_id)
+                            ->where('status', 'active')
+                            ->where('id', '!=', $inscription->id)
+                            ->first();
+
+                        if ($existingInscription) {
+                            $stats['ignorees'][] = [
+                                'id' => $inscription->id,
+                                'etudiant' => $etudiantNom,
+                                'raison' => 'L\'étudiant a déjà une inscription active pour cette année'
+                            ];
+                            $stats['raisons_ignorees']['inscription_existante']++;
+                            continue;
+                        }
 
                         // Valider le paiement
                         $premierPaiement->update([
@@ -2647,6 +2768,13 @@ class ESBTPInscriptionController extends Controller
 
                             // Désactiver les rappels de l'inscription
                             $this->desactiverRappelsInscription($inscription->id);
+                        } else {
+                            // Si ça échoue, on ignore au lieu de créer une erreur
+                            $stats['ignorees'][] = [
+                                'id' => $id,
+                                'etudiant' => $etudiantNom,
+                                'raison' => $result['message']
+                            ];
                         }
                         continue;
                     }
@@ -2657,6 +2785,7 @@ class ESBTPInscriptionController extends Controller
                         'etudiant' => $etudiantNom,
                         'raison' => 'Aucun paiement associé'
                     ];
+                    $stats['raisons_ignorees']['sans_paiement']++;
 
                 } catch (\Exception $e) {
                     Log::error('Erreur validation inscription bulk #' . $id . ': ' . $e->getMessage());
@@ -2680,7 +2809,7 @@ class ESBTPInscriptionController extends Controller
                 'stats' => $stats
             ]);
 
-            // Construire le message de retour
+            // Construire le message de retour enrichi
             $message = '';
             if ($stats['validees_direct'] > 0) {
                 $message .= "{$stats['validees_direct']} inscription(s) validée(s) directement. ";
@@ -2694,11 +2823,28 @@ class ESBTPInscriptionController extends Controller
             if ($stats['inscriptions_deja_validees'] > 0) {
                 $message .= "{$stats['inscriptions_deja_validees']} inscription(s) déjà validée(s) (ignorée(s)). ";
             }
+
+            // Détail des inscriptions ignorées par raison
             if (count($stats['ignorees']) > 0) {
-                $message .= count($stats['ignorees']) . " inscription(s) ignorée(s) (sans paiements). ";
+                $message .= count($stats['ignorees']) . " inscription(s) ignorée(s) : ";
+                $raisons = [];
+                if ($stats['raisons_ignorees']['sans_paiement'] > 0) {
+                    $raisons[] = "{$stats['raisons_ignorees']['sans_paiement']} sans paiement";
+                }
+                if ($stats['raisons_ignorees']['paiement_non_valide'] > 0) {
+                    $raisons[] = "{$stats['raisons_ignorees']['paiement_non_valide']} paiement non validé";
+                }
+                if ($stats['raisons_ignorees']['classe_pleine'] > 0) {
+                    $raisons[] = "{$stats['raisons_ignorees']['classe_pleine']} classe pleine";
+                }
+                if ($stats['raisons_ignorees']['inscription_existante'] > 0) {
+                    $raisons[] = "{$stats['raisons_ignorees']['inscription_existante']} inscription existante";
+                }
+                $message .= implode(', ', $raisons) . ". ";
             }
+
             if (count($stats['erreurs']) > 0) {
-                $message .= count($stats['erreurs']) . " erreur(s). ";
+                $message .= count($stats['erreurs']) . " erreur(s) techniques. ";
             }
 
             // Stocker les détails des erreurs et inscriptions ignorées en session pour affichage visuel
