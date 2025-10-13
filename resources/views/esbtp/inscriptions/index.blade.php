@@ -866,22 +866,27 @@ document.addEventListener('DOMContentLoaded', function() {
      * Inclut spinner de chargement et sauvegarde de l'état du checkbox
      */
     window.refreshInscriptionLigne = function(inscriptionId) {
+        console.log('🔄 refreshInscriptionLigne() appelé pour ID:', inscriptionId);
+
         const row = document.querySelector(`tr[data-inscription-id="${inscriptionId}"]`);
 
         if (!row) {
-            console.error('Ligne non trouvée pour inscription ID:', inscriptionId);
+            console.error('❌ Ligne non trouvée pour inscription ID:', inscriptionId);
             // Fallback: recharger la page si la ligne n'existe pas
             location.reload();
             return;
         }
 
+        console.log('✅ Ligne trouvée, sauvegarde checkbox...');
         // Sauvegarder l'état du checkbox AVANT de modifier le DOM
         const checkbox = row.querySelector('.inscription-checkbox');
         const wasChecked = checkbox?.checked || false;
+        console.log('📌 Checkbox était:', wasChecked ? 'coché' : 'non coché');
 
         // Compter le nombre de colonnes pour le colspan du spinner
         const colCount = row.querySelectorAll('td').length;
 
+        console.log('⏳ Affichage spinner...');
         // Afficher le spinner de chargement
         row.innerHTML = `
             <td colspan="${colCount}" style="text-align: center; padding: 20px;">
@@ -891,6 +896,7 @@ document.addEventListener('DOMContentLoaded', function() {
             </td>
         `;
 
+        console.log('🌐 Fetch AJAX vers /esbtp/inscriptions/' + inscriptionId + '/refresh-ligne');
         // Fetch AJAX pour récupérer la ligne mise à jour
         fetch(`/esbtp/inscriptions/${inscriptionId}/refresh-ligne`, {
             method: 'GET',
@@ -900,12 +906,14 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .then(response => {
+            console.log('📥 Réponse reçue, status:', response.status);
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}`);
             }
             return response.json();
         })
         .then(data => {
+            console.log('📦 Data reçue:', data);
             if (data.success && data.html) {
                 // Créer un élément temporaire pour parser le HTML
                 const tempDiv = document.createElement('div');
@@ -913,20 +921,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 const newRow = tempDiv.firstElementChild;
 
                 if (newRow && newRow.tagName === 'TR') {
+                    console.log('🔄 Remplacement de la ligne...');
                     // Remplacer l'ancienne ligne par la nouvelle
                     row.replaceWith(newRow);
+                    console.log('✅ Ligne remplacée avec succès');
 
                     // Restaurer l'état du checkbox si nécessaire
                     if (wasChecked) {
+                        console.log('📌 Restauration du checkbox...');
                         const newCheckbox = newRow.querySelector('.inscription-checkbox');
                         if (newCheckbox) {
                             newCheckbox.checked = true;
                             // Déclencher l'événement change pour mettre à jour le compteur
                             newCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+                            console.log('✅ Checkbox restauré');
                         }
                     }
 
-                    console.log('✅ Ligne rafraîchie avec succès:', inscriptionId);
+                    console.log('🎉 Ligne rafraîchie avec succès:', inscriptionId);
+                    console.log('⚠️ Si un reload se produit maintenant, c\'est un listener externe qui le cause!');
                 } else {
                     throw new Error('HTML retourné invalide (pas de TR)');
                 }
@@ -936,9 +949,11 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(error => {
             console.error('❌ Erreur refresh ligne:', error);
+            console.error('❌ Message d\'erreur:', error.message);
+            console.error('❌ Stack trace:', error.stack);
 
             // Fallback: recharger la page en cas d'erreur
-            alert('Erreur lors de la mise à jour. La page va se recharger.');
+            alert('Erreur lors de la mise à jour: ' + error.message + '. La page va se recharger.');
             location.reload();
         });
     };

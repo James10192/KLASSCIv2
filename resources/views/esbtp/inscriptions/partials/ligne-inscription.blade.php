@@ -107,33 +107,6 @@
                         data-bs-target="#annulerModal{{ $inscription->id }}" title="Annuler l'inscription">
                     <i class="fas fa-times"></i>
                 </button>
-
-                <!-- Modal d'annulation -->
-                <div class="modal fade" id="annulerModal{{ $inscription->id }}" tabindex="-1" aria-labelledby="annulerModalLabel" aria-hidden="true">
-                    <div class="modal-dialog">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="annulerModalLabel">Annulation d'inscription</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body">
-                                <p>Êtes-vous sûr de vouloir annuler l'inscription de <strong>{{ $inscription->etudiant->nom }} {{ $inscription->etudiant->prenom }}</strong> ?</p>
-                                <form action="{{ route('esbtp.inscriptions.annuler', $inscription->id) }}" method="POST">
-                                    @csrf
-                                    @method('PUT')
-                                    <div class="form-group">
-                                        <label for="motif">Motif d'annulation</label>
-                                        <textarea class="form-control" id="motif" name="motif" rows="3" required></textarea>
-                                    </div>
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                                    <button type="submit" class="btn btn-warning">Confirmer l'annulation</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
                 @endcan
             @endif
 
@@ -143,31 +116,6 @@
                     data-bs-target="#deleteModal{{ $inscription->id }}" title="Supprimer">
                 <i class="fas fa-trash"></i>
             </button>
-
-            <!-- Modal de suppression -->
-            <div class="modal fade" id="deleteModal{{ $inscription->id }}" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel{{ $inscription->id }}" aria-hidden="true">
-                <div class="modal-dialog" role="document">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="deleteModalLabel{{ $inscription->id }}">Supprimer l'inscription</h5>
-                            <button type="button" class="close btn-close" data-bs-dismiss="modal" aria-label="Close">
-                                <span aria-hidden="true">&times;</span>
-                            </button>
-                        </div>
-                        <div class="modal-body">
-                            <p>Êtes-vous sûr de vouloir supprimer cette inscription ? Cette action est irréversible.</p>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                            <form action="{{ route('esbtp.inscriptions.destroy', $inscription->id) }}" method="POST">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="btn btn-danger">Supprimer</button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
             @endcan
         </div>
     </td>
