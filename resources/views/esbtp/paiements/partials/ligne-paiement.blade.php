@@ -118,15 +118,13 @@
                 @endcan
 
                 @if(auth()->user()->hasRole('superAdmin'))
-                <form action="{{ route('esbtp.paiements.valider', $paiement->id) }}" method="POST" class="d-inline valider-paiement-form">
-                    @csrf
-                    <button type="button"
-                            class="btn btn-outline-success valider-paiement-btn"
-                            title="Valider"
-                            data-paiement-id="{{ $paiement->id }}">
-                        <i class="fas fa-check"></i>
-                    </button>
-                </form>
+                <button type="button"
+                        class="btn btn-outline-success valider-paiement-btn"
+                        title="Valider"
+                        data-paiement-id="{{ $paiement->id }}"
+                        data-action-url="{{ route('esbtp.paiements.valider', $paiement->id) }}">
+                    <i class="fas fa-check"></i>
+                </button>
 
                 @if($paiement->status == 'en_attente')
                 <button type="button"

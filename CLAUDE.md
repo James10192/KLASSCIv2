@@ -563,20 +563,23 @@ FLUSH PRIVILEGES;
 ### Feature: Système de refresh partiel AJAX pour inscriptions et paiements
 
 **Date:** 13 octobre 2025
+**Dernière mise à jour:** 13 octobre 2025 (paiements)
 **Branche:** presentation
 
 #### Fonctionnalités ajoutées
 
-Implémentation complète d'un système de refresh partiel AJAX pour éviter les rechargements de page complets lors des actions sur inscriptions et paiements. Les checkboxes et overlays sont préservés, seule la ligne modifiée est rafraîchie avec animation gradient.
+Implémentation complète d'un système de refresh partiel AJAX pour éviter les rechargements de page complets lors des actions sur inscriptions et paiements. Les checkboxes et overlays sont préservés, seule la ligne modifiée est rafraîchie avec **animation lumière traversante** (effet "travelling light").
 
 #### Architecture
 
 **Points clés :**
 - **Refresh partiel** : Seule la ligne `<tr>` affectée est rafraîchie via AJAX
 - **Spinner de chargement** : Feedback visuel avec spinner pendant la requête
-- **Préservation état** : Checkboxes et overlays restent intacts
-- **Animation gradient** : Overlay vert/rouge semi-transparent (70% opacity → 0%) lors de la validation/rejet
+- **Préservation état** : Checkboxes et sélections multiples restent intactes
+- **Animation lumière** : Overlay animé qui traverse la ligne de gauche à droite (1s)
+- **Gradient vert/rouge** : Couleur selon action (validate=vert, reject=rouge)
 - **Parsing TR correct** : Utilisation de `<tbody>` temporaire pour parser le HTML (navigateurs refusent `<tr>` dans `<div>`)
+- **Event delegation** : Les event listeners survivent au remplacement DOM via `$(document).on()`
 
 #### 1. Inscriptions - Refresh partiel avec 3 actions modales
 
@@ -625,6 +628,179 @@ setTimeout(() => { newRow.style.background = ''; }, 600);
 ✅ **UX moderne** : Feedback visuel immédiat avec spinner + animation
 ✅ **État préservé** : Aucune perte de sélections ou d'état de page
 ✅ **Robuste** : Gestion d'erreurs avec fallback automatique
+
+#### 2. Paiements - Refresh partiel avec animation "travelling light"
+
+**Date:** 13 octobre 2025
+
+**Problème résolu :**
+- Le bouton de validation était dans un `<form>` qui soumettait la page
+- La classe `valider-paiement-btn` n'était pas appliquée
+- L'animation n'était pas visible (trop rapide à 0.8s)
+- Les checkboxes et la barre flottante de sélection multiple disparaissaient après refresh
+
+**Fichiers créés :**
+- [resources/views/esbtp/paiements/partials/ligne-paiement.blade.php](resources/views/esbtp/paiements/partials/ligne-paiement.blade.php) - Partial réutilisable pour une ligne de paiement
+
+**Routes ajoutées :**
+- `GET /esbtp/paiements/{paiement}/refresh-ligne` → `ESBTPPaiementController@refreshLigne`
+
+**Backend :**
+- [app/Http/Controllers/ESBTPPaiementController.php:2347-2387](app/Http/Controllers/ESBTPPaiementController.php:2347) - Méthode `refreshLigne()`
+- [app/Http/Controllers/ESBTPPaiementController.php:1936-2033](app/Http/Controllers/ESBTPPaiementController.php:1936) - Modification `valider()` pour support AJAX
+
+**Frontend - JavaScript :**
+- [resources/views/esbtp/paiements/index.blade.php:430-546](resources/views/esbtp/paiements/index.blade.php:430) - Fonction `window.refreshPaiementLigne()`
+- [resources/views/esbtp/paiements/index.blade.php:569-640](resources/views/esbtp/paiements/index.blade.php:569) - Handler validation avec capture phase
+
+**Animation "travelling light" (3 secondes) :**
+```javascript
+// Créer l'overlay animé
+const overlay = document.createElement('div');
+overlay.style.position = 'absolute';
+overlay.style.left = '-100%';  // Commence hors écran à gauche
+overlay.style.width = '100%';
+overlay.style.height = '100%';
+overlay.style.transition = 'left 3s ease-out';  // Durée : 3 secondes
+
+// Couleur selon l'action
+if (actionType === 'validate') {
+    overlay.style.background = 'linear-gradient(to right, rgba(40, 167, 69, 0), rgba(40, 167, 69, 0.7), rgba(40, 167, 69, 0))';
+} else if (actionType === 'reject') {
+    overlay.style.background = 'linear-gradient(to right, rgba(220, 53, 69, 0), rgba(220, 53, 69, 0.7), rgba(220, 53, 69, 0))';
+}
+
+// Déclencher l'animation
+setTimeout(() => { overlay.style.left = '100%'; }, 10);  // Se déplace vers la droite
+
+// Nettoyer après animation
+setTimeout(() => { overlay.remove(); }, 3100);  // 3000ms animation + 100ms buffer
+```
+
+**Fixes critiques appliqués :**
+
+1. **Suppression du formulaire** (ligne-paiement.blade.php:121-127)
+   ```blade
+   <!-- AVANT : Bouton dans un <form> qui soumettait la page -->
+   <form action="..." method="POST">
+       <button type="submit" onclick="confirm()">Valider</button>
+   </form>
+
+   <!-- APRÈS : Bouton standalone avec data-attributes -->
+   <button type="button"
+           class="btn btn-outline-success valider-paiement-btn"
+           data-paiement-id="{{ $paiement->id }}"
+           data-action-url="{{ route('esbtp.paiements.valider', $paiement->id) }}">
+       <i class="fas fa-check"></i>
+   </button>
+   ```
+
+2. **Utilisation de la partial dans table.blade.php** (ligne 32)
+   ```blade
+   @forelse($paiements as $paiement)
+       @include('esbtp.paiements.partials.ligne-paiement', ['paiement' => $paiement])
+   @empty
+   ```
+
+3. **Event capture phase** (index.blade.php:569)
+   ```javascript
+   document.addEventListener('click', function(e) {
+       const btn = e.target.closest('.valider-paiement-btn');
+
+       if (btn) {
+           e.preventDefault();
+           e.stopPropagation();
+           e.stopImmediatePropagation();
+
+           // AJAX validation...
+       }
+   }, true); // true = capture phase (s'exécute AVANT le bubbling)
+   ```
+
+4. **Préservation des checkboxes** (index.blade.php:520-530)
+   ```javascript
+   // Restaurer l'état de la checkbox si elle était cochée
+   if (wasChecked) {
+       const newCheckbox = newRow.querySelector('.paiement-checkbox');
+       if (newCheckbox) {
+           newCheckbox.checked = true;
+       }
+   }
+
+   // Toujours mettre à jour la barre d'actions après refresh
+   updateBulkActionsBar();
+   ```
+
+**Fichiers modifiés :**
+- `resources/views/esbtp/paiements/partials/table.blade.php` - Utilise `ligne-paiement.blade.php`
+- `resources/views/esbtp/paiements/partials/ligne-paiement.blade.php` - Créée avec bouton sans formulaire
+- `resources/views/esbtp/paiements/index.blade.php` - Handler AJAX + fonction refresh
+- `app/Http/Controllers/ESBTPPaiementController.php` - Support AJAX + méthode `refreshLigne()`
+- `routes/web.php:678` - Route `paiements.refresh-ligne`
+
+5. **Overlay de chargement** (index.blade.php:285-304)
+   ```javascript
+   function fetchPaiementsData(showLog = true) {
+       const tableContainer = document.getElementById('paiements-table-container');
+
+       // Ajouter overlay de chargement gris semi-transparent
+       const loadingOverlay = document.createElement('div');
+       loadingOverlay.id = 'table-loading-overlay';
+       loadingOverlay.style.backgroundColor = 'rgba(255, 255, 255, 0.7)';
+       loadingOverlay.innerHTML = '<div class="spinner-border text-primary">...</div>';
+       tableContainer.appendChild(loadingOverlay);
+
+       // ... fetch data ...
+
+       // Retirer l'overlay après chargement
+       overlay.remove();
+   }
+   ```
+
+6. **Prévention multiple listeners** (index.blade.php:407, 601)
+   ```javascript
+   // Utilisation systématique de .off() avant .on() pour éviter doublons
+   $('#paiements-filter-form').off('submit').on('submit', function(e) { ... });
+   $('#status, #date_debut, #date_fin').off('change').on('change', function() { ... });
+   ```
+
+7. **Auto-submit sur changement select** (index.blade.php:601-604)
+   ```javascript
+   // Les filtres se soumettent automatiquement quand on change une valeur
+   $('#status, #date_debut, #date_fin').off('change').on('change', function() {
+       $('#paiements-filter-form').submit();  // Déclenche l'AJAX
+   });
+   ```
+
+8. **Logging conditionnel pour polling** (index.blade.php:386)
+   ```javascript
+   // Éviter spam de logs lors du polling automatique
+   pollingTimer = setInterval(() => {
+       fetchPaiementsData(false);  // false = pas de log "✅ Données rafraîchies"
+   }, pollingInterval);
+   ```
+
+**Tests effectués :**
+- ✅ Validation d'un paiement → ligne se refresh avec animation verte (3s)
+- ✅ Checkbox préservée si elle était cochée
+- ✅ Barre flottante reste visible et à jour
+- ✅ Filtres AJAX continuent de fonctionner
+- ✅ **Auto-submit sur changement de select/date** (sans cliquer "Filtrer")
+- ✅ **Tableau grisé pendant chargement** avec spinner
+- ✅ Pagination AJAX fonctionne
+- ✅ Sélection multiple fonctionne
+- ✅ **Pas de messages dupliqués** grâce aux .off() avant .on()
+
+**Caractéristiques techniques :**
+- **Durée animation** : 3 secondes (optimale pour visibilité)
+- **Gradient** : 0% opacity (gauche/droite) → 70% opacity (centre)
+- **Event delegation** : `$(document).on()` pour survie au DOM replacement
+- **Loading overlay** : Overlay blanc semi-transparent (70%) avec spinner Bootstrap
+- **Auto-submit** : Filtres se soumettent automatiquement sans cliquer sur "Filtrer"
+- **Prévention doublons** : `.off()` systématique avant `.on()` pour éviter listeners multiples
+- **Logging intelligent** : Log "✅ Données rafraîchies" seulement lors d'actions manuelles (pas lors du polling)
+- **Fallback** : Rechargement complet de la page en cas d'erreur
+- **Cache views** : Nécessite `php artisan view:clear` après modifications
 
 ---
 
