@@ -758,38 +758,42 @@ $(function() {
     // PROTECTION CONTRE LES DOUBLE-CLICS
     // ========================================
     let isSubmitting = false;
+    let originalButtonText = '';
 
-    $('#payment-form').on('submit', function(e) {
-        // Si déjà en cours de soumission, bloquer
+    // Handler sur le BOUTON SUBMIT - se déclenche IMMÉDIATEMENT au clic
+    $('#payment-form').off('click', 'button[type="submit"]').on('click', 'button[type="submit"]', function(e) {
+        const $submitBtn = $(this);
+
+        // Si déjà en cours de soumission, bloquer immédiatement
         if (isSubmitting) {
             e.preventDefault();
-            console.warn('⚠️ Soumission déjà en cours, blocage du double-clic');
+            e.stopImmediatePropagation();
+            console.warn('⚠️ Clic bloqué, soumission déjà en cours');
             return false;
         }
 
-        // Marquer comme en cours de soumission
+        // Marquer comme en cours de soumission IMMÉDIATEMENT
         isSubmitting = true;
-        console.log('🔒 Formulaire verrouillé - soumission en cours...');
+        console.log('🔒 Bouton cliqué, verrouillage immédiat');
 
-        // Récupérer le bouton submit
-        const $submitBtn = $(this).find('button[type="submit"]');
-        const originalText = $submitBtn.html();
+        // Sauvegarder le texte original
+        originalButtonText = $submitBtn.html();
 
-        // Désactiver le bouton et afficher un spinner
+        // Désactiver le bouton IMMÉDIATEMENT (avant même le submit)
         $submitBtn.prop('disabled', true);
         $submitBtn.html('<i class="fas fa-spinner fa-spin me-2"></i>Enregistrement en cours...');
         $submitBtn.addClass('disabled');
+    });
 
-        // Débloquer après 5 secondes en cas d'erreur serveur (fallback)
-        setTimeout(function() {
-            if (isSubmitting) {
-                console.warn('⚠️ Timeout de sécurité atteint, déverrouillage du formulaire');
-                isSubmitting = false;
-                $submitBtn.prop('disabled', false);
-                $submitBtn.html(originalText);
-                $submitBtn.removeClass('disabled');
+    // Handler de soumission (sécurité supplémentaire)
+    $('#payment-form').on('submit', function(e) {
+        // Si déjà en cours de soumission, bloquer (ne devrait jamais arriver grâce au click handler)
+        if (isSubmitting) {
+            const $submitBtn = $(this).find('button[type="submit"]');
+            if (!$submitBtn.prop('disabled')) {
+                $submitBtn.prop('disabled', true);
             }
-        }, 5000);
+        }
 
         // Laisser le formulaire se soumettre normalement
         return true;
