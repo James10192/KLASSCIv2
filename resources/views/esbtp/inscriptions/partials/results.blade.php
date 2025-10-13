@@ -55,19 +55,19 @@
                                     @if($isPaiementNonValide)
                                         <button type="button" class="btn btn-sm btn-action-quick"
                                                 onclick="ouvrirModalValiderPaiement({{ $inscription->id }})"
-                                                style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; padding: 6px 12px; font-size: 0.75rem; font-weight: 600;">
+                                                style="background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color: white; border: none; border-radius: 8px; padding: 6px 12px; font-size: 0.75rem; font-weight: 600;">
                                             <i class="fas fa-check-circle me-1"></i>Valider paiement
                                         </button>
                                     @elseif($isClassePleine)
                                         <button type="button" class="btn btn-sm btn-action-quick"
                                                 onclick="ouvrirModalChangerClasse({{ $inscription->id }})"
-                                                style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border: none; border-radius: 8px; padding: 6px 12px; font-size: 0.75rem; font-weight: 600;">
+                                                style="background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color: white; border: none; border-radius: 8px; padding: 6px 12px; font-size: 0.75rem; font-weight: 600;">
                                             <i class="fas fa-exchange-alt me-1"></i>Changer classe
                                         </button>
                                     @elseif($isSansPaiement)
                                         <button type="button" class="btn btn-sm btn-action-quick"
                                                 onclick="ouvrirModalCreerPaiement({{ $inscription->id }})"
-                                                style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; border: none; border-radius: 8px; padding: 6px 12px; font-size: 0.75rem; font-weight: 600;">
+                                                style="background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color: white; border: none; border-radius: 8px; padding: 6px 12px; font-size: 0.75rem; font-weight: 600;">
                                             <i class="fas fa-plus-circle me-1"></i>Créer paiement
                                         </button>
                                     @endif

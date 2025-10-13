@@ -812,7 +812,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <div class="modal fade" id="modalValiderPaiement" tabindex="-1" aria-labelledby="modalValiderPaiementLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" style="border: none; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
-            <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 16px 16px 0 0; padding: 24px;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color: white; border-radius: 16px 16px 0 0; padding: 24px;">
                 <h5 class="modal-title" id="modalValiderPaiementLabel">
                     <i class="fas fa-check-circle me-2"></i>Valider le paiement
                 </h5>
@@ -848,7 +848,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <button type="button" class="btn btn-light flex-fill" data-bs-dismiss="modal" style="border-radius: 10px; padding: 12px; font-weight: 600;">
                             <i class="fas fa-times me-2"></i>Annuler
                         </button>
-                        <button type="submit" class="btn btn-success flex-fill" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; border-radius: 10px; padding: 12px; font-weight: 600;">
+                        <button type="submit" class="btn btn-success flex-fill" style="background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); border: none; border-radius: 10px; padding: 12px; font-weight: 600;">
                             <i class="fas fa-check me-2"></i>Valider le paiement
                         </button>
                     </div>
@@ -862,7 +862,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <div class="modal fade" id="modalChangerClasse" tabindex="-1" aria-labelledby="modalChangerClasseLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content" style="border: none; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
-            <div class="modal-header" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border-radius: 16px 16px 0 0; padding: 24px;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color: white; border-radius: 16px 16px 0 0; padding: 24px;">
                 <h5 class="modal-title" id="modalChangerClasseLabel">
                     <i class="fas fa-exchange-alt me-2"></i>Changer la classe
                 </h5>
@@ -900,7 +900,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <button type="button" class="btn btn-light flex-fill" data-bs-dismiss="modal" style="border-radius: 10px; padding: 12px; font-weight: 600;">
                             <i class="fas fa-times me-2"></i>Annuler
                         </button>
-                        <button type="submit" class="btn btn-danger flex-fill" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border: none; border-radius: 10px; padding: 12px; font-weight: 600;">
+                        <button type="submit" class="btn btn-danger flex-fill" style="background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); border: none; border-radius: 10px; padding: 12px; font-weight: 600;">
                             <i class="fas fa-exchange-alt me-2"></i>Changer la classe
                         </button>
                     </div>
@@ -914,7 +914,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <div class="modal fade" id="modalCreerPaiement" tabindex="-1" aria-labelledby="modalCreerPaiementLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content" style="border: none; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
-            <div class="modal-header" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; border-radius: 16px 16px 0 0; padding: 24px;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color: white; border-radius: 16px 16px 0 0; padding: 24px;">
                 <h5 class="modal-title" id="modalCreerPaiementLabel">
                     <i class="fas fa-plus-circle me-2"></i>Créer un paiement
                 </h5>
@@ -934,29 +934,55 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Montant (FCFA) <span class="text-danger">*</span></label>
-                            <input type="number" name="montant" class="form-control" id="creer_montant" required min="0" step="1000" placeholder="Ex: 50000" style="border-radius: 8px;">
+                            <input type="number" name="montant" class="form-control" id="creer_montant" required min="0" step="0.01" placeholder="Ex: 50000" style="border-radius: 8px;">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Mode de paiement <span class="text-danger">*</span></label>
-                            <select name="mode_paiement" class="form-select" id="creer_mode" required style="border-radius: 8px;">
-                                <option value="">Sélectionnez...</option>
-                                <option value="especes">Espèces</option>
-                                <option value="cheque">Chèque</option>
-                                <option value="virement">Virement bancaire</option>
-                                <option value="mobile_money">Mobile Money</option>
-                                <option value="carte_bancaire">Carte bancaire</option>
+                            <label class="form-label fw-bold">Catégorie de frais <span class="text-danger">*</span></label>
+                            <select name="frais_category_id" class="form-select" id="creer_categorie" required style="border-radius: 8px;">
+                                <option value="">Sélectionnez une catégorie</option>
+                                @php
+                                    $categoriesfrais = \App\Models\ESBTPFraisCategory::where('is_active', true)->orderBy('name')->get();
+                                @endphp
+                                @foreach($categoriesfrais as $categorie)
+                                    <option value="{{ $categorie->id }}">
+                                        {{ $categorie->name }}
+                                        @if($categorie->is_mandatory)
+                                            (Obligatoire)
+                                        @else
+                                            (Optionnel)
+                                        @endif
+                                    </option>
+                                @endforeach
                             </select>
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Référence de paiement</label>
-                        <input type="text" name="reference_paiement" class="form-control" id="creer_reference" placeholder="Ex: REF2025-001" style="border-radius: 8px;">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Mode de paiement <span class="text-danger">*</span></label>
+                            <select name="mode_paiement" class="form-select" id="creer_mode" required style="border-radius: 8px;">
+                                <option value="">Sélectionnez un mode</option>
+                                <option value="especes">Espèces</option>
+                                <option value="cheque">Chèque</option>
+                                <option value="virement">Virement bancaire</option>
+                                <option value="mobile_money">Mobile Money</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Référence de paiement</label>
+                            <input type="text" name="reference_paiement" class="form-control" id="creer_reference" placeholder="Ex: REF2025-001" style="border-radius: 8px;">
+                        </div>
                     </div>
 
-                    <div class="mb-4">
-                        <label class="form-label fw-bold">Date du paiement <span class="text-danger">*</span></label>
-                        <input type="date" name="date_paiement" class="form-control" id="creer_date" required style="border-radius: 8px;" value="{{ date('Y-m-d') }}">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Date du paiement <span class="text-danger">*</span></label>
+                            <input type="date" name="date_paiement" class="form-control" id="creer_date" required style="border-radius: 8px;" value="{{ date('Y-m-d') }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Observations</label>
+                            <textarea name="observations" class="form-control" id="creer_observations" rows="2" placeholder="Commentaires sur le paiement..." style="border-radius: 8px;"></textarea>
+                        </div>
                     </div>
 
                     <div class="form-check mb-4" style="padding-left: 2rem;">
@@ -970,7 +996,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <button type="button" class="btn btn-light flex-fill" data-bs-dismiss="modal" style="border-radius: 10px; padding: 12px; font-weight: 600;">
                             <i class="fas fa-times me-2"></i>Annuler
                         </button>
-                        <button type="submit" class="btn btn-primary flex-fill" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); border: none; border-radius: 10px; padding: 12px; font-weight: 600;">
+                        <button type="submit" class="btn btn-primary flex-fill" style="background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); border: none; border-radius: 10px; padding: 12px; font-weight: 600;">
                             <i class="fas fa-plus me-2"></i>Créer le paiement
                         </button>
                     </div>
