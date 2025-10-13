@@ -62,6 +62,12 @@ class ESBTPPaiementController extends Controller
         if ($request->ajax()) {
             Log::info('ESBTPPaiementController@index returning AJAX response', $completionContext);
 
+            // Construire l'URL pour la navigation
+            $navUrl = route('esbtp.paiements.index');
+            if ($request->getQueryString()) {
+                $navUrl .= '?' . $request->getQueryString();
+            }
+
             return response()->json([
                 'table' => view('esbtp.paiements.partials.table', [
                     'paiements' => $data['paiements'],
@@ -69,7 +75,7 @@ class ESBTPPaiementController extends Controller
                 'metrics' => view('esbtp.paiements.partials.metrics', [
                     'stats' => $data['stats'],
                 ])->render(),
-                'url' => $request->fullUrl(),
+                'url' => $navUrl,  // URL navigable
                 'last_updated_at' => optional($data['last_updated_at'])->toIso8601String(),
             ]);
         }
@@ -105,6 +111,12 @@ class ESBTPPaiementController extends Controller
             'duration_ms' => round((microtime(true) - $startMicrotime) * 1000, 2),
         ]));
 
+        // Construire l'URL pour la navigation (remplacer /refresh par /paiements)
+        $navUrl = route('esbtp.paiements.index');
+        if ($request->getQueryString()) {
+            $navUrl .= '?' . $request->getQueryString();
+        }
+
         return response()->json([
             'table' => view('esbtp.paiements.partials.table', [
                 'paiements' => $data['paiements'],
@@ -112,7 +124,7 @@ class ESBTPPaiementController extends Controller
             'metrics' => view('esbtp.paiements.partials.metrics', [
                 'stats' => $data['stats'],
             ])->render(),
-            'url' => $request->fullUrl(),
+            'url' => $navUrl,  // URL navigable (pas /refresh)
             'last_updated_at' => optional($data['last_updated_at'])->toIso8601String(),
         ]);
     }
