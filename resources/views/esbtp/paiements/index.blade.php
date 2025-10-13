@@ -591,18 +591,43 @@ function showYearChangeInfo() {
                     row.replaceWith(newRow);
                     console.log('✅ Ligne remplacée avec succès');
 
-                    // ✨ Animation gradient selon le type d'action
+                    // ✨ Animation lumière qui parcourt la ligne de gauche à droite
+                    newRow.style.position = 'relative';
+                    newRow.style.overflow = 'hidden';
+
+                    // Créer l'overlay animé selon le type d'action
+                    const overlay = document.createElement('div');
+                    overlay.style.position = 'absolute';
+                    overlay.style.top = '0';
+                    overlay.style.left = '-100%';
+                    overlay.style.width = '100%';
+                    overlay.style.height = '100%';
+                    overlay.style.pointerEvents = 'none';
+                    overlay.style.transition = 'left 0.8s ease-out';
+                    overlay.style.zIndex = '1';
+
+                    // Couleur selon l'action
                     if (actionType === 'validate') {
-                        // Gradient vert pour validation (70% → 0% opacity)
-                        newRow.style.background = 'linear-gradient(to right, rgba(40, 167, 69, 0.7), rgba(40, 167, 69, 0))';
+                        // Lumière verte pour validation
+                        overlay.style.background = 'linear-gradient(to right, rgba(40, 167, 69, 0), rgba(40, 167, 69, 0.7), rgba(40, 167, 69, 0))';
                     } else if (actionType === 'reject') {
-                        // Gradient rouge pour rejet (70% → 0% opacity)
-                        newRow.style.background = 'linear-gradient(to right, rgba(220, 53, 69, 0.7), rgba(220, 53, 69, 0))';
+                        // Lumière rouge pour rejet
+                        overlay.style.background = 'linear-gradient(to right, rgba(220, 53, 69, 0), rgba(220, 53, 69, 0.7), rgba(220, 53, 69, 0))';
                     }
-                    newRow.style.transition = 'background 0.6s ease-out';
+
+                    newRow.appendChild(overlay);
+
+                    // Déclencher l'animation après un petit délai
                     setTimeout(() => {
-                        newRow.style.background = '';
-                    }, 600);
+                        overlay.style.left = '100%';
+                    }, 10);
+
+                    // Nettoyer après l'animation
+                    setTimeout(() => {
+                        overlay.remove();
+                        newRow.style.position = '';
+                        newRow.style.overflow = '';
+                    }, 900);
 
                     // Restaurer l'état du checkbox si nécessaire
                     if (wasChecked) {

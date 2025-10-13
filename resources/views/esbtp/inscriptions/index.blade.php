@@ -935,12 +935,35 @@ document.addEventListener('DOMContentLoaded', function() {
                     row.replaceWith(newRow);
                     console.log('✅ Ligne remplacée avec succès');
 
-                    // ✨ Animation gradient vert semi-transparent (70% → 0% opacity)
-                    newRow.style.background = 'linear-gradient(to right, rgba(40, 167, 69, 0.7), rgba(40, 167, 69, 0))';
-                    newRow.style.transition = 'background 0.6s ease-out';
+                    // ✨ Animation lumière verte qui parcourt la ligne de gauche à droite
+                    newRow.style.position = 'relative';
+                    newRow.style.overflow = 'hidden';
+
+                    // Créer l'overlay animé
+                    const overlay = document.createElement('div');
+                    overlay.style.position = 'absolute';
+                    overlay.style.top = '0';
+                    overlay.style.left = '-100%';
+                    overlay.style.width = '100%';
+                    overlay.style.height = '100%';
+                    overlay.style.background = 'linear-gradient(to right, rgba(40, 167, 69, 0), rgba(40, 167, 69, 0.7), rgba(40, 167, 69, 0))';
+                    overlay.style.pointerEvents = 'none';
+                    overlay.style.transition = 'left 0.8s ease-out';
+                    overlay.style.zIndex = '1';
+
+                    newRow.appendChild(overlay);
+
+                    // Déclencher l'animation après un petit délai
                     setTimeout(() => {
-                        newRow.style.background = '';
-                    }, 600);
+                        overlay.style.left = '100%';
+                    }, 10);
+
+                    // Nettoyer après l'animation
+                    setTimeout(() => {
+                        overlay.remove();
+                        newRow.style.position = '';
+                        newRow.style.overflow = '';
+                    }, 900);
 
                     // Restaurer l'état du checkbox si nécessaire
                     if (wasChecked) {

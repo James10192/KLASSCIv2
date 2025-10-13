@@ -118,13 +118,12 @@
                 @endcan
 
                 @if(auth()->user()->hasRole('superAdmin'))
-                <form action="{{ route('esbtp.paiements.valider', $paiement->id) }}" method="POST" class="d-inline">
+                <form action="{{ route('esbtp.paiements.valider', $paiement->id) }}" method="POST" class="d-inline valider-paiement-form">
                     @csrf
-                    <button type="submit"
+                    <button type="button"
                             class="btn btn-outline-success valider-paiement-btn"
                             title="Valider"
-                            data-paiement-id="{{ $paiement->id }}"
-                            onclick="return confirm('Êtes-vous sûr de vouloir valider ce paiement ?')">
+                            data-paiement-id="{{ $paiement->id }}">
                         <i class="fas fa-check"></i>
                     </button>
                 </form>
