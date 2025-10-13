@@ -3200,17 +3200,58 @@ class ESBTPInscriptionController extends Controller
                 'classe',
                 'filiere',
                 'niveau',
-                'anneeUniversitaire'
+                'anneeUniversitaire',
+                'paiements'
             ]);
 
-            // Rendu de la partial ligne-inscription avec la session problemes si existante
+            // Recalculer les problèmes pour cette inscription (comme dans bulkValider)
+            $inscriptionsProblemes = [];
+
+            // Si statut pending, vérifier les problèmes potentiels
+            if ($inscription->status == 'pending' || $inscription->status == 'en_attente') {
+                // Vérifier paiement
+                $paiement = $inscription->paiements()->whereIn('status', ['validé', 'en_attente'])->first();
+
+                if (!$paiement) {
+                    $inscriptionsProblemes[$inscription->id] = [
+                        'type' => 'warning',
+                        'message' => 'Aucun paiement associé à cette inscription'
+                    ];
+                } elseif ($paiement->status == 'en_attente') {
+                    $inscriptionsProblemes[$inscription->id] = [
+                        'type' => 'warning',
+                        'message' => 'Le paiement n\'est pas encore validé'
+                    ];
+                } else {
+                    // Vérifier disponibilité classe
+                    $classeId = $inscription->classe_id;
+                    $anneeId = $inscription->annee_universitaire_id;
+
+                    if ($classeId && $anneeId) {
+                        $availability = $this->workflowService->checkClassAvailability($classeId, $anneeId);
+
+                        if (!$availability['available']) {
+                            $inscriptionsProblemes[$inscription->id] = [
+                                'type' => 'warning',
+                                'message' => 'Classe pleine - ' . $availability['message']
+                            ];
+                        }
+                    }
+                }
+            }
+
+            // Mettre les problèmes en session flash pour cette requête uniquement
+            session()->flash('inscriptions_problemes', $inscriptionsProblemes);
+
+            // Rendu de la partial ligne-inscription
             $html = view('esbtp.inscriptions.partials.ligne-inscription', [
                 'inscription' => $inscription
             ])->render();
 
             Log::info('Ligne inscription rafraîchie avec succès', [
                 'inscription_id' => $inscription->id,
-                'user_id' => auth()->id()
+                'user_id' => auth()->id(),
+                'has_problem' => isset($inscriptionsProblemes[$inscription->id])
             ]);
 
             return response()->json([
