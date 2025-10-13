@@ -234,38 +234,48 @@ function showYearChangeInfo() {
      * Met à jour l'affichage de la barre d'actions groupées
      * et le compteur de paiements sélectionnés
      */
-    function updateBulkActionsBar() {
+    window.updateBulkActionsBar = function() {
         const checkedCount = $('.paiement-checkbox:checked').length;
         const $bulkActionsBar = $('#bulk-actions-bar');
         const $selectedCountSpan = $('#selected-count');
 
+        console.log('📊 updateBulkActionsBar appelée, checkboxes cochées:', checkedCount);
+
         if (checkedCount > 0) {
-            $bulkActionsBar.addClass('show');
+            console.log('✅ Affichage de la barre d\'actions groupées');
+            $bulkActionsBar.show();  // Utiliser .show() au lieu de .addClass('show')
             $selectedCountSpan.text(checkedCount);
         } else {
-            $bulkActionsBar.removeClass('show');
+            console.log('❌ Masquage de la barre d\'actions groupées');
+            $bulkActionsBar.hide();  // Utiliser .hide() au lieu de .removeClass('show')
         }
 
         // Mettre à jour l'état de la checkbox "Tout sélectionner"
         const totalCheckboxes = $('.paiement-checkbox').length;
         $('#select-all').prop('checked', checkedCount === totalCheckboxes && totalCheckboxes > 0);
-    }
+    };
 
     /**
      * Initialiser les écouteurs d'événements pour les checkboxes
      */
     function initCheckboxListeners() {
+        console.log('🔧 Initialisation des listeners de checkboxes...');
+
         // Checkbox "Tout sélectionner"
         $(document).off('change', '#select-all').on('change', '#select-all', function() {
             const isChecked = $(this).prop('checked');
+            console.log('☑️ Select-all changé:', isChecked);
             $('.paiement-checkbox').prop('checked', isChecked);
             updateBulkActionsBar();
         });
 
         // Checkboxes individuelles
         $(document).off('change', '.paiement-checkbox').on('change', '.paiement-checkbox', function() {
+            console.log('☑️ Checkbox individuelle changée');
             updateBulkActionsBar();
         });
+
+        console.log('✅ Listeners de checkboxes initialisés');
     }
 
     /**
@@ -594,6 +604,12 @@ function showYearChangeInfo() {
         // Démarrer le polling automatique (désactivé par défaut, décommenter pour activer)
         // startPolling();
 
+        // Vérifier combien de checkboxes existent au chargement
+        console.log('🔍 Vérification checkboxes au chargement:');
+        console.log('   - Total checkboxes paiement:', $('.paiement-checkbox').length);
+        console.log('   - Select-all existe:', $('#select-all').length > 0);
+        console.log('   - Bulk actions bar existe:', $('#bulk-actions-bar').length > 0);
+
         // Initialiser l'état de la barre d'actions groupées
         updateBulkActionsBar();
 
@@ -689,21 +705,8 @@ function showYearChangeInfo() {
 
 <!-- Fonctions globales pour actions groupées (hors IIFE) -->
 <script>
-function updateBulkActionsBar() {
-    const checkedCount = $('.paiement-checkbox:checked').length;
-    const $bulkActionsBar = $('#bulk-actions-bar');
-    const $selectedCountSpan = $('#selected-count');
-
-    if (checkedCount > 0) {
-        $bulkActionsBar.addClass('show');
-        $selectedCountSpan.text(checkedCount);
-    } else {
-        $bulkActionsBar.removeClass('show');
-    }
-
-    const totalCheckboxes = $('.paiement-checkbox').length;
-    $('#select-all').prop('checked', checkedCount === totalCheckboxes && totalCheckboxes > 0);
-}
+// Note: updateBulkActionsBar() est déjà définie dans le IIFE principal ci-dessus
+// Pas besoin de la redéfinir ici
 
 function bulkValider() {
     const selectedIds = getSelectedPaiementIds();
