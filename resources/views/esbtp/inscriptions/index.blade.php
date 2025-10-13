@@ -915,10 +915,19 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             console.log('📦 Data reçue:', data);
             if (data.success && data.html) {
-                // Créer un élément temporaire pour parser le HTML
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = data.html.trim();
-                const newRow = tempDiv.firstElementChild;
+                // Créer un <tbody> temporaire pour parser le HTML du <tr>
+                // Important: un <tr> ne peut être parsé que dans un contexte table/tbody
+                const tempTable = document.createElement('table');
+                const tempTbody = document.createElement('tbody');
+                tempTbody.innerHTML = data.html.trim();
+                tempTable.appendChild(tempTbody);
+
+                const newRow = tempTbody.firstElementChild;
+
+                console.log('📦 tempTbody.innerHTML longueur:', tempTbody.innerHTML.length);
+                console.log('📦 tempTbody.children.length:', tempTbody.children.length);
+                console.log('📦 newRow:', newRow);
+                console.log('📦 newRow?.tagName:', newRow?.tagName);
 
                 if (newRow && newRow.tagName === 'TR') {
                     console.log('🔄 Remplacement de la ligne...');
