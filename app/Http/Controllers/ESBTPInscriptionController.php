@@ -1545,6 +1545,23 @@ class ESBTPInscriptionController extends Controller
 
             $result = $this->workflowService->associerPaiement($inscription, $paiementData);
 
+            // Si requête AJAX, retourner JSON pour refresh partiel
+            if ($request->ajax()) {
+                if ($result['success']) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => $result['message'],
+                        'inscription_id' => $inscription->id
+                    ]);
+                } else {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $result['message']
+                    ], 400);
+                }
+            }
+
+            // Sinon, redirection standard
             if ($result['success']) {
                 return redirect()->route('esbtp.inscriptions.show', $inscription->id)
                     ->with('success', $result['message']);
@@ -1555,6 +1572,15 @@ class ESBTPInscriptionController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Erreur lors de l\'association du paiement: ' . $e->getMessage());
+
+            // Si requête AJAX, retourner JSON d'erreur
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erreur lors de l\'association du paiement: ' . $e->getMessage()
+                ], 500);
+            }
+
             return redirect()->back()->with('error', 'Erreur lors de l\'association du paiement: ' . $e->getMessage());
         }
     }
@@ -3158,6 +3184,50 @@ class ESBTPInscriptionController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors du changement de classe: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Rafraîchir une ligne d'inscription spécifique (AJAX pour mise à jour partielle)
+     */
+    public function refreshLigne(ESBTPInscription $inscription)
+    {
+        try {
+            // Charger toutes les relations nécessaires
+            $inscription->load([
+                'etudiant',
+                'classe',
+                'filiere',
+                'niveau',
+                'anneeUniversitaire'
+            ]);
+
+            // Rendu de la partial ligne-inscription avec la session problemes si existante
+            $html = view('esbtp.inscriptions.partials.ligne-inscription', [
+                'inscription' => $inscription
+            ])->render();
+
+            Log::info('Ligne inscription rafraîchie avec succès', [
+                'inscription_id' => $inscription->id,
+                'user_id' => auth()->id()
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'html' => $html,
+                'inscription_id' => $inscription->id
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur refreshLigne: ' . $e->getMessage(), [
+                'inscription_id' => $inscription->id,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors du rafraîchissement de la ligne: ' . $e->getMessage()
             ], 500);
         }
     }

@@ -26,7 +26,7 @@
                         $problemeInfo = $hasProbleme ? session('inscriptions_problemes')[$inscription->id] : null;
                         $problemeClass = $hasProbleme ? ($problemeInfo['type'] === 'error' ? 'table-danger' : 'table-warning') : '';
                     @endphp
-                    <tr class="{{ $problemeClass }}">
+                    <tr class="{{ $problemeClass }}" data-inscription-id="{{ $inscription->id }}">
                         @if(auth()->user()->hasRole('superAdmin'))
                         <td>
                             @if($inscription->status == 'pending' || $inscription->status == 'en_attente')

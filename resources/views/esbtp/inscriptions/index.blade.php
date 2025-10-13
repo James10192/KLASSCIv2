@@ -776,6 +776,7 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         const formData = new FormData(this);
         const actionUrl = this.action;
+        const inscriptionId = document.getElementById('valider_inscription_id').value;
 
         fetch(actionUrl, {
             method: 'POST',
@@ -788,7 +789,8 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             if (data.success) {
                 bootstrap.Modal.getInstance(document.getElementById('modalValiderPaiement')).hide();
-                location.reload(); // Recharger pour voir les changements
+                // ✅ Refresh uniquement la ligne au lieu de recharger toute la page
+                window.refreshInscriptionLigne(inscriptionId);
             } else {
                 alert(data.message || 'Erreur lors de la validation');
             }
@@ -804,6 +806,7 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         const formData = new FormData(this);
         const actionUrl = this.action;
+        const inscriptionId = document.getElementById('changer_inscription_id').value;
 
         fetch(actionUrl, {
             method: 'POST',
@@ -816,7 +819,8 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             if (data.success) {
                 bootstrap.Modal.getInstance(document.getElementById('modalChangerClasse')).hide();
-                location.reload(); // Recharger pour voir les changements
+                // ✅ Refresh uniquement la ligne au lieu de recharger toute la page
+                window.refreshInscriptionLigne(inscriptionId);
             } else {
                 alert(data.message || 'Erreur lors du changement de classe');
             }
@@ -827,8 +831,117 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Le formulaire de création de paiement utilise l'action standard (pas AJAX)
-    // car il redirige vers la page de détails du paiement
+    // Formulaire création de paiement (AJAX pour éviter rechargement page)
+    document.getElementById('formCreerPaiement').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        const actionUrl = this.action;
+        const inscriptionId = document.getElementById('creer_inscription_id').value;
+
+        fetch(actionUrl, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('modalCreerPaiement')).hide();
+                // ✅ Refresh uniquement la ligne au lieu de recharger toute la page
+                window.refreshInscriptionLigne(inscriptionId);
+            } else {
+                alert(data.message || 'Erreur lors de la création du paiement');
+            }
+        })
+        .catch(error => {
+            console.error(error);
+            alert('Erreur lors de la création du paiement');
+        });
+    });
+
+    /**
+     * Fonction pour rafraîchir une ligne d'inscription spécifique sans recharger la page
+     * Inclut spinner de chargement et sauvegarde de l'état du checkbox
+     */
+    window.refreshInscriptionLigne = function(inscriptionId) {
+        const row = document.querySelector(`tr[data-inscription-id="${inscriptionId}"]`);
+
+        if (!row) {
+            console.error('Ligne non trouvée pour inscription ID:', inscriptionId);
+            // Fallback: recharger la page si la ligne n'existe pas
+            location.reload();
+            return;
+        }
+
+        // Sauvegarder l'état du checkbox AVANT de modifier le DOM
+        const checkbox = row.querySelector('.inscription-checkbox');
+        const wasChecked = checkbox?.checked || false;
+
+        // Compter le nombre de colonnes pour le colspan du spinner
+        const colCount = row.querySelectorAll('td').length;
+
+        // Afficher le spinner de chargement
+        row.innerHTML = `
+            <td colspan="${colCount}" style="text-align: center; padding: 20px;">
+                <div class="spinner-border text-primary" role="status" style="width: 2rem; height: 2rem;">
+                    <span class="visually-hidden">Chargement...</span>
+                </div>
+            </td>
+        `;
+
+        // Fetch AJAX pour récupérer la ligne mise à jour
+        fetch(`/esbtp/inscriptions/${inscriptionId}/refresh-ligne`, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success && data.html) {
+                // Créer un élément temporaire pour parser le HTML
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = data.html.trim();
+                const newRow = tempDiv.firstElementChild;
+
+                if (newRow && newRow.tagName === 'TR') {
+                    // Remplacer l'ancienne ligne par la nouvelle
+                    row.replaceWith(newRow);
+
+                    // Restaurer l'état du checkbox si nécessaire
+                    if (wasChecked) {
+                        const newCheckbox = newRow.querySelector('.inscription-checkbox');
+                        if (newCheckbox) {
+                            newCheckbox.checked = true;
+                            // Déclencher l'événement change pour mettre à jour le compteur
+                            newCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                    }
+
+                    console.log('✅ Ligne rafraîchie avec succès:', inscriptionId);
+                } else {
+                    throw new Error('HTML retourné invalide (pas de TR)');
+                }
+            } else {
+                throw new Error(data.message || 'Réponse serveur invalide');
+            }
+        })
+        .catch(error => {
+            console.error('❌ Erreur refresh ligne:', error);
+
+            // Fallback: recharger la page en cas d'erreur
+            alert('Erreur lors de la mise à jour. La page va se recharger.');
+            location.reload();
+        });
+    };
 });
 </script>
 

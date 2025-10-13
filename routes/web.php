@@ -793,6 +793,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::get('/inscriptions/{inscription}/paiement-en-attente', [ESBTPInscriptionController::class, 'getPaiementEnAttente'])->name('inscriptions.paiement-en-attente');
             Route::get('/inscriptions/{inscription}/classes-alternatives', [ESBTPInscriptionController::class, 'getClassesAlternatives'])->name('inscriptions.classes-alternatives');
             Route::post('/inscriptions/{inscription}/changer-classe-rapide', [ESBTPInscriptionController::class, 'changerClasseRapide'])->name('inscriptions.changer-classe-rapide');
+            Route::get('/inscriptions/{inscription}/refresh-ligne', [ESBTPInscriptionController::class, 'refreshLigne'])->name('inscriptions.refresh-ligne');
 
             // Routes pour l'administration des inscriptions
             Route::get('/inscriptions-administration', [ESBTPInscriptionController::class, 'administration'])->name('inscriptions.administration');
