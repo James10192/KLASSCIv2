@@ -2550,17 +2550,22 @@ body.modal-open .card:hover {
     /**
      * Fonction générique pour protéger un formulaire contre les double-clics
      * @param {string} formSelector - Sélecteur jQuery du formulaire (#paymentForm, etc.)
+     * @param {string} modalSelector - Sélecteur jQuery du modal parent (#paymentModal, etc.)
      */
-    function protectFormAgainstDoubleClick(formSelector) {
+    function protectFormAgainstDoubleClick(formSelector, modalSelector) {
         const $form = $(formSelector);
+        const $modal = $(modalSelector);
+
         if ($form.length === 0) {
             console.warn(`⚠️ Formulaire ${formSelector} non trouvé`);
             return;
         }
 
         let isSubmitting = false;
+        let originalButtonText = '';
 
-        $form.on('submit', function(e) {
+        // Handler de soumission
+        $form.off('submit').on('submit', function(e) {
             // Si déjà en cours de soumission, bloquer
             if (isSubmitting) {
                 e.preventDefault();
@@ -2574,36 +2579,48 @@ body.modal-open .card:hover {
 
             // Récupérer le bouton submit
             const $submitBtn = $(this).find('button[type="submit"]');
-            const originalText = $submitBtn.html();
+            originalButtonText = $submitBtn.html();
 
             // Désactiver le bouton et afficher un spinner
             $submitBtn.prop('disabled', true);
             $submitBtn.html('<i class="fas fa-spinner fa-spin me-2"></i>Traitement en cours...');
             $submitBtn.addClass('disabled');
 
-            // Débloquer après 10 secondes en cas d'erreur serveur (fallback)
-            setTimeout(function() {
-                if (isSubmitting) {
-                    console.warn(`⚠️ ${formSelector} - Timeout de sécurité atteint, déverrouillage`);
-                    isSubmitting = false;
-                    $submitBtn.prop('disabled', false);
-                    $submitBtn.html(originalText);
-                    $submitBtn.removeClass('disabled');
-                }
-            }, 10000);
+            // Désactiver aussi le bouton de fermeture du modal
+            $modal.find('[data-bs-dismiss="modal"]').prop('disabled', true);
 
             // Laisser le formulaire se soumettre normalement
             return true;
         });
 
-        console.log(`✅ Protection double-clic activée pour ${formSelector}`);
+        // Réinitialiser quand le modal est fermé (au cas où l'utilisateur ferme sans soumettre)
+        if ($modal.length > 0) {
+            $modal.on('hidden.bs.modal', function() {
+                if (isSubmitting) {
+                    console.log(`🔓 ${formSelector} - Modal fermé, réinitialisation`);
+                    isSubmitting = false;
+
+                    const $submitBtn = $form.find('button[type="submit"]');
+                    $submitBtn.prop('disabled', false);
+                    if (originalButtonText) {
+                        $submitBtn.html(originalButtonText);
+                    }
+                    $submitBtn.removeClass('disabled');
+
+                    // Réactiver le bouton de fermeture
+                    $modal.find('[data-bs-dismiss="modal"]').prop('disabled', false);
+                }
+            });
+        }
+
+        console.log(`✅ Protection double-clic activée pour ${formSelector} (modal: ${modalSelector})`);
     }
 
     // Appliquer la protection sur tous les formulaires de paiement
     $(document).ready(function() {
-        protectFormAgainstDoubleClick('#paymentForm');        // Modal associer un paiement
-        protectFormAgainstDoubleClick('#validationForm');     // Modal validation définitive
-        protectFormAgainstDoubleClick('#reliquatPaymentForm'); // Modal paiement reliquat
+        protectFormAgainstDoubleClick('#paymentForm', '#paymentModal');              // Modal associer un paiement
+        protectFormAgainstDoubleClick('#validationForm', '#validationModal');        // Modal validation définitive
+        protectFormAgainstDoubleClick('#reliquatPaymentForm', '#reliquatPaymentModal'); // Modal paiement reliquat
     });
 </script>
 
