@@ -720,27 +720,52 @@ function bulkValider() {
         return;
     }
 
-    const form = $('<form>', {
+    console.log('🔄 Validation en masse de', selectedIds.length, 'paiements:', selectedIds);
+
+    // Requête AJAX au lieu de form submit
+    fetch('{{ route('esbtp.paiements.bulk-valider') }}', {
         method: 'POST',
-        action: '{{ route('esbtp.paiements.bulk-valider') }}'
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({
+            paiements: selectedIds
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('✅ Réponse bulk validation:', data);
+
+        if (data.success) {
+            // Rafraîchir chaque ligne validée avec animation
+            selectedIds.forEach((id, index) => {
+                setTimeout(() => {
+                    if (typeof window.refreshPaiementLigne === 'function') {
+                        window.refreshPaiementLigne(id, 'validate');
+                    }
+                }, index * 100); // Décalage de 100ms entre chaque ligne
+            });
+
+            // Message de succès
+            alert(data.message || 'Paiements validés avec succès !');
+
+            // Masquer la barre d'actions
+            $('#bulk-actions-bar').hide();
+        } else {
+            alert(data.message || 'Erreur lors de la validation.');
+        }
+    })
+    .catch(error => {
+        console.error('❌ Erreur bulk validation:', error);
+        alert('Erreur lors de la validation. Veuillez réessayer.');
     });
-
-    form.append($('<input>', {
-        type: 'hidden',
-        name: '_token',
-        value: "{{ csrf_token() }}"
-    }));
-
-    selectedIds.forEach(function(id) {
-        form.append($('<input>', {
-            type: 'hidden',
-            name: 'paiements[]',
-            value: id
-        }));
-    });
-
-    $('body').append(form);
-    form.submit();
 }
 
 function openBulkRejetModal() {
@@ -785,6 +810,78 @@ function getSelectedPaiementIds() {
     });
     return ids;
 }
+
+// Intercepter la soumission du formulaire de rejet en masse
+$(document).ready(function() {
+    $('#bulk-rejet-form').off('submit').on('submit', function(e) {
+        e.preventDefault();
+
+        const form = $(this);
+        const motifRejet = $('#bulk_motif_rejet').val();
+        const selectedIds = getSelectedPaiementIds();
+
+        if (!motifRejet.trim()) {
+            alert('Veuillez saisir un motif de rejet.');
+            return;
+        }
+
+        if (!$('#bulk_confirmer_rejet').is(':checked')) {
+            alert('Veuillez confirmer le rejet.');
+            return;
+        }
+
+        console.log('🔄 Rejet en masse de', selectedIds.length, 'paiements:', selectedIds);
+
+        // Requête AJAX
+        fetch('{{ route('esbtp.paiements.bulk-rejeter') }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                paiements: selectedIds,
+                motif_rejet: motifRejet
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('✅ Réponse bulk rejet:', data);
+
+            if (data.success) {
+                // Fermer le modal
+                bootstrap.Modal.getInstance(document.getElementById('bulkRejetModal')).hide();
+
+                // Rafraîchir chaque ligne rejetée avec animation
+                selectedIds.forEach((id, index) => {
+                    setTimeout(() => {
+                        if (typeof window.refreshPaiementLigne === 'function') {
+                            window.refreshPaiementLigne(id, 'reject');
+                        }
+                    }, index * 100); // Décalage de 100ms
+                });
+
+                // Message de succès
+                alert(data.message || 'Paiements rejetés avec succès !');
+
+                // Masquer la barre d'actions
+                $('#bulk-actions-bar').hide();
+            } else {
+                alert(data.message || 'Erreur lors du rejet.');
+            }
+        })
+        .catch(error => {
+            console.error('❌ Erreur bulk rejet:', error);
+            alert('Erreur lors du rejet. Veuillez réessayer.');
+        });
+    });
+});
 </script>
 
 @endpush
