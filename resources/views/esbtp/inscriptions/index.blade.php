@@ -772,34 +772,61 @@ function ouvrirModalCreerPaiement(inscriptionId) {
 // Gestion de la soumission des formulaires avec AJAX
 document.addEventListener('DOMContentLoaded', function() {
     // Formulaire validation paiement
-    document.getElementById('formValiderPaiement').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const formData = new FormData(this);
-        const actionUrl = this.action;
-        const inscriptionId = document.getElementById('valider_inscription_id').value;
+    (() => {
+        let isSubmitting = false;
+        const $form = document.getElementById('formValiderPaiement');
 
-        fetch(actionUrl, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
+        $form.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            // Protection double-clic
+            if (isSubmitting) {
+                console.warn('⚠️ formValiderPaiement - Soumission déjà en cours, blocage du double-clic');
+                return false;
             }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                bootstrap.Modal.getInstance(document.getElementById('modalValiderPaiement')).hide();
-                // ✅ Refresh uniquement la ligne au lieu de recharger toute la page
-                window.refreshInscriptionLigne(inscriptionId);
-            } else {
-                alert(data.message || 'Erreur lors de la validation');
-            }
-        })
-        .catch(error => {
-            console.error(error);
-            alert('Erreur lors de la validation du paiement');
+
+            isSubmitting = true;
+            console.log('🔒 formValiderPaiement - Formulaire verrouillé');
+
+            // Désactiver le bouton submit
+            const $submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = $submitBtn.innerHTML;
+            $submitBtn.disabled = true;
+            $submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Validation en cours...';
+
+            const formData = new FormData(this);
+            const actionUrl = this.action;
+            const inscriptionId = document.getElementById('valider_inscription_id').value;
+
+            fetch(actionUrl, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    bootstrap.Modal.getInstance(document.getElementById('modalValiderPaiement')).hide();
+                    // ✅ Refresh uniquement la ligne au lieu de recharger toute la page
+                    window.refreshInscriptionLigne(inscriptionId);
+                } else {
+                    alert(data.message || 'Erreur lors de la validation');
+                }
+            })
+            .catch(error => {
+                console.error(error);
+                alert('Erreur lors de la validation du paiement');
+            })
+            .finally(() => {
+                // Réactiver le bouton
+                isSubmitting = false;
+                $submitBtn.disabled = false;
+                $submitBtn.innerHTML = originalText;
+            });
         });
-    });
+    })();
 
     // Formulaire changement de classe
     document.getElementById('formChangerClasse').addEventListener('submit', function(e) {
@@ -832,34 +859,61 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Formulaire création de paiement (AJAX pour éviter rechargement page)
-    document.getElementById('formCreerPaiement').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const formData = new FormData(this);
-        const actionUrl = this.action;
-        const inscriptionId = document.getElementById('creer_inscription_id').value;
+    (() => {
+        let isSubmitting = false;
+        const $form = document.getElementById('formCreerPaiement');
 
-        fetch(actionUrl, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
+        $form.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            // Protection double-clic
+            if (isSubmitting) {
+                console.warn('⚠️ formCreerPaiement - Soumission déjà en cours, blocage du double-clic');
+                return false;
             }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                bootstrap.Modal.getInstance(document.getElementById('modalCreerPaiement')).hide();
-                // ✅ Refresh uniquement la ligne au lieu de recharger toute la page
-                window.refreshInscriptionLigne(inscriptionId);
-            } else {
-                alert(data.message || 'Erreur lors de la création du paiement');
-            }
-        })
-        .catch(error => {
-            console.error(error);
-            alert('Erreur lors de la création du paiement');
+
+            isSubmitting = true;
+            console.log('🔒 formCreerPaiement - Formulaire verrouillé');
+
+            // Désactiver le bouton submit
+            const $submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = $submitBtn.innerHTML;
+            $submitBtn.disabled = true;
+            $submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Création en cours...';
+
+            const formData = new FormData(this);
+            const actionUrl = this.action;
+            const inscriptionId = document.getElementById('creer_inscription_id').value;
+
+            fetch(actionUrl, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    bootstrap.Modal.getInstance(document.getElementById('modalCreerPaiement')).hide();
+                    // ✅ Refresh uniquement la ligne au lieu de recharger toute la page
+                    window.refreshInscriptionLigne(inscriptionId);
+                } else {
+                    alert(data.message || 'Erreur lors de la création du paiement');
+                }
+            })
+            .catch(error => {
+                console.error(error);
+                alert('Erreur lors de la création du paiement');
+            })
+            .finally(() => {
+                // Réactiver le bouton
+                isSubmitting = false;
+                $submitBtn.disabled = false;
+                $submitBtn.innerHTML = originalText;
+            });
         });
-    });
+    })();
 
     /**
      * Fonction pour rafraîchir une ligne d'inscription spécifique sans recharger la page

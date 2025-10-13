@@ -753,6 +753,47 @@ $(function() {
         $('#payment-details-section').hide();
         $('#submit-section').hide();
     }
+
+    // ========================================
+    // PROTECTION CONTRE LES DOUBLE-CLICS
+    // ========================================
+    let isSubmitting = false;
+
+    $('#payment-form').on('submit', function(e) {
+        // Si déjà en cours de soumission, bloquer
+        if (isSubmitting) {
+            e.preventDefault();
+            console.warn('⚠️ Soumission déjà en cours, blocage du double-clic');
+            return false;
+        }
+
+        // Marquer comme en cours de soumission
+        isSubmitting = true;
+        console.log('🔒 Formulaire verrouillé - soumission en cours...');
+
+        // Récupérer le bouton submit
+        const $submitBtn = $(this).find('button[type="submit"]');
+        const originalText = $submitBtn.html();
+
+        // Désactiver le bouton et afficher un spinner
+        $submitBtn.prop('disabled', true);
+        $submitBtn.html('<i class="fas fa-spinner fa-spin me-2"></i>Enregistrement en cours...');
+        $submitBtn.addClass('disabled');
+
+        // Débloquer après 5 secondes en cas d'erreur serveur (fallback)
+        setTimeout(function() {
+            if (isSubmitting) {
+                console.warn('⚠️ Timeout de sécurité atteint, déverrouillage du formulaire');
+                isSubmitting = false;
+                $submitBtn.prop('disabled', false);
+                $submitBtn.html(originalText);
+                $submitBtn.removeClass('disabled');
+            }
+        }, 5000);
+
+        // Laisser le formulaire se soumettre normalement
+        return true;
+    });
 });
 </script>
 @endpush 

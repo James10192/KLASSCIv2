@@ -2542,6 +2542,69 @@ body.modal-open .card:hover {
             console.warn('⚠️ Formulaire editSubscriptionForm non trouvé');
         }
     });
+
+    // ========================================
+    // PROTECTION CONTRE LES DOUBLE-CLICS
+    // ========================================
+
+    /**
+     * Fonction générique pour protéger un formulaire contre les double-clics
+     * @param {string} formSelector - Sélecteur jQuery du formulaire (#paymentForm, etc.)
+     */
+    function protectFormAgainstDoubleClick(formSelector) {
+        const $form = $(formSelector);
+        if ($form.length === 0) {
+            console.warn(`⚠️ Formulaire ${formSelector} non trouvé`);
+            return;
+        }
+
+        let isSubmitting = false;
+
+        $form.on('submit', function(e) {
+            // Si déjà en cours de soumission, bloquer
+            if (isSubmitting) {
+                e.preventDefault();
+                console.warn(`⚠️ ${formSelector} - Soumission déjà en cours, blocage du double-clic`);
+                return false;
+            }
+
+            // Marquer comme en cours de soumission
+            isSubmitting = true;
+            console.log(`🔒 ${formSelector} - Formulaire verrouillé, soumission en cours...`);
+
+            // Récupérer le bouton submit
+            const $submitBtn = $(this).find('button[type="submit"]');
+            const originalText = $submitBtn.html();
+
+            // Désactiver le bouton et afficher un spinner
+            $submitBtn.prop('disabled', true);
+            $submitBtn.html('<i class="fas fa-spinner fa-spin me-2"></i>Traitement en cours...');
+            $submitBtn.addClass('disabled');
+
+            // Débloquer après 10 secondes en cas d'erreur serveur (fallback)
+            setTimeout(function() {
+                if (isSubmitting) {
+                    console.warn(`⚠️ ${formSelector} - Timeout de sécurité atteint, déverrouillage`);
+                    isSubmitting = false;
+                    $submitBtn.prop('disabled', false);
+                    $submitBtn.html(originalText);
+                    $submitBtn.removeClass('disabled');
+                }
+            }, 10000);
+
+            // Laisser le formulaire se soumettre normalement
+            return true;
+        });
+
+        console.log(`✅ Protection double-clic activée pour ${formSelector}`);
+    }
+
+    // Appliquer la protection sur tous les formulaires de paiement
+    $(document).ready(function() {
+        protectFormAgainstDoubleClick('#paymentForm');        // Modal associer un paiement
+        protectFormAgainstDoubleClick('#validationForm');     // Modal validation définitive
+        protectFormAgainstDoubleClick('#reliquatPaymentForm'); // Modal paiement reliquat
+    });
 </script>
 
 <!-- Les styles z-index pour les modals sont gérés par modal-force-fix.css -->
