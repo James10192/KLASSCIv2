@@ -935,6 +935,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     row.replaceWith(newRow);
                     console.log('✅ Ligne remplacée avec succès');
 
+                    // ✨ Animation gradient vert semi-transparent (70% → 0% opacity)
+                    newRow.style.background = 'linear-gradient(to right, rgba(40, 167, 69, 0.7), rgba(40, 167, 69, 0))';
+                    newRow.style.transition = 'background 0.6s ease-out';
+                    setTimeout(() => {
+                        newRow.style.background = '';
+                    }, 600);
+
                     // Restaurer l'état du checkbox si nécessaire
                     if (wasChecked) {
                         console.log('📌 Restauration du checkbox...');

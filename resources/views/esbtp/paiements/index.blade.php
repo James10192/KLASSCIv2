@@ -520,6 +520,168 @@ function showYearChangeInfo() {
     });
 
     window.triggerRefreshPaiements = triggerRefresh;
+
+    /**
+     * Fonction pour rafraîchir une ligne de paiement spécifique sans recharger la page
+     * Inclut spinner de chargement, sauvegarde de l'état du checkbox et animation gradient
+     */
+    window.refreshPaiementLigne = function(paiementId, actionType = 'validate') {
+        console.log('🔄 refreshPaiementLigne() appelé pour ID:', paiementId, 'Action:', actionType);
+
+        const row = document.querySelector(`tr[data-paiement-id="${paiementId}"]`);
+
+        if (!row) {
+            console.error('❌ Ligne non trouvée pour paiement ID:', paiementId);
+            location.reload();
+            return;
+        }
+
+        console.log('✅ Ligne trouvée, sauvegarde checkbox...');
+        // Sauvegarder l'état du checkbox AVANT de modifier le DOM
+        const checkbox = row.querySelector('.paiement-checkbox');
+        const wasChecked = checkbox?.checked || false;
+        console.log('📌 Checkbox était:', wasChecked ? 'coché' : 'non coché');
+
+        // Compter le nombre de colonnes pour le colspan du spinner
+        const colCount = row.querySelectorAll('td').length;
+
+        console.log('⏳ Affichage spinner...');
+        // Afficher le spinner de chargement
+        row.innerHTML = `
+            <td colspan="${colCount}" style="text-align: center; padding: 20px;">
+                <div class="spinner-border text-primary" role="status" style="width: 2rem; height: 2rem;">
+                    <span class="visually-hidden">Chargement...</span>
+                </div>
+            </td>
+        `;
+
+        console.log('🌐 Fetch AJAX vers /esbtp/paiements/' + paiementId + '/refresh-ligne');
+        // Fetch AJAX pour récupérer la ligne mise à jour
+        fetch(`/esbtp/paiements/${paiementId}/refresh-ligne`, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            console.log('📥 Réponse reçue, status:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('📦 Data reçue:', data);
+            if (data.success && data.html) {
+                // Créer un <tbody> temporaire pour parser le HTML du <tr>
+                const tempTable = document.createElement('table');
+                const tempTbody = document.createElement('tbody');
+                tempTbody.innerHTML = data.html.trim();
+                tempTable.appendChild(tempTbody);
+
+                const newRow = tempTbody.firstElementChild;
+
+                console.log('📦 newRow:', newRow);
+                console.log('📦 newRow?.tagName:', newRow?.tagName);
+
+                if (newRow && newRow.tagName === 'TR') {
+                    console.log('🔄 Remplacement de la ligne...');
+                    // Remplacer l'ancienne ligne par la nouvelle
+                    row.replaceWith(newRow);
+                    console.log('✅ Ligne remplacée avec succès');
+
+                    // ✨ Animation gradient selon le type d'action
+                    if (actionType === 'validate') {
+                        // Gradient vert pour validation (70% → 0% opacity)
+                        newRow.style.background = 'linear-gradient(to right, rgba(40, 167, 69, 0.7), rgba(40, 167, 69, 0))';
+                    } else if (actionType === 'reject') {
+                        // Gradient rouge pour rejet (70% → 0% opacity)
+                        newRow.style.background = 'linear-gradient(to right, rgba(220, 53, 69, 0.7), rgba(220, 53, 69, 0))';
+                    }
+                    newRow.style.transition = 'background 0.6s ease-out';
+                    setTimeout(() => {
+                        newRow.style.background = '';
+                    }, 600);
+
+                    // Restaurer l'état du checkbox si nécessaire
+                    if (wasChecked) {
+                        console.log('📌 Restauration du checkbox...');
+                        const newCheckbox = newRow.querySelector('.paiement-checkbox');
+                        if (newCheckbox) {
+                            newCheckbox.checked = true;
+                            // Déclencher l'événement change pour mettre à jour le compteur
+                            $(newCheckbox).trigger('change');
+                            console.log('✅ Checkbox restauré');
+                        }
+                    }
+
+                    console.log('🎉 Ligne rafraîchie avec succès:', paiementId);
+                } else {
+                    throw new Error('HTML retourné invalide (pas de TR)');
+                }
+            } else {
+                throw new Error(data.message || 'Réponse serveur invalide');
+            }
+        })
+        .catch(error => {
+            console.error('❌ Erreur refresh ligne:', error);
+            console.error('❌ Message d\'erreur:', error.message);
+
+            // Fallback: recharger la page en cas d'erreur
+            alert('Erreur lors de la mise à jour: ' + error.message + '. La page va se recharger.');
+            location.reload();
+        });
+    };
+
+    /**
+     * Intercepter les clics sur les boutons de validation de paiement
+     * pour utiliser le refresh partiel AJAX au lieu du rechargement de page
+     */
+    $(document).on('click', '.valider-paiement-btn', function(e) {
+        e.preventDefault();
+
+        const paiementId = $(this).data('paiement-id');
+
+        if (!paiementId) {
+            console.error('❌ Pas de paiement ID trouvé sur le bouton');
+            return;
+        }
+
+        if (!confirm('Êtes-vous sûr de vouloir valider ce paiement ?')) {
+            return;
+        }
+
+        console.log('🔄 Validation du paiement:', paiementId);
+
+        // Soumettre la validation via AJAX
+        const form = $(this).closest('form');
+        const actionUrl = form.attr('action');
+
+        fetch(actionUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log('✅ Paiement validé avec succès');
+                // Refresh uniquement la ligne avec animation verte
+                window.refreshPaiementLigne(paiementId, 'validate');
+            } else {
+                alert(data.message || 'Erreur lors de la validation');
+            }
+        })
+        .catch(error => {
+            console.error('❌ Erreur validation:', error);
+            alert('Erreur lors de la validation du paiement');
+            location.reload();
+        });
+    });
 })();
 
 function updateBulkActionsBar() {

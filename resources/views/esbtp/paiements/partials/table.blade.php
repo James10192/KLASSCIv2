@@ -29,7 +29,7 @@
                 </thead>
                 <tbody>
                     @forelse($paiements as $paiement)
-                        <tr>
+                        <tr data-paiement-id="{{ $paiement->id }}">
                             <td>
                                 @if($paiement->status == 'en_attente' && auth()->user()->hasRole('superAdmin'))
                                     <input type="checkbox" class="form-check-input paiement-checkbox"

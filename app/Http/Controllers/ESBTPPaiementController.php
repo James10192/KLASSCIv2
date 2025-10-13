@@ -1933,17 +1933,23 @@ class ESBTPPaiementController extends Controller
     /**
      * Valider un paiement
      */
-    public function valider($id)
+    public function valider(Request $request, $id)
     {
         try {
             $paiement = ESBTPPaiement::findOrFail($id);
 
             // Vérifier si le paiement peut être validé
             if ($paiement->status === 'validé') {
+                if ($request->ajax()) {
+                    return response()->json(['success' => false, 'message' => 'Ce paiement est déjà validé.'], 400);
+                }
                 return redirect()->back()->with('error', 'Ce paiement est déjà validé.');
             }
 
             if ($paiement->status === 'rejeté') {
+                if ($request->ajax()) {
+                    return response()->json(['success' => false, 'message' => 'Ce paiement a été rejeté et ne peut pas être validé.'], 400);
+                }
                 return redirect()->back()->with('error', 'Ce paiement a été rejeté et ne peut pas être validé.');
             }
 
@@ -1996,6 +2002,15 @@ class ESBTPPaiementController extends Controller
                 Log::error('Erreur désactivation reminder paiement: ' . $e->getMessage());
             }
 
+            // Si requête AJAX, retourner JSON
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Paiement validé avec succès.',
+                    'paiement_id' => $paiement->id
+                ]);
+            }
+
             return redirect()->back()->with('success', 'Paiement validé avec succès.');
 
         } catch (\Exception $e) {
@@ -2005,6 +2020,13 @@ class ESBTPPaiementController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
+
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erreur lors de la validation: ' . $e->getMessage()
+                ], 500);
+            }
 
             return redirect()->back()->with('error', 'Erreur lors de la validation: ' . $e->getMessage());
         }
@@ -2338,6 +2360,51 @@ class ESBTPPaiementController extends Controller
             ]);
 
             return redirect()->back()->with('error', 'Erreur lors du rejet groupé: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Rafraîchir une ligne de paiement spécifique (AJAX pour mise à jour partielle)
+     */
+    public function refreshLigne(ESBTPPaiement $paiement)
+    {
+        try {
+            // Charger toutes les relations nécessaires
+            $paiement->load([
+                'etudiant.user',
+                'fraisCategory',
+                'categorie',
+                'inscription'
+            ]);
+
+            // Rendu de la partial ligne-paiement
+            $html = view('esbtp.paiements.partials.ligne-paiement', [
+                'paiement' => $paiement
+            ])->render();
+
+            \Log::info('Ligne paiement rafraîchie avec succès', [
+                'paiement_id' => $paiement->id,
+                'user_id' => auth()->id(),
+                'status' => $paiement->status
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'html' => $html,
+                'paiement_id' => $paiement->id,
+                'status' => $paiement->status
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Erreur refreshLigne paiement: ' . $e->getMessage(), [
+                'paiement_id' => $paiement->id,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors du rafraîchissement de la ligne: ' . $e->getMessage()
+            ], 500);
         }
     }
 }
