@@ -36,16 +36,42 @@
                             @endif
                         </td>
                         @endif
-                        <td style="max-width: 180px;">
+                        <td style="max-width: 250px;">
                             @if($hasProbleme)
-                                <span class="badge {{ $problemeInfo['type'] === 'error' ? 'bg-danger' : 'bg-warning text-dark' }} d-inline-flex align-items-start"
-                                      style="cursor: help; font-size: 0.75rem; white-space: normal; word-wrap: break-word; text-align: left; line-height: 1.3;"
-                                      data-bs-toggle="tooltip"
-                                      data-bs-placement="right"
-                                      title="{{ $problemeInfo['message'] }}">
-                                    <i class="fas {{ $problemeInfo['type'] === 'error' ? 'fa-exclamation-circle' : 'fa-exclamation-triangle' }} me-1 mt-1" style="flex-shrink: 0;"></i>
-                                    <span style="word-break: break-word;">{{ $problemeInfo['message'] }}</span>
-                                </span>
+                                <div class="d-flex flex-column gap-2">
+                                    <span class="badge {{ $problemeInfo['type'] === 'error' ? 'bg-danger' : 'bg-warning text-dark' }} d-inline-flex align-items-start"
+                                          style="font-size: 0.75rem; white-space: normal; word-wrap: break-word; text-align: left; line-height: 1.3;">
+                                        <i class="fas {{ $problemeInfo['type'] === 'error' ? 'fa-exclamation-circle' : 'fa-exclamation-triangle' }} me-1 mt-1" style="flex-shrink: 0;"></i>
+                                        <span style="word-break: break-word;">{{ $problemeInfo['message'] }}</span>
+                                    </span>
+
+                                    @php
+                                        $raison = $problemeInfo['message'];
+                                        $isPaiementNonValide = str_contains($raison, 'paiement') && str_contains($raison, 'validé');
+                                        $isClassePleine = str_contains($raison, 'Classe pleine') || str_contains($raison, 'classe pleine');
+                                        $isSansPaiement = str_contains($raison, 'Aucun paiement') || str_contains($raison, 'sans paiement');
+                                    @endphp
+
+                                    @if($isPaiementNonValide)
+                                        <button type="button" class="btn btn-sm btn-action-quick"
+                                                onclick="ouvrirModalValiderPaiement({{ $inscription->id }})"
+                                                style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; padding: 6px 12px; font-size: 0.75rem; font-weight: 600;">
+                                            <i class="fas fa-check-circle me-1"></i>Valider paiement
+                                        </button>
+                                    @elseif($isClassePleine)
+                                        <button type="button" class="btn btn-sm btn-action-quick"
+                                                onclick="ouvrirModalChangerClasse({{ $inscription->id }})"
+                                                style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border: none; border-radius: 8px; padding: 6px 12px; font-size: 0.75rem; font-weight: 600;">
+                                            <i class="fas fa-exchange-alt me-1"></i>Changer classe
+                                        </button>
+                                    @elseif($isSansPaiement)
+                                        <button type="button" class="btn btn-sm btn-action-quick"
+                                                onclick="ouvrirModalCreerPaiement({{ $inscription->id }})"
+                                                style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; border: none; border-radius: 8px; padding: 6px 12px; font-size: 0.75rem; font-weight: 600;">
+                                            <i class="fas fa-plus-circle me-1"></i>Créer paiement
+                                        </button>
+                                    @endif
+                                </div>
                             @else
                                 {{ $inscription->numero_inscription }}
                             @endif

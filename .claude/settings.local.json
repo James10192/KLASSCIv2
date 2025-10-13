@@ -3,7 +3,16 @@
     "allow": [
       "mcp__sequential-thinking__sequentialthinking",
       "Bash(php artisan:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Read(//home/levraimd/workspace/klassciMaster/**)",
+      "Read(//home/levraimd/workspace/KLASSCIv2/**)",
+      "Bash(curl -s -H \"Authorization: Bearer 1ISCDzRdQOlZW6eYCyZ7qmlYmMttQpWR3AMcaTrOwpweoRp6w0X2s1U2HPyocZKG\" http://localhost:8001/api/tenants/presentation/limits)",
+      "Bash(curl -s \"http://localhost:8001/api/tenants/presentation/limits?token=1ISCDzRdQOlZW6eYCyZ7qmlYmMttQpWR3AMcaTrOwpweoRp6w0X2s1U2HPyocZKG\")",
+      "Bash(curl -s -H \"Authorization: Bearer invalid_token_123\" http://localhost:8001/api/tenants/presentation/limits)",
+      "Bash(curl -s -H \"Authorization: Bearer 1ISCDzRdQOlZW6eYCyZ7qmlYmMttQpWR3AMcaTrOwpweoRp6w0X2s1U2HPyocZKG\" http://localhost:8001/api/tenants/inexistant/limits)",
+      "Bash(php artisan optimize:clear:*)",
+      "Bash(php artisan filament:cache-components:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": [],

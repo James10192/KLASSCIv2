@@ -636,5 +636,348 @@ document.addEventListener('DOMContentLoaded', function () {
         fetchResults(targetUrl, { pushState: false });
     });
 });
+
+// === Fonctions pour actions rapides ===
+
+/**
+ * Ouvrir modal pour valider un paiement en attente
+ */
+function ouvrirModalValiderPaiement(inscriptionId) {
+    fetch(`/esbtp/inscriptions/${inscriptionId}/paiement-en-attente`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.paiement) {
+                document.getElementById('valider_inscription_id').value = inscriptionId;
+                document.getElementById('valider_paiement_id').value = data.paiement.id;
+                document.getElementById('valider_montant').value = new Intl.NumberFormat('fr-FR').format(data.paiement.montant) + ' FCFA';
+                document.getElementById('valider_mode').value = data.paiement.mode_paiement || 'N/A';
+                document.getElementById('valider_reference').value = data.paiement.reference_paiement || 'N/A';
+                document.getElementById('validerPaiementInfo').textContent = `Paiement de ${data.paiement.etudiant.nom} ${data.paiement.etudiant.prenoms}`;
+
+                // Configurer l'action du formulaire
+                document.getElementById('formValiderPaiement').action = `/esbtp/paiements/${data.paiement.id}/valider-rapide`;
+
+                const modal = new bootstrap.Modal(document.getElementById('modalValiderPaiement'));
+                modal.show();
+            } else {
+                alert('Impossible de récupérer les informations du paiement: ' + (data.message || ''));
+            }
+        })
+        .catch(error => {
+            console.error(error);
+            alert('Erreur lors du chargement des données');
+        });
+}
+
+/**
+ * Ouvrir modal pour changer la classe
+ */
+function ouvrirModalChangerClasse(inscriptionId) {
+    fetch(`/esbtp/inscriptions/${inscriptionId}/classes-alternatives`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('changer_inscription_id').value = inscriptionId;
+                document.getElementById('changer_ancienne_classe').value = data.classeActuelle.name;
+
+                // Remplir le select des classes disponibles
+                const select = document.getElementById('changer_nouvelle_classe');
+                select.innerHTML = '<option value="">Sélectionnez une classe</option>';
+
+                data.classesAlternatives.forEach(classe => {
+                    const option = document.createElement('option');
+                    option.value = classe.id;
+                    option.textContent = `${classe.name} (${classe.places_disponibles}/${classe.places_totales} places)`;
+                    option.dataset.placesDisponibles = classe.places_disponibles;
+                    select.appendChild(option);
+                });
+
+                // Event listener pour afficher les places disponibles
+                select.addEventListener('change', function() {
+                    const selectedOption = this.options[this.selectedIndex];
+                    if (selectedOption.value) {
+                        document.getElementById('classeDispoInfo').style.display = 'block';
+                        document.getElementById('classeDispoText').textContent =
+                            `Places disponibles: ${selectedOption.dataset.placesDisponibles}`;
+                    } else {
+                        document.getElementById('classeDispoInfo').style.display = 'none';
+                    }
+                });
+
+                // Configurer l'action du formulaire
+                document.getElementById('formChangerClasse').action = `/esbtp/inscriptions/${inscriptionId}/changer-classe-rapide`;
+
+                const modal = new bootstrap.Modal(document.getElementById('modalChangerClasse'));
+                modal.show();
+            } else {
+                alert(data.message || 'Impossible de récupérer les classes alternatives');
+            }
+        })
+        .catch(error => {
+            console.error(error);
+            alert('Erreur lors du chargement des données');
+        });
+}
+
+/**
+ * Ouvrir modal pour créer un paiement
+ */
+function ouvrirModalCreerPaiement(inscriptionId) {
+    fetch(`/esbtp/inscriptions/${inscriptionId}/data`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.inscription) {
+                document.getElementById('creer_inscription_id').value = inscriptionId;
+                document.getElementById('creer_etudiant_id').value = data.inscription.etudiant_id;
+                document.getElementById('creerPaiementInfo').textContent =
+                    `Créer un paiement pour ${data.inscription.etudiant.nom} ${data.inscription.etudiant.prenoms}`;
+
+                const modal = new bootstrap.Modal(document.getElementById('modalCreerPaiement'));
+                modal.show();
+            } else {
+                alert('Impossible de récupérer les informations de l\'inscription: ' + (data.message || ''));
+            }
+        })
+        .catch(error => {
+            console.error(error);
+            alert('Erreur lors du chargement des données');
+        });
+}
+
+// Gestion de la soumission des formulaires avec AJAX
+document.addEventListener('DOMContentLoaded', function() {
+    // Formulaire validation paiement
+    document.getElementById('formValiderPaiement').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        const actionUrl = this.action;
+
+        fetch(actionUrl, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('modalValiderPaiement')).hide();
+                location.reload(); // Recharger pour voir les changements
+            } else {
+                alert(data.message || 'Erreur lors de la validation');
+            }
+        })
+        .catch(error => {
+            console.error(error);
+            alert('Erreur lors de la validation du paiement');
+        });
+    });
+
+    // Formulaire changement de classe
+    document.getElementById('formChangerClasse').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        const actionUrl = this.action;
+
+        fetch(actionUrl, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('modalChangerClasse')).hide();
+                location.reload(); // Recharger pour voir les changements
+            } else {
+                alert(data.message || 'Erreur lors du changement de classe');
+            }
+        })
+        .catch(error => {
+            console.error(error);
+            alert('Erreur lors du changement de classe');
+        });
+    });
+
+    // Le formulaire de création de paiement utilise l'action standard (pas AJAX)
+    // car il redirige vers la page de détails du paiement
+});
 </script>
+
+<!-- Modals d'actions rapides -->
+<!-- Modal: Valider Paiement -->
+<div class="modal fade" id="modalValiderPaiement" tabindex="-1" aria-labelledby="modalValiderPaiementLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border: none; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+            <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 16px 16px 0 0; padding: 24px;">
+                <h5 class="modal-title" id="modalValiderPaiementLabel">
+                    <i class="fas fa-check-circle me-2"></i>Valider le paiement
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="padding: 32px;">
+                <form id="formValiderPaiement" method="POST">
+                    @csrf
+                    <input type="hidden" name="inscription_id" id="valider_inscription_id">
+                    <input type="hidden" name="paiement_id" id="valider_paiement_id">
+
+                    <div class="alert alert-info mb-4" style="background: #E3F2FD; border: none; border-radius: 12px; padding: 16px;">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <span id="validerPaiementInfo">Paiement à valider...</span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Montant</label>
+                        <input type="text" class="form-control" id="valider_montant" readonly style="background: #f8f9fa; border-radius: 8px; font-size: 1.1rem; font-weight: 600;">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Mode de paiement</label>
+                        <input type="text" class="form-control" id="valider_mode" readonly style="background: #f8f9fa; border-radius: 8px;">
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Référence</label>
+                        <input type="text" class="form-control" id="valider_reference" readonly style="background: #f8f9fa; border-radius: 8px;">
+                    </div>
+
+                    <div class="d-flex gap-3">
+                        <button type="button" class="btn btn-light flex-fill" data-bs-dismiss="modal" style="border-radius: 10px; padding: 12px; font-weight: 600;">
+                            <i class="fas fa-times me-2"></i>Annuler
+                        </button>
+                        <button type="submit" class="btn btn-success flex-fill" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; border-radius: 10px; padding: 12px; font-weight: 600;">
+                            <i class="fas fa-check me-2"></i>Valider le paiement
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Changer la Classe -->
+<div class="modal fade" id="modalChangerClasse" tabindex="-1" aria-labelledby="modalChangerClasseLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="border: none; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+            <div class="modal-header" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border-radius: 16px 16px 0 0; padding: 24px;">
+                <h5 class="modal-title" id="modalChangerClasseLabel">
+                    <i class="fas fa-exchange-alt me-2"></i>Changer la classe
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="padding: 32px;">
+                <form id="formChangerClasse" method="POST">
+                    @csrf
+                    <input type="hidden" name="inscription_id" id="changer_inscription_id">
+
+                    <div class="alert alert-warning mb-4" style="background: #FFF3E0; border: none; border-radius: 12px; padding: 16px;">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        La classe actuelle est pleine. Veuillez sélectionner une nouvelle classe.
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Classe actuelle</label>
+                            <input type="text" class="form-control" id="changer_ancienne_classe" readonly style="background: #ffebee; border-radius: 8px; border: 2px solid #ef5350;">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Nouvelle classe <span class="text-danger">*</span></label>
+                            <select class="form-select" name="nouvelle_classe_id" id="changer_nouvelle_classe" required style="border-radius: 8px; border: 2px solid #4caf50;">
+                                <option value="">Sélectionnez une classe</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="classeDispoInfo" class="alert alert-success" style="background: #E8F5E9; border: none; border-radius: 12px; padding: 16px; display: none;">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <span id="classeDispoText">Places disponibles: ...</span>
+                    </div>
+
+                    <div class="d-flex gap-3">
+                        <button type="button" class="btn btn-light flex-fill" data-bs-dismiss="modal" style="border-radius: 10px; padding: 12px; font-weight: 600;">
+                            <i class="fas fa-times me-2"></i>Annuler
+                        </button>
+                        <button type="submit" class="btn btn-danger flex-fill" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border: none; border-radius: 10px; padding: 12px; font-weight: 600;">
+                            <i class="fas fa-exchange-alt me-2"></i>Changer la classe
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Créer un Paiement -->
+<div class="modal fade" id="modalCreerPaiement" tabindex="-1" aria-labelledby="modalCreerPaiementLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="border: none; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+            <div class="modal-header" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; border-radius: 16px 16px 0 0; padding: 24px;">
+                <h5 class="modal-title" id="modalCreerPaiementLabel">
+                    <i class="fas fa-plus-circle me-2"></i>Créer un paiement
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="padding: 32px;">
+                <form id="formCreerPaiement" method="POST" action="{{ route('esbtp.paiements.store') }}">
+                    @csrf
+                    <input type="hidden" name="inscription_id" id="creer_inscription_id">
+                    <input type="hidden" name="etudiant_id" id="creer_etudiant_id">
+
+                    <div class="alert alert-info mb-4" style="background: #E3F2FD; border: none; border-radius: 12px; padding: 16px;">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <span id="creerPaiementInfo">Aucun paiement associé à cette inscription</span>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Montant (FCFA) <span class="text-danger">*</span></label>
+                            <input type="number" name="montant" class="form-control" id="creer_montant" required min="0" step="1000" placeholder="Ex: 50000" style="border-radius: 8px;">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Mode de paiement <span class="text-danger">*</span></label>
+                            <select name="mode_paiement" class="form-select" id="creer_mode" required style="border-radius: 8px;">
+                                <option value="">Sélectionnez...</option>
+                                <option value="especes">Espèces</option>
+                                <option value="cheque">Chèque</option>
+                                <option value="virement">Virement bancaire</option>
+                                <option value="mobile_money">Mobile Money</option>
+                                <option value="carte_bancaire">Carte bancaire</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Référence de paiement</label>
+                        <input type="text" name="reference_paiement" class="form-control" id="creer_reference" placeholder="Ex: REF2025-001" style="border-radius: 8px;">
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Date du paiement <span class="text-danger">*</span></label>
+                        <input type="date" name="date_paiement" class="form-control" id="creer_date" required style="border-radius: 8px;" value="{{ date('Y-m-d') }}">
+                    </div>
+
+                    <div class="form-check mb-4" style="padding-left: 2rem;">
+                        <input class="form-check-input" type="checkbox" name="valider_immediatement" id="creer_valider_immediatement" value="1" style="width: 20px; height: 20px;">
+                        <label class="form-check-label fw-bold" for="creer_valider_immediatement" style="margin-left: 8px;">
+                            Valider le paiement immédiatement
+                        </label>
+                    </div>
+
+                    <div class="d-flex gap-3">
+                        <button type="button" class="btn btn-light flex-fill" data-bs-dismiss="modal" style="border-radius: 10px; padding: 12px; font-weight: 600;">
+                            <i class="fas fa-times me-2"></i>Annuler
+                        </button>
+                        <button type="submit" class="btn btn-primary flex-fill" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); border: none; border-radius: 10px; padding: 12px; font-weight: 600;">
+                            <i class="fas fa-plus me-2"></i>Créer le paiement
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endpush 

@@ -2922,4 +2922,246 @@ class ESBTPInscriptionController extends Controller
             Log::error('Erreur désactivation reminder paiement: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Récupérer les infos de l'inscription pour création paiement (pour modal AJAX)
+     */
+    public function getInscriptionData(ESBTPInscription $inscription)
+    {
+        try {
+            $inscription->load(['etudiant', 'classe', 'anneeUniversitaire']);
+
+            return response()->json([
+                'success' => true,
+                'inscription' => [
+                    'id' => $inscription->id,
+                    'etudiant_id' => $inscription->etudiant_id,
+                    'classe_id' => $inscription->classe_id,
+                    'annee_universitaire_id' => $inscription->annee_universitaire_id,
+                    'etudiant' => [
+                        'id' => $inscription->etudiant->id,
+                        'nom' => $inscription->etudiant->nom,
+                        'prenoms' => $inscription->etudiant->prenoms,
+                        'matricule' => $inscription->etudiant->matricule,
+                    ],
+                    'classe' => [
+                        'id' => $inscription->classe->id ?? null,
+                        'name' => $inscription->classe->name ?? 'N/A',
+                    ],
+                    'annee' => [
+                        'id' => $inscription->anneeUniversitaire->id,
+                        'name' => $inscription->anneeUniversitaire->name,
+                    ]
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur getInscriptionData: ' . $e->getMessage(), [
+                'inscription_id' => $inscription->id,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la récupération de l\'inscription: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Récupérer le paiement en attente d'une inscription (pour modal AJAX)
+     */
+    public function getPaiementEnAttente(ESBTPInscription $inscription)
+    {
+        try {
+            $paiement = ESBTPPaiement::where('inscription_id', $inscription->id)
+                ->where('status', 'en_attente')
+                ->with(['inscription.etudiant', 'fraisCategory'])
+                ->first();
+
+            if (!$paiement) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Aucun paiement en attente trouvé pour cette inscription.'
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'paiement' => [
+                    'id' => $paiement->id,
+                    'montant' => $paiement->montant,
+                    'mode_paiement' => $paiement->mode_paiement,
+                    'reference_paiement' => $paiement->reference_paiement,
+                    'created_at' => $paiement->created_at->format('d/m/Y H:i'),
+                    'etudiant' => [
+                        'nom' => $paiement->inscription->etudiant->nom,
+                        'prenoms' => $paiement->inscription->etudiant->prenoms,
+                    ]
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur getPaiementEnAttente: ' . $e->getMessage(), [
+                'inscription_id' => $inscription->id,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la récupération du paiement: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Récupérer les classes alternatives disponibles (pour modal AJAX)
+     */
+    public function getClassesAlternatives(ESBTPInscription $inscription)
+    {
+        try {
+            // Charger l'inscription avec ses relations
+            $inscription->load(['classe.filiere', 'classe.niveauEtude', 'anneeUniversitaire']);
+
+            $classeActuelle = $inscription->classe;
+
+            if (!$classeActuelle) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Classe actuelle non trouvée.'
+                ], 404);
+            }
+
+            // Récupérer les classes alternatives de la même filière et du même niveau
+            $classesQuery = ESBTPClasse::where('is_active', true)
+                ->where('id', '!=', $classeActuelle->id)
+                ->where('filiere_id', $classeActuelle->filiere_id)
+                ->where('niveau_etude_id', $classeActuelle->niveau_etude_id);
+
+            // Ajouter le comptage des étudiants inscrits pour l'année courante
+            $anneeCourante = $inscription->anneeUniversitaire;
+
+            $classes = $classesQuery->get()->map(function($classe) use ($anneeCourante) {
+                // Compter les inscriptions actives pour cette classe dans l'année courante
+                $nombreInscrits = ESBTPInscription::where('classe_id', $classe->id)
+                    ->where('annee_universitaire_id', $anneeCourante->id)
+                    ->where('status', 'active')
+                    ->count();
+
+                $placesDisponibles = $classe->places_totales - $nombreInscrits;
+
+                return [
+                    'id' => $classe->id,
+                    'name' => $classe->name,
+                    'places_totales' => $classe->places_totales,
+                    'places_disponibles' => max(0, $placesDisponibles),
+                    'is_available' => $placesDisponibles > 0
+                ];
+            })->filter(function($classe) {
+                // Filtrer pour garder uniquement les classes avec places disponibles
+                return $classe['is_available'];
+            })->values();
+
+            return response()->json([
+                'success' => true,
+                'classeActuelle' => [
+                    'id' => $classeActuelle->id,
+                    'name' => $classeActuelle->name,
+                    'filiere' => $classeActuelle->filiere->name ?? 'N/A',
+                    'niveau' => $classeActuelle->niveauEtude->name ?? 'N/A',
+                ],
+                'classesAlternatives' => $classes
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur getClassesAlternatives: ' . $e->getMessage(), [
+                'inscription_id' => $inscription->id,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la récupération des classes: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Changer la classe d'une inscription rapidement (depuis modal AJAX)
+     */
+    public function changerClasseRapide(Request $request, ESBTPInscription $inscription)
+    {
+        $request->validate([
+            'nouvelle_classe_id' => 'required|exists:esbtp_classes,id'
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $nouvelleClasseId = $request->input('nouvelle_classe_id');
+            $ancienneClasseId = $inscription->classe_id;
+
+            // Vérifier la disponibilité de la nouvelle classe
+            $availability = $this->workflowService->checkClassAvailability($nouvelleClasseId, $inscription->annee_universitaire_id);
+
+            if (!$availability['available']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $availability['message']
+                ], 400);
+            }
+
+            // Vérifier que ce n'est pas la même classe
+            if ($ancienneClasseId == $nouvelleClasseId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La nouvelle classe est identique à l\'ancienne.'
+                ], 400);
+            }
+
+            // Mettre à jour la classe
+            $inscription->update([
+                'classe_id' => $nouvelleClasseId,
+                'updated_at' => now()
+            ]);
+
+            DB::commit();
+
+            Log::info('Changement de classe rapide effectué', [
+                'inscription_id' => $inscription->id,
+                'ancienne_classe_id' => $ancienneClasseId,
+                'nouvelle_classe_id' => $nouvelleClasseId,
+                'user_id' => auth()->id()
+            ]);
+
+            // Charger les relations pour retourner les infos
+            $inscription->load('classe');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Classe changée avec succès.',
+                'inscription' => [
+                    'id' => $inscription->id,
+                    'nouvelle_classe' => [
+                        'id' => $inscription->classe->id,
+                        'name' => $inscription->classe->name
+                    ]
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Erreur changerClasseRapide: ' . $e->getMessage(), [
+                'inscription_id' => $inscription->id,
+                'nouvelle_classe_id' => $request->input('nouvelle_classe_id'),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors du changement de classe: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

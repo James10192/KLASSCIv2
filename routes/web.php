@@ -694,6 +694,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::post('/paiements/{paiement}/valider', [App\Http\Controllers\ESBTPPaiementController::class, 'valider'])->name('paiements.valider');
             Route::post('/paiements/{paiement}/rejeter', [App\Http\Controllers\ESBTPPaiementController::class, 'rejeter'])->name('paiements.rejeter');
 
+            // Route pour validation rapide depuis modal (inscriptions.index)
+            Route::post('/paiements/{paiement}/valider-rapide', [App\Http\Controllers\ESBTPPaiementController::class, 'validerRapide'])->name('paiements.valider-rapide');
+
             // Routes pour validation/rejet groupés
             Route::post('/paiements/bulk-valider', [App\Http\Controllers\ESBTPPaiementController::class, 'bulkValider'])->name('paiements.bulk-valider');
             Route::post('/paiements/bulk-rejeter', [App\Http\Controllers\ESBTPPaiementController::class, 'bulkRejeter'])->name('paiements.bulk-rejeter');
@@ -784,6 +787,12 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
             // Routes pour validation groupée des inscriptions
             Route::post('/inscriptions/bulk-valider', [ESBTPInscriptionController::class, 'bulkValider'])->name('inscriptions.bulk-valider');
+
+            // Routes pour actions rapides sur inscriptions (modals AJAX)
+            Route::get('/inscriptions/{inscription}/data', [ESBTPInscriptionController::class, 'getInscriptionData'])->name('inscriptions.data');
+            Route::get('/inscriptions/{inscription}/paiement-en-attente', [ESBTPInscriptionController::class, 'getPaiementEnAttente'])->name('inscriptions.paiement-en-attente');
+            Route::get('/inscriptions/{inscription}/classes-alternatives', [ESBTPInscriptionController::class, 'getClassesAlternatives'])->name('inscriptions.classes-alternatives');
+            Route::post('/inscriptions/{inscription}/changer-classe-rapide', [ESBTPInscriptionController::class, 'changerClasseRapide'])->name('inscriptions.changer-classe-rapide');
 
             // Routes pour l'administration des inscriptions
             Route::get('/inscriptions-administration', [ESBTPInscriptionController::class, 'administration'])->name('inscriptions.administration');

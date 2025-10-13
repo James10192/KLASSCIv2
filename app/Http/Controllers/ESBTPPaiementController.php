@@ -2011,6 +2011,108 @@ class ESBTPPaiementController extends Controller
     }
 
     /**
+     * Valider rapidement un paiement depuis modal (inscriptions.index)
+     * Version simplifiée de valider() pour usage AJAX
+     */
+    public function validerRapide(ESBTPPaiement $paiement)
+    {
+        try {
+            // Vérifier si le paiement peut être validé
+            if ($paiement->status === 'validé') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ce paiement est déjà validé.'
+                ], 400);
+            }
+
+            if ($paiement->status === 'rejeté') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ce paiement a été rejeté et ne peut pas être validé.'
+                ], 400);
+            }
+
+            DB::beginTransaction();
+
+            // Changer le statut du paiement
+            $paiement->update([
+                'status' => 'validé',
+                'date_validation' => now(),
+                'validateur_id' => auth()->id()
+            ]);
+
+            // Si c'est un paiement de reliquat, mettre à jour le reliquat
+            if ($paiement->type_paiement === 'reliquat' && $paiement->reliquat_detail_id) {
+                $reliquat = \App\Models\ESBTPReliquatDetail::find($paiement->reliquat_detail_id);
+                if ($reliquat) {
+                    $nouveauMontantRegle = $reliquat->montant_regle + $paiement->montant;
+                    $nouveauSolde = $reliquat->montant_reliquat - $nouveauMontantRegle;
+
+                    $reliquat->update([
+                        'montant_regle' => $nouveauMontantRegle,
+                        'statut' => $nouveauSolde <= 0 ? 'totalement_regle' : 'partiellement_regle',
+                        'date_derniere_maj' => now()
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            // Envoyer notifications
+            try {
+                $notificationService = app(\App\Services\NotificationService::class);
+                $notificationService->notifyPaiementValide($paiement, auth()->user());
+                $notificationService->notifyParentsPaiementValide($paiement);
+            } catch (\Exception $e) {
+                Log::error('Erreur envoi notification paiement validé (rapide): ' . $e->getMessage());
+            }
+
+            // Désactiver les rappels pour ce paiement
+            try {
+                $reminder = \App\Models\NotificationReminder::where('remindable_type', 'App\Models\ESBTPPaiement')
+                    ->where('remindable_id', $paiement->id)
+                    ->first();
+                if ($reminder) {
+                    $reminder->deactivate();
+                }
+            } catch (\Exception $e) {
+                Log::error('Erreur désactivation reminder paiement (rapide): ' . $e->getMessage());
+            }
+
+            Log::info('Validation rapide de paiement réussie', [
+                'paiement_id' => $paiement->id,
+                'inscription_id' => $paiement->inscription_id,
+                'montant' => $paiement->montant,
+                'user_id' => auth()->id()
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Paiement validé avec succès.',
+                'paiement' => [
+                    'id' => $paiement->id,
+                    'status' => $paiement->status,
+                    'date_validation' => $paiement->date_validation->format('d/m/Y H:i')
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollback();
+
+            Log::error('Erreur lors de la validation rapide du paiement', [
+                'paiement_id' => $paiement->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la validation: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Rejeter un paiement
      */
     public function rejeter(Request $request, $id)
