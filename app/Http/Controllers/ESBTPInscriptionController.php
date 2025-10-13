@@ -3057,9 +3057,6 @@ class ESBTPInscriptionController extends Controller
                     'places_disponibles' => max(0, $placesDisponibles),
                     'is_available' => $placesDisponibles > 0
                 ];
-            })->filter(function($classe) {
-                // Filtrer pour garder uniquement les classes avec places disponibles
-                return $classe['is_available'];
             })->values();
 
             return response()->json([

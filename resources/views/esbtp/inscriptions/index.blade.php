@@ -687,18 +687,39 @@ function ouvrirModalChangerClasse(inscriptionId) {
                 data.classesAlternatives.forEach(classe => {
                     const option = document.createElement('option');
                     option.value = classe.id;
-                    option.textContent = `${classe.name} (${classe.places_disponibles}/${classe.places_totales} places)`;
+
+                    // Afficher statut de disponibilité
+                    if (classe.is_available) {
+                        option.textContent = `${classe.name} (${classe.places_disponibles}/${classe.places_totales} places disponibles)`;
+                    } else {
+                        option.textContent = `${classe.name} (COMPLET - ${classe.places_disponibles}/${classe.places_totales})`;
+                        option.style.color = '#dc3545'; // Rouge pour classe pleine
+                        option.style.fontWeight = 'bold';
+                    }
+
                     option.dataset.placesDisponibles = classe.places_disponibles;
+                    option.dataset.isAvailable = classe.is_available;
                     select.appendChild(option);
                 });
 
-                // Event listener pour afficher les places disponibles
+                // Event listener pour afficher les places disponibles et alerter si plein
                 select.addEventListener('change', function() {
                     const selectedOption = this.options[this.selectedIndex];
                     if (selectedOption.value) {
+                        const isAvailable = selectedOption.dataset.isAvailable === 'true';
+                        const placesDisponibles = selectedOption.dataset.placesDisponibles;
+
                         document.getElementById('classeDispoInfo').style.display = 'block';
-                        document.getElementById('classeDispoText').textContent =
-                            `Places disponibles: ${selectedOption.dataset.placesDisponibles}`;
+
+                        if (isAvailable) {
+                            document.getElementById('classeDispoText').textContent =
+                                `✓ Places disponibles: ${placesDisponibles}`;
+                            document.getElementById('classeDispoText').style.color = '#28a745';
+                        } else {
+                            document.getElementById('classeDispoText').textContent =
+                                `⚠ Classe complète (${placesDisponibles} places disponibles)`;
+                            document.getElementById('classeDispoText').style.color = '#dc3545';
+                        }
                     } else {
                         document.getElementById('classeDispoInfo').style.display = 'none';
                     }
