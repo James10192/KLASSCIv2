@@ -130,6 +130,51 @@ class ESBTPPaiementController extends Controller
     }
 
     /**
+     * Vérifie s'il y a des changements dans les paiements (nouveau paiement, changement de statut)
+     * sans charger toutes les données (requête ultra-légère pour polling)
+     */
+    public function checkForUpdates(Request $request)
+    {
+        $status = $request->input('status');
+        $dateDebut = $request->input('date_debut');
+        $dateFin = $request->input('date_fin');
+
+        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $anneeId = $anneeEnCours?->id;
+
+        // Construire une requête minimale avec les mêmes filtres
+        $query = ESBTPPaiement::query();
+
+        if ($status) {
+            $query->where('status', $status);
+        }
+
+        if ($dateDebut) {
+            $query->whereDate('date_paiement', '>=', $dateDebut);
+        }
+
+        if ($dateFin) {
+            $query->whereDate('date_paiement', '<=', $dateFin);
+        }
+
+        if ($anneeId) {
+            $query->whereHas('inscription', function ($q) use ($anneeId) {
+                $q->where('annee_universitaire_id', $anneeId);
+            });
+        }
+
+        // Récupérer seulement le count et le dernier updated_at/created_at
+        $count = $query->count();
+        $lastPaiement = $query->orderByDesc('updated_at')->first(['id', 'updated_at']);
+
+        return response()->json([
+            'count' => $count,
+            'last_updated_at' => optional($lastPaiement)->updated_at?->toIso8601String(),
+            'last_paiement_id' => optional($lastPaiement)->id,
+        ]);
+    }
+
+    /**
      * Prépare les données de listing des paiements (liste, statistiques, timestamp).
      */
     private function preparePaiementListing(Request $request, FuzzyNameMatcher $matcher, array $baseLogContext, float $startMicrotime, string $logPrefix): array

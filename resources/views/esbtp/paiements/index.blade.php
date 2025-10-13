@@ -225,9 +225,10 @@ function showYearChangeInfo() {
 }
 
 (function () {
-    const pollingInterval = 60000;
+    const pollingInterval = 30000; // 30 secondes
     let pollingTimer = null;
     let lastUpdatedAt = null;
+    let currentPaiementsCount = 0; // Nombre actuel de paiements
     let currentUrl = window.location.href;
 
     /**
@@ -341,6 +342,10 @@ function showYearChangeInfo() {
                     document.getElementById('paiements-table-container').innerHTML = data.table;
                     // Réinitialiser les listeners
                     initCheckboxListeners();
+
+                    // Compter le nombre de lignes de paiements dans le tableau
+                    currentPaiementsCount = document.querySelectorAll('tr[data-paiement-id]').length;
+                    console.log('📊 Nombre de paiements affichés:', currentPaiementsCount);
                 }
 
                 // Mettre à jour l'URL sans recharger la page
@@ -384,7 +389,46 @@ function showYearChangeInfo() {
     }
 
     /**
-     * Démarre le polling automatique
+     * Vérifie s'il y a des changements sans charger toutes les données
+     */
+    function checkForUpdates() {
+        const params = new URLSearchParams(window.location.search);
+        const checkUrl = '{{ route('esbtp.paiements.check-updates') }}?' + params.toString();
+
+        fetch(checkUrl, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Comparer avec l'état actuel
+            const hasChanges = (
+                data.count !== currentPaiementsCount ||
+                data.last_updated_at !== lastUpdatedAt
+            );
+
+            if (hasChanges) {
+                console.log('🆕 Changements détectés! Count:', currentPaiementsCount, '→', data.count, '| Last update:', lastUpdatedAt, '→', data.last_updated_at);
+
+                // Mettre à jour les valeurs courantes
+                currentPaiementsCount = data.count;
+                lastUpdatedAt = data.last_updated_at;
+
+                // Rafraîchir les données
+                fetchPaiementsData(false);
+            } else {
+                console.log('✓ Pas de changements (count:', data.count, ')');
+            }
+        })
+        .catch(error => {
+            console.error('❌ Erreur lors de la vérification des mises à jour:', error);
+        });
+    }
+
+    /**
+     * Démarre le polling automatique intelligent
      */
     function startPolling() {
         if (pollingTimer) {
@@ -392,11 +436,11 @@ function showYearChangeInfo() {
         }
 
         pollingTimer = setInterval(() => {
-            console.log('🔄 Auto-refresh programmé...');
-            fetchPaiementsData(false); // false = pas de log "✅ Données rafraîchies" pour éviter spam
+            console.log('🔄 Vérification des changements...');
+            checkForUpdates();
         }, pollingInterval);
 
-        console.log(`✅ Polling démarré (intervalle: ${pollingInterval}ms)`);
+        console.log(`✅ Polling intelligent démarré (intervalle: ${pollingInterval}ms)`);
     }
 
     /**

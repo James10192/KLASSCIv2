@@ -675,6 +675,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             // Paiements
             Route::get('/paiements', [App\Http\Controllers\ESBTPPaiementController::class, 'index'])->name('paiements.index');
             Route::get('/paiements/refresh', [App\Http\Controllers\ESBTPPaiementController::class, 'refresh'])->name('paiements.refresh');
+            Route::get('/paiements/check-updates', [App\Http\Controllers\ESBTPPaiementController::class, 'checkForUpdates'])->name('paiements.check-updates');
             Route::get('/paiements/{paiement}/refresh-ligne', [App\Http\Controllers\ESBTPPaiementController::class, 'refreshLigne'])->name('paiements.refresh-ligne');
             Route::get('/paiements/suivi-categories', [App\Http\Controllers\ESBTPPaiementController::class, 'suiviCategories'])->name('paiements.suivi-categories');
             Route::get('/paiements/suivi-categories/refresh', [App\Http\Controllers\ESBTPPaiementController::class, 'suiviCategoriesRefresh'])->name('paiements.suivi-categories.refresh');
