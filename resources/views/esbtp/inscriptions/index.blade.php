@@ -729,8 +729,12 @@ function ouvrirModalCreerPaiement(inscriptionId) {
             if (data.success && data.inscription) {
                 document.getElementById('creer_inscription_id').value = inscriptionId;
                 document.getElementById('creer_etudiant_id').value = data.inscription.etudiant_id;
+                document.getElementById('creer_annee_id').value = data.inscription.annee_universitaire_id;
                 document.getElementById('creerPaiementInfo').textContent =
                     `Créer un paiement pour ${data.inscription.etudiant.nom} ${data.inscription.etudiant.prenoms}`;
+
+                // Configurer l'action du formulaire pour utiliser valider-avec-paiement
+                document.getElementById('formCreerPaiement').action = `/esbtp/inscriptions/${inscriptionId}/valider-avec-paiement`;
 
                 const modal = new bootstrap.Modal(document.getElementById('modalCreerPaiement'));
                 modal.show();
@@ -921,10 +925,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body" style="padding: 32px;">
-                <form id="formCreerPaiement" method="POST" action="{{ route('esbtp.paiements.store') }}">
+                <form id="formCreerPaiement" method="POST">
                     @csrf
                     <input type="hidden" name="inscription_id" id="creer_inscription_id">
                     <input type="hidden" name="etudiant_id" id="creer_etudiant_id">
+                    <input type="hidden" name="annee_universitaire_id" id="creer_annee_id">
 
                     <div class="alert alert-info mb-4" style="background: #E3F2FD; border: none; border-radius: 12px; padding: 16px;">
                         <i class="fas fa-info-circle me-2"></i>
@@ -938,7 +943,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Catégorie de frais <span class="text-danger">*</span></label>
-                            <select name="frais_category_id" class="form-select" id="creer_categorie" required style="border-radius: 8px;">
+                            <select name="fee_category_id" class="form-select" id="creer_categorie" required style="border-radius: 8px;">
                                 <option value="">Sélectionnez une catégorie</option>
                                 @php
                                     $categoriesfrais = \App\Models\ESBTPFraisCategory::where('is_active', true)->orderBy('name')->get();
