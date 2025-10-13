@@ -601,8 +601,8 @@ function showYearChangeInfo() {
         // Initialiser les listeners de checkboxes
         initCheckboxListeners();
 
-        // Démarrer le polling automatique (désactivé par défaut, décommenter pour activer)
-        // startPolling();
+        // Démarrer le polling automatique
+        startPolling();
 
         // Vérifier combien de checkboxes existent au chargement
         console.log('🔍 Vérification checkboxes au chargement:');
