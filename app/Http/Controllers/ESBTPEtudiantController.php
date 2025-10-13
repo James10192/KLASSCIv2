@@ -534,7 +534,13 @@ class ESBTPEtudiantController extends Controller
             'commune' => 'nullable|string|max:255',
             'adresse' => 'nullable|string',
             // Les champs suivants sont en readonly et ne doivent pas être validés comme requis
-            'matricule' => 'nullable|string|max:255',
+            // Valider l'unicité du matricule en excluant l'étudiant actuel
+            'matricule' => [
+                'nullable',
+                'string',
+                'max:255',
+                \Illuminate\Validation\Rule::unique('esbtp_etudiants', 'matricule')->ignore($etudiant->id)
+            ],
             'nom' => 'nullable|string|max:255',
             'prenoms' => 'nullable|string|max:255',
             'sexe' => 'nullable|in:M,F',
@@ -543,6 +549,8 @@ class ESBTPEtudiantController extends Controller
             'ville_naissance' => 'nullable|string|max:255',
             'commune_naissance' => 'nullable|string|max:255',
             'nationalite' => 'nullable|string|max:255',
+        ], [
+            'matricule.unique' => 'Le matricule :input est déjà utilisé par un autre étudiant. Veuillez en choisir un différent.',
         ]);
 
         if ($validator->fails()) {
@@ -571,7 +579,7 @@ class ESBTPEtudiantController extends Controller
 
             // Mettre à jour les autres données de l'étudiant
             $etudiantData = $request->only([
-                'nom', 'prenoms', 'sexe', 'date_naissance', 'lieu_naissance',
+                'matricule', 'nom', 'prenoms', 'sexe', 'date_naissance', 'lieu_naissance',
                 'ville_naissance', 'commune_naissance',
                 'nationalite', 'adresse', 'telephone', 'email_personnel', 'statut'
             ]);
@@ -753,6 +761,41 @@ class ESBTPEtudiantController extends Controller
             return redirect()
                 ->route('esbtp.etudiants.show', $etudiant->id)
                 ->with('success', 'Informations de l\'étudiant mises à jour avec succès!');
+
+        } catch (\Illuminate\Database\QueryException $e) {
+            DB::rollBack();
+
+            // Gérer spécifiquement l'erreur de doublon de matricule
+            if ($e->errorInfo[1] == 1062 && str_contains($e->getMessage(), 'esbtp_etudiants_matricule_unique')) {
+                // Extraire le matricule en doublon du message d'erreur
+                preg_match("/Duplicate entry '([^']+)'/", $e->getMessage(), $matches);
+                $matriculeDupliquer = $matches[1] ?? $request->input('matricule');
+
+                \Log::warning('Tentative de création de matricule en doublon', [
+                    'matricule' => $matriculeDupliquer,
+                    'etudiant_id' => $etudiant->id,
+                    'user_id' => auth()->id(),
+                    'session_id' => session()->getId()
+                ]);
+
+                return redirect()
+                    ->back()
+                    ->with('error', "Le matricule \"{$matriculeDupliquer}\" est déjà utilisé par un autre étudiant. Veuillez en choisir un différent.")
+                    ->withInput();
+            }
+
+            // Autres erreurs SQL
+            \Log::error('Erreur SQL lors de la mise à jour de l\'étudiant', [
+                'error' => $e->getMessage(),
+                'error_code' => $e->errorInfo[1] ?? null,
+                'trace' => $e->getTraceAsString(),
+                'session_id' => session()->getId()
+            ]);
+
+            return redirect()
+                ->back()
+                ->with('error', 'Erreur de base de données lors de la mise à jour. Veuillez vérifier les données saisies.')
+                ->withInput();
 
         } catch (\Exception $e) {
             DB::rollBack();
