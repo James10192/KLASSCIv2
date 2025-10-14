@@ -76,6 +76,7 @@ class ESBTPPaiementController extends Controller
                     'stats' => $data['stats'],
                 ])->render(),
                 'url' => $navUrl,  // URL navigable
+                'summary' => $data['summary'],
                 'last_updated_at' => optional($data['last_updated_at'])->toIso8601String(),
             ]);
         }
@@ -125,6 +126,7 @@ class ESBTPPaiementController extends Controller
                 'stats' => $data['stats'],
             ])->render(),
             'url' => $navUrl,  // URL navigable (pas /refresh)
+            'summary' => $data['summary'],
             'last_updated_at' => optional($data['last_updated_at'])->toIso8601String(),
         ]);
     }
@@ -720,6 +722,21 @@ class ESBTPPaiementController extends Controller
      */
     public function store(Request $request)
     {
+        // LOG DÉTAILLÉ: Début de la requête de création de paiement
+        $requestFingerprint = md5(json_encode([
+            'user_id' => Auth::id(),
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]));
+
+        \Log::info('🔵 PAIEMENT STORE - Début de requête', [
+            'timestamp' => now()->toIso8601String(),
+            'user_id' => Auth::id(),
+            'ip' => $request->ip(),
+            'fingerprint' => $requestFingerprint,
+            'request_data' => $request->except(['_token']),
+        ]);
+
         // Valider les données du formulaire
         $validated = $request->validate([
             'inscription_id' => 'required|exists:esbtp_inscriptions,id',
@@ -736,8 +753,58 @@ class ESBTPPaiementController extends Controller
         // Vérifier que l'étudiant correspond à l'inscription
         $inscription = ESBTPInscription::findOrFail($validated['inscription_id']);
         if ($inscription->etudiant_id != $validated['etudiant_id']) {
+            \Log::warning('❌ PAIEMENT STORE - Étudiant ne correspond pas à l\'inscription', [
+                'inscription_id' => $validated['inscription_id'],
+                'etudiant_id_inscription' => $inscription->etudiant_id,
+                'etudiant_id_fourni' => $validated['etudiant_id'],
+            ]);
             return redirect()->back()->withErrors(['etudiant_id' => 'L\'étudiant ne correspond pas à l\'inscription sélectionnée.'])->withInput();
         }
+
+        // PROTECTION BACKEND: Détecter les doublons récents (dernières 10 secondes)
+        $timeWindow = now()->subSeconds(10);
+        $duplicateCheck = ESBTPPaiement::where('inscription_id', $validated['inscription_id'])
+            ->where('montant', $validated['montant'])
+            ->where('frais_category_id', $validated['frais_category_id'])
+            ->where('created_by', Auth::id())
+            ->where('created_at', '>=', $timeWindow)
+            ->orderByDesc('created_at')
+            ->first();
+
+        if ($duplicateCheck) {
+            $timeDiff = now()->diffInSeconds($duplicateCheck->created_at);
+
+            \Log::warning('⚠️ PAIEMENT STORE - DOUBLON DÉTECTÉ ET BLOQUÉ', [
+                'duplicate_paiement_id' => $duplicateCheck->id,
+                'duplicate_numero_recu' => $duplicateCheck->numero_recu,
+                'time_diff_seconds' => $timeDiff,
+                'inscription_id' => $validated['inscription_id'],
+                'montant' => $validated['montant'],
+                'frais_category_id' => $validated['frais_category_id'],
+                'user_id' => Auth::id(),
+                'fingerprint' => $requestFingerprint,
+            ]);
+
+            // Retourner un message de succès (ne pas alarmer l'utilisateur)
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Paiement enregistré avec succès. Numéro de reçu : ' . $duplicateCheck->numero_recu,
+                    'duplicate_id' => $duplicateCheck->id,
+                    'duplicate_numero_recu' => $duplicateCheck->numero_recu,
+                ]);
+            }
+
+            return redirect()->route('esbtp.paiements.show', $duplicateCheck->id)
+                ->with('success', 'Paiement enregistré avec succès. Numéro de reçu : ' . $duplicateCheck->numero_recu)
+                ->with('duplicate_prevented', true);
+        }
+
+        \Log::info('✅ PAIEMENT STORE - Pas de doublon détecté, création du paiement', [
+            'inscription_id' => $validated['inscription_id'],
+            'montant' => $validated['montant'],
+            'frais_category_id' => $validated['frais_category_id'],
+        ]);
 
         try {
             DB::beginTransaction();
@@ -757,6 +824,16 @@ class ESBTPPaiementController extends Controller
             $paiement->save();
 
             DB::commit();
+
+            \Log::info('✅ PAIEMENT STORE - Paiement créé avec succès', [
+                'paiement_id' => $paiement->id,
+                'numero_recu' => $numeroRecu,
+                'inscription_id' => $validated['inscription_id'],
+                'montant' => $validated['montant'],
+                'frais_category_id' => $validated['frais_category_id'],
+                'user_id' => Auth::id(),
+                'fingerprint' => $requestFingerprint,
+            ]);
 
             // Envoyer notification aux super-admins si le paiement est en attente
             if ($paiement->status === 'en_attente') {
@@ -2205,10 +2282,22 @@ class ESBTPPaiementController extends Controller
 
             // Vérifier si le paiement peut être rejeté
             if ($paiement->status === 'validé') {
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Ce paiement est déjà validé et ne peut pas être rejeté.'
+                    ], 400);
+                }
                 return redirect()->back()->with('error', 'Ce paiement est déjà validé et ne peut pas être rejeté.');
             }
 
             if ($paiement->status === 'rejeté') {
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Ce paiement est déjà rejeté.'
+                    ], 400);
+                }
                 return redirect()->back()->with('error', 'Ce paiement est déjà rejeté.');
             }
 
@@ -2242,6 +2331,16 @@ class ESBTPPaiementController extends Controller
                 Log::error('Erreur désactivation reminder paiement: ' . $e->getMessage());
             }
 
+            // Si c'est une requête AJAX, retourner JSON
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Paiement rejeté avec succès.',
+                    'paiement_id' => $paiement->id,
+                    'numero_recu' => $paiement->numero_recu
+                ]);
+            }
+
             return redirect()->back()->with('success', 'Paiement rejeté avec succès.');
 
         } catch (\Exception $e) {
@@ -2250,6 +2349,14 @@ class ESBTPPaiementController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
+
+            // Si c'est une requête AJAX, retourner JSON
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erreur lors du rejet: ' . $e->getMessage()
+                ], 500);
+            }
 
             return redirect()->back()->with('error', 'Erreur lors du rejet: ' . $e->getMessage());
         }

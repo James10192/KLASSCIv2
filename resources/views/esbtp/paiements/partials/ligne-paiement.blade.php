@@ -103,70 +103,120 @@
         </span>
     </td>
     <td>
-        <div class="btn-group btn-group-sm">
-            <a href="{{ route('esbtp.paiements.show', $paiement->id) }}"
-               class="btn btn-outline-info" title="Détails">
-                <i class="fas fa-eye"></i>
-            </a>
-
-            @if($paiement->status != 'validé')
-                @can('edit-paiements')
-                <a href="{{ route('esbtp.paiements.edit', $paiement->id) }}"
-                   class="btn btn-outline-warning" title="Modifier">
-                    <i class="fas fa-edit"></i>
+        <div class="paiement-actions-wrapper" data-paiement-actions="{{ $paiement->id }}">
+            <div class="btn-group btn-group-sm paiement-actions-buttons">
+                <a href="{{ route('esbtp.paiements.show', $paiement->id) }}"
+                   class="btn btn-outline-info" title="Détails">
+                    <i class="fas fa-eye"></i>
                 </a>
-                @endcan
+
+                @if($paiement->status != 'validé')
+                    @can('edit-paiements')
+                        <a href="{{ route('esbtp.paiements.edit', $paiement->id) }}"
+                           class="btn btn-outline-warning" title="Modifier">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                    @endcan
+
+                    @if($paiement->status == 'en_attente' && auth()->user()->hasRole('superAdmin'))
+                        <button type="button"
+                                class="btn btn-outline-success valider-paiement-btn"
+                                title="Valider"
+                                data-paiement-id="{{ $paiement->id }}"
+                                data-action-url="{{ route('esbtp.paiements.valider', $paiement->id) }}">
+                            <i class="fas fa-check"></i>
+                        </button>
+
+                        <button type="button"
+                                class="btn btn-outline-danger"
+                                title="Rejeter"
+                                data-bs-toggle="modal"
+                                data-bs-target="#rejetModal{{ $paiement->id }}">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    @endif
+                @endif
+
+                @if($paiement->status == 'validé')
+                    <div class="dropdown pdf-dropdown">
+                        <button class="btn btn-outline-primary dropdown-toggle" type="button"
+                                id="pdfDropdown{{ $paiement->id }}" data-bs-toggle="dropdown"
+                                aria-expanded="false" title="Options PDF">
+                            <i class="fas fa-file-pdf"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="pdfDropdown{{ $paiement->id }}">
+                            <li>
+                                <a class="dropdown-item" href="{{ route('esbtp.paiements.preview', $paiement->id) }}">
+                                    <i class="fas fa-eye me-1"></i>Prévisualiser
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ route('esbtp.paiements.recu', $paiement->id) }}">
+                                    <i class="fas fa-download me-1"></i>Télécharger
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                @endif
 
                 @if(auth()->user()->hasRole('superAdmin'))
-                <button type="button"
-                        class="btn btn-outline-success valider-paiement-btn"
-                        title="Valider"
-                        data-paiement-id="{{ $paiement->id }}"
-                        data-action-url="{{ route('esbtp.paiements.valider', $paiement->id) }}">
-                    <i class="fas fa-check"></i>
-                </button>
-
-                @if($paiement->status == 'en_attente')
-                <button type="button"
-                        class="btn btn-outline-danger"
-                        title="Rejeter"
-                        data-bs-toggle="modal"
-                        data-bs-target="#rejetModal{{ $paiement->id }}">
-                    <i class="fas fa-times"></i>
-                </button>
+                    <a href="{{ route('esbtp.paiements.edit', $paiement->id) }}"
+                       class="btn btn-outline-warning btn-sm"
+                       title="Modifier">
+                        <i class="fas fa-edit"></i>
+                    </a>
                 @endif
-                @endif
-            @endif
-
-            @if($paiement->status == 'validé')
-                <div class="dropdown pdf-dropdown">
-                    <button class="btn btn-outline-primary dropdown-toggle" type="button"
-                            id="pdfDropdown{{ $paiement->id }}" data-bs-toggle="dropdown"
-                            aria-expanded="false" title="Options PDF">
-                        <i class="fas fa-file-pdf"></i>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="pdfDropdown{{ $paiement->id }}">
-                        <li>
-                            <a class="dropdown-item" href="{{ route('esbtp.paiements.preview', $paiement->id) }}">
-                                <i class="fas fa-eye me-1"></i>Prévisualiser
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item" href="{{ route('esbtp.paiements.recu', $paiement->id) }}">
-                                <i class="fas fa-download me-1"></i>Télécharger
-                            </a>
-                        </li>
-                    </ul>
+            </div>
+            <div class="paiement-actions-spinner" aria-hidden="true">
+                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                    <span class="visually-hidden">Chargement...</span>
                 </div>
-            @endif
-
-            @if(auth()->user()->hasRole('superAdmin'))
-                <a href="{{ route('esbtp.paiements.edit', $paiement->id) }}"
-                   class="btn btn-outline-warning btn-sm"
-                   title="Modifier">
-                    <i class="fas fa-edit"></i>
-                </a>
-            @endif
+            </div>
         </div>
     </td>
 </tr>
+
+<!-- Modal de rejet individuel -->
+@if($paiement->status == 'en_attente' && auth()->user()->hasRole('superAdmin'))
+<div class="modal fade" id="rejetModal{{ $paiement->id }}" tabindex="-1" aria-labelledby="rejetModalLabel{{ $paiement->id }}" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ route('esbtp.paiements.rejeter', $paiement->id) }}">
+                @csrf
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="rejetModalLabel{{ $paiement->id }}">
+                        <i class="fas fa-times-circle me-2"></i>
+                        Rejeter le paiement
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3">
+                        Vous êtes sur le point de rejeter le paiement <strong>{{ $paiement->numero_recu }}</strong>
+                        de <strong>{{ $paiement->etudiant->user->name ?? $paiement->etudiant->nom_complet }}</strong>.
+                    </p>
+                    <div class="mb-3">
+                        <label for="motif_rejet{{ $paiement->id }}" class="form-label" style="cursor: default;">Motif du rejet <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="motif_rejet{{ $paiement->id }}" name="motif_rejet" rows="4"
+                                  placeholder="Expliquez pourquoi ce paiement est rejeté..." style="cursor: text;"></textarea>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="confirmer_rejet{{ $paiement->id }}" style="cursor: pointer;">
+                        <label class="form-check-label" for="confirmer_rejet{{ $paiement->id }}" style="cursor: pointer;">
+                            Je confirme le rejet de ce paiement
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-arrow-left me-1"></i>Annuler
+                    </button>
+                    <button type="button" class="btn btn-danger rejeter-paiement-submit-btn" data-paiement-id="{{ $paiement->id }}">
+                        <i class="fas fa-times-circle me-1"></i>Rejeter le paiement
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif

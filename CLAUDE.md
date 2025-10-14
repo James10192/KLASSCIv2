@@ -560,6 +560,304 @@ FLUSH PRIVILEGES;
 
 ## Corrections récentes
 
+### Fix: Protection backend contre doublons paiements + Polling non-intrusif
+
+**Date:** 13 octobre 2025
+**Branche:** presentation
+
+#### Problèmes résolus
+
+1. **Actions groupées retournaient JSON brut au lieu de rafraîchir la page**
+   - **Cause:** `bulkValider()` et `bulkRejeter()` retournaient toujours `redirect()->back()`, même pour requêtes AJAX
+   - **Impact:** Le navigateur affichait du JSON brut au lieu de rester sur la page
+
+2. **Multi-clics créaient des doublons de paiements en production**
+   - **Cause:** Aucune protection backend, seulement frontend (insuffisante avec connexions lentes)
+   - **Impact:** Paiements dupliqués lors de clics multiples rapides sur les boutons
+
+3. **Polling automatique bloquait l'interface avec overlay gris**
+   - **Cause:** `fetchPaiementsData()` affichait toujours l'overlay même pour polling automatique
+   - **Impact:** Expérience utilisateur frustrante (liste grisée toutes les 30 secondes)
+
+4. **Nouveaux paiements n'apparaissaient pas automatiquement**
+   - **Cause:** `startPolling()` était commenté dans le code
+   - **Impact:** Nécessitait refresh manuel de la page
+
+#### Solutions implémentées
+
+**1. Actions groupées - Support AJAX avec retour JSON**
+
+**Fichier:** [app/Http/Controllers/ESBTPPaiementController.php](app/Http/Controllers/ESBTPPaiementController.php)
+
+**Méthode `bulkValider()` (lignes 2276-2318):**
+```php
+// Si c'est une requête AJAX, retourner JSON
+if ($request->ajax() || $request->wantsJson()) {
+    return response()->json([
+        'success' => true,
+        'message' => $message,
+        'successCount' => $successCount,
+        'alreadyProcessed' => $alreadyProcessed,
+        'errorCount' => $errorCount
+    ]);
+}
+
+return redirect()->back()->with('success', $message);
+```
+
+**Méthode `bulkRejeter()` (lignes 2316-2406):**
+- Même pattern de détection AJAX
+- Retour JSON avec détails des rejets
+
+**2. Protection backend contre doublons de paiements**
+
+**Fichier:** [app/Http/Controllers/ESBTPPaiementController.php](app/Http/Controllers/ESBTPPaiementController.php)
+
+**Méthode `store()` (lignes 721-855):**
+
+**Logging détaillé au début de chaque requête (lignes 723-736):**
+```php
+$requestFingerprint = md5(json_encode([
+    'user_id' => Auth::id(),
+    'ip' => $request->ip(),
+    'user_agent' => $request->userAgent(),
+]));
+
+Log::info('🔵 PAIEMENT STORE - Début de requête', [
+    'timestamp' => now()->toIso8601String(),
+    'user_id' => Auth::id(),
+    'ip' => $request->ip(),
+    'fingerprint' => $requestFingerprint,
+    'request_data' => $request->except(['_token']),
+]);
+```
+
+**Détection de doublons dans fenêtre temporelle de 10 secondes (lignes 762-799):**
+```php
+// PROTECTION BACKEND: Détecter les doublons récents (dernières 10 secondes)
+$timeWindow = now()->subSeconds(10);
+$duplicateCheck = ESBTPPaiement::where('inscription_id', $validated['inscription_id'])
+    ->where('montant', $validated['montant'])
+    ->where('frais_category_id', $validated['frais_category_id'])
+    ->where('created_by', Auth::id())
+    ->where('created_at', '>=', $timeWindow)
+    ->orderByDesc('created_at')
+    ->first();
+
+if ($duplicateCheck) {
+    $timeDiff = now()->diffInSeconds($duplicateCheck->created_at);
+
+    Log::warning('⚠️ PAIEMENT STORE - DOUBLON DÉTECTÉ ET BLOQUÉ', [
+        'duplicate_paiement_id' => $duplicateCheck->id,
+        'duplicate_numero_recu' => $duplicateCheck->numero_recu,
+        'time_diff_seconds' => $timeDiff,
+        'inscription_id' => $validated['inscription_id'],
+        'montant' => $validated['montant'],
+        'frais_category_id' => $validated['frais_category_id'],
+        'user_id' => Auth::id(),
+        'fingerprint' => $requestFingerprint,
+    ]);
+
+    // Retourner une erreur explicite
+    if ($request->ajax() || $request->wantsJson()) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Ce paiement a déjà été créé il y a ' . $timeDiff . ' seconde(s). Numéro de reçu : ' . $duplicateCheck->numero_recu,
+            'duplicate_id' => $duplicateCheck->id,
+            'duplicate_numero_recu' => $duplicateCheck->numero_recu,
+        ], 409); // HTTP 409 Conflict
+    }
+
+    return redirect()->route('esbtp.paiements.show', $duplicateCheck->id)
+        ->with('warning', 'Ce paiement a déjà été créé il y a ' . $timeDiff . ' seconde(s). Vous avez été redirigé vers le paiement existant.')
+        ->with('duplicate_prevented', true);
+}
+```
+
+**Logging de succès après création (lignes 826-834):**
+```php
+Log::info('✅ PAIEMENT STORE - Paiement créé avec succès', [
+    'paiement_id' => $paiement->id,
+    'numero_recu' => $numeroRecu,
+    'inscription_id' => $validated['inscription_id'],
+    'montant' => $validated['montant'],
+    'frais_category_id' => $validated['frais_category_id'],
+    'user_id' => Auth::id(),
+    'fingerprint' => $requestFingerprint,
+]);
+```
+
+**Critères de détection de doublon:**
+- Même `inscription_id`
+- Même `montant`
+- Même `frais_category_id`
+- Même `created_by` (utilisateur)
+- Créé dans les 10 dernières secondes
+
+**Réponses:**
+- **Requête normale:** Redirection vers paiement existant avec message warning
+- **Requête AJAX:** JSON avec status 409 Conflict
+- **Doublon bloqué:** Log détaillé avec tous les paramètres pour diagnostic
+
+**3. Polling automatique non-intrusif**
+
+**Fichier:** [resources/views/esbtp/paiements/index.blade.php](resources/views/esbtp/paiements/index.blade.php)
+
+**Fonction `fetchPaiementsData()` modifiée (lignes 282-317):**
+```php
+/**
+ * Fetch les données depuis le serveur et met à jour le DOM
+ * @param {boolean} showLog - Afficher les logs dans la console
+ * @param {boolean} showOverlay - Afficher l'overlay de chargement (true pour refresh manuel, false pour polling)
+ */
+function fetchPaiementsData(showLog = true, showOverlay = true) {
+    const spinner = document.getElementById('paiements-refresh-spinner');
+    const btn = document.getElementById('paiements-refresh-btn');
+    const tableContainer = document.getElementById('paiements-table-container');
+
+    // Afficher le spinner du bouton
+    if (spinner && btn) {
+        btn.style.display = 'none';
+        spinner.classList.remove('d-none');
+    }
+
+    // 🎨 Ajouter overlay de chargement UNIQUEMENT pour le refresh manuel (pas pour le polling automatique)
+    if (showOverlay && tableContainer) {
+        tableContainer.style.position = 'relative';
+
+        const loadingOverlay = document.createElement('div');
+        loadingOverlay.id = 'table-loading-overlay';
+        // ... styles overlay
+        tableContainer.appendChild(loadingOverlay);
+    }
+
+    // ... fetch data
+}
+```
+
+**Appel dans `checkForUpdates()` (lignes 421-422):**
+```javascript
+// Rafraîchir les données SANS overlay (polling automatique non-intrusif)
+fetchPaiementsData(false, false);
+```
+
+**Comportement:**
+- **Refresh manuel (bouton):** Affiche overlay gris + spinner du bouton
+- **Polling automatique (30s):** Aucun overlay, chargement en arrière-plan silencieux
+- **Détection changements:** Polling intelligent vérifie d'abord avec `checkForUpdates()`
+
+**4. Activation du polling automatique**
+
+**Fichier:** [resources/views/esbtp/paiements/index.blade.php](resources/views/esbtp/paiements/index.blade.php)
+
+**Ligne 605:**
+```javascript
+// Démarrer le polling automatique (30 secondes)
+startPolling();
+```
+
+**Changement:** Décommenté la ligne qui était `// startPolling();`
+
+#### Caractéristiques techniques
+
+**Protection backend:**
+- Fenêtre temporelle configurable (10 secondes par défaut)
+- Fingerprint de requête pour tracking (MD5 de user_id + IP + user_agent)
+- Logging complet avec emojis pour faciliter le diagnostic:
+  - 🔵 Début de requête
+  - ✅ Paiement créé avec succès
+  - ⚠️ Doublon détecté et bloqué
+  - ❌ Erreur de validation
+- Support requêtes AJAX et normales
+- Redirection automatique vers paiement existant si doublon
+
+**Polling non-intrusif:**
+- Double stratégie: check léger (count + timestamp) → full refresh si changements
+- Aucun overlay gris pendant polling automatique
+- Overlay uniquement pour refresh manuel (bouton)
+- Intervalle: 30 secondes
+- Logging console pour debug (avec emojis):
+  - 🆕 Changements détectés
+  - ✓ Pas de changements
+  - ❌ Erreur
+
+**Actions groupées AJAX:**
+- Détection automatique du type de requête
+- Retour JSON pour AJAX avec détails (success, message, counts)
+- Redirect classique pour requêtes normales
+- Gestion d'erreurs dans catch avec JSON approprié
+
+#### Fichiers modifiés
+
+**Backend:**
+- [app/Http/Controllers/ESBTPPaiementController.php](app/Http/Controllers/ESBTPPaiementController.php)
+  - Lignes 721-855: Protection doublons + logging détaillé dans `store()`
+  - Lignes 2276-2318: Support AJAX dans `bulkValider()`
+  - Lignes 2316-2406: Support AJAX dans `bulkRejeter()`
+
+**Frontend:**
+- [resources/views/esbtp/paiements/index.blade.php](resources/views/esbtp/paiements/index.blade.php)
+  - Lignes 282-317: Paramètre `showOverlay` dans `fetchPaiementsData()`
+  - Lignes 421-422: Appel sans overlay dans `checkForUpdates()`
+  - Ligne 605: Activation `startPolling()`
+
+#### Tests recommandés
+
+**Protection doublons:**
+- [ ] Cliquer rapidement 5 fois sur "Créer paiement" → Vérifier un seul paiement créé
+- [ ] Vérifier logs Laravel (`storage/logs/laravel.log`) pour messages avec emojis
+- [ ] Tester avec connexion lente (DevTools → Network → Slow 3G)
+- [ ] Vérifier message d'erreur explicite en cas de doublon
+
+**Polling non-intrusif:**
+- [ ] Observer la liste de paiements pendant 2 minutes → Aucun overlay gris
+- [ ] Console doit afficher "✓ Pas de changements" toutes les 30s
+- [ ] Créer un paiement dans un autre onglet → Apparition automatique sans overlay
+- [ ] Cliquer sur bouton "Rafraîchir" → Overlay gris doit apparaître (refresh manuel)
+
+**Actions groupées:**
+- [ ] Sélectionner 2 paiements et valider en groupe → Vérifier pas de JSON brut
+- [ ] Vérifier message de succès avec détails (successCount, alreadyProcessed)
+- [ ] Tester rejet groupé avec motif
+
+#### Commandes de diagnostic
+
+```bash
+# Surveiller les logs en temps réel
+tail -f storage/logs/laravel.log | grep PAIEMENT
+
+# Rechercher les doublons détectés
+grep "DOUBLON DÉTECTÉ" storage/logs/laravel.log
+
+# Compter les tentatives de création de paiements
+grep "🔵 PAIEMENT STORE - Début de requête" storage/logs/laravel.log | wc -l
+
+# Compter les paiements créés avec succès
+grep "✅ PAIEMENT STORE - Paiement créé avec succès" storage/logs/laravel.log | wc -l
+
+# Vérifier les doublons bloqués (devrait être 0 en production normale)
+grep "⚠️ PAIEMENT STORE - DOUBLON DÉTECTÉ" storage/logs/laravel.log | wc -l
+```
+
+#### Améliorations futures (optionnel)
+
+**Protection doublons côté frontend:**
+- [ ] Améliorer protection JavaScript avec event capture phase plus agressive
+- [ ] Ajouter throttling (Lodash `_.throttle`) sur handlers de clic
+- [ ] Désactiver bouton IMMÉDIATEMENT au premier clic (avant validation)
+
+**Polling optimisé:**
+- [ ] Utiliser WebSockets pour push notifications en temps réel (Laravel Echo + Pusher)
+- [ ] Ajouter notification toast "Nouveau paiement ajouté" au lieu de refresh silencieux
+- [ ] Permettre à l'utilisateur de désactiver le polling (setting)
+
+**Monitoring:**
+- [ ] Dashboard admin avec stats doublons bloqués par jour/semaine
+- [ ] Alertes si taux de doublons > seuil (ex: 5% des créations)
+- [ ] Export CSV des tentatives de doublons pour analyse
+
+---
+
 ### Feature: Système de refresh partiel AJAX pour inscriptions et paiements
 
 **Date:** 13 octobre 2025
@@ -569,6 +867,12 @@ FLUSH PRIVILEGES;
 #### Fonctionnalités ajoutées
 
 Implémentation complète d'un système de refresh partiel AJAX pour éviter les rechargements de page complets lors des actions sur inscriptions et paiements. Les checkboxes et overlays sont préservés, seule la ligne modifiée est rafraîchie avec **animation lumière traversante** (effet "travelling light").
+
+**Mise à jour 13/10/2025 : rafraîchissement synchronisé avec l'animation**
+- `resources/views/esbtp/paiements/index.blade.php:248` — le halo couvre 160 % de la ligne, durée portée à 3,2 s pour un passage complet jusqu’au statut.
+- `resources/views/esbtp/paiements/index.blade.php:428` — `triggerPaiementRowHighlight()` accepte un callback `onStatusPassed` déclenché quand la lumière dépasse la colonne Statut.
+- `resources/views/esbtp/paiements/index.blade.php:734` — la fonction `refreshPaiementLigne()` clone les nouvelles cellules mais ne les applique qu’au moment du callback, conservant le `<tr>` existant pendant l’animation et restaurant les cases cochées/spinners ensuite.
+- Résultat : le statut et les boutons se mettent à jour exactement après le passage visuel du halo, sans clignotement ni perte de sélection.
 
 #### Architecture
 
