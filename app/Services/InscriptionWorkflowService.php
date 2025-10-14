@@ -261,6 +261,59 @@ class InscriptionWorkflowService
     public function associerPaiement(ESBTPInscription $inscription, array $paiementData)
     {
         try {
+            // LOG DÉTAILLÉ: Début de la requête d'association paiement
+            $requestFingerprint = md5(json_encode([
+                'user_id' => Auth::id(),
+                'inscription_id' => $inscription->id,
+                'timestamp' => microtime(true),
+            ]));
+
+            \Log::info('🔵 WORKFLOW associerPaiement - Début de requête', [
+                'timestamp' => now()->toIso8601String(),
+                'user_id' => Auth::id(),
+                'inscription_id' => $inscription->id,
+                'fingerprint' => $requestFingerprint,
+                'paiement_data' => $paiementData,
+            ]);
+
+            // PROTECTION BACKEND: Détecter les doublons récents (dernières 10 secondes)
+            $timeWindow = now()->subSeconds(10);
+            $duplicateCheck = ESBTPPaiement::where('inscription_id', $inscription->id)
+                ->where('montant', $paiementData['montant'])
+                ->where('frais_category_id', $paiementData['fee_category_id'])
+                ->where('created_by', Auth::id())
+                ->where('created_at', '>=', $timeWindow)
+                ->orderByDesc('created_at')
+                ->first();
+
+            if ($duplicateCheck) {
+                $timeDiff = now()->diffInSeconds($duplicateCheck->created_at);
+
+                \Log::warning('⚠️ WORKFLOW associerPaiement - DOUBLON DÉTECTÉ ET BLOQUÉ', [
+                    'duplicate_paiement_id' => $duplicateCheck->id,
+                    'duplicate_numero_recu' => $duplicateCheck->numero_recu,
+                    'time_diff_seconds' => $timeDiff,
+                    'inscription_id' => $inscription->id,
+                    'montant' => $paiementData['montant'],
+                    'frais_category_id' => $paiementData['fee_category_id'],
+                    'user_id' => Auth::id(),
+                    'fingerprint' => $requestFingerprint,
+                ]);
+
+                return [
+                    'success' => true, // ✅ Changé à true pour ne pas alarmer l'utilisateur
+                    'message' => 'Paiement enregistré avec succès. Numéro de reçu : ' . $duplicateCheck->numero_recu,
+                    'duplicate' => true,
+                    'duplicate_id' => $duplicateCheck->id,
+                ];
+            }
+
+            \Log::info('✅ WORKFLOW associerPaiement - Pas de doublon détecté, création du paiement', [
+                'inscription_id' => $inscription->id,
+                'montant' => $paiementData['montant'],
+                'frais_category_id' => $paiementData['fee_category_id'],
+            ]);
+
             DB::beginTransaction();
 
             // Récupérer la catégorie de frais pour le motif
@@ -310,6 +363,16 @@ class InscriptionWorkflowService
             );
 
             DB::commit();
+
+            \Log::info('✅ WORKFLOW associerPaiement - Paiement créé avec succès', [
+                'paiement_id' => $paiement->id,
+                'numero_recu' => $paiement->numero_recu,
+                'inscription_id' => $inscription->id,
+                'montant' => $paiementData['montant'],
+                'frais_category_id' => $paiementData['fee_category_id'],
+                'user_id' => Auth::id(),
+                'fingerprint' => $requestFingerprint,
+            ]);
 
             return [
                 'success' => true,

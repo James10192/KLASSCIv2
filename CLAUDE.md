@@ -952,6 +952,7 @@ setTimeout(() => { newRow.style.background = ''; }, 600);
 **Backend :**
 - [app/Http/Controllers/ESBTPPaiementController.php:2347-2387](app/Http/Controllers/ESBTPPaiementController.php:2347) - Méthode `refreshLigne()`
 - [app/Http/Controllers/ESBTPPaiementController.php:1936-2033](app/Http/Controllers/ESBTPPaiementController.php:1936) - Modification `valider()` pour support AJAX
+- `app/Services/InscriptionWorkflowService.php:261-345` - Journaux détaillés + détection de doublons (fenêtre 10 s) dans `associerPaiement()`
 
 **Frontend - JavaScript :**
 - [resources/views/esbtp/paiements/index.blade.php:430-546](resources/views/esbtp/paiements/index.blade.php:430) - Fonction `window.refreshPaiementLigne()`

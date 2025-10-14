@@ -12,7 +12,8 @@
       "Bash(curl -s -H \"Authorization: Bearer 1ISCDzRdQOlZW6eYCyZ7qmlYmMttQpWR3AMcaTrOwpweoRp6w0X2s1U2HPyocZKG\" http://localhost:8001/api/tenants/inexistant/limits)",
       "Bash(php artisan optimize:clear:*)",
       "Bash(php artisan filament:cache-components:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(mysql:*)"
     ],
     "deny": [],
     "ask": [],
