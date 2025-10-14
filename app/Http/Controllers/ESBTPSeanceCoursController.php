@@ -288,10 +288,30 @@ class ESBTPSeanceCoursController extends Controller
             ->get();
 
         $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-        
+        $dayTranslations = [
+            'monday' => 'monday',
+            'tuesday' => 'tuesday',
+            'wednesday' => 'wednesday',
+            'thursday' => 'thursday',
+            'friday' => 'friday',
+            'saturday' => 'saturday',
+            'lundi' => 'monday',
+            'mardi' => 'tuesday',
+            'mercredi' => 'wednesday',
+            'jeudi' => 'thursday',
+            'vendredi' => 'friday',
+            'samedi' => 'saturday',
+        ];
+
         foreach ($existingSessions as $session) {
             // Mapper le jour numérique vers la clé jour
-            $dayKey = $days[$session->jour - 1] ?? null; // jour 1=lundi -> index 0=monday
+            $dayKey = null;
+            if (is_numeric($session->jour)) {
+                $dayKey = $days[(int) $session->jour - 1] ?? null; // jour 1=lundi -> index 0=monday
+            } elseif (is_string($session->jour)) {
+                $normalizedDay = strtolower(trim($session->jour));
+                $dayKey = $dayTranslations[$normalizedDay] ?? null;
+            }
             
             if (!$dayKey || !isset($baseAvailability[$dayKey])) {
                 continue;
