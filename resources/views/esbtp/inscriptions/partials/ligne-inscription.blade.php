@@ -72,7 +72,8 @@
     </td>
     <td>{{ $inscription->created_at->format('d/m/Y') }}</td>
     <td>
-        <div class="d-flex">
+        <div class="inscription-actions-wrapper" data-inscription-actions="{{ $inscription->id }}">
+            <div class="d-flex inscription-actions-buttons">
             @can('inscriptions.view')
             <a href="{{ route('esbtp.inscriptions.show', $inscription->id) }}" class="btn btn-info btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1 me-1" title="Détails">
                 <i class="fas fa-eye"></i>
@@ -117,6 +118,12 @@
                 <i class="fas fa-trash"></i>
             </button>
             @endcan
+            </div>
+            <div class="inscription-actions-spinner" aria-hidden="true">
+                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                    <span class="visually-hidden">Chargement...</span>
+                </div>
+            </div>
         </div>
     </td>
 </tr>

@@ -314,11 +314,181 @@
 .align-items-center {
     align-items: center;
 }
+
+tr[data-inscription-id] {
+    position: relative;
+    overflow: hidden;
+}
+
+tr[data-inscription-id].is-loading {
+    opacity: 0.85;
+}
+
+.inscription-actions-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.inscription-actions-buttons {
+    display: inline-flex;
+}
+
+.inscription-actions-spinner {
+    display: none;
+    min-width: 32px;
+}
+
+.inscription-actions-wrapper.is-loading .inscription-actions-buttons {
+    display: none !important;
+}
+
+.inscription-actions-wrapper.is-loading .inscription-actions-spinner {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+}
+
+.inscription-row-highlight {
+    position: absolute;
+    top: 0;
+    left: -80%;
+    width: 160%;
+    height: 100%;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-65%) skewX(-12deg);
+    background: linear-gradient(90deg, rgba(40, 167, 69, 0) 0%, rgba(40, 167, 69, 0.75) 50%, rgba(40, 167, 69, 0) 100%);
+    transition: opacity 0.2s ease;
+    z-index: 5;
+}
+
+.inscription-row-highlight.reject {
+    background: linear-gradient(90deg, rgba(220, 53, 69, 0) 0%, rgba(220, 53, 69, 0.75) 50%, rgba(220, 53, 69, 0) 100%);
+}
+
+.inscription-row-highlight.animate {
+    animation: inscription-row-highlight-move 3.2s ease-out forwards;
+}
+
+.inscription-row-flash {
+    animation: inscription-row-flash 0.8s ease-in-out;
+}
+
+@keyframes inscription-row-highlight-move {
+    0% {
+        opacity: 0;
+        transform: translateX(-65%) skewX(-12deg);
+    }
+    18% {
+        opacity: 0.92;
+    }
+    55% {
+        opacity: 0.7;
+    }
+    100% {
+        opacity: 0;
+        transform: translateX(115%) skewX(-12deg);
+    }
+}
+
+@keyframes inscription-row-flash {
+    0% {
+        background-color: transparent;
+    }
+    25% {
+        background-color: rgba(40, 167, 69, 0.12);
+    }
+    100% {
+        background-color: transparent;
+    }
+}
+
+.inscription-row-flash.reject {
+    animation-name: inscription-row-flash-reject;
+}
+
+@keyframes inscription-row-flash-reject {
+    0% {
+        background-color: transparent;
+    }
+    25% {
+        background-color: rgba(220, 53, 69, 0.12);
+    }
+    100% {
+        background-color: transparent;
+    }
+}
 </style>
 @endpush
 
 @push('scripts')
 <script>
+const INSCRIPTION_HIGHLIGHT_DURATION = 3200;
+const INSCRIPTION_STATUS_PASS_RATIO = 0.8;
+
+function setInscriptionRowLoadingState(inscriptionId, isLoading) {
+    const row = document.querySelector(`tr[data-inscription-id="${inscriptionId}"]`);
+    if (!row) {
+        return;
+    }
+
+    row.classList.toggle('is-loading', Boolean(isLoading));
+
+    const actionsWrapper = row.querySelector('.inscription-actions-wrapper');
+    if (actionsWrapper) {
+        actionsWrapper.classList.toggle('is-loading', Boolean(isLoading));
+    }
+}
+window.setInscriptionRowLoadingState = setInscriptionRowLoadingState;
+
+function triggerInscriptionRowHighlight(row, actionType = 'update', options = {}) {
+    if (!row) {
+        return;
+    }
+
+    const onStatusPassed = typeof options.onStatusPassed === 'function' ? options.onStatusPassed : null;
+    const isReject = ['reject', 'cancel', 'danger', 'delete'].includes(actionType);
+
+    row.classList.remove('inscription-row-flash', 'reject');
+    void row.offsetWidth;
+
+    const highlight = document.createElement('div');
+    highlight.className = 'inscription-row-highlight';
+    if (isReject) {
+        highlight.classList.add('reject');
+    }
+
+    row.appendChild(highlight);
+
+    requestAnimationFrame(() => {
+        highlight.classList.add('animate');
+    });
+
+    if (onStatusPassed) {
+        setTimeout(() => {
+            onStatusPassed(highlight);
+        }, INSCRIPTION_HIGHLIGHT_DURATION * INSCRIPTION_STATUS_PASS_RATIO);
+    }
+
+    const cleanup = () => {
+        highlight.removeEventListener('animationend', cleanup);
+        highlight.remove();
+    };
+
+    highlight.addEventListener('animationend', cleanup);
+
+    row.classList.add('inscription-row-flash');
+    if (isReject) {
+        row.classList.add('reject');
+    }
+
+    setTimeout(() => {
+        row.classList.remove('inscription-row-flash', 'reject');
+    }, 1200);
+}
+window.triggerInscriptionRowHighlight = triggerInscriptionRowHighlight;
+
 function showYearChangeInfo() {
     console.log('Tentative ouverture modal');
     
@@ -523,6 +693,69 @@ document.addEventListener('DOMContentLoaded', function () {
     const filterSelects = form ? form.querySelectorAll('select') : [];
     const headerSearch = document.querySelector('.dashboard-header .search-bar');
     const formSearchInput = form ? form.querySelector('#filter-search') : null;
+
+    const INSCRIPTION_HIGHLIGHT_DURATION = 3200;
+    const INSCRIPTION_STATUS_PASS_RATIO = 0.8;
+
+    function setInscriptionRowLoadingState(inscriptionId, isLoading) {
+        const row = document.querySelector(`tr[data-inscription-id=\"${inscriptionId}\"]`);
+        if (!row) {
+            return;
+        }
+
+        row.classList.toggle('is-loading', Boolean(isLoading));
+
+        const actionsWrapper = row.querySelector('.inscription-actions-wrapper');
+        if (actionsWrapper) {
+            actionsWrapper.classList.toggle('is-loading', Boolean(isLoading));
+        }
+    }
+
+    function triggerInscriptionRowHighlight(row, actionType = 'update', options = {}) {
+        if (!row) {
+            return;
+        }
+
+        const onStatusPassed = typeof options.onStatusPassed === 'function' ? options.onStatusPassed : null;
+        const isReject = ['reject', 'cancel', 'danger'].includes(actionType);
+
+        row.classList.remove('inscription-row-flash', 'reject');
+        void row.offsetWidth;
+
+        const highlight = document.createElement('div');
+        highlight.className = 'inscription-row-highlight';
+        if (isReject) {
+            highlight.classList.add('reject');
+        }
+
+        row.appendChild(highlight);
+
+        requestAnimationFrame(() => {
+            highlight.classList.add('animate');
+        });
+
+        if (onStatusPassed) {
+            setTimeout(() => {
+                onStatusPassed(highlight);
+            }, INSCRIPTION_HIGHLIGHT_DURATION * INSCRIPTION_STATUS_PASS_RATIO);
+        }
+
+        const cleanup = () => {
+            highlight.removeEventListener('animationend', cleanup);
+            highlight.remove();
+        };
+
+        highlight.addEventListener('animationend', cleanup);
+
+        row.classList.add('inscription-row-flash');
+        if (isReject) {
+            row.classList.add('reject');
+        }
+
+        setTimeout(() => {
+            row.classList.remove('inscription-row-flash', 'reject');
+        }, 1200);
+    }
 
     initInscriptionsSelect2();
     initInscriptionsTooltips();
@@ -810,7 +1043,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.success) {
                     bootstrap.Modal.getInstance(document.getElementById('modalValiderPaiement')).hide();
                     // ✅ Refresh uniquement la ligne au lieu de recharger toute la page
-                    window.refreshInscriptionLigne(inscriptionId);
+                    window.refreshInscriptionLigne(inscriptionId, 'validate');
                 } else {
                     alert(data.message || 'Erreur lors de la validation');
                 }
@@ -847,7 +1080,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.success) {
                 bootstrap.Modal.getInstance(document.getElementById('modalChangerClasse')).hide();
                 // ✅ Refresh uniquement la ligne au lieu de recharger toute la page
-                window.refreshInscriptionLigne(inscriptionId);
+                window.refreshInscriptionLigne(inscriptionId, 'update');
             } else {
                 alert(data.message || 'Erreur lors du changement de classe');
             }
@@ -897,7 +1130,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.success) {
                     bootstrap.Modal.getInstance(document.getElementById('modalCreerPaiement')).hide();
                     // ✅ Refresh uniquement la ligne au lieu de recharger toute la page
-                    window.refreshInscriptionLigne(inscriptionId);
+                    window.refreshInscriptionLigne(inscriptionId, 'update');
                 } else {
                     alert(data.message || 'Erreur lors de la création du paiement');
                 }
@@ -919,39 +1152,22 @@ document.addEventListener('DOMContentLoaded', function() {
      * Fonction pour rafraîchir une ligne d'inscription spécifique sans recharger la page
      * Inclut spinner de chargement et sauvegarde de l'état du checkbox
      */
-    window.refreshInscriptionLigne = function(inscriptionId) {
+    window.refreshInscriptionLigne = function(inscriptionId, actionType = 'update') {
         console.log('🔄 refreshInscriptionLigne() appelé pour ID:', inscriptionId);
 
         const row = document.querySelector(`tr[data-inscription-id="${inscriptionId}"]`);
 
         if (!row) {
             console.error('❌ Ligne non trouvée pour inscription ID:', inscriptionId);
-            // Fallback: recharger la page si la ligne n'existe pas
             location.reload();
             return;
         }
 
-        console.log('✅ Ligne trouvée, sauvegarde checkbox...');
-        // Sauvegarder l'état du checkbox AVANT de modifier le DOM
         const checkbox = row.querySelector('.inscription-checkbox');
-        const wasChecked = checkbox?.checked || false;
-        console.log('📌 Checkbox était:', wasChecked ? 'coché' : 'non coché');
+        const wasChecked = checkbox ? checkbox.checked : false;
 
-        // Compter le nombre de colonnes pour le colspan du spinner
-        const colCount = row.querySelectorAll('td').length;
+        setInscriptionRowLoadingState(inscriptionId, true);
 
-        console.log('⏳ Affichage spinner...');
-        // Afficher le spinner de chargement
-        row.innerHTML = `
-            <td colspan="${colCount}" style="text-align: center; padding: 20px;">
-                <div class="spinner-border text-primary" role="status" style="width: 2rem; height: 2rem;">
-                    <span class="visually-hidden">Chargement...</span>
-                </div>
-            </td>
-        `;
-
-        console.log('🌐 Fetch AJAX vers /esbtp/inscriptions/' + inscriptionId + '/refresh-ligne');
-        // Fetch AJAX pour récupérer la ligne mise à jour
         fetch(`/esbtp/inscriptions/${inscriptionId}/refresh-ligne`, {
             method: 'GET',
             headers: {
@@ -967,85 +1183,119 @@ document.addEventListener('DOMContentLoaded', function() {
             return response.json();
         })
         .then(data => {
-            console.log('📦 Data reçue:', data);
-            if (data.success && data.html) {
-                // Créer un <tbody> temporaire pour parser le HTML du <tr>
-                // Important: un <tr> ne peut être parsé que dans un contexte table/tbody
-                const tempTable = document.createElement('table');
-                const tempTbody = document.createElement('tbody');
-                tempTbody.innerHTML = data.html.trim();
-                tempTable.appendChild(tempTbody);
-
-                const newRow = tempTbody.firstElementChild;
-
-                console.log('📦 tempTbody.innerHTML longueur:', tempTbody.innerHTML.length);
-                console.log('📦 tempTbody.children.length:', tempTbody.children.length);
-                console.log('📦 newRow:', newRow);
-                console.log('📦 newRow?.tagName:', newRow?.tagName);
-
-                if (newRow && newRow.tagName === 'TR') {
-                    console.log('🔄 Remplacement de la ligne...');
-                    // Remplacer l'ancienne ligne par la nouvelle
-                    row.replaceWith(newRow);
-                    console.log('✅ Ligne remplacée avec succès');
-
-                    // ✨ Animation lumière verte qui parcourt la ligne de gauche à droite
-                    newRow.style.position = 'relative';
-                    newRow.style.overflow = 'hidden';
-
-                    // Créer l'overlay animé
-                    const overlay = document.createElement('div');
-                    overlay.style.position = 'absolute';
-                    overlay.style.top = '0';
-                    overlay.style.left = '-100%';
-                    overlay.style.width = '100%';
-                    overlay.style.height = '100%';
-                    overlay.style.background = 'linear-gradient(to right, rgba(40, 167, 69, 0), rgba(40, 167, 69, 0.7), rgba(40, 167, 69, 0))';
-                    overlay.style.pointerEvents = 'none';
-                    overlay.style.transition = 'left 0.8s ease-out';
-                    overlay.style.zIndex = '1';
-
-                    newRow.appendChild(overlay);
-
-                    // Déclencher l'animation après un petit délai
-                    setTimeout(() => {
-                        overlay.style.left = '100%';
-                    }, 10);
-
-                    // Nettoyer après l'animation
-                    setTimeout(() => {
-                        overlay.remove();
-                        newRow.style.position = '';
-                        newRow.style.overflow = '';
-                    }, 900);
-
-                    // Restaurer l'état du checkbox si nécessaire
-                    if (wasChecked) {
-                        console.log('📌 Restauration du checkbox...');
-                        const newCheckbox = newRow.querySelector('.inscription-checkbox');
-                        if (newCheckbox) {
-                            newCheckbox.checked = true;
-                            // Déclencher l'événement change pour mettre à jour le compteur
-                            newCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
-                            console.log('✅ Checkbox restauré');
-                        }
-                    }
-
-                    console.log('🎉 Ligne rafraîchie avec succès:', inscriptionId);
-                    console.log('⚠️ Si un reload se produit maintenant, c\'est un listener externe qui le cause!');
-                } else {
-                    throw new Error('HTML retourné invalide (pas de TR)');
-                }
-            } else {
+            if (!data.success || !data.html) {
                 throw new Error(data.message || 'Réponse serveur invalide');
             }
+
+            const template = document.createElement('template');
+            template.innerHTML = data.html.trim();
+
+            let rowFragment = template.content.querySelector(`tr[data-inscription-id="${inscriptionId}"]`);
+            if (!rowFragment) {
+                rowFragment = template.content.querySelector('tr[data-inscription-id]');
+            }
+
+            if (!rowFragment) {
+                console.error('❌ Contenu HTML reçu:', data.html);
+                throw new Error('HTML retourné invalide (pas de TR)');
+            }
+
+            const newRow = rowFragment.cloneNode(true);
+            const newCells = Array.from(newRow.children).map(cell => cell.cloneNode(true));
+            const newAttributes = Array.from(newRow.attributes);
+
+            let contentUpdated = false;
+
+            const applyUpdatedContent = (highlightEl = null) => {
+                if (contentUpdated) {
+                    return;
+                }
+                contentUpdated = true;
+
+                const highlightNode = highlightEl instanceof HTMLElement ? highlightEl : row.querySelector('.inscription-row-highlight');
+
+                const classesToPreserve = [];
+                if (row.classList.contains('inscription-row-flash')) {
+                    classesToPreserve.push('inscription-row-flash');
+                }
+                if (row.classList.contains('reject')) {
+                    classesToPreserve.push('reject');
+                }
+                if (row.classList.contains('is-loading')) {
+                    classesToPreserve.push('is-loading');
+                }
+
+                const newClassName = newRow.getAttribute('class') || '';
+                row.setAttribute('class', newClassName);
+
+                newAttributes.forEach(attr => {
+                    if (attr.name !== 'class') {
+                        row.setAttribute(attr.name, attr.value);
+                    }
+                });
+
+                classesToPreserve.forEach(cls => row.classList.add(cls));
+
+                const currentCells = Array.from(row.children).filter(child => child !== highlightNode);
+
+                currentCells.forEach((cell, index) => {
+                    const replacement = newCells[index];
+                    if (replacement) {
+                        cell.replaceWith(replacement);
+                    } else {
+                        cell.remove();
+                    }
+                });
+
+                const extraCells = newCells.slice(currentCells.length);
+                if (extraCells.length) {
+                    const fragment = document.createDocumentFragment();
+                    extraCells.forEach(node => fragment.appendChild(node));
+
+                    if (highlightNode && highlightNode.parentNode === row) {
+                        row.insertBefore(fragment, highlightNode);
+                    } else {
+                        row.appendChild(fragment);
+                    }
+                }
+
+                if (highlightNode && highlightNode.parentNode !== row) {
+                    row.appendChild(highlightNode);
+                }
+
+                if (wasChecked) {
+                    const restoredCheckbox = row.querySelector('.inscription-checkbox');
+                    if (restoredCheckbox) {
+                        restoredCheckbox.checked = true;
+                        restoredCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                }
+
+                setInscriptionRowLoadingState(inscriptionId, false);
+                updateInscriptionSelectionCount();
+
+                console.log('🎉 Ligne rafraîchie avec succès:', inscriptionId);
+            };
+
+            triggerInscriptionRowHighlight(row, actionType, {
+                onStatusPassed: (highlightEl) => {
+                    applyUpdatedContent(highlightEl);
+                }
+            });
+
+            setTimeout(() => {
+                if (!contentUpdated) {
+                    applyUpdatedContent();
+                }
+            }, INSCRIPTION_HIGHLIGHT_DURATION + 150);
         })
         .catch(error => {
             console.error('❌ Erreur refresh ligne:', error);
             console.error('❌ Message d\'erreur:', error.message);
             console.error('❌ Stack trace:', error.stack);
 
-            // Fallback: recharger la page en cas d'erreur
+            setInscriptionRowLoadingState(inscriptionId, false);
+
             alert('Erreur lors de la mise à jour: ' + error.message + '. La page va se recharger.');
             location.reload();
         });

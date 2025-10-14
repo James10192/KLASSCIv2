@@ -1106,6 +1106,30 @@ setTimeout(() => { overlay.remove(); }, 3100);  // 3000ms animation + 100ms buff
 - **Fallback** : Rechargement complet de la page en cas d'erreur
 - **Cache views** : Nécessite `php artisan view:clear` après modifications
 
+#### Inscriptions - Synchronisation animation & actions correctives (13 oct 2025)
+
+- `resources/views/esbtp/inscriptions/index.blade.php`
+  - Helpers globaux `setInscriptionRowLoadingState` et `triggerInscriptionRowHighlight`
+  - `refreshInscriptionLigne()` clone les cellules et ne les applique qu'après passage du halo
+  - Formulaires des modals (valider paiement, changer classe, créer paiement) → `refreshInscriptionLigne(id, actionType)`
+- `resources/views/esbtp/inscriptions/partials/ligne-inscription.blade.php`
+  - Wrapper `inscription-actions-wrapper` + spinner inline pour masquer les actions durant le fetch
+
+**Animation synchronisée (3.2 s) :**
+```javascript
+triggerInscriptionRowHighlight(row, actionType, {
+  onStatusPassed: (highlightEl) => {
+    applyUpdatedContent(highlightEl); // Remplace les cellules quand le halo franchit la colonne statut
+  }
+});
+```
+
+**Résultat :**
+- Les lignes ne disparaissent plus pendant l’update, la lumière couvre 160 % pour traverser la ligne entière.
+- Le statut et les boutons se mettent à jour pile après le halo, sans clignoter.
+- Les cases cochées et la barre d’actions restent intactes après validation ou correction.
+- Les actions correctives (paiement, classe, création paiement) offrent le même UX que les actions sur paiements.
+
 ---
 
 ### Fix: Filtrage année courante et fallback complet pour TOUTES les pages dashboard étudiant
