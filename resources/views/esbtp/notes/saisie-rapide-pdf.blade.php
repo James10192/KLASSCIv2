@@ -7,9 +7,9 @@
     <style>
         body {
             font-family: 'Arial', sans-serif;
-            font-size: 9px;
+            font-size: 7px;
             margin: 0;
-            padding: 8px;
+            padding: 2px;
             color: #333;
             line-height: 1.2;
             background: white;
@@ -18,57 +18,57 @@
         .container {
             max-width: 100%;
             background: white;
-            padding: 12px;
+            padding: 6px;
         }
 
         /* Header principal */
         .header-section {
             background: #007bff;
             color: white;
-            padding: 15px;
+            padding: 8px;
             border-radius: 8px;
             text-align: center;
-            margin-bottom: 15px;
+            margin-bottom: 8px;
             -webkit-print-color-adjust: exact;
             color-adjust: exact;
         }
 
         .header-logo {
-            max-height: 40px;
-            max-width: 100px;
-            margin-bottom: 8px;
+            max-height: 28px;
+            max-width: 70px;
+            margin-bottom: 4px;
             filter: brightness(0) invert(1);
         }
 
         .school-name {
-            font-size: 12px;
+            font-size: 9px;
             font-weight: 700;
             margin-bottom: 3px;
         }
 
         .school-info {
-            font-size: 7px;
-            margin-bottom: 8px;
+            font-size: 5px;
+            margin-bottom: 4px;
             opacity: 0.9;
         }
 
         .document-title-section {
             background: rgba(255,255,255,0.2);
-            padding: 8px;
+            padding: 4px;
             border-radius: 6px;
-            margin-top: 8px;
+            margin-top: 4px;
         }
 
         .document-title {
-            font-size: 10px;
+            font-size: 7px;
             font-weight: 600;
-            margin-bottom: 6px;
+            margin-bottom: 3px;
         }
 
         .evaluation-info-grid {
             display: table;
             width: 100%;
-            font-size: 8px;
+            font-size: 5.5px;
         }
 
         .evaluation-info-row {
@@ -79,29 +79,29 @@
             display: table-cell;
             width: 25%;
             text-align: center;
-            padding: 3px;
+            padding: 1px;
         }
 
         .info-badge {
             background: rgba(255,255,255,0.3);
-            padding: 2px 4px;
+            padding: 1px 3px;
             border-radius: 8px;
             display: inline-block;
-            margin-top: 2px;
+            margin-top: 1px;
         }
 
         .date-line, .teacher-line {
             border-bottom: 1px solid rgba(255,255,255,0.7);
-            padding: 1px 8px;
+            padding: 1px 4px;
             display: inline-block;
-            min-width: 60px;
+            min-width: 45px;
         }
 
         /* KPI Section */
         .kpi-section {
             display: table;
             width: 100%;
-            margin-bottom: 15px;
+            margin-bottom: 8px;
         }
 
         .kpi-row {
@@ -111,12 +111,12 @@
         .kpi-card {
             display: table-cell;
             width: 25%;
-            padding: 6px;
+            padding: 1px;
             text-align: center;
             background: #f8f9fa;
             border: 1px solid #e9ecef;
             vertical-align: top;
-            font-size: 8px;
+            font-size: 5px;
         }
 
         .kpi-card:first-child {
@@ -128,23 +128,23 @@
         }
 
         .kpi-title {
-            font-size: 7px;
+            font-size: 4.5px;
             font-weight: 600;
             color: #6b7280;
             text-transform: uppercase;
             letter-spacing: 0.3px;
-            margin-bottom: 3px;
+            margin-bottom: 2px;
         }
 
         .kpi-value {
-            font-size: 9px;
+            font-size: 7px;
             font-weight: bold;
             color: #007bff;
             margin-bottom: 2px;
         }
 
         .kpi-desc {
-            font-size: 6px;
+            font-size: 4px;
             color: #9ca3af;
         }
 
@@ -156,7 +156,7 @@
             background: white;
             border-radius: 6px;
             overflow: hidden;
-            font-size: 9px;
+            font-size: 6px;
         }
 
         .notes-table th {
@@ -165,19 +165,19 @@
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.3px;
-            font-size: 8px;
-            padding: 6px 4px;
+            font-size: 5.5px;
+            padding: 2px 2px;
             text-align: center;
             -webkit-print-color-adjust: exact;
             color-adjust: exact;
         }
 
         .notes-table td {
-            padding: 8px 3px;
+            padding: 2px 1px;
             border-bottom: 1px solid #e5e7eb;
             text-align: center;
             vertical-align: middle;
-            font-size: 8px;
+            font-size: 5.5px;
         }
 
         .notes-table tbody tr:nth-child(even) {
@@ -187,64 +187,64 @@
         .student-number {
             background: #007bff;
             color: white;
-            padding: 2px 4px;
+            padding: 1px 2px;
             border-radius: 50%;
             font-weight: bold;
-            font-size: 8px;
-            min-width: 16px;
+            font-size: 5.5px;
+            min-width: 12px;
             display: inline-block;
         }
 
         .student-matricule {
             font-family: 'Courier New', monospace;
             background: #f3f4f6;
-            padding: 1px 3px;
+            padding: 1px 2px;
             border-radius: 3px;
-            font-size: 7px;
+            font-size: 5px;
             color: #374151;
         }
 
         .student-info-cell {
             text-align: left !important;
-            padding-left: 6px !important;
+            padding-left: 3px !important;
         }
 
         .student-name {
             font-weight: 600;
-            font-size: 8px;
+            font-size: 6px;
             color: #1f2937;
             line-height: 1.2;
         }
 
         .student-gender {
-            font-size: 6px;
+            font-size: 4px;
             color: #6b7280;
             margin-top: 1px;
         }
 
         .note-box {
-            width: 40px;
-            height: 20px;
+            width: 30px;
+            height: 12px;
             border: 2px solid #007bff;
             border-radius: 4px;
             display: inline-block;
             background: white;
-            margin: 0 2px;
+            margin: 0 1px;
         }
 
         .note-type-column {
-            width: 15%;
+            width: 12%;
         }
 
         .observations-column {
-            width: 20%;
-            min-height: 20px;
+            width: 22%;
+            min-height: 10px;
             border-bottom: 1px solid #d1d5db;
         }
 
         /* Footer section */
         .footer-section {
-            margin-top: 15px;
+            margin-top: 8px;
             display: table;
             width: 100%;
         }
@@ -260,14 +260,14 @@
             background: #f8f9fa;
             border: 1px solid #e5e7eb;
             border-radius: 6px;
-            padding: 8px;
+            padding: 5px;
         }
 
         .summary-title {
-            font-size: 8px;
+            font-size: 6px;
             font-weight: 600;
             color: #374151;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
             text-transform: uppercase;
             letter-spacing: 0.3px;
         }
@@ -285,17 +285,17 @@
             display: table-cell;
             width: 33.33%;
             text-align: center;
-            padding: 3px;
+            padding: 1px;
         }
 
         .summary-value {
-            font-size: 10px;
+            font-size: 9px;
             font-weight: bold;
             color: #007bff;
         }
 
         .summary-label {
-            font-size: 6px;
+            font-size: 5px;
             color: #6b7280;
             margin-top: 1px;
         }
@@ -304,22 +304,22 @@
             background: #f8f9fa;
             border: 1px solid #e5e7eb;
             border-radius: 6px;
-            padding: 8px;
+            padding: 5px;
             margin-left: 3px;
         }
 
         .info-field {
-            margin-bottom: 4px;
+            margin-bottom: 3px;
         }
 
         .info-label {
-            font-size: 6px;
+            font-size: 5px;
             color: #6b7280;
             margin-bottom: 1px;
         }
 
         .info-value {
-            font-size: 7px;
+            font-size: 6px;
             font-weight: 600;
             color: #374151;
         }
@@ -327,22 +327,22 @@
         /* Informations de génération */
         .generation-info {
             text-align: center;
-            font-size: 6px;
+            font-size: 5px;
             color: #6b7280;
-            margin-top: 15px;
-            padding-top: 8px;
+            margin-top: 8px;
+            padding-top: 6px;
             border-top: 1px solid #e5e7eb;
         }
 
         /* Empty state */
         .empty-state {
             text-align: center;
-            padding: 20px 10px;
+            padding: 15px 10px;
             color: #6b7280;
         }
 
         .empty-icon {
-            font-size: 24px;
+            font-size: 18px;
             margin-bottom: 10px;
             color: #d1d5db;
         }
@@ -351,23 +351,23 @@
         @media print {
             body {
                 background: white;
-                padding: 5px;
+                padding: 2px;
             }
 
             .container {
-                padding: 10px;
+                padding: 4px;
             }
 
             .header-section {
-                margin-bottom: 10px;
+                margin-bottom: 6px;
             }
 
             .kpi-section {
-                margin-bottom: 10px;
+                margin-bottom: 6px;
             }
 
             .footer-section {
-                margin-top: 10px;
+                margin-top: 6px;
             }
         }
 
@@ -432,17 +432,17 @@
                 </div>
                 <div class="kpi-card">
                     <div class="kpi-title">Classe</div>
-                    <div class="kpi-value" style="font-size: 8px; line-height: 1.1;">{{ $evaluation->classe->name ?? 'N/A' }}</div>
+                    <div class="kpi-value" style="font-size: 5.5px; line-height: 1.1;">{{ $evaluation->classe->name ?? 'N/A' }}</div>
                     <div class="kpi-desc">{{ $evaluation->classe->filiere->name ?? 'Filière' }}</div>
                 </div>
                 <div class="kpi-card">
                     <div class="kpi-title">Type</div>
-                    <div class="kpi-value" style="font-size: 8px; line-height: 1.1;">{{ ucfirst($evaluation->type) }}</div>
+                    <div class="kpi-value" style="font-size: 5.5px; line-height: 1.1;">{{ ucfirst($evaluation->type) }}</div>
                     <div class="kpi-desc">{{ $evaluation->coefficient }}pts</div>
                 </div>
                 <div class="kpi-card">
                     <div class="kpi-title">Barème</div>
-                    <div class="kpi-value" style="font-size: 8px; line-height: 1.1;">/ {{ $evaluation->bareme }}</div>
+                    <div class="kpi-value" style="font-size: 5.5px; line-height: 1.1;">/ {{ $evaluation->bareme }}</div>
                     <div class="kpi-desc">Points</div>
                 </div>
             </div>
@@ -456,10 +456,7 @@
                         <th width="25">N°</th>
                         <th width="60">Matricule</th>
                         <th>Nom et Prénoms</th>
-                        <th width="50">CC</th>
-                        <th width="50">TD</th>
-                        <th width="50">TP</th>
-                        <th width="50">Examen</th>
+                        <th width="60">Note</th>
                         <th width="40">Abs.</th>
                         <th width="100">Observations</th>
                     </tr>
@@ -480,17 +477,8 @@
                         <td class="note-type-column">
                             <div class="note-box"></div>
                         </td>
-                        <td class="note-type-column">
-                            <div class="note-box"></div>
-                        </td>
-                        <td class="note-type-column">
-                            <div class="note-box"></div>
-                        </td>
-                        <td class="note-type-column">
-                            <div class="note-box"></div>
-                        </td>
                         <td>
-                            <div class="note-box" style="width: 20px; height: 15px;"></div>
+                            <div class="note-box" style="width: 12px; height: 12px;"></div>
                         </td>
                         <td class="observations-column"></td>
                     </tr>
@@ -554,7 +542,7 @@
         <div class="generation-info">
             <strong>Document généré automatiquement le {{ now()->format('d/m/Y à H:i') }}</strong><br>
             {{ $etablissement['nom'] ?? 'ESBTP-yAKRO' }} - Système de Gestion des Évaluations<br>
-            <strong>Instructions :</strong> CC = Contrôle Continu, TD = Travaux Dirigés, TP = Travaux Pratiques, Abs. = Absent
+            <strong>Instructions :</strong> Renseigner la note dans la case prévue · Cocher ABS si l'étudiant était absent
         </div>
     </div>
 </body>

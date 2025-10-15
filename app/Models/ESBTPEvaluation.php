@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 class ESBTPEvaluation extends Model
 {
@@ -234,5 +235,94 @@ class ESBTPEvaluation extends Model
     public function isDeletable()
     {
         return in_array($this->status, [self::STATUS_DRAFT, self::STATUS_SCHEDULED, self::STATUS_CANCELLED]);
+    }
+
+    /**
+     * Retourne le libellé utilisateur du statut courant.
+     */
+    public function getStatusLabelAttribute(): string
+    {
+        return self::statusLabels()[$this->status] ?? ucfirst(str_replace('_', ' ', $this->status));
+    }
+
+    /**
+     * Retourne la classe CSS à utiliser pour afficher un badge de statut.
+     */
+    public function getStatusBadgeClassAttribute(): string
+    {
+        return match ($this->status) {
+            self::STATUS_DRAFT => 'badge bg-secondary',
+            self::STATUS_SCHEDULED => 'badge bg-info text-dark',
+            self::STATUS_IN_PROGRESS => 'badge bg-warning text-dark',
+            self::STATUS_COMPLETED => 'badge bg-success',
+            self::STATUS_CANCELLED => 'badge bg-danger',
+            default => 'badge bg-secondary',
+        };
+    }
+
+    /**
+     * Détermine le statut automatique selon la date, l'heure et l'état de publication.
+     */
+    public function determineAutomaticStatus(?Carbon $now = null, bool $respectCancellation = true): string
+    {
+        $now = $now ?: now();
+
+        if ($respectCancellation && $this->status === self::STATUS_CANCELLED) {
+            return self::STATUS_CANCELLED;
+        }
+
+        if (!$this->is_published) {
+            return self::STATUS_DRAFT;
+        }
+
+        if (!$this->date_evaluation instanceof Carbon) {
+            return self::STATUS_SCHEDULED;
+        }
+
+        if ($this->date_evaluation->isFuture()) {
+            return self::STATUS_SCHEDULED;
+        }
+
+        if ($this->date_evaluation->isSameDay($now)) {
+            return self::STATUS_IN_PROGRESS;
+        }
+
+        return self::STATUS_COMPLETED;
+    }
+
+    /**
+     * Synchronise et persiste le statut automatique si nécessaire.
+     *
+     * @return bool true si le statut a été modifié
+     */
+    public function syncAutomaticStatus(bool $persist = true, ?Carbon $now = null, bool $respectCancellation = true): bool
+    {
+        $newStatus = $this->determineAutomaticStatus($now, $respectCancellation);
+
+        if ($newStatus === $this->status) {
+            return false;
+        }
+
+        $this->status = $newStatus;
+
+        if ($persist) {
+            $this->save();
+        }
+
+        return true;
+    }
+
+    /**
+     * Retourne la liste des libellés de statut.
+     */
+    public static function statusLabels(): array
+    {
+        return [
+            self::STATUS_DRAFT => 'Brouillon',
+            self::STATUS_SCHEDULED => 'Planifiée',
+            self::STATUS_IN_PROGRESS => 'En cours',
+            self::STATUS_COMPLETED => 'Terminée',
+            self::STATUS_CANCELLED => 'Annulée',
+        ];
     }
 }

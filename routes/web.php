@@ -1160,6 +1160,9 @@ Route::prefix('esbtp/evaluations')->name('esbtp.evaluations.')->middleware(['aut
     Route::get('/', [ESBTPEvaluationController::class, 'index'])->name('index');
     Route::get('/create', [ESBTPEvaluationController::class, 'create'])->name('create');
     Route::post('/', [ESBTPEvaluationController::class, 'store'])->name('store');
+    Route::get('/{evaluation}/refresh-row', [ESBTPEvaluationController::class, 'refreshRow'])->name('refresh-row');
+    Route::patch('/{evaluation}/cancel', [ESBTPEvaluationController::class, 'cancel'])->name('cancel');
+    Route::patch('/{evaluation}/restore', [ESBTPEvaluationController::class, 'restore'])->name('restore');
     Route::get('/{evaluation}', [ESBTPEvaluationController::class, 'show'])->name('show');
     Route::get('/{evaluation}/edit', [ESBTPEvaluationController::class, 'edit'])->name('edit');
     Route::put('/{evaluation}', [ESBTPEvaluationController::class, 'update'])->name('update');

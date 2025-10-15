@@ -4548,3 +4548,9 @@ Aligner `matieres.index` sur l’expérience interactive des listings (paiements
 *Dernière mise à jour: 11 octobre 2025 - 15h40*
 - Ajustements supplémentaires `classes/{classe}/matieres` : table unique reprenant l'esthétique de `matieres.index` (badges filière/niveau limités à 3 avec +N), libellés utilisateurs "Enseignée dans cette classe" / "Disponible dans le catalogue", actions "Ajouter/Retirer de la classe" avec rafraîchissement de la ligne sans rechargement.
 - `classes.show` simplifié : tableau réduit à Code / Matière / Coefficient catalogue puisqu'une matière listée appartient forcément à la combinaison.
+
+*Dernière mise à jour: 16 octobre 2025 - 18h20*
+- Refonte de `esbtp/evaluations/index` : filtres AJAX (recherche, pagination, per-page), rafraîchissement ligne par ligne avec highlight, automatisation des statuts (brouillon/planifiée/en cours/terminée/annulée) et actions Annuler / Activer / Réactiver + suppression en JSON ; KPI mis à jour dynamiquement.
+- Services backend associés (`ESBTPEvaluationController`, `ESBTPEvaluation` + nouvelles routes) pour support JSON (cancel/restore/toggle/destroy/refresh-row) et détermination automatique du statut lors de la création/màj.
+- Exports PDF `liste-appel` & `saisie-rapide` allégés : polices/paddings réduits, grilles Note/ABS simplifiées pour la saisie et mis en cohérence visuelle.
+- Correctif JS console (apostrophe non échappée sur Annuler) et suppression des dépendances jQuery/Select2 pour les interactions de la page évaluations.

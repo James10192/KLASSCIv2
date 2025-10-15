@@ -21,13 +21,14 @@ class ESBTPEvaluationController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(Request $request)
     {
         // Récupérer l'année universitaire courante
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
         $anneeAcademique = $anneeCourante ? $anneeCourante->name : date('Y') . '-' . (date('Y') + 1);
 
         $query = ESBTPEvaluation::with(['classe', 'matiere', 'createdBy'])
+            ->withCount('notes')
             ->orderBy('date_evaluation', 'desc');
 
         // Filtrer par année universitaire courante
@@ -35,33 +36,49 @@ class ESBTPEvaluationController extends Controller
             $query->where('annee_universitaire_id', $anneeCourante->id);
         }
 
+        $search = trim((string) $request->input('search', ''));
+        if ($search !== '') {
+            $query->where(function ($subQuery) use ($search) {
+                $subQuery->where('titre', 'like', '%' . $search . '%')
+                    ->orWhereHas('classe', function ($classeQuery) use ($search) {
+                        $classeQuery->where('name', 'like', '%' . $search . '%');
+                    })
+                    ->orWhereHas('matiere', function ($matiereQuery) use ($search) {
+                        $matiereQuery->where('name', 'like', '%' . $search . '%');
+                    });
+            });
+        }
+
         // Filtres
-        if (request()->has('classe_id') && request('classe_id') != '') {
-            $query->where('classe_id', request('classe_id'));
+        if ($request->filled('classe_id')) {
+            $query->where('classe_id', $request->input('classe_id'));
         }
 
-        if (request()->has('matiere_id') && request('matiere_id') != '') {
-            $query->where('matiere_id', request('matiere_id'));
+        if ($request->filled('matiere_id')) {
+            $query->where('matiere_id', $request->input('matiere_id'));
         }
 
-        if (request()->has('type') && request('type') != '') {
-            $query->where('type', request('type'));
+        if ($request->filled('type')) {
+            $query->where('type', $request->input('type'));
         }
 
-        if (request()->has('status') && request('status') != '') {
-            $query->where('status', request('status'));
+        if ($request->filled('date_debut')) {
+            $query->where('date_evaluation', '>=', $request->input('date_debut'));
         }
 
-        if (request()->has('date_debut') && request('date_debut') != '') {
-            $query->where('date_evaluation', '>=', request('date_debut'));
-        }
-
-        if (request()->has('date_fin') && request('date_fin') != '') {
-            $query->where('date_evaluation', '<=', request('date_fin'));
+        if ($request->filled('date_fin')) {
+            $query->where('date_evaluation', '<=', $request->input('date_fin'));
         }
 
         // Paginer les résultats
-        $evaluations = $query->paginate(15);
+        $perPage = (int) $request->input('per_page', 15);
+        $evaluations = $query->paginate($perPage)->appends($request->query());
+
+        // Synchroniser les statuts automatiques pour les évaluations visibles
+        $evaluations->each(function (ESBTPEvaluation $evaluation) {
+            $evaluation->syncAutomaticStatus();
+            $evaluation->loadMissing(['classe', 'matiere', 'createdBy']);
+        });
 
         // Statistiques pour l'année courante uniquement
         $statsQuery = ESBTPEvaluation::query();
@@ -69,7 +86,7 @@ class ESBTPEvaluationController extends Controller
             $statsQuery->where('annee_universitaire_id', $anneeCourante->id);
         }
 
-        $totalEvaluations = $statsQuery->count();
+        $totalEvaluations = (clone $statsQuery)->count();
         $evaluationsPubliees = (clone $statsQuery)->where('is_published', true)->count();
         $examens = (clone $statsQuery)->where('type', 'examen')->count();
         $devoirs = (clone $statsQuery)->where('type', 'devoir')->count();
@@ -82,6 +99,31 @@ class ESBTPEvaluationController extends Controller
 
         // Récupération des types d'évaluation pour le filtre
         $types = ESBTPEvaluation::select('type')->distinct()->pluck('type');
+
+        $filters = [
+            'classe_id' => $request->input('classe_id'),
+            'matiere_id' => $request->input('matiere_id'),
+            'type' => $request->input('type'),
+            'search' => $search,
+            'date_debut' => $request->input('date_debut'),
+            'date_fin' => $request->input('date_fin'),
+            'per_page' => $perPage,
+        ];
+
+        $summary = [
+            'counts' => [
+                'total' => $totalEvaluations,
+                'published' => $evaluationsPubliees,
+                'examens' => $examens,
+                'devoirs' => $devoirs,
+                'filtered' => $evaluations->total(),
+            ],
+            'pagination' => [
+                'first_item' => $evaluations->firstItem(),
+                'last_item' => $evaluations->lastItem(),
+                'total' => $evaluations->total(),
+            ],
+        ];
 
         // Pour les rôles non-enseignants, récupérer les évaluations pour la gestion des liens externes
         $evaluationsForExternalLinks = collect();
@@ -100,6 +142,17 @@ class ESBTPEvaluationController extends Controller
                 ->get();
         }
 
+        if ($request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'html' => view('esbtp.evaluations.partials.results', [
+                    'evaluations' => $evaluations,
+                ])->render(),
+                'summary' => $summary,
+                'url' => $request->fullUrl(),
+            ]);
+        }
+
         return view('esbtp.evaluations.index', compact(
             'evaluations',
             'classes',
@@ -111,8 +164,103 @@ class ESBTPEvaluationController extends Controller
             'devoirs',
             'evaluationsForExternalLinks',
             'anneeAcademique',
-            'anneeCourante'
+            'anneeCourante',
+            'filters',
+            'summary'
         ));
+    }
+
+    /**
+     * Rafraîchit la ligne d'une évaluation pour un rendu AJAX.
+     */
+    public function refreshRow(ESBTPEvaluation $evaluation)
+    {
+        try {
+            $evaluation->load(['classe', 'matiere', 'createdBy'])
+                ->loadCount('notes');
+            $evaluation->syncAutomaticStatus();
+
+            return response()->json([
+                'success' => true,
+                'html' => view('esbtp.evaluations.partials.evaluation-row', [
+                    'evaluation' => $evaluation,
+                ])->render(),
+            ]);
+        } catch (\Throwable $throwable) {
+            \Log::error('Erreur lors du rafraîchissement de l\'évaluation', [
+                'evaluation_id' => $evaluation->id,
+                'error' => $throwable->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Impossible de rafraîchir l\'évaluation demandée.',
+            ], 500);
+        }
+    }
+
+    /**
+     * Annule une évaluation (statut -> annulé, dépublication).
+     */
+    public function cancel(Request $request, ESBTPEvaluation $evaluation)
+    {
+        if ($evaluation->status === ESBTPEvaluation::STATUS_CANCELLED) {
+            return $this->evaluationActionResponse(
+                $request,
+                $evaluation,
+                'Cette évaluation est déjà annulée.',
+                'cancel'
+            );
+        }
+
+        $evaluation->status = ESBTPEvaluation::STATUS_CANCELLED;
+        $evaluation->is_published = false;
+        $evaluation->updated_by = Auth::id();
+        $evaluation->save();
+
+        return $this->evaluationActionResponse(
+            $request,
+            $evaluation,
+            'Évaluation annulée avec succès.',
+            'cancel'
+        );
+    }
+
+    /**
+     * Réactive une évaluation annulée.
+     */
+    public function restore(Request $request, ESBTPEvaluation $evaluation)
+    {
+        $publish = $request->boolean('publish', true);
+
+        $evaluation->is_published = $publish;
+        $evaluation->status = $evaluation->determineAutomaticStatus(null, false);
+        $evaluation->updated_by = Auth::id();
+        $evaluation->save();
+
+        return $this->evaluationActionResponse(
+            $request,
+            $evaluation,
+            'Évaluation réactivée avec succès.',
+            'restore'
+        );
+    }
+
+    /**
+     * Génère une réponse adaptée (JSON ou redirect) après une action sur l'évaluation.
+     */
+    protected function evaluationActionResponse(Request $request, ESBTPEvaluation $evaluation, string $message, string $action = 'update', int $status = 200)
+    {
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'action' => $action,
+                'evaluation_id' => $evaluation->id,
+            ], $status);
+        }
+
+        return redirect()->route('esbtp.evaluations.index')->with('success', $message);
     }
 
     /**
@@ -248,6 +396,9 @@ class ESBTPEvaluationController extends Controller
             $evaluation->matiere_id = $request->matiere_id;
             $evaluation->created_by = \Auth::id();
             $evaluation->is_published = $request->has('is_published') ? 1 : 0;
+            $evaluation->status = $evaluation->is_published
+                ? $evaluation->determineAutomaticStatus(null, false)
+                : ESBTPEvaluation::STATUS_DRAFT;
             
             // Auto-assigner l'enseignant si c'est un rôle enseignant qui crée l'évaluation
             $user = \Auth::user();
@@ -449,6 +600,11 @@ class ESBTPEvaluationController extends Controller
             }
 
             $evaluation->updated_by = Auth::id();
+            if ($evaluation->status !== ESBTPEvaluation::STATUS_CANCELLED) {
+                $evaluation->status = $evaluation->is_published
+                    ? $evaluation->determineAutomaticStatus(null, false)
+                    : ESBTPEvaluation::STATUS_DRAFT;
+            }
             $evaluation->save();
 
             return redirect()->route('esbtp.evaluations.show', $evaluation)
@@ -466,12 +622,43 @@ class ESBTPEvaluationController extends Controller
      * @param  \App\Models\ESBTPEvaluation  $evaluation
      * @return \Illuminate\Http\Response
      */
-    public function destroy(ESBTPEvaluation $evaluation)
+    public function destroy(Request $request, ESBTPEvaluation $evaluation)
     {
         try {
+            if (!$evaluation->isDeletable()) {
+                $message = 'Cette évaluation ne peut pas être supprimée dans son état actuel.';
+
+                if ($request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $message,
+                    ], 422);
+                }
+
+                return back()->with('error', $message);
+            }
+
+            $evaluationId = $evaluation->id;
             $evaluation->delete();
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'deleted' => true,
+                    'evaluation_id' => $evaluationId,
+                    'message' => 'Évaluation supprimée avec succès.',
+                ]);
+            }
+
             return redirect()->route('esbtp.evaluations.index')->with('success', 'Évaluation supprimée avec succès.');
         } catch (\Exception $e) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erreur lors de la suppression: ' . $e->getMessage(),
+                ], 500);
+            }
+
             return back()->with('error', 'Erreur lors de la suppression: ' . $e->getMessage());
         }
     }
@@ -699,7 +886,7 @@ class ESBTPEvaluationController extends Controller
         }
     }
 
-    public function togglePublished(ESBTPEvaluation $evaluation)
+    public function togglePublished(Request $request, ESBTPEvaluation $evaluation)
     {
         try {
             $evaluation->update([
@@ -707,19 +894,46 @@ class ESBTPEvaluationController extends Controller
                 'updated_by' => Auth::id()
             ]);
 
+            if ($evaluation->status !== ESBTPEvaluation::STATUS_CANCELLED) {
+                $evaluation->syncAutomaticStatus();
+            }
+
             $message = $evaluation->is_published
                 ? 'Évaluation publiée avec succès.'
                 : 'Évaluation dépubliée avec succès.';
 
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                    'evaluation_id' => $evaluation->id,
+                    'is_published' => (bool) $evaluation->is_published,
+                ]);
+            }
+
             return back()->with('success', $message);
         } catch (\Exception $e) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Une erreur est survenue lors de la modification de la publication.',
+                ], 500);
+            }
+
             return back()->with('error', 'Une erreur est survenue lors de la modification de la publication.');
         }
     }
 
-    public function toggleNotesPublished(ESBTPEvaluation $evaluation)
+    public function toggleNotesPublished(Request $request, ESBTPEvaluation $evaluation)
     {
         if (!$evaluation->canPublishNotes() && !$evaluation->notes_published) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Les notes ne peuvent pas être publiées pour cette évaluation.',
+                ], 422);
+            }
+
             return back()->with('error', 'Les notes ne peuvent pas être publiées pour cette évaluation.');
         }
 
@@ -733,8 +947,24 @@ class ESBTPEvaluationController extends Controller
                 ? 'Notes publiées avec succès.'
                 : 'Notes dépubliées avec succès.';
 
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                    'evaluation_id' => $evaluation->id,
+                    'notes_published' => (bool) $evaluation->notes_published,
+                ]);
+            }
+
             return back()->with('success', $message);
         } catch (\Exception $e) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Une erreur est survenue lors de la modification de la publication des notes.',
+                ], 500);
+            }
+
             return back()->with('error', 'Une erreur est survenue lors de la modification de la publication des notes.');
         }
     }
