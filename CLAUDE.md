@@ -4500,6 +4500,10 @@ Aligner `matieres.index` sur l’expérience interactive des listings (paiements
 **Tests**
 - ⏭️ Tests automatisés non exécutés (validation manuelle UI navigateur).
 
+#### 2025-10-11 – Accès coordinateur aux classes
+- Étendu le middleware des routes `esbtp/classes` (`routes/web.php`) pour inclure le rôle `coordinateur` en lecture, cohérent avec la permission `view_classes` déjà accordée par `fix_permissions.php`.
+- Mises à jour Front: `classes.index` et `classes.show` affichent désormais tous les boutons de consultation/export (matières, listes d’appel/complets) aux coordinateurs, tout en laissant la création/édition réservées aux superAdmins.
+
 #### Prochaine étape : WhatsApp Business API
 
 **En attente utilisateur** : Configuration Meta Business Manager

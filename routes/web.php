@@ -407,8 +407,8 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->parameters(['seances-cours' => 'seancesCour']);
         });
 
-        // Routes accessibles aux superAdmin et secrétaires
-        Route::middleware(['auth', 'role:superAdmin|secretaire', 'paywall'])->group(function () {
+        // Routes accessibles aux superAdmin, secrétaires et coordinateurs
+        Route::middleware(['auth', 'role:superAdmin|secretaire|coordinateur', 'paywall'])->group(function () {
             // Routes pour les classes ESBTP - index et show avec permission view_classes
             Route::get('classes', [ESBTPClasseController::class, 'index'])
                 ->name('classes.index')

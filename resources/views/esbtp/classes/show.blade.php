@@ -16,7 +16,7 @@
                 <p class="header-subtitle">{{ $classe->name }}</p>
             </div>
             <div class="header-actions">
-                @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire'))
+                @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('coordinateur'))
                 <a href="{{ route('esbtp.classes.matieres', ['classe' => $classe->id]) }}" class="btn-acasi primary">
                     <i class="fas fa-book"></i>Gérer les matières
                 </a>
@@ -208,7 +208,7 @@
             <div class="main-card-body">
                 @if($classe->matieres->count() > 0)
                     <div class="d-flex justify-content-end mb-3">
-                        @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire'))
+                        @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('coordinateur'))
                         <a href="{{ route('esbtp.classes.matieres', ['classe' => $classe->id]) }}" class="btn-acasi primary">
                             <i class="fas fa-cog"></i>Gérer les matières
                         </a>
@@ -245,7 +245,7 @@
                 @else
                     <div class="alert alert-info mb-0">
                         <i class="fas fa-book me-2"></i> Aucune matière n'est encore configurée pour cette classe.
-                        @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire'))
+                        @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('coordinateur'))
                             <a href="{{ route('esbtp.classes.matieres', ['classe' => $classe->id]) }}" class="alert-link">Ajouter des matières</a>
                         @endif
                     </div>
@@ -274,7 +274,7 @@
                         <p class="mb-0 text-muted" style="font-size: 0.875rem;">Générer et télécharger les listes pour cette classe</p>
                     </div>
                     <div class="d-flex gap-3">
-                        @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('enseignant'))
+                        @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('enseignant') || auth()->user()->hasRole('coordinateur'))
 
                         <!-- Dropdown pour Liste d'Appel -->
                         <div class="btn-group" role="group">

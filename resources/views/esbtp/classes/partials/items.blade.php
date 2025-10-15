@@ -73,13 +73,13 @@
                 </a>
                 @endif
 
-                @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire'))
+                @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('coordinateur'))
                 <a href="{{ route('esbtp.classes.matieres', ['classe' => $classe->id]) }}" class="btn-acasi secondary" style="padding: var(--space-xs);" title="Gérer les matières">
                     <i class="fas fa-book"></i>
                 </a>
                 @endif
 
-                @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('enseignant'))
+                @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('enseignant') || auth()->user()->hasRole('coordinateur'))
                 <a href="{{ route('esbtp.classes.liste-appel', ['classe' => $classe->id]) }}" class="btn-acasi primary" style="padding: var(--space-xs);" title="Liste d'appel" target="_blank">
                     <i class="fas fa-clipboard-list"></i>
                 </a>
