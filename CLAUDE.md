@@ -118,6 +118,29 @@
 $ php artisan list | grep -E "saas:|tenant:"
 
   saas:create-admin         Créer un nouvel administrateur SaaS
+
+---
+
+## 🧩 Intégration des modals Filament + Livewire (module inscriptions)
+
+### Vue `resources/views/esbtp/inscriptions/show.blade.php`
+- Les composants Livewire `inscriptions.associate-payment-modal`, `inscriptions.validate-inscription-modal` et `inscriptions.edit-subscription-modal` sont désormais montés **une seule fois** juste après le header, indépendamment de l’affichage des boutons.
+- Les boutons du header restent conditionnels (`$showAssociatePaymentHeader`, `$showValidateInscriptionHeader`, `$isSuperAdmin`), mais ne suppriment plus les composants eux-mêmes. Ceci évite les erreurs de double initialisation de Filament/Choices.
+- Dans la table des frais, le bouton “Effectuer un paiement” est masqué dès qu’un montant a déjà été encaissé (`total_paye > 0`) afin de refléter le comportement historique.
+
+### Scripts côté front (section `<script>` de `inscriptions/show`)
+- Les helpers `openAssociatePaymentModal`, `openValidationModal`, `openEditSubscriptionModal` recherchent le composant Livewire correspondant via `Livewire.all()` ou `el.__livewire`, puis appellent directement `$wire.call('open', …)`/`openFromEvent`.  
+- Des logs de diagnostic listent les composants détectés (immediate/delayed) pour vérifier que les instances sont bien montées; on peut les désactiver une fois stabilisé.
+
+### Composants Livewire (`app/Livewire/Inscriptions/...`)
+- `submit()` renvoie maintenant un `redirect()->route(...)` classique (suppression de l’option `navigate: true`) pour éviter l’exception `Unknown named parameter $navigate` et laisser les erreurs de validation visibles.
+- `ValidateInscriptionModal` affiche à nouveau le texte métier détaillant la conversion du prospect et les éléments verrouillés (filière, niveau, classe) avec les valeurs actuelles remontées via `$summary`.
+
+### Layout global (`resources/views/layouts/app.blade.php`)
+- Suppression des doublons `js/filament/support/*.js`, `js/filament/forms/forms.js`, etc. On s’appuie uniquement sur `@filamentScripts` / `@filamentAlpineScripts` (sinon Choices était initialisé deux fois).
+
+**Résultat :**  
+Les trois modals peuvent être déclenchés depuis la carte “Situation financière” ou le header, conservent leur état en cas d’erreur de validation, et n’affichent plus d’erreurs `Choices… already initialised` dans la console.
   tenant:backup             Créer un backup complet ou partiel d'un tenant (DB + fichiers)
   tenant:deploy             Déployer les mises à jour d'un tenant (Git pull + Composer + Migrations + Cache)
   tenant:health-check       Vérifier la santé des tenants (HTTP, DB, stockage, SSL, erreurs, queues)
@@ -4456,6 +4479,27 @@ SMS_ENABLED=true
 - 500 SMS ≈ 3,000 FCFA
 - 1000 SMS ≈ 5,500 FCFA
 
+### ✅ 2025-10-11 – Module Matières · rafraîchissement Ajax + UI conservée
+
+**Objectif**  
+Aligner `matieres.index` sur l’expérience interactive des listings (paiements, inscriptions) sans casser le design DataTables historique.
+
+**Points clés livrés**
+- Filtrage/pagination Ajax avec pushState tout en conservant la grille d’origine (badges, DataTables, compteurs).
+- Découpage en partials `partials/results` + `partials/matiere-row` pour alimenter `refresh` et `refresh-ligne`.
+- Barre flottante “bulk actions” (attacher/configurer/supprimer) synchronisée avec les cases sélectionnées.
+- Modal de liaisons : prévisualisation des combinaisons réparée, chargeur de matières disponible pour l’attache multi-filière/niveau, nettoyage systématique du backdrop Bootstrap.
+- Routes & contrôleur : nouveaux endpoints `esbtp.matieres.refresh` + `esbtp.matieres.refresh-ligne`, extraction `prepareMatieresListing`.
+
+**Fichiers impactés**
+- `app/Http/Controllers/ESBTPMatiereController.php`
+- `routes/web.php`
+- `resources/views/esbtp/matieres/index.blade.php`
+- `resources/views/esbtp/matieres/partials/{results,matiere-row}.blade.php`
+
+**Tests**
+- ⏭️ Tests automatisés non exécutés (validation manuelle UI navigateur).
+
 #### Prochaine étape : WhatsApp Business API
 
 **En attente utilisateur** : Configuration Meta Business Manager
@@ -4495,4 +4539,4 @@ SMS_ENABLED=true
 
 ---
 
-*Dernière mise à jour: 11 octobre 2025 - 02h30 AM*
+*Dernière mise à jour: 11 octobre 2025 - 15h40*

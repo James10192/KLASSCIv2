@@ -20,30 +20,173 @@ class ESBTPMatiereController extends Controller
      */
     public function index(Request $request)
     {
-        $query = ESBTPMatiere::with(['filieres', 'niveaux']);
+        $listing = $this->prepareMatieresListing($request);
 
-        // Filtrer par filière
-        if ($request->filled('filiere_filter')) {
-            $query->whereHas('filieres', function($q) use ($request) {
-                $q->where('esbtp_filieres.id', $request->filiere_filter);
+        $filieres = ESBTPFiliere::where('is_active', true)->orderBy('name')->get();
+        $niveaux = ESBTPNiveauEtude::where('is_active', true)->orderBy('name')->get();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('esbtp.matieres.partials.results', [
+                    'matieres' => $listing['matieres'],
+                ])->render(),
+                'url' => $request->fullUrl(),
+                'summary' => $listing['summary'],
+            ]);
+        }
+
+        return view('esbtp.matieres.index', [
+            'matieres' => $listing['matieres'],
+            'filieres' => $filieres,
+            'niveaux' => $niveaux,
+            'summary' => $listing['summary'],
+            'filters' => [
+                'search' => $request->input('search', ''),
+                'filiere_filter' => $request->input('filiere_filter'),
+                'niveau_filter' => $request->input('niveau_filter'),
+                'statut_filter' => $request->input('statut_filter'),
+                'coefficient_min' => $request->input('coefficient_min'),
+                'coefficient_max' => $request->input('coefficient_max'),
+                'heures_min' => $request->input('heures_min'),
+                'heures_max' => $request->input('heures_max'),
+            ],
+        ]);
+    }
+
+    /**
+     * Rafraîchit la liste des matières sans recharger toute la page.
+     */
+    public function refresh(Request $request)
+    {
+        $listing = $this->prepareMatieresListing($request);
+
+        $navUrl = route('esbtp.matieres.index');
+        if ($request->getQueryString()) {
+            $navUrl .= '?' . $request->getQueryString();
+        }
+
+        return response()->json([
+            'html' => view('esbtp.matieres.partials.results', [
+                'matieres' => $listing['matieres'],
+            ])->render(),
+            'url' => $navUrl,
+            'summary' => $listing['summary'],
+        ]);
+    }
+
+    /**
+     * Rafraîchit uniquement la ligne d'une matière.
+     */
+    public function refreshLigne(ESBTPMatiere $matiere)
+    {
+        try {
+            $matiere->load(['filieres:id,name,code', 'niveaux:id,name,code']);
+
+            return response()->json([
+                'success' => true,
+                'html' => view('esbtp.matieres.partials.matiere-row', [
+                    'matiere' => $matiere,
+                ])->render(),
+                'matiere_id' => $matiere->id,
+            ]);
+        } catch (\Throwable $throwable) {
+            \Log::error('Erreur lors du rafraîchissement de la matière', [
+                'matiere_id' => $matiere->id,
+                'error' => $throwable->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Impossible de rafraîchir la matière demandée.',
+            ], 500);
+        }
+    }
+
+    /**
+     * Prépare la requête paginée des matières avec les filtres applicables.
+     *
+     * @return array{matieres:\Illuminate\Contracts\Pagination\LengthAwarePaginator,summary:array<string,int|null>}
+     */
+    private function prepareMatieresListing(Request $request): array
+    {
+        $search = trim((string) $request->input('search'));
+        $filiere = $request->input('filiere_filter');
+        $niveau = $request->input('niveau_filter');
+        $statut = $request->input('statut_filter');
+        $coefficientMin = $request->input('coefficient_min');
+        $coefficientMax = $request->input('coefficient_max');
+        $heuresMin = $request->input('heures_min');
+        $heuresMax = $request->input('heures_max');
+        $perPage = (int) $request->input('per_page', 15);
+
+        $totalHeuresExpression = 'COALESCE(heures_cm, 0) + COALESCE(heures_td, 0) + COALESCE(heures_tp, 0) + COALESCE(heures_stage, 0) + COALESCE(heures_perso, 0)';
+
+        $query = ESBTPMatiere::query()
+            ->with(['filieres:id,name,code', 'niveaux:id,name,code'])
+            ->orderBy('name');
+
+        if ($filiere) {
+            $query->whereHas('filieres', function ($q) use ($filiere) {
+                $q->where('esbtp_filieres.id', $filiere);
             });
         }
 
-        // Filtrer par niveau
-        if ($request->filled('niveau_filter')) {
-            $query->whereHas('niveaux', function($q) use ($request) {
-                $q->where('esbtp_niveau_etudes.id', $request->niveau_filter);
+        if ($niveau) {
+            $query->whereHas('niveaux', function ($q) use ($niveau) {
+                $q->where('esbtp_niveau_etudes.id', $niveau);
             });
         }
 
-        // Filtrer par statut
-        if ($request->filled('statut_filter')) {
-            $query->where('is_active', $request->statut_filter == '1');
+        if ($statut !== null && $statut !== '') {
+            $query->where('is_active', $statut === '1');
         }
 
-        $matieres = $query->get();
+        if ($coefficientMin !== null && $coefficientMin !== '') {
+            $query->where('coefficient', '>=', (float) $coefficientMin);
+        }
 
-        return view('esbtp.matieres.index', compact('matieres'));
+        if ($coefficientMax !== null && $coefficientMax !== '') {
+            $query->where('coefficient', '<=', (float) $coefficientMax);
+        }
+
+        if ($heuresMin !== null && $heuresMin !== '') {
+            $query->whereRaw("{$totalHeuresExpression} >= ?", [(float) $heuresMin]);
+        }
+
+        if ($heuresMax !== null && $heuresMax !== '') {
+            $query->whereRaw("{$totalHeuresExpression} <= ?", [(float) $heuresMax]);
+        }
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $like = '%' . str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $search) . '%';
+
+                $q->where('name', 'like', $like)
+                    ->orWhere('code', 'like', $like)
+                    ->orWhere('description', 'like', $like)
+                    ->orWhereHas('filieres', function ($filieresQuery) use ($like) {
+                        $filieresQuery->where('name', 'like', $like)
+                            ->orWhere('code', 'like', $like);
+                    })
+                    ->orWhereHas('niveaux', function ($niveauxQuery) use ($like) {
+                        $niveauxQuery->where('name', 'like', $like)
+                            ->orWhere('code', 'like', $like);
+                    });
+            });
+        }
+
+        $matieres = $query->paginate($perPage > 0 ? $perPage : 15)->withQueryString();
+
+        return [
+            'matieres' => $matieres,
+            'summary' => [
+                'total' => $matieres->total(),
+                'page' => $matieres->currentPage(),
+                'per_page' => $matieres->perPage(),
+                'from' => $matieres->firstItem(),
+                'to' => $matieres->lastItem(),
+            ],
+        ];
     }
 
     /**

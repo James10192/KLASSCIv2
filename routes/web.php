@@ -438,6 +438,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::get('/json', [ESBTPMatiereController::class, 'getMatieresJson'])
                     ->name('json')
                     ->middleware(['permission:view_matieres|view matieres']);
+                Route::get('/refresh', [ESBTPMatiereController::class, 'refresh'])
+                    ->name('refresh')
+                    ->middleware(['permission:view_matieres|view matieres']);
                 Route::delete('/bulk-delete', [ESBTPMatiereController::class, 'bulkDelete'])
                     ->name('bulk-delete')
                     ->middleware(['permission:delete_matieres|delete matieres']);
@@ -457,6 +460,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                     ->middleware(['permission:edit_matieres|edit matieres']);
                 Route::get('{matiere}/statistiques-liaisons', [ESBTPMatiereController::class, 'getStatistiquesLiaisons'])
                     ->name('statistiques-liaisons')
+                    ->middleware(['permission:view_matieres|view matieres']);
+                Route::get('{matiere}/refresh-ligne', [ESBTPMatiereController::class, 'refreshLigne'])
+                    ->name('refresh-ligne')
                     ->middleware(['permission:view_matieres|view matieres']);
                 
                 // Routes pour l'ajout de matières aux combinaisons vides
