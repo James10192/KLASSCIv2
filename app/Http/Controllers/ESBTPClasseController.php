@@ -237,6 +237,28 @@ class ESBTPClasseController extends Controller
         
         // Charger les relations de base
         $classe->load(['filiere', 'niveau', 'annee', 'matieres', 'emploisDuTemps']);
+
+        $classeFiliereId = $classe->filiere_id;
+        $classeNiveauId = $classe->niveau_etude_id;
+
+        $combinationMatieres = ESBTPMatiere::with(['filieres:id,name,code', 'niveaux:id,name,code'])
+            ->where('is_active', true)
+            ->when($classeFiliereId, function ($query) use ($classeFiliereId) {
+                $query->whereHas('filieres', function ($q) use ($classeFiliereId) {
+                    $q->where('esbtp_filieres.id', $classeFiliereId);
+                });
+            })
+            ->when($classeNiveauId, function ($query) use ($classeNiveauId) {
+                $query->whereHas('niveaux', function ($q) use ($classeNiveauId) {
+                    $q->where('esbtp_niveau_etudes.id', $classeNiveauId);
+                });
+            })
+            ->orderBy('name')
+            ->get()
+            ->map(function (ESBTPMatiere $matiere) {
+                $matiere->setAttribute('classe_coefficient', $matiere->coefficient ?? $matiere->coefficient_default ?? 1);
+                return $matiere;
+            });
         
         // Charger les étudiants et inscriptions FILTRÉS par année courante
         if ($anneeCourante) {
@@ -266,10 +288,10 @@ class ESBTPClasseController extends Controller
         // Different view rendering based on user role
         if ($user->hasRole('etudiant')) {
             // For students - read-only view
-            return view('esbtp.classes.student_show', compact('classe', 'anneeCourante', 'anneeAcademique'));
+            return view('esbtp.classes.student_show', compact('classe', 'anneeCourante', 'anneeAcademique', 'combinationMatieres'));
         } else {
             // For admin and secretary - full functionality view
-            return view('esbtp.classes.show', compact('classe', 'anneeCourante', 'anneeAcademique'));
+            return view('esbtp.classes.show', compact('classe', 'anneeCourante', 'anneeAcademique', 'combinationMatieres'));
         }
     }
 
@@ -373,10 +395,66 @@ class ESBTPClasseController extends Controller
      */
     public function matieres(ESBTPClasse $classe)
     {
-        $classe->load('matieres');
-        $allMatieres = ESBTPMatiere::where('is_active', true)->get();
+        $classeFiliereId = $classe->filiere_id;
+        $classeNiveauId = $classe->niveau_etude_id;
 
-        return view('esbtp.classes.matieres', compact('classe', 'allMatieres'));
+        $matieres = ESBTPMatiere::with(['filieres:id,name,code', 'niveaux:id,name,code'])
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get()
+            ->filter(function (ESBTPMatiere $matiere) use ($classeFiliereId, $classeNiveauId) {
+                if (!$classeFiliereId || !$classeNiveauId) {
+                    return false;
+                }
+                return $matiere->filieres->pluck('id')->contains($classeFiliereId)
+                    && $matiere->niveaux->pluck('id')->contains($classeNiveauId);
+            })
+            ->values()
+            ->map(function (ESBTPMatiere $matiere) {
+                $matiere->setAttribute('matches_combination', true);
+                $matiere->setAttribute('classe_coefficient', $matiere->coefficient ?? $matiere->coefficient_default ?? 1);
+                return $matiere;
+            });
+
+        $availableMatieres = ESBTPMatiere::with(['filieres:id,name,code', 'niveaux:id,name,code'])
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get()
+            ->filter(function (ESBTPMatiere $matiere) use ($classeFiliereId, $classeNiveauId) {
+                if (!$classeFiliereId || !$classeNiveauId) {
+                    return false;
+                }
+
+                $hasFiliere = $matiere->filieres->pluck('id')->contains($classeFiliereId);
+                $hasNiveau = $matiere->niveaux->pluck('id')->contains($classeNiveauId);
+
+                return !($hasFiliere && $hasNiveau);
+            })
+            ->values()
+            ->map(function (ESBTPMatiere $matiere) {
+                $matiere->setAttribute('matches_combination', false);
+                $matiere->setAttribute('classe_coefficient', $matiere->coefficient ?? $matiere->coefficient_default ?? 1);
+                return $matiere;
+            });
+
+        $stats = [
+            'used_by_class' => $matieres->count(),
+            'suggested_total' => $matieres->count(),
+            'suggested_available' => 0,
+            'catalog_available' => $availableMatieres->count(),
+        ];
+
+        $filieres = ESBTPFiliere::where('is_active', true)->orderBy('name')->get();
+        $niveaux = ESBTPNiveauEtude::where('is_active', true)->orderBy('name')->get();
+
+        return view('esbtp.classes.matieres', [
+            'classe' => $classe,
+            'matieres' => $matieres,
+            'availableMatieres' => $availableMatieres,
+            'stats' => $stats,
+            'filieres' => $filieres,
+            'niveaux' => $niveaux,
+        ]);
     }
 
     /**
@@ -396,8 +474,6 @@ class ESBTPClasseController extends Controller
             'coefficients.*' => 'numeric|min:0',
             'heures' => 'nullable|array',
             'heures.*' => 'integer|min:0',
-            'active' => 'nullable|array',
-            'active.*' => 'boolean',
         ]);
 
         // Réinitialiser les matières existantes
@@ -411,7 +487,7 @@ class ESBTPClasseController extends Controller
             $classe->matieres()->attach($matiereId, [
                 'coefficient' => $request->input("coefficients.{$matiereId}", 1),
                 'total_heures' => $request->input("heures.{$matiereId}", 0),
-                'is_active' => $request->has("active.{$matiereId}") ? true : false,
+                'is_active' => true,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);

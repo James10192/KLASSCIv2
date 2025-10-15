@@ -755,20 +755,43 @@ class ESBTPMatiereController extends Controller
             $niveaux = $validated['niveaux'] ?? [];
             $matiere->niveaux()->sync($niveaux);
             
-            // Mettre à jour les champs directs pour compatibilité (optionnel)
-            if (count($filieres) == 1 && count($niveaux) == 1) {
-                $matiere->update([
-                    'filiere_id' => $filieres[0],
-                    'niveau_etude_id' => $niveaux[0],
-                    'updated_by' => Auth::id()
-                ]);
-            } elseif (count($filieres) == 0 || count($niveaux) == 0) {
-                // Supprimer les références directes si aucune liaison
-                $matiere->update([
-                    'filiere_id' => null,
-                    'niveau_etude_id' => null,
-                    'updated_by' => Auth::id()
-                ]);
+            // Mettre à jour les champs directs pour compatibilité (uniquement si les colonnes existent encore)
+            $legacyColumns = [
+                'filiere_id' => Schema::hasColumn('esbtp_matieres', 'filiere_id'),
+                'niveau_etude_id' => Schema::hasColumn('esbtp_matieres', 'niveau_etude_id'),
+                'updated_by' => Schema::hasColumn('esbtp_matieres', 'updated_by'),
+            ];
+
+            $legacyUpdates = [];
+
+            if ($legacyColumns['updated_by']) {
+                $legacyUpdates['updated_by'] = Auth::id();
+            }
+
+            if (count($filieres) === 1 && count($niveaux) === 1) {
+                if ($legacyColumns['filiere_id']) {
+                    $legacyUpdates['filiere_id'] = $filieres[0];
+                }
+
+                if ($legacyColumns['niveau_etude_id']) {
+                    $legacyUpdates['niveau_etude_id'] = $niveaux[0];
+                }
+            } elseif (count($filieres) === 0 || count($niveaux) === 0) {
+                if ($legacyColumns['filiere_id']) {
+                    $legacyUpdates['filiere_id'] = null;
+                }
+
+                if ($legacyColumns['niveau_etude_id']) {
+                    $legacyUpdates['niveau_etude_id'] = null;
+                }
+            }
+
+            if (!empty($legacyUpdates)) {
+                $matiere->fill($legacyUpdates);
+
+                if ($matiere->isDirty()) {
+                    $matiere->save();
+                }
             }
 
             $totalCombinations = count($filieres) * count($niveaux);

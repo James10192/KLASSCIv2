@@ -1,257 +1,376 @@
 @extends('layouts.app')
 
-@section('title', 'Gestion des matières - ' . $classe->name . ' - ESBTP-yAKRO')
+@section('title', 'Matières pour ' . $classe->name)
 
-@section('styles')
-<link href="{{ asset('css/dashboard-moderne.css') }}" rel="stylesheet">
-@endsection
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<style>
+.classe-matieres-page .table tbody tr[data-linked="1"] {
+    background-color: rgba(4, 83, 203, 0.05);
+}
+
+.classe-matieres-page .table tbody tr[data-linked="0"] {
+    background-color: rgba(148, 163, 184, 0.08);
+}
+
+.classe-matieres-page .table tbody tr td {
+    vertical-align: middle;
+}
+
+.classe-matieres-page .filter-select {
+    max-width: 280px;
+}
+
+.classe-matieres-page tr[data-matiere-id] {
+    position: relative;
+    transition: background-color 0.3s ease;
+}
+
+.classe-matieres-page .matieres-row-highlight {
+    position: absolute;
+    top: 0;
+    left: -65%;
+    width: 150%;
+    height: 100%;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateX(-65%) skewX(-12deg);
+    background: linear-gradient(90deg, rgba(4, 83, 203, 0) 0%, rgba(4, 83, 203, 0.7) 50%, rgba(4, 83, 203, 0) 100%);
+    z-index: 5;
+}
+
+.classe-matieres-page .matieres-row-highlight.detach {
+    background: linear-gradient(90deg, rgba(220, 53, 69, 0) 0%, rgba(220, 53, 69, 0.7) 50%, rgba(220, 53, 69, 0) 100%);
+}
+
+.classe-matieres-page .matieres-row-highlight.animate {
+    animation: matieres-row-highlight-move 2.4s ease-out forwards;
+}
+
+@keyframes matieres-row-highlight-move {
+    0% { opacity: 0; transform: translateX(-65%) skewX(-12deg); }
+    18% { opacity: 0.9; }
+    55% { opacity: 0.7; }
+    100% { opacity: 0; transform: translateX(115%) skewX(-12deg); }
+}
+</style>
+@endpush
 
 @section('content')
-<div class="main-content">
-    <!-- Header Section -->
-    <div class="dashboard-header">
-        <div class="header-left">
-            <h1><i class="fas fa-graduation-cap me-2"></i>Gestion des Matières</h1>
-            <p class="header-subtitle">{{ $classe->name }}</p>
+<div class="dashboard-acasi classe-matieres-page">
+    <div class="main-content">
+        <div class="dashboard-header">
+            <div class="header-left">
+                <h1><i class="fas fa-graduation-cap me-2"></i>Matières de {{ $classe->name }}</h1>
+                <p class="header-subtitle">
+                    Gestion des matières rattachées à la combinaison
+                    <strong>{{ optional($classe->filiere)->name ?? '—' }}</strong> /
+                    <strong>{{ optional($classe->niveau)->name ?? '—' }}</strong>
+                </p>
+            </div>
+            <div class="header-actions">
+                <input type="search" id="classe-matieres-search" class="search-bar"
+                       placeholder="Rechercher une matière (code, nom...)" />
+                <a href="{{ route('esbtp.classes.show', ['classe' => $classe->id]) }}" class="btn-acasi secondary">
+                    <i class="fas fa-arrow-left me-1"></i>Retour à la classe
+                </a>
+                @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire'))
+                    <a href="{{ route('esbtp.matieres.index') }}" class="btn-acasi secondary">
+                        <i class="fas fa-cogs me-1"></i>Gestion globale des matières
+                    </a>
+                @endif
+            </div>
         </div>
-        <div class="header-actions">
-            <a href="{{ route('esbtp.classes.show', ['classe' => $classe->id]) }}" class="btn-acasi secondary me-2">
-                <i class="fas fa-eye me-1"></i>Détails de la classe
-            </a>
-            <a href="{{ route('esbtp.student.classes.index') }}" class="btn-acasi secondary">
-                <i class="fas fa-list me-1"></i>Liste des classes
-            </a>
+
+        @if(session('success'))
+            <div class="alert alert-success alert-dismissible fade show">
+                <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        @endif
+
+        @if(session('error'))
+            <div class="alert alert-danger alert-dismissible fade show">
+                <i class="fas fa-exclamation-circle me-2"></i>{{ session('error') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        @endif
+
+        <div class="kpi-grid mb-lg">
+            <div class="card-moderne kpi-card">
+                <div class="kpi-title"><i class="fas fa-check-circle me-1"></i>Matières actives pour {{ $classe->name }}</div>
+                <div class="kpi-value color-primary">{{ $stats['used_by_class'] }}</div>
+                <div class="kpi-trend"><i class="fas fa-info-circle me-1"></i>Inclues dans les bulletins de la classe</div>
+            </div>
+            <div class="card-moderne kpi-card">
+                <div class="kpi-title"><i class="fas fa-archive me-1"></i>Matières du catalogue non liées</div>
+                <div class="kpi-value color-primary">{{ $stats['catalog_available'] }}</div>
+                <div class="kpi-trend"><i class="fas fa-lightbulb me-1"></i>Disponibles pour étendre la formation</div>
+            </div>
+            <div class="card-moderne kpi-card">
+                <div class="kpi-title"><i class="fas fa-users me-1"></i>Étudiants concernés</div>
+                <div class="kpi-value color-primary">{{ $classe->nombre_etudiants ?? $classe->etudiants->count() }}</div>
+                <div class="kpi-trend"><i class="fas fa-calendar me-1"></i>{{ optional($classe->annee)->name ?? 'Année courante' }}</div>
+            </div>
+        </div>
+
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>
+            Le bouton « Ajouter à la classe » dans la colonne Actions relie la matière à la combinaison
+            <strong>{{ optional($classe->filiere)->name ?? '—' }}</strong> /
+            <strong>{{ optional($classe->niveau)->name ?? '—' }}</strong> du catalogue global.<br>
+            Toutes les classes de {{ optional($classe->niveau)->name ?? '—' }}
+            {{ optional($classe->filiere)->name ?? '—' }} partageront automatiquement cette matière.
+        </div>
+
+        <div class="card-moderne mb-lg">
+            <div class="p-lg">
+                <div class="d-flex flex-wrap gap-3 align-items-end justify-content-between">
+                    <div>
+                        <label class="form-label text-muted text-uppercase fw-semibold">Affichage</label>
+                        <select id="filter-link" class="form-select filter-select">
+                            <option value="all" selected>Toutes les matières</option>
+                            <option value="linked">Matières actives pour {{ $classe->name }}</option>
+                            <option value="available">Matières du catalogue à ajouter</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="classe-matieres-results">
+            @include('esbtp.classes.matieres.partials.results', [
+                'matieres' => $matieres,
+                'availableMatieres' => $availableMatieres,
+                'stats' => $stats,
+                'classe' => $classe,
+            ])
         </div>
     </div>
-
-    <!-- Success Alert -->
-    @if(session('success'))
-        <div class="card-moderne mb-lg" style="border-left: 4px solid var(--success);">
-            <div class="p-lg">
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-check-circle color-success me-2"></i>
-                    <span>{{ session('success') }}</span>
-                </div>
-            </div>
-        </div>
-    @endif
-
-    <!-- Error Alert -->
-    @if(session('error'))
-        <div class="card-moderne mb-lg" style="border-left: 4px solid var(--danger);">
-            <div class="p-lg">
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-exclamation-circle color-danger me-2"></i>
-                    <span>{{ session('error') }}</span>
-                </div>
-            </div>
-        </div>
-    @endif
-    <!-- Info Alert -->
-    @if($classe->matieres->isEmpty())
-        <div class="card-moderne mb-lg" style="border-left: 4px solid var(--info);">
-            <div class="p-lg">
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-info-circle color-info me-2"></i>
-                    <span>Aucune matière n'est associée à cette classe. Utilisez le formulaire ci-dessous pour attacher des matières.</span>
-                </div>
-            </div>
-        </div>
-    @endif
-
-    @if(!$allMatieres->isEmpty())
-        <div class="card-moderne mb-lg" style="border-left: 4px solid var(--info);">
-            <div class="p-lg">
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-info-circle color-info me-2"></i>
-                    <span>Gérez les matières de la classe <strong>{{ $classe->name }}</strong> en ajustant leurs coefficients. La modification des coefficients affectera le calcul des moyennes dans les bulletins.</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Form Container -->
-        <form action="{{ route('esbtp.classes.update-matieres', ['classe' => $classe->id]) }}" method="POST">
-            @csrf
-
-            <!-- Matières disponibles -->
-            <div class="card-moderne">
-                <div class="main-card-header">
-                    <h3 class="main-card-title">
-                        <i class="fas fa-graduation-cap"></i>Matières disponibles
-                    </h3>
-                    <p class="main-card-subtitle">Sélectionnez et configurez les matières pour cette classe</p>
-                </div>
-                <div class="main-card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead class="table-light">
-                                <tr>
-                                    <th style="width: 5%" class="text-center">Sélection</th>
-                                    <th style="width: 10%">Code</th>
-                                    <th style="width: 30%">Nom de la matière</th>
-                                    <th style="width: 25%">Unité d'enseignement</th>
-                                    <th style="width: 15%">Coefficient</th>
-                                    <th style="width: 15%">Statut</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($allMatieres as $matiere)
-                                    @php
-                                        $selected = $classe->matieres->contains($matiere->id);
-                                        $matiereClasse = $selected ? $classe->matieres->find($matiere->id) : null;
-                                        $coefficient = $matiereClasse ? $matiereClasse->pivot->coefficient : ($matiere->coefficient ?? 1);
-                                        $isActive = $matiereClasse ? $matiereClasse->pivot->is_active : true;
-                                    @endphp
-                                    <tr class="{{ $selected ? 'table-success' : '' }}">
-                                        <td class="text-center">
-                                            <div class="form-check">
-                                                <input class="form-check-input matiere-checkbox" type="checkbox"
-                                                       name="matiere_ids[]" value="{{ $matiere->id }}"
-                                                       id="matiere{{ $matiere->id }}" {{ $selected ? 'checked' : '' }}>
-                                                <label class="form-check-label" for="matiere{{ $matiere->id }}"></label>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-primary">{{ $matiere->code }}</span>
-                                        </td>
-                                        <td>
-                                            <strong>{{ $matiere->name }}</strong>
-                                            @if($matiere->nom && $matiere->nom !== $matiere->name)
-                                                <br><small class="text-muted">{{ $matiere->nom }}</small>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            <span class="text-muted">
-                                                {{ $matiere->uniteEnseignement ? $matiere->uniteEnseignement->name : 'Non définie' }}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <input type="number" step="0.01" min="0"
-                                                   class="form-control form-control-sm coefficient-input"
-                                                   name="coefficients[{{ $matiere->id }}]"
-                                                   value="{{ $coefficient }}"
-                                                   {{ $selected ? '' : 'disabled' }}
-                                                   style="max-width: 100px;">
-                                        </td>
-                                        <td>
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input status-switch" type="checkbox"
-                                                       name="active[{{ $matiere->id }}]" value="1"
-                                                       id="active{{ $matiere->id }}"
-                                                       {{ $isActive ? 'checked' : '' }}
-                                                       {{ $selected ? '' : 'disabled' }}>
-                                                <label class="form-check-label" for="active{{ $matiere->id }}">
-                                                    <span class="badge {{ $isActive ? 'bg-success' : 'bg-danger' }}">
-                                                        {{ $isActive ? 'Active' : 'Inactive' }}
-                                                    </span>
-                                                </label>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="6" class="text-center py-4">
-                                            <i class="fas fa-exclamation-triangle text-warning me-2"></i>
-                                            Aucune matière disponible pour cette classe.
-                                        </td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Actions et boutons -->
-            <div class="row mt-4">
-                <div class="col-md-6">
-                    <div class="card-moderne">
-                        <div class="main-card-header">
-                            <h3 class="main-card-title">
-                                <i class="fas fa-tools"></i>Actions groupées
-                            </h3>
-                        </div>
-                        <div class="main-card-body">
-                            <div class="d-flex gap-2 flex-wrap">
-                                <button type="button" class="btn-acasi secondary" id="select-all">
-                                    <i class="fas fa-check-square me-1"></i>Tout sélectionner
-                                </button>
-                                <button type="button" class="btn-acasi secondary" id="deselect-all">
-                                    <i class="fas fa-square me-1"></i>Tout désélectionner
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-6 d-flex align-items-end justify-content-end">
-                    <button type="submit" class="btn-acasi primary btn-lg">
-                        <i class="fas fa-save me-1"></i>Enregistrer les modifications
-                    </button>
-                </div>
-            </div>
-        </form>
-    @endif
 </div>
 @endsection
 
-@section('scripts')
+@push('scripts')
 <script>
-    $(document).ready(function() {
-        // Activer/désactiver les champs en fonction de la sélection de la matière
-        $('.matiere-checkbox').on('change', function() {
-            const row = $(this).closest('tr');
-            const inputs = row.find('input:not(.matiere-checkbox)');
+const CLASSE_FILIERE_ID = @json($classe->filiere_id);
+const CLASSE_NIVEAU_ID = @json($classe->niveau_etude_id);
+const CLASSE_FILIERE_LABEL = @json(optional($classe->filiere)->code ?? optional($classe->filiere)->name ?? 'Filière');
+const CLASSE_NIVEAU_LABEL = @json(optional($classe->niveau)->code ?? optional($classe->niveau)->name ?? 'Niveau');
+const CLASSE_COMBO_LABEL = `${CLASSE_FILIERE_LABEL} · ${CLASSE_NIVEAU_LABEL}`;
 
-            if ($(this).is(':checked')) {
-                inputs.prop('disabled', false);
-                row.addClass('table-success');
-            } else {
-                inputs.prop('disabled', true);
-                row.removeClass('table-success');
+function showToast(type, message) {
+    if (window.toastr && typeof window.toastr[type] === 'function') {
+        window.toastr[type](message);
+    } else {
+        console[type === 'error' ? 'error' : 'log'](message);
+    }
+}
+
+async function toggleCombination(matiereId, action, button) {
+    if (CLASSE_FILIERE_ID === null || CLASSE_NIVEAU_ID === null) {
+        showToast('error', 'Cette classe n\'a pas de filière ou de niveau défini.');
+        return;
+    }
+
+    const originalHtml = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span>Traitement…';
+
+    try {
+        const liaisonResponse = await fetch(`/esbtp/matieres/${matiereId}/liaisons`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
             }
         });
 
-        // Mettre à jour l'étiquette du statut lorsque le switch change
-        $('.status-switch').on('change', function() {
-            const label = $(this).siblings('label').find('.badge');
+        if (!liaisonResponse.ok) {
+            throw new Error(`HTTP ${liaisonResponse.status}`);
+        }
 
-            if ($(this).is(':checked')) {
-                label.removeClass('bg-danger').addClass('bg-success');
-                label.text('Active');
-            } else {
-                label.removeClass('bg-success').addClass('bg-danger');
-                label.text('Inactive');
+        const liaisonData = await liaisonResponse.json();
+        if (!liaisonData.success) {
+            throw new Error(liaisonData.message || 'Impossible de récupérer les liaisons.');
+        }
+
+        let filieres = liaisonData.filieres || [];
+        let niveaux = liaisonData.niveaux || [];
+
+        if (action === 'add') {
+            if (!filieres.includes(CLASSE_FILIERE_ID)) {
+                filieres.push(CLASSE_FILIERE_ID);
             }
-        });
-
-        // Tout sélectionner
-        $('#select-all').on('click', function() {
-            $('.matiere-checkbox').prop('checked', true).trigger('change');
-        });
-
-        // Tout désélectionner
-        $('#deselect-all').on('click', function() {
-            $('.matiere-checkbox').prop('checked', false).trigger('change');
-        });
-
-        // Animation de sélection des matières
-        $('.matiere-checkbox').each(function() {
-            if ($(this).is(':checked')) {
-                $(this).closest('tr').addClass('table-success');
+            if (!niveaux.includes(CLASSE_NIVEAU_ID)) {
+                niveaux.push(CLASSE_NIVEAU_ID);
             }
-        });
+        } else if (action === 'remove') {
+            filieres = filieres.filter(id => id !== CLASSE_FILIERE_ID);
+            niveaux = niveaux.filter(id => id !== CLASSE_NIVEAU_ID);
+        }
 
-        // Effet de survol pour les lignes de matières
-        $('tbody tr').hover(
-            function() {
-                if (!$(this).hasClass('table-success')) {
-                    $(this).addClass('table-light');
-                }
+        const updateResponse = await fetch(`/esbtp/matieres/${matiereId}/update-liaisons`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Accept': 'application/json'
             },
-            function() {
-                $(this).removeClass('table-light');
+            body: JSON.stringify({ filieres, niveaux })
+        });
+
+        if (!updateResponse.ok) {
+            const errorPayload = await updateResponse.json().catch(() => ({}));
+            throw new Error(errorPayload.message || `HTTP ${updateResponse.status}`);
+        }
+
+        const updateData = await updateResponse.json();
+        if (!updateData.success) {
+            throw new Error(updateData.message || 'La mise à jour a échoué.');
+        }
+
+        showToast('success', updateData.message || 'Mise à jour enregistrée.');
+
+        const row = document.querySelector(`tr[data-matiere-id="${matiereId}"]`);
+        if (row) {
+            row.dataset.linked = action === 'add' ? '1' : '0';
+            row.classList.toggle('is-linked', action === 'add');
+            const toggleBtn = row.querySelector('.toggle-combination-btn');
+            if (toggleBtn) {
+                toggleBtn.dataset.action = action === 'add' ? 'remove' : 'add';
+                toggleBtn.classList.toggle('btn-outline-primary', action !== 'add');
+                toggleBtn.classList.toggle('btn-outline-danger', action === 'add');
+                toggleBtn.innerHTML = `<i class="fas ${action === 'add' ? 'fa-minus-circle' : 'fa-plus-circle'} me-1"></i>` + (action === 'add' ? 'Retirer de la classe' : 'Ajouter à la classe');
+                toggleBtn.disabled = false;
             }
-        );
+
+            const statusBadge = row.querySelector('[data-role="class-status"]');
+            if (statusBadge) {
+                statusBadge.className = action === 'add' ? 'badge bg-primary' : 'badge bg-secondary text-dark';
+                statusBadge.textContent = action === 'add' ? 'Enseignée dans cette classe' : 'Disponible dans le catalogue';
+            }
+
+            const combosContainer = row.querySelector('.combo-badges');
+            if (combosContainer) {
+                let combos = [];
+                try {
+                    combos = JSON.parse(combosContainer.dataset.combos || '[]');
+                } catch (e) {
+                    combos = [];
+                }
+                const comboKey = `${CLASSE_FILIERE_ID}-${CLASSE_NIVEAU_ID}`;
+
+                if (action === 'add') {
+                    const exists = combos.some(c => `${c.filiere_id}-${c.niveau_id}` === comboKey);
+                    if (!exists) {
+                        combos.push({
+                            filiere_id: CLASSE_FILIERE_ID,
+                            niveau_id: CLASSE_NIVEAU_ID,
+                            label: CLASSE_COMBO_LABEL
+                        });
+                    }
+                } else {
+                    combos = combos.filter(c => `${c.filiere_id}-${c.niveau_id}` !== comboKey);
+                }
+
+                combosContainer.dataset.combos = JSON.stringify(combos);
+                renderCombos(combosContainer);
+            }
+
+            triggerRowHighlight(row, action === 'add' ? 'attach' : 'detach');
+            button.disabled = false;
+        } else {
+            button.disabled = false;
+            button.innerHTML = originalHtml;
+        }
+        if (typeof window.filterClasseMatieresRows === 'function') {
+            window.filterClasseMatieresRows();
+        }
+    } catch (error) {
+        console.error(error);
+        showToast('error', error.message || 'Erreur lors de la mise à jour.');
+        button.disabled = false;
+        button.innerHTML = originalHtml;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('classe-matieres-search');
+    const filterLink = document.getElementById('filter-link');
+    const rows = Array.from(document.querySelectorAll('.classe-matieres-table tbody tr'));
+
+    function filterRows() {
+        const term = (searchInput?.value || '').toLowerCase().trim();
+        const linkFilter = filterLink?.value || 'all';
+
+        rows.forEach(row => {
+            const name = row.dataset.name || '';
+            const isLinked = row.dataset.linked === '1';
+
+            const matchesSearch = term === '' || name.includes(term);
+            const matchesLink = linkFilter === 'all'
+                ? true
+                : linkFilter === 'linked'
+                    ? isLinked
+                    : !isLinked;
+
+            row.style.display = matchesSearch && matchesLink ? '' : 'none';
+        });
+    }
+
+    searchInput?.addEventListener('input', filterRows);
+    filterLink?.addEventListener('change', filterRows);
+
+    document.querySelectorAll('.toggle-combination-btn').forEach(button => {
+        button.addEventListener('click', () => toggleCombination(button.dataset.matiereId, button.dataset.action, button));
     });
+
+    document.querySelectorAll('.combo-badges').forEach(container => renderCombos(container));
+    filterRows();
+    window.filterClasseMatieresRows = filterRows;
+});
+
+function triggerRowHighlight(row, action = 'attach') {
+    const highlight = document.createElement('div');
+    highlight.className = 'matieres-row-highlight';
+    if (action === 'detach') {
+        highlight.classList.add('detach');
+    }
+    row.appendChild(highlight);
+    requestAnimationFrame(() => highlight.classList.add('animate'));
+    highlight.addEventListener('animationend', () => highlight.remove());
+}
+
+function renderCombos(container) {
+    let combos = [];
+    try {
+        combos = JSON.parse(container.dataset.combos || '[]');
+    } catch (e) {
+        combos = [];
+    }
+
+    container.innerHTML = '';
+    if (!combos.length) {
+        container.innerHTML = '<span class="text-muted">Aucune combinaison enregistrée</span>';
+        return;
+    }
+
+    const maxVisible = 3;
+    combos.slice(0, maxVisible).forEach(combo => {
+        const badge = document.createElement('span');
+        badge.className = 'badge bg-light text-muted me-1';
+        badge.dataset.combo = `${combo.filiere_id}-${combo.niveau_id}`;
+        badge.textContent = combo.label;
+        container.appendChild(badge);
+    });
+
+    if (combos.length > maxVisible) {
+        const remain = combos.length - maxVisible;
+        const badge = document.createElement('span');
+        badge.className = 'badge bg-info text-white';
+        badge.textContent = `+${remain}`;
+        container.appendChild(badge);
+    }
+}
 </script>
-@endsection
+@endpush

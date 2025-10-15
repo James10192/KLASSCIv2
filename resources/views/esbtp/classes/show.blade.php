@@ -163,10 +163,6 @@
                                 </td>
                             </tr>
                             <tr>
-                                <th>Année universitaire</th>
-                                <td>{{ $classe->annee ? $classe->annee->name : 'Non assignée' }}</td>
-                            </tr>
-                            <tr>
                                 <th>Statut</th>
                                 <td>
                                     @if ($classe->is_active)
@@ -198,70 +194,106 @@
 
         <!-- Matières enseignées -->
         <div class="main-card mb-4">
-            <div class="main-card-header">
-                <div class="main-card-title">
-                    <i class="fas fa-book"></i>
-                    Matières enseignées
+            <div class="main-card-header d-flex align-items-start justify-content-between">
+                <div>
+                    <div class="main-card-title">
+                        <i class="fas fa-book"></i>
+                        Matières prévues pour cette formation
+                    </div>
+                    <div class="main-card-subtitle">
+                        Synthèse des matières du catalogue rattachées à {{ optional($classe->filiere)->name ?? 'cette filière' }} / {{ optional($classe->niveau)->name ?? 'ce niveau' }}
+                    </div>
                 </div>
-                <div class="main-card-subtitle">Liste des matières configurées pour cette classe</div>
+                <button class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#classeMatieresCollapse"
+                        aria-expanded="true"
+                        aria-controls="classeMatieresCollapse">
+                    <i class="fas fa-chevron-up"></i>
+                </button>
             </div>
-            <div class="main-card-body">
-                @if($classe->matieres->count() > 0)
-                    <div class="d-flex justify-content-end mb-3">
+            <div id="classeMatieresCollapse" class="collapse show">
+                <div class="main-card-body">
+                @if($combinationMatieres->isNotEmpty())
+                    <div class="alert alert-info d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="fas fa-info-circle me-2"></i>
+                            Les matières affichées proviennent du catalogue configuré pour cette filière / ce niveau et sont automatiquement prises en compte pour {{ $classe->name }}.
+                        </div>
                         @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('coordinateur'))
-                        <a href="{{ route('esbtp.classes.matieres', ['classe' => $classe->id]) }}" class="btn-acasi primary">
-                            <i class="fas fa-cog"></i>Gérer les matières
-                        </a>
+                            <a href="{{ route('esbtp.classes.matieres', ['classe' => $classe->id]) }}" class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-sliders-h me-1"></i>Gérer les matières de la classe
+                            </a>
                         @endif
                     </div>
+
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0">
                             <thead class="bg-light">
                                 <tr>
                                     <th>Code</th>
-                                    <th>Nom</th>
-                                    <th>Coef</th>
-                                    <th>Heures</th>
-                                    <th>UE</th>
+                                    <th>Matière</th>
+                                    <th>Coefficient catalogue</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($classe->matieres as $matiere)
+                                @foreach($combinationMatieres as $matiere)
                                     <tr>
                                         <td>{{ $matiere->code }}</td>
-                                        <td>{{ $matiere->name }}</td>
-                                        <td class="text-center">
-                                            <span class="badge bg-info px-3 py-2">{{ $matiere->pivot->coefficient ?? $matiere->coefficient_default }}</span>
+                                        <td>
+                                            <div class="fw-semibold">{{ $matiere->name }}</div>
+                                            @if($matiere->description)
+                                                <small class="text-muted">{{ \Illuminate\Support\Str::limit($matiere->description, 90) }}</small>
+                                            @endif
                                         </td>
                                         <td class="text-center">
-                                            <span class="badge bg-success px-3 py-2">{{ $matiere->pivot->total_heures ?? $matiere->total_heures_default }}h</span>
+                                            <span class="badge bg-primary">
+                                                {{ number_format($matiere->classe_coefficient ?? $matiere->coefficient ?? $matiere->coefficient_default ?? 1, 2) }}
+                                            </span>
                                         </td>
-                                        <td>{{ $matiere->uniteEnseignement ? $matiere->uniteEnseignement->name : 'N/A' }}</td>
                                     </tr>
                                 @endforeach
                             </tbody>
                         </table>
                     </div>
                 @else
-                    <div class="alert alert-info mb-0">
-                        <i class="fas fa-book me-2"></i> Aucune matière n'est encore configurée pour cette classe.
-                        @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('coordinateur'))
-                            <a href="{{ route('esbtp.classes.matieres', ['classe' => $classe->id]) }}" class="alert-link">Ajouter des matières</a>
+                    <div class="alert alert-warning mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Aucune matière n'est encore configurée dans le catalogue pour cette filière / ce niveau.
+                        @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire'))
+                            <a href="{{ route('esbtp.matieres.index') }}" class="alert-link">Compléter le paramétrage global</a>
+                            <span class="mx-1">·</span>
+                            <a href="{{ route('esbtp.classes.matieres', ['classe' => $classe->id]) }}" class="alert-link">Ajuster pour {{ $classe->name }}</a>
+                        @else
+                            <a href="{{ route('esbtp.classes.matieres', ['classe' => $classe->id]) }}" class="alert-link">Gérer les matières de {{ $classe->name }}</a>
                         @endif
                     </div>
                 @endif
+            </div>
             </div>
         </div>
 
         <!-- Liste des étudiants -->
         <div class="main-card mb-4">
-            <div class="main-card-header">
-                <div class="main-card-title">
-                    <i class="fas fa-users"></i>
-                    Liste des étudiants inscrits
+            <div class="main-card-header d-flex align-items-start justify-content-between">
+                <div>
+                    <div class="main-card-title">
+                        <i class="fas fa-users"></i>
+                        Liste des étudiants inscrits
+                    </div>
+                    <div class="main-card-subtitle">{{ $classe->etudiants->count() }} étudiant(s) inscrit(s) dans cette classe pour l'année courante</div>
                 </div>
-                <div class="main-card-subtitle">{{ $classe->etudiants->count() }} étudiant(s) inscrit(s) dans cette classe pour l'année courante</div>
+                <button class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#classeEtudiantsCollapse"
+                        aria-expanded="true"
+                        aria-controls="classeEtudiantsCollapse">
+                    <i class="fas fa-chevron-up"></i>
+                </button>
             </div>
+
+            <div id="classeEtudiantsCollapse" class="collapse show">
 
             <!-- Actions d'export -->
             @if($classe->etudiants->count() > 0)
@@ -390,6 +422,7 @@
                         <i class="fas fa-info-circle me-2"></i>Aucun étudiant inscrit dans cette classe pour l'année courante.
                     </div>
                 @endif
+            </div>
             </div>
         </div>
     </div>

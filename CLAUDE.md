@@ -4503,6 +4503,8 @@ Aligner `matieres.index` sur l’expérience interactive des listings (paiements
 #### 2025-10-11 – Accès coordinateur aux classes
 - Étendu le middleware des routes `esbtp/classes` (`routes/web.php`) pour inclure le rôle `coordinateur` en lecture, cohérent avec la permission `view_classes` déjà accordée par `fix_permissions.php`.
 - Mises à jour Front: `classes.index` et `classes.show` affichent désormais tous les boutons de consultation/export (matières, listes d’appel/complets) aux coordinateurs, tout en laissant la création/édition réservées aux superAdmins.
+- Harmonisation UI `classes/{classe}/matieres` : une seule grille avec filtres affiche les matières déjà liées à la combinaison filière/niveau et celles disponibles dans le catalogue, avec actions explicites (ajouter/retirer) déléguant aux routes `update-liaisons` / `add-to-combination`; plus de formulaire pivot ni modal.
+- `classes.show` met en avant la même liste (badge "Comptabilisée"/"Non prise en compte") et, lorsque la combinaison est vide, oriente les rôles non administrateurs vers la gestion dédiée de leur classe.
 
 #### Prochaine étape : WhatsApp Business API
 
@@ -4544,3 +4546,5 @@ Aligner `matieres.index` sur l’expérience interactive des listings (paiements
 ---
 
 *Dernière mise à jour: 11 octobre 2025 - 15h40*
+- Ajustements supplémentaires `classes/{classe}/matieres` : table unique reprenant l'esthétique de `matieres.index` (badges filière/niveau limités à 3 avec +N), libellés utilisateurs "Enseignée dans cette classe" / "Disponible dans le catalogue", actions "Ajouter/Retirer de la classe" avec rafraîchissement de la ligne sans rechargement.
+- `classes.show` simplifié : tableau réduit à Code / Matière / Coefficient catalogue puisqu'une matière listée appartient forcément à la combinaison.
