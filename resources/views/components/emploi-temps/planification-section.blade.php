@@ -15,7 +15,7 @@
                 <div class="col-lg-8">
                     <div class="table-responsive">
                         <table class="table table-sm table-hover mb-0">
-                            <thead class="table-dark">
+                            <thead class="bg-light text-dark">
                                 <tr>
                                     <th width="35%">Matière</th>
                                     <th width="25%">Enseignant</th>
