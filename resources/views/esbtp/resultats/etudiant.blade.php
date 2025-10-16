@@ -16,6 +16,12 @@
                 <p class="header-subtitle">Détail complet des notes et moyennes - {{ isset($classe) && $classe ? $classe->name : 'Toutes classes' }}</p>
             </div>
             <div class="header-actions">
+                @if(isset($classe) && $classe && auth()->user()->hasRole('superAdmin'))
+                    <a href="{{ route('esbtp.resultats.classe.edit', $classe->id) }}?annee_universitaire_id={{ $annee_id }}&semestre={{ isset($periode) ? str_replace('semestre', '', $periode) : '' }}"
+                       class="btn-acasi warning">
+                        <i class="fas fa-edit"></i>Éditer classe
+                    </a>
+                @endif
                 <a href="{{ route('esbtp.resultats.index') }}" class="btn-acasi secondary">
                     <i class="fas fa-arrow-left"></i>Retour aux résultats
                 </a>

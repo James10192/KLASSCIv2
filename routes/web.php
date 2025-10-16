@@ -571,7 +571,29 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::get('resultats/load-etudiants', [ESBTPBulletinController::class, 'loadEtudiants'])
                 ->name('resultats.load-etudiants')
                 ->middleware(['permission:view_own_bulletin|view_bulletins']);
-                
+
+            // Route principale d'édition groupée par classe
+            Route::get('resultats/classe/{classe}/edit', [ESBTPBulletinController::class, 'editResultatsClasse'])
+                ->name('resultats.classe.edit')
+                ->middleware(['permission:edit_bulletins']);
+
+            // Routes AJAX pour édition groupée
+            Route::post('resultats/bulk-update-moyennes', [ESBTPBulletinController::class, 'bulkUpdateMoyennes'])
+                ->name('resultats.bulk-update-moyennes')
+                ->middleware(['permission:edit_bulletins']);
+
+            Route::post('resultats/bulk-update-professeurs', [ESBTPBulletinController::class, 'bulkUpdateProfesseurs'])
+                ->name('resultats.bulk-update-professeurs')
+                ->middleware(['permission:edit_bulletins']);
+
+            Route::post('resultats/bulk-update-absences', [ESBTPBulletinController::class, 'bulkUpdateAbsences'])
+                ->name('resultats.bulk-update-absences')
+                ->middleware(['permission:edit_bulletins']);
+
+            Route::post('resultats/bulk-update-coefficients', [ESBTPBulletinController::class, 'bulkUpdateCoefficients'])
+                ->name('resultats.bulk-update-coefficients')
+                ->middleware(['permission:edit_bulletins']);
+
             Route::get('bulletins/configuration', [ESBTPBulletinController::class, 'configuration'])
                 ->name('bulletins.configuration')
                 ->middleware(['permission:edit_bulletins']);

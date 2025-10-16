@@ -32,6 +32,8 @@ class ESBTPResultat extends Model
         'coefficient',
         'rang',
         'appreciation',
+        'enseignant_id',
+        'type',
         'created_by',
         'updated_by'
     ];
@@ -140,6 +142,16 @@ class ESBTPResultat extends Model
     public function updatedBy()
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    /**
+     * Relation avec l'enseignant assigné à ce résultat.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function enseignant()
+    {
+        return $this->belongsTo(ESBTPEnseignantProfile::class, 'enseignant_id');
     }
 
     /**

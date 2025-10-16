@@ -17,9 +17,6 @@
                             </div>
                             <div>
                                 <h5 class="card-title mb-0">{{ $classe->name }}</h5>
-                                <span class="badge badge-light-muted mt-2">
-                                    {{ $classe->anneeUniversitaire->name ?? ($classe->anneeUniversitaire->annee_debut ?? '') . (isset($classe->anneeUniversitaire->annee_fin) ? '-' . $classe->anneeUniversitaire->annee_fin : '') }}
-                                </span>
                             </div>
                         </div>
                         <div class="text-muted small mb-3">
@@ -33,14 +30,22 @@
                                 <i class="fas fa-users text-primary me-2"></i>{{ $classe->actifs_count }} étudiant{{ $classe->actifs_count > 1 ? 's' : '' }} actifs
                             </div>
                         </div>
-                        <div class="mt-auto d-flex gap-2">
-                            <a href="{{ route('esbtp.resultats.index', ['classe_id' => $classe->id, 'annee_universitaire_id' => $classe->annee_universitaire_id]) }}"
-                               class="btn-acasi primary flex-grow-1">
-                                <i class="fas fa-chart-line"></i>Résultats
-                            </a>
-                            <a href="{{ route('esbtp.resultats.classe', $classe->id) }}" class="btn-acasi secondary" title="Vue détaillée">
-                                <i class="fas fa-eye"></i>
-                            </a>
+                        <div class="mt-auto d-flex flex-column gap-2">
+                            <div class="d-flex gap-2">
+                                <a href="{{ route('esbtp.resultats.index', ['classe_id' => $classe->id, 'annee_universitaire_id' => $classe->annee_universitaire_id]) }}"
+                                   class="btn-acasi primary flex-grow-1">
+                                    <i class="fas fa-chart-line"></i>Résultats
+                                </a>
+                                <a href="{{ route('esbtp.resultats.classe', $classe->id) }}" class="btn-acasi secondary" title="Vue détaillée">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </div>
+                            @if(auth()->user()->hasRole('superAdmin'))
+                                <a href="{{ route('esbtp.resultats.classe.edit', $classe->id) }}"
+                                   class="btn-acasi warning w-100">
+                                    <i class="fas fa-edit"></i>Éditer groupé
+                                </a>
+                            @endif
                         </div>
                     </div>
                 </div>

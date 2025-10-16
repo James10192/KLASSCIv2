@@ -3002,13 +3002,434 @@ class ESBTPBulletinController extends Controller
     }
 
     /**
+     * Affiche l'interface d'édition groupée des résultats d'une classe
+     *
+     * @param ESBTPClasse $classe
+     * @param Request $request
+     * @return \Illuminate\Http\Response
+     */
+    public function editResultatsClasse(Request $request, $id)
+    {
+        $this->validate($request, [
+            'semestre' => 'nullable|in:1,2',
+            'annee_universitaire_id' => 'nullable|exists:esbtp_annee_universitaires,id',
+            'include_all_statuses' => 'nullable|boolean',
+        ]);
+
+        $semestre = $request->semestre;
+        $periode = $semestre ? 'semestre'.$semestre : null;
+        $annee_universitaire_id = $request->annee_universitaire_id;
+        $include_all_statuses = $request->has('include_all_statuses');
+
+        // Get current academic year if not specified
+        if (!$annee_universitaire_id) {
+            $annee_universitaire_id = ESBTPAnneeUniversitaire::where('is_current', true)->first()->id ?? null;
+        }
+
+        $classe_id = $id;
+        $classe = ESBTPClasse::with(['matieres' => function($query) {
+            $query->withPivot('coefficient');
+        }, 'filiere', 'niveau'])->findOrFail($classe_id);
+
+        // Get students through inscriptions
+        $studentsQuery = ESBTPEtudiant::whereHas('inscriptions', function ($query) use ($classe_id, $annee_universitaire_id, $include_all_statuses) {
+            $query->where('classe_id', $classe_id)
+                ->where('annee_universitaire_id', $annee_universitaire_id);
+
+            if (!$include_all_statuses) {
+                $query->where('status', 'active');
+            }
+        })->with('user');
+
+        $students = $studentsQuery->get();
+
+        // Get all enseignants for professeur assignment
+        $enseignants = \App\Models\ESBTPEnseignantProfile::with('user')->actif()->get();
+
+        // Get all matieres for the class
+        $matieres = $classe->matieres;
+
+        // Get existing resultats for this class/periode/annee
+        $resultats = \App\Models\ESBTPResultat::where('classe_id', $classe_id)
+            ->when($periode, function($query) use ($periode) {
+                return $query->where('periode', $periode);
+            })
+            ->when($annee_universitaire_id, function($query) use ($annee_universitaire_id) {
+                return $query->where('annee_universitaire_id', $annee_universitaire_id);
+            })
+            ->with(['etudiant', 'matiere'])
+            ->get()
+            ->groupBy('etudiant_id');
+
+        // Get absences from bulletins table (not esbtp_absences which is for cours tracking)
+        $absences = ESBTPBulletin::whereIn('etudiant_id', $students->pluck('id'))
+            ->where('classe_id', $classe_id)
+            ->when($periode, function($query) use ($periode) {
+                return $query->where('periode', $periode);
+            })
+            ->when($annee_universitaire_id, function($query) use ($annee_universitaire_id) {
+                return $query->where('annee_universitaire_id', $annee_universitaire_id);
+            })
+            ->get()
+            ->keyBy('etudiant_id');
+
+        // Périodes disponibles
+        $periodes = [
+            'semestre1' => 'Premier Semestre',
+            'semestre2' => 'Deuxième Semestre'
+        ];
+
+        // Récupérer toutes les années universitaires
+        $annees_universitaires = ESBTPAnneeUniversitaire::orderBy('annee_debut', 'desc')->get();
+        $anneeUniversitaire = ESBTPAnneeUniversitaire::find($annee_universitaire_id);
+
+        // KPIs
+        $kpis = [
+            'total_students' => $students->count(),
+            'total_matieres' => $matieres->count(),
+            'total_resultats' => $resultats->sum(function($group) { return $group->count(); }),
+            'completion_rate' => $students->count() > 0 && $matieres->count() > 0
+                ? round(($resultats->sum(function($group) { return $group->count(); }) / ($students->count() * $matieres->count())) * 100, 1)
+                : 0
+        ];
+
+        return view('esbtp.resultats.classe-edit', compact(
+            'classe',
+            'students',
+            'matieres',
+            'enseignants',
+            'resultats',
+            'absences',
+            'semestre',
+            'periode',
+            'periodes',
+            'annee_universitaire_id',
+            'annees_universitaires',
+            'anneeUniversitaire',
+            'include_all_statuses',
+            'kpis'
+        ));
+    }
+
+    /**
+     * Mise à jour groupée des moyennes par matière
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function bulkUpdateMoyennes(Request $request)
+    {
+        $this->validate($request, [
+            'classe_id' => 'required|exists:esbtp_classes,id',
+            'matiere_id' => 'required|exists:esbtp_matieres,id',
+            'periode' => 'required|in:semestre1,semestre2',
+            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
+            'moyennes' => 'required|array',
+            'moyennes.*.etudiant_id' => 'required|exists:esbtp_etudiants,id',
+            'moyennes.*.moyenne' => 'nullable|numeric|min:0|max:20'
+        ]);
+
+        \DB::beginTransaction();
+        try {
+            $updated = 0;
+            $created = 0;
+
+            foreach ($request->moyennes as $moyenneData) {
+                if ($moyenneData['moyenne'] === null || $moyenneData['moyenne'] === '') {
+                    continue;
+                }
+
+                $resultat = \App\Models\ESBTPResultat::updateOrCreate(
+                    [
+                        'etudiant_id' => $moyenneData['etudiant_id'],
+                        'classe_id' => $request->classe_id,
+                        'matiere_id' => $request->matiere_id,
+                        'periode' => $request->periode,
+                        'annee_universitaire_id' => $request->annee_universitaire_id
+                    ],
+                    [
+                        'moyenne' => $moyenneData['moyenne'],
+                        'type' => 'Manuel'
+                    ]
+                );
+
+                if ($resultat->wasRecentlyCreated) {
+                    $created++;
+                } else {
+                    $updated++;
+                }
+            }
+
+            \DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "✅ Moyennes mises à jour avec succès. ($created créées, $updated modifiées)",
+                'stats' => [
+                    'created' => $created,
+                    'updated' => $updated
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('❌ Erreur bulk update moyennes: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la mise à jour des moyennes: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Mise à jour groupée des professeurs
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function bulkUpdateProfesseurs(Request $request)
+    {
+        $this->validate($request, [
+            'classe_id' => 'required|exists:esbtp_classes,id',
+            'periode' => 'required|in:semestre1,semestre2',
+            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
+            'professeurs' => 'required|array',
+            'professeurs.*.matiere_id' => 'required|exists:esbtp_matieres,id',
+            'professeurs.*.enseignant_id' => 'nullable|exists:esbtp_enseignants,id'
+        ]);
+
+        \DB::beginTransaction();
+        try {
+            $updated = 0;
+
+            foreach ($request->professeurs as $profData) {
+                if (!$profData['enseignant_id']) {
+                    continue;
+                }
+
+                // Update all resultats for this matiere in this classe/periode/annee
+                $affected = \App\Models\ESBTPResultat::where('classe_id', $request->classe_id)
+                    ->where('matiere_id', $profData['matiere_id'])
+                    ->where('periode', $request->periode)
+                    ->where('annee_universitaire_id', $request->annee_universitaire_id)
+                    ->update([
+                        'enseignant_id' => $profData['enseignant_id']
+                    ]);
+
+                $updated += $affected;
+            }
+
+            \DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "✅ Professeurs mis à jour avec succès. ($updated résultats modifiés)",
+                'stats' => [
+                    'updated' => $updated
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('❌ Erreur bulk update professeurs: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la mise à jour des professeurs: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Mise à jour groupée des absences
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function bulkUpdateAbsences(Request $request)
+    {
+        $this->validate($request, [
+            'classe_id' => 'required|exists:esbtp_classes,id',
+            'semestre' => 'required|in:1,2',
+            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
+            'absences' => 'required|array',
+            'absences.*.etudiant_id' => 'required|exists:esbtp_etudiants,id',
+            'absences.*.absences_justifiees' => 'nullable|numeric|min:0',
+            'absences.*.absences_non_justifiees' => 'nullable|numeric|min:0'
+        ]);
+
+        \DB::beginTransaction();
+        try {
+            $updated = 0;
+            $created = 0;
+            $periode = 'semestre' . $request->semestre;
+
+            foreach ($request->absences as $absenceData) {
+                $justifiees = floatval($absenceData['absences_justifiees'] ?? 0);
+                $nonJustifiees = floatval($absenceData['absences_non_justifiees'] ?? 0);
+
+                if ($justifiees == 0 && $nonJustifiees == 0) {
+                    continue;
+                }
+
+                // Calculer la note d'assiduité selon le barème
+                $noteAssiduite = $this->calculerNoteAssiduite($justifiees, $nonJustifiees);
+
+                // Create or update bulletin avec les absences
+                $bulletin = ESBTPBulletin::updateOrCreate(
+                    [
+                        'etudiant_id' => $absenceData['etudiant_id'],
+                        'classe_id' => $request->classe_id,
+                        'periode' => $periode,
+                        'annee_universitaire_id' => $request->annee_universitaire_id
+                    ],
+                    [
+                        'absences_justifiees' => $justifiees,
+                        'absences_non_justifiees' => $nonJustifiees,
+                        'total_absences' => $justifiees + $nonJustifiees,
+                        'note_assiduite' => $noteAssiduite,
+                        'updated_by' => \Auth::id()
+                    ]
+                );
+
+                if ($bulletin->wasRecentlyCreated) {
+                    $bulletin->created_by = \Auth::id();
+                    $bulletin->save();
+                    $created++;
+                } else {
+                    $updated++;
+                }
+            }
+
+            \DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "✅ Absences mises à jour avec succès. ($created bulletins créés, $updated modifiés)",
+                'stats' => [
+                    'created' => $created,
+                    'updated' => $updated
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('❌ Erreur bulk update absences: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la mise à jour des absences: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Mise à jour groupée des matières (configuration)
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function bulkUpdateMatieres(Request $request)
+    {
+        $this->validate($request, [
+            'classe_id' => 'required|exists:esbtp_classes,id',
+            'matieres' => 'required|array',
+            'matieres.*.matiere_id' => 'required|exists:esbtp_matieres,id',
+            'matieres.*.coefficient' => 'required|numeric|min:0'
+        ]);
+
+        \DB::beginTransaction();
+        try {
+            $classe = ESBTPClasse::findOrFail($request->classe_id);
+            $updated = 0;
+
+            foreach ($request->matieres as $matiereData) {
+                // Update pivot table coefficient
+                $classe->matieres()->updateExistingPivot(
+                    $matiereData['matiere_id'],
+                    ['coefficient' => $matiereData['coefficient']]
+                );
+                $updated++;
+            }
+
+            \DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "✅ Configuration des matières mise à jour avec succès. ($updated matières modifiées)",
+                'stats' => [
+                    'updated' => $updated
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('❌ Erreur bulk update matières: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la mise à jour des matières: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Mise à jour groupée des coefficients des matières
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function bulkUpdateCoefficients(Request $request)
+    {
+        $this->validate($request, [
+            'classe_id' => 'required|exists:esbtp_classes,id',
+            'coefficients' => 'required|array'
+        ]);
+
+        \DB::beginTransaction();
+        try {
+            $classe = ESBTPClasse::findOrFail($request->classe_id);
+            $updated = 0;
+
+            foreach ($request->coefficients as $matiereId => $coefficient) {
+                // Update pivot table coefficient
+                $classe->matieres()->updateExistingPivot(
+                    $matiereId,
+                    ['coefficient' => floatval($coefficient)]
+                );
+                $updated++;
+            }
+
+            \DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "✅ Coefficients mis à jour avec succès. ($updated matières modifiées)",
+                'stats' => [
+                    'updated' => $updated
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('❌ Erreur bulk update coefficients: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la mise à jour des coefficients: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Génère un PDF à partir des paramètres fournis (étudiant, classe, période, année universitaire)
      * sans nécessiter un bulletin existant.
      *
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    
+
     /**
      * Prévisualise le bulletin avant génération PDF
      */
