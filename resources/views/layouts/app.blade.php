@@ -1968,7 +1968,15 @@
                     </div>
                     @else
                     <div class="menu-item">
-                        <a href="{{ route('admin.profile') }}" class="menu-link {{ request()->routeIs('admin.profile') ? 'active' : '' }}">
+                        @php
+                            $profileRoute = 'admin.profile';
+                            if (auth()->user()->hasRole(['enseignant', 'teacher'])) {
+                                $profileRoute = 'teacher.profile';
+                            } elseif (auth()->user()->hasRole('coordinateur')) {
+                                $profileRoute = 'coordinateur.profile';
+                            }
+                        @endphp
+                        <a href="{{ route($profileRoute) }}" class="menu-link {{ request()->routeIs($profileRoute) ? 'active' : '' }}">
                             <div class="menu-icon"><i class="fas fa-user-circle"></i></div>
                             <div class="menu-text">Profil</div>
                         </a>
@@ -2215,6 +2223,10 @@
                                                 <i class="fas fa-user-tie me-2"></i> Mon profil
                                             </a>
                                         @elserole('teacher')
+                                            <a class="dropdown-item" href="{{ route('teacher.profile') }}">
+                                                <i class="fas fa-chalkboard-teacher me-2"></i> Mon profil
+                                            </a>
+                                        @elserole('enseignant')
                                             <a class="dropdown-item" href="{{ route('teacher.profile') }}">
                                                 <i class="fas fa-chalkboard-teacher me-2"></i> Mon profil
                                             </a>

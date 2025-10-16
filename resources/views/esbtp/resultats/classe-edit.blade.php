@@ -295,12 +295,105 @@
     let selectedStudents = [];
     const classeId = {{ $classe->id }};
     const anneeUniversitaireId = {{ $annee_universitaire_id }};
-    const semestre = {{ $semestre ?? 'null' }};
-    const periode = semestre ? 'semestre' + semestre : null;
+    let semestre = {{ $semestre ?? 'null' }}; // let au lieu de const pour permettre la mise à jour
+    let periode = semestre ? 'semestre' + semestre : null;
 
     $(document).ready(function() {
         initializeCheckboxes();
+        initializeFilterForm();
+        initializeModalCleanup();
     });
+
+    // Initialize modal cleanup on close
+    function initializeModalCleanup() {
+        // Modal moyennes : réinitialiser le contenu à la fermeture
+        $('#modalEditMoyennes').on('hidden.bs.modal', function() {
+            // Vider les tables
+            $('#gradesTableBody').empty();
+            $('#studentAccordion').empty();
+            $('#studentsGradesTable').hide();
+
+            // Réinitialiser le select de matière
+            $('#selectMatiere').val('').trigger('change');
+
+            // Réinitialiser le mode à "Par Matière" (par défaut)
+            $('input[name="editMode"][value="matiere"]').prop('checked', true);
+            $('#modeByMatiereContent').show();
+            $('#modeByStudentContent').hide();
+            updateModeCardStyles();
+
+            console.log('✅ Modal moyennes nettoyé');
+        });
+
+        // Modal absences : réinitialiser le contenu à la fermeture
+        $('#modalEditAbsences').on('hidden.bs.modal', function() {
+            $('#absencesTableBody').empty();
+            console.log('✅ Modal absences nettoyé');
+        });
+    }
+
+    // Initialize filter form AJAX submission
+    function initializeFilterForm() {
+        $('#filterForm').on('submit', function(e) {
+            e.preventDefault(); // Empêcher le rechargement complet
+
+            showLoading();
+
+            const formData = $(this).serialize();
+            const url = $(this).attr('action') + '?' + formData;
+
+            // Pattern AJAX documenté dans CLAUDE.md
+            fetch(url, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.text())
+            .then(html => {
+                // Parser le HTML retourné
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+
+                // Mettre à jour les KPIs
+                const newKpis = doc.querySelector('.kpi-grid');
+                if (newKpis) {
+                    document.querySelector('.kpi-grid').innerHTML = newKpis.innerHTML;
+                }
+
+                // Mettre à jour la table des étudiants
+                const newTable = doc.querySelector('.main-card.mb-4:last-of-type .main-card-body');
+                if (newTable) {
+                    document.querySelector('.main-card.mb-4:last-of-type .main-card-body').innerHTML = newTable.innerHTML;
+
+                    // Rebind events après mise à jour du DOM
+                    initializeCheckboxes();
+                }
+
+                // Mettre à jour l'URL sans recharger
+                history.pushState({}, '', url);
+
+                // Mettre à jour les variables globales semestre et periode
+                const semestreInput = document.getElementById('semestre');
+                semestre = semestreInput.value ? parseInt(semestreInput.value) : null;
+                periode = semestre ? 'semestre' + semestre : null;
+
+                console.log('✅ Semestre mis à jour:', semestre, '- Periode:', periode);
+
+                hideLoading();
+                showToast('✅ Filtres appliqués avec succès', 'success');
+            })
+            .catch(error => {
+                hideLoading();
+                showToast('❌ Erreur lors du chargement des données', 'error');
+                console.error('Error:', error);
+            });
+        });
+
+        // Auto-submit sur changement des filtres
+        $('#semestre, #annee_universitaire_id, #include_all_statuses').on('change', function() {
+            $('#filterForm').submit();
+        });
+    }
 
     // Initialize checkbox functionality
     function initializeCheckboxes() {
@@ -343,6 +436,27 @@
         // Professeurs and Matieres don't require student selection
         $('#btnProfesseurs').prop('disabled', false);
         $('#btnMatieres').prop('disabled', false);
+    }
+
+    // Reset student selection after save
+    function resetStudentSelection() {
+        // Vider le tableau des étudiants sélectionnés
+        selectedStudents = [];
+
+        // Décocher toutes les checkboxes étudiants
+        $('.student-select').prop('checked', false);
+
+        // Décocher la checkbox "sélectionner tout"
+        $('#selectAll').prop('checked', false);
+
+        // Mettre à jour le compteur
+        $('#selected-count').text('0');
+
+        // Désactiver les boutons d'action qui nécessitent une sélection
+        $('#btnMoyennes').prop('disabled', true);
+        $('#btnAbsences').prop('disabled', true);
+
+        console.log('✅ Sélection des étudiants réinitialisée');
     }
 
     // Show loading overlay
@@ -504,15 +618,11 @@
                 selectedStudents.forEach(student => {
                     const resultat = response.resultats.find(r => r.etudiant_id == student.id);
                     const moyenne = resultat ? resultat.moyenne : '';
-                    const type = resultat ? resultat.type : null;
-                    const isManual = type === 'manuel';
-                    const isCalculated = type === 'calculé';
 
+                    // Pas de champ 'type' en BDD - détecter via existence résultat
                     let badgeHtml = '<span class="badge bg-secondary">Non saisi</span>';
-                    if (isManual) {
-                        badgeHtml = '<span class="badge bg-warning">Manuel</span>';
-                    } else if (isCalculated) {
-                        badgeHtml = '<span class="badge bg-info">Calculé</span>';
+                    if (resultat && resultat.moyenne != null) {
+                        badgeHtml = '<span class="badge bg-success">Saisi</span>';
                     }
 
                     tbody.append(`
@@ -572,15 +682,12 @@
                             r.etudiant_id == student.id && r.matiere_id == matiere.id
                         );
                         const moyenne = resultat ? resultat.moyenne : '';
-                        const type = resultat ? resultat.type : null;
-                        const isManual = type === 'manuel';
-                        const isCalculated = type === 'calculé';
 
+                        // Pas de champ 'type' en BDD - détecter via existence résultat
                         let badgeHtml = '';
-                        if (isManual) {
-                            badgeHtml = '<span class="badge bg-warning ms-2" style="font-size: 0.65rem;">Manuel</span>';
-                        } else if (isCalculated) {
-                            badgeHtml = '<span class="badge bg-info ms-2" style="font-size: 0.65rem;">Calculé</span>';
+                        const hasMoyenne = resultat && resultat.moyenne != null;
+                        if (hasMoyenne) {
+                            badgeHtml = '<span class="badge bg-success ms-2" style="font-size: 0.65rem;">Saisi</span>';
                         }
 
                         matieresHtml += `
@@ -616,8 +723,8 @@
                                 </div>
                                 <div class="col-md-7">
                                     <div class="input-group">
-                                        <span class="input-group-text" style="background: linear-gradient(135deg, #f8f9fa, #e9ecef); border: 2px solid ${isManual ? '#ffc107' : (isCalculated ? '#0dcaf0' : '#dee2e6')}; border-right: none;">
-                                            <i class="fas fa-chart-line" style="color: ${isManual ? '#ffc107' : (isCalculated ? '#0dcaf0' : '#0d6efd')};"></i>
+                                        <span class="input-group-text" style="background: linear-gradient(135deg, #f8f9fa, #e9ecef); border: 2px solid ${hasMoyenne ? '#198754' : '#dee2e6'}; border-right: none;">
+                                            <i class="fas fa-chart-line" style="color: ${hasMoyenne ? '#198754' : '#0d6efd'};"></i>
                                         </span>
                                         <input type="number" class="form-control" min="0" max="20" step="0.01"
                                                name="student_${student.id}_matiere_${matiere.id}"
@@ -625,8 +732,8 @@
                                                data-matiere-id="${matiere.id}"
                                                value="${moyenne}"
                                                placeholder="0.00"
-                                               style="font-weight: 600; color: #495057; border: 2px solid ${isManual ? '#ffc107' : (isCalculated ? '#0dcaf0' : '#dee2e6')}; border-left: none; border-right: none;">
-                                        <span class="input-group-text" style="background: linear-gradient(135deg, #f8f9fa, #e9ecef); border: 2px solid ${isManual ? '#ffc107' : (isCalculated ? '#0dcaf0' : '#dee2e6')}; border-left: none;">/ 20</span>
+                                               style="font-weight: 600; color: #495057; border: 2px solid ${hasMoyenne ? '#198754' : '#dee2e6'}; border-left: none; border-right: none;">
+                                        <span class="input-group-text" style="background: linear-gradient(135deg, #f8f9fa, #e9ecef); border: 2px solid ${hasMoyenne ? '#198754' : '#dee2e6'}; border-left: none;">/ 20</span>
                                     </div>
                                 </div>
                             </div>
@@ -719,19 +826,13 @@
 
                 selectedStudents.forEach(student => {
                     const bulletin = response.bulletins.find(b => b.etudiant_id == student.id);
-                    const justifiees = bulletin ? bulletin.absences_justifiees : '';
-                    const nonJustifiees = bulletin ? bulletin.absences_non_justifiees : '';
-                    const isManual = bulletin ? bulletin.absences_type === 'manuel' : false;
-                    const isCalculated = bulletin ? bulletin.absences_type === 'calculé' : false;
+                    const justifiees = bulletin && bulletin.absences_justifiees !== null ? bulletin.absences_justifiees : '';
+                    const nonJustifiees = bulletin && bulletin.absences_non_justifiees !== null ? bulletin.absences_non_justifiees : '';
 
                     tbody.append(`
                         <tr>
                             <td><strong>${student.matricule}</strong></td>
-                            <td>
-                                ${student.name}
-                                ${isManual ? '<br><span class="badge bg-warning mt-1">Manuel</span>' : ''}
-                                ${isCalculated ? '<br><span class="badge bg-info mt-1">Calculé</span>' : ''}
-                            </td>
+                            <td>${student.name}</td>
                             <td>
                                 <input type="number" class="form-control" min="0" step="0.5"
                                        name="absences_justifiees_${student.id}"
@@ -753,9 +854,17 @@
                 hideLoading();
                 $('#modalEditAbsences').modal('show');
             },
-            error: function() {
+            error: function(xhr, status, error) {
                 hideLoading();
-                showToast('Erreur lors du chargement des absences', 'error');
+                console.error('Erreur AJAX getAbsences:', {
+                    status: xhr.status,
+                    statusText: xhr.statusText,
+                    responseText: xhr.responseText,
+                    error: error
+                });
+
+                const errorMessage = xhr.responseJSON?.message || xhr.responseText || 'Erreur lors du chargement des absences';
+                showToast(errorMessage, 'error');
             }
         });
     }
@@ -773,8 +882,108 @@
         });
     }
 
+    // Refresh page content with AJAX (pattern CLAUDE.md)
+    function refreshPageContent(affectedStudentIds = [], shouldResetSelection = true) {
+        showLoading();
+
+        const formData = $('#filterForm').serialize();
+        const url = $('#filterForm').attr('action') + '?' + formData;
+
+        fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.text())
+        .then(html => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+
+            // Mettre à jour les KPIs
+            const newKpis = doc.querySelector('.kpi-grid');
+            if (newKpis) {
+                document.querySelector('.kpi-grid').innerHTML = newKpis.innerHTML;
+            }
+
+            // Mettre à jour la table des étudiants
+            const newTable = doc.querySelector('.main-card.mb-4:last-of-type .main-card-body');
+            if (newTable) {
+                document.querySelector('.main-card.mb-4:last-of-type .main-card-body').innerHTML = newTable.innerHTML;
+
+                // Rebind events après mise à jour du DOM
+                initializeCheckboxes();
+
+                // Animation "travelling light" sur les lignes modifiées
+                if (affectedStudentIds.length > 0) {
+                    affectedStudentIds.forEach(studentId => {
+                        const row = $(`input.student-select[value="${studentId}"]`).closest('tr');
+                        if (row.length > 0) {
+                            triggerRowHighlight(row);
+                        }
+                    });
+                }
+
+                // Réinitialiser la sélection après le refresh si demandé
+                if (shouldResetSelection) {
+                    setTimeout(() => {
+                        resetStudentSelection();
+                    }, 100); // Petit délai pour s'assurer que le DOM est bien mis à jour
+                }
+            }
+
+            hideLoading();
+        })
+        .catch(error => {
+            hideLoading();
+            console.error('Error refreshing content:', error);
+        });
+    }
+
+    // Animation "travelling light" pour highlighter une ligne (pattern CLAUDE.md)
+    function triggerRowHighlight(row) {
+        // Ajouter l'animation
+        row.css({
+            'position': 'relative',
+            'overflow': 'hidden'
+        });
+
+        // Créer l'élément de lumière qui traverse
+        const light = $('<div></div>').css({
+            'position': 'absolute',
+            'top': 0,
+            'left': '-100%',
+            'width': '100%',
+            'height': '100%',
+            'background': 'linear-gradient(90deg, transparent, rgba(13, 110, 253, 0.3), transparent)',
+            'z-index': 1,
+            'pointer-events': 'none'
+        });
+
+        row.append(light);
+
+        // Animation de traversée
+        light.animate({
+            left: '100%'
+        }, 1500, function() {
+            $(this).remove();
+        });
+
+        // Flash de fond
+        const originalBg = row.css('background-color');
+        row.css('background-color', 'rgba(13, 110, 253, 0.1)');
+        setTimeout(() => {
+            row.css('background-color', originalBg);
+        }, 1500);
+    }
+
     // Save functions
     function saveMoyennes() {
+        // IMPORTANT: Vérifier que le semestre est sélectionné
+        if (!semestre || semestre === null) {
+            showToast('⚠️ Veuillez d\'abord sélectionner un semestre dans les filtres en haut de la page avant d\'éditer les moyennes. Cela évite toute confusion sur quelle période vous modifiez.', 'error');
+            return;
+        }
+
         showLoading();
 
         const mode = $('input[name="editMode"]:checked').val();
@@ -794,7 +1003,8 @@
                     moyennes.push({
                         etudiant_id: $(this).data('student-id'),
                         matiere_id: $(this).data('matiere-id'),
-                        moyenne: parseFloat(value)
+                        moyenne: parseFloat(value),
+                        coefficient: 1
                     });
                 }
             });
@@ -805,7 +1015,8 @@
                     moyennes.push({
                         etudiant_id: $(this).data('student-id'),
                         matiere_id: $(this).data('matiere-id'),
-                        moyenne: parseFloat(value)
+                        moyenne: parseFloat(value),
+                        coefficient: 1
                     });
                 }
             });
@@ -831,7 +1042,9 @@
                 hideLoading();
                 $('#modalEditMoyennes').modal('hide');
                 showToast(response.message || 'Moyennes enregistrées avec succès', 'success');
-                setTimeout(() => window.location.reload(), 1500);
+
+                // Refresh AJAX partiel au lieu de recharger toute la page
+                refreshPageContent(moyennes.map(m => m.etudiant_id));
             },
             error: function(xhr) {
                 hideLoading();
@@ -873,7 +1086,9 @@
                 hideLoading();
                 $('#modalEditProfesseurs').modal('hide');
                 showToast(response.message || 'Professeurs assignés avec succès', 'success');
-                setTimeout(() => window.location.reload(), 1500);
+
+                // Refresh AJAX partiel - NE PAS réinitialiser la sélection (pas basé sur étudiants)
+                refreshPageContent([], false);
             },
             error: function(xhr) {
                 hideLoading();
@@ -920,7 +1135,9 @@
                 hideLoading();
                 $('#modalEditAbsences').modal('hide');
                 showToast(response.message || 'Absences enregistrées avec succès', 'success');
-                setTimeout(() => window.location.reload(), 1500);
+
+                // Refresh AJAX partiel avec animation sur lignes modifiées
+                refreshPageContent(absences.map(a => a.etudiant_id));
             },
             error: function(xhr) {
                 hideLoading();
@@ -960,7 +1177,9 @@
                 hideLoading();
                 $('#modalEditMatieres').modal('hide');
                 showToast(response.message || 'Coefficients mis à jour avec succès', 'success');
-                setTimeout(() => window.location.reload(), 1500);
+
+                // Refresh AJAX partiel - NE PAS réinitialiser la sélection (pas basé sur étudiants)
+                refreshPageContent([], false);
             },
             error: function(xhr) {
                 hideLoading();

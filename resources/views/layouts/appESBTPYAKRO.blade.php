@@ -698,6 +698,21 @@
                         <i class="fas fa-user-circle nav-icon"></i>
                         <span>Profil</span>
                     </a>
+                    @elserole('teacher')
+                    <a href="{{ route('teacher.profile') }}" class="nav-link {{ request()->routeIs('teacher.profile') ? 'active' : '' }}">
+                        <i class="fas fa-user-circle nav-icon"></i>
+                        <span>Profil</span>
+                    </a>
+                    @elserole('enseignant')
+                    <a href="{{ route('teacher.profile') }}" class="nav-link {{ request()->routeIs('teacher.profile') ? 'active' : '' }}">
+                        <i class="fas fa-user-circle nav-icon"></i>
+                        <span>Profil</span>
+                    </a>
+                    @elserole('coordinateur')
+                    <a href="{{ route('coordinateur.profile') }}" class="nav-link {{ request()->routeIs('coordinateur.profile') ? 'active' : '' }}">
+                        <i class="fas fa-user-circle nav-icon"></i>
+                        <span>Profil</span>
+                    </a>
                     @else
                     <a href="{{ route('admin.profile') }}" class="nav-link {{ request()->routeIs('admin.profile') ? 'active' : '' }}">
                         <i class="fas fa-user-circle nav-icon"></i>
@@ -776,6 +791,12 @@
                         <li>
                             @role('etudiant')
                             <a class="dropdown-item" href="{{ route('esbtp.mon-profil.index') }}"><i class="fas fa-user me-2"></i> Mon profil</a>
+                            @elserole('teacher')
+                            <a class="dropdown-item" href="{{ route('teacher.profile') }}"><i class="fas fa-user me-2"></i> Mon profil</a>
+                            @elserole('enseignant')
+                            <a class="dropdown-item" href="{{ route('teacher.profile') }}"><i class="fas fa-user me-2"></i> Mon profil</a>
+                            @elserole('coordinateur')
+                            <a class="dropdown-item" href="{{ route('coordinateur.profile') }}"><i class="fas fa-user me-2"></i> Mon profil</a>
                             @else
                             <a class="dropdown-item" href="{{ route('admin.profile') }}"><i class="fas fa-user me-2"></i> Mon profil</a>
                             @endrole

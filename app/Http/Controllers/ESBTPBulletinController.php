@@ -3191,7 +3191,19 @@ class ESBTPBulletinController extends Controller
 
         $periode = $request->semestre ? 'semestre' . $request->semestre : null;
 
-        $bulletins = ESBTPBulletin::where('classe_id', $request->classe_id)
+        // Sélectionner seulement les colonnes de la table, pas les accessors
+        // pour éviter l'erreur "Call to a member function getRelationExistenceQuery() on null"
+        $bulletins = ESBTPBulletin::select([
+                'id',
+                'etudiant_id',
+                'classe_id',
+                'annee_universitaire_id',
+                'periode',
+                'absences_justifiees',
+                'absences_non_justifiees',
+                'total_absences'
+            ])
+            ->where('classe_id', $request->classe_id)
             ->where('annee_universitaire_id', $request->annee_universitaire_id)
             ->when($periode, function($query) use ($periode) {
                 return $query->where('periode', $periode);
@@ -3213,13 +3225,14 @@ class ESBTPBulletinController extends Controller
      */
     public function bulkUpdateMoyennes(Request $request)
     {
+        // Validation stricte : le semestre est OBLIGATOIRE pour éviter les erreurs
         $this->validate($request, [
             'classe_id' => 'required|exists:esbtp_classes,id',
-            'matiere_id' => 'required|exists:esbtp_matieres,id',
-            'periode' => 'required|in:semestre1,semestre2',
             'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
+            'semestre' => 'required|in:1,2', // OBLIGATOIRE
             'moyennes' => 'required|array',
             'moyennes.*.etudiant_id' => 'required|exists:esbtp_etudiants,id',
+            'moyennes.*.matiere_id' => 'required|exists:esbtp_matieres,id',
             'moyennes.*.moyenne' => 'nullable|numeric|min:0|max:20'
         ]);
 
@@ -3228,22 +3241,30 @@ class ESBTPBulletinController extends Controller
             $updated = 0;
             $created = 0;
 
+            // Convertir semestre en periode
+            $periode = 'semestre' . $request->semestre;
+
             foreach ($request->moyennes as $moyenneData) {
-                if ($moyenneData['moyenne'] === null || $moyenneData['moyenne'] === '') {
+                if (!isset($moyenneData['moyenne']) || $moyenneData['moyenne'] === null || $moyenneData['moyenne'] === '') {
                     continue;
                 }
 
+                // Construire les conditions de recherche (toujours avec periode)
+                $conditions = [
+                    'etudiant_id' => $moyenneData['etudiant_id'],
+                    'classe_id' => $request->classe_id,
+                    'matiere_id' => $moyenneData['matiere_id'],
+                    'periode' => $periode,
+                    'annee_universitaire_id' => $request->annee_universitaire_id
+                ];
+
+                // Pas besoin de champ 'type' - la présence dans esbtp_resultats suffit
+                // Le système détecte automatiquement "manuel" si le résultat existe en BDD
                 $resultat = \App\Models\ESBTPResultat::updateOrCreate(
-                    [
-                        'etudiant_id' => $moyenneData['etudiant_id'],
-                        'classe_id' => $request->classe_id,
-                        'matiere_id' => $request->matiere_id,
-                        'periode' => $request->periode,
-                        'annee_universitaire_id' => $request->annee_universitaire_id
-                    ],
+                    $conditions,
                     [
                         'moyenne' => $moyenneData['moyenne'],
-                        'type' => 'Manuel'
+                        'coefficient' => $moyenneData['coefficient'] ?? 1
                     ]
                 );
 
@@ -3267,7 +3288,10 @@ class ESBTPBulletinController extends Controller
 
         } catch (\Exception $e) {
             \DB::rollBack();
-            \Log::error('❌ Erreur bulk update moyennes: ' . $e->getMessage());
+            \Log::error('❌ Erreur bulk update moyennes: ' . $e->getMessage(), [
+                'request_data' => $request->all(),
+                'exception' => $e->getTraceAsString()
+            ]);
 
             return response()->json([
                 'success' => false,

@@ -242,6 +242,47 @@ MAIL_FROM_NAME="KLASSCI"
 - **11/10** : Orange SMS OAuth2 → token caché 50min
 - **13/10** : Polling non-intrusif → paramètre `showOverlay`
 - **13/10** : Doublons paiements → protection backend 10s
+- **16/10** : Réinitialisation sélection étudiants après save + nettoyage modals
+- **16/10** : Erreur getRelationExistenceQuery → select colonnes explicites
+
+## ✨ Fonctionnalités récentes
+
+### Édition groupée résultats classe (16 octobre 2025)
+
+**Vue** : `/esbtp/resultats/classe/{classe}/edit`
+
+**Fonctionnalités**
+- Sélection multiple étudiants (checkboxes)
+- 4 modals d'édition groupée :
+  - **Moyennes** : 2 modes (par matière / par étudiant)
+  - **Professeurs** : assignation par matière
+  - **Absences** : justifiées/non justifiées
+  - **Matières** : coefficients
+
+**Pattern UX**
+- Refresh AJAX partiel après save (pas de reload complet)
+- Animation "travelling light" sur lignes modifiées
+- Réinitialisation auto de la sélection après save moyennes/absences
+- Préservation sélection après save professeurs/matières
+- Nettoyage contenu modals à la fermeture
+- Validation obligatoire du semestre avant édition
+
+**Fichiers modifiés**
+- `resources/views/esbtp/resultats/classe-edit.blade.php` : Vue principale + JS
+- `app/Http/Controllers/ESBTPBulletinController.php` :
+  - `bulkUpdateMoyennes()` : validation flexible `moyennes.*.matiere_id`
+  - `getAbsences()` : select colonnes explicites (évite accessors bugués)
+  - `bulkUpdateAbsences()` : sauvegarde absences groupées
+  - `bulkUpdateProfesseurs()` : assignation professeurs groupée
+
+**Bugs corrigés**
+1. Erreur "Call to a member function getRelationExistenceQuery() on null"
+   - **Cause** : `->get()` déclenchait les accessors Eloquent avec relations inexistantes
+   - **Fix** : `->select([colonnes])` pour éviter les accessors
+2. Checkboxes restaient cochées après save
+   - **Fix** : fonction `resetStudentSelection()` + paramètre `shouldResetSelection`
+3. Contenu modal persistait après fermeture
+   - **Fix** : `initializeModalCleanup()` avec listeners `hidden.bs.modal`
 
 ---
 
