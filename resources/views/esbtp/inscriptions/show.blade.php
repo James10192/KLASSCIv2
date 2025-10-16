@@ -1299,35 +1299,79 @@ body.modal-open .card:hover {
     </div>
 </div>
 
-<!-- Modal pour associer un paiement - Structure Bootstrap simple -->
+<!-- Modal pour associer un paiement - Design moderne -->
 <div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="paymentModalLabel">Associer un paiement à l'inscription</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 15px; border: none; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+            <div class="modal-header" style="background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%); color: white; border-radius: 15px 15px 0 0; padding: 1.5rem; border: none;">
+                <h5 class="modal-title fw-bold" id="paymentModalLabel">
+                    <i class="fas fa-money-bill-wave me-2"></i>Associer un paiement à l'inscription
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="paymentForm" method="POST">
                 @csrf
                 <input type="hidden" name="_action" value="valider-avec-paiement">
-                <div class="modal-body">
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle me-2"></i>
-                        Cette action associera un paiement à l'inscription et la fera passer en validation.
-                        Vous pourrez encore modifier la <strong>filière</strong>, le <strong>niveau</strong> et la <strong>classe</strong> jusqu'à la validation définitive.
+                <div class="modal-body" style="padding: 2rem;">
+                    <!-- Alert moderne -->
+                    <div style="
+                        background: linear-gradient(135deg, #e7f3ff 0%, #f0f8ff 100%);
+                        border-left: 4px solid #0d6efd;
+                        border-radius: 10px;
+                        padding: 1rem 1.25rem;
+                        margin-bottom: 1.5rem;
+                    ">
+                        <div class="d-flex align-items-start gap-3">
+                            <div style="
+                                width: 40px;
+                                height: 40px;
+                                border-radius: 50%;
+                                background: linear-gradient(135deg, #0d6efd, #0a58ca);
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                color: white;
+                                flex-shrink: 0;
+                            ">
+                                <i class="fas fa-info-circle"></i>
+                            </div>
+                            <div style="flex-grow: 1;">
+                                <div style="color: #084298; font-weight: 500; margin-bottom: 0.25rem;">Information importante</div>
+                                <div style="color: #052c65; font-size: 0.9rem;">
+                                    Cette action associera un paiement à l'inscription et la fera passer en validation.
+                                    Vous pourrez encore modifier la <strong>filière</strong>, le <strong>niveau</strong> et la <strong>classe</strong> jusqu'à la validation définitive.
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="row">
+                    <!-- Ligne 1: Montant et Catégorie -->
+                    <div class="row g-3 mb-3">
                         <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="montant" class="form-label">Montant payé <span class="text-danger">*</span></label>
-                                <input type="number" class="form-control" id="montant" name="montant" min="0" step="0.01" required>
+                            <label for="montant" class="form-label fw-semibold" style="color: #2d3748; font-size: 0.9rem;">
+                                <i class="fas fa-coins me-1" style="color: #0d6efd;"></i>
+                                Montant payé <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text" style="background: linear-gradient(135deg, #f8f9fa, #e9ecef); border: 2px solid #dee2e6; border-right: none;">
+                                    <i class="fas fa-dollar-sign" style="color: #0d6efd;"></i>
+                                </span>
+                                <input type="number" class="form-control" id="montant" name="montant" min="0" step="0.01" required
+                                       style="border: 2px solid #dee2e6; border-left: none; border-right: none; font-weight: 600;">
+                                <span class="input-group-text" style="background: linear-gradient(135deg, #f8f9fa, #e9ecef); border: 2px solid #dee2e6; border-left: none; font-weight: 600;">
+                                    FCFA
+                                </span>
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="fee_category_id" class="form-label">Catégorie de frais <span class="text-danger">*</span></label>
-                                <select class="form-select" id="fee_category_id" name="fee_category_id" required>
+                            <label for="fee_category_id" class="form-label fw-semibold" style="color: #2d3748; font-size: 0.9rem;">
+                                <i class="fas fa-tags me-1" style="color: #0d6efd;"></i>
+                                Catégorie de frais <span class="text-danger">*</span>
+                            </label>
+                            <div style="position: relative;">
+                                <i class="fas fa-folder-open" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #0d6efd; z-index: 10;"></i>
+                                <select class="form-select" id="fee_category_id" name="fee_category_id" required
+                                        style="padding-left: 2.75rem; border: 2px solid #dee2e6; border-radius: 8px; font-weight: 500;">
                                     <option value="">Sélectionnez une catégorie</option>
                                     @if(isset($categoriesfrais))
                                         @foreach($categoriesfrais as $categorie)
@@ -1345,44 +1389,83 @@ body.modal-open .card:hover {
                             </div>
                         </div>
                     </div>
-                    <div class="row">
+
+                    <!-- Ligne 2: Mode paiement et Référence -->
+                    <div class="row g-3 mb-3">
                         <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="mode_paiement" class="form-label">Mode de paiement <span class="text-danger">*</span></label>
-                                <select class="form-select" id="mode_paiement" name="mode_paiement" required>
+                            <label for="mode_paiement" class="form-label fw-semibold" style="color: #2d3748; font-size: 0.9rem;">
+                                <i class="fas fa-credit-card me-1" style="color: #0d6efd;"></i>
+                                Mode de paiement <span class="text-danger">*</span>
+                            </label>
+                            <div style="position: relative;">
+                                <i class="fas fa-wallet" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #0d6efd; z-index: 10;"></i>
+                                <select class="form-select" id="mode_paiement" name="mode_paiement" required
+                                        style="padding-left: 2.75rem; border: 2px solid #dee2e6; border-radius: 8px; font-weight: 500;">
                                     <option value="">Sélectionnez un mode</option>
-                                    <option value="especes">Espèces</option>
-                                    <option value="cheque">Chèque</option>
-                                    <option value="virement">Virement</option>
-                                    <option value="mobile_money">Mobile Money</option>
+                                    <option value="especes">💵 Espèces</option>
+                                    <option value="cheque">📝 Chèque</option>
+                                    <option value="virement">🏦 Virement</option>
+                                    <option value="mobile_money">📱 Mobile Money</option>
                                 </select>
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="reference_paiement" class="form-label">Référence du paiement</label>
-                                <input type="text" class="form-control" id="reference_paiement" name="reference_paiement" placeholder="Numéro de chèque, référence virement...">
+                            <label for="reference_paiement" class="form-label fw-semibold" style="color: #2d3748; font-size: 0.9rem;">
+                                <i class="fas fa-hashtag me-1" style="color: #6c757d;"></i>
+                                Référence du paiement
+                            </label>
+                            <div style="position: relative;">
+                                <i class="fas fa-barcode" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #6c757d; z-index: 10;"></i>
+                                <input type="text" class="form-control" id="reference_paiement" name="reference_paiement"
+                                       placeholder="Numéro de chèque, référence virement..."
+                                       style="padding-left: 2.75rem; border: 2px solid #dee2e6; border-radius: 8px;">
                             </div>
                         </div>
                     </div>
-                    <div class="row">
+
+                    <!-- Ligne 3: Date et Observations -->
+                    <div class="row g-3">
                         <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="date_paiement" class="form-label">Date du paiement <span class="text-danger">*</span></label>
-                                <input type="date" class="form-control" id="date_paiement" name="date_paiement" value="{{ date('Y-m-d') }}" required>
+                            <label for="date_paiement" class="form-label fw-semibold" style="color: #2d3748; font-size: 0.9rem;">
+                                <i class="fas fa-calendar-alt me-1" style="color: #0d6efd;"></i>
+                                Date du paiement <span class="text-danger">*</span>
+                            </label>
+                            <div style="position: relative;">
+                                <i class="fas fa-calendar-day" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #0d6efd; z-index: 10;"></i>
+                                <input type="date" class="form-control" id="date_paiement" name="date_paiement" value="{{ date('Y-m-d') }}" required
+                                       style="padding-left: 2.75rem; border: 2px solid #dee2e6; border-radius: 8px; font-weight: 500;">
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="observations" class="form-label">Observations</label>
-                                <textarea class="form-control" id="observations" name="observations" rows="3" placeholder="Commentaires sur le paiement..."></textarea>
-                            </div>
+                            <label for="observations" class="form-label fw-semibold" style="color: #2d3748; font-size: 0.9rem;">
+                                <i class="fas fa-comment-dots me-1" style="color: #6c757d;"></i>
+                                Observations
+                            </label>
+                            <textarea class="form-control" id="observations" name="observations" rows="3"
+                                      placeholder="Commentaires sur le paiement..."
+                                      style="border: 2px solid #dee2e6; border-radius: 8px; resize: none;"></textarea>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn btn-primary">Associer le paiement</button>
+                <div class="modal-footer" style="background: #f8f9fa; border-radius: 0 0 15px 15px; padding: 1.25rem 2rem; border: none;">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="
+                        padding: 0.65rem 1.5rem;
+                        border-radius: 8px;
+                        font-weight: 600;
+                        border: 2px solid #6c757d;
+                    ">
+                        <i class="fas fa-times me-2"></i>Annuler
+                    </button>
+                    <button type="submit" class="btn btn-primary" style="
+                        padding: 0.65rem 1.5rem;
+                        border-radius: 8px;
+                        font-weight: 600;
+                        background: linear-gradient(135deg, #0d6efd, #0a58ca);
+                        border: none;
+                        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
+                    ">
+                        <i class="fas fa-check-circle me-2"></i>Associer le paiement
+                    </button>
                 </div>
             </form>
         </div>
@@ -1436,52 +1519,135 @@ body.modal-open .card:hover {
 
 <!-- Modal pour paiement de reliquat -->
 <div class="modal fade" id="reliquatPaymentModal" tabindex="-1" aria-labelledby="reliquatPaymentModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="reliquatPaymentModalLabel">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 15px; border: none; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+            <div class="modal-header" style="background: linear-gradient(135deg, #198754 0%, #157347 100%); color: white; border-radius: 15px 15px 0 0; padding: 1.5rem; border: none;">
+                <h5 class="modal-title fw-bold" id="reliquatPaymentModalLabel">
                     <i class="fas fa-history me-2"></i>Paiement de Reliquat
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="reliquatPaymentForm" method="POST" action="{{ route('esbtp.reliquats.pay') }}">
                 @csrf
                 <input type="hidden" id="reliquat_id" name="reliquat_id">
-                <div class="modal-body">
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle me-2"></i>
-                        Vous êtes sur le point de payer un reliquat de l'année précédente.
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-12">
-                            <div class="card bg-light">
-                                <div class="card-body">
-                                    <h6 class="card-title"><i class="fas fa-receipt me-2"></i>Détail du Reliquat</h6>
-                                    <p class="mb-1"><strong>Frais:</strong> <span id="reliquat_frais_name"></span></p>
-                                    <p class="mb-0"><strong>Montant à payer:</strong> <span id="reliquat_amount" class="text-danger fw-bold"></span> FCFA</p>
+                <div class="modal-body" style="padding: 2rem;">
+                    <!-- Alert moderne -->
+                    <div style="
+                        background: linear-gradient(135deg, #d1f4e0 0%, #e8f8f0 100%);
+                        border-left: 4px solid #198754;
+                        border-radius: 10px;
+                        padding: 1rem 1.25rem;
+                        margin-bottom: 1.5rem;
+                    ">
+                        <div class="d-flex align-items-start gap-3">
+                            <div style="
+                                width: 40px;
+                                height: 40px;
+                                border-radius: 50%;
+                                background: linear-gradient(135deg, #198754, #157347);
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                color: white;
+                                flex-shrink: 0;
+                            ">
+                                <i class="fas fa-info-circle"></i>
+                            </div>
+                            <div style="flex-grow: 1;">
+                                <div style="color: #0f5132; font-weight: 500; margin-bottom: 0.25rem;">Paiement d'arrières</div>
+                                <div style="color: #0a3622; font-size: 0.9rem;">
+                                    Vous êtes sur le point de payer un reliquat de l'année précédente.
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="row">
+                    <!-- Carte détail du reliquat -->
+                    <div style="
+                        background: linear-gradient(135deg, #fff8dc 0%, #fffaed 100%);
+                        border: 2px solid #ffc107;
+                        border-radius: 12px;
+                        padding: 1.5rem;
+                        margin-bottom: 1.5rem;
+                        box-shadow: 0 4px 12px rgba(255, 193, 7, 0.2);
+                    ">
+                        <div class="d-flex align-items-start gap-3">
+                            <div style="
+                                width: 50px;
+                                height: 50px;
+                                border-radius: 50%;
+                                background: linear-gradient(135deg, #ffc107, #ffb300);
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                color: white;
+                                font-size: 1.25rem;
+                                flex-shrink: 0;
+                            ">
+                                <i class="fas fa-receipt"></i>
+                            </div>
+                            <div style="flex-grow: 1;">
+                                <h6 style="color: #664d03; font-weight: 700; margin-bottom: 0.75rem; font-size: 1rem;">
+                                    Détail du Reliquat
+                                </h6>
+                                <div class="row">
+                                    <div class="col-md-6 mb-2">
+                                        <div style="font-size: 0.85rem; color: #997404; margin-bottom: 0.25rem;">Frais concerné</div>
+                                        <div style="font-weight: 600; color: #664d03;" id="reliquat_frais_name">-</div>
+                                    </div>
+                                    <div class="col-md-6 mb-2">
+                                        <div style="font-size: 0.85rem; color: #997404; margin-bottom: 0.25rem;">Montant à payer</div>
+                                        <div style="
+                                            background: rgba(220, 53, 69, 0.1);
+                                            border: 2px solid #dc3545;
+                                            border-radius: 8px;
+                                            padding: 0.5rem 0.75rem;
+                                            display: inline-block;
+                                        ">
+                                            <span id="reliquat_amount" style="font-weight: 700; color: #dc3545; font-size: 1.25rem;">0</span>
+                                            <span style="font-weight: 600; color: #dc3545; margin-left: 0.25rem;">FCFA</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Formulaire -->
+                    <div class="row g-3 mb-3">
                         <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="reliquat_montant" class="form-label">Montant à payer <span class="text-danger">*</span></label>
-                                <input type="number" class="form-control" id="reliquat_montant" name="montant" min="1" step="1" required>
-                                <div class="form-text">Montant minimum: 1 FCFA</div>
+                            <label for="reliquat_montant" class="form-label fw-semibold" style="color: #2d3748; font-size: 0.9rem;">
+                                <i class="fas fa-coins me-1" style="color: #198754;"></i>
+                                Montant à payer <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text" style="background: linear-gradient(135deg, #d1f4e0, #e8f8f0); border: 2px solid #198754; border-right: none;">
+                                    <i class="fas fa-dollar-sign" style="color: #198754;"></i>
+                                </span>
+                                <input type="number" class="form-control" id="reliquat_montant" name="montant" min="1" step="1" required
+                                       style="border: 2px solid #198754; border-left: none; border-right: none; font-weight: 600; color: #198754;">
+                                <span class="input-group-text" style="background: linear-gradient(135deg, #d1f4e0, #e8f8f0); border: 2px solid #198754; border-left: none; font-weight: 600; color: #198754;">
+                                    FCFA
+                                </span>
+                            </div>
+                            <div class="form-text" style="font-size: 0.8rem; color: #6c757d;">
+                                <i class="fas fa-info-circle me-1"></i>Montant minimum: 1 FCFA
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="reliquat_mode_paiement" class="form-label">Mode de paiement <span class="text-danger">*</span></label>
-                                <select class="form-select" id="reliquat_mode_paiement" name="mode_paiement" required>
+                            <label for="reliquat_mode_paiement" class="form-label fw-semibold" style="color: #2d3748; font-size: 0.9rem;">
+                                <i class="fas fa-credit-card me-1" style="color: #198754;"></i>
+                                Mode de paiement <span class="text-danger">*</span>
+                            </label>
+                            <div style="position: relative;">
+                                <i class="fas fa-wallet" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #198754; z-index: 10;"></i>
+                                <select class="form-select" id="reliquat_mode_paiement" name="mode_paiement" required
+                                        style="padding-left: 2.75rem; border: 2px solid #198754; border-radius: 8px; font-weight: 500; color: #198754;">
                                     <option value="">Sélectionnez un mode</option>
-                                    <option value="especes">Espèces</option>
-                                    <option value="cheque">Chèque</option>
-                                    <option value="virement">Virement bancaire</option>
-                                    <option value="mobile_money">Mobile Money</option>
+                                    <option value="especes">💵 Espèces</option>
+                                    <option value="cheque">📝 Chèque</option>
+                                    <option value="virement">🏦 Virement bancaire</option>
+                                    <option value="mobile_money">📱 Mobile Money</option>
                                 </select>
                             </div>
                         </div>
@@ -1489,16 +1655,33 @@ body.modal-open .card:hover {
 
                     <div class="row">
                         <div class="col-md-12">
-                            <div class="mb-3">
-                                <label for="reliquat_notes" class="form-label">Notes (optionnel)</label>
-                                <textarea class="form-control" id="reliquat_notes" name="notes" rows="2" placeholder="Notes complémentaires sur ce paiement..."></textarea>
-                            </div>
+                            <label for="reliquat_notes" class="form-label fw-semibold" style="color: #2d3748; font-size: 0.9rem;">
+                                <i class="fas fa-comment-dots me-1" style="color: #6c757d;"></i>
+                                Notes (optionnel)
+                            </label>
+                            <textarea class="form-control" id="reliquat_notes" name="notes" rows="3"
+                                      placeholder="Notes complémentaires sur ce paiement..."
+                                      style="border: 2px solid #dee2e6; border-radius: 8px; resize: none;"></textarea>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn btn-success">
+                <div class="modal-footer" style="background: #f8f9fa; border-radius: 0 0 15px 15px; padding: 1.25rem 2rem; border: none;">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="
+                        padding: 0.65rem 1.5rem;
+                        border-radius: 8px;
+                        font-weight: 600;
+                        border: 2px solid #6c757d;
+                    ">
+                        <i class="fas fa-times me-2"></i>Annuler
+                    </button>
+                    <button type="submit" class="btn btn-success" style="
+                        padding: 0.65rem 1.5rem;
+                        border-radius: 8px;
+                        font-weight: 600;
+                        background: linear-gradient(135deg, #198754, #157347);
+                        border: none;
+                        box-shadow: 0 4px 12px rgba(25, 135, 84, 0.3);
+                    ">
                         <i class="fas fa-credit-card me-2"></i>Confirmer le paiement
                     </button>
                 </div>
