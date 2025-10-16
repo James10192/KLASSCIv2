@@ -220,8 +220,8 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         Route::put('/teacher/session-report/{report}', [App\Http\Controllers\ESBTP\SessionReportController::class, 'update'])->name('teacher.session-report.update');
     });
 
-    // Routes pour la gestion du profil admin
-    Route::middleware(['role:superAdmin|secretaire|serviceTechnique'])->group(function () {
+    // Routes pour la gestion du profil admin, enseignants et coordinateurs
+    Route::middleware(['role:superAdmin|secretaire|serviceTechnique|enseignant|teacher|coordinateur'])->group(function () {
         Route::get('/admin/profile', [AdminProfileController::class, 'index'])->name('admin.profile');
         Route::put('/admin/profile/update', [AdminProfileController::class, 'update'])->name('admin.profile.update');
         Route::put('/admin/profile/update-professional', [AdminProfileController::class, 'updateProfessionalInfo'])->name('admin.profile.update.professional');
