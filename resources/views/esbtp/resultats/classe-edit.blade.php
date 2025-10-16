@@ -230,7 +230,10 @@
                                 @foreach($students as $student)
                                     <tr>
                                         <td>
-                                            <input type="checkbox" class="student-checkbox student-select" value="{{ $student->id }}" data-name="{{ $student->nom }} {{ $student->prenoms }}">
+                                            <input type="checkbox" class="student-checkbox student-select"
+                                                   value="{{ $student->id }}"
+                                                   data-name="{{ $student->nom }} {{ $student->prenoms }}"
+                                                   data-matricule="{{ $student->matricule }}">
                                         </td>
                                         <td>{{ $student->matricule }}</td>
                                         <td>
@@ -325,7 +328,8 @@
         $('.student-select:checked').each(function() {
             selectedStudents.push({
                 id: $(this).val(),
-                name: $(this).data('name')
+                name: $(this).data('name'),
+                matricule: $(this).data('matricule')
             });
         });
 
@@ -375,6 +379,63 @@
         });
     }
 
+    // Update mode card styles based on selection
+    function updateModeCardStyles() {
+        const selectedMode = $('input[name="editMode"]:checked').val();
+
+        // Reset both cards to default state (gris transparent)
+        $('#labelModeByMatiere').css({
+            'background': 'transparent',
+            'border-color': '#dee2e6',
+            'box-shadow': '0 2px 8px rgba(0, 0, 0, 0.05)',
+            'transform': 'none'
+        });
+        $('#labelModeByMatiere').find('h6').css('color', '#6c757d');
+        $('#labelModeByMatiere').find('small').css('color', '#6c757d');
+        $('#labelModeByMatiere').find('.d-flex > div').css({
+            'background': 'linear-gradient(135deg, #6c757d, #495057)'
+        });
+
+        $('#labelModeByStudent').css({
+            'background': 'transparent',
+            'border-color': '#dee2e6',
+            'box-shadow': '0 2px 8px rgba(0, 0, 0, 0.05)',
+            'transform': 'none'
+        });
+        $('#labelModeByStudent').find('h6').css('color', '#6c757d');
+        $('#labelModeByStudent').find('small').css('color', '#6c757d');
+        $('#labelModeByStudent').find('.d-flex > div').css({
+            'background': 'linear-gradient(135deg, #6c757d, #495057)'
+        });
+
+        // Apply active state to selected card (bleu avec fond bleu)
+        if (selectedMode === 'matiere') {
+            $('#labelModeByMatiere').css({
+                'background': 'linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%)',
+                'border-color': '#0d6efd',
+                'box-shadow': '0 8px 20px rgba(13, 110, 253, 0.4)',
+                'transform': 'translateY(-4px)'
+            });
+            $('#labelModeByMatiere').find('h6').css('color', 'white');
+            $('#labelModeByMatiere').find('small').css('color', 'white');
+            $('#labelModeByMatiere').find('.d-flex > div').css({
+                'background': 'rgba(255, 255, 255, 0.2)'
+            });
+        } else {
+            $('#labelModeByStudent').css({
+                'background': 'linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%)',
+                'border-color': '#0d6efd',
+                'box-shadow': '0 8px 20px rgba(13, 110, 253, 0.4)',
+                'transform': 'translateY(-4px)'
+            });
+            $('#labelModeByStudent').find('h6').css('color', 'white');
+            $('#labelModeByStudent').find('small').css('color', 'white');
+            $('#labelModeByStudent').find('.d-flex > div').css({
+                'background': 'rgba(255, 255, 255, 0.2)'
+            });
+        }
+    }
+
     // Modal opening functions
     function openMoyennesModal() {
         if (selectedStudents.length === 0) {
@@ -387,6 +448,8 @@
 
         // Setup mode switching
         $('input[name="editMode"]').on('change', function() {
+            updateModeCardStyles();
+
             if ($(this).val() === 'matiere') {
                 $('#modeByMatiereContent').show();
                 $('#modeByStudentContent').hide();
@@ -397,11 +460,14 @@
             }
         });
 
+        // Initialize mode card styles
+        updateModeCardStyles();
+
         // Setup matiere selection
         $('#selectMatiere').on('change', function() {
             const matiereId = $(this).val();
             if (matiereId) {
-                const matiereName = $(this).find('option:selected').text();
+                const matiereName = $(this).find('option:selected').data('name');
                 const matiereCoeff = $(this).find('option:selected').data('coeff');
 
                 $('#selectedMatiereName').text(matiereName);
@@ -418,64 +484,209 @@
     }
 
     function populateGradesTable(matiereId) {
-        const tbody = $('#gradesTableBody');
-        tbody.empty();
+        showLoading();
 
-        selectedStudents.forEach(student => {
-            tbody.append(`
-                <tr>
-                    <td>${student.id}</td>
-                    <td>${student.name}</td>
-                    <td>
-                        <input type="number" class="form-control" min="0" max="20" step="0.01"
-                               name="moyenne_${student.id}"
-                               data-student-id="${student.id}"
-                               data-matiere-id="${matiereId}"
-                               placeholder="0.00">
-                    </td>
-                    <td>
-                        <span class="badge bg-secondary">Non saisi</span>
-                    </td>
-                </tr>
-            `);
+        // Fetch existing moyennes for selected students and matiere
+        $.ajax({
+            url: '{{ route("esbtp.resultats.get-moyennes") }}',
+            method: 'GET',
+            data: {
+                classe_id: classeId,
+                annee_universitaire_id: anneeUniversitaireId,
+                semestre: semestre,
+                matiere_id: matiereId,
+                etudiant_ids: selectedStudents.map(s => s.id)
+            },
+            success: function(response) {
+                const tbody = $('#gradesTableBody');
+                tbody.empty();
+
+                selectedStudents.forEach(student => {
+                    const resultat = response.resultats.find(r => r.etudiant_id == student.id);
+                    const moyenne = resultat ? resultat.moyenne : '';
+                    const type = resultat ? resultat.type : null;
+                    const isManual = type === 'manuel';
+                    const isCalculated = type === 'calculé';
+
+                    let badgeHtml = '<span class="badge bg-secondary">Non saisi</span>';
+                    if (isManual) {
+                        badgeHtml = '<span class="badge bg-warning">Manuel</span>';
+                    } else if (isCalculated) {
+                        badgeHtml = '<span class="badge bg-info">Calculé</span>';
+                    }
+
+                    tbody.append(`
+                        <tr>
+                            <td><strong>${student.matricule}</strong></td>
+                            <td>${student.name}</td>
+                            <td>
+                                <input type="number" class="form-control" min="0" max="20" step="0.01"
+                                       name="moyenne_${student.id}"
+                                       data-student-id="${student.id}"
+                                       data-matiere-id="${matiereId}"
+                                       value="${moyenne}"
+                                       placeholder="0.00">
+                            </td>
+                            <td>
+                                ${badgeHtml}
+                            </td>
+                        </tr>
+                    `);
+                });
+
+                hideLoading();
+            },
+            error: function() {
+                hideLoading();
+                showToast('Erreur lors du chargement des moyennes', 'error');
+            }
         });
     }
 
     function populateStudentAccordion() {
         const accordion = $('#studentAccordion');
         accordion.empty();
+        showLoading();
 
         const matieres = @json($matieres);
+        const matiereIds = matieres.map(m => m.id);
 
-        selectedStudents.forEach((student, index) => {
-            let matieresHtml = '';
-            matieres.forEach(matiere => {
-                matieresHtml += `
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">${matiere.name} (Coeff: ${matiere.pivot.coefficient ?? 1})</label>
-                        <input type="number" class="form-control" min="0" max="20" step="0.01"
-                               name="student_${student.id}_matiere_${matiere.id}"
-                               data-student-id="${student.id}"
-                               data-matiere-id="${matiere.id}"
-                               placeholder="0.00">
-                    </div>
-                `;
-            });
+        // Fetch all existing moyennes for selected students and all matières
+        $.ajax({
+            url: '{{ route("esbtp.resultats.get-moyennes") }}',
+            method: 'GET',
+            data: {
+                classe_id: classeId,
+                annee_universitaire_id: anneeUniversitaireId,
+                semestre: semestre,
+                matiere_ids: matiereIds,
+                etudiant_ids: selectedStudents.map(s => s.id)
+            },
+            success: function(response) {
+                selectedStudents.forEach((student, index) => {
+                    let matieresHtml = '';
 
-            accordion.append(`
-                <div class="accordion-item">
-                    <h2 class="accordion-header" id="heading${index}">
-                        <button class="accordion-button ${index > 0 ? 'collapsed' : ''}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse${index}">
-                            ${student.name}
-                        </button>
-                    </h2>
-                    <div id="collapse${index}" class="accordion-collapse collapse ${index === 0 ? 'show' : ''}" data-bs-parent="#studentAccordion">
-                        <div class="accordion-body">
-                            ${matieresHtml}
+                    matieres.forEach((matiere, mIndex) => {
+                        // Find existing resultat for this student and matiere
+                        const resultat = response.resultats.find(r =>
+                            r.etudiant_id == student.id && r.matiere_id == matiere.id
+                        );
+                        const moyenne = resultat ? resultat.moyenne : '';
+                        const type = resultat ? resultat.type : null;
+                        const isManual = type === 'manuel';
+                        const isCalculated = type === 'calculé';
+
+                        let badgeHtml = '';
+                        if (isManual) {
+                            badgeHtml = '<span class="badge bg-warning ms-2" style="font-size: 0.65rem;">Manuel</span>';
+                        } else if (isCalculated) {
+                            badgeHtml = '<span class="badge bg-info ms-2" style="font-size: 0.65rem;">Calculé</span>';
+                        }
+
+                        matieresHtml += `
+                            <div class="row mb-3 align-items-center" style="
+                                background: ${mIndex % 2 === 0 ? '#f8f9fa' : 'white'};
+                                padding: 0.75rem;
+                                border-radius: 8px;
+                                border: 1px solid #e9ecef;
+                            ">
+                                <div class="col-md-5">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div style="
+                                            width: 35px;
+                                            height: 35px;
+                                            border-radius: 50%;
+                                            background: linear-gradient(135deg, #0d6efd, #0a58ca);
+                                            display: flex;
+                                            align-items: center;
+                                            justify-content: center;
+                                            color: white;
+                                            font-weight: bold;
+                                            font-size: 0.75rem;
+                                        ">
+                                            <i class="fas fa-book"></i>
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold" style="font-size: 0.9rem; color: #2d3748;">
+                                                ${matiere.name} ${badgeHtml}
+                                            </div>
+                                            <small class="text-muted">Coeff: ${matiere.pivot.coefficient ?? 1}</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-7">
+                                    <div class="input-group">
+                                        <span class="input-group-text" style="background: linear-gradient(135deg, #f8f9fa, #e9ecef); border: 2px solid ${isManual ? '#ffc107' : (isCalculated ? '#0dcaf0' : '#dee2e6')}; border-right: none;">
+                                            <i class="fas fa-chart-line" style="color: ${isManual ? '#ffc107' : (isCalculated ? '#0dcaf0' : '#0d6efd')};"></i>
+                                        </span>
+                                        <input type="number" class="form-control" min="0" max="20" step="0.01"
+                                               name="student_${student.id}_matiere_${matiere.id}"
+                                               data-student-id="${student.id}"
+                                               data-matiere-id="${matiere.id}"
+                                               value="${moyenne}"
+                                               placeholder="0.00"
+                                               style="font-weight: 600; color: #495057; border: 2px solid ${isManual ? '#ffc107' : (isCalculated ? '#0dcaf0' : '#dee2e6')}; border-left: none; border-right: none;">
+                                        <span class="input-group-text" style="background: linear-gradient(135deg, #f8f9fa, #e9ecef); border: 2px solid ${isManual ? '#ffc107' : (isCalculated ? '#0dcaf0' : '#dee2e6')}; border-left: none;">/ 20</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    accordion.append(`
+                        <div class="accordion-item" style="
+                            border: 2px solid #e3f2fd;
+                            border-radius: 12px;
+                            margin-bottom: 1rem;
+                            overflow: hidden;
+                            box-shadow: 0 2px 8px rgba(13, 110, 253, 0.1);
+                        ">
+                            <h2 class="accordion-header" id="heading${index}">
+                                <button class="accordion-button ${index > 0 ? 'collapsed' : ''}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse${index}"
+                                        style="
+                                            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+                                            color: #0d6efd;
+                                            font-weight: 600;
+                                            font-size: 1rem;
+                                            padding: 1.25rem;
+                                            border: none;
+                                        ">
+                                    <div class="d-flex align-items-center gap-3 w-100">
+                                        <div style="
+                                            width: 45px;
+                                            height: 45px;
+                                            border-radius: 50%;
+                                            background: linear-gradient(135deg, #0d6efd, #0a58ca);
+                                            display: flex;
+                                            align-items: center;
+                                            justify-content: center;
+                                            color: white;
+                                            font-size: 1.25rem;
+                                        ">
+                                            <i class="fas fa-user-graduate"></i>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <div>${student.name}</div>
+                                            <small style="color: #6c757d; font-weight: 400;">Matricule: ${student.matricule}</small>
+                                        </div>
+                                    </div>
+                                </button>
+                            </h2>
+                            <div id="collapse${index}" class="accordion-collapse collapse ${index === 0 ? 'show' : ''}" data-bs-parent="#studentAccordion">
+                                <div class="accordion-body" style="padding: 1.5rem; background: white;">
+                                    ${matieresHtml}
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
-            `);
+                    `);
+                });
+
+                hideLoading();
+            },
+            error: function() {
+                hideLoading();
+                showToast('Erreur lors du chargement des moyennes', 'error');
+            }
         });
     }
 
@@ -490,33 +701,63 @@
         }
 
         $('#absencesStudentCount').text(selectedStudents.length);
+        showLoading();
 
-        // Populate absences table
-        const tbody = $('#absencesTableBody');
-        tbody.empty();
+        // Fetch existing absences for selected students
+        $.ajax({
+            url: '{{ route("esbtp.resultats.get-absences") }}',
+            method: 'GET',
+            data: {
+                classe_id: classeId,
+                annee_universitaire_id: anneeUniversitaireId,
+                semestre: semestre,
+                etudiant_ids: selectedStudents.map(s => s.id)
+            },
+            success: function(response) {
+                const tbody = $('#absencesTableBody');
+                tbody.empty();
 
-        selectedStudents.forEach(student => {
-            tbody.append(`
-                <tr>
-                    <td>${student.id}</td>
-                    <td>${student.name}</td>
-                    <td>
-                        <input type="number" class="form-control" min="0" step="0.5"
-                               name="absences_justifiees_${student.id}"
-                               data-student-id="${student.id}"
-                               placeholder="0">
-                    </td>
-                    <td>
-                        <input type="number" class="form-control" min="0" step="0.5"
-                               name="absences_non_justifiees_${student.id}"
-                               data-student-id="${student.id}"
-                               placeholder="0">
-                    </td>
-                </tr>
-            `);
+                selectedStudents.forEach(student => {
+                    const bulletin = response.bulletins.find(b => b.etudiant_id == student.id);
+                    const justifiees = bulletin ? bulletin.absences_justifiees : '';
+                    const nonJustifiees = bulletin ? bulletin.absences_non_justifiees : '';
+                    const isManual = bulletin ? bulletin.absences_type === 'manuel' : false;
+                    const isCalculated = bulletin ? bulletin.absences_type === 'calculé' : false;
+
+                    tbody.append(`
+                        <tr>
+                            <td><strong>${student.matricule}</strong></td>
+                            <td>
+                                ${student.name}
+                                ${isManual ? '<br><span class="badge bg-warning mt-1">Manuel</span>' : ''}
+                                ${isCalculated ? '<br><span class="badge bg-info mt-1">Calculé</span>' : ''}
+                            </td>
+                            <td>
+                                <input type="number" class="form-control" min="0" step="0.5"
+                                       name="absences_justifiees_${student.id}"
+                                       data-student-id="${student.id}"
+                                       value="${justifiees}"
+                                       placeholder="0">
+                            </td>
+                            <td>
+                                <input type="number" class="form-control" min="0" step="0.5"
+                                       name="absences_non_justifiees_${student.id}"
+                                       data-student-id="${student.id}"
+                                       value="${nonJustifiees}"
+                                       placeholder="0">
+                            </td>
+                        </tr>
+                    `);
+                });
+
+                hideLoading();
+                $('#modalEditAbsences').modal('show');
+            },
+            error: function() {
+                hideLoading();
+                showToast('Erreur lors du chargement des absences', 'error');
+            }
         });
-
-        $('#modalEditAbsences').modal('show');
     }
 
     function openMatieresModal() {

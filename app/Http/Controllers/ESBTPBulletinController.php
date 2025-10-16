@@ -3046,8 +3046,30 @@ class ESBTPBulletinController extends Controller
         // Get all enseignants for professeur assignment
         $enseignants = \App\Models\ESBTPEnseignantProfile::with('user')->actif()->get();
 
-        // Get all matieres for the class
-        $matieres = $classe->matieres;
+        // Get all matieres for the class based on filiere + niveau combination
+        $classeFiliereId = $classe->filiere_id;
+        $classeNiveauId = $classe->niveau_etude_id;
+
+        $matieres = ESBTPMatiere::with(['filieres:id,name,code', 'niveaux:id,name,code'])
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get()
+            ->filter(function (ESBTPMatiere $matiere) use ($classeFiliereId, $classeNiveauId) {
+                if (!$classeFiliereId || !$classeNiveauId) {
+                    return false;
+                }
+                return $matiere->filieres->pluck('id')->contains($classeFiliereId)
+                    && $matiere->niveaux->pluck('id')->contains($classeNiveauId);
+            })
+            ->values()
+            ->map(function (ESBTPMatiere $matiere) use ($classe) {
+                // Get coefficient from pivot table if exists, otherwise use default
+                $pivot = $classe->matieres()->where('matiere_id', $matiere->id)->first();
+                $matiere->pivot = (object)[
+                    'coefficient' => $pivot ? $pivot->pivot->coefficient : ($matiere->coefficient ?? $matiere->coefficient_default ?? 1)
+                ];
+                return $matiere;
+            });
 
         // Get existing resultats for this class/periode/annee
         $resultats = \App\Models\ESBTPResultat::where('classe_id', $classe_id)
@@ -3109,6 +3131,78 @@ class ESBTPBulletinController extends Controller
             'include_all_statuses',
             'kpis'
         ));
+    }
+
+    /**
+     * Récupérer les moyennes existantes pour les étudiants sélectionnés
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getMoyennes(Request $request)
+    {
+        $this->validate($request, [
+            'classe_id' => 'required|exists:esbtp_classes,id',
+            'matiere_id' => 'nullable|exists:esbtp_matieres,id',
+            'matiere_ids' => 'nullable|array',
+            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
+            'semestre' => 'nullable|in:1,2',
+            'etudiant_ids' => 'required|array'
+        ]);
+
+        $periode = $request->semestre ? 'semestre' . $request->semestre : null;
+
+        $query = ESBTPResultat::where('classe_id', $request->classe_id)
+            ->where('annee_universitaire_id', $request->annee_universitaire_id)
+            ->when($periode, function($query) use ($periode) {
+                return $query->where('periode', $periode);
+            })
+            ->whereIn('etudiant_id', $request->etudiant_ids);
+
+        // Handle single matiere_id or multiple matiere_ids
+        if ($request->has('matiere_id') && $request->matiere_id) {
+            $query->where('matiere_id', $request->matiere_id);
+        } elseif ($request->has('matiere_ids') && !empty($request->matiere_ids)) {
+            $query->whereIn('matiere_id', $request->matiere_ids);
+        }
+
+        $resultats = $query->get();
+
+        return response()->json([
+            'success' => true,
+            'resultats' => $resultats
+        ]);
+    }
+
+    /**
+     * Récupérer les absences existantes pour les étudiants sélectionnés
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getAbsences(Request $request)
+    {
+        $this->validate($request, [
+            'classe_id' => 'required|exists:esbtp_classes,id',
+            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
+            'semestre' => 'nullable|in:1,2',
+            'etudiant_ids' => 'required|array'
+        ]);
+
+        $periode = $request->semestre ? 'semestre' . $request->semestre : null;
+
+        $bulletins = ESBTPBulletin::where('classe_id', $request->classe_id)
+            ->where('annee_universitaire_id', $request->annee_universitaire_id)
+            ->when($periode, function($query) use ($periode) {
+                return $query->where('periode', $periode);
+            })
+            ->whereIn('etudiant_id', $request->etudiant_ids)
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'bulletins' => $bulletins
+        ]);
     }
 
     /**
@@ -3289,6 +3383,7 @@ class ESBTPBulletinController extends Controller
                         'absences_non_justifiees' => $nonJustifiees,
                         'total_absences' => $justifiees + $nonJustifiees,
                         'note_assiduite' => $noteAssiduite,
+                        'absences_type' => 'manuel',
                         'updated_by' => \Auth::id()
                     ]
                 );

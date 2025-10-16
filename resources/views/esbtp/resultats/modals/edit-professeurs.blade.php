@@ -21,25 +21,94 @@
 
                 <form id="formProfesseurs">
                     @foreach($matieres as $matiere)
-                        <div class="card mb-3" style="border: 1px solid #e5e7eb;">
-                            <div class="card-body">
+                        <div class="professeur-card mb-3" style="
+                            border: 2px solid #d1ecf1;
+                            border-radius: 12px;
+                            background: linear-gradient(135deg, #ffffff 0%, #d1ecf1 100%);
+                            transition: all 0.3s ease;
+                            box-shadow: 0 2px 8px rgba(23, 162, 184, 0.1);
+                        " onmouseover="this.style.borderColor='#17a2b8'; this.style.boxShadow='0 4px 12px rgba(23, 162, 184, 0.2)'" onmouseout="this.style.borderColor='#d1ecf1'; this.style.boxShadow='0 2px 8px rgba(23, 162, 184, 0.1)'">
+                            <div class="card-body" style="padding: 1.5rem;">
                                 <div class="row align-items-center">
-                                    <div class="col-md-5">
-                                        <h6 class="mb-1 fw-bold">{{ $matiere->name }}</h6>
-                                        <small class="text-muted">Code: {{ $matiere->code }} | Coeff: {{ $matiere->pivot->coefficient ?? 1 }}</small>
+                                    <div class="col-md-1 text-center">
+                                        <div style="
+                                            width: 50px;
+                                            height: 50px;
+                                            border-radius: 50%;
+                                            background: linear-gradient(135deg, #17a2b8, #138496);
+                                            display: flex;
+                                            align-items: center;
+                                            justify-content: center;
+                                            color: white;
+                                            font-weight: bold;
+                                            font-size: 1.2rem;
+                                            box-shadow: 0 3px 8px rgba(23, 162, 184, 0.3);
+                                        ">
+                                            <i class="fas fa-book-open"></i>
+                                        </div>
                                     </div>
-                                    <div class="col-md-7">
-                                        <select class="form-select" name="professeur_{{ $matiere->id }}" data-matiere-id="{{ $matiere->id }}">
-                                            <option value="">-- Sélectionner un enseignant --</option>
-                                            @foreach($enseignants as $enseignant)
-                                                <option value="{{ $enseignant->id }}">
-                                                    {{ $enseignant->user->name ?? 'Enseignant #' . $enseignant->id }}
-                                                    @if($enseignant->specialites_string)
-                                                        ({{ Str::limit($enseignant->specialites_string, 30) }})
-                                                    @endif
-                                                </option>
-                                            @endforeach
-                                        </select>
+                                    <div class="col-md-5">
+                                        <h5 class="mb-1 fw-bold" style="color: #0c5460; font-size: 1.05rem;">
+                                            {{ $matiere->name }}
+                                        </h5>
+                                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem;">
+                                            <span class="badge" style="
+                                                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                                padding: 0.35rem 0.7rem;
+                                                font-size: 0.75rem;
+                                                font-weight: 500;
+                                                border-radius: 6px;
+                                            ">
+                                                <i class="fas fa-hashtag me-1"></i>{{ $matiere->code }}
+                                            </span>
+                                            <span class="badge" style="
+                                                background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                                                padding: 0.35rem 0.7rem;
+                                                font-size: 0.75rem;
+                                                font-weight: 500;
+                                                border-radius: 6px;
+                                            ">
+                                                <i class="fas fa-balance-scale me-1"></i>Coeff: {{ $matiere->pivot->coefficient ?? 1 }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div style="
+                                            background: white;
+                                            border-radius: 10px;
+                                            padding: 0.5rem;
+                                            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+                                        ">
+                                            <label class="form-label mb-2 fw-semibold" style="
+                                                color: #17a2b8;
+                                                font-size: 0.8rem;
+                                                text-transform: uppercase;
+                                                letter-spacing: 0.5px;
+                                                margin-left: 0.5rem;
+                                            ">
+                                                <i class="fas fa-user-tie me-1"></i>Enseignant
+                                            </label>
+                                            <select class="form-select" name="professeur_{{ $matiere->id }}"
+                                                    data-matiere-id="{{ $matiere->id }}"
+                                                    style="
+                                                        border: 2px solid #bee5eb;
+                                                        font-weight: 500;
+                                                        color: #0c5460;
+                                                        transition: all 0.3s ease;
+                                                    "
+                                                    onfocus="this.style.borderColor='#17a2b8'; this.style.boxShadow='0 0 0 0.2rem rgba(23, 162, 184, 0.25)'"
+                                                    onblur="this.style.borderColor='#bee5eb'; this.style.boxShadow='none'">
+                                                <option value="">-- Sélectionner un enseignant --</option>
+                                                @foreach($enseignants as $enseignant)
+                                                    <option value="{{ $enseignant->id }}">
+                                                        {{ $enseignant->user->name ?? 'Enseignant #' . $enseignant->id }}
+                                                        @if($enseignant->specialites_string)
+                                                            - {{ Str::limit($enseignant->specialites_string, 25) }}
+                                                        @endif
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

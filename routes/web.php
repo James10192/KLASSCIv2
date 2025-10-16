@@ -578,6 +578,14 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->middleware(['permission:edit_bulletins']);
 
             // Routes AJAX pour édition groupée
+            Route::get('resultats/get-moyennes', [ESBTPBulletinController::class, 'getMoyennes'])
+                ->name('resultats.get-moyennes')
+                ->middleware(['permission:view_bulletins|view_own_bulletin']);
+
+            Route::get('resultats/get-absences', [ESBTPBulletinController::class, 'getAbsences'])
+                ->name('resultats.get-absences')
+                ->middleware(['permission:view_bulletins|view_own_bulletin']);
+
             Route::post('resultats/bulk-update-moyennes', [ESBTPBulletinController::class, 'bulkUpdateMoyennes'])
                 ->name('resultats.bulk-update-moyennes')
                 ->middleware(['permission:edit_bulletins']);
