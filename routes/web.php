@@ -243,8 +243,8 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
     // Routes pour les fonctionnalités ESBTP
     Route::prefix('esbtp')->name('esbtp.')->group(function () {
-        // Routes protégées pour les super-administrateurs, secrétaires et coordinateurs
-        Route::middleware(['auth', 'role:superAdmin|secretaire|coordinateur', 'paywall'])->group(function () {
+        // Routes protégées pour les super-administrateurs, secrétaires, coordinateurs et enseignants
+        Route::middleware(['auth', 'role:superAdmin|secretaire|coordinateur|enseignant', 'paywall'])->group(function () {
             // Routes pour les paiements
             Route::resource('payments', \App\Http\Controllers\ESBTP\PaymentController::class);
             Route::get('payments/{payment}/receipt', [\App\Http\Controllers\ESBTP\PaymentController::class, 'generateReceipt'])
