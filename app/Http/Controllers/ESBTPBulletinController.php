@@ -35,6 +35,7 @@ use App\Models\ESBTPCycle;
 use Carbon\Carbon;
 use App\Services\ESBTP\ESBTPAbsenceService;
 use App\Helpers\SettingsHelper;
+use Illuminate\Support\Collection;
 
 class ESBTPBulletinController extends Controller
 {
@@ -1361,6 +1362,71 @@ class ESBTPBulletinController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
+    public function resultatsClasses(Request $request)
+    {
+        $annee_universitaire_id = $request->get('annee_universitaire_id');
+
+        $annees_universitaires = ESBTPAnneeUniversitaire::orderBy('annee_debut', 'desc')->get();
+
+        // Récupérer l'année courante (is_current = true) pour les inscriptions
+        $currentAnnee = $annees_universitaires->firstWhere('is_current', true);
+
+        // Si aucune année n'est spécifiée pour le filtre, utiliser l'année courante
+        if (!$annee_universitaire_id && $currentAnnee) {
+            $annee_universitaire_id = $currentAnnee->id;
+        }
+
+        // Récupérer TOUTES les classes actives (peu importe leur année universitaire)
+        $classesQuery = ESBTPClasse::with(['filiere', 'niveau', 'anneeUniversitaire'])
+            ->where('is_active', true)
+            ->withCount(['inscriptions as actifs_count' => function ($query) use ($annee_universitaire_id) {
+                // Compter les étudiants avec inscription active pour l'année sélectionnée
+                $query->where('status', 'active')
+                      ->where('annee_universitaire_id', $annee_universitaire_id);
+            }]);
+
+        // NE PAS filtrer les classes par année universitaire, on les veut toutes
+        $classes = $classesQuery->orderBy('name')->get();
+
+        $totalClasses = $classes->count();
+        $totalFilieres = $classes->pluck('filiere.name')->filter()->unique()->count();
+        $totalNiveaux = $classes->pluck('niveau.name')->filter()->unique()->count();
+
+        // Total des étudiants actifs pour l'année sélectionnée (toutes classes confondues)
+        $totalEtudiants = $classes->sum('actifs_count');
+
+        // L'année sélectionnée pour le filtre des inscriptions
+        $selectedAnnee = $annee_universitaire_id
+            ? $annees_universitaires->firstWhere('id', $annee_universitaire_id)
+            : $currentAnnee;
+
+        // Si requête AJAX, retourner JSON
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('esbtp.resultats.partials.classes-grid', compact('classes', 'annee_universitaire_id'))->render(),
+                'kpis' => [
+                    'totalClasses' => $totalClasses,
+                    'totalFilieres' => $totalFilieres,
+                    'totalNiveaux' => $totalNiveaux,
+                    'totalEtudiants' => $totalEtudiants,
+                ],
+                'selectedAnnee' => $selectedAnnee,
+            ]);
+        }
+
+        return view('esbtp.resultats.classes', [
+            'classes' => $classes,
+            'annees_universitaires' => $annees_universitaires,
+            'annee_universitaire_id' => $annee_universitaire_id,
+            'totalClasses' => $totalClasses,
+            'totalFilieres' => $totalFilieres,
+            'totalNiveaux' => $totalNiveaux,
+            'totalEtudiants' => $totalEtudiants,
+            'currentAnnee' => $currentAnnee,
+            'selectedAnnee' => $selectedAnnee,
+        ]);
+    }
+
     public function resultats(Request $request)
     {
         $this->validate($request, [
@@ -1507,12 +1573,10 @@ class ESBTPBulletinController extends Controller
         try {
             // Get students query based on the same logic as resultats method
             $studentsQuery = $this->buildEtudiantsQuery($classe_id, $annee_universitaire_id, $include_all_statuses);
-            
-            // Calculate total before pagination
-            $total = $studentsQuery->count();
-            
-            // Apply pagination
-            $etudiants = $studentsQuery->skip(($page - 1) * $perPage)->take($perPage)->get();
+            $total = (clone $studentsQuery)->count();
+            $etudiants = (clone $studentsQuery)->skip(($page - 1) * $perPage)->take($perPage)->get();
+            $studentIds = (clone $studentsQuery)->pluck('id');
+            $kpis = $this->computeResultatsKpis($studentIds, $classe_id, $annee_universitaire_id, $semestre);
             
             // Calculate moyennes, rangs, etc. for these students
             $moyennes = [];
@@ -1584,7 +1648,8 @@ class ESBTPBulletinController extends Controller
                 'total' => $total,
                 'current_page' => (int)$page,
                 'has_more' => $hasMore,
-                'loaded_count' => $etudiants->count()
+                'loaded_count' => $etudiants->count(),
+                'kpis' => $kpis
             ]);
 
         } catch (\Exception $e) {
@@ -1599,6 +1664,99 @@ class ESBTPBulletinController extends Controller
                 'message' => $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Calcule les indicateurs clés affichés sur la page des résultats.
+     */
+    private function computeResultatsKpis(Collection $studentIds, $classe_id, $annee_universitaire_id, $semestre): array
+    {
+        $kpis = [
+            'total_etudiants' => $studentIds->count(),
+            'moyenne_generale' => null,
+            'taux_reussite' => null,
+            'bulletins_count' => 0,
+        ];
+
+        if ($studentIds->isEmpty()) {
+            return $kpis;
+        }
+
+        $moyennes = [];
+        $rangs = [];
+
+        $this->getPreCalculatedResults(
+            $studentIds->map(function ($id) {
+                return (object) ['id' => $id];
+            })->all(),
+            $classe_id,
+            $annee_universitaire_id,
+            $semestre,
+            $moyennes,
+            $rangs
+        );
+
+        if (empty($moyennes)) {
+            $students = ESBTPEtudiant::whereIn('id', $studentIds)->get();
+
+            if ($students->isNotEmpty()) {
+                $notesQuery = ESBTPNote::whereIn('etudiant_id', $studentIds)
+                    ->with(['evaluation', 'evaluation.classe', 'evaluation.matiere']);
+
+                if ($classe_id) {
+                    $notesQuery->whereHas('evaluation', function ($query) use ($classe_id) {
+                        $query->where('classe_id', $classe_id);
+                    });
+                }
+
+                if ($annee_universitaire_id) {
+                    $notesQuery->whereHas('evaluation', function ($query) use ($annee_universitaire_id) {
+                        $query->where('annee_universitaire_id', $annee_universitaire_id);
+                    });
+                }
+
+                if ($semestre) {
+                    $notesQuery->whereHas('evaluation', function ($query) use ($semestre) {
+                        $query->where('periode', 'like', 'semestre' . $semestre . '%');
+                    });
+                }
+
+                $notes = $notesQuery->get();
+
+                $this->calculateStudentStatsFixed($students, $notes, $moyennes, $rangs);
+            }
+        }
+
+        if (!empty($moyennes)) {
+            $values = array_values($moyennes);
+            $kpis['moyenne_generale'] = round(array_sum($values) / max(count($values), 1), 2);
+
+            $reussites = array_filter($values, function ($moyenne) {
+                return $moyenne >= 10;
+            });
+
+            $kpis['taux_reussite'] = count($values) > 0
+                ? round((count($reussites) / count($values)) * 100, 1)
+                : null;
+        }
+
+        $bulletinsQuery = ESBTPBulletin::whereIn('etudiant_id', $studentIds);
+
+        if ($classe_id) {
+            $bulletinsQuery->where('classe_id', $classe_id);
+        }
+
+        if ($annee_universitaire_id) {
+            $bulletinsQuery->where('annee_universitaire_id', $annee_universitaire_id);
+        }
+
+        if ($semestre) {
+            $bulletinsQuery->where('periode', 'semestre' . $semestre);
+        }
+
+        $kpis['bulletins_count'] = $bulletinsQuery->count();
+
+        return $kpis;
     }
 
     /**

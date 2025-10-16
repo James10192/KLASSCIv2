@@ -93,6 +93,9 @@
             </div>
             <div class="header-actions">
                 <input type="search" class="search-bar" placeholder="Rechercher un étudiant...">
+                <a href="{{ route('esbtp.resultats.classes') }}" class="btn-acasi secondary">
+                    <i class="fas fa-layer-group"></i>Sélectionner une classe
+                </a>
                 @can('edit_bulletins')
                     <a href="{{ route('esbtp.bulletins.configuration') }}" class="btn-acasi primary">
                         <i class="fas fa-cogs"></i>Configuration bulletins
@@ -108,7 +111,7 @@
         <div class="kpi-grid">
             <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
                 <div class="kpi-title" style="color: #000; font-weight: 600;">Total Étudiants</div>
-                <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ $totalEtudiants ?? 0 }}</div>
+                <div class="kpi-value" id="kpi-total-etudiants" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ $totalEtudiants ?? 0 }}</div>
                 <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
                     <i class="fas fa-users"></i>
                     Chargement via lazy loading
@@ -117,7 +120,7 @@
             
             <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
                 <div class="kpi-title" style="color: #000; font-weight: 600;">Moyenne Générale</div>
-                <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">
+                <div class="kpi-value" id="kpi-moyenne-generale" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">
                     @if(isset($moyennes) && count($moyennes) > 0)
                         {{ number_format(array_sum($moyennes) / count($moyennes), 1) }}
                     @else
@@ -132,7 +135,7 @@
             
             <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
                 <div class="kpi-title" style="color: #000; font-weight: 600;">Taux de Réussite</div>
-                <div class="kpi-value" style="color: #10b981; font-size: 2.5rem; font-weight: bold;">
+                <div class="kpi-value" id="kpi-taux-reussite" style="color: #10b981; font-size: 2.5rem; font-weight: bold;">
                     @if(isset($moyennes) && count($moyennes) > 0)
                         {{ number_format((count(array_filter($moyennes, function($m) { return $m >= 10; })) / count($moyennes)) * 100, 1) }}%
                     @else
@@ -147,7 +150,7 @@
             
             <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
                 <div class="kpi-title" style="color: #000; font-weight: 600;">Bulletins Générés</div>
-                <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ isset($bulletins) ? count($bulletins) : 0 }}</div>
+                <div class="kpi-value" id="kpi-bulletins" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ isset($bulletins) ? count($bulletins) : 0 }}</div>
                 <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
                     <i class="fas fa-file-alt"></i>
                     Bulletins disponibles
@@ -275,48 +278,45 @@
 
             <div class="main-card-body">
                 {{-- Nouveau système lazy loading --}}
-                @if(isset($classe_id) || isset($annee_universitaire_id))
-                    {{-- Spinner de chargement initial avec structure identique aux reinscriptions --}}
-                    <div class="resultats-spinner" id="initial-spinner">
-                        <div class="resultats-spinner-icon">
-                            <i class="fas fa-spinner"></i>
-                        </div>
-                        <div class="resultats-spinner-text">Chargement des résultats...</div>
+                <div class="resultats-spinner {{ (isset($classe_id) || isset($annee_universitaire_id)) ? '' : 'hidden' }}" id="initial-spinner">
+                    <div class="resultats-spinner-icon">
+                        <i class="fas fa-spinner"></i>
                     </div>
+                    <div class="resultats-spinner-text">Chargement des résultats...</div>
+                </div>
 
-                    {{-- Container pour le contenu lazy-loadé --}}
-                    <div class="content-container" id="results-container" style="display: none;">
-                        {{-- Le contenu sera injecté ici par JavaScript --}}
-                    </div>
+                {{-- Container pour le contenu lazy-loadé --}}
+                <div class="content-container" id="results-container" style="display: none;">
+                    {{-- Le contenu sera injecté ici par JavaScript --}}
+                </div>
 
-                    {{-- Message d'erreur en cas d'échec --}}
-                    <div class="error-state text-center py-5 hidden" id="error-state">
-                        <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
-                        <h5 class="text-muted">Erreur de chargement</h5>
-                        <p class="text-muted">Une erreur est survenue lors du chargement des résultats.</p>
-                        <button class="btn btn-primary" onclick="reloadResults()">
-                            <i class="fas fa-refresh me-1"></i>Réessayer
-                        </button>
-                    </div>
+                {{-- Message d'erreur en cas d'échec --}}
+                <div class="error-state text-center py-5 hidden" id="error-state">
+                    <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                    <h5 class="text-muted">Erreur de chargement</h5>
+                    <p class="text-muted">Une erreur est survenue lors du chargement des résultats.</p>
+                    <button class="btn btn-primary" onclick="reloadResults()">
+                        <i class="fas fa-refresh me-1"></i>Réessayer
+                    </button>
+                </div>
 
-                    {{-- Avertissement si aucune note --}}
-                    <div class="alert alert-warning mt-4" id="no-notes-warning" style="display: none;">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        <strong>Aucune note trouvée.</strong> Vérifiez que :
-                        <ul class="mb-0 mt-2">
-                            <li>Les évaluations sont bien créées pour cette période</li>
-                            <li>Les notes sont saisies et liées aux évaluations</li>
-                            <li>Les coefficients des évaluations sont > 0</li>
-                        </ul>
-                    </div>
-                @else
-                    {{-- État initial : sélection de critères --}}
-                    <div class="text-center py-5">
-                        <i class="fas fa-filter fa-3x text-muted mb-3"></i>
-                        <h5 class="text-muted">Sélectionnez vos critères</h5>
-                        <p class="text-muted">Veuillez sélectionner une classe, une année universitaire et une période pour afficher les résultats.</p>
-                    </div>
-                @endif
+                {{-- Avertissement si aucune note --}}
+                <div class="alert alert-warning mt-4" id="no-notes-warning" style="display: none;">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Aucune note trouvée.</strong> Vérifiez que :
+                    <ul class="mb-0 mt-2">
+                        <li>Les évaluations sont bien créées pour cette période</li>
+                        <li>Les notes sont saisies et liées aux évaluations</li>
+                        <li>Les coefficients des évaluations sont > 0</li>
+                    </ul>
+                </div>
+
+                {{-- État initial : sélection de critères --}}
+                <div class="text-center py-5 {{ (isset($classe_id) || isset($annee_universitaire_id)) ? 'd-none' : '' }}" id="initial-instructions">
+                    <i class="fas fa-filter fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">Sélectionnez vos critères</h5>
+                    <p class="text-muted">Veuillez sélectionner une classe, une année universitaire et une période pour afficher les résultats.</p>
+                </div>
             </div>
         </div>
     </div>
@@ -335,10 +335,43 @@ $(document).ready(function() {
         console.log('Select2 not available, skipping initialization');
     }
 
-    // Variables pour le lazy loading
+    const ajaxUrl = '{{ route("esbtp.resultats.load-etudiants") }}';
+    let currentFilters = {
+        classe_id: @json($classe_id ?? null),
+        annee_universitaire_id: @json($annee_universitaire_id ?? null),
+        semestre: @json($semestre ?? null),
+        include_all_statuses: @json(isset($include_all_statuses) ? (bool) $include_all_statuses : true)
+    };
     let currentPage = 1;
     let isLoading = false;
-    let totalLoadedStudents = 0; // Compteur du nombre total d'étudiants déjà chargés
+    let totalLoadedStudents = 0;
+
+    function shouldLoadResults() {
+        return Boolean(currentFilters.classe_id) || Boolean(currentFilters.annee_universitaire_id);
+    }
+
+    // Intercepter la soumission du formulaire de filtres pour AJAX
+    $('.filter-form').on('submit', function(e) {
+        e.preventDefault();
+
+        // Mettre à jour les filtres depuis le formulaire
+        currentFilters = {
+            classe_id: $('#classe_id').val() || null,
+            annee_universitaire_id: $('#annee_universitaire_id').val() || null,
+            semestre: $('#semestre').val() || null,
+            include_all_statuses: $('#include_all_statuses').is(':checked')
+        };
+
+        // Réinitialiser la pagination
+        currentPage = 1;
+        totalLoadedStudents = 0;
+
+        // Mettre à jour l'URL
+        updateQueryString();
+
+        // Charger les résultats
+        loadEtudiants(1, { reset: true });
+    });
 
     // Auto-select academic year when class is selected
     $('#classe_id').change(function() {
@@ -361,58 +394,134 @@ $(document).ready(function() {
         }
     });
 
-    // Fonction pour charger les étudiants (lazy loading)
-    function loadEtudiants(page = 1) {
-        if (isLoading) return;
-        
-        const classe_id = '{{ $classe_id ?? '' }}';
-        const semestre = '{{ $semestre ?? '' }}';
-        const annee_universitaire_id = '{{ $annee_universitaire_id ?? '' }}';
-        const include_all_statuses = {{ isset($include_all_statuses) && $include_all_statuses ? 'true' : 'false' }};
+    function showInitialSpinner() {
+        $('#error-state').addClass('hidden');
+        $('#no-notes-warning').hide();
+        $('#results-container').hide();
+        $('#initial-instructions').addClass('d-none');
+        $('#initial-spinner').removeClass('hidden');
+    }
 
-        // Si pas de critères suffisants, ne pas charger
-        if (!classe_id && !annee_universitaire_id) {
+    function hideInitialSpinner() {
+        $('#initial-spinner').addClass('hidden');
+    }
+
+    function updateKpis(kpis) {
+        if (!kpis) {
             return;
         }
 
-        // Réinitialiser le compteur pour la première page
-        if (page === 1) {
+        if (Object.prototype.hasOwnProperty.call(kpis, 'total_etudiants')) {
+            $('#kpi-total-etudiants').text(kpis.total_etudiants ?? 0);
+        }
+
+        if (Object.prototype.hasOwnProperty.call(kpis, 'moyenne_generale')) {
+            $('#kpi-moyenne-generale').text(kpis.moyenne_generale !== null ? kpis.moyenne_generale : 'N/A');
+        }
+
+        if (Object.prototype.hasOwnProperty.call(kpis, 'taux_reussite')) {
+            $('#kpi-taux-reussite').text(kpis.taux_reussite !== null ? kpis.taux_reussite + '%' : 'N/A');
+        }
+
+        if (Object.prototype.hasOwnProperty.call(kpis, 'bulletins_count')) {
+            $('#kpi-bulletins').text(kpis.bulletins_count ?? 0);
+        }
+    }
+
+    function updateQueryString() {
+        const params = new URLSearchParams();
+
+        if (currentFilters.classe_id) {
+            params.set('classe_id', currentFilters.classe_id);
+        }
+
+        if (currentFilters.annee_universitaire_id) {
+            params.set('annee_universitaire_id', currentFilters.annee_universitaire_id);
+        }
+
+        if (currentFilters.semestre) {
+            params.set('semestre', currentFilters.semestre);
+        }
+
+        if (currentFilters.include_all_statuses) {
+            params.set('include_all_statuses', 1);
+        }
+
+        const newUrl = params.toString()
+            ? `${window.location.pathname}?${params.toString()}`
+            : window.location.pathname;
+
+        window.history.replaceState({}, '', newUrl);
+    }
+
+    function showEmptyState() {
+        const emptyHtml = `
+            <div class="text-center py-5">
+                <div class="mb-3">
+                    <i class="fas fa-info-circle fa-3x text-muted"></i>
+                </div>
+                <h5 class="text-muted">Aucun étudiant trouvé</h5>
+                <p class="text-muted">Aucun étudiant ne correspond aux critères sélectionnés.</p>
+            </div>
+        `;
+        $('#results-container').html(emptyHtml).show();
+        $('#no-notes-warning').hide();
+        $('#error-state').addClass('hidden');
+    }
+
+    // Fonction pour charger les étudiants (lazy loading)
+    function loadEtudiants(page = 1, options = {}) {
+        if (isLoading) {
+            return;
+        }
+
+        const { reset = false } = options;
+
+        if (!shouldLoadResults()) {
+            hideInitialSpinner();
+            $('#results-container').hide().empty();
+            $('#error-state').addClass('hidden');
+            $('#no-notes-warning').hide();
+            $('#initial-instructions').removeClass('d-none');
+            updateKpis({
+                total_etudiants: 0,
+                moyenne_generale: null,
+                taux_reussite: null,
+                bulletins_count: 0
+            });
+            return;
+        }
+
+        $('#initial-instructions').addClass('d-none');
+
+        if (reset) {
+            currentPage = 1;
             totalLoadedStudents = 0;
+            showInitialSpinner();
         }
 
         isLoading = true;
-        
-        const ajaxUrl = '{{ route("esbtp.resultats.load-etudiants") }}';
-        
+
         $.ajax({
             url: ajaxUrl,
             method: 'GET',
             data: {
                 page: page,
                 per_page: 50,
-                classe_id: classe_id,
-                semestre: semestre,
-                annee_universitaire_id: annee_universitaire_id,
-                include_all_statuses: include_all_statuses
+                classe_id: currentFilters.classe_id,
+                semestre: currentFilters.semestre,
+                annee_universitaire_id: currentFilters.annee_universitaire_id,
+                include_all_statuses: currentFilters.include_all_statuses ? 1 : 0
             },
             success: function(response) {
                 // Masquer le spinner avec la même méthode que les reinscriptions
-                $('#initial-spinner').addClass('hidden');
+                hideInitialSpinner();
                 $('#error-state').addClass('hidden');
                 
                 if (page === 1) {
                     // Page 1: Remplacer tout le contenu
                     if (response.total === 0) {
-                        const emptyHtml = `
-                            <div class="text-center py-5">
-                                <div class="mb-3">
-                                    <i class="fas fa-info-circle fa-3x text-muted"></i>
-                                </div>
-                                <h5 class="text-muted">Aucun étudiant trouvé</h5>
-                                <p class="text-muted">Aucun étudiant ne correspond aux critères sélectionnés.</p>
-                            </div>
-                        `;
-                        $('#results-container').html(emptyHtml);
+                        showEmptyState();
                         totalLoadedStudents = 0;
                     } else {
                         $('#results-container').html(response.html);
@@ -432,6 +541,8 @@ $(document).ready(function() {
                     'width': '100% !important',
                     'visibility': 'visible !important'
                 });
+
+                updateKpis(response.kpis || null);
                 
                 // Mettre à jour le bouton "Charger plus"
                 updateLoadMoreButton(response);
@@ -440,8 +551,7 @@ $(document).ready(function() {
                 initializeEventHandlers();
                 
                 isLoading = false;
-                
-                console.log(`Page ${page} chargée: ${response.loaded_count} étudiants (${response.total} au total)`);
+                currentPage = response.current_page || page;
             },
             error: function(xhr, status, error) {
                 console.error('Erreur AJAX:', error);
@@ -457,8 +567,8 @@ $(document).ready(function() {
         $('#results-container .load-more-container').remove();
         
         if (response.has_more) {
-            const nextPage = response.current_page + 1;
-            const remainingStudents = response.total - totalLoadedStudents;
+            const nextPage = (response.current_page || currentPage) + 1;
+            const remainingStudents = Math.max(response.total - totalLoadedStudents, 0);
             const loadMoreHtml = `
                 <div class="load-more-container" style="text-align: center; margin: 20px 0;">
                     <button class="btn btn-primary" onclick="loadMore(${nextPage})" style="padding: 12px 24px; border-radius: 8px;">
@@ -472,24 +582,21 @@ $(document).ready(function() {
 
     // Fonction pour charger plus d'étudiants
     window.loadMore = function(nextPage) {
-        currentPage = nextPage;
         loadEtudiants(nextPage);
     };
 
     // Fonction pour afficher l'état d'erreur
     function showErrorState() {
-        $('#initial-spinner').addClass('hidden');
+        hideInitialSpinner();
         $('#results-container').hide();
+        $('#initial-instructions').addClass('d-none');
         $('#error-state').removeClass('hidden');
     }
 
     // Fonction pour recharger les résultats
     window.reloadResults = function() {
         $('#error-state').addClass('hidden');
-        $('#initial-spinner').removeClass('hidden');
-        currentPage = 1;
-        totalLoadedStudents = 0; // Réinitialiser le compteur
-        loadEtudiants(1);
+        loadEtudiants(1, { reset: true });
     };
 
     // Fonction pour initialiser les event handlers sur les nouveaux éléments
@@ -523,13 +630,23 @@ $(document).ready(function() {
 
     // Chargement initial automatique si des critères sont présents
     @if(isset($classe_id) || isset($annee_universitaire_id))
-        loadEtudiants(1);
+        loadEtudiants(1, { reset: true });
+    @else
+        hideInitialSpinner();
+        $('#initial-instructions').removeClass('d-none');
     @endif
 
     // Rechargement lors du changement des filtres
-    $('.filter-form').on('submit', function() {
-        // Le rechargement se fera via le submit normal du formulaire
-        // Le nouveau lazy loading s'activera sur la nouvelle page
+    $('.filter-form').on('submit', function(event) {
+        event.preventDefault();
+        currentFilters = {
+            classe_id: $('#classe_id').val() || null,
+            annee_universitaire_id: $('#annee_universitaire_id').val() || null,
+            semestre: $('#semestre').val() || null,
+            include_all_statuses: $('#include_all_statuses').is(':checked')
+        };
+        updateQueryString();
+        loadEtudiants(1, { reset: true });
     });
 });
 </script>

@@ -553,6 +553,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::get('resultats', [ESBTPBulletinController::class, 'resultats'])
                 ->name('resultats.index')
                 ->middleware(['permission:view_own_bulletin|view_bulletins']);
+            Route::get('resultats/classes', [ESBTPBulletinController::class, 'resultatsClasses'])
+                ->name('resultats.classes')
+                ->middleware(['permission:view_own_bulletin|view_bulletins']);
             Route::get('resultats/classe/{classe}', [ESBTPBulletinController::class, 'resultatClasse'])
                 ->name('resultats.classe')
                 ->middleware(['permission:view_own_bulletin|view_bulletins']);
