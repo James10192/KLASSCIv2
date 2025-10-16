@@ -34,15 +34,18 @@ class CheckRole
             return $next($request);
         }
 
-        // Vérifier pour les rôles multiples (ex: 'role:admin,editor')
-        $roles = explode(',', $role);
+        // Vérifier pour les rôles multiples (ex: 'role:admin,editor' ou 'role:admin|editor')
+        // Accepter à la fois les virgules ET les pipes comme séparateurs
+        $roles = preg_split('/[,|]/', $role);
         foreach ($roles as $singleRole) {
+            $singleRole = trim($singleRole); // Nettoyer les espaces
             if ($user->hasRole($singleRole)) {
                 return $next($request);
             }
         }
 
         // Si aucun des rôles requis n'est présent
-        abort(403, 'Accès non autorisé. Rôle de ' . ucfirst($roles[0]) . ' requis.');
+        $rolesString = implode(', ', array_map('ucfirst', $roles));
+        abort(403, 'Accès non autorisé. Rôle requis: ' . $rolesString);
     }
 }
