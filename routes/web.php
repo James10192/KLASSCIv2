@@ -198,7 +198,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         Route::get('/dashboard/etudiant', [DashboardController::class, 'etudiant'])->name('dashboard.etudiant');
     });
 
-    Route::middleware(['role:enseignant'])->group(function () {
+    Route::middleware(['role:enseignant|teacher'])->group(function () {
         Route::get('/dashboard/teacher', [TeacherDashboardController::class, 'index'])->name('teacher.dashboard');
         Route::get('/dashboard/teacher/timetable', [TeacherDashboardController::class, 'showTimetable'])->name('teacher.timetable');
         Route::get('/dashboard/teacher/grades', [TeacherDashboardController::class, 'showGrades'])->name('teacher.grades');
@@ -244,7 +244,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     // Routes pour les fonctionnalités ESBTP
     Route::prefix('esbtp')->name('esbtp.')->group(function () {
         // Routes protégées pour les super-administrateurs, secrétaires, coordinateurs et enseignants
-        Route::middleware(['auth', 'role:superAdmin|secretaire|coordinateur|enseignant', 'paywall'])->group(function () {
+        Route::middleware(['auth', 'role:superAdmin|secretaire|coordinateur|enseignant|teacher', 'paywall'])->group(function () {
             // Routes pour les paiements
             Route::resource('payments', \App\Http\Controllers\ESBTP\PaymentController::class);
             Route::get('payments/{payment}/receipt', [\App\Http\Controllers\ESBTP\PaymentController::class, 'generateReceipt'])
