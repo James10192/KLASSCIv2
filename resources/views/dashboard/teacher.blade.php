@@ -504,6 +504,10 @@
             <h2 class="section-title">Actions rapides</h2>
         </div>
         <div class="quick-actions-grid">
+            <a href="{{ route('teacher.profile') }}" class="quick-action-card">
+                <i class="fas fa-user-circle"></i>
+                <span>Mon Profil</span>
+            </a>
             <a href="{{ route('teacher.timetable') }}" class="quick-action-card">
                 <i class="fas fa-calendar-alt"></i>
                 <span>Mon emploi du temps</span>
@@ -519,6 +523,10 @@
             <a href="{{ route('teacher.availability') }}" class="quick-action-card">
                 <i class="fas fa-calendar-check"></i>
                 <span>Mes disponibilités</span>
+            </a>
+            <a href="{{ route('esbtp.annonces.index') }}" class="quick-action-card">
+                <i class="fas fa-bullhorn"></i>
+                <span>Annonces</span>
             </a>
         </div>
     </div>
