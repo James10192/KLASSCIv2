@@ -615,7 +615,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
             // Routes pour les annonces
             Route::resource('annonces', ESBTPAnnonceController::class)
-                ->middleware(['permission:send_messages']);
+                ->middleware(['permission:view_annonces|create_annonces|edit_annonces']);
 
 
             // Routes pour les présences/absences (esbtp namespace)
@@ -1850,23 +1850,7 @@ Route::middleware(['auth', 'role:coordinateur'])->prefix('esbtp')->name('esbtp.'
             ->middleware('permission:view_notes');
     });
     
-    // Routes pour les annonces
-    Route::prefix('annonces')->name('annonces.')->group(function () {
-        Route::get('/', [\App\Http\Controllers\ESBTPAnnonceController::class, 'index'])->name('index')
-            ->middleware('permission:view_annonces');
-        Route::get('/create', [\App\Http\Controllers\ESBTPAnnonceController::class, 'create'])->name('create')
-            ->middleware('permission:create_annonces');
-        Route::post('/', [\App\Http\Controllers\ESBTPAnnonceController::class, 'store'])->name('store')
-            ->middleware('permission:create_annonces');
-        Route::get('/{annonce}', [\App\Http\Controllers\ESBTPAnnonceController::class, 'show'])->name('show')
-            ->middleware('permission:view_annonces');
-        Route::get('/{annonce}/edit', [\App\Http\Controllers\ESBTPAnnonceController::class, 'edit'])->name('edit')
-            ->middleware('permission:edit_annonces');
-        Route::put('/{annonce}', [\App\Http\Controllers\ESBTPAnnonceController::class, 'update'])->name('update')
-            ->middleware('permission:edit_annonces');
-        Route::delete('/{annonce}', [\App\Http\Controllers\ESBTPAnnonceController::class, 'destroy'])->name('destroy')
-            ->middleware('permission:edit_annonces');
-    });
+    // Routes pour les annonces - REMOVED (déjà définies ligne 617 dans le groupe esbtp)
     
     // Routes pour l'emploi du temps (déjà accessible via permissions existantes)
     Route::get('/emploi-temps', [\App\Http\Controllers\ESBTPEmploiTempsController::class, 'index'])->name('emploi-temps.index')
