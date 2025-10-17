@@ -519,4 +519,118 @@ class ESBTPTeacherAttendanceController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Update teacher attendance status (mark as absent/present manually)
+     * Pour coordinateurs qui veulent marquer un enseignant absent directement
+     */
+    public function updateStatus(Request $request, $seanceId)
+    {
+        \Log::info('🔵 START updateStatus', [
+            'seance_id' => $seanceId,
+            'status' => $request->status,
+            'user' => auth()->id()
+        ]);
+
+        $request->validate([
+            'status' => 'required|in:present,absent,late',
+            'type' => 'nullable|in:start,end',
+            'notes' => 'nullable|string'
+        ]);
+
+        try {
+            $seanceCours = ESBTPSeanceCours::with(['teacher', 'matiere', 'emploiTemps.classe'])->findOrFail($seanceId);
+            $type = $request->type ?? 'start'; // Par défaut début
+
+            // Chercher un émargement existant
+            $attendance = ESBTPTeacherAttendance::where('course_id', $seanceId)
+                ->whereDate('date', today())
+                ->where('type', $type)
+                ->first();
+
+            if ($attendance) {
+                // Mettre à jour l'existant
+                $attendance->update([
+                    'status' => $request->status,
+                    'notes' => $request->notes,
+                    'updated_by' => auth()->id()
+                ]);
+                \Log::info('✅ Attendance updated', ['id' => $attendance->id]);
+            } else {
+                // Créer un nouvel émargement (marquage manuel par coordinateur)
+                $attendance = ESBTPTeacherAttendance::create([
+                    'teacher_id' => $seanceCours->teacher_id,
+                    'course_id' => $seanceId,
+                    'date' => today(),
+                    'type' => $type,
+                    'status' => $request->status,
+                    'notes' => $request->notes ?? 'Marqué manuellement par ' . auth()->user()->name,
+                    'validated_at' => now(),
+                    'created_by' => auth()->id()
+                ]);
+                \Log::info('✅ Attendance created', ['id' => $attendance->id]);
+
+                // Mettre à jour le workflow si nécessaire
+                $workflow = \App\Models\ESBTPSessionWorkflow::firstOrCreate(
+                    ['seance_cours_id' => $seanceId, 'teacher_id' => $seanceCours->teacher->user_id ?? $seanceCours->teacher_id],
+                    ['current_step' => 'attendance']
+                );
+
+                if ($type === 'start' && $request->status !== 'absent') {
+                    $workflow->markAttendanceStartSigned();
+                } elseif ($type === 'end' && $request->status !== 'absent') {
+                    $workflow->markAttendanceEndSigned();
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Statut mis à jour avec succès'
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('❌ ERROR updateStatus', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Refresh single seance row (pour AJAX après update status)
+     * Similaire au pattern de paiements.refresh-ligne
+     */
+    public function refreshSeanceLigne($seanceId)
+    {
+        \Log::info('🔄 Refresh seance ligne', ['seance_id' => $seanceId]);
+
+        try {
+            $seance = ESBTPSeanceCours::with(['teacher.user', 'matiere', 'emploiTemps.classe', 'teacherAttendances'])
+                ->findOrFail($seanceId);
+
+            // Render la ligne HTML
+            $html = view('esbtp.teacher-attendance.partials.seance-row', compact('seance'))->render();
+
+            return response()->json([
+                'success' => true,
+                'html' => $html,
+                'seance_id' => $seanceId
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('❌ ERROR refreshSeanceLigne', [
+                'message' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
