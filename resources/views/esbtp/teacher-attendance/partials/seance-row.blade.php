@@ -100,7 +100,7 @@
             </div>
 
             <!-- Boutons d'action rapide (pour coordinateur/admin) -->
-            @if(auth()->user()->hasRole(['superAdmin', 'coordinateur']))
+            {{-- DEBUG: Temporairement sans restriction de rôle --}}
             <div class="seance-quick-actions d-flex gap-1 mt-1">
                 @if($attendanceStatus !== 'present')
                 <button type="button"
@@ -124,7 +124,6 @@
                 </button>
                 @endif
             </div>
-            @endif
 
             <!-- Spinner de chargement -->
             <div class="seance-actions-spinner d-none">

@@ -363,7 +363,7 @@
 </div>
 @endsection
 
-@section('scripts')
+@push('scripts')
 <style>
 /* Animation travelling light pour les lignes de séance */
 tr[data-seance-id] {
@@ -672,7 +672,9 @@ tr[data-seance-id].is-loading {
 
         // Event delegation pour les boutons mark-status
         document.addEventListener('click', function(e) {
+            console.log('🖱️ Click détecté sur:', e.target);
             const btn = e.target.closest('.mark-status-btn');
+            console.log('🔍 Bouton trouvé:', btn);
             if (!btn) return;
 
             e.preventDefault();
@@ -735,4 +737,4 @@ tr[data-seance-id].is-loading {
     });
 })();
 </script>
-@endsection
+@endpush
