@@ -227,122 +227,8 @@
                                 </tr>
                             </thead>
                             <tbody>
-@foreach($seances as $seance)
-    @php
-        // Récupérer l'émargement pour cette séance (s'il existe)
-        $attendance = $seance->teacherAttendances
-            ->first(function($attendance) use ($seance) {
-                $attendanceDate = $attendance->date instanceof \Carbon\Carbon
-                    ? $attendance->date
-                    : \Carbon\Carbon::parse($attendance->date);
-                return $attendanceDate->isSameDay(\Carbon\Carbon::parse($seance->date_seance));
-            }) ?? $seance->teacherAttendances->sortByDesc('created_at')->first();
-        $hasAttendance = $attendance !== null;
-        $attendanceStatus = $hasAttendance ? $attendance->status : 'not_signed';
-    @endphp
-                                    <tr>
-                                        <td>
-                                            <div class="d-flex align-items-center">
-                                                <div class="user-avatar me-2">
-                                                    <i class="fas fa-user-tie"></i>
-                                                </div>
-                                                <div>
-                                                    <div class="fw-semibold">{{ $seance->teacher?->user?->name ?? 'N/A' }}</div>
-                                                    <small class="text-muted">{{ $seance->teacher?->user?->email ?? '' }}</small>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div class="d-flex align-items-center">
-                                                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 25px; height: 25px; flex-shrink: 0;">
-                                                    <i class="fas fa-book" style="font-size: 10px;"></i>
-                                                </div>
-                                                <span class="fw-semibold">{{ $seance->matiere?->name ?? 'N/A' }}</span>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-light text-dark border">
-                                                {{ $seance->emploiTemps?->classe?->name ?? 'N/A' }}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div class="small">
-                                                <div><i class="fas fa-clock text-muted me-1"></i>
-                                                    {{ $seance->heure_debut ? \Carbon\Carbon::parse($seance->heure_debut)->format('H:i') : 'N/A' }} - 
-                                                    {{ $seance->heure_fin ? \Carbon\Carbon::parse($seance->heure_fin)->format('H:i') : 'N/A' }}
-                                                </div>
-                                                @if($seance->salle)
-                                                    <div><i class="fas fa-door-open text-muted me-1"></i>{{ $seance->salle }}</div>
-                                                @endif
-                                                <div><i class="fas fa-calendar text-muted me-1"></i>
-                                                    {{ $seance->getDateCompleteFormattee() }}
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            @if($hasAttendance)
-                                                <div class="small">
-                                                    <div>{{ $attendance->validated_at?->format('d/m/Y') ?? $attendance->created_at?->format('d/m/Y') }}</div>
-                                                    <div class="text-muted">{{ $attendance->validated_at?->format('H:i') ?? $attendance->created_at?->format('H:i') }}</div>
-                                                </div>
-                                            @else
-                                                <div class="small text-muted">
-                                                    <div>Pas d'émargement</div>
-                                                </div>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            @if($seance->emploiTemps?->is_active)
-                                                <span class="badge bg-success">
-                                                    <i class="fas fa-check me-1"></i>Actif
-                                                </span>
-                                            @else
-                                                <span class="badge bg-secondary">
-                                                    <i class="fas fa-pause me-1"></i>Inactif
-                                                </span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            @if($attendanceStatus === 'present')
-                                                <span class="badge bg-success">
-                                                    <i class="fas fa-check me-1"></i>Présent
-                                                </span>
-                                            @elseif($attendanceStatus === 'late')
-                                                <span class="badge bg-warning">
-                                                    <i class="fas fa-clock me-1"></i>En retard
-                                                </span>
-                                            @elseif($attendanceStatus === 'absent')
-                                                <span class="badge bg-danger">
-                                                    <i class="fas fa-user-times me-1"></i>Absent
-                                                </span>
-                                            @elseif($attendanceStatus === 'not_signed')
-                                                <span class="badge bg-danger">
-                                                    <i class="fas fa-times me-1"></i>Non émargé
-                                                </span>
-                                            @else
-                                                <span class="badge bg-secondary">
-                                                    <i class="fas fa-question me-1"></i>{{ ucfirst($attendanceStatus) }}
-                                                </span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            <div class="btn-group btn-group-sm">
-                                                @if($hasAttendance)
-                                                    <button type="button" class="btn btn-outline-primary btn-sm" 
-                                                            data-bs-toggle="modal" 
-                                                            data-bs-target="#detailModal{{ $seance->id }}"
-                                                            title="Voir détails émargement">
-                                                        <i class="fas fa-eye"></i>
-                                                    </button>
-                                                @endif
-                                                <a href="{{ route('esbtp.seances-cours.show', $seance->id) }}" 
-                                                   class="btn btn-outline-info btn-sm" 
-                                                   title="Voir la séance">
-                                                    <i class="fas fa-calendar-day"></i>
-                                                </a>
-                                            </div>
-                                        </td>
-                                    </tr>
+                                @foreach($seances as $seance)
+                                    @include('esbtp.teacher-attendance.partials.seance-row', ['seance' => $seance])
                                 @endforeach
                             </tbody>
                         </table>
@@ -478,22 +364,375 @@
 @endsection
 
 @section('scripts')
+<style>
+/* Animation travelling light pour les lignes de séance */
+tr[data-seance-id] {
+    position: relative;
+    overflow: hidden;
+}
+
+tr[data-seance-id].is-loading {
+    opacity: 0.85;
+}
+
+.seance-actions-wrapper {
+    position: relative;
+}
+
+.seance-actions-wrapper.is-loading .seance-status-badges,
+.seance-actions-wrapper.is-loading .seance-quick-actions {
+    display: none !important;
+}
+
+.seance-actions-wrapper.is-loading .seance-actions-spinner {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Travelling light effect */
+.seance-row-highlight {
+    position: absolute;
+    top: 0;
+    left: -80%;
+    width: 160%;
+    height: 100%;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-65%) skewX(-12deg);
+    background: linear-gradient(90deg, rgba(40, 167, 69, 0) 0%, rgba(40, 167, 69, 0.75) 50%, rgba(40, 167, 69, 0) 100%);
+    transition: opacity 0.2s ease;
+    z-index: 5;
+}
+
+.seance-row-highlight.absent {
+    background: linear-gradient(90deg, rgba(220, 53, 69, 0) 0%, rgba(220, 53, 69, 0.75) 50%, rgba(220, 53, 69, 0) 100%);
+}
+
+.seance-row-highlight.animate {
+    animation: seance-row-highlight-move 3.2s ease-out forwards;
+}
+
+.seance-row-flash {
+    animation: seance-row-flash 0.8s ease-in-out;
+}
+
+@keyframes seance-row-highlight-move {
+    0% {
+        opacity: 0;
+        transform: translateX(-65%) skewX(-12deg);
+    }
+    18% {
+        opacity: 0.92;
+    }
+    55% {
+        opacity: 0.72;
+    }
+    100% {
+        opacity: 0;
+        transform: translateX(115%) skewX(-12deg);
+    }
+}
+
+@keyframes seance-row-flash {
+    0% {
+        background-color: transparent;
+    }
+    25% {
+        background-color: rgba(40, 167, 69, 0.12);
+    }
+    100% {
+        background-color: transparent;
+    }
+}
+
+.seance-row-flash.absent {
+    animation-name: seance-row-flash-absent;
+}
+
+@keyframes seance-row-flash-absent {
+    0% {
+        background-color: transparent;
+    }
+    25% {
+        background-color: rgba(220, 53, 69, 0.12);
+    }
+    100% {
+        background-color: transparent;
+    }
+}
+</style>
+
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Auto-submit form when filters change (optional)
-    const filterSelects = document.querySelectorAll('.filter-form select, .filter-form input[type="date"]');
-    filterSelects.forEach(select => {
-        select.addEventListener('change', function() {
-            // Uncomment to enable auto-submit
-            // this.form.submit();
+(function() {
+    const SEANCE_HIGHLIGHT_DURATION = 3200;
+    const SEANCE_STATUS_PASS_RATIO = 0.8;
+
+    /**
+     * Met à jour l'état de chargement d'une ligne de séance
+     */
+    function setSeanceRowLoadingState(seanceId, isLoading) {
+        const row = document.querySelector(`tr[data-seance-id="${seanceId}"]`);
+        if (!row) return;
+
+        const actionsWrapper = row.querySelector('.seance-actions-wrapper');
+        if (actionsWrapper) {
+            actionsWrapper.classList.toggle('is-loading', Boolean(isLoading));
+        }
+        row.classList.toggle('is-loading', Boolean(isLoading));
+    }
+
+    /**
+     * Déclenche l'animation travelling light sur une ligne de séance
+     */
+    function triggerSeanceRowHighlight(row, actionType, options = {}) {
+        if (!row) return;
+
+        const { onStatusPassed } = options;
+
+        row.classList.remove('seance-row-flash', 'absent');
+        void row.offsetWidth; // Force reflow
+
+        const highlight = document.createElement('div');
+        highlight.className = 'seance-row-highlight';
+        if (actionType === 'absent') {
+            highlight.classList.add('absent');
+        }
+
+        row.appendChild(highlight);
+
+        requestAnimationFrame(() => {
+            highlight.classList.add('animate');
         });
+
+        if (typeof onStatusPassed === 'function') {
+            setTimeout(() => {
+                onStatusPassed(highlight);
+            }, SEANCE_HIGHLIGHT_DURATION * SEANCE_STATUS_PASS_RATIO);
+        }
+
+        const cleanup = () => {
+            highlight.removeEventListener('animationend', cleanup);
+            highlight.remove();
+        };
+
+        highlight.addEventListener('animationend', cleanup);
+
+        row.classList.add('seance-row-flash');
+        if (actionType === 'absent') {
+            row.classList.add('absent');
+        }
+
+        setTimeout(() => {
+            row.classList.remove('seance-row-flash', 'absent');
+        }, 1200);
+    }
+
+    /**
+     * Rafraîchit une ligne de séance après update statut
+     */
+    window.refreshSeanceLigne = function(seanceId, actionType = 'present') {
+        console.log('🔄 Refresh ligne séance:', seanceId, 'action:', actionType);
+
+        const refreshUrl = `{{ url('/esbtp/teacher-attendance/seance') }}/${seanceId}/refresh-ligne`;
+        const existingRow = document.querySelector(`tr[data-seance-id="${seanceId}"]`);
+
+        setSeanceRowLoadingState(seanceId, true);
+
+        fetch(refreshUrl, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (!data.success || !data.html) {
+                throw new Error(data.message || 'Réponse serveur invalide');
+            }
+
+            const template = document.createElement('template');
+            template.innerHTML = data.html.trim();
+
+            let rowFragment = template.content.querySelector(`tr[data-seance-id="${seanceId}"]`);
+            if (!rowFragment) {
+                rowFragment = template.content.querySelector('tr[data-seance-id]');
+            }
+
+            if (!rowFragment) {
+                throw new Error('HTML retourné sans ligne de séance valide');
+            }
+
+            const newRow = rowFragment.cloneNode(true);
+            const clonedCells = Array.from(newRow.children).map(cell => cell.cloneNode(true));
+
+            if (!existingRow || !existingRow.parentNode) {
+                const tbody = document.querySelector('tbody');
+                if (tbody) {
+                    tbody.appendChild(newRow);
+                }
+                setSeanceRowLoadingState(seanceId, false);
+                triggerSeanceRowHighlight(newRow, actionType);
+                console.log('🎉 Ligne rafraîchie (nouvelle ligne ajoutée):', seanceId);
+                return;
+            }
+
+            let contentUpdated = false;
+
+            const applyUpdatedContent = (highlightEl = null) => {
+                if (contentUpdated) return;
+                contentUpdated = true;
+
+                const highlightNode = highlightEl && highlightEl instanceof Node ? highlightEl : existingRow.querySelector('.seance-row-highlight');
+                const existingCells = Array.from(existingRow.children).filter(child => child !== highlightNode);
+
+                existingCells.forEach((cell, index) => {
+                    const replacement = clonedCells[index];
+                    if (replacement) {
+                        cell.replaceWith(replacement);
+                    } else {
+                        cell.remove();
+                    }
+                });
+
+                const extraCells = clonedCells.slice(existingCells.length);
+                if (extraCells.length > 0) {
+                    const fragment = document.createDocumentFragment();
+                    extraCells.forEach(node => fragment.appendChild(node));
+
+                    if (highlightNode && highlightNode.parentNode) {
+                        highlightNode.parentNode.insertBefore(fragment, highlightNode);
+                    } else {
+                        existingRow.appendChild(fragment);
+                    }
+                }
+
+                if (highlightNode && highlightNode.parentNode !== existingRow) {
+                    existingRow.appendChild(highlightNode);
+                }
+
+                setSeanceRowLoadingState(seanceId, false);
+
+                existingRow.classList.add('seance-row-flash');
+                if (actionType === 'absent') {
+                    existingRow.classList.add('absent');
+                }
+                setTimeout(() => {
+                    existingRow.classList.remove('seance-row-flash', 'absent');
+                }, 1200);
+            };
+
+            triggerSeanceRowHighlight(existingRow, actionType, {
+                onStatusPassed: (highlightEl) => {
+                    applyUpdatedContent(highlightEl);
+                }
+            });
+
+            // Fallback
+            setTimeout(() => {
+                if (!contentUpdated) {
+                    applyUpdatedContent();
+                }
+            }, SEANCE_HIGHLIGHT_DURATION + 100);
+
+            console.log('🎉 Ligne rafraîchie avec succès:', seanceId);
+        })
+        .catch(error => {
+            console.error('❌ Erreur refresh ligne:', error);
+            setSeanceRowLoadingState(seanceId, false);
+            alert('Erreur lors de la mise à jour: ' + error.message);
+        });
+    };
+
+    /**
+     * Initialisation au chargement
+     */
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('✅ Scripts séances initialisés');
+
+        // Auto-submit form when filters change (optional)
+        const filterSelects = document.querySelectorAll('.filter-form select, .filter-form input[type="date"]');
+        filterSelects.forEach(select => {
+            select.addEventListener('change', function() {
+                // Uncomment to enable auto-submit
+                // this.form.submit();
+            });
+        });
+
+        // Initialize tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+
+        // Event delegation pour les boutons mark-status
+        document.addEventListener('click', function(e) {
+            const btn = e.target.closest('.mark-status-btn');
+            if (!btn) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            const seanceId = btn.getAttribute('data-seance-id');
+            const status = btn.getAttribute('data-status');
+            const type = btn.getAttribute('data-type') || 'start';
+
+            if (!seanceId || !status) {
+                console.error('❌ Pas de seance ID ou status sur le bouton');
+                return;
+            }
+
+            const actionLabel = status === 'present' ? 'présent' : 'absent';
+            if (!confirm(`Êtes-vous sûr de vouloir marquer cet enseignant ${actionLabel} ?`)) {
+                return;
+            }
+
+            console.log('🔄 Marquage statut:', { seanceId, status, type });
+
+            setSeanceRowLoadingState(seanceId, true);
+
+            const updateUrl = `{{ url('/esbtp/teacher-attendance/seance') }}/${seanceId}/update-status`;
+
+            fetch(updateUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ status, type })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('📦 Réponse serveur:', data);
+                if (data.success) {
+                    console.log('✅ Statut mis à jour, refresh ligne');
+                    // Rafraîchir la ligne avec animation
+                    window.refreshSeanceLigne(seanceId, status === 'absent' ? 'absent' : 'present');
+                } else {
+                    setSeanceRowLoadingState(seanceId, false);
+                    alert('Erreur: ' + (data.message || 'Erreur inconnue'));
+                }
+            })
+            .catch(error => {
+                console.error('❌ Erreur update statut:', error);
+                setSeanceRowLoadingState(seanceId, false);
+                alert('Erreur lors de la mise à jour: ' + error.message);
+            });
+        }, true); // Capture phase
+
+        console.log('✅ Event listeners installés');
     });
-    
-    // Initialize tooltips
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
-});
+})();
 </script>
 @endsection
