@@ -352,6 +352,23 @@
             z-index: 5;
             pointer-events: none;
         }
+
+        .password-toggle {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--gray-400);
+            font-size: 1.1rem;
+            cursor: pointer;
+            z-index: 5;
+            transition: color 0.2s;
+            padding: 0.5rem;
+        }
+
+        .password-toggle:hover {
+            color: var(--klassci-blue);
+        }
         
         .form-check {
             display: flex;
@@ -646,15 +663,17 @@
                     <label for="password" class="form-label">Mot de passe</label>
                     <div class="position-relative">
                         <i class="fas fa-lock input-icon"></i>
-                        <input 
-                            id="password" 
-                            type="password" 
-                            class="form-control @error('password') is-invalid @enderror" 
-                            name="password" 
-                            required 
-                            autocomplete="current-password" 
+                        <input
+                            id="password"
+                            type="password"
+                            class="form-control @error('password') is-invalid @enderror"
+                            name="password"
+                            required
+                            autocomplete="current-password"
                             placeholder="Entrez votre mot de passe"
+                            style="padding-right: 3rem;"
                         >
+                        <i class="fas fa-eye password-toggle" id="togglePassword" title="Afficher le mot de passe"></i>
                         @error('password')
                             <div class="invalid-feedback">
                                 <strong>{{ $message }}</strong>
@@ -696,5 +715,31 @@
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Toggle password visibility
+        document.addEventListener('DOMContentLoaded', function() {
+            const togglePassword = document.getElementById('togglePassword');
+            const passwordInput = document.getElementById('password');
+
+            if (togglePassword && passwordInput) {
+                togglePassword.addEventListener('click', function() {
+                    // Toggle the type attribute
+                    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                    passwordInput.setAttribute('type', type);
+
+                    // Toggle the icon
+                    if (type === 'password') {
+                        this.classList.remove('fa-eye-slash');
+                        this.classList.add('fa-eye');
+                        this.setAttribute('title', 'Afficher le mot de passe');
+                    } else {
+                        this.classList.remove('fa-eye');
+                        this.classList.add('fa-eye-slash');
+                        this.setAttribute('title', 'Masquer le mot de passe');
+                    }
+                });
+            }
+        });
+    </script>
 </body>
 </html>

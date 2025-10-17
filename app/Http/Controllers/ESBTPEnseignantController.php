@@ -830,11 +830,93 @@ class ESBTPEnseignantController extends Controller
 
         } catch (\Exception $e) {
             DB::rollback();
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la mise à jour: ' . $e->getMessage()
             ], 500);
+        }
+    }
+
+    /**
+     * Reset teacher password to default (Bonjour@2025) and force change on first login
+     */
+    public function resetPassword(Request $request, ESBTPTeacher $enseignant)
+    {
+        try {
+            if (!$enseignant->user_id) {
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Cet enseignant n\'a pas de compte utilisateur.'
+                    ], 400);
+                }
+                return redirect()
+                    ->back()
+                    ->with('error', 'Cet enseignant n\'a pas de compte utilisateur.');
+            }
+
+            $user = User::find($enseignant->user_id);
+            if (!$user) {
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Compte utilisateur introuvable.'
+                    ], 404);
+                }
+                return redirect()
+                    ->back()
+                    ->with('error', 'Compte utilisateur introuvable.');
+            }
+
+            // Mot de passe par défaut
+            $defaultPassword = 'Bonjour@2025';
+
+            // Mettre à jour le mot de passe et forcer le changement à la première connexion
+            $user->password = Hash::make($defaultPassword);
+            $user->must_change_password = true; // Force le changement de mot de passe
+            $user->save();
+
+            // Log de l'action
+            \Log::info('🔑 Password reset for teacher to default', [
+                'teacher_id' => $enseignant->id,
+                'user_id' => $enseignant->user_id,
+                'teacher_name' => $user->name,
+                'reset_by' => auth()->user()->name,
+                'timestamp' => now(),
+                'must_change_password' => true
+            ]);
+
+            // Retourner JSON si requête AJAX, sinon redirect
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Mot de passe réinitialisé avec succès!',
+                    'password' => $defaultPassword
+                ]);
+            }
+
+            return redirect()
+                ->back()
+                ->with('success', 'Mot de passe réinitialisé à Bonjour@2025 avec succès! L\'enseignant devra changer son mot de passe à la première connexion.')
+                ->with('new_password', $defaultPassword);
+
+        } catch (\Exception $e) {
+            \Log::error('❌ Password reset failed', [
+                'teacher_id' => $enseignant->id,
+                'error' => $e->getMessage()
+            ]);
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erreur lors de la réinitialisation du mot de passe: ' . $e->getMessage()
+                ], 500);
+            }
+
+            return redirect()
+                ->back()
+                ->with('error', 'Erreur lors de la réinitialisation du mot de passe: ' . $e->getMessage());
         }
     }
 }

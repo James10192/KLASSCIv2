@@ -32,11 +32,14 @@
                 <label for="current_password" style="display: block; font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-sm);">
                     Mot de passe actuel
                 </label>
-                <input id="current_password" 
-                       type="password" 
-                       name="current_password" 
-                       required
-                       style="width: 100%; padding: var(--space-md); border: 1px solid #e5e7eb; border-radius: var(--radius-small); font-size: var(--text-normal); background-color: var(--surface);">
+                <div style="position: relative;">
+                    <input id="current_password"
+                           type="password"
+                           name="current_password"
+                           required
+                           style="width: 100%; padding: var(--space-md) 3rem var(--space-md) var(--space-md); border: 1px solid #e5e7eb; border-radius: var(--radius-small); font-size: var(--text-normal); background-color: var(--surface);">
+                    <i class="fas fa-eye" id="toggleCurrentPassword" onclick="togglePasswordVisibility('current_password')" style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); cursor: pointer; color: #94a3b8;"></i>
+                </div>
                 @error('current_password')
                     <span style="color: var(--danger); font-size: var(--text-small); margin-top: var(--space-xs); display: block;">
                         {{ $message }}
@@ -48,11 +51,14 @@
                 <label for="password" style="display: block; font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-sm);">
                     Nouveau mot de passe
                 </label>
-                <input id="password" 
-                       type="password" 
-                       name="password" 
-                       required
-                       style="width: 100%; padding: var(--space-md); border: 1px solid #e5e7eb; border-radius: var(--radius-small); font-size: var(--text-normal); background-color: var(--surface);">
+                <div style="position: relative;">
+                    <input id="password"
+                           type="password"
+                           name="password"
+                           required
+                           style="width: 100%; padding: var(--space-md) 3rem var(--space-md) var(--space-md); border: 1px solid #e5e7eb; border-radius: var(--radius-small); font-size: var(--text-normal); background-color: var(--surface);">
+                    <i class="fas fa-eye" id="togglePassword" onclick="togglePasswordVisibility('password')" style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); cursor: pointer; color: #94a3b8;"></i>
+                </div>
                 @error('password')
                     <span style="color: var(--danger); font-size: var(--text-small); margin-top: var(--space-xs); display: block;">
                         {{ $message }}
@@ -75,11 +81,14 @@
                 <label for="password_confirmation" style="display: block; font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-sm);">
                     Confirmer le nouveau mot de passe
                 </label>
-                <input id="password_confirmation" 
-                       type="password" 
-                       name="password_confirmation" 
-                       required
-                       style="width: 100%; padding: var(--space-md); border: 1px solid #e5e7eb; border-radius: var(--radius-small); font-size: var(--text-normal); background-color: var(--surface);">
+                <div style="position: relative;">
+                    <input id="password_confirmation"
+                           type="password"
+                           name="password_confirmation"
+                           required
+                           style="width: 100%; padding: var(--space-md) 3rem var(--space-md) var(--space-md); border: 1px solid #e5e7eb; border-radius: var(--radius-small); font-size: var(--text-normal); background-color: var(--surface);">
+                    <i class="fas fa-eye" id="togglePasswordConfirmation" onclick="togglePasswordVisibility('password_confirmation')" style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); cursor: pointer; color: #94a3b8;"></i>
+                </div>
             </div>
 
             <button type="submit" 
@@ -100,14 +109,30 @@
 </div>
 
 <script>
+// Fonction pour toggle la visibilité des mots de passe
+function togglePasswordVisibility(fieldId) {
+    const field = document.getElementById(fieldId);
+    const toggleIcon = document.getElementById('toggle' + fieldId.charAt(0).toUpperCase() + fieldId.slice(1).replace('_', ''));
+
+    if (field.type === 'password') {
+        field.type = 'text';
+        toggleIcon.classList.remove('fa-eye');
+        toggleIcon.classList.add('fa-eye-slash');
+    } else {
+        field.type = 'password';
+        toggleIcon.classList.remove('fa-eye-slash');
+        toggleIcon.classList.add('fa-eye');
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const passwordInput = document.getElementById('password');
     const confirmInput = document.getElementById('password_confirmation');
-    
+
     function validatePassword() {
         const password = passwordInput.value;
         const confirm = confirmInput.value;
-        
+
         // Validation en temps réel si nécessaire
         if (confirm && password !== confirm) {
             confirmInput.setCustomValidity('Les mots de passe ne correspondent pas');
@@ -115,7 +140,7 @@ document.addEventListener('DOMContentLoaded', function() {
             confirmInput.setCustomValidity('');
         }
     }
-    
+
     passwordInput.addEventListener('input', validatePassword);
     confirmInput.addEventListener('input', validatePassword);
 });
