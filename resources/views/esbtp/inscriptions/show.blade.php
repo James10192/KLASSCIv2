@@ -5,6 +5,8 @@
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <link rel="stylesheet" href="{{ asset('css/modal-force-fix.css') }}">
+<!-- Choices.js pour dropdowns modernes -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css">
 <style>
 /* === CORRECTION SPÉCIFIQUE MODALS INSCRIPTIONS SHOW === */
 
@@ -84,7 +86,7 @@ body.modal-open .card:hover {
     transform: none !important;
 }
 
-/* Désactiver TOUT blur/filter sur les modals - y compris au hover */
+/* Désactiver TOUT blur/filter sur les modals ET leurs backdrops */
 #paymentModal, #paymentModal *,
 #validationModal, #validationModal *,
 #subscriptionModal, #subscriptionModal *,
@@ -97,6 +99,18 @@ body.modal-open .card:hover {
 #transferModal:hover, #transferModal *:hover,
 #reliquatPaymentModal:hover, #reliquatPaymentModal *:hover,
 #editSubscriptionModal:hover, #editSubscriptionModal *:hover {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    filter: none !important;
+}
+
+/* Désactiver le blur sur TOUS les modal-backdrop quand ces modals sont ouverts */
+body:has(#paymentModal.show) .modal-backdrop,
+body:has(#validationModal.show) .modal-backdrop,
+body:has(#subscriptionModal.show) .modal-backdrop,
+body:has(#transferModal.show) .modal-backdrop,
+body:has(#reliquatPaymentModal.show) .modal-backdrop,
+body:has(#editSubscriptionModal.show) .modal-backdrop {
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
     filter: none !important;
@@ -3059,5 +3073,122 @@ body.modal-open .card:hover {
         protectFormAgainstDoubleClick('#reliquatPaymentForm', '#reliquatPaymentModal'); // Modal paiement reliquat
     });
 </script>
+
+<!-- Choices.js pour dropdowns modernes -->
+<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Configuration Choices.js moderne pour les selects
+    const choicesConfig = {
+        searchEnabled: false,
+        shouldSort: false,
+        itemSelectText: '',
+        classNames: {
+            containerOuter: 'choices',
+            containerInner: 'choices__inner',
+            input: 'choices__input',
+            inputCloned: 'choices__input--cloned',
+            list: 'choices__list',
+            listItems: 'choices__list--multiple',
+            listSingle: 'choices__list--single',
+            listDropdown: 'choices__list--dropdown',
+            item: 'choices__item',
+            itemSelectable: 'choices__item--selectable',
+            itemDisabled: 'choices__item--disabled',
+            itemChoice: 'choices__item--choice',
+            placeholder: 'choices__placeholder',
+            group: 'choices__group',
+            groupHeading: 'choices__heading',
+            button: 'choices__button',
+            activeState: 'is-active',
+            focusState: 'is-focused',
+            openState: 'is-open',
+            disabledState: 'is-disabled',
+            highlightedState: 'is-highlighted',
+            selectedState: 'is-selected',
+            flippedState: 'is-flipped',
+            loadingState: 'is-loading',
+            noResults: 'has-no-results',
+            noChoices: 'has-no-choices'
+        }
+    };
+
+    // Initialiser Choices.js sur les selects des modals
+    const selectsToStyle = [
+        '#fee_category_id',           // paymentModal
+        '#mode_paiement',              // paymentModal
+        '#reliquat_mode_paiement'      // reliquatPaymentModal
+    ];
+
+    selectsToStyle.forEach(selector => {
+        const selectElement = document.querySelector(selector);
+        if (selectElement) {
+            try {
+                new Choices(selectElement, choicesConfig);
+                console.log('✅ Choices.js initialisé sur', selector);
+            } catch (error) {
+                console.error('❌ Erreur initialisation Choices.js sur', selector, error);
+            }
+        }
+    });
+});
+</script>
+
+<!-- Custom Choices.js styles -->
+<style>
+/* Style Filament-like pour Choices.js */
+.choices {
+    margin-bottom: 0;
+    font-size: 14px;
+}
+
+.choices__inner {
+    background: white;
+    border: 1px solid rgb(209 213 219);
+    border-radius: 8px;
+    min-height: 44px;
+    padding: 0.5rem 2.5rem 0.5rem 2.75rem;
+    font-size: 0.875rem;
+    transition: all 75ms ease-in-out;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+.choices.is-focused .choices__inner,
+.choices.is-open .choices__inner {
+    border-color: rgb(59 130 246);
+    box-shadow: 0 0 0 3px rgb(59 130 246 / 0.15), 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+.choices__list--dropdown {
+    background: white;
+    border: 1px solid rgb(209 213 219);
+    border-radius: 8px;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    z-index: 10000;
+    margin-top: 4px;
+}
+
+.choices__list--dropdown .choices__item--selectable {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    transition: all 150ms ease;
+}
+
+.choices__list--dropdown .choices__item--selectable:hover,
+.choices__list--dropdown .choices__item--selectable.is-highlighted {
+    background: rgb(59 130 246);
+    color: white;
+}
+
+/* Positionner l'icône à gauche avec Choices.js */
+.choices[data-type*="select-one"] .choices__inner {
+    padding-left: 2.75rem;
+}
+
+/* Cacher la flèche par défaut et utiliser celle de Bootstrap */
+.choices__inner::after {
+    display: none;
+}
+</style>
 
 <!-- Les styles z-index pour les modals sont gérés par modal-force-fix.css -->
