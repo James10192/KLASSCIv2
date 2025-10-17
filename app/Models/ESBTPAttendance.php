@@ -182,4 +182,31 @@ class ESBTPAttendance extends Model
     {
         return $query->where('statut', $statut);
     }
+
+    /**
+     * Scope pour récupérer uniquement les présences FINALES (statut fusionné).
+     *
+     * Récupère les enregistrements 'merged' (fusion début + fin)
+     * OU les enregistrements 'start' si pas encore de fusion (appel de fin non fait).
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeFinalOnly($query)
+    {
+        return $query->where(function($q) {
+            $q->where('call_type', 'merged')
+              ->orWhere(function($subq) {
+                  // Seulement les 'start' qui n'ont pas encore de 'merged' pour cette séance
+                  $subq->where('call_type', 'start')
+                      ->whereNotExists(function($exists) {
+                          $exists->select(\DB::raw(1))
+                              ->from('esbtp_attendances as att_merged')
+                              ->whereColumn('att_merged.seance_cours_id', 'esbtp_attendances.seance_cours_id')
+                              ->whereColumn('att_merged.etudiant_id', 'esbtp_attendances.etudiant_id')
+                              ->where('att_merged.call_type', 'merged');
+                      });
+              });
+        });
+    }
 }
