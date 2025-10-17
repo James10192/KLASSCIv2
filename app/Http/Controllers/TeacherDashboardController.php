@@ -293,9 +293,9 @@ class TeacherDashboardController extends Controller
                     ->get()
                     ->keyBy('etudiant_id');
 
-                // Supprimer TOUS les appels existants (start ET end) pour éviter la duplication
+                // Supprimer les anciens appels de fin et merged pour éviter la duplication
                 ESBTPAttendance::where('seance_cours_id', $seanceId)
-                    ->whereIn('call_type', ['start', 'end'])
+                    ->whereIn('call_type', ['end', 'merged'])
                     ->delete();
 
                 if (!$withinCloseWindow) {
@@ -319,7 +319,7 @@ class TeacherDashboardController extends Controller
                             'heure_debut' => $seance->heure_debut,
                             'heure_fin' => $seance->heure_fin,
                             'statut' => $finalStatus,
-                            'call_type' => 'end',
+                            'call_type' => 'merged',
                             'is_justified' => false,
                             'created_by' => $user->id
                         ]);
@@ -333,26 +333,40 @@ class TeacherDashboardController extends Controller
 
                 } else {
                     // DANS LA FENÊTRE : Fusion normale avec appel de fin
+                    \Log::info('🔀 FUSION des appels début + fin', [
+                        'seance_id' => $seanceId,
+                        'nb_etudiants' => count($request->attendances)
+                    ]);
+
                     foreach ($request->attendances as $etudiantId => $endStatus) {
                         $startAttendance = $startAttendances->get($etudiantId);
                         $startStatus = $startAttendance ? $startAttendance->statut : 'absent';
 
-                        // LOGIQUE DE FUSION :
-                        // Absent début + Présent fin = Retard (arrivé en retard)
-                        // Absent début + Absent fin = Absent
-                        // Présent début + Absent fin = Absent (parti avant la fin)
-                        // Présent début + Présent fin = Présent
-                        // Retard début + X = Retard (garde le retard)
+                        // LOGIQUE DE FUSION SELON LES RÈGLES MÉTIER :
+                        // 1. Absent/Retard début + Présent fin = RETARD (arrivé en retard)
+                        // 2. Présent début + Absent fin = ABSENT (parti avant la fin)
+                        // 3. Présent début + Présent fin = PRÉSENT
+                        // 4. Absent début + Absent fin = ABSENT
+                        // 5. Retard début + Présent fin = RETARD (garde le retard)
+                        // 6. Retard début + Absent fin = ABSENT (retard puis parti)
 
-                        $finalStatus = $endStatus;
+                        $finalStatus = 'absent'; // Par défaut
 
-                        if ($startStatus === 'absent' && $endStatus === 'present') {
-                            $finalStatus = 'late'; // Arrivé en retard
+                        if (in_array($startStatus, ['absent', 'late', 'retard']) && $endStatus === 'present') {
+                            // Cas 1 et 5: Arrivé en retard mais présent à la fin = RETARD
+                            $finalStatus = 'late';
+                        } elseif ($startStatus === 'present' && $endStatus === 'present') {
+                            // Cas 3: Présent début ET fin = PRÉSENT
+                            $finalStatus = 'present';
                         } elseif ($startStatus === 'present' && $endStatus === 'absent') {
-                            $finalStatus = 'absent'; // Parti avant la fin
-                        } elseif (in_array($startStatus, ['late', 'retard'])) {
-                            $finalStatus = 'late'; // Garde le retard
+                            // Cas 2: Présent au début mais parti avant la fin = ABSENT
+                            $finalStatus = 'absent';
+                        } elseif (in_array($startStatus, ['absent', 'late', 'retard']) && $endStatus === 'absent') {
+                            // Cas 4 et 6: Absent/Retard au début ET absent à la fin = ABSENT
+                            $finalStatus = 'absent';
                         }
+
+                        \Log::info('  📊 Étudiant #' . $etudiantId . ': ' . $startStatus . ' (début) + ' . $endStatus . ' (fin) → ' . $finalStatus . ' (FINAL)');
 
                         ESBTPAttendance::create([
                             'etudiant_id' => $etudiantId,
@@ -365,7 +379,7 @@ class TeacherDashboardController extends Controller
                             'heure_debut' => $seance->heure_debut,
                             'heure_fin' => $seance->heure_fin,
                             'statut' => $finalStatus,
-                            'call_type' => 'end',
+                            'call_type' => 'merged',
                             'is_justified' => false,
                             'created_by' => $user->id
                         ]);
