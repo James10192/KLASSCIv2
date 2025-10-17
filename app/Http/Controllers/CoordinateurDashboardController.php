@@ -84,9 +84,22 @@ class CoordinateurDashboardController extends Controller
             // Compter aussi les émargements de début seulement (pour statistiques)
             $stats['teacher_start_attendances_today'] = 0;
             if ($dailyCode) {
-                $stats['teacher_start_attendances_today'] = ESBTPTeacherAttendance::whereDate('created_at', $date)
-                    ->where('daily_code_id', $dailyCode->id)
-                    ->where('type', 'start')
+                $stats['teacher_start_attendances_today'] = ESBTPSeanceCours::whereDate('date_seance', $date)
+                    ->whereHas('teacherAttendances', function($q) use ($dailyCode) {
+                        $q->where('daily_code_id', $dailyCode->id)
+                          ->where('type', 'start');
+                    })
+                    ->count();
+            }
+
+            // Compter émargements FIN seulement
+            $stats['teacher_end_attendances_today'] = 0;
+            if ($dailyCode) {
+                $stats['teacher_end_attendances_today'] = ESBTPSeanceCours::whereDate('date_seance', $date)
+                    ->whereHas('teacherAttendances', function($q) use ($dailyCode) {
+                        $q->where('daily_code_id', $dailyCode->id)
+                          ->where('type', 'end');
+                    })
                     ->count();
             }
 
@@ -95,7 +108,17 @@ class CoordinateurDashboardController extends Controller
                 ? round(($stats['teacher_attendances_today'] / $stats['scheduled_courses_today']) * 100, 1)
                 : 0;
 
-            // 4. Appels terminés (séances avec présences étudiants enregistrées)
+            // 4. Appels de DÉBUT terminés (séances avec workflow call_start_done)
+            $stats['call_start_done_today'] = \App\Models\ESBTPSessionWorkflow::whereDate('call_start_done_at', $date)
+                ->where('call_start_done', true)
+                ->count();
+
+            // 5. Appels de FIN terminés (séances avec workflow call_end_done)
+            $stats['call_end_done_today'] = \App\Models\ESBTPSessionWorkflow::whereDate('call_end_done_at', $date)
+                ->where('call_end_done', true)
+                ->count();
+
+            // 6. Appels TOTAUX terminés (au moins un appel - début OU fin)
             $stats['roll_calls_completed_today'] = ESBTPSeanceCours::whereDate('date_seance', $date)
                 ->whereHas('attendances')
                 ->count();

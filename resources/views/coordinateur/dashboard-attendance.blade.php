@@ -27,92 +27,92 @@
             icon="fa-project-diagram"
         >
             <div class="workflow-container">
-                <div class="row text-center">
-                    <!-- Étape 1: Cours Programmés -->
-                    <div class="col-md-3 mb-3">
-                        <div class="workflow-step">
-                            <div class="workflow-icon primary">
-                                <i class="fas fa-calendar-alt"></i>
-                            </div>
-                            <h4 class="workflow-value text-primary">{{ $stats['scheduled_courses_today'] ?? 0 }}</h4>
-                            <h6 class="workflow-title">Cours Programmés</h6>
-                            <small class="workflow-subtitle">Séances planifiées</small>
+                <!-- ROW 1: Séance → Émargement Début → Appel Début → Émargement Fin -->
+                <div class="row text-center mb-4">
+                    <!-- Étape 1: Séance -->
+                    <div class="col-6 col-md-3 mb-3">
+                        <div class="workflow-step-compact">
+                            <div class="workflow-number">1</div>
+                            <div class="workflow-value-compact text-primary">{{ $stats['scheduled_courses_today'] ?? 0 }}</div>
+                            <div class="workflow-label-compact">Séance</div>
                         </div>
                     </div>
 
-                    <!-- Flèche 1 -->
-                    <div class="col-md-1 d-none d-md-flex align-items-center justify-content-center">
-                        <i class="fas fa-arrow-right text-muted fa-lg workflow-arrow"></i>
-                    </div>
-
-                    <!-- Étape 2: Émargements -->
-                    <div class="col-md-3 mb-3">
-                        <div class="workflow-step">
-                            <div class="workflow-icon success">
-                                <i class="fas fa-user-check"></i>
-                            </div>
-                            <h4 class="workflow-value text-success">{{ $stats['teacher_attendances_today'] ?? 0 }}</h4>
-                            <h6 class="workflow-title">Émargements Complets</h6>
-                            <small class="workflow-subtitle">Début + Fin émargés</small>
-                            @if(isset($stats['teacher_start_attendances_today']) && $stats['teacher_start_attendances_today'] > 0)
-                                <div class="workflow-badge text-warning" style="font-size: 0.75rem;">
-                                    +{{ $stats['teacher_start_attendances_today'] - $stats['teacher_attendances_today'] }} début seulement
-                                </div>
-                            @endif
-                            <div class="workflow-progress">
-                                <div class="progress-bar-workflow bg-success" style="width: {{ $stats['teacher_attendance_rate'] ?? 0 }}%"></div>
-                            </div>
+                    <!-- Étape 2: Émargement Début -->
+                    <div class="col-6 col-md-3 mb-3">
+                        <div class="workflow-step-compact">
+                            <div class="workflow-number">2</div>
+                            <div class="workflow-value-compact text-success">{{ $stats['teacher_start_attendances_today'] ?? 0 }}</div>
+                            <div class="workflow-label-compact">Émargement début</div>
                         </div>
                     </div>
 
-                    <!-- Flèche 2 -->
-                    <div class="col-md-1 d-none d-md-flex align-items-center justify-content-center">
-                        <i class="fas fa-arrow-right text-muted fa-lg workflow-arrow"></i>
-                    </div>
-
-                    <!-- Étape 3: Appels -->
-                    <div class="col-md-3 mb-3">
-                        <div class="workflow-step">
-                            <div class="workflow-icon info">
-                                <i class="fas fa-clipboard-check"></i>
-                            </div>
-                            <h4 class="workflow-value text-info">{{ $stats['roll_calls_completed_today'] ?? 0 }}</h4>
-                            <h6 class="workflow-title">Appels Terminés</h6>
-                            <small class="workflow-subtitle">Présences saisies</small>
-                            @if(($stats['students_present_today'] ?? 0) > 0)
-                                <div class="workflow-badge text-info">{{ $stats['student_attendance_rate'] ?? 0 }}% présents</div>
-                            @endif
+                    <!-- Étape 3: Appel Début -->
+                    <div class="col-6 col-md-3 mb-3">
+                        <div class="workflow-step-compact">
+                            <div class="workflow-number">3</div>
+                            <div class="workflow-value-compact text-info">{{ $stats['call_start_done_today'] ?? 0 }}</div>
+                            <div class="workflow-label-compact">Appel de début</div>
                         </div>
                     </div>
 
-                    <!-- Flèche 3 -->
-                    <div class="col-md-1 d-none d-md-flex align-items-center justify-content-center">
-                        <i class="fas fa-arrow-right text-muted fa-lg workflow-arrow"></i>
-                    </div>
-
-                    <!-- Étape 4: Workflow Complet -->
-                    <div class="col-md-3 mb-3">
-                        <div class="workflow-step">
-                            <div class="workflow-icon warning">
-                                <i class="fas fa-check-double"></i>
-                            </div>
-                            <h4 class="workflow-value text-warning">{{ $stats['courses_completed_today'] ?? 0 }}</h4>
-                            <h6 class="workflow-title">Workflow Complet</h6>
-                            <small class="workflow-subtitle">Émargement + Appel</small>
-                            @php
-                                $totalCourses = $stats['scheduled_courses_today'] ?? 0;
-                                $completedCourses = $stats['courses_completed_today'] ?? 0;
-                                $completionRate = $totalCourses > 0 ? round(($completedCourses / $totalCourses) * 100, 1) : 0;
-                            @endphp
-                            <div class="workflow-progress">
-                                <div class="progress-bar-workflow bg-warning" style="width: {{ $completionRate }}%"></div>
-                            </div>
+                    <!-- Étape 4: Émargement Fin -->
+                    <div class="col-6 col-md-3 mb-3">
+                        <div class="workflow-step-compact">
+                            <div class="workflow-number">4</div>
+                            <div class="workflow-value-compact text-warning">{{ $stats['teacher_end_attendances_today'] ?? 0 }}</div>
+                            <div class="workflow-label-compact">Émargement fin</div>
                         </div>
                     </div>
                 </div>
-                
+
+                <!-- ROW 2: Émargement Complet → Appel Fin → Appels Terminés → Workflow Complet -->
+                <div class="row text-center">
+                    <!-- Étape 5: Émargement Complet (début + fin) -->
+                    <div class="col-6 col-md-3 mb-3">
+                        <div class="workflow-step-compact">
+                            <div class="workflow-number">5</div>
+                            <div class="workflow-value-compact text-success">{{ $stats['teacher_attendances_today'] ?? 0 }}</div>
+                            <div class="workflow-label-compact">Émargement complet</div>
+                        </div>
+                    </div>
+
+                    <!-- Étape 6: Appel Fin -->
+                    <div class="col-6 col-md-3 mb-3">
+                        <div class="workflow-step-compact">
+                            <div class="workflow-number">6</div>
+                            <div class="workflow-value-compact text-info">{{ $stats['call_end_done_today'] ?? 0 }}</div>
+                            <div class="workflow-label-compact">Appel fin</div>
+                        </div>
+                    </div>
+
+                    <!-- Étape 7: Appels Terminés (au moins 1 appel) -->
+                    <div class="col-6 col-md-3 mb-3">
+                        <div class="workflow-step-compact">
+                            <div class="workflow-number">7</div>
+                            <div class="workflow-value-compact text-primary">{{ $stats['roll_calls_completed_today'] ?? 0 }}</div>
+                            <div class="workflow-label-compact">Appels terminés</div>
+                        </div>
+                    </div>
+
+                    <!-- Étape 8: Workflow Complet -->
+                    <div class="col-6 col-md-3 mb-3">
+                        <div class="workflow-step-compact">
+                            <div class="workflow-number">✓</div>
+                            <div class="workflow-value-compact text-success">{{ $stats['courses_completed_today'] ?? 0 }}</div>
+                            <div class="workflow-label-compact">Workflow complet</div>
+                        </div>
+                    </div>
+                </div>
+
+                @php
+                    $totalCourses = $stats['scheduled_courses_today'] ?? 0;
+                    $completedCourses = $stats['courses_completed_today'] ?? 0;
+                    $completionRate = $totalCourses > 0 ? round(($completedCourses / $totalCourses) * 100, 1) : 0;
+                @endphp
+
                 @if($totalCourses > 0)
-                <div class="workflow-summary">
+                <div class="workflow-summary mt-4 pt-3">
                     <div class="d-flex align-items-center justify-content-center">
                         <div class="workflow-icon primary small me-3">
                             <i class="fas fa-chart-pie"></i>
@@ -120,7 +120,7 @@
                         <div class="text-center">
                             <span class="text-muted me-2">Progression globale:</span>
                             <strong class="text-primary fs-5">{{ $completionRate }}%</strong>
-                            <span class="text-muted ms-2">({{ $completedCourses }}/{{ $totalCourses }})</span>
+                            <span class="text-muted ms-2">({{ $completedCourses }}/{{ $totalCourses }} cours complets)</span>
                         </div>
                     </div>
                 </div>
@@ -324,13 +324,51 @@ document.addEventListener('DOMContentLoaded', function() {
 
 @push('styles')
 <style>
-/* Workflow Styles */
+/* Workflow Styles - Compact Design */
 .workflow-container {
-    padding: 1.5rem 0;
+    padding: 1rem 0;
 }
 
-.workflow-step {
+.workflow-step-compact {
     text-align: center;
+    padding: 1rem;
+    background: var(--surface);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: var(--radius-medium);
+    transition: all 0.3s ease;
+}
+
+.workflow-step-compact:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+}
+
+.workflow-number {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-circle);
+    background: linear-gradient(135deg, var(--primary), #60a5fa);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 0.75rem;
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.workflow-value-compact {
+    font-size: 1.75rem;
+    font-weight: 800;
+    margin-bottom: 0.25rem;
+}
+
+.workflow-label-compact {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .workflow-icon {
@@ -356,51 +394,10 @@ document.addEventListener('DOMContentLoaded', function() {
 .workflow-icon.info { background: linear-gradient(135deg, var(--accent-blue), #38bdf8); }
 .workflow-icon.warning { background: linear-gradient(135deg, var(--warning), #fbbf24); }
 
-.workflow-value {
-    font-size: 2rem;
-    font-weight: 800;
-    margin: 0.5rem 0 0.25rem 0;
-}
-
-.workflow-title {
-    font-weight: 600;
-    margin-bottom: 0.25rem;
-}
-
-.workflow-subtitle {
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-}
-
-.workflow-progress {
-    width: 80%;
-    height: 4px;
-    background: rgba(0, 0, 0, 0.1);
-    border-radius: 2px;
-    margin: 0.5rem auto 0;
-    overflow: hidden;
-}
-
-.progress-bar-workflow {
-    height: 100%;
-    border-radius: 2px;
-    transition: width 0.8s ease;
-}
-
-.workflow-badge {
-    font-size: 0.75rem;
-    font-weight: 600;
-    margin-top: 0.25rem;
-}
-
 .workflow-summary {
-    margin-top: 2rem;
-    padding-top: 1.5rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
     border-top: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-.workflow-arrow {
-    opacity: 0.6;
 }
 
 /* Subject Cards */
