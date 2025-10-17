@@ -84,6 +84,24 @@ body.modal-open .card:hover {
     transform: none !important;
 }
 
+/* Désactiver TOUT blur/filter sur les modals - y compris au hover */
+#paymentModal, #paymentModal *,
+#validationModal, #validationModal *,
+#subscriptionModal, #subscriptionModal *,
+#transferModal, #transferModal *,
+#reliquatPaymentModal, #reliquatPaymentModal *,
+#editSubscriptionModal, #editSubscriptionModal *,
+#paymentModal:hover, #paymentModal *:hover,
+#validationModal:hover, #validationModal *:hover,
+#subscriptionModal:hover, #subscriptionModal *:hover,
+#transferModal:hover, #transferModal *:hover,
+#reliquatPaymentModal:hover, #reliquatPaymentModal *:hover,
+#editSubscriptionModal:hover, #editSubscriptionModal *:hover {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    filter: none !important;
+}
+
 /* === AMÉLIORATION STYLE INPUTS/SELECTS MODALS === */
 
 /* Centrage vertical parfait des icônes - approche correcte */
@@ -1584,43 +1602,115 @@ body.modal-open .card:hover {
 
 <!-- Modal pour validation définitive - Structure Bootstrap simple -->
 <div class="modal fade" id="validationModal" tabindex="-1" aria-labelledby="validationModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="validationModalLabel">Validation définitive de l'inscription</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 15px; border: none; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+            <div class="modal-header" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border-radius: 15px 15px 0 0; padding: 1.5rem; border: none;">
+                <h5 class="modal-title fw-bold" id="validationModalLabel">
+                    <i class="fas fa-check-circle me-2"></i>Validation définitive de l'inscription
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="validationForm" method="POST">
                 @csrf
                 <input type="hidden" name="_action" value="valider-definitivement">
-                <div class="modal-body">
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle me-2"></i>
-                        Cette action va convertir le prospect en étudiant et activer son compte utilisateur.
+                <div class="modal-body" style="padding: 2rem;">
+                    <!-- Alert info moderne -->
+                    <div style="
+                        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+                        border-left: 4px solid #3b82f6;
+                        border-radius: 10px;
+                        padding: 1rem 1.25rem;
+                        margin-bottom: 1.5rem;
+                    ">
+                        <div class="d-flex align-items-start gap-3">
+                            <div style="
+                                width: 40px;
+                                height: 40px;
+                                border-radius: 50%;
+                                background: linear-gradient(135deg, #3b82f6, #2563eb);
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                color: white;
+                                flex-shrink: 0;
+                            ">
+                                <i class="fas fa-info-circle"></i>
+                            </div>
+                            <div style="flex-grow: 1; padding-top: 0.5rem;">
+                                <div style="color: #1e40af; font-size: 0.9rem;">
+                                    Cette action va convertir le prospect en étudiant et activer son compte utilisateur.
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="alert alert-warning">
-                        <h6 class="alert-heading">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            Important : Éléments qui ne pourront plus être modifiés
-                        </h6>
-                        <p class="mb-2">Une fois l'inscription validée définitivement (statut 'active'), les éléments suivants ne pourront plus être modifiés :</p>
-                        <ul class="mb-0">
-                            <li><strong>Filière</strong> : {{ $inscription->filiere->name ?? 'Non définie' }}</li>
-                            <li><strong>Niveau d'études</strong> : {{ $inscription->niveau->name ?? 'Non défini' }}</li>
-                            <li><strong>Classe</strong> : {{ $inscription->classe->name ?? 'Non définie' }}</li>
-                        </ul>
-                        <p class="mt-2 mb-0"><small class="text-muted">Assurez-vous que ces informations sont correctes avant de procéder à la validation.</small></p>
+                    <!-- Alert warning moderne -->
+                    <div style="
+                        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+                        border-left: 4px solid #f59e0b;
+                        border-radius: 10px;
+                        padding: 1rem 1.25rem;
+                        margin-bottom: 1.5rem;
+                    ">
+                        <div class="d-flex align-items-start gap-3">
+                            <div style="
+                                width: 40px;
+                                height: 40px;
+                                border-radius: 50%;
+                                background: linear-gradient(135deg, #f59e0b, #d97706);
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                color: white;
+                                flex-shrink: 0;
+                            ">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </div>
+                            <div style="flex-grow: 1;">
+                                <div style="color: #92400e; font-weight: 600; margin-bottom: 0.5rem;">Important : Éléments qui ne pourront plus être modifiés</div>
+                                <div style="color: #78350f; font-size: 0.9rem; margin-bottom: 0.75rem;">
+                                    Une fois l'inscription validée définitivement (statut 'active'), les éléments suivants ne pourront plus être modifiés :
+                                </div>
+                                <ul style="color: #78350f; font-size: 0.9rem; margin-bottom: 0.75rem;">
+                                    <li><strong>Filière</strong> : {{ $inscription->filiere->name ?? 'Non définie' }}</li>
+                                    <li><strong>Niveau d'études</strong> : {{ $inscription->niveau->name ?? 'Non défini' }}</li>
+                                    <li><strong>Classe</strong> : {{ $inscription->classe->name ?? 'Non définie' }}</li>
+                                </ul>
+                                <small style="color: #92400e;">Assurez-vous que ces informations sont correctes avant de procéder à la validation.</small>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="mb-3">
-                        <label for="validation_observations" class="form-label">Observations</label>
-                        <textarea class="form-control" id="validation_observations" name="observations" rows="3" placeholder="Commentaires sur la validation..."></textarea>
+                        <label for="validation_observations" class="form-label fw-semibold" style="color: #2d3748; font-size: 0.9rem;">
+                            <i class="fas fa-comment-dots me-1" style="color: #10b981;"></i>
+                            Observations
+                        </label>
+                        <textarea class="form-control" id="validation_observations" name="observations" rows="3"
+                                  placeholder="Commentaires sur la validation..."
+                                  style="border: 2px solid #dee2e6; border-radius: 8px; resize: none;"></textarea>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn btn-success">Valider définitivement</button>
+                <div class="modal-footer" style="background: #f8f9fa; border-radius: 0 0 15px 15px; padding: 1.25rem 2rem; border: none;">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="
+                        padding: 0.65rem 1.5rem;
+                        border-radius: 8px;
+                        font-weight: 500;
+                        transition: all 0.2s;
+                    ">
+                        <i class="fas fa-times me-1"></i>Annuler
+                    </button>
+                    <button type="submit" class="btn btn-success" style="
+                        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                        border: none;
+                        padding: 0.65rem 1.5rem;
+                        border-radius: 8px;
+                        font-weight: 600;
+                        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+                        transition: all 0.2s;
+                    ">
+                        <i class="fas fa-check-double me-1"></i>Valider définitivement
+                    </button>
                 </div>
             </form>
         </div>
@@ -1972,22 +2062,48 @@ body.modal-open .card:hover {
 
 <!-- Modal d'édition de souscription (SuperAdmin) -->
 <div class="modal fade" id="editSubscriptionModal" tabindex="-1" aria-labelledby="editSubscriptionModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="editSubscriptionModalLabel">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 15px; border: none; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+            <div class="modal-header" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; border-radius: 15px 15px 0 0; padding: 1.5rem; border: none;">
+                <h5 class="modal-title fw-bold" id="editSubscriptionModalLabel">
                     <i class="fas fa-edit me-2"></i>Modifier le montant de la souscription
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="editSubscriptionForm" method="POST">
                 @csrf
                 @method('PUT')
-                <div class="modal-body">
-                    <div class="alert alert-warning">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        <strong>Attention :</strong> Cette fonctionnalité est réservée aux super-administrateurs.
-                        La modification du montant de souscription affectera les calculs de paiement pour cet étudiant.
+                <div class="modal-body" style="padding: 2rem;">
+                    <!-- Alert moderne -->
+                    <div style="
+                        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+                        border-left: 4px solid #f59e0b;
+                        border-radius: 10px;
+                        padding: 1rem 1.25rem;
+                        margin-bottom: 1.5rem;
+                    ">
+                        <div class="d-flex align-items-start gap-3">
+                            <div style="
+                                width: 40px;
+                                height: 40px;
+                                border-radius: 50%;
+                                background: linear-gradient(135deg, #f59e0b, #d97706);
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                color: white;
+                                flex-shrink: 0;
+                            ">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </div>
+                            <div style="flex-grow: 1;">
+                                <div style="color: #92400e; font-weight: 500; margin-bottom: 0.25rem;">Attention</div>
+                                <div style="color: #78350f; font-size: 0.9rem;">
+                                    Cette fonctionnalité est réservée aux super-administrateurs.
+                                    La modification du montant de souscription affectera les calculs de paiement pour cet étudiant.
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="row">
@@ -2026,11 +2142,24 @@ body.modal-open .card:hover {
 
                     <input type="hidden" id="edit_subscription_id" name="subscription_id">
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                <div class="modal-footer" style="background: #f8f9fa; border-radius: 0 0 15px 15px; padding: 1.25rem 2rem; border: none;">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="
+                        padding: 0.65rem 1.5rem;
+                        border-radius: 8px;
+                        font-weight: 500;
+                        transition: all 0.2s;
+                    ">
                         <i class="fas fa-times me-1"></i>Annuler
                     </button>
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="btn btn-primary" style="
+                        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+                        border: none;
+                        padding: 0.65rem 1.5rem;
+                        border-radius: 8px;
+                        font-weight: 600;
+                        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+                        transition: all 0.2s;
+                    ">
                         <i class="fas fa-save me-1"></i>Sauvegarder les modifications
                     </button>
                 </div>

@@ -33,15 +33,16 @@
     opacity: 0.5 !important;
 }
 
-/* Centrage parfait des modales - Utilise Flexbox uniquement quand la modale est ouverte */
-.modal.show {
+/* Centrage parfait des modales - Utilise Flexbox SAUF pour modal-dialog-centered */
+/* Exclure les modals qui utilisent déjà modal-dialog-centered de Bootstrap */
+.modal.show:not(:has(.modal-dialog-centered)) {
     display: flex !important;
     align-items: center;
     justify-content: center;
     padding: 1rem;
 }
 
-.modal.show .modal-dialog {
+.modal.show:not(:has(.modal-dialog-centered)) .modal-dialog {
     margin: 0 !important;
     max-width: 90vw;
     max-height: 90vh;
@@ -49,6 +50,16 @@
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+/* Pour les modals avec modal-dialog-centered, utiliser le système Bootstrap */
+.modal.show:has(.modal-dialog-centered) {
+    display: flex !important;
+    align-items: center !important;
+}
+
+.modal.show .modal-dialog-centered {
+    margin: auto !important;
 }
 
 .modal.show .modal-content {
