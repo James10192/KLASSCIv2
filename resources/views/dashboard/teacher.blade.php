@@ -145,8 +145,50 @@
             <div class="col-lg-3 col-md-6">
                 @php
                     $now = \Carbon\Carbon::now();
-                    $hasEmargementToday = $todayAttendance;
                     $hasCoursesToday = $todayClasses->count() > 0;
+
+                    // Récupérer le teacher_id correct
+                    $teacherModel = \App\Models\ESBTPTeacher::where('user_id', Auth::id())->first();
+                    $teacherId = $teacherModel ? $teacherModel->id : null;
+
+                    // Compter les émargements DÉBUT et FIN séparément
+                    $emargementDebutCount = 0;
+                    $emargementFinCount = 0;
+                    $lastEmargementTime = null;
+
+                    if ($teacherId && $hasCoursesToday) {
+                        foreach ($todayClasses as $cours) {
+                            $hasDebut = \App\Models\ESBTPTeacherAttendance::where('teacher_id', $teacherId)
+                                ->where('course_id', $cours->id)
+                                ->whereDate('date', today())
+                                ->where('type', 'start')
+                                ->exists();
+
+                            $hasFin = \App\Models\ESBTPTeacherAttendance::where('teacher_id', $teacherId)
+                                ->where('course_id', $cours->id)
+                                ->whereDate('date', today())
+                                ->where('type', 'end')
+                                ->exists();
+
+                            if ($hasDebut) $emargementDebutCount++;
+                            if ($hasFin) $emargementFinCount++;
+                        }
+
+                        // Récupérer le dernier émargement pour afficher l'heure
+                        $lastEmargement = \App\Models\ESBTPTeacherAttendance::where('teacher_id', $teacherId)
+                            ->whereDate('date', today())
+                            ->orderBy('validated_at', 'desc')
+                            ->first();
+
+                        if ($lastEmargement) {
+                            $lastEmargementTime = $lastEmargement->validated_at;
+                        }
+                    }
+
+                    // États pour le KPI
+                    $hasAllEmargements = ($emargementDebutCount > 0 && $emargementFinCount > 0 && $emargementDebutCount === $emargementFinCount);
+                    $hasOnlyDebut = ($emargementDebutCount > 0 && $emargementFinCount === 0);
+                    $hasPartialFin = ($emargementDebutCount > 0 && $emargementFinCount > 0 && $emargementDebutCount > $emargementFinCount);
 
                     // **NOUVELLE LOGIQUE**: Vérifier si des cours sont ABSENTS (45min+ après début)
                     $expiredCourses = $todayClasses->filter(function($cours) use ($now) {
@@ -164,8 +206,8 @@
                         return $now->gte($courseStart) && $now->lte($limite45min) && !$hasAttendance;
                     });
 
-                    $cardClass = $hasEmargementToday ? 'border-success' : ($expiredCourses->count() > 0 ? 'border-danger' : ($availableCourses->count() > 0 ? 'border-success' : 'border-warning'));
-                    $iconClass = $hasEmargementToday ? 'bg-success' : ($expiredCourses->count() > 0 ? 'bg-danger' : ($availableCourses->count() > 0 ? 'bg-success' : 'bg-warning'));
+                    $cardClass = $hasAllEmargements ? 'border-success' : (($hasOnlyDebut || $hasPartialFin) ? 'border-warning' : ($expiredCourses->count() > 0 ? 'border-danger' : ($availableCourses->count() > 0 ? 'border-success' : 'border-warning')));
+                    $iconClass = $hasAllEmargements ? 'bg-success' : (($hasOnlyDebut || $hasPartialFin) ? 'bg-warning' : ($expiredCourses->count() > 0 ? 'bg-danger' : ($availableCourses->count() > 0 ? 'bg-success' : 'bg-warning')));
                 @endphp
                 
                 <div class="card-moderne p-3 {{ $cardClass }}">
@@ -178,8 +220,12 @@
                         <div class="flex-grow-1">
                             <h6 class="fw-bold text-primary mb-1">Émargement</h6>
                             <div class="mb-2">
-                                @if($hasEmargementToday)
-                                    <span class="badge bg-success">✓ Émargé</span>
+                                @if($hasAllEmargements)
+                                    <span class="badge bg-success">✓ Complet</span>
+                                @elseif($hasOnlyDebut)
+                                    <span class="badge bg-warning">✓ Début - Fin à faire</span>
+                                @elseif($hasPartialFin)
+                                    <span class="badge bg-warning">Partiellement complet</span>
                                 @elseif($expiredCourses->count() > 0)
                                     <span class="badge bg-danger">Expiré</span>
                                 @elseif($availableCourses->count() > 0)
@@ -191,8 +237,12 @@
                                 @endif
                             </div>
                             <small class="text-muted">
-                                @if($hasEmargementToday)
-                                    {{ $todayAttendance->validated_at->format('H:i') }}
+                                @if($hasAllEmargements)
+                                    Début: {{ $emargementDebutCount }} | Fin: {{ $emargementFinCount }} - {{ $lastEmargementTime->format('H:i') }}
+                                @elseif($hasOnlyDebut)
+                                    Début émargé à {{ $lastEmargementTime->format('H:i') }}
+                                @elseif($hasPartialFin)
+                                    {{ $emargementFinCount }}/{{ $emargementDebutCount }} fin émargées
                                 @elseif($expiredCourses->count() > 0)
                                     {{ $expiredCourses->count() }} cours manqué(s)
                                 @elseif($availableCourses->count() > 0)
@@ -209,7 +259,13 @@
                                 <i class="fas fa-signature me-1"></i> Émarger maintenant
                             </a>
                         </div>
-                    @elseif(!$hasEmargementToday && $dailyCode && !$expiredCourses->count())
+                    @elseif($hasOnlyDebut || $hasPartialFin)
+                        <div class="mt-3 text-center">
+                            <a href="{{ route('esbtp.attendance.mark') }}" class="btn btn-warning btn-sm">
+                                <i class="fas fa-signature me-1"></i> Émarger FIN
+                            </a>
+                        </div>
+                    @elseif(!$hasAllEmargements && !$hasOnlyDebut && isset($dailyCode) && $dailyCode && !$expiredCourses->count())
                         <div class="mt-3 text-center">
                             <a href="{{ route('esbtp.attendance.mark') }}" class="btn btn-primary btn-sm">
                                 <i class="fas fa-edit me-1"></i> Émarger
