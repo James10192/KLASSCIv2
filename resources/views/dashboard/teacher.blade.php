@@ -366,6 +366,11 @@
 
                                         $isAppelExpired = $now->gt($courseEnd->copy()->addMinutes(30)) && !$hasStudentCall;
                                         $isCourseActive = $now->between($courseStart, $courseEnd);
+
+                                        // **FENÊTRE POUR CLÔTURE (APPEL DE FIN)**
+                                        // Peut clôturer à partir de 20 minutes avant la fin du cours
+                                        $fenetreClotureDebut = $courseEnd->copy()->subMinutes(20);
+                                        $canCloturer = $now->gte($fenetreClotureDebut);
                                     @endphp
                                     
                                     @if($isCompleted)
@@ -416,9 +421,15 @@
                                             <i class="fas fa-list-check"></i> Faire l'appel
                                         </a>
                                     @elseif($hasStudentCall && !$isCompleted)
-                                        <a href="{{ route('teacher.select-call-type', $cours->id) }}" class="quick-action-btn">
-                                            <i class="fas fa-check-circle"></i> Clôturer
-                                        </a>
+                                        @if($canCloturer)
+                                            <a href="{{ route('teacher.select-call-type', $cours->id) }}" class="quick-action-btn">
+                                                <i class="fas fa-check-circle"></i> Clôturer
+                                            </a>
+                                        @else
+                                            <span class="text-warning small">
+                                                <i class="fas fa-clock"></i> Clôture disponible à {{ $fenetreClotureDebut->format('H:i') }}
+                                            </span>
+                                        @endif
                                     @elseif($isPresent)
                                         <a href="{{ route('esbtp.attendance.mark') }}" class="quick-action-btn" style="background-color: var(--success); color: white;">
                                             <i class="fas fa-signature"></i> Émarger (Présent)
