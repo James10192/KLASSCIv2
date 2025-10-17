@@ -352,20 +352,25 @@
                                             ->whereDate('created_at', now()->toDateString())
                                             ->first();
 
+                                        // Récupérer le teacher_id correct (ESBTPTeacher.id pas User.id)
+                                        $teacherModel = \App\Models\ESBTPTeacher::where('user_id', Auth::id())->first();
+                                        $teacherId = $teacherModel ? $teacherModel->id : null;
+
                                         // Vérifier émargements DÉBUT et FIN
                                         $emargementDebut = null;
                                         $emargementFin = null;
 
-                                        if ($dailyCode) {
-                                            $emargementDebut = \App\Models\ESBTPTeacherAttendance::where('teacher_id', Auth::id())
+                                        // Chercher les émargements du jour (peu importe le daily_code_id)
+                                        if ($teacherId) {
+                                            $emargementDebut = \App\Models\ESBTPTeacherAttendance::where('teacher_id', $teacherId)
                                                 ->where('course_id', $cours->id)
-                                                ->where('daily_code_id', $dailyCode->id)
+                                                ->whereDate('date', today())
                                                 ->where('type', 'start')
                                                 ->first();
 
-                                            $emargementFin = \App\Models\ESBTPTeacherAttendance::where('teacher_id', Auth::id())
+                                            $emargementFin = \App\Models\ESBTPTeacherAttendance::where('teacher_id', $teacherId)
                                                 ->where('course_id', $cours->id)
-                                                ->where('daily_code_id', $dailyCode->id)
+                                                ->whereDate('date', today())
                                                 ->where('type', 'end')
                                                 ->first();
                                         }

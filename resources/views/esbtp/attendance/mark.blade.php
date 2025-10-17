@@ -377,16 +377,16 @@
                                 $emargementDebut = null;
                                 $emargementFin = null;
 
-                                if ($dailyCode && $teacherId) {
+                                if ($teacherId) {
                                     $emargementDebut = \App\Models\ESBTPTeacherAttendance::where('teacher_id', $teacherId)
                                         ->where('course_id', $course->id)
-                                        ->where('daily_code_id', $dailyCode->id)
+                                        ->whereDate('date', today())
                                         ->where('type', 'start')
                                         ->first();
 
                                     $emargementFin = \App\Models\ESBTPTeacherAttendance::where('teacher_id', $teacherId)
                                         ->where('course_id', $course->id)
-                                        ->where('daily_code_id', $dailyCode->id)
+                                        ->whereDate('date', today())
                                         ->where('type', 'end')
                                         ->first();
                                 }

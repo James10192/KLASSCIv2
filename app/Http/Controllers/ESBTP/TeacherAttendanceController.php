@@ -128,15 +128,16 @@ class TeacherAttendanceController extends Controller
             }
 
             // **VÉRIFICATION DES ÉMARGEMENTS EXISTANTS (DÉBUT ET FIN)**
-            $emargementDebut = ESBTPTeacherAttendance::where('teacher_id', $user->id)
+            // Utiliser teacher_id (ESBTPTeacher.id) pas user_id et chercher par date pas par code
+            $emargementDebut = ESBTPTeacherAttendance::where('teacher_id', $teacher->id)
                 ->where('course_id', $seanceCours->id)
-                ->where('daily_code_id', $dailyCode->id)
+                ->whereDate('date', today())
                 ->where('type', 'start')
                 ->first();
 
-            $emargementFin = ESBTPTeacherAttendance::where('teacher_id', $user->id)
+            $emargementFin = ESBTPTeacherAttendance::where('teacher_id', $teacher->id)
                 ->where('course_id', $seanceCours->id)
-                ->where('daily_code_id', $dailyCode->id)
+                ->whereDate('date', today())
                 ->where('type', 'end')
                 ->first();
 
@@ -197,7 +198,7 @@ class TeacherAttendanceController extends Controller
                 if ($now > $limite45min) {
                     // Marquer enseignant ABSENT
                     ESBTPTeacherAttendance::create([
-                        'teacher_id' => $user->id,
+                        'teacher_id' => $teacher->id,
                         'course_id' => $seanceCours->id,
                         'daily_code_id' => $dailyCode->id,
                         'date' => now()->toDateString(),
@@ -225,7 +226,7 @@ class TeacherAttendanceController extends Controller
 
                 // Créer l'émargement de DÉBUT
                 ESBTPTeacherAttendance::create([
-                    'teacher_id' => $user->id,
+                    'teacher_id' => $teacher->id,
                     'course_id' => $seanceCours->id,
                     'daily_code_id' => $dailyCode->id,
                     'date' => now()->toDateString(),
@@ -275,7 +276,7 @@ class TeacherAttendanceController extends Controller
 
                 // Créer l'émargement de FIN
                 ESBTPTeacherAttendance::create([
-                    'teacher_id' => $user->id,
+                    'teacher_id' => $teacher->id,
                     'course_id' => $seanceCours->id,
                     'daily_code_id' => $dailyCode->id,
                     'date' => now()->toDateString(),

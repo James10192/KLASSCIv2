@@ -73,8 +73,8 @@ class ESBTPTeacherAttendanceController extends Controller
             ->get();
 
         // Load teacher attendance status for each course
-        $todayCourses->each(function($course) use ($teacherUserId, $today) {
-            $course->teacherAttendance = ESBTPTeacherAttendance::where('teacher_id', $teacherUserId)
+        $todayCourses->each(function($course) use ($teacherId, $today) {
+            $course->teacherAttendance = ESBTPTeacherAttendance::where('teacher_id', $teacherId)
                 ->where('course_id', $course->id)
                 ->whereDate('date', $today)
                 ->first();
@@ -152,13 +152,13 @@ class ESBTPTeacherAttendanceController extends Controller
         // **VÉRIFICATION DES ÉMARGEMENTS EXISTANTS (DÉBUT ET FIN)**
         $emargementDebut = ESBTPTeacherAttendance::where('teacher_id', $teacherModel->id)
             ->where('course_id', $seanceCours->id)
-            ->where('daily_code_id', $dailyCode->id)
+            ->whereDate('date', today())
             ->where('type', 'start')
             ->first();
 
         $emargementFin = ESBTPTeacherAttendance::where('teacher_id', $teacherModel->id)
             ->where('course_id', $seanceCours->id)
-            ->where('daily_code_id', $dailyCode->id)
+            ->whereDate('date', today())
             ->where('type', 'end')
             ->first();
 
