@@ -185,10 +185,16 @@
                         }
                     }
 
-                    // États pour le KPI
-                    $hasAllEmargements = ($emargementDebutCount > 0 && $emargementFinCount > 0 && $emargementDebutCount === $emargementFinCount);
+                    // États pour le KPI - comparer avec le nombre TOTAL de cours
+                    $totalSeancesJour = $todayClasses->count();
+                    $hasAllEmargements = ($totalSeancesJour > 0 && $emargementDebutCount === $totalSeancesJour && $emargementFinCount === $totalSeancesJour);
                     $hasOnlyDebut = ($emargementDebutCount > 0 && $emargementFinCount === 0);
                     $hasPartialFin = ($emargementDebutCount > 0 && $emargementFinCount > 0 && $emargementDebutCount > $emargementFinCount);
+
+                    // Cas où certains cours n'ont pas encore été émargés (début = fin mais < total)
+                    $hasPartialComplete = ($emargementDebutCount > 0 && $emargementFinCount > 0 &&
+                                          $emargementDebutCount === $emargementFinCount &&
+                                          $emargementDebutCount < $totalSeancesJour);
 
                     // **NOUVELLE LOGIQUE**: Vérifier si des cours sont ABSENTS (45min+ après début)
                     $expiredCourses = $todayClasses->filter(function($cours) use ($now) {
@@ -206,8 +212,8 @@
                         return $now->gte($courseStart) && $now->lte($limite45min) && !$hasAttendance;
                     });
 
-                    $cardClass = $hasAllEmargements ? 'border-success' : (($hasOnlyDebut || $hasPartialFin) ? 'border-warning' : ($expiredCourses->count() > 0 ? 'border-danger' : ($availableCourses->count() > 0 ? 'border-success' : 'border-warning')));
-                    $iconClass = $hasAllEmargements ? 'bg-success' : (($hasOnlyDebut || $hasPartialFin) ? 'bg-warning' : ($expiredCourses->count() > 0 ? 'bg-danger' : ($availableCourses->count() > 0 ? 'bg-success' : 'bg-warning')));
+                    $cardClass = $hasAllEmargements ? 'border-success' : (($hasOnlyDebut || $hasPartialFin || $hasPartialComplete) ? 'border-warning' : ($expiredCourses->count() > 0 ? 'border-danger' : ($availableCourses->count() > 0 ? 'border-success' : 'border-warning')));
+                    $iconClass = $hasAllEmargements ? 'bg-success' : (($hasOnlyDebut || $hasPartialFin || $hasPartialComplete) ? 'bg-warning' : ($expiredCourses->count() > 0 ? 'bg-danger' : ($availableCourses->count() > 0 ? 'bg-success' : 'bg-warning')));
                 @endphp
                 
                 <div class="card-moderne p-3 {{ $cardClass }}">
@@ -221,7 +227,9 @@
                             <h6 class="fw-bold text-primary mb-1">Émargement</h6>
                             <div class="mb-2">
                                 @if($hasAllEmargements)
-                                    <span class="badge bg-success">✓ Complet</span>
+                                    <span class="badge bg-success">✓ Tous complets</span>
+                                @elseif($hasPartialComplete)
+                                    <span class="badge bg-warning">✓ Complet - Cours en attente</span>
                                 @elseif($hasOnlyDebut)
                                     <span class="badge bg-warning">✓ Début - Fin à faire</span>
                                 @elseif($hasPartialFin)
@@ -238,7 +246,9 @@
                             </div>
                             <small class="text-muted">
                                 @if($hasAllEmargements)
-                                    Début: {{ $emargementDebutCount }} | Fin: {{ $emargementFinCount }} - {{ $lastEmargementTime->format('H:i') }}
+                                    {{ $emargementDebutCount }}/{{ $totalSeancesJour }} séances - Tout émargé
+                                @elseif($hasPartialComplete)
+                                    {{ $emargementDebutCount }}/{{ $totalSeancesJour }} émargés - {{ $totalSeancesJour - $emargementDebutCount }} en attente
                                 @elseif($hasOnlyDebut)
                                     Début émargé à {{ $lastEmargementTime->format('H:i') }}
                                 @elseif($hasPartialFin)
