@@ -52,8 +52,13 @@
                                 <i class="fas fa-user-check"></i>
                             </div>
                             <h4 class="workflow-value text-success">{{ $stats['teacher_attendances_today'] ?? 0 }}</h4>
-                            <h6 class="workflow-title">Émargements</h6>
-                            <small class="workflow-subtitle">Enseignants émargés</small>
+                            <h6 class="workflow-title">Émargements Complets</h6>
+                            <small class="workflow-subtitle">Début + Fin émargés</small>
+                            @if(isset($stats['teacher_start_attendances_today']) && $stats['teacher_start_attendances_today'] > 0)
+                                <div class="workflow-badge text-warning" style="font-size: 0.75rem;">
+                                    +{{ $stats['teacher_start_attendances_today'] - $stats['teacher_attendances_today'] }} début seulement
+                                </div>
+                            @endif
                             <div class="workflow-progress">
                                 <div class="progress-bar-workflow bg-success" style="width: {{ $stats['teacher_attendance_rate'] ?? 0 }}%"></div>
                             </div>
@@ -247,6 +252,16 @@
 
                     <!-- Stats supplémentaires -->
                     <div class="additional-stats">
+                        <div class="stat-row">
+                            <span class="stat-label">Émargements complets (début+fin):</span>
+                            <span class="stat-value text-success">{{ $stats['teacher_attendances_today'] ?? 0 }}</span>
+                        </div>
+                        @if(isset($stats['teacher_start_attendances_today']) && $stats['teacher_start_attendances_today'] > 0)
+                        <div class="stat-row">
+                            <span class="stat-label">Émargements début seulement:</span>
+                            <span class="stat-value text-warning">{{ $stats['teacher_start_attendances_today'] - ($stats['teacher_attendances_today'] ?? 0) }}</span>
+                        </div>
+                        @endif
                         <div class="stat-row">
                             <span class="stat-label">Étudiants total:</span>
                             <span class="stat-value text-primary">{{ $stats['students_total_today'] ?? 0 }}</span>
