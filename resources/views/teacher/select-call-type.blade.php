@@ -346,16 +346,16 @@
             </div>
             
             <div class="progress-step">
-                <div class="step-icon {{ $workflow->attendance_signed ? 'completed' : ($workflow->current_step === 'attendance' ? 'current' : 'pending') }}">
-                    @if($workflow->attendance_signed)
+                <div class="step-icon {{ $workflow->attendance_start_signed ? 'completed' : ($workflow->current_step === 'attendance_start' ? 'current' : 'pending') }}">
+                    @if($workflow->attendance_start_signed)
                         <i class="fas fa-check"></i>
                     @else
                         <i class="fas fa-signature"></i>
                     @endif
                 </div>
-                <span class="step-label {{ $workflow->current_step === 'attendance' ? 'current' : '' }}">Émargement</span>
+                <span class="step-label {{ $workflow->current_step === 'attendance_start' ? 'current' : '' }}">Émargement début</span>
             </div>
-            
+
             <div class="progress-step">
                 <div class="step-icon {{ $workflow->call_start_done ? 'completed' : ($workflow->current_step === 'call_start' ? 'current' : 'pending') }}">
                     @if($workflow->call_start_done)
@@ -366,7 +366,18 @@
                 </div>
                 <span class="step-label {{ $workflow->current_step === 'call_start' ? 'current' : '' }}">Appel Début</span>
             </div>
-            
+
+            <div class="progress-step">
+                <div class="step-icon {{ $workflow->attendance_end_signed ? 'completed' : ($workflow->current_step === 'attendance_end' ? 'current' : 'pending') }}">
+                    @if($workflow->attendance_end_signed)
+                        <i class="fas fa-check"></i>
+                    @else
+                        <i class="fas fa-signature"></i>
+                    @endif
+                </div>
+                <span class="step-label {{ $workflow->current_step === 'attendance_end' ? 'current' : '' }}">Émargement fin</span>
+            </div>
+
             <div class="progress-step">
                 <div class="step-icon {{ $workflow->call_end_done ? 'completed' : ($workflow->current_step === 'call_end' ? 'current' : 'pending') }}">
                     @if($workflow->call_end_done)
@@ -377,7 +388,7 @@
                 </div>
                 <span class="step-label {{ $workflow->current_step === 'call_end' ? 'current' : '' }}">Appel Fin</span>
             </div>
-            
+
             <div class="progress-step">
                 <div class="step-icon {{ $workflow->report_submitted ? 'completed' : ($workflow->current_step === 'report' ? 'current' : 'pending') }}">
                     @if($workflow->report_submitted)
