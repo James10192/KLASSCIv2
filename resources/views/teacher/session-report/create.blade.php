@@ -466,11 +466,7 @@
 
             <!-- Actions -->
             <div class="form-actions">
-                <button type="submit" name="action" value="save_draft" class="btn-modern draft">
-                    <i class="fas fa-save"></i>
-                    <span>Sauvegarder brouillon</span>
-                </button>
-                <button type="submit" name="action" value="submit" class="btn-modern primary" id="submitBtn" disabled>
+                <button type="submit" name="action" value="submit" class="btn-modern primary" id="submitBtn">
                     <i class="fas fa-paper-plane"></i>
                     <span>Soumettre le rapport</span>
                 </button>
@@ -489,27 +485,15 @@
 document.addEventListener('DOMContentLoaded', function() {
     const contentSummary = document.getElementById('content_summary');
     const contentCounter = document.getElementById('contentCounter');
-    const submitBtn = document.getElementById('submitBtn');
     const form = document.getElementById('reportForm');
 
     // Fonction pour mettre à jour le compteur de caractères
     function updateCharCounter() {
         const length = contentSummary.value.trim().length;
         const isValid = length >= 30;
-        
+
         contentCounter.textContent = `${length} / 30 caractères minimum`;
         contentCounter.className = `char-counter ${isValid ? 'valid' : 'error'}`;
-        
-        // Activer/désactiver le bouton de soumission
-        submitBtn.disabled = !isValid;
-        
-        if (isValid) {
-            submitBtn.style.opacity = '1';
-            submitBtn.style.cursor = 'pointer';
-        } else {
-            submitBtn.style.opacity = '0.6';
-            submitBtn.style.cursor = 'not-allowed';
-        }
     }
 
     // Écouter les changements dans le textarea
@@ -522,30 +506,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Gestion de la soumission du formulaire
     form.addEventListener('submit', function(e) {
-        const action = e.submitter.value;
-        
-        if (action === 'submit') {
-            const length = contentSummary.value.trim().length;
-            if (length < 30) {
-                e.preventDefault();
-                alert('Le résumé du contenu doit contenir au minimum 30 caractères.');
-                contentSummary.focus();
-                return;
-            }
-            
-            // Confirmation pour la soumission finale
-            if (!confirm('Voulez-vous vraiment soumettre ce rapport ? Une fois soumis, il ne pourra plus être modifié.')) {
-                e.preventDefault();
-                return;
-            }
+        // Validation du minimum 30 caractères
+        const length = contentSummary.value.trim().length;
+        if (length < 30) {
+            e.preventDefault();
+            alert('Le résumé du contenu doit contenir au minimum 30 caractères.');
+            contentSummary.focus();
+            return;
         }
-        
+
         // Désactiver le bouton pour éviter les doubles soumissions
-        const buttons = form.querySelectorAll('button[type="submit"]');
-        buttons.forEach(btn => {
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Traitement...</span>';
-        });
+        const submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Envoi en cours...</span>';
+        }
     });
 
     // Auto-hide alerts après 5 secondes
