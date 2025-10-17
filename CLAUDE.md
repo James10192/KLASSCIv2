@@ -247,6 +247,7 @@ MAIL_FROM_NAME="KLASSCI"
 - **17/10** : Configuration type enseignement groupée → accordion avec stats temps réel
 - **17/10** : Marquage manuel attendance enseignants → cache Eloquent + priorité dates + création automatique
 - **17/10** : Exclusion séances absentes du calcul heures effectuées → planning général + emploi temps
+- **17/10** : Système AJAX marquage présences étudiants → no-reload + badges FontAwesome + détection correcte attendances
 
 ## ✨ Fonctionnalités récentes
 
@@ -423,6 +424,116 @@ Après : Math - L3 Info : 0H effectuées / 11H planifiées (0%)
 > **Séances EXCLUES** : `status = 'absent'`
 
 Cela signifie qu'une séance "non émargée" compte comme effectuée (bénéfice du doute), mais une séance explicitement marquée "absent" est exclue.
+
+### Système AJAX marquage présences étudiants (17 octobre 2025)
+
+**Fonctionnalité** : Interface de création de présences étudiantes sans rechargement de page lors des sélections de classe et séance.
+
+**Page** : `/esbtp/attendances/create` - Marquage manuel des présences étudiantes
+
+**Problèmes résolus**
+
+1. **Erreur JavaScript "impossible de trouver le formulaire de sélection"**
+   - **Cause** : Le selector `querySelector('#selectionForm .row')` cherchait `.row` DANS `#selectionForm`, mais le form lui-même a la classe `row`
+   - **Solution** : Changement à `document.getElementById('selectionForm')`
+   - **Localisations** : Lignes 371, 567, 408 dans `create.blade.php`
+
+2. **Boutons "Enregistrer" non créés dynamiquement**
+   - **Cause** : Les boutons étaient dans le template Blade statique mais absents lors du chargement AJAX des étudiants
+   - **Solution** : Création dynamique des boutons après insertion du tableau d'étudiants
+   - **Code** :
+     ```javascript
+     submitButtons = document.createElement('div');
+     submitButtons.className = 'mt-4 submit-buttons';
+     submitButtons.innerHTML = `
+         <button type="submit" class="btn btn-gradient-primary">
+             <i class="mdi mdi-content-save"></i> Enregistrer les présences
+         </button>
+         <a href="{{ route('esbtp.attendances.index') }}" class="btn btn-light">Annuler</a>
+     `;
+     ```
+
+3. **Badges contradictoires : "Non marquée" dans select vs "Modification" sur lignes étudiants**
+   - **Cause principale** : La méthode `store()` trouvait TOUTES les attendances (incluant `call_type='start'` de l'émargement enseignant) alors que la détection de badge filtrait seulement `call_type='merged'` ou `NULL`
+   - **Symptôme** : Message "2 présences mises à jour" quand devraient être "2 nouvelles présences créées"
+   - **Solution** : Ajout du même filtrage dans `store()` (lignes 802-814) :
+     ```php
+     $attendance = ESBTPAttendance::where([
+         'seance_cours_id' => $validatedData['seance_cours_id'],
+         'etudiant_id' => $etudiantId,
+         'date' => $validatedData['date']
+     ])
+     ->where(function($query) {
+         $query->where('call_type', 'merged')
+               ->orWhereNull('call_type');
+     })
+     ->first();
+     ```
+
+4. **Badge "Non marquée" persistant malgré attendances existantes**
+   - **Cause** : La condition `if ($seance->date_calculee)` empêchait la vérification quand `date_calculee` était `NULL`
+   - **Solution** : Utiliser `now()->format('Y-m-d')` comme fallback (lignes 606-628) :
+     ```php
+     // Utiliser la date calculée ou aujourd'hui comme fallback
+     $dateRecherche = $seance->date_calculee ?: now()->format('Y-m-d');
+
+     $hasAttendances = ESBTPAttendance::where('seance_cours_id', $seance->id)
+         ->where('date', $dateRecherche)
+         ->where(function($q) {
+             $q->where('call_type', 'merged')->orWhereNull('call_type');
+         })
+         ->exists();
+     ```
+
+**Caractéristiques implémentées**
+
+- ✅ **AJAX no-reload** : Sélection classe → séances, sélection séance → étudiants
+- ✅ **Icônes FontAwesome** : Remplacement emojis par `fas fa-check-circle` (vert) et `far fa-circle` (gris)
+- ✅ **Badges dynamiques** :
+  - Select séance : "Présence marquée" (vert) / "Non marquée" (gris)
+  - Lignes étudiants : "Modification" (orange) / "Nouveau marquage" (vert)
+- ✅ **Distinction call_type** : Seules les attendances manuelles (`merged`/`NULL`) comptent, pas l'émargement enseignant (`start`)
+- ✅ **Date auto-calculée** : Champ readonly basé sur la date de la séance
+- ✅ **Save classique** : Pas d'AJAX pour le submit → redirect vers `attendances.index`
+
+**Fichiers modifiés**
+
+1. **ESBTPAttendanceController.php** (L606-628 + L802-814)
+   - `loadSeances()` : Ajout fallback date + filtrage call_type pour badge
+   - `store()` : Filtrage call_type pour éviter confusion avec émargement enseignant
+
+2. **create.blade.php**
+   - Fix sélecteurs JavaScript (`getElementById` au lieu de `querySelector`)
+   - Création dynamique boutons submit
+   - Création dynamique champ date avec message info
+
+3. **student-list.blade.php** (L12)
+   - Remplacement emojis par icônes FontAwesome dans badges
+   - Utilisation `{!! $modeLabel !!}` pour affichage HTML non-échappé
+
+**Routes utilisées**
+
+```php
+GET  /esbtp/attendances/create
+POST /esbtp/attendances/store
+GET  /esbtp/attendances/load-seances  (AJAX)
+GET  /esbtp/attendances/load-students (AJAX)
+```
+
+**Logs de débogage**
+
+```
+✅ [BADGE] Séance {id} ({matière}) a {count} attendances pour {date}
+⭕ [BADGE] Séance {id} ({matière}) AUCUNE attendance pour {date}
+```
+
+**Règle métier**
+
+> **Attendances manuelles (comptabilisées)** : `call_type = 'merged'` OU `call_type IS NULL`
+>
+> **Attendances émargement enseignant (ignorées)** : `call_type = 'start'`
+
+Cette distinction permet d'éviter les doublons lors du marquage manuel après un émargement automatique enseignant.
 
 ---
 

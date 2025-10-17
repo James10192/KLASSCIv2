@@ -649,6 +649,15 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                     ->name('rapport-pdf')
                     ->middleware('permission:view_attendances');
 
+                // AJAX routes for partial refresh
+                Route::get('/attendances/load-seances', [ESBTPAttendanceController::class, 'loadSeances'])
+                    ->name('load-seances')
+                    ->middleware('permission:create_attendance');
+
+                Route::get('/attendances/load-students', [ESBTPAttendanceController::class, 'loadStudents'])
+                    ->name('load-students')
+                    ->middleware('permission:create_attendance');
+
                 // Then parameter routes
                 Route::get('/attendances/{attendance}', [ESBTPAttendanceController::class, 'show'])
                     ->name('show')

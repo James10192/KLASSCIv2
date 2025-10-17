@@ -405,6 +405,7 @@ class ESBTPAttendanceController extends Controller
         $dateSeance = null;
         $messageErreur = null;
         $classeSelectionnee = false;
+        $existingAttendances = []; // Tableau pour stocker les présences existantes (mode hybride create/update)
         $debug = []; // Tableau pour stocker les informations de débogage
 
         // Si une classe est sélectionnée (et que la valeur n'est pas vide)
@@ -497,6 +498,39 @@ class ESBTPAttendanceController extends Controller
                             $debug['erreur'] = 'date_calcul_impossible';
                             $dateSeance = now()->format('Y-m-d'); // Date par défaut
                         }
+
+                        // NOUVEAU: Vérifier si des présences existent déjà pour cette séance
+                        // Mode hybride create/update : charger les présences existantes si elles existent
+                        $existingAttendances = [];
+                        if (!$etudiants->isEmpty() && $dateSeance && $request->filled('seance_id')) {
+                            foreach ($etudiants as $etudiant) {
+                                // Récupérer uniquement les attendances 'merged' (finales) ou sans call_type (saisie manuelle)
+                                $attendance = ESBTPAttendance::where([
+                                    'seance_cours_id' => $request->seance_id,
+                                    'etudiant_id' => $etudiant->id,
+                                    'date' => $dateSeance
+                                ])
+                                ->where(function($query) {
+                                    $query->where('call_type', 'merged')
+                                          ->orWhereNull('call_type');
+                                })
+                                ->first();
+
+                                if ($attendance) {
+                                    $existingAttendances[$etudiant->id] = $attendance;
+                                    $debug['attendance_loaded_for_etudiant_' . $etudiant->id] = [
+                                        'id' => $attendance->id,
+                                        'statut' => $attendance->statut,
+                                        'call_type' => $attendance->call_type,
+                                        'commentaire' => $attendance->commentaire,
+                                        'date' => $attendance->date
+                                    ];
+                                }
+                            }
+                            $debug['existing_attendances_count'] = count($existingAttendances);
+                            $debug['existing_attendances_ids'] = array_keys($existingAttendances);
+                            $debug['mode'] = count($existingAttendances) > 0 ? 'update' : 'create';
+                        }
                     }
                 } else {
                     // Si la classe est sélectionnée mais pas de séance, récupérer quand même les étudiants
@@ -535,7 +569,193 @@ class ESBTPAttendanceController extends Controller
         // Enregistrer les informations de débogage dans le journal
         \Log::info('Débogage marquage présences', $debug);
 
-        return view('esbtp.attendances.create', compact('classes', 'seances', 'etudiants', 'dateSeance', 'messageErreur', 'classeSelectionnee', 'debug'));
+        return view('esbtp.attendances.create', compact('classes', 'seances', 'etudiants', 'dateSeance', 'messageErreur', 'classeSelectionnee', 'existingAttendances', 'debug'));
+    }
+
+    /**
+     * Charge les séances pour une classe donnée (AJAX pour refresh partiel).
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function loadSeances(Request $request)
+    {
+        \Log::info('🔵 [AJAX] loadSeances appelé', ['classe_id' => $request->classe_id]);
+
+        try {
+            $request->validate(['classe_id' => 'required|exists:esbtp_classes,id']);
+
+            $seances = ESBTPSeanceCours::whereHas('emploiTemps', function($query) use ($request) {
+                $query->where('classe_id', $request->classe_id)->where('is_active', true);
+            })->with(['emploiTemps', 'matiere'])->get();
+
+            \Log::info('✅ [AJAX] Séances trouvées', ['nb_seances' => $seances->count()]);
+
+            // Générer les options HTML avec indication de présence marquée
+            $options = '<option value="">Sélectionner une séance</option>';
+            foreach ($seances as $seance) {
+                $seance->jour_nom = $seance->getNomJour();
+                $seance->date_calculee = $seance->getDateSeance() ? $seance->getDateSeance()->format('Y-m-d') : null;
+
+                $matiere = $seance->matiere->name ?? 'Matière inconnue';
+                $heureDebut = $seance->heure_debut->format('H:i');
+                $heureFin = $seance->heure_fin->format('H:i');
+                $jour = $seance->jour_nom;
+                $dateCalculee = $seance->date_calculee ? \Carbon\Carbon::parse($seance->date_calculee)->format('d/m/Y') : '';
+
+                // Vérifier si des présences existent déjà pour cette séance
+                // Utiliser la date calculée ou aujourd'hui comme fallback
+                $dateRecherche = $seance->date_calculee ?: now()->format('Y-m-d');
+
+                $hasAttendances = ESBTPAttendance::where('seance_cours_id', $seance->id)
+                    ->where('date', $dateRecherche)
+                    ->where(function($q) {
+                        $q->where('call_type', 'merged')->orWhereNull('call_type');
+                    })
+                    ->exists();
+
+                // Log debug pour vérifier la détection
+                if ($hasAttendances) {
+                    $count = ESBTPAttendance::where('seance_cours_id', $seance->id)
+                        ->where('date', $dateRecherche)
+                        ->where(function($q) {
+                            $q->where('call_type', 'merged')->orWhereNull('call_type');
+                        })
+                        ->count();
+                    \Log::info("✅ [BADGE] Séance {$seance->id} ({$matiere}) a {$count} attendances pour {$dateRecherche}");
+                } else {
+                    \Log::info("⭕ [BADGE] Séance {$seance->id} ({$matiere}) AUCUNE attendance pour {$dateRecherche}");
+                }
+
+                // Badge visuel pour indiquer si présences marquées (icônes FontAwesome)
+                $badge = $hasAttendances ? ' <i class="fas fa-check-circle text-success"></i> Présence marquée' : ' <i class="far fa-circle text-muted"></i> Non marquée';
+
+                $options .= sprintf(
+                    '<option value="%d" data-date="%s" data-jour="%s" data-has-attendances="%s">%s - %s à %s (%s)%s%s</option>',
+                    $seance->id,
+                    $seance->date_calculee ?? '',
+                    $jour,
+                    $hasAttendances ? 'true' : 'false',
+                    $matiere,
+                    $heureDebut,
+                    $heureFin,
+                    $jour,
+                    $dateCalculee ? " - {$dateCalculee}" : '',
+                    $badge
+                );
+            }
+
+            return response()->json(['success' => true, 'options' => $options, 'nbSeances' => $seances->count()]);
+
+        } catch (\Exception $e) {
+            \Log::error('❌ [AJAX] Erreur loadSeances: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Une erreur est survenue: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Charge les étudiants pour une séance donnée (AJAX pour refresh partiel).
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function loadStudents(Request $request)
+    {
+        \Log::info('🔵 [AJAX] loadStudents appelé', [
+            'classe_id' => $request->classe_id,
+            'seance_id' => $request->seance_id,
+            'headers' => $request->headers->all(),
+            'is_ajax' => $request->ajax(),
+            'is_xhr' => $request->header('X-Requested-With') === 'XMLHttpRequest'
+        ]);
+
+        try {
+            $request->validate([
+                'classe_id' => 'required|exists:esbtp_classes,id',
+                'seance_id' => 'required|exists:esbtp_seance_cours,id',
+            ]);
+
+            \Log::info('✅ [AJAX] Validation passée');
+
+            $classe = ESBTPClasse::findOrFail($request->classe_id);
+            $seance = ESBTPSeanceCours::with(['emploiTemps.classe', 'matiere'])->findOrFail($request->seance_id);
+
+            \Log::info('✅ [AJAX] Classe et séance trouvées', [
+                'classe_nom' => $classe->name,
+                'seance_matiere' => $seance->matiere->name ?? 'N/A'
+            ]);
+
+            // Vérifier que la séance appartient à la classe
+            if (!$seance->emploiTemps || $seance->emploiTemps->classe_id != $request->classe_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La séance sélectionnée n\'appartient pas à la classe sélectionnée.'
+                ], 400);
+            }
+
+            // Récupérer l'année universitaire courante
+            $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+            // Récupérer les étudiants
+            $etudiants = $classe->etudiants()
+                ->whereHas('inscriptions', function($q) use ($anneeUniversitaire) {
+                    $q->where('annee_universitaire_id', $anneeUniversitaire->id)
+                      ->where('status', 'active');
+                })
+                ->get();
+
+            if ($etudiants->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Aucun étudiant inscrit dans cette classe.'
+                ], 404);
+            }
+
+            // Calculer la date de la séance
+            $dateCalculee = $seance->getDateSeance();
+            $dateSeance = $dateCalculee ? $dateCalculee->format('Y-m-d') : now()->format('Y-m-d');
+
+            // Charger les présences existantes (uniquement 'merged' ou sans call_type)
+            $existingAttendances = [];
+            foreach ($etudiants as $etudiant) {
+                $attendance = ESBTPAttendance::where([
+                    'seance_cours_id' => $request->seance_id,
+                    'etudiant_id' => $etudiant->id,
+                    'date' => $dateSeance
+                ])
+                ->where(function($query) {
+                    $query->where('call_type', 'merged')
+                          ->orWhereNull('call_type');
+                })
+                ->first();
+
+                if ($attendance) {
+                    $existingAttendances[$etudiant->id] = $attendance;
+                }
+            }
+
+            // Générer le HTML pour la liste des étudiants
+            $html = view('esbtp.attendances.partials.student-list', [
+                'etudiants' => $etudiants,
+                'existingAttendances' => $existingAttendances
+            ])->render();
+
+            return response()->json([
+                'success' => true,
+                'html' => $html,
+                'dateSeance' => $dateSeance,
+                'nbEtudiants' => $etudiants->count(),
+                'nbExisting' => count($existingAttendances),
+                'mode' => count($existingAttendances) > 0 ? 'update' : 'create'
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors du chargement AJAX des étudiants: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Une erreur est survenue: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -580,12 +800,18 @@ class ESBTPAttendanceController extends Controller
             ];
 
             foreach ($validatedData['statuts'] as $etudiantId => $statut) {
-                // Vérifier si l'enregistrement existe déjà
+                // Vérifier si l'enregistrement existe déjà (uniquement attendances manuelles: merged ou null)
+                // Ne pas confondre avec les attendances de l'émargement enseignant (call_type='start')
                 $attendance = ESBTPAttendance::where([
                     'seance_cours_id' => $validatedData['seance_cours_id'],
                     'etudiant_id' => $etudiantId,
                     'date' => $validatedData['date']
-                ])->first();
+                ])
+                ->where(function($query) {
+                    $query->where('call_type', 'merged')
+                          ->orWhereNull('call_type');
+                })
+                ->first();
 
                 $commentaire = $validatedData['commentaires'][$etudiantId] ?? null;
 
