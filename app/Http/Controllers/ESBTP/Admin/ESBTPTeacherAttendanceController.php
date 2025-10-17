@@ -149,14 +149,17 @@ class ESBTPTeacherAttendanceController extends Controller
             return redirect()->back()->with('error', 'Vous n\'êtes pas assigné à ce cours.');
         }
         
-        // Check if teacher has already marked attendance for this course today
+        // Check if teacher has already marked attendance for this specific session (course + daily code)
+        // Note: Un cours peut avoir plusieurs séances le même jour, on vérifie donc avec le daily_code_id
         $existingAttendance = ESBTPTeacherAttendance::where('teacher_id', $user->id)
             ->where('course_id', $seanceCours->id)
-            ->whereDate('date', today())
+            ->where('daily_code_id', $dailyCode->id)
             ->first();
 
         if ($existingAttendance) {
-            return redirect()->back()->with('warning', 'Vous avez déjà émargé pour ce cours aujourd\'hui.');
+            // Si déjà émargé pour cette séance précise, rediriger vers l'appel de début
+            return redirect()->route('teacher.select-call-type', ['seance' => $seanceCours->id])
+                ->with('info', 'Vous avez déjà émargé pour cette séance. Veuillez effectuer l\'appel.');
         }
 
         // Create attendance record
