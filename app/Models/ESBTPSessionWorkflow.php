@@ -75,7 +75,13 @@ class ESBTPSessionWorkflow extends Model
     {
         $this->attendance_end_signed = true;
         $this->attendance_end_signed_at = now();
-        $this->current_step = 'call_end'; // Après émargement fin, on peut faire appel de fin
+
+        // Si l'appel de début est déjà fait, passer à call_end
+        // Sinon rester sur current_step actuel
+        if ($this->call_start_done) {
+            $this->current_step = 'call_end';
+        }
+
         $this->save();
     }
 
