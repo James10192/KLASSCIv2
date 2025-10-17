@@ -418,23 +418,36 @@ class TeacherAttendanceController extends Controller
     {
         $user = Auth::user();
         $seance = ESBTPSeanceCours::with(['matiere', 'classe'])->findOrFail($seanceId);
-        
+
         // Récupérer le modèle enseignant associé à l'utilisateur
         $teacherModel = \App\Models\ESBTPTeacher::where('user_id', $user->id)->first();
         if (!$teacherModel) {
             return redirect()->route('teacher.dashboard')
                 ->with('error', 'Aucun profil enseignant associé à ce compte.');
         }
-        
+
         // Vérifier que l'enseignant est assigné à cette séance
         if ($seance->teacher_id !== $teacherModel->id) {
             return redirect()->route('teacher.dashboard')
                 ->with('error', 'Vous n\'êtes pas autorisé à accéder à cette séance.');
         }
-        
+
         // Récupérer ou créer le workflow pour cette séance
         $workflow = ESBTPSessionWorkflow::getOrCreateForSession($seanceId, $user->id);
-        
-        return view('teacher.select-call-type', compact('seance', 'workflow'));
+
+        // **VÉRIFICATION DE LA FENÊTRE POUR L'APPEL DE FIN**
+        $now = Carbon::now();
+        $heureFin = Carbon::parse($seance->heure_fin);
+        $fenetreDebut = $heureFin->copy()->subMinutes(20); // 20 minutes avant la fin
+
+        // Vérifier si on peut faire l'appel de fin (dans la fenêtre 20 min avant fin)
+        $canEndCall = $now >= $fenetreDebut;
+        $endCallMessage = null;
+
+        if (!$canEndCall) {
+            $endCallMessage = 'L\'appel de fin sera disponible à partir de ' . $fenetreDebut->format('H:i') . ' (20 minutes avant la fin du cours).';
+        }
+
+        return view('teacher.select-call-type', compact('seance', 'workflow', 'canEndCall', 'endCallMessage'));
     }
 }

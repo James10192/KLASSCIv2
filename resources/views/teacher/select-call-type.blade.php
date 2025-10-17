@@ -421,15 +421,16 @@
             </a>
 
             <!-- Appel de fin -->
-            <a href="{{ $workflow->canExecuteStep('call_end') && !$workflow->call_end_done ? route('teacher.roll-call', ['seance' => $seance->id, 'type' => 'end']) : '#' }}" 
-               class="call-type-btn end {{ $workflow->call_end_done ? 'completed' : ($workflow->canExecuteStep('call_end') ? '' : 'disabled') }}">
-                
+            <a href="{{ $workflow->canExecuteStep('call_end') && !$workflow->call_end_done && $canEndCall ? route('teacher.roll-call', ['seance' => $seance->id, 'type' => 'end']) : '#' }}"
+               class="call-type-btn end {{ $workflow->call_end_done ? 'completed' : ($workflow->canExecuteStep('call_end') && $canEndCall ? '' : 'disabled') }}"
+               data-end-call-message="{{ $endCallMessage ?? '' }}">
+
                 @if($workflow->call_end_done)
                     <div class="call-type-status">
                         <i class="fas fa-check"></i>
                     </div>
                 @endif
-                
+
                 <div class="call-type-icon">
                     @if($workflow->call_end_done)
                         <i class="fas fa-check"></i>
@@ -437,10 +438,14 @@
                         <i class="fas fa-stop"></i>
                     @endif
                 </div>
-                
+
                 <h3 class="call-type-title">Appel de Fin</h3>
                 <p class="call-type-description">
-                    Vérifier les présences en fin de cours et procéder aux ajustements nécessaires
+                    @if(!$canEndCall && !$workflow->call_end_done)
+                        <small class="text-warning"><i class="fas fa-clock me-1"></i>{{ $endCallMessage }}</small>
+                    @else
+                        Vérifier les présences en fin de cours et procéder aux ajustements nécessaires
+                    @endif
                 </p>
             </a>
         </div>
@@ -478,12 +483,16 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.call-type-btn.disabled').forEach(button => {
         button.addEventListener('click', function(e) {
             e.preventDefault();
-            
+
             // Afficher un message d'information
-            const message = this.classList.contains('start') 
-                ? 'Vous devez d\'abord compléter l\'émargement.'
-                : 'Vous devez d\'abord effectuer l\'appel de début.';
-                
+            let message;
+            if (this.classList.contains('start')) {
+                message = 'Vous devez d\'abord compléter l\'émargement.';
+            } else if (this.classList.contains('end')) {
+                // Récupérer le message personnalisé depuis l'attribut data
+                message = this.dataset.endCallMessage || 'Vous devez d\'abord effectuer l\'appel de début.';
+            }
+
             alert(message);
         });
     });
