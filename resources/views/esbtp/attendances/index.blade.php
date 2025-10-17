@@ -589,19 +589,19 @@
         <!-- Statistiques principales -->
         <div class="kpi-grid mb-4">
             <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
-                <div class="kpi-title" style="color: #000; font-weight: 600;">Étudiants Présents</div>
+                <div class="kpi-title" style="color: #000; font-weight: 600;">Présences</div>
                 <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ $stats['present'] ?? 0 }}</div>
                 <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
-                    <i class="fas fa-user-check"></i>
+                    <i class="fas fa-check-circle"></i>
                     {{ ($stats['total'] ?? 0) > 0 ? round(($stats['present'] ?? 0) / $stats['total'] * 100, 1) : 0 }}% du total
                 </div>
             </div>
 
             <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
-                <div class="kpi-title" style="color: #000; font-weight: 600;">Étudiants Absents</div>
+                <div class="kpi-title" style="color: #000; font-weight: 600;">Absences</div>
                 <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ $stats['absent'] ?? 0 }}</div>
                 <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
-                    <i class="fas fa-user-times"></i>
+                    <i class="fas fa-times-circle"></i>
                     {{ ($stats['total'] ?? 0) > 0 ? round(($stats['absent'] ?? 0) / $stats['total'] * 100, 1) : 0 }}% du total
                 </div>
             </div>
@@ -664,11 +664,11 @@
                         <div class="kpi-title">Appels Terminés</div>
                         <div class="kpi-value color-success">{{ $coordinatorStats['roll_calls_completed_today'] ?? 0 }}</div>
                         <div class="kpi-trend">
-                            <i class="fas fa-users-check"></i>
-                            {{ $coordinatorStats['students_present_today'] ?? 0 }} présents
+                            <i class="fas fa-check-double"></i>
+                            {{ $coordinatorStats['students_present_today'] ?? 0 }} présences
                         </div>
                         <div class="progress mt-3" style="height: 6px;">
-                            <div class="progress-bar bg-white" role="progressbar" 
+                            <div class="progress-bar bg-white" role="progressbar"
                                  style="width: {{ $coordinatorStats['roll_call_completion_rate'] ?? 0 }}%">
                             </div>
                         </div>
@@ -881,13 +881,13 @@
                                 <div class="col-3">
                                     <div class="text-center">
                                         <div class="fw-bold text-success">{{ $classe['present'] }}</div>
-                                        <small class="text-muted">Présents</small>
+                                        <small class="text-muted">Présences</small>
                                     </div>
                                 </div>
                                 <div class="col-3">
                                     <div class="text-center">
                                         <div class="fw-bold text-danger">{{ $classe['absent'] }}</div>
-                                        <small class="text-muted">Absents</small>
+                                        <small class="text-muted">Absences</small>
                                     </div>
                                 </div>
                                 <div class="col-3">
@@ -1007,7 +1007,7 @@
                             <span class="fw-bold text-info">{{ $coordinatorStats['roll_calls_completed_today'] ?? 0 }}</span>
                         </div>
                         <div class="d-flex justify-content-between align-items-center">
-                            <span class="text-muted">Étudiants présents:</span>
+                            <span class="text-muted">Présences enregistrées:</span>
                             <span class="fw-bold text-success">{{ $coordinatorStats['students_present_today'] ?? 0 }}</span>
                         </div>
                         <div class="d-flex justify-content-between align-items-center">
@@ -1274,7 +1274,7 @@ const attendanceChart = new Chart(ctx, {
             return \Carbon\Carbon::parse($date)->format('d/m'); 
         }, array_keys($statsParStatus ?? []))) !!},
         datasets: [{
-            label: 'Présents',
+            label: 'Présences',
             data: {!! json_encode(array_column($statsParStatus ?? [], 'present')) !!},
             borderColor: '#10b981',
             backgroundColor: 'rgba(16, 185, 129, 0.1)',
@@ -1282,7 +1282,7 @@ const attendanceChart = new Chart(ctx, {
             fill: true,
             tension: 0.4
         }, {
-            label: 'Absents',
+            label: 'Absences',
             data: {!! json_encode(array_column($statsParStatus ?? [], 'absent')) !!},
             borderColor: '#ef4444',
             backgroundColor: 'rgba(239, 68, 68, 0.1)',

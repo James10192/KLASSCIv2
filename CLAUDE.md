@@ -248,6 +248,7 @@ MAIL_FROM_NAME="KLASSCI"
 - **17/10** : Marquage manuel attendance enseignants → cache Eloquent + priorité dates + création automatique
 - **17/10** : Exclusion séances absentes du calcul heures effectuées → planning général + emploi temps
 - **17/10** : Système AJAX marquage présences étudiants → no-reload + badges FontAwesome + détection correcte attendances
+- **17/10** : Correction terminologie attendances.index → "Présences/Absences" au lieu d'"Étudiants" (KPI + graphique + stats classe)
 
 ## ✨ Fonctionnalités récentes
 
@@ -534,6 +535,78 @@ GET  /esbtp/attendances/load-students (AJAX)
 > **Attendances émargement enseignant (ignorées)** : `call_type = 'start'`
 
 Cette distinction permet d'éviter les doublons lors du marquage manuel après un émargement automatique enseignant.
+
+### Correction terminologie page attendances.index (17 octobre 2025)
+
+**Problématique** : Toute la page `attendances.index` utilisait le terme **"Étudiants"** (ex: "Étudiants Présents", "Étudiants Absents") alors qu'elle comptait en réalité des **enregistrements d'attendance**, pas des étudiants uniques.
+
+**Confusion métier** : Un même étudiant peut avoir plusieurs enregistrements (présent à une séance, absent à une autre). Dire "4 étudiants présents" implique 4 étudiants différents, mais le système comptait "4 enregistrements avec statut=present".
+
+**Page affectée** : `/esbtp/attendances` - Vue liste des présences avec KPI, graphique et stats par classe
+
+**Corrections appliquées**
+
+1. **KPI du haut** (4 cartes - lignes 590-626)
+   ```diff
+   - "Étudiants Présents" → "Présences"
+   - "Étudiants Absents" → "Absences"
+   - Icône: fa-user-check → fa-check-circle
+   - Icône: fa-user-times → fa-times-circle
+   ```
+
+2. **Graphique Chart.js** "Tendance des 7 Derniers Jours" (lignes 1276-1308)
+   ```diff
+   - label: 'Présents' → 'Présences'
+   - label: 'Absents' → 'Absences'
+   - Les autres labels (Retards, Excusés) étaient déjà corrects
+   ```
+
+3. **Section "Présences par Classe"** (lignes 880-905)
+   ```diff
+   - "Présents" → "Présences"
+   - "Absents" → "Absences"
+   ```
+
+4. **Section coordinateur - KPI "Appels Terminés"** (lignes 662-675)
+   ```diff
+   - "X présents" → "X présences"
+   - Icône: fa-users-check → fa-check-double
+   ```
+
+5. **Résumé du jour coordinateur** (ligne 1010)
+   ```diff
+   - "Étudiants présents:" → "Présences enregistrées:"
+   ```
+
+**Clarification terminologique**
+
+| Avant (incorrect) | Après (correct) | Signification |
+|-------------------|-----------------|---------------|
+| "Étudiants Présents" | "Présences" | Nombre d'enregistrements avec `statut='present'` |
+| "Étudiants Absents" | "Absences" | Nombre d'enregistrements avec `statut='absent'` |
+| "Présents" (graphique) | "Présences" | Comptage d'enregistrements, pas d'étudiants uniques |
+| "Absents" (graphique) | "Absences" | Comptage d'enregistrements, pas d'étudiants uniques |
+
+**Fichier modifié**
+- `resources/views/esbtp/attendances/index.blade.php` : 8 changements de labels + 3 icônes
+
+**Impact UX**
+- ✅ **Clarté métier** : Terminologie exacte reflétant ce qui est vraiment compté
+- ✅ **Cohérence** : Alignement vocabulaire frontend/backend
+- ✅ **Compréhension** : Plus de confusion entre "nombre d'étudiants" et "nombre d'enregistrements"
+
+**Note technique**
+
+Le controller `ESBTPAttendanceController::index()` calcule :
+```php
+$stats = [
+    'present' => (clone $statsQuery)->where('statut', 'present')->count(), // COUNT des enregistrements
+    'absent' => (clone $statsQuery)->where('statut', 'absent')->count(),
+    // ...
+];
+```
+
+Ce sont des `COUNT(*)` sur `esbtp_attendances`, donc des enregistrements, pas des `COUNT(DISTINCT etudiant_id)`.
 
 ---
 
