@@ -66,42 +66,33 @@ class CoordinateurDashboardController extends Controller
                 ->whereDate('created_at', $date->toDateString())
                 ->first();
 
-            $stats['teacher_attendances_today'] = 0;
-            if ($dailyCode) {
-                // Compter les cours qui ont à la fois émargement début ET fin
-                $stats['teacher_attendances_today'] = ESBTPSeanceCours::whereDate('date_seance', $date)
-                    ->whereHas('teacherAttendances', function($q) use ($dailyCode) {
-                        $q->where('daily_code_id', $dailyCode->id)
-                          ->where('type', 'start');
-                    })
-                    ->whereHas('teacherAttendances', function($q) use ($dailyCode) {
-                        $q->where('daily_code_id', $dailyCode->id)
-                          ->where('type', 'end');
-                    })
-                    ->count();
-            }
+            // Compter les cours qui ont à la fois émargement début ET fin
+            $stats['teacher_attendances_today'] = ESBTPSeanceCours::whereDate('date_seance', $date)
+                ->whereHas('teacherAttendances', function($q) use ($date) {
+                    $q->whereDate('date', $date)
+                      ->where('type', 'start');
+                })
+                ->whereHas('teacherAttendances', function($q) use ($date) {
+                    $q->whereDate('date', $date)
+                      ->where('type', 'end');
+                })
+                ->count();
 
             // Compter aussi les émargements de début seulement (pour statistiques)
-            $stats['teacher_start_attendances_today'] = 0;
-            if ($dailyCode) {
-                $stats['teacher_start_attendances_today'] = ESBTPSeanceCours::whereDate('date_seance', $date)
-                    ->whereHas('teacherAttendances', function($q) use ($dailyCode) {
-                        $q->where('daily_code_id', $dailyCode->id)
-                          ->where('type', 'start');
-                    })
-                    ->count();
-            }
+            $stats['teacher_start_attendances_today'] = ESBTPSeanceCours::whereDate('date_seance', $date)
+                ->whereHas('teacherAttendances', function($q) use ($date) {
+                    $q->whereDate('date', $date)
+                      ->where('type', 'start');
+                })
+                ->count();
 
             // Compter émargements FIN seulement
-            $stats['teacher_end_attendances_today'] = 0;
-            if ($dailyCode) {
-                $stats['teacher_end_attendances_today'] = ESBTPSeanceCours::whereDate('date_seance', $date)
-                    ->whereHas('teacherAttendances', function($q) use ($dailyCode) {
-                        $q->where('daily_code_id', $dailyCode->id)
-                          ->where('type', 'end');
-                    })
-                    ->count();
-            }
+            $stats['teacher_end_attendances_today'] = ESBTPSeanceCours::whereDate('date_seance', $date)
+                ->whereHas('teacherAttendances', function($q) use ($date) {
+                    $q->whereDate('date', $date)
+                      ->where('type', 'end');
+                })
+                ->count();
 
             // 3. Taux d'émargement (basé sur émargements COMPLETS)
             $stats['teacher_attendance_rate'] = $stats['scheduled_courses_today'] > 0
@@ -188,23 +179,20 @@ class CoordinateurDashboardController extends Controller
             // Un cours est complet si:
             // - Émargement début ET fin (les deux types)
             // - Appels d'étudiants effectués
-            $stats['courses_completed_today'] = 0;
-            if ($dailyCode) {
-                $stats['courses_completed_today'] = ESBTPSeanceCours::whereDate('date_seance', $date)
-                    // Vérifier émargement DÉBUT
-                    ->whereHas('teacherAttendances', function($q) use ($dailyCode) {
-                        $q->where('daily_code_id', $dailyCode->id)
-                          ->where('type', 'start');
-                    })
-                    // Vérifier émargement FIN
-                    ->whereHas('teacherAttendances', function($q) use ($dailyCode) {
-                        $q->where('daily_code_id', $dailyCode->id)
-                          ->where('type', 'end');
-                    })
-                    // Vérifier qu'il y a des appels d'étudiants
-                    ->whereHas('attendances')
-                    ->count();
-            }
+            $stats['courses_completed_today'] = ESBTPSeanceCours::whereDate('date_seance', $date)
+                // Vérifier émargement DÉBUT
+                ->whereHas('teacherAttendances', function($q) use ($date) {
+                    $q->whereDate('date', $date)
+                      ->where('type', 'start');
+                })
+                // Vérifier émargement FIN
+                ->whereHas('teacherAttendances', function($q) use ($date) {
+                    $q->whereDate('date', $date)
+                      ->where('type', 'end');
+                })
+                // Vérifier qu'il y a des appels d'étudiants
+                ->whereHas('attendances')
+                ->count();
 
             // 10. Enseignants actifs aujourd'hui
             $stats['active_teachers_today'] = ESBTPTeacherAttendance::whereDate('created_at', $date)
