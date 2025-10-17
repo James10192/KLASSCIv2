@@ -4,6 +4,7 @@ namespace App\Http\Controllers\ESBTP;
 
 use App\Http\Controllers\Controller;
 use App\Models\ESBTPDailyCode;
+use App\Models\ESBTPTeacher;
 use App\Models\ESBTPTeacherAttendance;
 use App\Models\ESBTPAttendanceSettings;
 use App\Models\ESBTPEmploiTemps;
@@ -126,102 +127,160 @@ class TeacherAttendanceController extends Controller
                 return back()->with('error', 'Vous n\'êtes pas assigné à ce cours.');
             }
 
-            // Check if teacher has already marked attendance for this specific session (course + daily code)
-            // Note: Un cours peut avoir plusieurs séances le même jour, on vérifie donc avec le daily_code_id
-            $existingAttendance = ESBTPTeacherAttendance::where('teacher_id', $user->id)
+            // **VÉRIFICATION DES ÉMARGEMENTS EXISTANTS (DÉBUT ET FIN)**
+            $emargementDebut = ESBTPTeacherAttendance::where('teacher_id', $user->id)
                 ->where('course_id', $seanceCours->id)
                 ->where('daily_code_id', $dailyCode->id)
+                ->where('type', 'start')
                 ->first();
 
-            if ($existingAttendance) {
-                // Si déjà émargé pour cette séance précise, rediriger vers l'appel de début
-                return redirect()->route('teacher.select-call-type', $seanceCours->id)
-                    ->with('info', 'Vous avez déjà émargé pour cette séance. Veuillez effectuer l\'appel.');
-            }
+            $emargementFin = ESBTPTeacherAttendance::where('teacher_id', $user->id)
+                ->where('course_id', $seanceCours->id)
+                ->where('daily_code_id', $dailyCode->id)
+                ->where('type', 'end')
+                ->first();
 
-            // **LOGIQUE DE FENÊTRE D'ÉMARGEMENT DÉBUT**
+            // **DÉTERMINER QUEL TYPE D'ÉMARGEMENT FAIRE**
             $now = Carbon::now();
-
-            // heure_debut est déjà un DATETIME complet
             $heureDebut = Carbon::parse($seanceCours->heure_debut);
+            $heureFin = Carbon::parse($seanceCours->heure_fin);
+            $fenetreClotureDebut = $heureFin->copy()->subMinutes(20);
 
-            // FENÊTRE 1 : AVANT heure_debut → ❌ IMPOSSIBLE d'émarger
-            if ($now < $heureDebut) {
-                $dailyCode->recordAttempt(false);
-                return back()->with('error', 'Vous ne pouvez pas émarger avant le début du cours (' . $heureDebut->format('H:i') . ').');
+            // Est-on dans la fenêtre de clôture?
+            $isInClosingWindow = $now->gte($fenetreClotureDebut);
+
+            // Déterminer le type d'émargement à faire
+            if (!$emargementDebut) {
+                // Pas encore d'émargement de début → FAIRE ÉMARGEMENT DÉBUT
+                $emargementType = 'start';
+            } elseif ($isInClosingWindow && !$emargementFin) {
+                // Émargement début fait + dans fenêtre clôture + pas encore émargement fin → FAIRE ÉMARGEMENT FIN
+                $emargementType = 'end';
+            } elseif ($emargementDebut && $emargementFin) {
+                // Les deux émargements sont déjà faits
+                return redirect()->route('teacher.select-call-type', $seanceCours->id)
+                    ->with('success', 'Vous avez déjà émargé le début et la fin de cette séance.');
+            } else {
+                // Émargement début fait mais pas encore dans la fenêtre de clôture
+                return redirect()->route('teacher.select-call-type', $seanceCours->id)
+                    ->with('info', 'Émargement de début déjà effectué. L\'émargement de fin sera disponible à partir de ' . $fenetreClotureDebut->format('H:i') . '.');
             }
 
-            // FENÊTRE 2 : heure_debut → heure_debut + 20min → ✅ PRÉSENT
-            $limite20min = $heureDebut->copy()->addMinutes(20);
+            // **LOGIQUE SELON LE TYPE D'ÉMARGEMENT**
+            if ($emargementType === 'start') {
+                // ========== ÉMARGEMENT DE DÉBUT ==========
 
-            // FENÊTRE 3 : heure_debut + 20min → heure_debut + 45min → ⚠️ RETARD
-            $limite45min = $heureDebut->copy()->addMinutes(45);
+                // FENÊTRE 1 : AVANT heure_debut → ❌ IMPOSSIBLE d'émarger
+                if ($now < $heureDebut) {
+                    $dailyCode->recordAttempt(false);
+                    return back()->with('error', 'Vous ne pouvez pas émarger avant le début du cours (' . $heureDebut->format('H:i') . ').');
+                }
 
-            // FENÊTRE 4 : heure_debut + 45min et plus → ❌ ABSENT (workflow fermé)
-            if ($now > $limite45min) {
-                // Marquer enseignant ABSENT
+                // FENÊTRE 2 : heure_debut → heure_debut + 20min → ✅ PRÉSENT
+                $limite20min = $heureDebut->copy()->addMinutes(20);
+
+                // FENÊTRE 3 : heure_debut + 20min → heure_debut + 45min → ⚠️ RETARD
+                $limite45min = $heureDebut->copy()->addMinutes(45);
+
+                // FENÊTRE 4 : heure_debut + 45min et plus → ❌ ABSENT (workflow fermé)
+                if ($now > $limite45min) {
+                    // Marquer enseignant ABSENT
+                    ESBTPTeacherAttendance::create([
+                        'teacher_id' => $user->id,
+                        'course_id' => $seanceCours->id,
+                        'daily_code_id' => $dailyCode->id,
+                        'date' => now()->toDateString(),
+                        'status' => 'absent',
+                        'type' => 'start',
+                        'attempts' => 1,
+                        'ip_address' => $request->ip(),
+                        'device_info' => json_encode(['user_agent' => $request->userAgent()]),
+                        'validated_at' => now()
+                    ]);
+
+                    // Fermer le workflow directement
+                    $workflow = ESBTPSessionWorkflow::getOrCreateForSession($seanceCours->id, $user->id);
+                    $workflow->current_step = 'closed_absent';
+                    $workflow->save();
+
+                    $dailyCode->recordAttempt(true);
+
+                    return redirect()->route('teacher.dashboard')
+                        ->with('error', 'Délai d\'émargement dépassé (45 minutes après le début). Vous êtes marqué ABSENT. La séance ne sera pas comptabilisée.');
+                }
+
+                // Déterminer le statut : present ou late
+                $status = ($now <= $limite20min) ? 'present' : 'late';
+
+                // Créer l'émargement de DÉBUT
                 ESBTPTeacherAttendance::create([
                     'teacher_id' => $user->id,
                     'course_id' => $seanceCours->id,
                     'daily_code_id' => $dailyCode->id,
                     'date' => now()->toDateString(),
-                    'status' => 'absent',
+                    'status' => $status,
+                    'type' => 'start',
                     'attempts' => 1,
                     'ip_address' => $request->ip(),
                     'device_info' => json_encode(['user_agent' => $request->userAgent()]),
                     'validated_at' => now()
                 ]);
 
-                // Fermer le workflow directement
+                $dailyCode->recordAttempt(true);
+
+                // Mettre à jour le workflow
                 $workflow = ESBTPSessionWorkflow::getOrCreateForSession($seanceCours->id, $user->id);
-                $workflow->current_step = 'closed_absent';
-                $workflow->save();
+                $workflow->markAttendanceSigned();
+
+                // Notification
+                try {
+                    $notificationService = app(NotificationService::class);
+                    $notificationService->notifyCoordinateurTeacherAttendanceSigned($user, $seanceCours);
+                } catch (\Exception $e) {
+                    \Log::error('Erreur lors de l\'envoi de la notification d\'émargement: ' . $e->getMessage());
+                }
+
+                $successMessage = $status === 'late'
+                    ? 'Émargement de DÉBUT enregistré avec RETARD. Veuillez maintenant effectuer l\'appel de début.'
+                    : 'Émargement de DÉBUT enregistré avec succès. Veuillez maintenant effectuer l\'appel de début.';
+
+                return redirect()->route('teacher.select-call-type', $seanceCours->id)
+                    ->with('success', $successMessage);
+
+            } else {
+                // ========== ÉMARGEMENT DE FIN ==========
+
+                // Vérifier qu'on est dans la fenêtre de clôture
+                if (!$isInClosingWindow) {
+                    return back()->with('error', 'L\'émargement de fin ne peut être fait qu\'à partir de ' . $fenetreClotureDebut->format('H:i') . ' (20 minutes avant la fin du cours).');
+                }
+
+                // FENÊTRE : heure_fin - 20min → heure_fin + 30min → ✅ OK
+                $fenetreClotureFin = $heureFin->copy()->addMinutes(30);
+
+                if ($now > $fenetreClotureFin) {
+                    return back()->with('error', 'Délai d\'émargement de fin dépassé (30 minutes après la fin du cours).');
+                }
+
+                // Créer l'émargement de FIN
+                ESBTPTeacherAttendance::create([
+                    'teacher_id' => $user->id,
+                    'course_id' => $seanceCours->id,
+                    'daily_code_id' => $dailyCode->id,
+                    'date' => now()->toDateString(),
+                    'status' => 'present', // Toujours present pour émargement de fin
+                    'type' => 'end',
+                    'attempts' => 1,
+                    'ip_address' => $request->ip(),
+                    'device_info' => json_encode(['user_agent' => $request->userAgent()]),
+                    'validated_at' => now()
+                ]);
 
                 $dailyCode->recordAttempt(true);
 
-                return redirect()->route('teacher.dashboard')
-                    ->with('error', 'Délai d\'émargement dépassé (45 minutes après le début). Vous êtes marqué ABSENT. La séance ne sera pas comptabilisée.');
+                return redirect()->route('teacher.select-call-type', $seanceCours->id)
+                    ->with('success', 'Émargement de FIN enregistré avec succès. Vous pouvez maintenant clôturer la séance.');
             }
-
-            // Déterminer le statut : present ou late
-            $status = ($now <= $limite20min) ? 'present' : 'late';
-
-            // Create attendance record
-            ESBTPTeacherAttendance::create([
-                'teacher_id' => $user->id,
-                'course_id' => $seanceCours->id,
-                'daily_code_id' => $dailyCode->id,
-                'date' => now()->toDateString(),
-                'status' => $status,
-                'attempts' => 1,
-                'ip_address' => $request->ip(),
-                'device_info' => json_encode(['user_agent' => $request->userAgent()]),
-                'validated_at' => now()
-            ]);
-
-            // Record successful attempt on the daily code
-            $dailyCode->recordAttempt(true);
-
-            // **WORKFLOW** : Mettre à jour le workflow de la séance
-            $workflow = ESBTPSessionWorkflow::getOrCreateForSession($seanceCours->id, $user->id);
-            $workflow->markAttendanceSigned();
-
-            // **NOTIFICATION** : Notifier le coordinateur de l'émargement effectué
-            try {
-                $notificationService = app(NotificationService::class);
-                $notificationService->notifyCoordinateurTeacherAttendanceSigned($user, $seanceCours);
-            } catch (\Exception $e) {
-                \Log::error('Erreur lors de l\'envoi de la notification d\'émargement: ' . $e->getMessage());
-                // Ne pas interrompre le processus principal
-            }
-
-            // **REDIRECTION** : Rediriger vers select-call-type pour faire l'appel de début
-            $successMessage = $status === 'late'
-                ? 'Émargement enregistré avec RETARD. Veuillez maintenant effectuer l\'appel de début.'
-                : 'Émargement enregistré avec succès. Veuillez maintenant effectuer l\'appel de début.';
-
-            return redirect()->route('teacher.select-call-type', $seanceCours->id)
-                ->with('success', $successMessage);
 
         } catch (\Exception $e) {
             \Log::error('Erreur lors de l\'émargement: ' . $e->getMessage());

@@ -19,8 +19,12 @@ class ESBTPTeacherAttendance extends Model
         'daily_code_id',
         'date',
         'status',
+        'type', // 'start' ou 'end'
         'attempts',
         'validated_at',
+        'ip_address',
+        'device_info',
+        'geolocation_data',
     ];
 
     protected $casts = [
