@@ -364,8 +364,11 @@
                                 $courseStart = \Carbon\Carbon::parse($course->heure_debut);
                                 $courseEnd = \Carbon\Carbon::parse($course->heure_fin);
 
-                                // Récupérer les émargements début et fin
+                                // Récupérer l'ID enseignant (ESBTPTeacher, PAS User!)
                                 $user = Auth::user();
+                                $teacher = \App\Models\ESBTPTeacher::where('user_id', $user->id)->first();
+                                $teacherId = $teacher ? $teacher->id : null;
+
                                 $dailyCode = \App\Models\ESBTPDailyCode::where('status', 'active')
                                     ->where('is_active', true)
                                     ->whereDate('created_at', now()->toDateString())
@@ -374,14 +377,14 @@
                                 $emargementDebut = null;
                                 $emargementFin = null;
 
-                                if ($dailyCode) {
-                                    $emargementDebut = \App\Models\ESBTPTeacherAttendance::where('teacher_id', $user->id)
+                                if ($dailyCode && $teacherId) {
+                                    $emargementDebut = \App\Models\ESBTPTeacherAttendance::where('teacher_id', $teacherId)
                                         ->where('course_id', $course->id)
                                         ->where('daily_code_id', $dailyCode->id)
                                         ->where('type', 'start')
                                         ->first();
 
-                                    $emargementFin = \App\Models\ESBTPTeacherAttendance::where('teacher_id', $user->id)
+                                    $emargementFin = \App\Models\ESBTPTeacherAttendance::where('teacher_id', $teacherId)
                                         ->where('course_id', $course->id)
                                         ->where('daily_code_id', $dailyCode->id)
                                         ->where('type', 'end')

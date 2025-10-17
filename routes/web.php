@@ -1551,7 +1551,7 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth'])->group(function () 
 
 Route::prefix('esbtp')->middleware(['auth', 'validate.device', 'attendance.rate_limit'])->group(function () {
     Route::get('/attendance/mark', [ESBTPTeacherAttendanceController::class, 'index'])->name('esbtp.attendance.mark.index');
-    Route::post('/attendance/mark', [ESBTPTeacherAttendanceController::class, 'store'])->name('esbtp.attendance.mark');
+    Route::post('/attendance/mark', [ESBTPTeacherAttendanceController::class, 'mark'])->name('esbtp.attendance.mark');
     Route::get('/teacher/attendance/history', [TeacherAttendanceHistoryController::class, 'index'])->name('esbtp.teacher.attendance.history');
     // ... existing routes ...
 });
