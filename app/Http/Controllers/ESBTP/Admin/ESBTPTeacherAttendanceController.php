@@ -233,9 +233,40 @@ class ESBTPTeacherAttendanceController extends Controller
 
         $attendances = $query->orderBy('created_at', 'desc')->get();
 
+        // **NOUVELLE LOGIQUE**: Compter seulement les émargements COMPLETS (début + fin)
+        // Grouper par course_id + daily_code_id pour identifier les séances complètes
+        $completedSessions = $attendances
+            ->groupBy(function($att) {
+                return $att->course_id . '_' . $att->daily_code_id;
+            })
+            ->filter(function($group) {
+                // Une séance est complète si elle a à la fois type='start' ET type='end'
+                $hasStart = $group->where('type', 'start')->isNotEmpty();
+                $hasEnd = $group->where('type', 'end')->isNotEmpty();
+                return $hasStart && $hasEnd;
+            })
+            ->count();
+
+        // Compter les émargements de début seulement
+        $startOnly = $attendances
+            ->groupBy(function($att) {
+                return $att->course_id . '_' . $att->daily_code_id;
+            })
+            ->filter(function($group) {
+                $hasStart = $group->where('type', 'start')->isNotEmpty();
+                $hasEnd = $group->where('type', 'end')->isNotEmpty();
+                return $hasStart && !$hasEnd;
+            })
+            ->count();
+
         // Calculate detailed statistics
         $stats = [
-            'total' => $attendances->count(),
+            'total' => $attendances->count(), // Total d'enregistrements
+            'total_sessions' => $attendances->groupBy(function($att) {
+                return $att->course_id . '_' . $att->daily_code_id;
+            })->count(), // Nombre de séances distinctes
+            'completed_sessions' => $completedSessions, // Séances avec début ET fin
+            'partial_sessions' => $startOnly, // Séances avec seulement début
             'present' => $attendances->where('status', 'present')->count(),
             'late' => $attendances->where('status', 'late')->count(),
             'absent' => $attendances->where('status', 'absent')->count(),
