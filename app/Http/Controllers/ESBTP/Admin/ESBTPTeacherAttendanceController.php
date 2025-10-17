@@ -149,27 +149,88 @@ class ESBTPTeacherAttendanceController extends Controller
             return redirect()->back()->with('error', 'Vous n\'êtes pas assigné à ce cours.');
         }
         
-        // Check if teacher has already marked attendance for this specific session (course + daily code)
-        // Note: Un cours peut avoir plusieurs séances le même jour, on vérifie donc avec le daily_code_id
-        $existingAttendance = ESBTPTeacherAttendance::where('teacher_id', $user->id)
+        // **VÉRIFICATION DES ÉMARGEMENTS EXISTANTS (DÉBUT ET FIN)**
+        $emargementDebut = ESBTPTeacherAttendance::where('teacher_id', $user->id)
             ->where('course_id', $seanceCours->id)
             ->where('daily_code_id', $dailyCode->id)
+            ->where('type', 'start')
             ->first();
 
-        if ($existingAttendance) {
-            // Si déjà émargé pour cette séance précise, rediriger vers l'appel de début
+        $emargementFin = ESBTPTeacherAttendance::where('teacher_id', $user->id)
+            ->where('course_id', $seanceCours->id)
+            ->where('daily_code_id', $dailyCode->id)
+            ->where('type', 'end')
+            ->first();
+
+        // **DÉTERMINER QUEL TYPE D'ÉMARGEMENT FAIRE**
+        $now = Carbon::now();
+        $heureDebut = Carbon::parse($seanceCours->heure_debut);
+        $heureFin = Carbon::parse($seanceCours->heure_fin);
+        $fenetreClotureDebut = $heureFin->copy()->subMinutes(20);
+        $fenetreClotureFin = $heureFin->copy()->addMinutes(30);
+
+        // Est-on dans la fenêtre de clôture?
+        $isInClosingWindow = $now->gte($fenetreClotureDebut) && $now->lte($fenetreClotureFin);
+
+        // Récupérer le workflow pour vérifier si l'appel de début est fait
+        $workflow = \App\Models\ESBTPSessionWorkflow::getOrCreateForSession($seanceCours->id, $user->id);
+
+        // Déterminer le type d'émargement à faire
+        if (!$emargementDebut) {
+            // Pas encore d'émargement de début → FAIRE ÉMARGEMENT DÉBUT
+            $emargementType = 'start';
+        } elseif ($emargementDebut && $emargementFin) {
+            // Les deux émargements sont déjà faits
             return redirect()->route('teacher.select-call-type', ['seance' => $seanceCours->id])
-                ->with('info', 'Vous avez déjà émargé pour cette séance. Veuillez effectuer l\'appel.');
+                ->with('success', 'Vous avez déjà émargé le début et la fin de cette séance.');
+        } elseif (!$workflow->call_start_done) {
+            // Émargement début fait mais appel de début pas encore fait
+            return redirect()->route('teacher.select-call-type', ['seance' => $seanceCours->id])
+                ->with('info', 'Vous devez d\'abord effectuer l\'appel de début avant de pouvoir émarger la fin de la séance.');
+        } elseif (!$isInClosingWindow) {
+            // Appel début fait mais pas encore dans la fenêtre de clôture
+            return redirect()->route('teacher.select-call-type', ['seance' => $seanceCours->id])
+                ->with('info', 'Émargement de début déjà effectué. L\'émargement de fin sera disponible à partir de ' . $fenetreClotureDebut->format('H:i') . '.');
+        } elseif ($isInClosingWindow && !$emargementFin) {
+            // Appel début fait + dans fenêtre clôture + pas encore émargement fin → FAIRE ÉMARGEMENT FIN
+            $emargementType = 'end';
+        } else {
+            // Cas par défaut (ne devrait pas arriver)
+            return redirect()->route('teacher.select-call-type', ['seance' => $seanceCours->id])
+                ->with('info', 'Veuillez vérifier l\'état de votre émargement.');
         }
 
-        // Create attendance record
+        // **CRÉER L'ÉMARGEMENT (DÉBUT OU FIN)**
         try {
+            // Déterminer le statut selon le type et l'heure
+            $status = 'present';
+            if ($emargementType === 'start') {
+                $limite20min = $heureDebut->copy()->addMinutes(20);
+                $limite45min = $heureDebut->copy()->addMinutes(45);
+
+                // FENÊTRE 1 : AVANT heure_debut → ❌ IMPOSSIBLE d'émarger
+                if ($now < $heureDebut) {
+                    $dailyCode->recordAttempt(false);
+                    return redirect()->back()->with('error', 'Vous ne pouvez pas émarger avant le début du cours (' . $heureDebut->format('H:i') . ').');
+                }
+
+                // FENÊTRE 4 : heure_debut + 45min et plus → ❌ ABSENT (workflow fermé)
+                if ($now > $limite45min) {
+                    $dailyCode->recordAttempt(false);
+                    return redirect()->back()->with('error', 'Délai d\'émargement dépassé (45 minutes après le début). Vous êtes marqué ABSENT.');
+                }
+
+                // Déterminer le statut : present ou late
+                $status = ($now <= $limite20min) ? 'present' : 'late';
+            }
+
             $attendance = ESBTPTeacherAttendance::create([
                 'teacher_id' => $user->id,
                 'course_id' => $seanceCours->id,
                 'daily_code_id' => $dailyCode->id,
                 'date' => now()->toDateString(),
-                'status' => 'present', // Present/Done
+                'status' => $status,
+                'type' => $emargementType,
                 'attempts' => 1,
                 'ip_address' => $request->ip(),
                 'device_info' => json_encode(['user_agent' => $request->userAgent()]),
@@ -179,13 +240,20 @@ class ESBTPTeacherAttendanceController extends Controller
             // Record successful attempt on the daily code
             $dailyCode->recordAttempt(true);
 
-            // Marquer l'émargement comme fait dans le workflow
-            $workflow = \App\Models\ESBTPSessionWorkflow::getOrCreateForSession($seanceCours->id, $user->id);
-            $workflow->markAttendanceSigned();
+            // Mettre à jour le workflow selon le type d'émargement
+            if ($emargementType === 'start') {
+                $workflow->markAttendanceStartSigned();
+                $successMessage = $status === 'late'
+                    ? 'Émargement de DÉBUT enregistré avec RETARD. Veuillez maintenant effectuer l\'appel de début.'
+                    : 'Émargement de DÉBUT enregistré avec succès. Veuillez maintenant effectuer l\'appel de début.';
+            } else {
+                $workflow->markAttendanceEndSigned();
+                $successMessage = 'Émargement de FIN enregistré avec succès. Vous pouvez maintenant clôturer la séance.';
+            }
 
             // Rediriger vers la page de sélection du type d'appel après émargement réussi
             return redirect()->route('teacher.select-call-type', ['seance' => $seanceCours->id])
-                ->with('success', 'Émargement enregistré avec succès. Veuillez maintenant effectuer l\'appel des étudiants.');
+                ->with('success', $successMessage);
 
         } catch (\Exception $e) {
             // Record failed attempt
