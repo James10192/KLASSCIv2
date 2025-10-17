@@ -228,9 +228,9 @@ class TeacherAttendanceController extends Controller
 
                 $dailyCode->recordAttempt(true);
 
-                // Mettre à jour le workflow
+                // Mettre à jour le workflow - ÉMARGEMENT DE DÉBUT
                 $workflow = ESBTPSessionWorkflow::getOrCreateForSession($seanceCours->id, $user->id);
-                $workflow->markAttendanceSigned();
+                $workflow->markAttendanceStartSigned();
 
                 // Notification
                 try {
@@ -277,6 +277,10 @@ class TeacherAttendanceController extends Controller
                 ]);
 
                 $dailyCode->recordAttempt(true);
+
+                // Mettre à jour le workflow - ÉMARGEMENT DE FIN
+                $workflow = ESBTPSessionWorkflow::getOrCreateForSession($seanceCours->id, $user->id);
+                $workflow->markAttendanceEndSigned();
 
                 return redirect()->route('teacher.select-call-type', $seanceCours->id)
                     ->with('success', 'Émargement de FIN enregistré avec succès. Vous pouvez maintenant clôturer la séance.');

@@ -15,23 +15,27 @@ class ESBTPSessionWorkflow extends Model
     protected $fillable = [
         'seance_cours_id',
         'teacher_id',
-        'attendance_signed',
+        'attendance_start_signed',
+        'attendance_end_signed',
         'call_start_done',
         'call_end_done',
         'report_submitted',
         'current_step',
-        'attendance_signed_at',
+        'attendance_start_signed_at',
+        'attendance_end_signed_at',
         'call_start_done_at',
         'call_end_done_at',
         'report_submitted_at'
     ];
 
     protected $casts = [
-        'attendance_signed' => 'boolean',
+        'attendance_start_signed' => 'boolean',
+        'attendance_end_signed' => 'boolean',
         'call_start_done' => 'boolean',
         'call_end_done' => 'boolean',
         'report_submitted' => 'boolean',
-        'attendance_signed_at' => 'datetime',
+        'attendance_start_signed_at' => 'datetime',
+        'attendance_end_signed_at' => 'datetime',
         'call_start_done_at' => 'datetime',
         'call_end_done_at' => 'datetime',
         'report_submitted_at' => 'datetime'
@@ -54,14 +58,34 @@ class ESBTPSessionWorkflow extends Model
     }
 
     /**
-     * Marque l'émargement comme fait
+     * Marque l'émargement de DÉBUT comme fait
+     */
+    public function markAttendanceStartSigned(): void
+    {
+        $this->attendance_start_signed = true;
+        $this->attendance_start_signed_at = now();
+        $this->current_step = 'call_start';
+        $this->save();
+    }
+
+    /**
+     * Marque l'émargement de FIN comme fait
+     */
+    public function markAttendanceEndSigned(): void
+    {
+        $this->attendance_end_signed = true;
+        $this->attendance_end_signed_at = now();
+        $this->current_step = 'call_end'; // Après émargement fin, on peut faire appel de fin
+        $this->save();
+    }
+
+    /**
+     * ANCIENNE MÉTHODE (rétrocompatibilité) - marque émargement début
+     * @deprecated Utiliser markAttendanceStartSigned() à la place
      */
     public function markAttendanceSigned(): void
     {
-        $this->attendance_signed = true;
-        $this->attendance_signed_at = now();
-        $this->current_step = 'call_start';
-        $this->save();
+        $this->markAttendanceStartSigned();
     }
 
     /**
@@ -103,14 +127,23 @@ class ESBTPSessionWorkflow extends Model
     public function canExecuteStep(string $step): bool
     {
         switch ($step) {
-            case 'attendance':
+            case 'attendance_start':
+            case 'attendance': // Rétrocompatibilité
                 return true;
             case 'call_start':
-                return (bool) $this->attendance_signed;
+                return (bool) $this->attendance_start_signed;
+            case 'attendance_end':
+                // Peut faire émargement fin seulement si début fait ET appel début fait
+                return (bool) $this->attendance_start_signed && (bool) $this->call_start_done;
             case 'call_end':
-                return (bool) $this->attendance_signed && (bool) $this->call_start_done;
+                // Peut faire appel fin seulement si émargement fin fait
+                return (bool) $this->attendance_end_signed;
             case 'report':
-                return (bool) $this->attendance_signed && (bool) $this->call_start_done && (bool) $this->call_end_done;
+                // Peut faire rapport seulement si tout est fait
+                return (bool) $this->attendance_start_signed
+                    && (bool) $this->attendance_end_signed
+                    && (bool) $this->call_start_done
+                    && (bool) $this->call_end_done;
             default:
                 return false;
         }
@@ -121,8 +154,9 @@ class ESBTPSessionWorkflow extends Model
      */
     public function getNextStep(): ?string
     {
-        if (!(bool) $this->attendance_signed) return 'attendance';
+        if (!(bool) $this->attendance_start_signed) return 'attendance_start';
         if (!(bool) $this->call_start_done) return 'call_start';
+        if (!(bool) $this->attendance_end_signed) return 'attendance_end';
         if (!(bool) $this->call_end_done) return 'call_end';
         if (!(bool) $this->report_submitted) return 'report';
         return null; // Workflow terminé
@@ -142,12 +176,13 @@ class ESBTPSessionWorkflow extends Model
     public function getProgressPercentage(): int
     {
         $completed = 0;
-        if ((bool) $this->attendance_signed) $completed++;
+        if ((bool) $this->attendance_start_signed) $completed++;
         if ((bool) $this->call_start_done) $completed++;
+        if ((bool) $this->attendance_end_signed) $completed++;
         if ((bool) $this->call_end_done) $completed++;
         if ((bool) $this->report_submitted) $completed++;
 
-        return (int) round(($completed / 4) * 100);
+        return (int) round(($completed / 5) * 100);
     }
 
     /**
@@ -156,8 +191,10 @@ class ESBTPSessionWorkflow extends Model
     public function getCurrentStepLabel(): string
     {
         $labels = [
-            'attendance' => 'Émargement',
+            'attendance' => 'Émargement début',
+            'attendance_start' => 'Émargement début',
             'call_start' => 'Appel de début',
+            'attendance_end' => 'Émargement fin',
             'call_end' => 'Appel de fin',
             'report' => 'Rapport de cours',
             'completed' => 'Terminé'

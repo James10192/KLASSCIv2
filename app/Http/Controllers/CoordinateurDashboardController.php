@@ -131,11 +131,27 @@ class CoordinateurDashboardController extends Controller
             // 8. Retards d'émargement (cours sans émargement enseignant)
             $stats['delays_today'] = max(0, $stats['scheduled_courses_today'] - $stats['teacher_attendances_today']);
 
-            // 9. Cours avec workflow complet (émargement + appel)
-            $stats['courses_completed_today'] = ESBTPSeanceCours::whereDate('date_seance', $date)
-                ->whereHas('teacherAttendance')
-                ->whereHas('attendances')
-                ->count();
+            // 9. Cours avec workflow complet (2 émargements + 2 appels)
+            // Un cours est complet si:
+            // - Émargement début ET fin (les deux types)
+            // - Appels d'étudiants effectués
+            $stats['courses_completed_today'] = 0;
+            if ($dailyCode) {
+                $stats['courses_completed_today'] = ESBTPSeanceCours::whereDate('date_seance', $date)
+                    // Vérifier émargement DÉBUT
+                    ->whereHas('teacherAttendances', function($q) use ($dailyCode) {
+                        $q->where('daily_code_id', $dailyCode->id)
+                          ->where('type', 'start');
+                    })
+                    // Vérifier émargement FIN
+                    ->whereHas('teacherAttendances', function($q) use ($dailyCode) {
+                        $q->where('daily_code_id', $dailyCode->id)
+                          ->where('type', 'end');
+                    })
+                    // Vérifier qu'il y a des appels d'étudiants
+                    ->whereHas('attendances')
+                    ->count();
+            }
 
             // 10. Enseignants actifs aujourd'hui
             $stats['active_teachers_today'] = ESBTPTeacherAttendance::whereDate('created_at', $date)
