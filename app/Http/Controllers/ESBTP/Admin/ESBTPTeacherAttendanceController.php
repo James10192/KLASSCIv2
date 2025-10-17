@@ -85,9 +85,26 @@ class ESBTPTeacherAttendanceController extends Controller
 
     public function store(Request $request)
     {
+        \Log::info('🔵 START store method', [
+            'user_id' => auth()->id(),
+            'has_code' => $request->has('code'),
+            'has_course_id' => $request->has('course_id'),
+            'all_data' => $request->all()
+        ]);
+
         // Check if this is teacher self-attendance marking
         if ($request->has('code') && $request->has('course_id')) {
-            return $this->markTeacherAttendance($request);
+            \Log::info('✅ Redirecting to markTeacherAttendance');
+            try {
+                return $this->markTeacherAttendance($request);
+            } catch (\Exception $e) {
+                \Log::error('❌ ERROR in store -> markTeacherAttendance', [
+                    'message' => $e->getMessage(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                return redirect()->back()->with('error', 'Erreur système: ' . $e->getMessage());
+            }
         }
 
         // Admin attendance marking (existing functionality)
