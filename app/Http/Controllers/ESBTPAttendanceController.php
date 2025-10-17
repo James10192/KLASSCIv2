@@ -593,9 +593,10 @@ class ESBTPAttendanceController extends Controller
                     // Mémoriser l'ancien statut pour vérifier s'il change en absent
                     $oldStatut = $attendance->statut;
 
-                    // Mettre à jour l'enregistrement existant
+                    // Mettre à jour l'enregistrement existant avec call_type='merged' (saisie manuelle = finale)
                     $attendance->update([
                         'statut' => $statut,
+                        'call_type' => 'merged', // Marquer comme version finale
                         'commentaire' => $commentaire,
                         'updated_by' => Auth::id()
                     ]);
@@ -612,7 +613,7 @@ class ESBTPAttendanceController extends Controller
                     $heureDebut = $seance->heure_debut ? $seance->heure_debut->format('H:i:s') : '08:00:00';
                     $heureFin = $seance->heure_fin ? $seance->heure_fin->format('H:i:s') : '10:00:00';
 
-                    // Créer un nouvel enregistrement
+                    // Créer un nouvel enregistrement avec call_type='merged' (saisie manuelle = version finale)
                     ESBTPAttendance::create([
                         'seance_cours_id' => $validatedData['seance_cours_id'],
                         'etudiant_id' => $etudiantId,
@@ -621,6 +622,7 @@ class ESBTPAttendanceController extends Controller
                         'heure_debut' => $heureDebut,
                         'heure_fin' => $heureFin,
                         'statut' => $statut,
+                        'call_type' => 'merged', // Saisie manuelle = version finale
                         'commentaire' => $commentaire,
                         'created_by' => Auth::id()
                     ]);
