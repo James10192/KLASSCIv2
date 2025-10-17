@@ -172,6 +172,22 @@ class ESBTPSeanceCoursController extends Controller
     }
 
     /**
+     * Affiche les détails d'une séance de cours.
+     */
+    public function show(ESBTPSeanceCours $seancesCour)
+    {
+        try {
+            // Load relationships
+            $seancesCour->load(['emploiTemps.classe', 'matiere', 'teacher.user']);
+
+            return view('esbtp.seances-cours.show', compact('seancesCour'));
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de l\'affichage de la séance de cours: ' . $e->getMessage());
+            return back()->with('error', 'Une erreur est survenue lors du chargement de la séance de cours.');
+        }
+    }
+
+    /**
      * Affiche le formulaire de création d'une nouvelle séance de cours.
      */
     public function create(Request $request)
