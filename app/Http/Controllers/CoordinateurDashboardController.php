@@ -248,31 +248,55 @@ class CoordinateurDashboardController extends Controller
                     $emargementDebutCount = 0;
                     $emargementFinCount = 0;
 
+                    // Compter les appels DÉBUT et FIN séparément
+                    $appelDebutCount = 0;
+                    $appelFinCount = 0;
+
                     foreach ($seances as $seance) {
-                        $hasDebut = $seance->teacherAttendances()
+                        // Vérifier émargements
+                        $hasEmargementDebut = $seance->teacherAttendances()
                             ->whereDate('date', $date)
                             ->where('type', 'start')
                             ->exists();
 
-                        $hasFin = $seance->teacherAttendances()
+                        $hasEmargementFin = $seance->teacherAttendances()
                             ->whereDate('date', $date)
                             ->where('type', 'end')
                             ->exists();
 
-                        if ($hasDebut) $emargementDebutCount++;
-                        if ($hasFin) $emargementFinCount++;
+                        if ($hasEmargementDebut) $emargementDebutCount++;
+                        if ($hasEmargementFin) $emargementFinCount++;
+
+                        // Vérifier appels étudiants (call_type = 'start' ou 'end' ou 'merged')
+                        $hasAppelDebut = $seance->attendances()
+                            ->whereDate('date', $date)
+                            ->where('call_type', 'start')
+                            ->exists();
+
+                        $hasAppelFin = $seance->attendances()
+                            ->whereDate('date', $date)
+                            ->whereIn('call_type', ['end', 'merged'])
+                            ->exists();
+
+                        if ($hasAppelDebut) $appelDebutCount++;
+                        if ($hasAppelFin) $appelFinCount++;
                     }
 
                     // Total émargements possibles = 2 par séance (début + fin)
                     $totalEmargementsPossibles = $totalSeances * 2;
                     $totalEmargementsEffectues = $emargementDebutCount + $emargementFinCount;
 
-                    // Compter les séances avec appels d'étudiants
-                    $seancesAvecAppel = $seances->filter(fn($s) => $s->attendances->count() > 0)->count();
+                    // Total appels possibles = 2 par séance (début + fin)
+                    $totalAppelsPossibles = $totalSeances * 2;
+                    $totalAppelsEffectues = $appelDebutCount + $appelFinCount;
 
-                    // Taux de complétion basé sur émargements (début + fin)
-                    $tauxCompletion = $totalEmargementsPossibles > 0
-                        ? round(($totalEmargementsEffectues / $totalEmargementsPossibles) * 100, 1)
+                    // Taux de complétion basé sur émargements ET appels
+                    // Total opérations = 4 par séance (2 émargements + 2 appels)
+                    $totalOperationsPossibles = ($totalEmargementsPossibles + $totalAppelsPossibles);
+                    $totalOperationsEffectuees = ($totalEmargementsEffectues + $totalAppelsEffectues);
+
+                    $tauxCompletion = $totalOperationsPossibles > 0
+                        ? round(($totalOperationsEffectuees / $totalOperationsPossibles) * 100, 1)
                         : 0;
 
                     return [
@@ -282,7 +306,10 @@ class CoordinateurDashboardController extends Controller
                         'emargements_fin' => $emargementFinCount,
                         'emargements_effectues' => $totalEmargementsEffectues,
                         'emargements_possibles' => $totalEmargementsPossibles,
-                        'appels_effectues' => $seancesAvecAppel,
+                        'appels_debut' => $appelDebutCount,
+                        'appels_fin' => $appelFinCount,
+                        'appels_effectues' => $totalAppelsEffectues,
+                        'appels_possibles' => $totalAppelsPossibles,
                         'taux_completion' => $tauxCompletion
                     ];
                 })

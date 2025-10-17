@@ -216,7 +216,9 @@
                                 <small class="stat-label">Émargements</small>
                             </div>
                             <div class="stat-item">
-                                <div class="stat-value text-info">{{ $subject['appels_effectues'] ?? 0 }}</div>
+                                <div class="stat-value text-info">
+                                    {{ $subject['appels_effectues'] ?? 0 }}/{{ $subject['appels_possibles'] ?? 0 }}
+                                </div>
                                 <small class="stat-label">Appels</small>
                             </div>
                         </div>
