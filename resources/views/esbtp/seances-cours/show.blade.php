@@ -133,6 +133,57 @@
                                 </div>
                             </div>
                         </div>
+
+                        @php
+                            // Déterminer le statut global de l'enseignant pour cette séance
+                            $emargementDebutTemp = $seancesCour->teacherAttendances()
+                                ->whereDate('date', \Carbon\Carbon::parse($seancesCour->date_seance))
+                                ->where('type', 'start')
+                                ->first();
+
+                            $emargementFinTemp = $seancesCour->teacherAttendances()
+                                ->whereDate('date', \Carbon\Carbon::parse($seancesCour->date_seance))
+                                ->where('type', 'end')
+                                ->first();
+
+                            // Statut global basé sur les émargements
+                            $teacherGlobalStatus = 'not_signed'; // Par défaut non émargé
+                            $statusColor = 'danger';
+                            $statusIcon = 'times';
+                            $statusLabel = 'Non émargé';
+
+                            if ($emargementDebutTemp || $emargementFinTemp) {
+                                // Au moins un émargement existe
+                                $hasLate = ($emargementDebutTemp && $emargementDebutTemp->status === 'late')
+                                        || ($emargementFinTemp && $emargementFinTemp->status === 'late');
+
+                                if ($hasLate) {
+                                    $teacherGlobalStatus = 'late';
+                                    $statusColor = 'warning';
+                                    $statusIcon = 'clock';
+                                    $statusLabel = 'En retard';
+                                } else {
+                                    $teacherGlobalStatus = 'present';
+                                    $statusColor = 'success';
+                                    $statusIcon = 'check';
+                                    $statusLabel = 'Présent';
+                                }
+                            }
+                        @endphp
+
+                        <div class="mb-3">
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="bg-{{ $statusColor }} text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 35px; height: 35px;">
+                                    <i class="fas fa-{{ $statusIcon }}"></i>
+                                </div>
+                                <div>
+                                    <small class="text-muted d-block">Statut enseignant</small>
+                                    <span class="badge bg-{{ $statusColor }}">
+                                        <i class="fas fa-{{ $statusIcon }} me-1"></i>{{ $statusLabel }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -150,9 +201,8 @@
                 ->where('type', 'end')
                 ->first();
 
-            // Vérifier le workflow
+            // Vérifier le workflow (pas de colonne date, seulement seance_cours_id)
             $workflow = \App\Models\ESBTPSessionWorkflow::where('seance_cours_id', $seancesCour->id)
-                ->where('date', \Carbon\Carbon::parse($seancesCour->date_seance)->format('Y-m-d'))
                 ->first();
         @endphp
 
@@ -411,7 +461,34 @@
         @endif
 
         <!-- Statistiques présences étudiants -->
-        @if($workflow)
+        @php
+            // Calculer les statistiques d'appels depuis esbtp_attendances
+            $attendancesStart = \App\Models\ESBTPAttendance::where('course_id', $seancesCour->id)
+                ->where('call_type', 'start')
+                ->get();
+
+            $attendancesEnd = \App\Models\ESBTPAttendance::where('course_id', $seancesCour->id)
+                ->where('call_type', 'end')
+                ->get();
+
+            $statsStart = [
+                'present' => $attendancesStart->where('status', 'present')->count(),
+                'absent' => $attendancesStart->where('status', 'absent')->count(),
+                'late' => $attendancesStart->where('status', 'late')->count(),
+                'excused' => $attendancesStart->where('status', 'excused')->count(),
+            ];
+
+            $statsEnd = [
+                'present' => $attendancesEnd->where('status', 'present')->count(),
+                'absent' => $attendancesEnd->where('status', 'absent')->count(),
+                'late' => $attendancesEnd->where('status', 'late')->count(),
+                'excused' => $attendancesEnd->where('status', 'excused')->count(),
+            ];
+
+            $hasAttendanceData = $attendancesStart->count() > 0 || $attendancesEnd->count() > 0;
+        @endphp
+
+        @if($hasAttendanceData)
         <div class="main-card">
             <div class="main-card-header">
                 <div class="main-card-title">
@@ -426,11 +503,11 @@
                         <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
                             <div class="kpi-title" style="color: #000; font-weight: 600;">Présents</div>
                             <div class="kpi-value" style="color: #10b981; font-size: 2rem; font-weight: bold;">
-                                {{ ($workflow->students_present_start ?? 0) + ($workflow->students_present_end ?? 0) }}
+                                {{ $statsStart['present'] + $statsEnd['present'] }}
                             </div>
                             <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
                                 <i class="fas fa-check-circle"></i>
-                                Début: {{ $workflow->students_present_start ?? 0 }} | Fin: {{ $workflow->students_present_end ?? 0 }}
+                                Début: {{ $statsStart['present'] }} | Fin: {{ $statsEnd['present'] }}
                             </div>
                         </div>
                     </div>
@@ -438,11 +515,11 @@
                         <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
                             <div class="kpi-title" style="color: #000; font-weight: 600;">Absents</div>
                             <div class="kpi-value" style="color: #ef4444; font-size: 2rem; font-weight: bold;">
-                                {{ ($workflow->students_absent_start ?? 0) + ($workflow->students_absent_end ?? 0) }}
+                                {{ $statsStart['absent'] + $statsEnd['absent'] }}
                             </div>
                             <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
                                 <i class="fas fa-user-times"></i>
-                                Début: {{ $workflow->students_absent_start ?? 0 }} | Fin: {{ $workflow->students_absent_end ?? 0 }}
+                                Début: {{ $statsStart['absent'] }} | Fin: {{ $statsEnd['absent'] }}
                             </div>
                         </div>
                     </div>
@@ -450,11 +527,11 @@
                         <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
                             <div class="kpi-title" style="color: #000; font-weight: 600;">Retards</div>
                             <div class="kpi-value" style="color: #f59e0b; font-size: 2rem; font-weight: bold;">
-                                {{ ($workflow->students_late_start ?? 0) + ($workflow->students_late_end ?? 0) }}
+                                {{ $statsStart['late'] + $statsEnd['late'] }}
                             </div>
                             <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
                                 <i class="fas fa-clock"></i>
-                                Début: {{ $workflow->students_late_start ?? 0 }} | Fin: {{ $workflow->students_late_end ?? 0 }}
+                                Début: {{ $statsStart['late'] }} | Fin: {{ $statsEnd['late'] }}
                             </div>
                         </div>
                     </div>
@@ -462,11 +539,11 @@
                         <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
                             <div class="kpi-title" style="color: #000; font-weight: 600;">Excusés</div>
                             <div class="kpi-value" style="color: #6366f1; font-size: 2rem; font-weight: bold;">
-                                {{ ($workflow->students_excused_start ?? 0) + ($workflow->students_excused_end ?? 0) }}
+                                {{ $statsStart['excused'] + $statsEnd['excused'] }}
                             </div>
                             <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
                                 <i class="fas fa-user-check"></i>
-                                Début: {{ $workflow->students_excused_start ?? 0 }} | Fin: {{ $workflow->students_excused_end ?? 0 }}
+                                Début: {{ $statsStart['excused'] }} | Fin: {{ $statsEnd['excused'] }}
                             </div>
                         </div>
                     </div>
