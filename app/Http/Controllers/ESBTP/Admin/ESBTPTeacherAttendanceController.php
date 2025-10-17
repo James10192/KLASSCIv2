@@ -549,26 +549,42 @@ class ESBTPTeacherAttendanceController extends Controller
                 ->first();
 
             if ($attendance) {
-                // Mettre à jour l'existant
-                $attendance->update([
-                    'status' => $request->status,
-                    'notes' => $request->notes,
-                    'updated_by' => auth()->id()
+                // Mettre à jour l'existant - SEULEMENT le statut
+                \Log::info('📝 Avant update', [
+                    'id' => $attendance->id,
+                    'old_status' => $attendance->status,
+                    'new_status' => $request->status
                 ]);
-                \Log::info('✅ Attendance updated', ['id' => $attendance->id]);
+
+                $attendance->status = $request->status;
+                $attendance->save();
+
+                \Log::info('✅ Attendance updated', [
+                    'id' => $attendance->id,
+                    'status_after_save' => $attendance->fresh()->status
+                ]);
             } else {
                 // Créer un nouvel émargement (marquage manuel par coordinateur)
+                \Log::info('📝 Création nouvel attendance', [
+                    'teacher_id' => $seanceCours->teacher_id,
+                    'course_id' => $seanceId,
+                    'status' => $request->status,
+                    'type' => $type
+                ]);
+
                 $attendance = ESBTPTeacherAttendance::create([
                     'teacher_id' => $seanceCours->teacher_id,
                     'course_id' => $seanceId,
                     'date' => today(),
                     'type' => $type,
                     'status' => $request->status,
-                    'notes' => $request->notes ?? 'Marqué manuellement par ' . auth()->user()->name,
                     'validated_at' => now(),
-                    'created_by' => auth()->id()
                 ]);
-                \Log::info('✅ Attendance created', ['id' => $attendance->id]);
+
+                \Log::info('✅ Attendance created', [
+                    'id' => $attendance->id,
+                    'status_after_create' => $attendance->fresh()->status
+                ]);
 
                 // ⚠️ NE PAS mettre à jour le workflow automatiquement
                 // Le marquage manuel par coordinateur/admin ne doit PAS affecter le workflow officiel
