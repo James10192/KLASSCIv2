@@ -44,107 +44,168 @@
                                 <input type="text" class="form-input-moderne" value="{{ $attendance->etudiant->nom_complet }}" disabled>
                             </div>
 
-                        <div class="form-group row mb-3">
-                            <label class="col-sm-3 col-form-label">Classe</label>
-                            <div class="col-sm-9">
-                                <input type="text" class="form-control" value="{{ $attendance->seanceCours->emploiTemps->classe->name }}" disabled>
+                            <div class="form-group-moderne">
+                                <label class="form-label-moderne">
+                                    <i class="fas fa-users"></i>
+                                    Classe
+                                </label>
+                                <input type="text" class="form-input-moderne" value="{{ $attendance->seanceCours->emploiTemps->classe->name }}" disabled>
                             </div>
-                        </div>
 
-                        <div class="form-group row mb-3">
-                            <label class="col-sm-3 col-form-label">Matière</label>
-                            <div class="col-sm-9">
-                                <input type="text" class="form-control" value="{{ $attendance->seanceCours->matiere->name }}" disabled>
+                            <div class="form-group-moderne">
+                                <label class="form-label-moderne">
+                                    <i class="fas fa-book"></i>
+                                    Matière
+                                </label>
+                                <input type="text" class="form-input-moderne" value="{{ $attendance->seanceCours->matiere->name }}" disabled>
                             </div>
-                        </div>
 
-                        <div class="form-group row mb-3">
-                            <label class="col-sm-3 col-form-label">Séance</label>
-                            <div class="col-sm-9">
-                                <input type="text" class="form-control" value="{{ $attendance->seanceCours->jour }} - {{ $attendance->seanceCours->plage_horaire }}" disabled>
+                            <div class="form-group-moderne">
+                                <label class="form-label-moderne">
+                                    <i class="fas fa-clock"></i>
+                                    Séance
+                                </label>
+                                <input type="text" class="form-input-moderne" value="{{ $attendance->seanceCours->jour }} - {{ $attendance->seanceCours->plage_horaire }}" disabled>
                             </div>
-                        </div>
 
-                        <div class="form-group row mb-3">
-                            <label class="col-sm-3 col-form-label">Date</label>
-                            <div class="col-sm-9">
-                                <input type="text" class="form-control" value="{{ $attendance->date->format('d/m/Y') }}" disabled>
+                            <div class="form-group-moderne">
+                                <label class="form-label-moderne">
+                                    <i class="fas fa-calendar"></i>
+                                    Date
+                                </label>
+                                <input type="text" class="form-input-moderne" value="{{ $attendance->date->format('d/m/Y') }}" disabled>
                             </div>
-                        </div>
 
-                        <div class="form-group row mb-3">
-                            <label class="col-sm-3 col-form-label">Statut</label>
-                            <div class="col-sm-9">
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="statut" id="present" value="present" {{ $attendance->statut == 'present' ? 'checked' : '' }}>
-                                    <label class="form-check-label text-success" for="present">Présent</label>
-                                </div>
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="statut" id="absent" value="absent" {{ $attendance->statut == 'absent' ? 'checked' : '' }}>
-                                    <label class="form-check-label text-danger" for="absent">Absent</label>
-                                </div>
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="statut" id="retard" value="retard" {{ $attendance->statut == 'retard' ? 'checked' : '' }}>
-                                    <label class="form-check-label text-warning" for="retard">En retard</label>
-                                </div>
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="statut" id="excuse" value="excuse" {{ $attendance->statut == 'excuse' ? 'checked' : '' }}>
-                                    <label class="form-check-label text-info" for="excuse">Excusé</label>
+                            <div class="form-group-moderne">
+                                <label class="form-label-moderne">
+                                    <i class="fas fa-check-circle"></i>
+                                    Statut
+                                </label>
+                                <div class="status-radio-group">
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="statut" id="present" value="present"
+                                            {{ old('statut', $attendance->statut) == 'present' ? 'checked' : '' }} required>
+                                        <label class="form-check-label status-label-success" for="present">
+                                            <i class="fas fa-check-circle"></i> Présent
+                                        </label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="statut" id="absent" value="absent"
+                                            {{ old('statut', $attendance->statut) == 'absent' ? 'checked' : '' }} required>
+                                        <label class="form-check-label status-label-danger" for="absent">
+                                            <i class="fas fa-times-circle"></i> Absent
+                                        </label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="statut" id="retard" value="retard"
+                                            {{ old('statut', $attendance->statut) == 'retard' || old('statut', $attendance->statut) == 'late' ? 'checked' : '' }} required>
+                                        <label class="form-check-label status-label-warning" for="retard">
+                                            <i class="fas fa-exclamation-circle"></i> En retard
+                                        </label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="statut" id="excuse" value="excuse"
+                                            {{ old('statut', $attendance->statut) == 'excuse' ? 'checked' : '' }} required>
+                                        <label class="form-check-label status-label-info" for="excuse">
+                                            <i class="fas fa-info-circle"></i> Excusé
+                                        </label>
+                                    </div>
                                 </div>
                                 @error('statut')
-                                    <div class="text-danger mt-1">{{ $message }}</div>
+                                    <div class="text-danger mt-2">
+                                        <i class="fas fa-exclamation-triangle"></i> {{ $message }}
+                                    </div>
                                 @enderror
                             </div>
-                        </div>
 
-                        <div class="form-group row mb-3">
-                            <label for="commentaire" class="col-sm-3 col-form-label">Commentaire</label>
-                            <div class="col-sm-9">
-                                <textarea name="commentaire" id="commentaire" class="form-control" rows="3" placeholder="Commentaire (optionnel)">{{ $attendance->commentaire }}</textarea>
+                            <div class="form-group-moderne">
+                                <label class="form-label-moderne" for="commentaire">
+                                    <i class="fas fa-comment"></i>
+                                    Commentaire
+                                </label>
+                                <textarea name="commentaire" id="commentaire" class="form-input-moderne" rows="3"
+                                    placeholder="Ajoutez un commentaire (optionnel)...">{{ old('commentaire', $attendance->commentaire) }}</textarea>
                                 @error('commentaire')
-                                    <div class="text-danger mt-1">{{ $message }}</div>
+                                    <div class="text-danger mt-2">
+                                        <i class="fas fa-exclamation-triangle"></i> {{ $message }}
+                                    </div>
                                 @enderror
                             </div>
-                        </div>
 
-                        <div class="mt-4">
-                            <button type="submit" class="btn btn-gradient-primary">
-                                <i class="mdi mdi-content-save"></i> Enregistrer les modifications
-                            </button>
-                            <a href="{{ route('esbtp.attendances.index') }}" class="btn btn-light">Annuler</a>
-                        </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn-acasi primary">
+                                    <i class="fas fa-save"></i>
+                                    <span>Enregistrer les modifications</span>
+                                </button>
+                                <a href="{{ route('esbtp.attendances.index') }}" class="btn-acasi secondary">
+                                    <i class="fas fa-times"></i>
+                                    <span>Annuler</span>
+                                </a>
+                            </div>
                     </form>
                 </div>
             </div>
         </div>
 
-        <div class="col-md-4 grid-margin stretch-card">
-            <div class="card">
-                <div class="card-body">
-                    <h4 class="card-title">Informations sur l'étudiant</h4>
-
-                    <div class="text-center mb-4">
+        <div class="col-md-4">
+            <div class="main-card">
+                <div class="main-card-header">
+                    <div class="main-card-title">
+                        <i class="fas fa-user-circle"></i>
+                        Informations sur l'étudiant
+                    </div>
+                </div>
+                <div class="main-card-body">
+                    <div class="student-photo-section" style="text-align: center; margin-bottom: 1.5rem;">
                         @if($attendance->etudiant->photo)
-                            <img src="{{ asset('storage/' . $attendance->etudiant->photo) }}" alt="Photo de l'étudiant" class="rounded-circle img-thumbnail" style="width: 150px; height: 150px; object-fit: cover;">
+                            <img src="{{ asset('storage/' . $attendance->etudiant->photo) }}"
+                                 alt="Photo de {{ $attendance->etudiant->nom_complet }}"
+                                 class="student-photo"
+                                 style="width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 4px solid var(--primary); box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
                         @else
-                            <img src="{{ asset('assets/images/avatar.jpg') }}" alt="Photo par défaut" class="rounded-circle img-thumbnail" style="width: 150px; height: 150px; object-fit: cover;">
+                            <div class="student-photo-placeholder" style="width: 150px; height: 150px; margin: 0 auto; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--accent-blue)); display: flex; align-items: center; justify-content: center; border: 4px solid var(--primary); box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                                <i class="fas fa-user" style="font-size: 4rem; color: white;"></i>
+                            </div>
                         @endif
                     </div>
 
-                    <ul class="list-group">
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <span>Matricule</span>
-                            <span class="badge badge-primary">{{ $attendance->etudiant->matricule }}</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <span>Téléphone</span>
-                            <span>{{ $attendance->etudiant->telephone }}</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <span>Email</span>
-                            <span>{{ $attendance->etudiant->email_personnel }}</span>
-                        </li>
-                    </ul>
+                    <div class="student-info-list">
+                        <div class="info-item" style="padding: 1rem; margin-bottom: 0.75rem; background: var(--light-bg); border-radius: 8px; border-left: 4px solid var(--primary);">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="color: var(--text-muted); font-weight: 500;">
+                                    <i class="fas fa-id-card" style="margin-right: 0.5rem; color: var(--primary);"></i>
+                                    Matricule
+                                </span>
+                                <span class="status-badge-primary" style="background: var(--primary); color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; font-size: 0.875rem;">
+                                    {{ $attendance->etudiant->matricule }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="info-item" style="padding: 1rem; margin-bottom: 0.75rem; background: var(--light-bg); border-radius: 8px; border-left: 4px solid var(--accent-blue);">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="color: var(--text-muted); font-weight: 500;">
+                                    <i class="fas fa-phone" style="margin-right: 0.5rem; color: var(--accent-blue);"></i>
+                                    Téléphone
+                                </span>
+                                <span style="color: var(--text-primary); font-weight: 500;">
+                                    {{ $attendance->etudiant->telephone ?? 'Non renseigné' }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="info-item" style="padding: 1rem; background: var(--light-bg); border-radius: 8px; border-left: 4px solid var(--success);">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="color: var(--text-muted); font-weight: 500;">
+                                    <i class="fas fa-envelope" style="margin-right: 0.5rem; color: var(--success);"></i>
+                                    Email
+                                </span>
+                                <span style="color: var(--text-primary); font-weight: 500; font-size: 0.875rem;">
+                                    {{ $attendance->etudiant->email_personnel ?? 'Non renseigné' }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
