@@ -245,6 +245,7 @@ MAIL_FROM_NAME="KLASSCI"
 - **16/10** : Réinitialisation sélection étudiants après save + nettoyage modals
 - **16/10** : Erreur getRelationExistenceQuery → select colonnes explicites
 - **17/10** : Configuration type enseignement groupée → accordion avec stats temps réel
+- **17/10** : Marquage manuel attendance enseignants → cache Eloquent + priorité dates + création automatique
 
 ## ✨ Fonctionnalités récentes
 
@@ -287,6 +288,70 @@ MAIL_FROM_NAME="KLASSCI"
 3. Contenu modal persistait après fermeture
    - **Fix** : `initializeModalCleanup()` avec listeners `hidden.bs.modal`
 
+### Marquage manuel attendance enseignants (17 octobre 2025)
+
+**Fonctionnalité** : Les coordinateurs/admins peuvent marquer manuellement le statut de présence des enseignants
+
+**Pages concernées**
+- `/esbtp/teacher-attendance/report` : Liste des séances avec boutons d'action
+- `/esbtp/seances-cours/{id}` : Page détail séance
+
+**Problèmes résolus**
+
+1. **Cache Eloquent dans refresh AJAX**
+   - **Cause** : `$seance->teacherAttendances` retournait données en cache même après `save()`
+   - **Solution** : `unsetRelation('teacherAttendances')` puis `load()` pour forcer reload DB
+   - **Fichier** : `ESBTPTeacherAttendanceController::refreshSeanceLigne()` (L606-656)
+
+2. **Mauvaise priorité de détection des attendances**
+   - **Cause** : Les vues cherchaient uniquement l'attendance à `date_seance`, ignorant celle d'aujourd'hui
+   - **Solution** : Priorité `today()` > `date_seance` > plus récent
+   - **Fichiers** :
+     - `seance-row.blade.php` (L1-33) : Logique partiel
+     - `show.blade.php` (L137-202) : Logique page détail
+
+3. **Erreur 404 pour enseignants "non émargé"**
+   - **Cause** : Le code refusait de traiter les séances sans attendance existante
+   - **Solution** : Création automatique d'attendance manuel avec `attempts=0` et `date=today()`
+   - **Fichier** : `ESBTPTeacherAttendanceController::updateStatus()` (L527-600)
+
+**Caractéristiques importantes**
+
+- ⚠️ **Workflow JAMAIS modifié** : Le marquage manuel ne change pas le workflow de la séance
+- 🏷️ **Attendances manuelles** : `attempts = 0` (vs ≥1 pour émargements enseignants)
+- 📅 **Date marquage** : `date = today()` (vs date séance originale)
+- 🎨 **Animation** : "Travelling light" effet visuel lors du refresh AJAX
+- 🔄 **Persistance** : Les changements restent après F5
+
+**Routes ajoutées**
+```php
+POST   /esbtp/teacher-attendance/seance/{seance}/update-status
+GET    /esbtp/teacher-attendance/seance/{seance}/refresh-ligne
+```
+
+**Middleware** : `auth`, `role:superAdmin|coordinateur`
+
+**Pattern technique**
+```javascript
+// 1. Update status via POST
+fetch('/update-status', { method: 'POST', body: { status: 'present' } })
+// 2. Refresh HTML via GET (unsetRelation + load)
+fetch('/refresh-ligne').then(data => replaceRow(data.html))
+// 3. Animation "travelling light" pendant le remplacement
+triggerSeanceRowHighlight(row, 'present')
+```
+
+**Logs de débogage**
+```
+🔵 START updateStatus
+📝 Avant update (si existe)
+🆕 Création attendance manuel (si non émargé)
+✅ Attendance updated/créé
+ℹ️ Workflow non modifié
+🔄 Refresh seance ligne
+📊 Attendances après reload
+```
+
 ---
 
-*Dernière mise à jour: 16 octobre 2025*
+*Dernière mise à jour: 17 octobre 2025*
