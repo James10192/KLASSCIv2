@@ -237,21 +237,53 @@ class CoordinateurDashboardController extends Controller
     {
         try {
             return ESBTPSeanceCours::whereDate('date_seance', $date)
-                ->with(['matiere', 'teacherAttendance', 'attendances'])
+                ->with(['matiere', 'teacherAttendances', 'attendances'])
                 ->get()
                 ->groupBy('matiere_id')
-                ->map(function ($seances, $matiereId) {
+                ->map(function ($seances, $matiereId) use ($date) {
                     $matiere = $seances->first()->matiere;
                     $totalSeances = $seances->count();
-                    $seancesAvecEmargement = $seances->filter(fn($s) => $s->teacherAttendance)->count();
+
+                    // Compter les émargements DÉBUT et FIN séparément
+                    $emargementDebutCount = 0;
+                    $emargementFinCount = 0;
+
+                    foreach ($seances as $seance) {
+                        $hasDebut = $seance->teacherAttendances()
+                            ->whereDate('date', $date)
+                            ->where('type', 'start')
+                            ->exists();
+
+                        $hasFin = $seance->teacherAttendances()
+                            ->whereDate('date', $date)
+                            ->where('type', 'end')
+                            ->exists();
+
+                        if ($hasDebut) $emargementDebutCount++;
+                        if ($hasFin) $emargementFinCount++;
+                    }
+
+                    // Total émargements possibles = 2 par séance (début + fin)
+                    $totalEmargementsPossibles = $totalSeances * 2;
+                    $totalEmargementsEffectues = $emargementDebutCount + $emargementFinCount;
+
+                    // Compter les séances avec appels d'étudiants
                     $seancesAvecAppel = $seances->filter(fn($s) => $s->attendances->count() > 0)->count();
-                    
+
+                    // Taux de complétion basé sur émargements (début + fin)
+                    $tauxCompletion = $totalEmargementsPossibles > 0
+                        ? round(($totalEmargementsEffectues / $totalEmargementsPossibles) * 100, 1)
+                        : 0;
+
                     return [
                         'matiere_name' => $matiere->name ?? 'Non défini',
                         'total_seances' => $totalSeances,
-                        'emargements_effectues' => $seancesAvecEmargement,
+                        'emargements_debut' => $emargementDebutCount,
+                        'emargements_fin' => $emargementFinCount,
+                        'emargements_effectues' => $totalEmargementsEffectues,
+                        'emargements_possibles' => $totalEmargementsPossibles,
                         'appels_effectues' => $seancesAvecAppel,
-                        'taux_completion' => $totalSeances > 0 ? round(($seancesAvecAppel / $totalSeances) * 100, 1) : 0
+                        'taux_completion' => $tauxCompletion
                     ];
                 })
                 ->sortByDesc('total_seances')

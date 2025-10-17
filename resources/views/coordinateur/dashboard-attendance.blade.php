@@ -210,8 +210,10 @@
                                 <small class="stat-label">Séances</small>
                             </div>
                             <div class="stat-item">
-                                <div class="stat-value text-success">{{ $subject['emargements_effectues'] ?? 0 }}</div>
-                                <small class="stat-label">Émargé</small>
+                                <div class="stat-value text-success">
+                                    {{ $subject['emargements_effectues'] ?? 0 }}/{{ $subject['emargements_possibles'] ?? 0 }}
+                                </div>
+                                <small class="stat-label">Émargements</small>
                             </div>
                             <div class="stat-item">
                                 <div class="stat-value text-info">{{ $subject['appels_effectues'] ?? 0 }}</div>
