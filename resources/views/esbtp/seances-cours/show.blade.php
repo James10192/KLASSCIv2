@@ -136,15 +136,36 @@
 
                         @php
                             // Déterminer le statut global de l'enseignant pour cette séance
+                            // Priorité : 1) attendance d'aujourd'hui, 2) attendance de la date de séance, 3) la plus récente
+                            $today = \Carbon\Carbon::today();
+                            $seanceDate = \Carbon\Carbon::parse($seancesCour->date_seance);
+
+                            // Chercher d'abord une attendance d'aujourd'hui (pour les updates manuels)
                             $emargementDebutTemp = $seancesCour->teacherAttendances()
-                                ->whereDate('date', \Carbon\Carbon::parse($seancesCour->date_seance))
+                                ->whereDate('date', $today)
                                 ->where('type', 'start')
                                 ->first();
 
+                            // Si pas d'attendance aujourd'hui, chercher celle de la date de séance
+                            if (!$emargementDebutTemp) {
+                                $emargementDebutTemp = $seancesCour->teacherAttendances()
+                                    ->whereDate('date', $seanceDate)
+                                    ->where('type', 'start')
+                                    ->first();
+                            }
+
+                            // Même logique pour l'émargement fin
                             $emargementFinTemp = $seancesCour->teacherAttendances()
-                                ->whereDate('date', \Carbon\Carbon::parse($seancesCour->date_seance))
+                                ->whereDate('date', $today)
                                 ->where('type', 'end')
                                 ->first();
+
+                            if (!$emargementFinTemp) {
+                                $emargementFinTemp = $seancesCour->teacherAttendances()
+                                    ->whereDate('date', $seanceDate)
+                                    ->where('type', 'end')
+                                    ->first();
+                            }
 
                             // Statut global basé sur les émargements
                             $teacherGlobalStatus = 'not_signed'; // Par défaut non émargé

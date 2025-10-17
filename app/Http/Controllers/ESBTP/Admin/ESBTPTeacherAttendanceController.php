@@ -542,41 +542,56 @@ class ESBTPTeacherAttendanceController extends Controller
             $seanceCours = ESBTPSeanceCours::with(['teacher', 'matiere', 'emploiTemps.classe'])->findOrFail($seanceId);
             $type = $request->type ?? 'start'; // Par défaut début
 
-            // Chercher un émargement existant
+            // Chercher un émargement existant (d'aujourd'hui OU de la date de séance)
             $attendance = ESBTPTeacherAttendance::where('course_id', $seanceId)
-                ->whereDate('date', today())
                 ->where('type', $type)
+                ->where(function($query) use ($seanceCours) {
+                    $query->whereDate('date', today())
+                          ->orWhereDate('date', \Carbon\Carbon::parse($seanceCours->date_seance));
+                })
                 ->first();
 
             if (!$attendance) {
-                // ❌ INTERDIRE la création - coordinateur ne peut QUE mettre à jour un attendance existant
-                \Log::warning('⚠️ Attendance non trouvé - création interdite', [
+                // 🆕 CRÉER un attendance d'aujourd'hui pour le marquage manuel
+                // IMPORTANT: Ceci est un marquage ADMINISTRATIF, pas un émargement enseignant
+                \Log::info('🆕 Création attendance manuel (statut: non émargé → ' . $request->status . ')', [
                     'seance_id' => $seanceId,
+                    'teacher_id' => $seanceCours->teacher_id,
                     'type' => $type,
                     'date' => today(),
-                    'message' => 'Le coordinateur ne peut pas créer un attendance. Il ne peut que modifier un attendance existant créé par le système.'
+                    'status' => $request->status
                 ]);
 
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Aucun émargement trouvé pour cette séance. Vous ne pouvez modifier que les émargements existants.'
-                ], 404);
+                $attendance = ESBTPTeacherAttendance::create([
+                    'teacher_id' => $seanceCours->teacher_id,
+                    'course_id' => $seanceId,
+                    'date' => today(), // Date du marquage manuel, PAS la date de séance originale
+                    'status' => $request->status,
+                    'type' => $type,
+                    'attempts' => 0, // 0 = marquage manuel (pas d'émargement enseignant)
+                    'validated_at' => now()
+                ]);
+
+                \Log::info('✅ Attendance manuel créé', [
+                    'id' => $attendance->id,
+                    'status' => $attendance->status
+                ]);
+            } else {
+                // ✅ Mettre à jour l'attendance existant - SEULEMENT le statut
+                \Log::info('📝 Avant update', [
+                    'id' => $attendance->id,
+                    'old_status' => $attendance->status,
+                    'new_status' => $request->status
+                ]);
+
+                $attendance->status = $request->status;
+                $attendance->save();
+
+                \Log::info('✅ Attendance updated', [
+                    'id' => $attendance->id,
+                    'status_after_save' => $attendance->fresh()->status
+                ]);
             }
-
-            // ✅ Mettre à jour l'attendance existant - SEULEMENT le statut
-            \Log::info('📝 Avant update', [
-                'id' => $attendance->id,
-                'old_status' => $attendance->status,
-                'new_status' => $request->status
-            ]);
-
-            $attendance->status = $request->status;
-            $attendance->save();
-
-            \Log::info('✅ Attendance updated', [
-                'id' => $attendance->id,
-                'status_after_save' => $attendance->fresh()->status
-            ]);
 
             // ⚠️ Le workflow n'est JAMAIS modifié par le marquage manuel
             \Log::info('ℹ️ Workflow non modifié - marquage manuel ne change pas le workflow officiel');
@@ -608,8 +623,31 @@ class ESBTPTeacherAttendanceController extends Controller
         \Log::info('🔄 Refresh seance ligne', ['seance_id' => $seanceId]);
 
         try {
-            $seance = ESBTPSeanceCours::with(['teacher.user', 'matiere', 'emploiTemps.classe', 'teacherAttendances'])
-                ->findOrFail($seanceId);
+            // IMPORTANT: Forcer NOUVEAU chargement complet sans aucun cache
+            // Ne PAS utiliser with() car ça met en cache les relations
+            $seance = ESBTPSeanceCours::findOrFail($seanceId);
+
+            // Utiliser unsetRelation() puis load() pour forcer le rechargement depuis la DB
+            $seance->unsetRelation('teacherAttendances');
+            $seance->load([
+                'teacher.user',
+                'matiere',
+                'emploiTemps.classe',
+                'teacherAttendances' // Charger depuis DB après avoir unset le cache
+            ]);
+
+            \Log::info('📊 Attendances après reload', [
+                'seance_id' => $seanceId,
+                'attendances_count' => $seance->teacherAttendances->count(),
+                'attendances' => $seance->teacherAttendances->map(function($att) {
+                    return [
+                        'id' => $att->id,
+                        'status' => $att->status,
+                        'type' => $att->type,
+                        'date' => $att->date
+                    ];
+                })->toArray()
+            ]);
 
             // Render la ligne HTML
             $html = view('esbtp.teacher-attendance.partials.seance-row', compact('seance'))->render();

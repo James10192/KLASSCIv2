@@ -1,12 +1,33 @@
 @php
     // Récupérer l'émargement pour cette séance (s'il existe)
+    // Priorité : 1) attendance d'aujourd'hui, 2) attendance de la date de séance, 3) la plus récente
+    $today = \Carbon\Carbon::today();
+
+    // Chercher d'abord une attendance d'aujourd'hui (pour les updates manuels faits aujourd'hui)
     $attendance = $seance->teacherAttendances
-        ->first(function($attendance) use ($seance) {
+        ->first(function($attendance) use ($today) {
             $attendanceDate = $attendance->date instanceof \Carbon\Carbon
                 ? $attendance->date
                 : \Carbon\Carbon::parse($attendance->date);
-            return $attendanceDate->isSameDay(\Carbon\Carbon::parse($seance->date_seance));
-        }) ?? $seance->teacherAttendances->sortByDesc('created_at')->first();
+            return $attendanceDate->isSameDay($today);
+        });
+
+    // Si pas d'attendance aujourd'hui, chercher celle de la date de séance
+    if (!$attendance) {
+        $attendance = $seance->teacherAttendances
+            ->first(function($attendance) use ($seance) {
+                $attendanceDate = $attendance->date instanceof \Carbon\Carbon
+                    ? $attendance->date
+                    : \Carbon\Carbon::parse($attendance->date);
+                return $attendanceDate->isSameDay(\Carbon\Carbon::parse($seance->date_seance));
+            });
+    }
+
+    // Si toujours rien, prendre la plus récente
+    if (!$attendance) {
+        $attendance = $seance->teacherAttendances->sortByDesc('created_at')->first();
+    }
+
     $hasAttendance = $attendance !== null;
     $attendanceStatus = $hasAttendance ? $attendance->status : 'not_signed';
 @endphp
