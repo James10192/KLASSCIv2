@@ -246,6 +246,7 @@ MAIL_FROM_NAME="KLASSCI"
 - **16/10** : Erreur getRelationExistenceQuery → select colonnes explicites
 - **17/10** : Configuration type enseignement groupée → accordion avec stats temps réel
 - **17/10** : Marquage manuel attendance enseignants → cache Eloquent + priorité dates + création automatique
+- **17/10** : Exclusion séances absentes du calcul heures effectuées → planning général + emploi temps
 
 ## ✨ Fonctionnalités récentes
 
@@ -351,6 +352,172 @@ triggerSeanceRowHighlight(row, 'present')
 🔄 Refresh seance ligne
 📊 Attendances après reload
 ```
+
+### Exclusion absences du calcul heures effectuées (17 octobre 2025)
+
+**Problématique** : Les heures des séances où l'enseignant était absent étaient comptabilisées dans les "heures effectuées", faussant les statistiques du planning général et de l'emploi du temps.
+
+**Exemple** : Un enseignant avec 11H planifiées et une séance de 2H marquée "absent" affichait "2H / 11H" au lieu de "0H / 11H".
+
+**Solution** : Modification des requêtes SQL pour exclure les séances où `latest_attendance.status = 'absent'`.
+
+**Pages affectées**
+- `/esbtp/planning-general/repartition-matieres` : Vue globale heures par matière/filière/niveau
+- `/esbtp/emploi-temps/{id}` : Détail emploi du temps avec stats par matière
+
+**Logique implémentée**
+
+```sql
+-- Sous-requête pour obtenir l'attendance la plus récente par séance
+-- Priorité: today() > date_seance > created_at DESC
+SELECT ta1.course_id, ta1.status
+FROM esbtp_teacher_attendances ta1
+INNER JOIN (
+    SELECT course_id,
+           MAX(CASE
+               WHEN DATE(date) = CURDATE() THEN CONCAT("1_", created_at)
+               WHEN DATE(date) = date_seance THEN CONCAT("2_", created_at)
+               ELSE CONCAT("3_", created_at)
+           END) as max_priority
+    FROM esbtp_teacher_attendances
+    WHERE type = "start"
+    GROUP BY course_id
+) ta2 ON ta1.course_id = ta2.course_id
+WHERE ta1.type = "start"
+
+-- Filtrer les séances NON absentes
+WHERE latest_attendance.status IS NULL
+   OR latest_attendance.status != 'absent'
+```
+
+**Fichiers modifiés**
+
+1. **ESBTPPlanningGeneralController::calculerRepartitionMatieresDetaillees()** (L1296-1338)
+   - Left join avec sous-requête pour attendance la plus récente
+   - Exclusion des séances avec `status = 'absent'`
+   - COUNT et SUM appliqués uniquement aux séances présentes/retard/non émargées
+
+2. **ESBTPEmploiTempsController::getPlanificationDataForClasse()** (L217-258)
+   - Même logique pour le calcul fallback des heures effectuées
+   - Sous-requête corrélée dans le `whereRaw` pour éviter les erreurs de scope
+
+**Impact**
+
+- ✅ **Heures effectuées** : Maintenant précises, excluent les absences
+- ✅ **Nb séances** : Compte seulement les séances effectuées
+- ✅ **Pourcentage réalisé** : Calcul correct (heures_effectuées / heures_planifiées)
+- ✅ **Heures restantes** : Calcul précis pour la planification
+
+**Exemple résultat**
+
+```
+Avant : Math - L3 Info : 2H effectuées / 11H planifiées (18%)
+Après : Math - L3 Info : 0H effectuées / 11H planifiées (0%)
+                        [Si 2H de séance = enseignant absent]
+```
+
+**Règle métier**
+
+> **Séances comptabilisées** : `status IS NULL` (non émargé) OU `status IN ('present', 'late')`
+>
+> **Séances EXCLUES** : `status = 'absent'`
+
+Cela signifie qu'une séance "non émargée" compte comme effectuée (bénéfice du doute), mais une séance explicitement marquée "absent" est exclue.
+
+---
+
+## 🔮 Fonctionnalités à implémenter
+
+### Calcul honoraires enseignants (À venir)
+
+**Objectif** : Calculer automatiquement les honoraires des enseignants basés sur leurs heures de présence effective aux cours.
+
+**Principe** : Paiement à l'heure selon les attendances validées
+
+**Données sources**
+- Table : `esbtp_teacher_attendances`
+- Critères : `status IN ('present', 'late')` ET `type = 'start'`
+- Priorité attendance : same que calcul heures effectuées (today() > date_seance)
+
+**Logique de calcul**
+
+```php
+// Pour chaque enseignant sur une période donnée
+$heuresEffectuees = ESBTPSeanceCours::join('esbtp_teacher_attendances', ...)
+    ->where('teacher_id', $teacherId)
+    ->whereBetween('date_seance', [$dateDebut, $dateFin])
+    ->where(function($q) {
+        $q->whereNull('latest_attendance.status')  // Non émargé = payé
+          ->orWhereIn('latest_attendance.status', ['present', 'late']);
+    })
+    ->sum(TIME_TO_SEC(TIMEDIFF(heure_fin, heure_debut)) / 3600);
+
+$honoraires = $heuresEffectuees * $tauxHoraire;
+```
+
+**Règles métier à implémenter**
+
+1. **Statuts payables**
+   - `present` : 100% du taux horaire
+   - `late` : 100% du taux horaire (optionnel : pénalité configurable)
+   - `null` (non émargé) : 100% (bénéfice du doute)
+
+2. **Statuts NON payables**
+   - `absent` : 0% du taux horaire
+
+3. **Taux horaire**
+   - Stocké dans profil enseignant (`esbtp_teachers.taux_horaire`)
+   - Peut varier par matière/niveau (optionnel)
+
+4. **Période de calcul**
+   - Par mois (défaut)
+   - Par semestre
+   - Par année universitaire
+
+**Interface à créer**
+
+- **Page** : `/esbtp/honoraires/enseignants`
+- **Filtres** : Période, enseignant, statut (payé/impayé)
+- **Tableau** : Enseignant | Heures présentes | Heures absentes | Taux | Montant total
+- **Actions** : Générer fiche de paie, Exporter Excel, Marquer comme payé
+
+**Champs à ajouter**
+
+```php
+// Migration: add to esbtp_teachers
+$table->decimal('taux_horaire', 10, 2)->default(0)->comment('FCFA/heure');
+
+// Nouvelle table: esbtp_honoraires
+Schema::create('esbtp_honoraires', function (Blueprint $table) {
+    $table->id();
+    $table->foreignId('teacher_id')->constrained('esbtp_teachers')->cascadeOnDelete();
+    $table->date('periode_debut');
+    $table->date('periode_fin');
+    $table->decimal('heures_presentes', 8, 2);
+    $table->decimal('heures_absentes', 8, 2);
+    $table->decimal('taux_horaire', 10, 2);
+    $table->decimal('montant_total', 12, 2);
+    $table->enum('statut', ['en_attente', 'validé', 'payé'])->default('en_attente');
+    $table->timestamp('paye_le')->nullable();
+    $table->text('notes')->nullable();
+    $table->timestamps();
+});
+```
+
+**Dépendances**
+
+- ✅ Système d'attendance enseignants (déjà implémenté)
+- ✅ Calcul heures effectuées avec exclusion absences (déjà implémenté)
+- ⏳ Gestion taux horaire par enseignant
+- ⏳ Interface de génération des fiches d'honoraires
+- ⏳ Export PDF/Excel
+- ⏳ Workflow validation (coordinateur → admin → paiement)
+
+**Estimation**
+
+- Complexité : Moyenne
+- Durée : 2-3 jours
+- Priorité : À définir selon besoins métier
 
 ---
 

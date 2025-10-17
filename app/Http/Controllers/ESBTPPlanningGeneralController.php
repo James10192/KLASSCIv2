@@ -1294,14 +1294,45 @@ class ESBTPPlanningGeneralController extends Controller
         $planifications = $planificationsQuery->get();
         
         // Récupérer les heures réalisées par combinaison matière/filière/niveau
+        // IMPORTANT: Exclure les séances où l'enseignant est marqué ABSENT
         $seancesQuery = ESBTPSeanceCours::with(['matiere', 'classe.filiere', 'classe.niveau'])
             ->join('esbtp_emploi_temps', 'esbtp_seance_cours.emploi_temps_id', '=', 'esbtp_emploi_temps.id')
             ->join('esbtp_classes', 'esbtp_emploi_temps.classe_id', '=', 'esbtp_classes.id')
+            // Left join avec sous-requête pour obtenir l'attendance la plus récente par séance
+            ->leftJoin(DB::raw('(
+                SELECT ta1.course_id, ta1.status
+                FROM esbtp_teacher_attendances ta1
+                INNER JOIN (
+                    SELECT course_id,
+                           MAX(CASE
+                               WHEN DATE(date) = CURDATE() THEN CONCAT("1_", created_at)
+                               WHEN DATE(date) = (SELECT DATE(date_seance) FROM esbtp_seance_cours WHERE id = course_id) THEN CONCAT("2_", created_at)
+                               ELSE CONCAT("3_", created_at)
+                           END) as max_priority
+                    FROM esbtp_teacher_attendances
+                    WHERE type = "start"
+                    GROUP BY course_id
+                ) ta2 ON ta1.course_id = ta2.course_id
+                     AND CONCAT(
+                         CASE
+                             WHEN DATE(ta1.date) = CURDATE() THEN "1_"
+                             WHEN DATE(ta1.date) = (SELECT DATE(date_seance) FROM esbtp_seance_cours WHERE id = ta1.course_id) THEN "2_"
+                             ELSE "3_"
+                         END, ta1.created_at
+                     ) = ta2.max_priority
+                WHERE ta1.type = "start"
+            ) as latest_attendance'), 'latest_attendance.course_id', '=', 'esbtp_seance_cours.id')
+            // EXCLURE les séances où l'enseignant est ABSENT
+            // Si pas d'attendance (null) OU attendance avec statut != 'absent', alors compter la séance
+            ->where(function($query) {
+                $query->whereNull('latest_attendance.status')
+                      ->orWhere('latest_attendance.status', '!=', 'absent');
+            })
             ->select('esbtp_seance_cours.matiere_id', 'esbtp_classes.filiere_id', 'esbtp_classes.niveau_etude_id',
-                    DB::raw('COUNT(*) as nb_seances'), 
+                    DB::raw('COUNT(DISTINCT esbtp_seance_cours.id) as nb_seances'),
                     DB::raw('SUM(TIME_TO_SEC(TIMEDIFF(esbtp_seance_cours.heure_fin, esbtp_seance_cours.heure_debut))/3600) as total_heures'))
             ->groupBy('esbtp_seance_cours.matiere_id', 'esbtp_classes.filiere_id', 'esbtp_classes.niveau_etude_id');
-        
+
         if ($anneeId) {
             $seancesQuery->where('esbtp_emploi_temps.annee_universitaire_id', $anneeId);
         }

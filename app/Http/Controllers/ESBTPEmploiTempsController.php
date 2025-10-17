@@ -213,7 +213,9 @@ class ESBTPEmploiTempsController extends Controller
             $heuresUtilisees = $planification->heures_effectuees ?? 0;
             
             // Fallback : si pas d'heures effectuées, calculer à partir des séances
+            // IMPORTANT: Exclure les séances où l'enseignant est marqué ABSENT
             if ($heuresUtilisees == 0) {
+                // Utiliser une sous-requête pour obtenir l'attendance la plus récente par séance
                 $seances = \App\Models\ESBTPSeanceCours::where('matiere_id', $planification->matiere_id)
                     ->where('classe_id', $classe->id)
                     ->where('annee_universitaire_id', $annee->id)
@@ -221,9 +223,31 @@ class ESBTPEmploiTempsController extends Controller
                         // Si on a un semestre spécifique, filtrer les séances par période
                         // Cette logique peut être adaptée selon votre implémentation des semestres
                     })
-                    ->select('heure_debut', 'heure_fin')
+                    // Left join pour obtenir l'attendance la plus récente
+                    ->leftJoin('esbtp_teacher_attendances', function($join) {
+                        $join->on('esbtp_teacher_attendances.course_id', '=', 'esbtp_seance_cours.id')
+                             ->where('esbtp_teacher_attendances.type', '=', 'start')
+                             // Sous-requête pour obtenir uniquement l'attendance la plus récente
+                             ->whereRaw('esbtp_teacher_attendances.id = (
+                                 SELECT ta.id FROM esbtp_teacher_attendances ta
+                                 WHERE ta.course_id = esbtp_seance_cours.id
+                                   AND ta.type = "start"
+                                 ORDER BY CASE
+                                     WHEN DATE(ta.date) = CURDATE() THEN 1
+                                     WHEN DATE(ta.date) = DATE(esbtp_seance_cours.date_seance) THEN 2
+                                     ELSE 3
+                                 END, ta.created_at DESC
+                                 LIMIT 1
+                             )');
+                    })
+                    // Exclure les séances où l'enseignant est absent
+                    ->where(function($query) {
+                        $query->whereNull('esbtp_teacher_attendances.status')
+                              ->orWhere('esbtp_teacher_attendances.status', '!=', 'absent');
+                    })
+                    ->select('esbtp_seance_cours.heure_debut', 'esbtp_seance_cours.heure_fin')
                     ->get();
-                    
+
                 foreach ($seances as $seance) {
                     if ($seance->heure_debut && $seance->heure_fin) {
                         $debut = \Carbon\Carbon::parse($seance->heure_debut);
