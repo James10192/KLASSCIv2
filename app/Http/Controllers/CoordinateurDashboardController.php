@@ -267,19 +267,23 @@ class CoordinateurDashboardController extends Controller
                         if ($hasEmargementDebut) $emargementDebutCount++;
                         if ($hasEmargementFin) $emargementFinCount++;
 
-                        // Vérifier appels étudiants (call_type = 'start' ou 'end' ou 'merged')
-                        $hasAppelDebut = $seance->attendances()
-                            ->whereDate('date', $date)
-                            ->where('call_type', 'start')
-                            ->exists();
+                        // Vérifier appels via ESBTPSessionWorkflow (plus fiable que compter les attendances)
+                        $workflow = \App\Models\ESBTPSessionWorkflow::where('seance_cours_id', $seance->id)
+                            ->first();
 
-                        $hasAppelFin = $seance->attendances()
-                            ->whereDate('date', $date)
-                            ->whereIn('call_type', ['end', 'merged'])
-                            ->exists();
+                        if ($workflow) {
+                            // Appel début fait si call_start_done = true et call_start_done_at est aujourd'hui
+                            if ($workflow->call_start_done && $workflow->call_start_done_at &&
+                                \Carbon\Carbon::parse($workflow->call_start_done_at)->isToday()) {
+                                $appelDebutCount++;
+                            }
 
-                        if ($hasAppelDebut) $appelDebutCount++;
-                        if ($hasAppelFin) $appelFinCount++;
+                            // Appel fin fait si call_end_done = true et call_end_done_at est aujourd'hui
+                            if ($workflow->call_end_done && $workflow->call_end_done_at &&
+                                \Carbon\Carbon::parse($workflow->call_end_done_at)->isToday()) {
+                                $appelFinCount++;
+                            }
+                        }
                     }
 
                     // Total émargements possibles = 2 par séance (début + fin)
