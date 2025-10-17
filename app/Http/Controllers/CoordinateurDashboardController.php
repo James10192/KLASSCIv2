@@ -118,9 +118,10 @@ class CoordinateurDashboardController extends Controller
                 ->where('call_end_done', true)
                 ->count();
 
-            // 6. Appels TOTAUX terminés (au moins un appel - début OU fin)
-            $stats['roll_calls_completed_today'] = ESBTPSeanceCours::whereDate('date_seance', $date)
-                ->whereHas('attendances')
+            // 6. Appels TOTAUX terminés (les DEUX appels - début ET fin)
+            $stats['roll_calls_completed_today'] = \App\Models\ESBTPSessionWorkflow::whereDate('call_start_done_at', $date)
+                ->where('call_start_done', true)
+                ->where('call_end_done', true)
                 ->count();
 
             // Récupérer l'année universitaire en cours

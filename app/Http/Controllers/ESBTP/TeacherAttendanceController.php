@@ -149,21 +149,32 @@ class TeacherAttendanceController extends Controller
             // Est-on dans la fenêtre de clôture?
             $isInClosingWindow = $now->gte($fenetreClotureDebut);
 
+            // Récupérer le workflow pour vérifier si l'appel de début est fait
+            $workflow = ESBTPSessionWorkflow::getOrCreateForSession($seanceCours->id, $user->id);
+
             // Déterminer le type d'émargement à faire
             if (!$emargementDebut) {
                 // Pas encore d'émargement de début → FAIRE ÉMARGEMENT DÉBUT
                 $emargementType = 'start';
-            } elseif ($isInClosingWindow && !$emargementFin) {
-                // Émargement début fait + dans fenêtre clôture + pas encore émargement fin → FAIRE ÉMARGEMENT FIN
-                $emargementType = 'end';
             } elseif ($emargementDebut && $emargementFin) {
                 // Les deux émargements sont déjà faits
                 return redirect()->route('teacher.select-call-type', $seanceCours->id)
                     ->with('success', 'Vous avez déjà émargé le début et la fin de cette séance.');
-            } else {
-                // Émargement début fait mais pas encore dans la fenêtre de clôture
+            } elseif (!$workflow->call_start_done) {
+                // Émargement début fait mais appel de début pas encore fait
+                return redirect()->route('teacher.select-call-type', $seanceCours->id)
+                    ->with('info', 'Vous devez d\'abord effectuer l\'appel de début avant de pouvoir émarger la fin de la séance.');
+            } elseif (!$isInClosingWindow) {
+                // Appel début fait mais pas encore dans la fenêtre de clôture
                 return redirect()->route('teacher.select-call-type', $seanceCours->id)
                     ->with('info', 'Émargement de début déjà effectué. L\'émargement de fin sera disponible à partir de ' . $fenetreClotureDebut->format('H:i') . '.');
+            } elseif ($isInClosingWindow && !$emargementFin) {
+                // Appel début fait + dans fenêtre clôture + pas encore émargement fin → FAIRE ÉMARGEMENT FIN
+                $emargementType = 'end';
+            } else {
+                // Cas par défaut (ne devrait pas arriver)
+                return redirect()->route('teacher.select-call-type', $seanceCours->id)
+                    ->with('info', 'Veuillez vérifier l\'état de votre émargement.');
             }
 
             // **LOGIQUE SELON LE TYPE D'ÉMARGEMENT**
