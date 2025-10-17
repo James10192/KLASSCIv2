@@ -463,11 +463,11 @@
         <!-- Statistiques présences étudiants -->
         @php
             // Calculer les statistiques d'appels depuis esbtp_attendances
-            $attendancesStart = \App\Models\ESBTPAttendance::where('course_id', $seancesCour->id)
+            $attendancesStart = \App\Models\ESBTPAttendance::where('seance_cours_id', $seancesCour->id)
                 ->where('call_type', 'start')
                 ->get();
 
-            $attendancesEnd = \App\Models\ESBTPAttendance::where('course_id', $seancesCour->id)
+            $attendancesEnd = \App\Models\ESBTPAttendance::where('seance_cours_id', $seancesCour->id)
                 ->where('call_type', 'end')
                 ->get();
 
