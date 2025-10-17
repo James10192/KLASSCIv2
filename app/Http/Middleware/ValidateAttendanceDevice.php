@@ -35,7 +35,7 @@ class ValidateAttendanceDevice
 
             // Compare device fingerprints
             $oldDeviceInfo = json_decode($recentAttendance->device_info, true);
-            if ($oldDeviceInfo && $oldDeviceInfo['fingerprint'] !== $deviceFingerprint) {
+            if ($oldDeviceInfo && isset($oldDeviceInfo['fingerprint']) && $oldDeviceInfo['fingerprint'] !== $deviceFingerprint) {
                 \Log::warning('Device change detected for teacher attendance', [
                     'teacher_id' => auth()->id(),
                     'old_device' => $oldDeviceInfo,
