@@ -88,6 +88,13 @@ class SessionReportController extends Controller
         ]);
 
         try {
+            \Log::info('📝 Début création/mise à jour rapport', [
+                'seance_id' => $seanceId,
+                'teacher_id' => $user->id,
+                'action' => $validated['action'],
+                'content_length' => strlen($validated['content_summary'])
+            ]);
+
             DB::beginTransaction();
 
             // Créer ou mettre à jour le rapport
@@ -109,11 +116,19 @@ class SessionReportController extends Controller
 
             // Si le rapport est soumis, marquer le workflow comme terminé
             if ($validated['action'] === 'submit') {
+                \Log::info('✅ Soumission du rapport', ['report_id' => $report->id]);
                 $report->markAsSubmitted();
                 $workflow->markReportSubmitted();
+            } else {
+                \Log::info('💾 Sauvegarde brouillon', ['report_id' => $report->id]);
             }
 
             DB::commit();
+
+            \Log::info('✅ Rapport sauvegardé avec succès', [
+                'report_id' => $report->id,
+                'status' => $report->status
+            ]);
 
             $message = $validated['action'] === 'submit' 
                 ? 'Rapport de cours soumis avec succès. La séance est maintenant terminée.'
