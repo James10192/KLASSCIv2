@@ -697,8 +697,9 @@ class ESBTPAttendanceController extends Controller
         // Mémoriser l'ancien statut pour vérifier s'il change en absent
         $oldStatut = $attendance->statut;
 
-        // Ajouter l'identifiant de l'utilisateur qui modifie
+        // Ajouter l'identifiant de l'utilisateur qui modifie ET call_type='merged'
         $validatedData['updated_by'] = Auth::id();
+        $validatedData['call_type'] = 'merged'; // Marquer comme version finale
 
         // Mettre à jour l'enregistrement
         $attendance->update($validatedData);
