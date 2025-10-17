@@ -173,7 +173,16 @@ class ESBTPTeacherAttendanceController extends Controller
         $isInClosingWindow = $now->gte($fenetreClotureDebut) && $now->lte($fenetreClotureFin);
 
         // Récupérer le workflow pour vérifier si l'appel de début est fait
-        $workflow = \App\Models\ESBTPSessionWorkflow::getOrCreateForSession($seanceCours->id, $user->id);
+        try {
+            $workflow = \App\Models\ESBTPSessionWorkflow::getOrCreateForSession($seanceCours->id, $user->id);
+        } catch (\Exception $e) {
+            \Log::error('❌ Erreur getOrCreateForSession: ' . $e->getMessage(), [
+                'seance_id' => $seanceCours->id,
+                'user_id' => $user->id,
+                'trace' => $e->getTraceAsString()
+            ]);
+            return redirect()->back()->with('error', 'Erreur lors de la création du workflow: ' . $e->getMessage());
+        }
 
         // Déterminer le type d'émargement à faire
         if (!$emargementDebut) {
