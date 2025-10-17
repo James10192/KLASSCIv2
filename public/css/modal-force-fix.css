@@ -113,7 +113,7 @@ body.modal-open {
 /* Désactiver les animations problématiques */
 .modal.fade .modal-dialog {
     transition: none !important;
-    transform: none !important;
+    /* transform: none retiré pour permettre modal-dialog-centered */
 }
 
 /* Debug - rendre les modals visibles en cas de problème */
@@ -219,30 +219,29 @@ body.modal-open {
 .modal, .modal * {
     transition: none !important;
     animation: none !important;
-    transform: none !important;
+    /* transform: none retiré pour permettre le centrage */
 }
 
 .modal.fade .modal-dialog {
     transition: none !important;
-    transform: none !important;
+    /* transform: none retiré pour permettre le centrage */
 }
 
 .modal.show .modal-dialog {
     transition: none !important;
-    transform: none !important;
+    /* transform: none retiré pour permettre le centrage */
 }
 
-/* Forcer la position statique pour éviter les mouvements */
+/* Position relative pour éviter les mouvements mais permettre le centrage */
 .modal-dialog {
-    position: static !important;
-    transform: none !important;
+    /* position: static retiré pour permettre modal-dialog-centered */
     transition: none !important;
     animation: none !important;
 }
 
 .modal-content {
     position: relative !important;
-    transform: none !important;
+    /* transform: none retiré pour permettre le centrage des icônes */
     transition: none !important;
     animation: none !important;
 }
@@ -342,9 +341,15 @@ body.modal-open .modal *:hover,
 body.modal-open .modal *:focus,
 body.modal-open .modal *:active {
     transition: none !important;
-    transform: none !important;
+    /* transform: none retiré pour permettre le centrage des icônes */
     animation: none !important;
     box-shadow: inherit !important;
+}
+
+/* EXCEPTION: Autoriser transform sur les icônes pour le centrage vertical */
+.modal i[style*="position: absolute"],
+body.modal-open .modal i[style*="position: absolute"] {
+    transform: translateY(-50%) !important;
 }
 
 /* Empêcher les hover effects sur les éléments de fond quand modal ouvert */

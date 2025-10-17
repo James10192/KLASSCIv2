@@ -3542,6 +3542,110 @@ class ESBTPBulletinController extends Controller
     }
 
     /**
+     * Mise à jour groupée de la configuration des matières (coefficients + types d'enseignement)
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function bulkUpdateMatieresConfig(Request $request)
+    {
+        $this->validate($request, [
+            'classe_id' => 'required|exists:esbtp_classes,id',
+            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
+            'semestre' => 'required|in:1,2',
+            'coefficients' => 'nullable|array',
+            'matiere_types' => 'nullable|array'
+        ]);
+
+        \DB::beginTransaction();
+        try {
+            $classe = ESBTPClasse::findOrFail($request->classe_id);
+            $periode = 'semestre' . $request->semestre;
+            $updatedCoeff = 0;
+            $updatedTypes = 0;
+
+            // Mise à jour des coefficients dans la table pivot esbtp_classe_matiere
+            if ($request->has('coefficients') && is_array($request->coefficients)) {
+                foreach ($request->coefficients as $matiereId => $coefficient) {
+                    $classe->matieres()->updateExistingPivot(
+                        $matiereId,
+                        ['coefficient' => floatval($coefficient)]
+                    );
+                    $updatedCoeff++;
+                }
+            }
+
+            // Mise à jour des types d'enseignement dans esbtp_config_matiere (même logique que saveConfigMatieresTypeFormation)
+            if ($request->has('matiere_types') && is_array($request->matiere_types)) {
+                foreach ($request->matiere_types as $matiereId => $type) {
+                    if ($type === 'none') {
+                        // Si "none", on supprime la config
+                        ESBTPConfigMatiere::where([
+                            'matiere_id' => $matiereId,
+                            'classe_id' => $request->classe_id,
+                            'periode' => $periode,
+                            'annee_universitaire_id' => $request->annee_universitaire_id
+                        ])->forceDelete();
+                        continue;
+                    }
+
+                    // Sinon on crée/met à jour la config avec type général ou technique
+                    ESBTPConfigMatiere::withTrashed()->updateOrCreate(
+                        [
+                            'matiere_id' => $matiereId,
+                            'classe_id' => $request->classe_id,
+                            'periode' => $periode,
+                            'annee_universitaire_id' => $request->annee_universitaire_id
+                        ],
+                        [
+                            'config' => json_encode(['type' => $type]),
+                            'created_by' => \Auth::id(),
+                            'updated_by' => \Auth::id(),
+                            'deleted_at' => null
+                        ]
+                    );
+                    $updatedTypes++;
+                }
+            }
+
+            \DB::commit();
+
+            $messages = [];
+            if ($updatedCoeff > 0) {
+                $messages[] = "$updatedCoeff coefficient(s) modifié(s)";
+            }
+            if ($updatedTypes > 0) {
+                $messages[] = "$updatedTypes type(s) d'enseignement configuré(s)";
+            }
+
+            $message = count($messages) > 0
+                ? "✅ Configuration mise à jour : " . implode(', ', $messages)
+                : "✅ Configuration mise à jour avec succès";
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'stats' => [
+                    'coefficients_updated' => $updatedCoeff,
+                    'types_updated' => $updatedTypes
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('❌ Erreur bulk update config matières: ' . $e->getMessage(), [
+                'request_data' => $request->all(),
+                'exception' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la mise à jour de la configuration: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Génère un PDF à partir des paramètres fournis (étudiant, classe, période, année universitaire)
      * sans nécessiter un bulletin existant.
      *

@@ -880,6 +880,44 @@
             });
             $('#totalCoefficient').text(total.toFixed(1));
         });
+
+        // Setup type enseignement stats calculation
+        function updateTypeEnseignementStats() {
+            const generalCount = $('.matiere-type-radio[value="general"]:checked').length;
+            const techniqueCount = $('.matiere-type-radio[value="technique"]:checked').length;
+            const excludedCount = $('.matiere-type-radio[value="none"]:checked').length;
+
+            $('#generalCount').text(generalCount);
+            $('#techniqueCount').text(techniqueCount);
+            $('#excludedCount').text(excludedCount);
+        }
+
+        // Update stats on load
+        updateTypeEnseignementStats();
+
+        // Update stats on change
+        $('.matiere-type-radio').on('change', function() {
+            updateTypeEnseignementStats();
+        });
+
+        // Boutons d'action rapide
+        $('#btnToutesGenerales').on('click', function() {
+            $('.matiere-type-radio[value="general"]').prop('checked', true);
+            updateTypeEnseignementStats();
+            showToast('Toutes les matières définies comme générales', 'success');
+        });
+
+        $('#btnToutesTechniques').on('click', function() {
+            $('.matiere-type-radio[value="technique"]').prop('checked', true);
+            updateTypeEnseignementStats();
+            showToast('Toutes les matières définies comme techniques', 'success');
+        });
+
+        $('#btnAucuneType').on('click', function() {
+            $('.matiere-type-radio[value="none"]').prop('checked', true);
+            updateTypeEnseignementStats();
+            showToast('Aucune matière sélectionnée', 'warning');
+        });
     }
 
     // Refresh page content with AJAX (pattern CLAUDE.md)
@@ -1159,24 +1197,37 @@
             }
         });
 
-        if (Object.keys(coefficients).length === 0) {
+        // Collecter les types d'enseignement
+        const matiereTypes = {};
+        $('.matiere-type-radio:checked').each(function() {
+            const matiereId = $(this).data('matiere-id');
+            const type = $(this).val();
+            if (type && type !== 'none') {
+                matiereTypes[matiereId] = type;
+            }
+        });
+
+        if (Object.keys(coefficients).length === 0 && Object.keys(matiereTypes).length === 0) {
             hideLoading();
-            showToast('Aucun coefficient à modifier', 'error');
+            showToast('Aucune modification à enregistrer', 'error');
             return;
         }
 
         $.ajax({
-            url: '{{ route("esbtp.resultats.bulk-update-coefficients") }}',
+            url: '{{ route("esbtp.resultats.bulk-update-matieres-config") }}',
             method: 'POST',
             data: {
                 _token: '{{ csrf_token() }}',
                 classe_id: classeId,
-                coefficients: coefficients
+                annee_universitaire_id: anneeUniversitaireId,
+                semestre: semestre,
+                coefficients: coefficients,
+                matiere_types: matiereTypes
             },
             success: function(response) {
                 hideLoading();
                 $('#modalEditMatieres').modal('hide');
-                showToast(response.message || 'Coefficients mis à jour avec succès', 'success');
+                showToast(response.message || 'Configuration des matières mise à jour avec succès', 'success');
 
                 // Refresh AJAX partiel - NE PAS réinitialiser la sélection (pas basé sur étudiants)
                 refreshPageContent([], false);

@@ -244,6 +244,7 @@ MAIL_FROM_NAME="KLASSCI"
 - **13/10** : Doublons paiements → protection backend 10s
 - **16/10** : Réinitialisation sélection étudiants après save + nettoyage modals
 - **16/10** : Erreur getRelationExistenceQuery → select colonnes explicites
+- **17/10** : Configuration type enseignement groupée → accordion avec stats temps réel
 
 ## ✨ Fonctionnalités récentes
 
@@ -257,7 +258,7 @@ MAIL_FROM_NAME="KLASSCI"
   - **Moyennes** : 2 modes (par matière / par étudiant)
   - **Professeurs** : assignation par matière
   - **Absences** : justifiées/non justifiées
-  - **Matières** : coefficients
+  - **Matières** : coefficients + type d'enseignement (général/technique)
 
 **Pattern UX**
 - Refresh AJAX partiel après save (pas de reload complet)
@@ -269,11 +270,13 @@ MAIL_FROM_NAME="KLASSCI"
 
 **Fichiers modifiés**
 - `resources/views/esbtp/resultats/classe-edit.blade.php` : Vue principale + JS
+- `resources/views/esbtp/resultats/modals/edit-matieres.blade.php` : Modal avec accordion (coefficients + types)
 - `app/Http/Controllers/ESBTPBulletinController.php` :
   - `bulkUpdateMoyennes()` : validation flexible `moyennes.*.matiere_id`
   - `getAbsences()` : select colonnes explicites (évite accessors bugués)
   - `bulkUpdateAbsences()` : sauvegarde absences groupées
   - `bulkUpdateProfesseurs()` : assignation professeurs groupée
+  - `bulkUpdateMatieresConfig()` : coefficients + types dans `esbtp_config_matiere`
 
 **Bugs corrigés**
 1. Erreur "Call to a member function getRelationExistenceQuery() on null"

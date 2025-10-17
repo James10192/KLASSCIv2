@@ -16,10 +16,28 @@
             <div class="modal-body" style="padding: 1.5rem;">
                 <div class="alert alert-warning mb-4">
                     <i class="fas fa-exclamation-triangle me-2"></i>
-                    <strong>Attention:</strong> La modification des coefficients affectera le calcul des moyennes générales pour cette classe.
+                    <strong>Attention:</strong> La modification des coefficients et du type d'enseignement affectera le calcul et l'affichage des bulletins.
                 </div>
 
-                <form id="formMatieres">
+                <!-- Accordion pour les deux sections -->
+                <div class="accordion" id="accordionMatieres">
+                    <!-- Section 1: Coefficients -->
+                    <div class="accordion-item" style="border: 2px solid #dee2e6; border-radius: 12px; margin-bottom: 1rem; overflow: hidden;">
+                        <h2 class="accordion-header" id="headingCoefficients">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCoefficients" aria-expanded="false" aria-controls="collapseCoefficients" style="
+                                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                color: white;
+                                font-weight: 600;
+                                padding: 1.25rem;
+                                font-size: 1.1rem;
+                            ">
+                                <i class="fas fa-balance-scale me-2"></i>
+                                Coefficients des matières
+                            </button>
+                        </h2>
+                        <div id="collapseCoefficients" class="accordion-collapse collapse" aria-labelledby="headingCoefficients" data-bs-parent="#accordionMatieres">
+                            <div class="accordion-body" style="padding: 1.5rem;">
+                                <form id="formMatieres">
                     @foreach($matieres as $matiere)
                         <div class="matiere-card mb-3" style="
                             border: 2px solid #e5e7eb;
@@ -119,7 +137,6 @@
                             <a href="{{ route('esbtp.classes.matieres', $classe->id) }}" class="alert-link">Configurer les matières</a>
                         </div>
                     @endif
-                </form>
 
                 @if($matieres->isNotEmpty())
                     <div class="mt-4">
@@ -176,6 +193,125 @@
                         </div>
                     </div>
                 @endif
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 2: Type d'enseignement -->
+                    <div class="accordion-item" style="border: 2px solid #dee2e6; border-radius: 12px; overflow: hidden;">
+                        <h2 class="accordion-header" id="headingTypeEnseignement">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTypeEnseignement" aria-expanded="false" aria-controls="collapseTypeEnseignement" style="
+                                background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                                color: white;
+                                font-weight: 600;
+                                padding: 1.25rem;
+                                font-size: 1.1rem;
+                            ">
+                                <i class="fas fa-graduation-cap me-2"></i>
+                                Type d'enseignement (Général / Technique)
+                            </button>
+                        </h2>
+                        <div id="collapseTypeEnseignement" class="accordion-collapse collapse" aria-labelledby="headingTypeEnseignement" data-bs-parent="#accordionMatieres">
+                            <div class="accordion-body" style="padding: 1.5rem;">
+                                <div class="alert alert-info mb-3">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Configurez le type d'enseignement pour organiser l'affichage des matières sur les bulletins.
+                                </div>
+
+                                <!-- Boutons d'action rapide -->
+                                <div class="d-flex gap-2 justify-content-center mb-4">
+                                    <button type="button" class="btn btn-sm btn-primary" id="btnToutesGenerales">
+                                        <i class="fas fa-book me-1"></i>Toutes générales
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-success" id="btnToutesTechniques">
+                                        <i class="fas fa-tools me-1"></i>Toutes techniques
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-warning" id="btnAucuneType">
+                                        <i class="fas fa-times me-1"></i>Aucune
+                                    </button>
+                                </div>
+
+                                <form id="formTypeEnseignement">
+                                    @foreach($matieres as $matiere)
+                                        <div class="matiere-type-card mb-3" style="
+                                            border: 2px solid #e5e7eb;
+                                            border-radius: 10px;
+                                            background: white;
+                                            padding: 1rem;
+                                            transition: all 0.3s ease;
+                                        ">
+                                            <div class="row align-items-center">
+                                                <div class="col-md-5">
+                                                    <div class="d-flex align-items-center">
+                                                        <i class="fas fa-book text-primary me-2" style="font-size: 1.2rem;"></i>
+                                                        <span class="fw-medium">{{ $matiere->name }}</span>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-7">
+                                                    <div class="btn-group w-100" role="group">
+                                                        <input type="radio"
+                                                               class="btn-check matiere-type-radio"
+                                                               name="matiere_type_{{ $matiere->id }}"
+                                                               id="general_{{ $matiere->id }}"
+                                                               value="general"
+                                                               data-matiere-id="{{ $matiere->id }}">
+                                                        <label class="btn btn-outline-primary btn-sm" for="general_{{ $matiere->id }}">
+                                                            <i class="fas fa-graduation-cap me-1"></i>Général
+                                                        </label>
+
+                                                        <input type="radio"
+                                                               class="btn-check matiere-type-radio"
+                                                               name="matiere_type_{{ $matiere->id }}"
+                                                               id="technique_{{ $matiere->id }}"
+                                                               value="technique"
+                                                               data-matiere-id="{{ $matiere->id }}">
+                                                        <label class="btn btn-outline-success btn-sm" for="technique_{{ $matiere->id }}">
+                                                            <i class="fas fa-tools me-1"></i>Technique
+                                                        </label>
+
+                                                        <input type="radio"
+                                                               class="btn-check matiere-type-radio"
+                                                               name="matiere_type_{{ $matiere->id }}"
+                                                               id="none_{{ $matiere->id }}"
+                                                               value="none"
+                                                               data-matiere-id="{{ $matiere->id }}"
+                                                               checked>
+                                                        <label class="btn btn-outline-danger btn-sm" for="none_{{ $matiere->id }}">
+                                                            <i class="fas fa-eye-slash me-1"></i>Exclure
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </form>
+
+                                <!-- Statistiques -->
+                                <div class="row text-center mt-4">
+                                    <div class="col-md-4">
+                                        <div style="background: #e3f2fd; border-radius: 8px; padding: 1rem;">
+                                            <div style="font-size: 1.5rem; font-weight: bold; color: #1976d2;" id="generalCount">0</div>
+                                            <div style="font-size: 0.85rem; color: #666;">Générales</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div style="background: #e8f5e9; border-radius: 8px; padding: 1rem;">
+                                            <div style="font-size: 1.5rem; font-weight: bold; color: #388e3c;" id="techniqueCount">0</div>
+                                            <div style="font-size: 0.85rem; color: #666;">Techniques</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div style="background: #fff3e0; border-radius: 8px; padding: 1rem;">
+                                            <div style="font-size: 1.5rem; font-weight: bold; color: #f57c00;" id="excludedCount">{{ count($matieres) }}</div>
+                                            <div style="font-size: 0.85rem; color: #666;">Exclues</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer" style="padding: 1rem 1.5rem; background-color: #f8f9fa; border-radius: 0 0 12px 12px;">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
