@@ -65,6 +65,9 @@ class ESBTPAttendanceController extends Controller
             'seanceCours.matiere',
             'seanceCours.emploiTemps.classe'
         ])
+        // IMPORTANT: Utiliser finalOnly() pour ne récupérer que les présences finales fusionnées
+        // (évite les doublons start + merged)
+        ->finalOnly()
         // FILTRE GLOBAL OPTIMISÉ : filtrage direct par annee_universitaire_id
         // Plus besoin du whereHas indirect maintenant que la colonne existe
         ->where('annee_universitaire_id', $anneeUniversitaire->id)
