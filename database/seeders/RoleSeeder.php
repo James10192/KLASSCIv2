@@ -135,5 +135,16 @@ class RoleSeeder extends Seeder
             'manage_own_notes',
             'view_own_students'
         ]);
+
+        // Alias anglais du rôle enseignant pour compatibilité
+        $teacher = Role::firstOrCreate(['name' => 'teacher']);
+        $teacher->givePermissionTo([
+            'view_own_attendance',
+            'sign_attendance',
+            'view_own_timetable',
+            'view_own_classes',
+            'manage_own_notes',
+            'view_own_students'
+        ]);
     }
 }
