@@ -548,49 +548,38 @@ class ESBTPTeacherAttendanceController extends Controller
                 ->where('type', $type)
                 ->first();
 
-            if ($attendance) {
-                // Mettre à jour l'existant - SEULEMENT le statut
-                \Log::info('📝 Avant update', [
-                    'id' => $attendance->id,
-                    'old_status' => $attendance->status,
-                    'new_status' => $request->status
-                ]);
-
-                $attendance->status = $request->status;
-                $attendance->save();
-
-                \Log::info('✅ Attendance updated', [
-                    'id' => $attendance->id,
-                    'status_after_save' => $attendance->fresh()->status
-                ]);
-            } else {
-                // Créer un nouvel émargement (marquage manuel par coordinateur)
-                \Log::info('📝 Création nouvel attendance', [
-                    'teacher_id' => $seanceCours->teacher_id,
-                    'course_id' => $seanceId,
-                    'status' => $request->status,
-                    'type' => $type
-                ]);
-
-                $attendance = ESBTPTeacherAttendance::create([
-                    'teacher_id' => $seanceCours->teacher_id,
-                    'course_id' => $seanceId,
-                    'date' => today(),
+            if (!$attendance) {
+                // ❌ INTERDIRE la création - coordinateur ne peut QUE mettre à jour un attendance existant
+                \Log::warning('⚠️ Attendance non trouvé - création interdite', [
+                    'seance_id' => $seanceId,
                     'type' => $type,
-                    'status' => $request->status,
-                    'validated_at' => now(),
+                    'date' => today(),
+                    'message' => 'Le coordinateur ne peut pas créer un attendance. Il ne peut que modifier un attendance existant créé par le système.'
                 ]);
 
-                \Log::info('✅ Attendance created', [
-                    'id' => $attendance->id,
-                    'status_after_create' => $attendance->fresh()->status
-                ]);
-
-                // ⚠️ NE PAS mettre à jour le workflow automatiquement
-                // Le marquage manuel par coordinateur/admin ne doit PAS affecter le workflow officiel
-                // Le workflow ne doit être mis à jour QUE par l'émargement réel de l'enseignant
-                \Log::info('ℹ️ Workflow non modifié - marquage manuel ne change pas le workflow officiel');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Aucun émargement trouvé pour cette séance. Vous ne pouvez modifier que les émargements existants.'
+                ], 404);
             }
+
+            // ✅ Mettre à jour l'attendance existant - SEULEMENT le statut
+            \Log::info('📝 Avant update', [
+                'id' => $attendance->id,
+                'old_status' => $attendance->status,
+                'new_status' => $request->status
+            ]);
+
+            $attendance->status = $request->status;
+            $attendance->save();
+
+            \Log::info('✅ Attendance updated', [
+                'id' => $attendance->id,
+                'status_after_save' => $attendance->fresh()->status
+            ]);
+
+            // ⚠️ Le workflow n'est JAMAIS modifié par le marquage manuel
+            \Log::info('ℹ️ Workflow non modifié - marquage manuel ne change pas le workflow officiel');
 
             return response()->json([
                 'success' => true,
