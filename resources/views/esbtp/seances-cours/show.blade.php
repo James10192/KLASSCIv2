@@ -171,16 +171,50 @@
                             }
                         @endphp
 
-                        <div class="mb-3">
+                        <div class="mb-3" id="teacher-status-section">
                             <div class="d-flex align-items-center mb-2">
                                 <div class="bg-{{ $statusColor }} text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 35px; height: 35px;">
                                     <i class="fas fa-{{ $statusIcon }}"></i>
                                 </div>
-                                <div>
+                                <div class="flex-grow-1">
                                     <small class="text-muted d-block">Statut enseignant</small>
-                                    <span class="badge bg-{{ $statusColor }}">
-                                        <i class="fas fa-{{ $statusIcon }} me-1"></i>{{ $statusLabel }}
-                                    </span>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="badge bg-{{ $statusColor }}" id="teacher-status-badge">
+                                            <i class="fas fa-{{ $statusIcon }} me-1"></i>{{ $statusLabel }}
+                                        </span>
+
+                                        {{-- Boutons d'action rapide pour coordinateur/admin --}}
+                                        <div class="teacher-quick-actions d-flex gap-1">
+                                            @if($teacherGlobalStatus !== 'present')
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-success mark-teacher-status-btn"
+                                                    data-seance-id="{{ $seancesCour->id }}"
+                                                    data-status="present"
+                                                    data-type="start"
+                                                    title="Marquer présent">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                            @endif
+
+                                            @if($teacherGlobalStatus !== 'absent')
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-danger mark-teacher-status-btn"
+                                                    data-seance-id="{{ $seancesCour->id }}"
+                                                    data-status="absent"
+                                                    data-type="start"
+                                                    title="Marquer absent">
+                                                <i class="fas fa-user-times"></i>
+                                            </button>
+                                            @endif
+                                        </div>
+
+                                        {{-- Spinner de chargement --}}
+                                        <div class="teacher-status-spinner d-none">
+                                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                                <span class="visually-hidden">Chargement...</span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -555,14 +589,221 @@
 </div>
 @endsection
 
-@section('scripts')
+@push('scripts')
+<style>
+/* Styles pour les boutons de statut enseignant */
+#teacher-status-section.is-loading .teacher-quick-actions {
+    display: none !important;
+}
+
+#teacher-status-section.is-loading .teacher-status-spinner {
+    display: flex !important;
+}
+
+.teacher-quick-actions .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+/* Animation pour le badge de statut */
+@keyframes status-badge-pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.05);
+        opacity: 0.9;
+    }
+}
+
+#teacher-status-badge.updating {
+    animation: status-badge-pulse 0.6s ease-in-out;
+}
+</style>
+
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize tooltips
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
+(function() {
+    console.log('✅ Scripts show séance initialisés');
+
+    /**
+     * Met à jour l'état de chargement de la section statut enseignant
+     */
+    function setTeacherStatusLoadingState(isLoading) {
+        const section = document.getElementById('teacher-status-section');
+        if (section) {
+            section.classList.toggle('is-loading', Boolean(isLoading));
+        }
+    }
+
+    /**
+     * Met à jour le badge de statut après update
+     */
+    function updateTeacherStatusBadge(status) {
+        const badge = document.getElementById('teacher-status-badge');
+        if (!badge) return;
+
+        // Déterminer les couleurs et icônes
+        let bgClass, icon, label;
+        if (status === 'present') {
+            bgClass = 'bg-success';
+            icon = 'check';
+            label = 'Présent';
+        } else if (status === 'absent') {
+            bgClass = 'bg-danger';
+            icon = 'user-times';
+            label = 'Absent';
+        } else if (status === 'late') {
+            bgClass = 'bg-warning';
+            icon = 'clock';
+            label = 'En retard';
+        } else {
+            bgClass = 'bg-secondary';
+            icon = 'times';
+            label = 'Non émargé';
+        }
+
+        // Animer le badge
+        badge.classList.add('updating');
+
+        setTimeout(() => {
+            // Mettre à jour les classes
+            badge.className = `badge ${bgClass}`;
+            badge.innerHTML = `<i class="fas fa-${icon} me-1"></i>${label}`;
+
+            // Retirer l'animation
+            setTimeout(() => {
+                badge.classList.remove('updating');
+            }, 600);
+        }, 300);
+    }
+
+    /**
+     * Met à jour les boutons visibles selon le statut
+     */
+    function updateActionButtons(status) {
+        const actionsDiv = document.querySelector('.teacher-quick-actions');
+        if (!actionsDiv) return;
+
+        // Reconstruire les boutons
+        let buttonsHTML = '';
+
+        if (status !== 'present') {
+            buttonsHTML += `
+                <button type="button"
+                        class="btn btn-sm btn-outline-success mark-teacher-status-btn"
+                        data-seance-id="{{ $seancesCour->id }}"
+                        data-status="present"
+                        data-type="start"
+                        title="Marquer présent">
+                    <i class="fas fa-check"></i>
+                </button>
+            `;
+        }
+
+        if (status !== 'absent') {
+            buttonsHTML += `
+                <button type="button"
+                        class="btn btn-sm btn-outline-danger mark-teacher-status-btn"
+                        data-seance-id="{{ $seancesCour->id }}"
+                        data-status="absent"
+                        data-type="start"
+                        title="Marquer absent">
+                    <i class="fas fa-user-times"></i>
+                </button>
+            `;
+        }
+
+        actionsDiv.innerHTML = buttonsHTML;
+    }
+
+    /**
+     * Initialisation au chargement
+     */
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('✅ Event listeners installés pour show séance');
+
+        // Initialize tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+
+        // Event delegation pour les boutons mark-teacher-status
+        document.addEventListener('click', function(e) {
+            const btn = e.target.closest('.mark-teacher-status-btn');
+            if (!btn) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            const seanceId = btn.getAttribute('data-seance-id');
+            const status = btn.getAttribute('data-status');
+            const type = btn.getAttribute('data-type') || 'start';
+
+            if (!seanceId || !status) {
+                console.error('❌ Pas de seance ID ou status sur le bouton');
+                return;
+            }
+
+            const actionLabel = status === 'present' ? 'présent' : 'absent';
+            if (!confirm(`Êtes-vous sûr de vouloir marquer cet enseignant ${actionLabel} ?`)) {
+                return;
+            }
+
+            console.log('🔄 Marquage statut enseignant:', { seanceId, status, type });
+
+            setTeacherStatusLoadingState(true);
+
+            const updateUrl = `{{ url('/esbtp/teacher-attendance/seance') }}/${seanceId}/update-status`;
+
+            fetch(updateUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ status, type })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('📦 Réponse serveur:', data);
+                if (data.success) {
+                    console.log('✅ Statut mis à jour');
+
+                    // Mettre à jour le badge
+                    updateTeacherStatusBadge(status);
+
+                    // Mettre à jour les boutons visibles
+                    updateActionButtons(status);
+
+                    // Afficher un message de succès
+                    alert('Statut mis à jour avec succès !');
+
+                    // Recharger la page après 1 seconde pour mettre à jour tout le workflow
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    alert('Erreur: ' + (data.message || 'Erreur inconnue'));
+                }
+                setTeacherStatusLoadingState(false);
+            })
+            .catch(error => {
+                console.error('❌ Erreur update statut:', error);
+                setTeacherStatusLoadingState(false);
+                alert('Erreur lors de la mise à jour: ' + error.message);
+            });
+        }, true); // Capture phase
+
+        console.log('✅ Scripts show séance prêts');
     });
-});
+})();
 </script>
-@endsection
+@endpush
