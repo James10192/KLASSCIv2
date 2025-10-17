@@ -21,10 +21,10 @@
     />
     
     <!-- Appels Terminés -->
-    <x-dashboard.kpi-card 
-        title="Appels Étudiants"
+    <x-dashboard.kpi-card
+        title="Appels Terminés"
         :value="$stats['roll_calls_completed_today'] ?? 0"
-        trend="Présences saisies ({{ $stats['student_attendance_rate'] ?? 0 }}% présents)"
+        trend="Cours avec appels début + fin ({{ round((($stats['roll_calls_completed_today'] ?? 0) / max(1, $stats['scheduled_courses_today'] ?? 1)) * 100, 1) }}%)"
         icon="fa-clipboard-check"
         color="var(--accent-blue)"
     />

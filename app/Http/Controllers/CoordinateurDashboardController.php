@@ -127,9 +127,11 @@ class CoordinateurDashboardController extends Controller
             // Récupérer l'année universitaire en cours
             $anneeUniversitaire = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
-            // 5. Étudiants présents aujourd'hui (statut = 'present' OU 'late'/'retard')
+            // 5. PRÉSENCES finales aujourd'hui (pas étudiants uniques, mais nombre de présences)
+            // IMPORTANT: Utiliser finalOnly() pour ne compter que les statuts fusionnés
             // Filtré par année universitaire en cours et inscriptions active
-            $stats['students_present_today'] = \App\Models\ESBTPAttendance::whereDate('date', $date)
+            $stats['presences_today'] = \App\Models\ESBTPAttendance::finalOnly()
+                ->whereDate('date', $date)
                 ->where('annee_universitaire_id', $anneeUniversitaire->id)
                 ->whereIn('statut', ['present', 'late', 'retard'])
                 ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire) {
@@ -138,14 +140,41 @@ class CoordinateurDashboardController extends Controller
                 })
                 ->count();
 
-            // 6. Total étudiants avec appel fait (filtré par année et inscriptions active)
-            $stats['students_total_today'] = \App\Models\ESBTPAttendance::whereDate('date', $date)
+            // 6. ABSENCES finales aujourd'hui
+            $stats['absences_today'] = \App\Models\ESBTPAttendance::finalOnly()
+                ->whereDate('date', $date)
+                ->where('annee_universitaire_id', $anneeUniversitaire->id)
+                ->where('statut', 'absent')
+                ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire) {
+                    $q->where('annee_universitaire_id', $anneeUniversitaire->id)
+                      ->where('status', 'active');
+                })
+                ->count();
+
+            // 7. RETARDS finaux aujourd'hui
+            $stats['retards_today'] = \App\Models\ESBTPAttendance::finalOnly()
+                ->whereDate('date', $date)
+                ->where('annee_universitaire_id', $anneeUniversitaire->id)
+                ->whereIn('statut', ['late', 'retard'])
+                ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire) {
+                    $q->where('annee_universitaire_id', $anneeUniversitaire->id)
+                      ->where('status', 'active');
+                })
+                ->count();
+
+            // 8. TOTAL des appels faits (toutes présences finales)
+            $stats['total_calls_today'] = \App\Models\ESBTPAttendance::finalOnly()
+                ->whereDate('date', $date)
                 ->where('annee_universitaire_id', $anneeUniversitaire->id)
                 ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire) {
                     $q->where('annee_universitaire_id', $anneeUniversitaire->id)
                       ->where('status', 'active');
                 })
                 ->count();
+
+            // Garder aussi students_present_today et students_total_today pour compatibilité
+            $stats['students_present_today'] = $stats['presences_today'];
+            $stats['students_total_today'] = $stats['total_calls_today'];
 
             // 7. Taux de présence étudiants
             $stats['student_attendance_rate'] = $stats['students_total_today'] > 0

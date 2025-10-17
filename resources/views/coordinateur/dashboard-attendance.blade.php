@@ -317,12 +317,20 @@
                         </div>
                         @endif
                         <div class="stat-row">
-                            <span class="stat-label">Étudiants total:</span>
-                            <span class="stat-value text-primary">{{ $stats['students_total_today'] ?? 0 }}</span>
+                            <span class="stat-label">Total appels faits:</span>
+                            <span class="stat-value text-primary">{{ $stats['total_calls_today'] ?? 0 }}</span>
                         </div>
                         <div class="stat-row">
-                            <span class="stat-label">Présents:</span>
-                            <span class="stat-value text-success">{{ $stats['students_present_today'] ?? 0 }}</span>
+                            <span class="stat-label">Présences:</span>
+                            <span class="stat-value text-success">{{ $stats['presences_today'] ?? 0 }}</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Absences:</span>
+                            <span class="stat-value text-danger">{{ $stats['absences_today'] ?? 0 }}</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Retards:</span>
+                            <span class="stat-value text-warning">{{ $stats['retards_today'] ?? 0 }}</span>
                         </div>
                         <div class="stat-row">
                             <span class="stat-label">Enseignants actifs:</span>
