@@ -346,55 +346,92 @@
                                         $courseStart = \Carbon\Carbon::parse($cours->heure_debut);
                                         $courseEnd = \Carbon\Carbon::parse($cours->heure_fin);
 
-                                        // **NOUVELLE LOGIQUE DE FENÊTRES D'ÉMARGEMENT**
-                                        // DÉBUT: 0-20min = présent, 20-45min = retard, 45min+ = absent
+                                        // Récupérer le daily code actif
+                                        $dailyCode = \App\Models\ESBTPDailyCode::where('status', 'active')
+                                            ->where('is_active', true)
+                                            ->whereDate('created_at', now()->toDateString())
+                                            ->first();
+
+                                        // Vérifier émargements DÉBUT et FIN
+                                        $emargementDebut = null;
+                                        $emargementFin = null;
+
+                                        if ($dailyCode) {
+                                            $emargementDebut = \App\Models\ESBTPTeacherAttendance::where('teacher_id', Auth::id())
+                                                ->where('course_id', $cours->id)
+                                                ->where('daily_code_id', $dailyCode->id)
+                                                ->where('type', 'start')
+                                                ->first();
+
+                                            $emargementFin = \App\Models\ESBTPTeacherAttendance::where('teacher_id', Auth::id())
+                                                ->where('course_id', $cours->id)
+                                                ->where('daily_code_id', $dailyCode->id)
+                                                ->where('type', 'end')
+                                                ->first();
+                                        }
+
+                                        // FENÊTRES D'ÉMARGEMENT
                                         $limite20min = $courseStart->copy()->addMinutes(20);
                                         $limite45min = $courseStart->copy()->addMinutes(45);
+                                        $fenetreClotureDebut = $courseEnd->copy()->subMinutes(20);
+                                        $fenetreClotureFin = $courseEnd->copy()->addMinutes(30);
 
-                                        $hasTeacherAttendance = $cours->teacherAttendance()->whereDate('validated_at', \Carbon\Carbon::today())->exists();
+                                        // Vérifier appels étudiants
                                         $hasStudentCall = \App\Models\ESBTPAttendance::where('seance_cours_id', $cours->id)->exists();
                                         $isCompleted = $cours->status === 'completed';
 
-                                        // Fenêtres d'émargement DÉBUT
-                                        $isTooEarly = $now->lt($courseStart) && !$hasTeacherAttendance;
-                                        $isPresent = $now->gte($courseStart) && $now->lte($limite20min) && !$hasTeacherAttendance;
-                                        $isLate = $now->gt($limite20min) && $now->lte($limite45min) && !$hasTeacherAttendance;
-                                        $isAbsent = $now->gt($limite45min) && !$hasTeacherAttendance;
+                                        // États émargement DÉBUT
+                                        $isTooEarly = $now->lt($courseStart) && !$emargementDebut;
+                                        $canMarkStart = !$emargementDebut && $now->gte($courseStart) && $now->lte($limite45min);
+                                        $isStartPresent = $now->gte($courseStart) && $now->lte($limite20min);
+                                        $isStartLate = $now->gt($limite20min) && $now->lte($limite45min);
+                                        $isStartExpired = !$emargementDebut && $now->gt($limite45min);
 
-                                        $isEmargementAvailable = $isPresent || $isLate;
-                                        $isEmargementExpired = $isAbsent;
+                                        // États émargement FIN
+                                        $canMarkEnd = $emargementDebut && !$emargementFin && $now->gte($fenetreClotureDebut) && $now->lte($fenetreClotureFin);
+                                        $isEndNotYet = $emargementDebut && !$emargementFin && $now->lt($fenetreClotureDebut);
+                                        $isEndExpired = $emargementDebut && !$emargementFin && $now->gt($fenetreClotureFin);
+
+                                        // État global
+                                        $bothEmargementsDone = $emargementDebut && $emargementFin;
+                                        $hasTeacherAttendance = $emargementDebut !== null; // Pour compatibilité
 
                                         $isAppelExpired = $now->gt($courseEnd->copy()->addMinutes(30)) && !$hasStudentCall;
                                         $isCourseActive = $now->between($courseStart, $courseEnd);
-
-                                        // **FENÊTRE POUR CLÔTURE (APPEL DE FIN)**
-                                        // Peut clôturer à partir de 20 minutes avant la fin du cours
-                                        $fenetreClotureDebut = $courseEnd->copy()->subMinutes(20);
-                                        $canCloturer = $now->gte($fenetreClotureDebut);
                                     @endphp
                                     
                                     @if($isCompleted)
                                         <span class="status-badge present">✓ Terminé</span>
-                                    @elseif($hasStudentCall && $hasTeacherAttendance)
-                                        <span class="status-badge present">✓ Cours complet</span>
-                                    @elseif($hasStudentCall)
-                                        <span class="status-badge present">✓ Appel fait</span>
-                                    @elseif($hasTeacherAttendance && !$hasStudentCall && $isCourseActive)
-                                        <span class="status-badge late">Émargé - Appel manquant</span>
-                                    @elseif($hasTeacherAttendance)
-                                        <span class="status-badge present">✓ Émargé</span>
-                                    @elseif($isAbsent)
+                                    @elseif($bothEmargementsDone)
+                                        <span class="status-badge present">
+                                            <i class="fas fa-check-double"></i> Émargé (complet)
+                                        </span>
+                                    @elseif($emargementDebut && !$emargementFin)
+                                        @if($canMarkEnd)
+                                            <span class="status-badge" style="background-color: rgba(34, 197, 94, 0.1); color: #16a34a; border: 1px solid rgba(34, 197, 94, 0.2);">
+                                                <i class="fas fa-check"></i> Émarger FIN
+                                            </span>
+                                        @elseif($isEndNotYet)
+                                            <span class="status-badge warning">
+                                                <i class="fas fa-clock"></i> Début émargé
+                                            </span>
+                                        @elseif($isEndExpired)
+                                            <span class="status-badge danger">
+                                                <i class="fas fa-ban"></i> Fin manquée
+                                            </span>
+                                        @endif
+                                    @elseif($canMarkStart)
+                                        @if($isStartPresent)
+                                            <span class="status-badge" style="background-color: rgba(34, 197, 94, 0.1); color: #16a34a; border: 1px solid rgba(34, 197, 94, 0.2);">
+                                                <i class="fas fa-check"></i> Disponible - PRÉSENT
+                                            </span>
+                                        @elseif($isStartLate)
+                                            <span class="status-badge late">
+                                                <i class="fas fa-exclamation-triangle"></i> Disponible - RETARD
+                                            </span>
+                                        @endif
+                                    @elseif($isStartExpired)
                                         <span class="status-badge absent"><i class="fas fa-ban"></i> ABSENT - Délai dépassé</span>
-                                    @elseif($isAppelExpired && !$hasStudentCall)
-                                        <span class="status-badge absent">Appel manqué</span>
-                                    @elseif($isPresent)
-                                        <span class="status-badge" style="background-color: rgba(34, 197, 94, 0.1); color: #16a34a; border: 1px solid rgba(34, 197, 94, 0.2);">
-                                            <i class="fas fa-check"></i> Disponible - PRÉSENT
-                                        </span>
-                                    @elseif($isLate)
-                                        <span class="status-badge late">
-                                            <i class="fas fa-exclamation-triangle"></i> Disponible - RETARD
-                                        </span>
                                     @elseif($isTooEarly)
                                         <span class="status-badge pending"><i class="fas fa-clock"></i> Trop tôt</span>
                                     @elseif($isCourseActive)
@@ -408,36 +445,38 @@
                                         <span class="text-success small">
                                             <i class="fas fa-check-double"></i> Cours terminé
                                         </span>
-                                    @elseif($isAbsent)
-                                        <span class="text-danger small">
-                                            <i class="fas fa-ban"></i> ABSENT - Trop tard
+                                    @elseif($bothEmargementsDone && $hasStudentCall)
+                                        <span class="text-success small">
+                                            <i class="fas fa-check-double"></i> Séance complète
                                         </span>
-                                    @elseif($isAppelExpired)
-                                        <span class="text-danger small">
-                                            <i class="fas fa-times-circle"></i> Appel expiré
+                                    @elseif($canMarkEnd)
+                                        <a href="{{ route('esbtp.attendance.mark') }}" class="quick-action-btn" style="background-color: var(--primary); color: white;">
+                                            <i class="fas fa-signature"></i> Émarger FIN
+                                        </a>
+                                    @elseif($isEndNotYet)
+                                        <span class="text-warning small">
+                                            <i class="fas fa-clock"></i> Fin à {{ $fenetreClotureDebut->format('H:i') }}
                                         </span>
-                                    @elseif($hasTeacherAttendance && !$hasStudentCall)
+                                    @elseif($isEndExpired)
+                                        <span class="text-danger small">
+                                            <i class="fas fa-ban"></i> Fin manquée
+                                        </span>
+                                    @elseif($emargementDebut && !$hasStudentCall)
                                         <a href="{{ route('teacher.select-call-type', $cours->id) }}" class="quick-action-btn">
                                             <i class="fas fa-list-check"></i> Faire l'appel
                                         </a>
-                                    @elseif($hasStudentCall && !$isCompleted)
-                                        @if($canCloturer)
-                                            <a href="{{ route('teacher.select-call-type', $cours->id) }}" class="quick-action-btn">
-                                                <i class="fas fa-check-circle"></i> Clôturer
-                                            </a>
-                                        @else
-                                            <span class="text-warning small">
-                                                <i class="fas fa-clock"></i> Clôture disponible à {{ $fenetreClotureDebut->format('H:i') }}
-                                            </span>
-                                        @endif
-                                    @elseif($isPresent)
+                                    @elseif($canMarkStart && $isStartPresent)
                                         <a href="{{ route('esbtp.attendance.mark') }}" class="quick-action-btn" style="background-color: var(--success); color: white;">
-                                            <i class="fas fa-signature"></i> Émarger (Présent)
+                                            <i class="fas fa-signature"></i> Émarger DÉBUT
                                         </a>
-                                    @elseif($isLate)
+                                    @elseif($canMarkStart && $isStartLate)
                                         <a href="{{ route('esbtp.attendance.mark') }}" class="quick-action-btn" style="background-color: var(--warning); color: white;">
                                             <i class="fas fa-signature"></i> Émarger (Retard)
                                         </a>
+                                    @elseif($isStartExpired)
+                                        <span class="text-danger small">
+                                            <i class="fas fa-ban"></i> ABSENT - Trop tard
+                                        </span>
                                     @elseif($isTooEarly)
                                         <span class="text-muted small">
                                             <i class="fas fa-hourglass-half"></i> Pas encore ouvert

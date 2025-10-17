@@ -59,13 +59,40 @@ class CoordinateurDashboardController extends Controller
             $stats['scheduled_courses_today'] = ESBTPSeanceCours::whereDate('date_seance', $date)
                 ->count();
 
-            // 2. Émargements enseignants effectués
-            $stats['teacher_attendances_today'] = ESBTPTeacherAttendance::whereDate('created_at', $date)
-                ->count();
+            // 2. Émargements enseignants effectués (COMPLETS = début + fin)
+            // Compter les cours avec DEUX émargements (start ET end)
+            $dailyCode = \App\Models\ESBTPDailyCode::where('status', 'active')
+                ->where('is_active', true)
+                ->whereDate('created_at', $date->toDateString())
+                ->first();
 
-            // 3. Taux d'émargement
-            $stats['teacher_attendance_rate'] = $stats['scheduled_courses_today'] > 0 
-                ? round(($stats['teacher_attendances_today'] / $stats['scheduled_courses_today']) * 100, 1) 
+            $stats['teacher_attendances_today'] = 0;
+            if ($dailyCode) {
+                // Compter les cours qui ont à la fois émargement début ET fin
+                $stats['teacher_attendances_today'] = ESBTPSeanceCours::whereDate('date_seance', $date)
+                    ->whereHas('teacherAttendances', function($q) use ($dailyCode) {
+                        $q->where('daily_code_id', $dailyCode->id)
+                          ->where('type', 'start');
+                    })
+                    ->whereHas('teacherAttendances', function($q) use ($dailyCode) {
+                        $q->where('daily_code_id', $dailyCode->id)
+                          ->where('type', 'end');
+                    })
+                    ->count();
+            }
+
+            // Compter aussi les émargements de début seulement (pour statistiques)
+            $stats['teacher_start_attendances_today'] = 0;
+            if ($dailyCode) {
+                $stats['teacher_start_attendances_today'] = ESBTPTeacherAttendance::whereDate('created_at', $date)
+                    ->where('daily_code_id', $dailyCode->id)
+                    ->where('type', 'start')
+                    ->count();
+            }
+
+            // 3. Taux d'émargement (basé sur émargements COMPLETS)
+            $stats['teacher_attendance_rate'] = $stats['scheduled_courses_today'] > 0
+                ? round(($stats['teacher_attendances_today'] / $stats['scheduled_courses_today']) * 100, 1)
                 : 0;
 
             // 4. Appels terminés (séances avec présences étudiants enregistrées)
