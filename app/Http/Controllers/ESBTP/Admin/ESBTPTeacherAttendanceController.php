@@ -570,17 +570,10 @@ class ESBTPTeacherAttendanceController extends Controller
                 ]);
                 \Log::info('✅ Attendance created', ['id' => $attendance->id]);
 
-                // Mettre à jour le workflow si nécessaire
-                $workflow = \App\Models\ESBTPSessionWorkflow::firstOrCreate(
-                    ['seance_cours_id' => $seanceId, 'teacher_id' => $seanceCours->teacher->user_id ?? $seanceCours->teacher_id],
-                    ['current_step' => 'attendance']
-                );
-
-                if ($type === 'start' && $request->status !== 'absent') {
-                    $workflow->markAttendanceStartSigned();
-                } elseif ($type === 'end' && $request->status !== 'absent') {
-                    $workflow->markAttendanceEndSigned();
-                }
+                // ⚠️ NE PAS mettre à jour le workflow automatiquement
+                // Le marquage manuel par coordinateur/admin ne doit PAS affecter le workflow officiel
+                // Le workflow ne doit être mis à jour QUE par l'émargement réel de l'enseignant
+                \Log::info('ℹ️ Workflow non modifié - marquage manuel ne change pas le workflow officiel');
             }
 
             return response()->json([

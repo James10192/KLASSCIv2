@@ -154,10 +154,19 @@
 
                             if ($emargementDebutTemp || $emargementFinTemp) {
                                 // Au moins un émargement existe
+                                // Vérifier d'abord si absent
+                                $hasAbsent = ($emargementDebutTemp && $emargementDebutTemp->status === 'absent')
+                                        || ($emargementFinTemp && $emargementFinTemp->status === 'absent');
+
                                 $hasLate = ($emargementDebutTemp && $emargementDebutTemp->status === 'late')
                                         || ($emargementFinTemp && $emargementFinTemp->status === 'late');
 
-                                if ($hasLate) {
+                                if ($hasAbsent) {
+                                    $teacherGlobalStatus = 'absent';
+                                    $statusColor = 'danger';
+                                    $statusIcon = 'user-times';
+                                    $statusLabel = 'Absent';
+                                } elseif ($hasLate) {
                                     $teacherGlobalStatus = 'late';
                                     $statusColor = 'warning';
                                     $statusIcon = 'clock';
@@ -783,13 +792,11 @@
                     // Mettre à jour les boutons visibles
                     updateActionButtons(status);
 
-                    // Afficher un message de succès
-                    alert('Statut mis à jour avec succès !');
+                    // Afficher un message de succès (plus simple qu'alert)
+                    console.log('✅ Statut mis à jour avec succès');
 
-                    // Recharger la page après 1 seconde pour mettre à jour tout le workflow
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1000);
+                    // PAS DE RELOAD - juste mise à jour visuelle du badge
+                    // Le workflow reste inchangé car le marquage manuel ne l'affecte pas
                 } else {
                     alert('Erreur: ' + (data.message || 'Erreur inconnue'));
                 }
