@@ -226,6 +226,7 @@ try {
         'etudiant' => 'Étudiant',
         'parent' => 'Parent',
         'serviceTechnique' => 'Service Technique (African Digit Consulting)',
+        'teacher' => 'Teacher (alias de enseignant)',
     ];
 
     echo "\nCréation/vérification des rôles...\n";
@@ -324,6 +325,11 @@ try {
         'view_annonces',
     ];
     $enseignantRole->syncPermissions($enseignantPermissions);
+
+    // Teacher (alias anglais de enseignant) - Mêmes permissions qu'enseignant
+    $teacherRole = Role::findByName('teacher');
+    $teacherRole->syncPermissions($enseignantPermissions);
+    echo "✓ Teacher: " . count($enseignantPermissions) . " permissions accordées (alias de enseignant)\n";
     echo "✓ Enseignant: " . count($enseignantPermissions) . " permissions accordées\n";
 
     // Étudiant - Permissions de consultation
