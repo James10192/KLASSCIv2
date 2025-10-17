@@ -1031,7 +1031,8 @@
                                 @endforeach
                             @endforeach
                         </div>
-                        
+
+                        @if(config('app.debug'))
                         <!-- DEBUG VISIBLE PAGE SHOW -->
                         <div style="background: #fff3cd; padding: 10px; margin: 10px 0; border: 2px solid #ffc107; border-radius: 5px;">
                             <h4>🔍 DEBUG PAGE SHOW - Données de disponibilité</h4>
@@ -1048,18 +1049,18 @@
                                 <summary>Voir les données finales utilisées pour l'affichage</summary>
                                 <pre style="background: white; padding: 5px; overflow-x: auto;">{{ json_encode($availability, JSON_PRETTY_PRINT) }}</pre>
                             </details>
-                            
+
                             <script>
                             // DEBUG JavaScript sur page SHOW
                             document.addEventListener('DOMContentLoaded', function() {
                                 console.log('🔍 DEBUG PAGE SHOW CHARGÉE à {{ date('H:i:s') }}');
-                                
+
                                 @if($teacher->availabilities && $teacher->availabilities->count() > 0)
                                 let availCount = {{ $teacher->availabilities->count() }};
                                 let debugShowInfo = `🔍 PAGE SHOW CHARGÉE\n\n`;
                                 debugShowInfo += `Heure: {{ date('H:i:s') }}\n`;
                                 debugShowInfo += `Disponibilités en DB: ${availCount} entrées\n`;
-                                
+
                                 // Compter les créneaux par statut dans les données finales
                                 let finalData = @json($availability);
                                 let countByStatus = {available: 0, preferred: 0, unavailable: 0};
@@ -1068,12 +1069,12 @@
                                         countByStatus[status]++;
                                     });
                                 });
-                                
+
                                 debugShowInfo += `Créneaux finaux:\n`;
                                 debugShowInfo += `- Disponible: ${countByStatus.available}\n`;
                                 debugShowInfo += `- Préféré: ${countByStatus.preferred}\n`;
                                 debugShowInfo += `- Indisponible: ${countByStatus.unavailable}`;
-                                
+
                                 // Afficher après 1 seconde pour laisser la page se charger
                                 setTimeout(() => {
                                     if(confirm(debugShowInfo + '\n\nVoulez-vous voir les détails dans la console ?')) {
@@ -1085,7 +1086,8 @@
                             });
                             </script>
                         </div>
-                        
+                        @endif
+
                         <!-- Légende -->
                         <div class="availability-legend">
                             <div class="legend-item">
