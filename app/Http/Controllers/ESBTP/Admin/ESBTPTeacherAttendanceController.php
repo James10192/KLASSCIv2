@@ -150,13 +150,13 @@ class ESBTPTeacherAttendanceController extends Controller
         }
         
         // **VÉRIFICATION DES ÉMARGEMENTS EXISTANTS (DÉBUT ET FIN)**
-        $emargementDebut = ESBTPTeacherAttendance::where('teacher_id', $user->id)
+        $emargementDebut = ESBTPTeacherAttendance::where('teacher_id', $teacherModel->id)
             ->where('course_id', $seanceCours->id)
             ->where('daily_code_id', $dailyCode->id)
             ->where('type', 'start')
             ->first();
 
-        $emargementFin = ESBTPTeacherAttendance::where('teacher_id', $user->id)
+        $emargementFin = ESBTPTeacherAttendance::where('teacher_id', $teacherModel->id)
             ->where('course_id', $seanceCours->id)
             ->where('daily_code_id', $dailyCode->id)
             ->where('type', 'end')
@@ -225,7 +225,7 @@ class ESBTPTeacherAttendanceController extends Controller
             }
 
             $attendance = ESBTPTeacherAttendance::create([
-                'teacher_id' => $user->id,
+                'teacher_id' => $teacherModel->id,
                 'course_id' => $seanceCours->id,
                 'daily_code_id' => $dailyCode->id,
                 'date' => now()->toDateString(),
