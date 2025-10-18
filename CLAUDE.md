@@ -249,8 +249,9 @@ MAIL_FROM_NAME="KLASSCI"
 - **17/10** : Exclusion séances absentes du calcul heures effectuées → planning général + emploi temps
 - **17/10** : Système AJAX marquage présences étudiants → no-reload + badges FontAwesome + détection correcte attendances
 - **17/10** : Correction terminologie attendances.index → "Présences/Absences" au lieu d'"Étudiants" (KPI + graphique + stats classe)
-- **17/10** : Fix filtrage étudiants attendances → ajout classe_id dans whereHas inscriptions (cohérence avec classes.show)
+- **17/10** : Fix filtrage étudiants attendances.create/loadStudents → ajout classe_id dans whereHas inscriptions (cohérence avec classes.show)
 - **17/10** : Fix filtrage étudiants roll-call enseignant → ajout classe_id dans TeacherDashboardController::showRollCall()
+- **17/10** : Fix filtrage attendances.index + rapport + rapportPdf → ajout status='active' + classe_id conditionnels sur inscriptions
 
 ## ✨ Fonctionnalités récentes
 
@@ -745,6 +746,98 @@ POST /dashboard/teacher/roll-call/{seance}
 2. ✅ `ESBTPAttendanceController::create()` - location 1 (L476-482)
 3. ✅ `ESBTPAttendanceController::create()` - location 2 (L542-548)
 4. ✅ `TeacherDashboardController::showRollCall()` (L193-201) ← **Nouveau fix**
+
+### Fix filtrage attendances.index + rapport + rapportPdf (17 octobre 2025)
+
+**Problème** : Les pages d'affichage des attendances (`index`, `rapport`, `rapportPdf`) ne filtraient pas correctement les étudiants pour ne montrer QUE ceux avec **inscriptions actives** dans leur **classe respective** pour l'année courante.
+
+**Symptôme** :
+
+1. **attendances.index** : Quand un filtre classe était appliqué, les attendances affichées incluaient potentiellement des étudiants avec inscriptions dans d'autres classes
+2. **attendances.rapport** : Le rapport générait des statistiques pour TOUS les étudiants de la classe, même ceux sans inscription active
+3. **attendances.rapportPdf** : Le PDF incluait des étudiants inactifs
+
+**Cause** : Même bug que précédemment - manque du filtre `classe_id` ET `status='active'` dans les clauses `whereHas('inscriptions')`.
+
+**Fichier** : `app/Http/Controllers/ESBTPAttendanceController.php`
+
+**Corrections appliquées**
+
+1. **Méthode `index()`** (ligne 75-82)
+
+   **Problématique spécifique** : La requête principale filtrait déjà par année universitaire, mais quand un filtre `classe_id` était appliqué, il fallait AUSSI filtrer les inscriptions des étudiants par cette classe.
+
+   ```diff
+   ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire, $request) {
+       $q->where('annee_universitaire_id', $anneeUniversitaire->id)
+   -      ->where('status', 'active');
+   +      ->where('status', 'active');
+   +    // Si un filtre classe est appliqué, filtrer aussi par classe_id dans les inscriptions
+   +    if ($request->filled('classe_id')) {
+   +        $q->where('classe_id', $request->classe_id);
+   +    }
+   });
+   ```
+
+   **Logique** : Le filtre `classe_id` est **conditionnel** car la page `attendances.index` peut afficher TOUTES les attendances (sans filtre classe) OU seulement celles d'une classe spécifique.
+
+2. **Méthode `rapport()`** (ligne 996-1001)
+
+   ```diff
+   // Récupérer uniquement les étudiants inscrits pour l'année universitaire courante
+   +// avec inscription ACTIVE et pour CETTE classe spécifiquement
+   $etudiants = $classe->etudiants()
+   -    ->whereHas('inscriptions', function($q) use ($anneeUniversitaire) {
+   +    ->whereHas('inscriptions', function($q) use ($anneeUniversitaire, $classe) {
+           $q->where('annee_universitaire_id', $anneeUniversitaire->id)
+   +         ->where('status', 'active')
+   +         ->where('classe_id', $classe->id);
+   -     });
+   +    })
+       ->get();
+   ```
+
+3. **Méthode `rapportPdf()`** (ligne 1079-1084)
+
+   **Identique au fix de `rapport()`** - même changement appliqué.
+
+**Impact**
+
+- ✅ **attendances.index** : Filtre classe applique maintenant le filtrage complet (inscriptions actives DANS cette classe)
+- ✅ **attendances.rapport** : Rapport ne montre QUE les étudiants avec inscription active dans la classe sélectionnée
+- ✅ **attendances.rapportPdf** : PDF exclut les étudiants inactifs ou inscrits ailleurs
+- ✅ **Cohérence** : Alignement total avec `classes.show`, `attendances.create`, et `teacher.roll-call`
+
+**Règle métier confirmée**
+
+> **PARTOUT dans le système attendance, filtrage étudiants identique** :
+> ```php
+> $classe->etudiants()
+>     ->whereHas('inscriptions', function($q) use ($anneeUniversitaire, $classe) {
+>         $q->where('annee_universitaire_id', $anneeUniversitaire->id)
+>           ->where('status', 'active')
+>           ->where('classe_id', $classe->id);
+>     });
+> ```
+
+**Cas d'usage**
+
+| Méthode | Classe connue ? | Filtre conditionnel ? | But |
+|---------|----------------|----------------------|-----|
+| `index()` | Optionnel (filtre) | ✅ Oui (`if filled`) | Afficher toutes OU d'une classe |
+| `rapport()` | ✅ Oui (required) | ❌ Non (toujours appliqué) | Rapport pour UNE classe spécifique |
+| `rapportPdf()` | ✅ Oui (required) | ❌ Non (toujours appliqué) | PDF pour UNE classe spécifique |
+| `create()` / `loadStudents()` | ✅ Oui | ❌ Non | Marquage présences d'une classe |
+
+**Fichiers modifiés au total** (7 locations corrigées)
+
+1. ✅ `ESBTPAttendanceController::loadStudents()` (L702-707) - Fix précédent
+2. ✅ `ESBTPAttendanceController::create()` - loc 1 (L476-481) - Fix précédent
+3. ✅ `ESBTPAttendanceController::create()` - loc 2 (L543-547) - Fix précédent
+4. ✅ `TeacherDashboardController::showRollCall()` (L196-199) - Fix précédent
+5. ✅ `ESBTPAttendanceController::index()` (L75-82) ← **Ce fix**
+6. ✅ `ESBTPAttendanceController::rapport()` (L996-1001) ← **Ce fix**
+7. ✅ `ESBTPAttendanceController::rapportPdf()` (L1079-1084) ← **Ce fix**
 
 ---
 

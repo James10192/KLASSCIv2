@@ -72,9 +72,13 @@ class ESBTPAttendanceController extends Controller
         // Plus besoin du whereHas indirect maintenant que la colonne existe
         ->where('annee_universitaire_id', $anneeUniversitaire->id)
         // ET vérifier que l'étudiant a une inscription active pour cette année
-        ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire) {
+        ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire, $request) {
             $q->where('annee_universitaire_id', $anneeUniversitaire->id)
               ->where('status', 'active');
+            // Si un filtre classe est appliqué, filtrer aussi par classe_id dans les inscriptions
+            if ($request->filled('classe_id')) {
+                $q->where('classe_id', $request->classe_id);
+            }
         });
 
         // Apply filters
@@ -474,9 +478,10 @@ class ESBTPAttendanceController extends Controller
                         // Récupérer les étudiants directement de la classe sélectionnée
                         // filtrés par l'année universitaire courante ET statut inscription active
                         $etudiants = $classe->etudiants()
-                            ->whereHas('inscriptions', function($q) use ($anneeUniversitaire) {
+                            ->whereHas('inscriptions', function($q) use ($anneeUniversitaire, $classe) {
                                 $q->where('annee_universitaire_id', $anneeUniversitaire->id)
-                                  ->where('status', 'active');
+                                  ->where('status', 'active')
+                                  ->where('classe_id', $classe->id);
                             })
                             ->get();
                         $debug['nombre_etudiants'] = $etudiants->count();
@@ -539,9 +544,10 @@ class ESBTPAttendanceController extends Controller
                     $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
                     $etudiants = $classe->etudiants()
-                        ->whereHas('inscriptions', function($q) use ($anneeUniversitaire) {
+                        ->whereHas('inscriptions', function($q) use ($anneeUniversitaire, $classe) {
                             $q->where('annee_universitaire_id', $anneeUniversitaire->id)
-                              ->where('status', 'active');
+                              ->where('status', 'active')
+                              ->where('classe_id', $classe->id);
                         })
                         ->get();
                     $debug['nombre_etudiants_classe'] = $etudiants->count();
@@ -698,9 +704,10 @@ class ESBTPAttendanceController extends Controller
 
             // Récupérer les étudiants
             $etudiants = $classe->etudiants()
-                ->whereHas('inscriptions', function($q) use ($anneeUniversitaire) {
+                ->whereHas('inscriptions', function($q) use ($anneeUniversitaire, $classe) {
                     $q->where('annee_universitaire_id', $anneeUniversitaire->id)
-                      ->where('status', 'active');
+                      ->where('status', 'active')
+                      ->where('classe_id', $classe->id);
                 })
                 ->get();
 
@@ -984,9 +991,12 @@ class ESBTPAttendanceController extends Controller
         $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
         // Récupérer uniquement les étudiants inscrits pour l'année universitaire courante
+        // avec inscription ACTIVE et pour CETTE classe spécifiquement
         $etudiants = $classe->etudiants()
-            ->whereHas('inscriptions', function($q) use ($anneeUniversitaire) {
-                $q->where('annee_universitaire_id', $anneeUniversitaire->id);
+            ->whereHas('inscriptions', function($q) use ($anneeUniversitaire, $classe) {
+                $q->where('annee_universitaire_id', $anneeUniversitaire->id)
+                  ->where('status', 'active')
+                  ->where('classe_id', $classe->id);
             })
             ->get();
 
@@ -1064,9 +1074,12 @@ class ESBTPAttendanceController extends Controller
         $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
         // Récupérer uniquement les étudiants inscrits pour l'année universitaire courante
+        // avec inscription ACTIVE et pour CETTE classe spécifiquement
         $etudiants = $classe->etudiants()
-            ->whereHas('inscriptions', function($q) use ($anneeUniversitaire) {
-                $q->where('annee_universitaire_id', $anneeUniversitaire->id);
+            ->whereHas('inscriptions', function($q) use ($anneeUniversitaire, $classe) {
+                $q->where('annee_universitaire_id', $anneeUniversitaire->id)
+                  ->where('status', 'active')
+                  ->where('classe_id', $classe->id);
             })
             ->get();
 
