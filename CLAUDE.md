@@ -254,6 +254,10 @@ MAIL_FROM_NAME="KLASSCI"
 - **17/10** : Fix filtrage attendances.index + rapport + rapportPdf → ajout status='active' + classe_id conditionnels sur inscriptions
 - **18/10** : Fix calcul date séance attendances.create → utilisation date_seance BDD au lieu de getDateSeance() calculé (badge + date affichée corrects)
 - **18/10** : Fix KPI Présences attendances.index → inclusion retards dans compteur présences (retards = présences métier)
+- **18/10** : Fix comptage doublons attendances → refonte finalOnly() scope avec MAX(id) groupé par séance/étudiant (élimine doublons merged multiples)
+- **18/10** : Fix stats par classe + graphique attendances.index → ajout filtre classe_id + fusion affichage Présences (present+retard) dans vue
+- **18/10** : Fix graphique Chart.js attendances.index → fusion datasets Présences+Retards en un seul "Présences (incl. retards)" utilisant present_with_retards
+- **18/10** : Fix KPI cards attendances.index affichaient zéro → variable `$stats` écrasée par boucle foreach (renommage en `$dailyStats`)
 
 ## ✨ Fonctionnalités récentes
 
@@ -912,6 +916,111 @@ $dateSeance = $seance->getDateSeance()->format('Y-m-d'); // → "2025-10-18" (sa
 $dateSeance = \Carbon\Carbon::parse($seance->date_seance)->format('Y-m-d'); // → "2025-10-17" (vendredi)
 // Badge cherche attendances au 17/10 → 4 trouvées → "Présence marquée"
 ```
+
+### Fix KPI cards affichant zéro - Variable écrasée par foreach (18 octobre 2025)
+
+**Problème** : Les KPI cards de la page `attendances.index` affichaient **toutes les valeurs à zéro** (Présences: 0, Absences: 0, Retards: 0, Excusés: 0), alors que le graphique "Tendance des 7 Derniers Jours" affichait les bonnes valeurs (Présences: 4, Absences: 0, Retards: 2).
+
+**Symptômes** :
+1. Console navigateur : `$stats = {present: 0, absent: 0, retard: 0, excuse: 0}` (sans `total` ni `total_present_with_retards`)
+2. KPI cards affichaient : 0 / 0 / 0 / 0
+3. Graphique affichait correctement : 4 présences, 0 absences, 2 retards
+
+**Cause** : Variable `$stats` écrasée par une boucle `foreach` utilisant le même nom de variable.
+
+**Localisation** : `app/Http/Controllers/ESBTPAttendanceController.php`
+
+**Code problématique** (ligne 201) :
+
+```php
+// Lignes 122-133 : Calcul correct des stats
+$stats = [
+    'present' => (clone $statsQuery)->where('statut', 'present')->count(),
+    'absent' => (clone $statsQuery)->where('statut', 'absent')->count(),
+    'retard' => (clone $statsQuery)->whereIn('statut', ['retard', 'late'])->count(),
+    'excuse' => (clone $statsQuery)->where('statut', 'excuse')->count()
+];
+
+$stats['total'] = $stats['present'] + $stats['absent'] + $stats['retard'] + $stats['excuse'];
+$stats['total_present_with_retards'] = $stats['present'] + $stats['retard'];
+
+// ... lignes 148-198 : calcul de $statsParStatus (stats par jour pour le graphique)
+
+// Ligne 201 : BUG - la variable $stats est ÉCRASÉE par la boucle foreach !
+foreach($statsParStatus as $jour => $stats) {  // ← $stats devient la variable de boucle
+    $statsParStatus[$jour]['present_with_retards'] = $stats['present'] + $stats['retard'];
+}
+
+// Après cette boucle, $stats contient les valeurs du DERNIER jour du graphique
+// au lieu des stats globales calculées aux lignes 122-136
+```
+
+**Explication technique** :
+
+1. Lignes 122-136 : `$stats` est calculé correctement avec toutes les clés (`present`, `absent`, `retard`, `excuse`, `total`, `total_present_with_retards`)
+2. Ligne 201 : La boucle `foreach($statsParStatus as $jour => $stats)` **réutilise** le nom `$stats` comme variable de boucle
+3. PHP **écrase** la variable `$stats` à chaque itération avec les valeurs de `$statsParStatus[$jour]`
+4. Après la boucle, `$stats` contient les stats du **dernier jour** (qui peuvent être à zéro si aucune attendance ce jour-là)
+5. La vue reçoit donc un `$stats` incorrect, sans les clés `total` et `total_present_with_retards`
+
+**Solution** (ligne 201) :
+
+```diff
+- foreach($statsParStatus as $jour => $stats) {
++ foreach($statsParStatus as $jour => $dailyStats) {
+-     $statsParStatus[$jour]['present_with_retards'] = $stats['present'] + $stats['retard'];
++     $statsParStatus[$jour]['present_with_retards'] = $dailyStats['present'] + $dailyStats['retard'];
+  }
+```
+
+**Impact** :
+
+- ✅ **KPI cards** : Affichent maintenant les bonnes valeurs (4 présences, 0 absences, 2 retards)
+- ✅ **Graphique** : Continue d'afficher les bonnes valeurs (non affecté car calculé avant la boucle)
+- ✅ **Cohérence** : Les stats globales et les stats par jour sont maintenant indépendantes
+
+**Logs de débogage ajoutés** :
+
+```javascript
+// Vue : resources/views/esbtp/attendances/index.blade.php (ligne 1271)
+console.log('🔍 DEBUG KPI - Données $stats:', @json($stats ?? []));
+console.log('🔍 DEBUG KPI - total_present_with_retards:', {{ $stats['total_present_with_retards'] ?? 'undefined' }});
+```
+
+**Résultat après fix** :
+
+```
+Console navigateur:
+🔍 DEBUG KPI - Données $stats: {present: 2, absent: 0, retard: 2, excuse: 0, total: 4, total_present_with_retards: 4}
+🔍 DEBUG KPI - total_present_with_retards: 4
+🔍 DEBUG KPI - absent: 0
+🔍 DEBUG KPI - retard: 2
+🔍 DEBUG KPI - excuse: 0
+🔍 DEBUG KPI - total: 4
+```
+
+**Leçon apprise** :
+
+> ⚠️ **ATTENTION** : Ne jamais réutiliser le nom d'une variable importante comme variable de boucle `foreach`.
+>
+> ```php
+> // ❌ MAUVAIS
+> $stats = calculateStats();
+> foreach($array as $key => $stats) { ... }  // écrase $stats !
+>
+> // ✅ BON
+> $stats = calculateStats();
+> foreach($array as $key => $item) { ... }  // préserve $stats
+> ```
+
+**Fichiers modifiés** :
+
+1. ✅ `app/Http/Controllers/ESBTPAttendanceController.php` (L201-203) - Renommage `$stats` → `$dailyStats`
+2. ✅ `resources/views/esbtp/attendances/index.blade.php` (L1271-1276) - Ajout console.log debug (à supprimer après validation)
+
+**Commit** : `fix: KPI cards attendances.index affichaient zéro - variable écrasée par foreach`
+
+---
 
 ### Fix filtrage attendances.index + rapport + rapportPdf (17 octobre 2025)
 

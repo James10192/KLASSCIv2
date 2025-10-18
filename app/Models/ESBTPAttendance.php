@@ -186,27 +186,36 @@ class ESBTPAttendance extends Model
     /**
      * Scope pour récupérer uniquement les présences FINALES (statut fusionné).
      *
-     * Récupère les enregistrements 'merged' (fusion début + fin)
+     * Récupère LE PLUS RÉCENT enregistrement 'merged' (fusion début + fin) par séance/étudiant
      * OU les enregistrements 'start' si pas encore de fusion (appel de fin non fait).
+     *
+     * IMPORTANT: Utilise MAX(id) pour éviter les doublons quand plusieurs 'merged' existent
      *
      * @param \Illuminate\Database\Eloquent\Builder $query
      * @return \Illuminate\Database\Eloquent\Builder
      */
     public function scopeFinalOnly($query)
     {
-        return $query->where(function($q) {
-            $q->where('call_type', 'merged')
-              ->orWhere(function($subq) {
-                  // Seulement les 'start' qui n'ont pas encore de 'merged' pour cette séance
-                  $subq->where('call_type', 'start')
-                      ->whereNotExists(function($exists) {
-                          $exists->select(\DB::raw(1))
-                              ->from('esbtp_attendances as att_merged')
-                              ->whereColumn('att_merged.seance_cours_id', 'esbtp_attendances.seance_cours_id')
-                              ->whereColumn('att_merged.etudiant_id', 'esbtp_attendances.etudiant_id')
-                              ->where('att_merged.call_type', 'merged');
+        return $query->whereIn('id', function($subquery) {
+            $subquery->select(\DB::raw('MAX(id)'))
+                ->from('esbtp_attendances as att_final')
+                ->where(function($q) {
+                    $q->where('call_type', 'merged')
+                      ->orWhere(function($subq) {
+                          // Seulement les 'start' qui n'ont pas encore de 'merged' pour cette séance
+                          $subq->where('call_type', 'start')
+                              ->whereNotExists(function($exists) {
+                                  $exists->select(\DB::raw(1))
+                                      ->from('esbtp_attendances as att_check_merged')
+                                      ->whereColumn('att_check_merged.seance_cours_id', 'att_final.seance_cours_id')
+                                      ->whereColumn('att_check_merged.etudiant_id', 'att_final.etudiant_id')
+                                      ->where('att_check_merged.call_type', 'merged')
+                                      ->whereNull('att_check_merged.deleted_at');
+                              });
                       });
-              });
+                })
+                ->whereNull('att_final.deleted_at')
+                ->groupBy('att_final.seance_cours_id', 'att_final.etudiant_id');
         });
     }
 }

@@ -118,7 +118,7 @@ class ESBTPAttendanceController extends Controller
         // Calculate total statistics
         $statsTotal = ESBTPAttendance::count();
 
-        // Calculate statistics for each status using the unpaginated query
+        // Calculate statistics for each status using the unpaginated query ($statsQuery déjà cloné ligne 113)
         $stats = [
             'present' => (clone $statsQuery)->where('statut', 'present')->count(),
             'absent' => (clone $statsQuery)->where('statut', 'absent')->count(),
@@ -165,11 +165,15 @@ class ESBTPAttendanceController extends Controller
         }
 
         // Collect attendance data for each day (filtered by current academic year AND active inscriptions)
-        $attendancesByDay = ESBTPAttendance::whereBetween('date', [$dateDebut, $dateFin])
+        // IMPORTANT: Utiliser finalOnly() pour éviter les doublons (start + merged)
+        // IMPORTANT: Ajouter classe_id dans whereHas inscriptions pour cohérence avec les stats par classe
+        $attendancesByDay = ESBTPAttendance::finalOnly()
+            ->whereBetween('date', [$dateDebut, $dateFin])
             ->where('annee_universitaire_id', $anneeUniversitaire->id)
             ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire) {
                 $q->where('annee_universitaire_id', $anneeUniversitaire->id)
-                  ->where('status', 'active');
+                  ->where('status', 'active')
+                  ->whereColumn('esbtp_inscriptions.classe_id', 'esbtp_attendances.classe_id');  // ← FILTRE CLASSE AJOUTÉ
             })
             ->selectRaw('DATE(date) as jour, statut, COUNT(*) as total')
             ->groupBy('jour', 'statut')
@@ -191,6 +195,11 @@ class ESBTPAttendanceController extends Controller
             if(isset($statsParStatus[$jour][$normalizedStatut])) {
                 $statsParStatus[$jour][$normalizedStatut] += $total;
             }
+        }
+
+        // IMPORTANT: Calculer present_with_retards pour le graphique (retards = présences métier)
+        foreach($statsParStatus as $jour => $dailyStats) {
+            $statsParStatus[$jour]['present_with_retards'] = $dailyStats['present'] + $dailyStats['retard'];
         }
 
         // Create variables for statistics
@@ -226,53 +235,65 @@ class ESBTPAttendanceController extends Controller
 
         foreach ($classesActive as $classe) {
             // Compter les présences pour cette classe (uniquement étudiants année courante ET inscriptions actives)
-            $presentCount = ESBTPAttendance::whereHas('seanceCours.emploiTemps', function($q) use ($classe) {
+            // IMPORTANT: Utiliser finalOnly() pour éviter les doublons (start + merged)
+            // IMPORTANT: Ajouter classe_id dans whereHas inscriptions pour ne compter que les attendances de cette classe
+            $presentCount = ESBTPAttendance::finalOnly()
+            ->whereHas('seanceCours.emploiTemps', function($q) use ($classe) {
                 $q->where('classe_id', $classe->id);
             })
             ->where('annee_universitaire_id', $anneeUniversitaire->id)
-            ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire) {
+            ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire, $classe) {
                 $q->where('annee_universitaire_id', $anneeUniversitaire->id)
-                  ->where('status', 'active');
+                  ->where('status', 'active')
+                  ->where('classe_id', $classe->id);  // ← FILTRE CLASSE AJOUTÉ
             })
             ->where('statut', 'present')->count();
 
-            $absentCount = ESBTPAttendance::whereHas('seanceCours.emploiTemps', function($q) use ($classe) {
+            $absentCount = ESBTPAttendance::finalOnly()
+            ->whereHas('seanceCours.emploiTemps', function($q) use ($classe) {
                 $q->where('classe_id', $classe->id);
             })
             ->where('annee_universitaire_id', $anneeUniversitaire->id)
-            ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire) {
+            ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire, $classe) {
                 $q->where('annee_universitaire_id', $anneeUniversitaire->id)
-                  ->where('status', 'active');
+                  ->where('status', 'active')
+                  ->where('classe_id', $classe->id);  // ← FILTRE CLASSE AJOUTÉ
             })
             ->where('statut', 'absent')->count();
 
-            $retardCount = ESBTPAttendance::whereHas('seanceCours.emploiTemps', function($q) use ($classe) {
+            $retardCount = ESBTPAttendance::finalOnly()
+            ->whereHas('seanceCours.emploiTemps', function($q) use ($classe) {
                 $q->where('classe_id', $classe->id);
             })
             ->where('annee_universitaire_id', $anneeUniversitaire->id)
-            ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire) {
+            ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire, $classe) {
                 $q->where('annee_universitaire_id', $anneeUniversitaire->id)
-                  ->where('status', 'active');
+                  ->where('status', 'active')
+                  ->where('classe_id', $classe->id);  // ← FILTRE CLASSE AJOUTÉ
             })
             ->whereIn('statut', ['retard', 'late'])->count();
 
-            $excuseCount = ESBTPAttendance::whereHas('seanceCours.emploiTemps', function($q) use ($classe) {
+            $excuseCount = ESBTPAttendance::finalOnly()
+            ->whereHas('seanceCours.emploiTemps', function($q) use ($classe) {
                 $q->where('classe_id', $classe->id);
             })
             ->where('annee_universitaire_id', $anneeUniversitaire->id)
-            ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire) {
+            ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire, $classe) {
                 $q->where('annee_universitaire_id', $anneeUniversitaire->id)
-                  ->where('status', 'active');
+                  ->where('status', 'active')
+                  ->where('classe_id', $classe->id);  // ← FILTRE CLASSE AJOUTÉ
             })
             ->where('statut', 'excuse')->count();
 
             $totalAttendanceForClass = $presentCount + $absentCount + $retardCount + $excuseCount;
 
             // Récupérer uniquement les étudiants inscrits pour l'année universitaire courante ET actifs
+            // IMPORTANT: Filtrer aussi par classe_id pour ne compter que les étudiants de CETTE classe
             $totalStudents = $classe->etudiants()
-                ->whereHas('inscriptions', function($q) use ($anneeUniversitaire) {
+                ->whereHas('inscriptions', function($q) use ($anneeUniversitaire, $classe) {
                     $q->where('annee_universitaire_id', $anneeUniversitaire->id)
-                      ->where('status', 'active');
+                      ->where('status', 'active')
+                      ->where('classe_id', $classe->id);
                 })
                 ->count();
             
@@ -285,6 +306,7 @@ class ESBTPAttendanceController extends Controller
                     'absent' => $absentCount,
                     'retard' => $retardCount,
                     'excuse' => $excuseCount,
+                    'total_present_with_retards' => $totalPresenceWithRetards,  // ← AJOUTÉ pour la vue
                     'total_attendance' => $totalAttendanceForClass,
                     'total_students' => $totalStudents,
                     'attendance_rate' => $totalAttendanceForClass > 0 ? round($totalPresenceWithRetards / $totalAttendanceForClass * 100, 1) : 0
@@ -348,11 +370,11 @@ class ESBTPAttendanceController extends Controller
         $coordinatorStats = null;
         $unreadNotifications = 0;
         $recentActivities = [];
-        
+
         if (Auth::user() && Auth::user()->hasRole('coordinateur')) {
             $today = Carbon::today();
             $coordinatorStats = $this->calculateCoordinatorStats($today);
-            
+
             // Get unread notifications count
             $unreadNotifications = Notification::where('user_id', Auth::id())
                 ->where('is_read', false)

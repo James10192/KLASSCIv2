@@ -880,10 +880,11 @@
                             </div>
                             
                             <!-- Barres de progression pour chaque statut -->
+                            <!-- IMPORTANT: Les retards comptent comme présences (règle métier) mais on affiche aussi le nombre de retards séparément -->
                             <div class="row g-1 mb-2 classe-stats-details">
                                 <div class="col-3">
                                     <div class="text-center">
-                                        <div class="fw-bold text-success">{{ $classe['present'] }}</div>
+                                        <div class="fw-bold text-success">{{ $classe['total_present_with_retards'] ?? ($classe['present'] + $classe['retard']) }}</div>
                                         <small class="text-muted">Présences</small>
                                     </div>
                                 </div>
@@ -906,24 +907,22 @@
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <!-- Vue compacte (cachée par défaut) -->
                             <div class="classe-stats-compact d-none">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div class="d-flex gap-3">
-                                        <span class="badge bg-success">{{ $classe['present'] }}P</span>
+                                        <span class="badge bg-success">{{ $classe['total_present_with_retards'] ?? ($classe['present'] + $classe['retard']) }}P</span>
                                         <span class="badge bg-danger">{{ $classe['absent'] }}A</span>
-                                        <span class="badge bg-warning">{{ $classe['retard'] }}R</span>
                                         <span class="badge bg-info">{{ $classe['excuse'] }}E</span>
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <!-- Barre de progression globale -->
                             <div class="progress" style="height: 8px;">
                                 @if($classe['total_attendance'] > 0)
-                                    <div class="progress-bar bg-success" style="width: {{ ($classe['present'] / $classe['total_attendance']) * 100 }}%"></div>
-                                    <div class="progress-bar bg-warning" style="width: {{ ($classe['retard'] / $classe['total_attendance']) * 100 }}%"></div>
+                                    <div class="progress-bar bg-success" style="width: {{ (($classe['total_present_with_retards'] ?? ($classe['present'] + $classe['retard'])) / $classe['total_attendance']) * 100 }}%"></div>
                                     <div class="progress-bar bg-info" style="width: {{ ($classe['excuse'] / $classe['total_attendance']) * 100 }}%"></div>
                                     <div class="progress-bar bg-danger" style="width: {{ ($classe['absent'] / $classe['total_attendance']) * 100 }}%"></div>
                                 @else
@@ -1277,8 +1276,8 @@ const attendanceChart = new Chart(ctx, {
             return \Carbon\Carbon::parse($date)->format('d/m'); 
         }, array_keys($statsParStatus ?? []))) !!},
         datasets: [{
-            label: 'Présences',
-            data: {!! json_encode(array_column($statsParStatus ?? [], 'present')) !!},
+            label: 'Présences (incl. retards)',
+            data: {!! json_encode(array_column($statsParStatus ?? [], 'present_with_retards')) !!},
             borderColor: '#10b981',
             backgroundColor: 'rgba(16, 185, 129, 0.1)',
             borderWidth: 3,

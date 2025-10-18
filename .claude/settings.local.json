@@ -13,7 +13,8 @@
       "Bash(php artisan optimize:clear:*)",
       "Bash(php artisan filament:cache-components:*)",
       "Bash(git push:*)",
-      "Bash(mysql:*)"
+      "Bash(mysql:*)",
+      "Bash(php:*)"
     ],
     "deny": [],
     "ask": [],
