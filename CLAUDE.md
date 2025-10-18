@@ -763,23 +763,20 @@ POST /dashboard/teacher/roll-call/{seance}
 
 **Corrections appliquées**
 
-1. **Méthode `index()`** (ligne 75-82)
+1. **Méthode `index()`** (ligne 76-80)
 
-   **Problématique spécifique** : La requête principale filtrait déjà par année universitaire, mais quand un filtre `classe_id` était appliqué, il fallait AUSSI filtrer les inscriptions des étudiants par cette classe.
+   **Problématique spécifique** : La requête affichait des attendances d'étudiants qui n'avaient PAS d'inscription active dans la classe mentionnée sur l'attendance. Il fallait filtrer SYSTÉMATIQUEMENT (pas conditionnellement) pour que chaque attendance corresponde à un étudiant inscrit activement dans SA classe.
 
    ```diff
-   ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire, $request) {
+   ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire) {
        $q->where('annee_universitaire_id', $anneeUniversitaire->id)
    -      ->where('status', 'active');
-   +      ->where('status', 'active');
-   +    // Si un filtre classe est appliqué, filtrer aussi par classe_id dans les inscriptions
-   +    if ($request->filled('classe_id')) {
-   +        $q->where('classe_id', $request->classe_id);
-   +    }
+   +      ->where('status', 'active')
+   +      ->whereColumn('esbtp_inscriptions.classe_id', 'esbtp_attendances.classe_id'); // ← CRUCIAL
    });
    ```
 
-   **Logique** : Le filtre `classe_id` est **conditionnel** car la page `attendances.index` peut afficher TOUTES les attendances (sans filtre classe) OU seulement celles d'une classe spécifique.
+   **Logique** : Utilisation de `whereColumn` pour comparer dynamiquement `classe_id` de l'inscription avec `classe_id` de l'attendance. Cela garantit que chaque ligne affichée correspond à un étudiant ayant une inscription active dans **LA classe de cette attendance spécifique**.
 
 2. **Méthode `rapport()`** (ligne 996-1001)
 
@@ -822,12 +819,12 @@ POST /dashboard/teacher/roll-call/{seance}
 
 **Cas d'usage**
 
-| Méthode | Classe connue ? | Filtre conditionnel ? | But |
-|---------|----------------|----------------------|-----|
-| `index()` | Optionnel (filtre) | ✅ Oui (`if filled`) | Afficher toutes OU d'une classe |
-| `rapport()` | ✅ Oui (required) | ❌ Non (toujours appliqué) | Rapport pour UNE classe spécifique |
-| `rapportPdf()` | ✅ Oui (required) | ❌ Non (toujours appliqué) | PDF pour UNE classe spécifique |
-| `create()` / `loadStudents()` | ✅ Oui | ❌ Non | Marquage présences d'une classe |
+| Méthode | Classe connue ? | Pattern filtrage | But |
+|---------|----------------|------------------|-----|
+| `index()` | ❌ Non (dans attendance) | `whereColumn()` dynamique | Afficher TOUTES les attendances avec inscriptions valides |
+| `rapport()` | ✅ Oui (parameter) | `where('classe_id', $classe->id)` statique | Rapport pour UNE classe spécifique |
+| `rapportPdf()` | ✅ Oui (parameter) | `where('classe_id', $classe->id)` statique | PDF pour UNE classe spécifique |
+| `create()` / `loadStudents()` | ✅ Oui (parameter) | `where('classe_id', $classe->id)` statique | Marquage présences d'une classe |
 
 **Fichiers modifiés au total** (7 locations corrigées)
 

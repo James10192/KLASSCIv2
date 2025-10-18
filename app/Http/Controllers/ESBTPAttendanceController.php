@@ -72,13 +72,11 @@ class ESBTPAttendanceController extends Controller
         // Plus besoin du whereHas indirect maintenant que la colonne existe
         ->where('annee_universitaire_id', $anneeUniversitaire->id)
         // ET vérifier que l'étudiant a une inscription active pour cette année
-        ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire, $request) {
+        // ET que cette inscription correspond à la classe de l'attendance (via classe_id de l'attendance)
+        ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire) {
             $q->where('annee_universitaire_id', $anneeUniversitaire->id)
-              ->where('status', 'active');
-            // Si un filtre classe est appliqué, filtrer aussi par classe_id dans les inscriptions
-            if ($request->filled('classe_id')) {
-                $q->where('classe_id', $request->classe_id);
-            }
+              ->where('status', 'active')
+              ->whereColumn('esbtp_inscriptions.classe_id', 'esbtp_attendances.classe_id'); // ← CRUCIAL
         });
 
         // Apply filters
