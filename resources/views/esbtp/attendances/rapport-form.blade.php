@@ -2,90 +2,344 @@
 
 @section('title', 'Générer un rapport de présence')
 
-@section('content')
-<div class="content-wrapper">
-    <!-- HEADER PREMIUM -->
-    <div class="bg-gradient-primary rounded-4 p-5 mb-4 d-flex align-items-center gap-4 animate-fade-in-up" style="background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); min-height: 120px;">
-        <div class="bg-white bg-opacity-25 rounded-circle d-flex align-items-center justify-content-center" style="width:56px;height:56px;">
-            <i class="mdi mdi-file-chart fa-2x text-white"></i>
-        </div>
-        <div>
-            <h1 class="text-white fw-bold mb-1" style="font-size:1.7rem;">Rapport de présence</h1>
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0">
-                    <li class="breadcrumb-item"><a href="{{ route('dashboard') }}" class="text-white-50">Tableau de bord</a></li>
-                    <li class="breadcrumb-item"><a href="{{ route('esbtp.attendances.index') }}" class="text-white-50">Présences</a></li>
-                    <li class="breadcrumb-item active text-white" aria-current="page">Rapport</li>
-                </ol>
-            </nav>
-        </div>
-    </div>
+@section('styles')
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<style>
+    .main-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        border: 1px solid #e5e7eb;
+        overflow: hidden;
+    }
 
-    <div class="container-fluid animate-fade-in-up">
-        <div class="row">
-            <div class="col-lg-8 col-md-7 mb-4">
-                <div class="card border-0 shadow-lg rounded-4 p-4 premium-glass">
-                    <div class="card-body p-0">
-                        <h4 class="fw-bold mb-3"><i class="mdi mdi-file-chart text-primary me-2"></i>Générer un rapport de présence</h4>
-                        <p class="text-muted mb-4">Sélectionnez une classe et une période pour générer un rapport de présence.</p>
-                        @if(session('success'))
-                            <div class="alert alert-success d-flex align-items-center glass-alert mb-4">
-                                <i class="fas fa-check-circle fa-2x me-3 text-success"></i>
-                                <div>{{ session('success') }}</div>
-                            </div>
-                        @endif
-                        @if(session('error'))
-                            <div class="alert alert-danger d-flex align-items-center glass-alert mb-4">
-                                <i class="fas fa-exclamation-triangle fa-2x me-3 text-danger"></i>
-                                <div>{{ session('error') }}</div>
-                            </div>
-                        @endif
-                        <form action="{{ route('esbtp.attendances.rapport') }}" method="POST" class="row g-4">
+    .main-card-header {
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.05));
+        padding: 1.5rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .main-card-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #1f2937;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .main-card-subtitle {
+        color: #6b7280;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+
+    .main-card-body {
+        padding: 2rem;
+    }
+
+    .form-label-modern {
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.5rem;
+        font-size: 0.875rem;
+        display: block;
+    }
+
+    .form-control-modern {
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        padding: 0.625rem 1rem;
+        font-size: 0.9375rem;
+        transition: all 0.2s;
+    }
+
+    .form-control-modern:focus {
+        border-color: #1e40af;
+        box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
+        outline: none;
+    }
+
+    .info-card {
+        background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+        border-radius: 12px;
+        padding: 1.5rem;
+        color: white;
+    }
+
+    .info-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        margin-bottom: 0.75rem;
+        backdrop-filter: blur(10px);
+    }
+
+    .info-icon {
+        width: 36px;
+        height: 36px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .btn-modern {
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.9375rem;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        border: none;
+    }
+
+    .btn-modern.primary {
+        background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+        color: white;
+    }
+
+    .btn-modern.primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(30, 58, 138, 0.4);
+    }
+
+    .btn-modern.secondary {
+        background: #f3f4f6;
+        color: #374151;
+    }
+
+    .btn-modern.secondary:hover {
+        background: #e5e7eb;
+    }
+
+    /* Responsive */
+    @media (max-width: 992px) {
+        .main-card-body {
+            padding: 1.5rem;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .main-card-header {
+            padding: 1rem;
+        }
+
+        .main-card-body {
+            padding: 1rem;
+        }
+
+        .main-card-title {
+            font-size: 1.125rem;
+        }
+
+        .btn-modern {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .info-card {
+            margin-top: 1.5rem;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .main-card-title i {
+            font-size: 1rem;
+        }
+
+        .form-label-modern {
+            font-size: 0.8125rem;
+        }
+
+        .form-control-modern {
+            font-size: 0.875rem;
+            padding: 0.5rem 0.875rem;
+        }
+
+        .info-item {
+            font-size: 0.875rem;
+            padding: 0.625rem;
+        }
+
+        .info-icon {
+            width: 32px;
+            height: 32px;
+        }
+    }
+</style>
+@endsection
+
+@section('content')
+<div class="dashboard-acasi">
+    <div class="main-content" style="padding: 1.5rem; max-width: 100%; overflow-x: hidden;">
+        <!-- Header -->
+        <div class="dashboard-header mb-4">
+            <div class="header-left">
+                <h1><i class="fas fa-file-chart me-2"></i>Rapport de présence</h1>
+                <p class="header-subtitle">Générez des rapports détaillés de présence par classe et période</p>
+            </div>
+            <div class="header-actions">
+                <a href="{{ route('esbtp.attendances.index') }}" class="btn-acasi secondary">
+                    <i class="fas fa-arrow-left"></i>Retour aux présences
+                </a>
+            </div>
+        </div>
+
+        <!-- Alertes -->
+        @if(session('success'))
+            <div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
+                <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        @endif
+
+        @if(session('error'))
+            <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i>{{ session('error') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        @endif
+
+        <div class="row g-4">
+            <!-- Formulaire -->
+            <div class="col-lg-8">
+                <div class="main-card">
+                    <div class="main-card-header">
+                        <div class="main-card-title">
+                            <i class="fas fa-cog"></i>
+                            Configuration du rapport
+                        </div>
+                        <div class="main-card-subtitle">
+                            Sélectionnez les critères pour générer votre rapport
+                        </div>
+                    </div>
+                    <div class="main-card-body">
+                        <form action="{{ route('esbtp.attendances.rapport') }}" method="POST">
                             @csrf
-                            <div class="col-12">
-                                <label for="classe_id" class="form-label fw-semibold">Classe</label>
-                                <select name="classe_id" id="classe_id" class="form-select" required>
+
+                            <!-- Classe -->
+                            <div class="mb-4">
+                                <label for="classe_id" class="form-label-modern">
+                                    <i class="fas fa-users text-primary me-1"></i>Classe
+                                </label>
+                                <select name="classe_id" id="classe_id" class="form-control-modern form-select" required>
                                     <option value="">Sélectionner une classe</option>
                                     @foreach($classes as $classe)
                                         <option value="{{ $classe->id }}">{{ $classe->name }}</option>
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-md-6">
-                                <label for="date_debut" class="form-label fw-semibold">Date de début</label>
-                                <input type="date" name="date_debut" id="date_debut" class="form-control" required value="{{ date('Y-m-01') }}">
+
+                            <!-- Période -->
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-6">
+                                    <label for="date_debut" class="form-label-modern">
+                                        <i class="fas fa-calendar-plus text-success me-1"></i>Date de début
+                                    </label>
+                                    <input type="date"
+                                           name="date_debut"
+                                           id="date_debut"
+                                           class="form-control-modern"
+                                           required
+                                           value="{{ date('Y-m-01') }}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="date_fin" class="form-label-modern">
+                                        <i class="fas fa-calendar-check text-danger me-1"></i>Date de fin
+                                    </label>
+                                    <input type="date"
+                                           name="date_fin"
+                                           id="date_fin"
+                                           class="form-control-modern"
+                                           required
+                                           value="{{ date('Y-m-t') }}">
+                                </div>
                             </div>
-                            <div class="col-md-6">
-                                <label for="date_fin" class="form-label fw-semibold">Date de fin</label>
-                                <input type="date" name="date_fin" id="date_fin" class="form-control" required value="{{ date('Y-m-t') }}">
-                            </div>
-                            <div class="col-12 d-flex gap-3 mt-4">
-                                <button type="submit" class="btn btn-primary btn-lg rounded-pill px-4 fw-bold shadow-sm d-flex align-items-center gap-2 animate-fade-in">
-                                    <i class="mdi mdi-file-chart"></i> Générer le rapport
+
+                            <!-- Boutons -->
+                            <div class="d-flex gap-3 flex-wrap">
+                                <button type="submit" class="btn-modern primary">
+                                    <i class="fas fa-file-chart"></i>
+                                    Générer le rapport
                                 </button>
-                                <a href="{{ route('esbtp.attendances.index') }}" class="btn btn-light btn-lg rounded-pill px-4 fw-bold shadow-sm d-flex align-items-center gap-2 animate-fade-in">
-                                    <i class="fas fa-arrow-left"></i> Annuler
+                                <a href="{{ route('esbtp.attendances.index') }}" class="btn-modern secondary">
+                                    <i class="fas fa-times"></i>
+                                    Annuler
                                 </a>
                             </div>
                         </form>
                     </div>
                 </div>
             </div>
-            <div class="col-lg-4 col-md-5 mb-4">
-                <div class="card border-0 shadow-lg rounded-4 p-4 premium-glass animate-fade-in-up">
-                    <div class="card-body p-0">
-                        <h4 class="fw-bold mb-3"><i class="fas fa-info-circle text-info me-2"></i>Informations</h4>
-                        <ul class="list-unstyled mb-3">
-                            <li class="mb-2 d-flex align-items-center"><span class="badge bg-primary me-2"><i class="fas fa-user-check"></i></span> Taux de présence de chaque étudiant</li>
-                            <li class="mb-2 d-flex align-items-center"><span class="badge bg-success me-2"><i class="fas fa-user-times"></i></span> Nombre de présences, absences, retards, absences excusées</li>
-                            <li class="mb-2 d-flex align-items-center"><span class="badge bg-warning me-2"><i class="fas fa-chart-bar"></i></span> Statistiques globales par classe</li>
-                        </ul>
-                        <div class="mt-4">
-                            <p class="fw-semibold mb-2">Vous pourrez également :</p>
-                            <ul class="list-unstyled">
-                                <li class="mb-2 d-flex align-items-center"><span class="badge bg-info me-2"><i class="fas fa-file-pdf"></i></span> Exporter le rapport PDF</li>
-                                <li class="mb-2 d-flex align-items-center"><span class="badge bg-secondary me-2"><i class="fas fa-envelope"></i></span> Envoyer le rapport par e-mail</li>
-                            </ul>
+
+            <!-- Informations -->
+            <div class="col-lg-4">
+                <div class="info-card">
+                    <h5 class="mb-4 d-flex align-items-center gap-2">
+                        <i class="fas fa-info-circle"></i>
+                        Informations
+                    </h5>
+
+                    <div class="info-item">
+                        <div class="info-icon">
+                            <i class="fas fa-user-check"></i>
+                        </div>
+                        <div style="flex: 1;">
+                            <strong>Taux de présence</strong>
+                            <div style="font-size: 0.875rem; opacity: 0.9;">Pour chaque étudiant</div>
+                        </div>
+                    </div>
+
+                    <div class="info-item">
+                        <div class="info-icon">
+                            <i class="fas fa-chart-pie"></i>
+                        </div>
+                        <div style="flex: 1;">
+                            <strong>Statistiques détaillées</strong>
+                            <div style="font-size: 0.875rem; opacity: 0.9;">Présences, absences, retards</div>
+                        </div>
+                    </div>
+
+                    <div class="info-item">
+                        <div class="info-icon">
+                            <i class="fas fa-chart-bar"></i>
+                        </div>
+                        <div style="flex: 1;">
+                            <strong>Stats globales</strong>
+                            <div style="font-size: 0.875rem; opacity: 0.9;">Par classe et période</div>
+                        </div>
+                    </div>
+
+                    <hr style="border-color: rgba(255,255,255,0.2); margin: 1.5rem 0;">
+
+                    <h6 class="mb-3">Actions disponibles</h6>
+
+                    <div class="info-item">
+                        <div class="info-icon">
+                            <i class="fas fa-file-pdf"></i>
+                        </div>
+                        <div style="flex: 1;">
+                            <strong>Export PDF</strong>
+                            <div style="font-size: 0.875rem; opacity: 0.9;">Téléchargement du rapport</div>
+                        </div>
+                    </div>
+
+                    <div class="info-item">
+                        <div class="info-icon">
+                            <i class="fas fa-envelope"></i>
+                        </div>
+                        <div style="flex: 1;">
+                            <strong>Envoi par email</strong>
+                            <div style="font-size: 0.875rem; opacity: 0.9;">Partage du rapport</div>
                         </div>
                     </div>
                 </div>
@@ -98,25 +352,32 @@
 @section('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Vérifier que la date de fin est postérieure à la date de début
-        document.getElementById('date_fin').addEventListener('change', function() {
-            const dateDebut = new Date(document.getElementById('date_debut').value);
-            const dateFin = new Date(this.value);
-            
-            if (dateFin < dateDebut) {
+        const dateDebut = document.getElementById('date_debut');
+        const dateFin = document.getElementById('date_fin');
+
+        // Validation de la date de fin
+        dateFin.addEventListener('change', function() {
+            if (this.value < dateDebut.value) {
                 alert('La date de fin doit être postérieure à la date de début.');
-                this.value = document.getElementById('date_debut').value;
+                this.value = dateDebut.value;
             }
         });
-        
-        document.getElementById('date_debut').addEventListener('change', function() {
-            const dateDebut = new Date(this.value);
-            const dateFin = new Date(document.getElementById('date_fin').value);
-            
-            if (dateFin < dateDebut) {
-                document.getElementById('date_fin').value = this.value;
+
+        // Validation de la date de début
+        dateDebut.addEventListener('change', function() {
+            if (dateFin.value < this.value) {
+                dateFin.value = this.value;
             }
         });
+
+        // Auto-dismiss alerts
+        setTimeout(function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                const bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            });
+        }, 5000);
     });
 </script>
-@endsection 
+@endsection

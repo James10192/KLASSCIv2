@@ -485,32 +485,82 @@ class TeacherDashboardController extends Controller
     }
 
     /**
-     * Afficher l'emploi du temps de l'enseignant
+     * Afficher l'emploi du temps de l'enseignant avec historique et navigation
      */
-    public function showTimetable()
+    public function showTimetable(Request $request)
     {
         $user = Auth::user();
         $teacherModel = \App\Models\ESBTPTeacher::where('user_id', $user->id)->first();
         $teacherId = $teacherModel ? $teacherModel->id : null;
 
-        // Récupérer les IDs des emplois du temps actifs
-        $idsActifs = \App\Models\ESBTPEmploiTemps::where('is_active', 1)->pluck('id')->toArray();
+        // Navigation par période (semaine par défaut)
+        $viewMode = $request->get('mode', 'week'); // week, month
 
-        // Récupérer toutes les séances de cours de l'enseignant liées à un emploi du temps actif
+        // Déterminer la période à afficher
+        if ($request->has('date')) {
+            $currentDate = Carbon::parse($request->get('date'));
+        } else {
+            $currentDate = Carbon::now();
+        }
+
+        // Calculer début et fin selon le mode
+        if ($viewMode === 'month') {
+            $startDate = $currentDate->copy()->startOfMonth();
+            $endDate = $currentDate->copy()->endOfMonth();
+        } else {
+            // Par défaut: semaine (Lundi à Samedi)
+            $startDate = $currentDate->copy()->startOfWeek();
+            $endDate = $currentDate->copy()->startOfWeek()->addDays(5); // Jusqu'au samedi
+        }
+
+        \Log::info('📅 Emploi du temps - Période demandée', [
+            'teacher_id' => $teacherId,
+            'mode' => $viewMode,
+            'start_date' => $startDate->format('Y-m-d'),
+            'end_date' => $endDate->format('Y-m-d')
+        ]);
+
+        // Récupérer TOUTES les séances avec date_seance dans la période (HISTORIQUE COMPLET)
+        // Inclut les emplois du temps actifs ET inactifs pour voir l'historique complet
         $seances = ESBTPSeanceCours::where('teacher_id', $teacherId)
-            ->whereIn('emploi_temps_id', $idsActifs)
-            ->orderBy('jour')
+            ->whereNotNull('date_seance')
+            ->whereBetween('date_seance', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
+            ->orderBy('date_seance')
             ->orderBy('heure_debut')
-            ->with(['emploiTemps.classe', 'matiere'])
+            ->with([
+                'emploiTemps', // Charger l'emploi du temps pour vérifier is_active
+                'emploiTemps.classe',
+                'matiere',
+                'classe',
+                'teacherAttendances' => function($query) use ($startDate, $endDate) {
+                    // Charger les attendances de la période (start + end)
+                    $query->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
+                          ->orderBy('type')
+                          ->orderBy('created_at', 'desc');
+                }
+            ])
             ->get();
 
-        \Log::info('Emploi du temps enseignant - Nombre de séances trouvées', ['count' => $seances->count(), 'teacher_id' => $teacherId, 'idsActifs' => $idsActifs]);
+        \Log::info('📊 Séances récupérées avec historique', [
+            'count' => $seances->count(),
+            'avec_attendances' => $seances->filter(fn($s) => $s->teacherAttendances->count() > 0)->count()
+        ]);
 
-        // Organiser les séances par jour (1=Lundi, 2=Mardi, ...)
+        // Calculer le statut pour chaque séance
+        $seances->each(function($seance) {
+            $seance->statusInfo = $this->calculateSeanceStatusForTimetable($seance);
+        });
+
+        // Organiser les séances par jour de la semaine (1=Lundi, 2=Mardi, ...)
         $emploiTempsSemaine = [];
         foreach ([1, 2, 3, 4, 5, 6] as $jour) {
-            $emploiTempsSemaine[$jour] = $seances->where('jour', $jour)->sortBy('heure_debut');
+            $emploiTempsSemaine[$jour] = $seances->filter(function($s) use ($jour) {
+                return Carbon::parse($s->date_seance)->dayOfWeekIso == $jour;
+            })->sortBy('heure_debut');
         }
+
+        // Calculer les statistiques de la période
+        $stats = $this->calculateWeeklyStats($seances);
 
         // Définir les jours de la semaine en français pour l'affichage (1=Lundi, ...)
         $joursSemaine = [
@@ -530,7 +580,27 @@ class TeacherDashboardController extends Controller
             $creneaux[] = "$start-$end";
         }
 
-        return view('teacher.timetable', compact('emploiTempsSemaine', 'joursSemaine', 'creneaux'));
+        // Navigation
+        $navigation = [
+            'current_date' => $currentDate,
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'mode' => $viewMode,
+            'prev_date' => $viewMode === 'month'
+                ? $currentDate->copy()->subMonth()
+                : $currentDate->copy()->subWeek(),
+            'next_date' => $viewMode === 'month'
+                ? $currentDate->copy()->addMonth()
+                : $currentDate->copy()->addWeek(),
+        ];
+
+        return view('teacher.timetable', compact(
+            'emploiTempsSemaine',
+            'joursSemaine',
+            'creneaux',
+            'stats',
+            'navigation'
+        ));
     }
 
     /**
@@ -808,19 +878,19 @@ class TeacherDashboardController extends Controller
     private function prepareAvailabilityData($teacher)
     {
         // Utiliser des créneaux par heure comme la page EDIT pour cohérence
-        $hours = range(8, 18); // 8h à 18h = 11 heures 
+        $hours = range(8, 18); // 8h à 18h = 11 heures
         $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']; // Exclure dimanche
-        
+
         // Initialiser avec 'unavailable' par défaut
         $availability = [];
         foreach ($days as $day) {
             $availability[$day] = array_fill(0, count($hours), 'unavailable');
         }
-        
+
         // Remplir avec les vraies données - traitement par heure
         foreach ($teacher->availabilities as $avail) {
             $dayName = $days[$avail->day_of_week] ?? null;
-            
+
             // Parser l'heure de début et de fin
             if ($avail->start_time instanceof \Carbon\Carbon) {
                 $startHour = $avail->start_time->hour;
@@ -832,7 +902,7 @@ class TeacherDashboardController extends Controller
                 $startHour = (int) substr((string) $avail->start_time, 0, 2);
                 $endHour = (int) substr((string) $avail->end_time, 0, 2);
             }
-            
+
             // Remplir toutes les heures entre start_time et end_time
             if ($dayName) {
                 for ($hour = $startHour; $hour < $endHour; $hour++) {
@@ -843,7 +913,208 @@ class TeacherDashboardController extends Controller
                 }
             }
         }
-        
+
         return $availability;
+    }
+
+    /**
+     * Calculer le statut d'une séance pour l'emploi du temps
+     */
+    private function calculateSeanceStatusForTimetable($seance)
+    {
+        $now = Carbon::now();
+
+        // Récupérer la date de la séance
+        $dateSeance = !empty($seance->date_seance)
+            ? Carbon::parse($seance->date_seance)
+            : null;
+
+        if (!$dateSeance) {
+            return [
+                'color' => 'secondary',
+                'bgClass' => 'bg-light',
+                'borderClass' => 'border-secondary',
+                'badge' => 'Non planifié',
+                'badgeClass' => 'bg-secondary',
+                'icon' => 'fa-question-circle',
+                'description' => 'Date non définie',
+                'showDetails' => false,
+                'details' => []
+            ];
+        }
+
+        // Parser les heures (heure_debut et heure_fin peuvent être datetime ou time)
+        $heureDebutStr = $seance->heure_debut;
+        $heureFinStr = $seance->heure_fin;
+
+        // Si c'est déjà un datetime complet, extraire juste l'heure
+        if (strlen($heureDebutStr) > 8) {
+            $heureDebutStr = Carbon::parse($heureDebutStr)->format('H:i:s');
+        }
+        if (strlen($heureFinStr) > 8) {
+            $heureFinStr = Carbon::parse($heureFinStr)->format('H:i:s');
+        }
+
+        $heureDebut = Carbon::parse($dateSeance->format('Y-m-d') . ' ' . $heureDebutStr);
+        $heureFin = Carbon::parse($dateSeance->format('Y-m-d') . ' ' . $heureFinStr);
+
+        // Récupérer les émargements pour cette date spécifique
+        // Filtrer par date (en comparant seulement la partie date, pas l'heure)
+        $emargementDebut = $seance->teacherAttendances
+            ->filter(function($att) use ($dateSeance) {
+                $attDate = Carbon::parse($att->date)->format('Y-m-d');
+                return $att->type === 'start' && $attDate === $dateSeance->format('Y-m-d');
+            })
+            ->first();
+
+        $emargementFin = $seance->teacherAttendances
+            ->filter(function($att) use ($dateSeance) {
+                $attDate = Carbon::parse($att->date)->format('Y-m-d');
+                return $att->type === 'end' && $attDate === $dateSeance->format('Y-m-d');
+            })
+            ->first();
+
+        // Fenêtres de temps
+        $limite45min = $heureDebut->copy()->addMinutes(45);
+        $fenetreClotureFin = $heureFin->copy()->addMinutes(30);
+
+        // 🟢 VERT : Complet (début + fin)
+        if ($emargementDebut && $emargementFin) {
+            return [
+                'color' => 'success',
+                'bgClass' => 'bg-success-subtle',
+                'borderClass' => 'border-success',
+                'badge' => 'Complet',
+                'badgeClass' => 'bg-success',
+                'icon' => 'fa-check-double',
+                'description' => 'Émargé début + fin',
+                'showDetails' => true,
+                'details' => [
+                    'Début' => Carbon::parse($emargementDebut->validated_at)->format('H:i'),
+                    'Fin' => Carbon::parse($emargementFin->validated_at)->format('H:i'),
+                    'Statut début' => ucfirst($emargementDebut->status ?? 'present'),
+                    'Statut fin' => ucfirst($emargementFin->status ?? 'present')
+                ]
+            ];
+        }
+
+        // 🟠 ORANGE : Partiel (seulement début)
+        if ($emargementDebut && !$emargementFin) {
+            // Vérifier si fenêtre de fin expirée
+            if ($now->gt($fenetreClotureFin)) {
+                return [
+                    'color' => 'warning',
+                    'bgClass' => 'bg-warning-subtle',
+                    'borderClass' => 'border-warning',
+                    'badge' => 'Fin manquée',
+                    'badgeClass' => 'bg-warning',
+                    'icon' => 'fa-exclamation-triangle',
+                    'description' => 'Début émargé, fin expirée',
+                    'showDetails' => true,
+                    'details' => [
+                        'Début' => Carbon::parse($emargementDebut->validated_at)->format('H:i'),
+                        'Fin' => 'Non émargé (expiré)',
+                        'Statut' => ucfirst($emargementDebut->status ?? 'present')
+                    ]
+                ];
+            }
+
+            return [
+                'color' => 'info',
+                'bgClass' => 'bg-info-subtle',
+                'borderClass' => 'border-info',
+                'badge' => 'En cours',
+                'badgeClass' => 'bg-info',
+                'icon' => 'fa-clock',
+                'description' => 'Début émargé, fin en attente',
+                'showDetails' => true,
+                'details' => [
+                    'Début' => Carbon::parse($emargementDebut->validated_at)->format('H:i'),
+                    'Fin' => 'En attente',
+                    'Fenêtre clôture' => $heureFin->copy()->subMinutes(20)->format('H:i') . ' - ' . $fenetreClotureFin->format('H:i')
+                ]
+            ];
+        }
+
+        // 🔴 ROUGE : Absent (délai dépassé)
+        if (!$emargementDebut && $now->gt($limite45min) && $dateSeance->isPast()) {
+            return [
+                'color' => 'danger',
+                'bgClass' => 'bg-danger-subtle',
+                'borderClass' => 'border-danger',
+                'badge' => 'Absent',
+                'badgeClass' => 'bg-danger',
+                'icon' => 'fa-times-circle',
+                'description' => 'Non émargé (délai 45min dépassé)',
+                'showDetails' => true,
+                'details' => [
+                    'Statut' => 'Absent automatique',
+                    'Délai expiré' => $limite45min->format('H:i')
+                ]
+            ];
+        }
+
+        // ⚪ GRIS : À venir
+        if ($dateSeance->isFuture() || $now->lt($heureDebut)) {
+            return [
+                'color' => 'secondary',
+                'bgClass' => 'bg-light',
+                'borderClass' => 'border-secondary',
+                'badge' => 'À venir',
+                'badgeClass' => 'bg-secondary',
+                'icon' => 'fa-calendar',
+                'description' => 'Programmé',
+                'showDetails' => false,
+                'details' => []
+            ];
+        }
+
+        // Par défaut : En attente (fenêtre ouverte)
+        return [
+            'color' => 'primary',
+            'bgClass' => 'bg-primary-subtle',
+            'borderClass' => 'border-primary',
+            'badge' => 'Disponible',
+            'badgeClass' => 'bg-primary',
+            'icon' => 'fa-hourglass-half',
+            'description' => 'Émargement disponible maintenant',
+            'showDetails' => false,
+            'details' => []
+        ];
+    }
+
+    /**
+     * Calculer les statistiques hebdomadaires
+     */
+    private function calculateWeeklyStats($seances)
+    {
+        $total = $seances->count();
+
+        if ($total === 0) {
+            return [
+                'total' => 0,
+                'complet' => 0,
+                'partiel' => 0,
+                'absent' => 0,
+                'a_venir' => 0,
+                'taux_presence' => 0
+            ];
+        }
+
+        $complet = $seances->filter(fn($s) => $s->statusInfo['badge'] === 'Complet')->count();
+        $partiel = $seances->filter(fn($s) => in_array($s->statusInfo['badge'], ['En cours', 'Fin manquée']))->count();
+        $absent = $seances->filter(fn($s) => $s->statusInfo['badge'] === 'Absent')->count();
+        $aVenir = $seances->filter(fn($s) => $s->statusInfo['badge'] === 'À venir')->count();
+
+        $tauxPresence = $total > 0 ? round(($complet / $total) * 100, 1) : 0;
+
+        return [
+            'total' => $total,
+            'complet' => $complet,
+            'partiel' => $partiel,
+            'absent' => $absent,
+            'a_venir' => $aVenir,
+            'taux_presence' => $tauxPresence
+        ];
     }
 }

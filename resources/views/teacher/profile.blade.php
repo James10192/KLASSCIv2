@@ -4,6 +4,218 @@
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<style>
+    /* Main content padding responsive */
+    .main-content {
+        padding: 1.5rem;
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    /* Grille principale responsive */
+    .profile-grid {
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: var(--space-lg);
+    }
+
+    @media (max-width: 992px) {
+        .profile-grid {
+            grid-template-columns: 1fr;
+            gap: var(--space-md);
+        }
+
+        .main-content {
+            padding: 1rem;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .main-content {
+            padding: 0.75rem;
+        }
+
+        .profile-grid {
+            gap: var(--space-sm);
+        }
+    }
+
+    /* Header responsive */
+    @media (max-width: 768px) {
+        .dashboard-header {
+            flex-direction: column;
+            text-align: center;
+            gap: var(--space-md);
+        }
+
+        .dashboard-header h1 {
+            font-size: 1.5rem;
+        }
+
+        .header-subtitle {
+            font-size: 0.875rem;
+        }
+
+        .header-actions {
+            width: 100%;
+        }
+
+        .header-actions .btn-acasi {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .dashboard-header h1 i {
+            display: none;
+        }
+
+        .dashboard-header h1 {
+            font-size: 1.25rem;
+        }
+    }
+
+    /* Carte profil responsive */
+    @media (max-width: 576px) {
+        .main-card-body img.rounded-circle {
+            width: 100px !important;
+            height: 100px !important;
+        }
+
+        .main-card-body h5 {
+            font-size: 1.125rem;
+        }
+
+        .main-card-body p {
+            font-size: 0.875rem;
+        }
+    }
+
+    /* Actions rapides responsive */
+    @media (max-width: 768px) {
+        .row.g-3 .col-md-4,
+        .row.g-3 .col-md-6 {
+            flex: 0 0 100%;
+            max-width: 100%;
+        }
+
+        .btn-acasi {
+            width: 100% !important;
+            min-height: 44px;
+            padding: 0.625rem 1rem;
+            justify-content: center !important;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .row.g-3 {
+            gap: 0.5rem !important;
+        }
+
+        .btn-acasi {
+            font-size: 0.875rem;
+        }
+
+        .btn-acasi i {
+            font-size: 1rem;
+        }
+    }
+
+    /* Informations professionnelles responsive */
+    @media (max-width: 576px) {
+        .main-card-body .mb-3 {
+            margin-bottom: 0.75rem !important;
+            font-size: 0.875rem;
+        }
+
+        .main-card-body strong {
+            display: block;
+            margin-bottom: 0.25rem;
+        }
+
+        .badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+        }
+    }
+
+    /* Modal responsive */
+    @media (max-width: 768px) {
+        .modal-dialog {
+            margin: 0.5rem;
+            max-width: calc(100% - 1rem);
+        }
+
+        .modal-body {
+            padding: 1rem;
+        }
+
+        .modal-header,
+        .modal-footer {
+            padding: 0.75rem 1rem;
+        }
+
+        .modal-title {
+            font-size: 1.125rem;
+        }
+
+        .form-label {
+            font-size: 0.875rem;
+        }
+
+        .form-control {
+            font-size: 0.875rem;
+        }
+    }
+
+    /* Alertes responsive */
+    @media (max-width: 768px) {
+        .alert {
+            font-size: 0.875rem;
+            padding: 0.75rem;
+            margin-bottom: 1rem;
+        }
+    }
+
+    /* Main card responsive */
+    @media (max-width: 576px) {
+        .main-card {
+            margin-bottom: 1rem;
+        }
+
+        .main-card-header {
+            padding: var(--space-md);
+        }
+
+        .main-card-body {
+            padding: var(--space-md);
+        }
+
+        .main-card-title {
+            font-size: 1rem;
+        }
+
+        .main-card-title i {
+            font-size: 0.875rem;
+        }
+    }
+
+    /* Grille informations compte */
+    @media (max-width: 768px) {
+        .row.g-3 > div {
+            margin-bottom: 1rem;
+        }
+
+        .row.g-3 > div strong {
+            font-size: 0.875rem;
+        }
+
+        .row.g-3 > div .text-muted {
+            font-size: 0.8125rem;
+        }
+    }
+</style>
 @endsection
 
 @section('content')
@@ -36,7 +248,7 @@
             </div>
         @endif
 
-        <div class="dashboard-main-grid" style="grid-template-columns: 1fr 2fr; gap: var(--space-lg);">
+        <div class="profile-grid">
             <!-- Colonne gauche: Informations personnelles -->
             <div>
                 <!-- Carte Profil -->

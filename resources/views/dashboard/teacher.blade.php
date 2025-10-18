@@ -103,12 +103,318 @@
         border-color: var(--accent-blue);
         background-color: rgba(6, 182, 212, 0.05);
     }
+
+    /* Responsive pour KPI cards */
+    @media (max-width: 576px) {
+        .card-moderne.p-3 {
+            padding: 1rem !important;
+        }
+
+        .card-moderne .rounded-circle {
+            padding: 0.75rem !important;
+        }
+
+        .card-moderne .rounded-circle i {
+            font-size: 1.25rem !important;
+        }
+
+        .card-moderne h6 {
+            font-size: 0.875rem;
+        }
+
+        .card-moderne .h4 {
+            font-size: 1.25rem;
+        }
+
+        .card-moderne small {
+            font-size: 0.75rem;
+        }
+    }
+
+    /* Responsive pour les cours */
+    @media (max-width: 768px) {
+        .course-item {
+            grid-template-columns: 1fr !important;
+            gap: var(--space-sm) !important;
+            padding: var(--space-md) !important;
+        }
+
+        .course-time,
+        .course-info,
+        .course-status,
+        .course-actions {
+            justify-content: center;
+            text-align: center;
+        }
+
+        .time-display {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .course-subject {
+            font-size: 1rem;
+        }
+
+        .course-actions {
+            width: 100%;
+        }
+
+        .course-actions .quick-action-btn,
+        .course-actions .btn {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+
+    /* Responsive pour les appels urgents */
+    @media (max-width: 768px) {
+        .urgent-item {
+            flex-direction: column;
+            text-align: center;
+            gap: var(--space-md);
+        }
+
+        .urgent-info {
+            text-align: center;
+        }
+
+        .btn-urgent-action {
+            width: 100%;
+        }
+    }
+
+    /* Dashboard header responsive */
+    @media (max-width: 768px) {
+        .dashboard-header {
+            flex-direction: column;
+            text-align: center;
+            gap: var(--space-md);
+        }
+
+        .header-left h1 {
+            font-size: 1.5rem;
+        }
+
+        .header-subtitle {
+            font-size: 0.875rem;
+        }
+
+        .header-actions {
+            justify-content: center;
+        }
+    }
+
+    /* Quick actions responsive */
+    @media (max-width: 576px) {
+        .quick-actions-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: var(--space-sm);
+        }
+
+        .quick-action-card {
+            padding: var(--space-md);
+            font-size: 0.875rem;
+        }
+
+        .quick-action-card i {
+            font-size: 1.5rem;
+        }
+    }
+
+    @media (max-width: 400px) {
+        .quick-actions-grid {
+            grid-template-columns: 1fr !important;
+        }
+    }
+
+    /* Padding responsive pour main-content */
+    @media (max-width: 992px) {
+        .main-content {
+            padding: 1rem !important;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .main-content {
+            padding: 0.75rem !important;
+        }
+
+        .main-card-body {
+            padding: var(--space-md) !important;
+        }
+
+        .main-card-header {
+            padding: var(--space-md) !important;
+        }
+    }
+
+    /* Amélioration des marges pour mobile */
+    @media (max-width: 768px) {
+        .mb-4 {
+            margin-bottom: 1.5rem !important;
+        }
+
+        .section-header {
+            margin-bottom: 1rem !important;
+        }
+
+        .section-title {
+            font-size: 1.25rem !important;
+        }
+    }
+
+    /* Status badges responsive */
+    @media (max-width: 576px) {
+        .status-badge {
+            padding: 0.375rem 0.75rem !important;
+            font-size: 0.75rem !important;
+        }
+
+        .status-badge i {
+            font-size: 0.875rem;
+        }
+    }
+
+    /* Amélioration de l'empty state */
+    @media (max-width: 576px) {
+        .empty-state {
+            padding: 2rem 1rem !important;
+        }
+
+        .empty-state i {
+            font-size: 2.5rem !important;
+        }
+
+        .empty-state p {
+            font-size: 0.875rem;
+        }
+    }
+
+    /* Boutons touch-friendly pour mobile */
+    @media (max-width: 768px) {
+        .btn, .quick-action-btn, .btn-urgent-action {
+            min-height: 44px !important;
+            padding: 0.625rem 1rem !important;
+            font-size: 0.875rem !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-sm {
+            min-height: 38px !important;
+            padding: 0.5rem 0.875rem !important;
+            font-size: 0.8125rem !important;
+        }
+
+        /* Boutons dans les KPI cards */
+        .card-moderne .btn {
+            width: 100%;
+            margin-top: 0.5rem;
+        }
+
+        /* Boutons d'action dans les cours */
+        .course-actions a,
+        .course-actions button {
+            min-width: 120px;
+        }
+    }
+
+    /* Amélioration des notifications pour mobile */
+    @media (max-width: 768px) {
+        .card-moderne.mb-3 {
+            margin-bottom: 0.75rem !important;
+        }
+
+        .notification-card {
+            padding: var(--space-sm) !important;
+            font-size: 0.875rem;
+        }
+    }
+
+    /* Amélioration de la course list pour mobile */
+    @media (max-width: 768px) {
+        .course-list {
+            gap: var(--space-md) !important;
+        }
+
+        .course-day {
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+        }
+
+        .course-class,
+        .course-type {
+            font-size: 0.8125rem;
+        }
+    }
+
+    /* Urgent list responsive */
+    @media (max-width: 768px) {
+        .urgent-list {
+            gap: var(--space-md) !important;
+        }
+
+        .urgent-title {
+            font-size: 0.9375rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .urgent-time {
+            font-size: 0.8125rem;
+        }
+    }
+
+    /* Dashboard main grid responsive */
+    @media (max-width: 992px) {
+        .dashboard-main-grid {
+            gap: var(--space-lg) !important;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .dashboard-main-grid {
+            gap: var(--space-md) !important;
+        }
+    }
+
+    /* Alertes responsive */
+    @media (max-width: 768px) {
+        .alert {
+            font-size: 0.875rem !important;
+            padding: 0.75rem !important;
+            margin: 0.75rem !important;
+            max-width: calc(100% - 1.5rem) !important;
+        }
+    }
+
+    /* Amélioration du code display */
+    @media (max-width: 576px) {
+        .code-display {
+            font-size: 1.75rem !important;
+            padding: var(--space-md) !important;
+        }
+    }
+
+    /* Amélioration des icônes dans les headers */
+    @media (max-width: 576px) {
+        .main-card-title i,
+        .section-title i {
+            font-size: 1rem;
+        }
+
+        h1 i {
+            display: none;
+        }
+    }
 </style>
 @endsection
 
 @section('content')
 <div class="dashboard-acasi">
-    <div class="main-content">
+    <div class="main-content" style="padding: 1.5rem; max-width: 100%; overflow-x: hidden;">
         <!-- Header avec bienvenue -->
         <div class="dashboard-header">
             <div class="header-left">
@@ -140,9 +446,9 @@
         @endif
 
         <!-- Grille des KPIs -->
-        <div class="row mb-4">
+        <div class="row g-3 mb-4">
             <!-- KPI 1: Émargement du jour -->
-            <div class="col-lg-3 col-md-6">
+            <div class="col-lg-3 col-md-6 col-sm-6 col-12">
                 @php
                     $now = \Carbon\Carbon::now();
                     $hasCoursesToday = $todayClasses->count() > 0;
@@ -286,7 +592,7 @@
             </div>
 
             <!-- KPI 2: Mes séances -->
-            <div class="col-lg-3 col-md-6">
+            <div class="col-lg-3 col-md-6 col-sm-6 col-12">
                 <div class="card-moderne p-3 border-primary">
                     <div class="d-flex align-items-center">
                         <div class="me-3">
@@ -309,7 +615,7 @@
             </div>
 
             <!-- KPI 3: Taux de présence -->
-            <div class="col-lg-3 col-md-6">
+            <div class="col-lg-3 col-md-6 col-sm-6 col-12">
                 <div class="card-moderne p-3 {{ isset($attendanceStats['attendanceRate']) && $attendanceStats['attendanceRate'] > 90 ? 'border-success' : (isset($attendanceStats['attendanceRate']) && $attendanceStats['attendanceRate'] > 75 ? 'border-warning' : 'border-danger') }}">
                     <div class="d-flex align-items-center">
                         <div class="me-3">
@@ -329,7 +635,7 @@
             </div>
 
             <!-- KPI 4: Appels en attente -->
-            <div class="col-lg-3 col-md-6">
+            <div class="col-lg-3 col-md-6 col-sm-6 col-12">
                 @php
                     // Filtrer les appels en attente pour exclure les cours expirés
                     $now = \Carbon\Carbon::now();
