@@ -1059,7 +1059,9 @@ class ESBTPAttendanceController extends Controller
         $statistiques = [];
 
         foreach ($etudiants as $etudiant) {
-            $attendances = ESBTPAttendance::where('etudiant_id', $etudiant->id)
+            // IMPORTANT: Utiliser finalOnly() pour éviter les doublons (start + merged)
+            $attendances = ESBTPAttendance::finalOnly()
+                ->where('etudiant_id', $etudiant->id)
                 ->whereHas('seanceCours.emploiTemps', function($query) use ($classe) {
                     $query->where('classe_id', $classe->id);
                 })
@@ -1142,7 +1144,9 @@ class ESBTPAttendanceController extends Controller
         $statistiques = [];
 
         foreach ($etudiants as $etudiant) {
-            $attendances = ESBTPAttendance::where('etudiant_id', $etudiant->id)
+            // IMPORTANT: Utiliser finalOnly() pour éviter les doublons (start + merged)
+            $attendances = ESBTPAttendance::finalOnly()
+                ->where('etudiant_id', $etudiant->id)
                 ->whereHas('seanceCours.emploiTemps', function($query) use ($classe) {
                     $query->where('classe_id', $classe->id);
                 })
