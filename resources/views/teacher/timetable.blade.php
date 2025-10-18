@@ -56,50 +56,64 @@
         <!-- KPI Stats de progression -->
         <div class="row g-3 mb-4">
             <div class="col-lg-2 col-md-4 col-6">
-                <div class="stat-card border-success">
-                    <div class="stat-icon bg-success text-white">
+                <div class="stat-card-horizontal border-success">
+                    <div class="stat-icon-left bg-success text-white">
                         <i class="fas fa-check-double"></i>
+                        <span class="stat-number">{{ $stats['complet'] }}</span>
                     </div>
-                    <div class="stat-value text-success">{{ $stats['complet'] }}</div>
-                    <div class="stat-label">Complets</div>
+                    <div class="stat-info-right">
+                        <div class="stat-label">Complets</div>
+                        <div class="stat-sublabel">Début + Fin</div>
+                    </div>
                 </div>
             </div>
             <div class="col-lg-2 col-md-4 col-6">
-                <div class="stat-card border-warning">
-                    <div class="stat-icon bg-warning text-white">
+                <div class="stat-card-horizontal border-warning">
+                    <div class="stat-icon-left bg-warning text-white">
                         <i class="fas fa-exclamation-triangle"></i>
+                        <span class="stat-number">{{ $stats['partiel'] }}</span>
                     </div>
-                    <div class="stat-value text-warning">{{ $stats['partiel'] }}</div>
-                    <div class="stat-label">Partiels</div>
+                    <div class="stat-info-right">
+                        <div class="stat-label">Partiels</div>
+                        <div class="stat-sublabel">Fin manquée</div>
+                    </div>
                 </div>
             </div>
             <div class="col-lg-2 col-md-4 col-6">
-                <div class="stat-card border-danger">
-                    <div class="stat-icon bg-danger text-white">
+                <div class="stat-card-horizontal border-danger">
+                    <div class="stat-icon-left bg-danger text-white">
                         <i class="fas fa-times-circle"></i>
+                        <span class="stat-number">{{ $stats['absent'] }}</span>
                     </div>
-                    <div class="stat-value text-danger">{{ $stats['absent'] }}</div>
-                    <div class="stat-label">Absents</div>
+                    <div class="stat-info-right">
+                        <div class="stat-label">Absents</div>
+                        <div class="stat-sublabel">Non émargés</div>
+                    </div>
                 </div>
             </div>
             <div class="col-lg-2 col-md-4 col-6">
-                <div class="stat-card border-secondary">
-                    <div class="stat-icon bg-secondary text-white">
+                <div class="stat-card-horizontal border-secondary">
+                    <div class="stat-icon-left bg-secondary text-white">
                         <i class="fas fa-calendar"></i>
+                        <span class="stat-number">{{ $stats['a_venir'] }}</span>
                     </div>
-                    <div class="stat-value text-secondary">{{ $stats['a_venir'] }}</div>
-                    <div class="stat-label">À venir</div>
+                    <div class="stat-info-right">
+                        <div class="stat-label">À venir</div>
+                        <div class="stat-sublabel">Programmés</div>
+                    </div>
                 </div>
             </div>
             <div class="col-lg-4 col-md-8 col-12">
-                <div class="stat-card border-primary">
-                    <div class="stat-icon bg-primary text-white">
+                <div class="stat-card-horizontal border-primary">
+                    <div class="stat-icon-left bg-primary text-white">
                         <i class="fas fa-chart-line"></i>
+                        <span class="stat-number">{{ $stats['taux_presence'] }}%</span>
                     </div>
-                    <div class="stat-value text-primary">{{ $stats['taux_presence'] }}%</div>
-                    <div class="stat-label">Taux de présence</div>
-                    <div class="progress mt-2" style="height: 6px;">
-                        <div class="progress-bar bg-success" style="width: {{ $stats['taux_presence'] }}%"></div>
+                    <div class="stat-info-right">
+                        <div class="stat-label">Taux de présence</div>
+                        <div class="progress mt-2" style="height: 6px;">
+                            <div class="progress-bar bg-success" style="width: {{ $stats['taux_presence'] }}%"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -389,43 +403,62 @@
     align-items: center;
 }
 
-/* KPI Stats Cards */
-.stat-card {
+/* KPI Stats Cards - Layout Horizontal */
+.stat-card-horizontal {
     background: white;
     padding: 1rem;
     border-radius: 8px;
     border-left: 4px solid;
-    text-align: center;
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    position: relative;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    min-height: 80px;
 }
 
-.stat-card:hover {
+.stat-card-horizontal:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
-.stat-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
+.stat-icon-left {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    margin: 0 auto 0.75rem;
-    font-size: 1.25rem;
+    gap: 0.25rem;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    min-width: 70px;
 }
 
-.stat-value {
-    font-size: 2rem;
+.stat-icon-left i {
+    font-size: 1.5rem;
+}
+
+.stat-number {
+    font-size: 1.5rem;
     font-weight: 700;
     line-height: 1;
-    margin-bottom: 0.5rem;
+}
+
+.stat-info-right {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 .stat-label {
-    font-size: 0.875rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: #1e3a8a;
+    margin-bottom: 0.25rem;
+}
+
+.stat-sublabel {
+    font-size: 0.75rem;
     color: #6b7280;
     font-weight: 500;
 }
@@ -815,18 +848,31 @@
         grid-template-columns: 100px repeat(6, minmax(100px, 1fr));
     }
 
-    .stat-card {
+    .stat-card-horizontal {
         padding: 0.75rem;
+        gap: 0.75rem;
+        min-height: 70px;
     }
 
-    .stat-value {
-        font-size: 1.5rem;
+    .stat-icon-left {
+        min-width: 60px;
+        padding: 0.5rem 0.75rem;
     }
 
-    .stat-icon {
-        width: 35px;
-        height: 35px;
-        font-size: 1rem;
+    .stat-icon-left i {
+        font-size: 1.25rem;
+    }
+
+    .stat-number {
+        font-size: 1.25rem;
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+    }
+
+    .stat-sublabel {
+        font-size: 0.7rem;
     }
 }
 
@@ -863,12 +909,31 @@
         font-size: 0.75rem;
     }
 
-    .stat-value {
-        font-size: 1.25rem;
+    .stat-card-horizontal {
+        padding: 0.65rem;
+        gap: 0.5rem;
+        min-height: 65px;
+    }
+
+    .stat-icon-left {
+        min-width: 55px;
+        padding: 0.5rem;
+    }
+
+    .stat-icon-left i {
+        font-size: 1.1rem;
+    }
+
+    .stat-number {
+        font-size: 1.1rem;
     }
 
     .stat-label {
-        font-size: 0.75rem;
+        font-size: 0.8125rem;
+    }
+
+    .stat-sublabel {
+        font-size: 0.65rem;
     }
 
     .nav-buttons {
@@ -910,10 +975,31 @@
         padding: 0.15rem 0.25rem;
     }
 
-    .stat-icon {
-        width: 30px;
-        height: 30px;
-        font-size: 0.875rem;
+    .stat-card-horizontal {
+        padding: 0.5rem;
+        gap: 0.5rem;
+        min-height: 60px;
+    }
+
+    .stat-icon-left {
+        min-width: 50px;
+        padding: 0.4rem;
+    }
+
+    .stat-icon-left i {
+        font-size: 1rem;
+    }
+
+    .stat-number {
+        font-size: 1rem;
+    }
+
+    .stat-label {
+        font-size: 0.75rem;
+    }
+
+    .stat-sublabel {
+        font-size: 0.625rem;
     }
 }
 </style>

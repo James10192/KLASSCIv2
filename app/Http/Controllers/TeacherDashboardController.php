@@ -59,8 +59,26 @@ class TeacherDashboardController extends Controller
         }
 
         // 2. Statistiques de présence
-        $totalSeances = ESBTPSeanceCours::where('teacher_id', $teacherId)->count();
-        $attendedSeances = \App\Models\ESBTPTeacherAttendance::where('teacher_id', $teacherId)->count();
+        // Compter SEULEMENT les séances passées et planifiées (avec date_seance)
+        // Pas les modèles de séances ni les futures séances
+        $totalSeances = ESBTPSeanceCours::where('teacher_id', $teacherId)
+            ->whereNotNull('date_seance')
+            ->where('date_seance', '<=', Carbon::today())
+            ->count();
+
+        // Compter les séances avec attendance à LA BONNE DATE (pas juste n'importe quelle attendance)
+        // On doit joindre les tables pour comparer date_seance avec date de l'attendance
+        $attendedSeances = ESBTPSeanceCours::where('esbtp_seance_cours.teacher_id', $teacherId)
+            ->whereNotNull('esbtp_seance_cours.date_seance')
+            ->where('esbtp_seance_cours.date_seance', '<=', Carbon::today())
+            ->join('esbtp_teacher_attendances', function($join) {
+                $join->on('esbtp_seance_cours.id', '=', 'esbtp_teacher_attendances.course_id')
+                     ->where('esbtp_teacher_attendances.type', '=', 'start')
+                     ->whereRaw('DATE(esbtp_teacher_attendances.date) = DATE(esbtp_seance_cours.date_seance)');
+            })
+            ->distinct('esbtp_seance_cours.id')
+            ->count('esbtp_seance_cours.id');
+
         $attendanceRate = $totalSeances > 0 ? round(($attendedSeances / $totalSeances) * 100, 2) : 0;
         $attendanceStats = [
             'totalCourses' => $totalSeances,
