@@ -253,6 +253,7 @@ MAIL_FROM_NAME="KLASSCI"
 - **17/10** : Fix filtrage étudiants roll-call enseignant → ajout classe_id dans TeacherDashboardController::showRollCall()
 - **17/10** : Fix filtrage attendances.index + rapport + rapportPdf → ajout status='active' + classe_id conditionnels sur inscriptions
 - **18/10** : Fix calcul date séance attendances.create → utilisation date_seance BDD au lieu de getDateSeance() calculé (badge + date affichée corrects)
+- **18/10** : Fix KPI Présences attendances.index → inclusion retards dans compteur présences (retards = présences métier)
 
 ## ✨ Fonctionnalités récentes
 

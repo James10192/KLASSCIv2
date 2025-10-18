@@ -590,10 +590,13 @@
         <div class="kpi-grid mb-4">
             <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
                 <div class="kpi-title" style="color: #000; font-weight: 600;">Présences</div>
-                <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ $stats['present'] ?? 0 }}</div>
+                <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ $stats['total_present_with_retards'] ?? 0 }}</div>
                 <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
                     <i class="fas fa-check-circle"></i>
-                    {{ ($stats['total'] ?? 0) > 0 ? round(($stats['present'] ?? 0) / $stats['total'] * 100, 1) : 0 }}% du total
+                    {{ ($stats['total'] ?? 0) > 0 ? round(($stats['total_present_with_retards'] ?? 0) / $stats['total'] * 100, 1) : 0 }}% du total
+                    @if(($stats['retard'] ?? 0) > 0)
+                    <small class="text-muted d-block mt-1">dont {{ $stats['retard'] }} retard(s)</small>
+                    @endif
                 </div>
             </div>
 
