@@ -249,6 +249,8 @@ MAIL_FROM_NAME="KLASSCI"
 - **17/10** : Exclusion séances absentes du calcul heures effectuées → planning général + emploi temps
 - **17/10** : Système AJAX marquage présences étudiants → no-reload + badges FontAwesome + détection correcte attendances
 - **17/10** : Correction terminologie attendances.index → "Présences/Absences" au lieu d'"Étudiants" (KPI + graphique + stats classe)
+- **17/10** : Fix filtrage étudiants attendances → ajout classe_id dans whereHas inscriptions (cohérence avec classes.show)
+- **17/10** : Fix filtrage étudiants roll-call enseignant → ajout classe_id dans TeacherDashboardController::showRollCall()
 
 ## ✨ Fonctionnalités récentes
 
@@ -607,6 +609,142 @@ $stats = [
 ```
 
 Ce sont des `COUNT(*)` sur `esbtp_attendances`, donc des enregistrements, pas des `COUNT(DISTINCT etudiant_id)`.
+
+### Fix filtrage étudiants attendances (17 octobre 2025)
+
+**Problème** : Dans `ESBTPAttendanceController`, les méthodes `create()` et `loadStudents()` ne filtraient pas correctement les étudiants par rapport à leur inscription **active** dans la **classe sélectionnée** pour l'année courante.
+
+**Symptôme** : Les étudiants retournés dans `attendances.create` et `attendances.loadStudents` n'étaient **pas les mêmes** que ceux affichés dans `classes.show`, car le filtre `classe_id` manquait dans la clause `whereHas('inscriptions')`.
+
+**Cause** : Utilisation de `$classe->etudiants()->whereHas('inscriptions')` sans vérifier que l'inscription active correspond bien à **cette classe** (un étudiant peut avoir plusieurs inscriptions dans différentes classes).
+
+**Logique correcte** (comme dans `classes.show`) :
+
+```php
+// ESBTPClasseController::show() - Ligne 268-271
+$classe->etudiants()
+    ->whereHas('inscriptions', function ($inscriptionQuery) use ($anneeCourante, $classe) {
+        $inscriptionQuery->where('annee_universitaire_id', $anneeCourante->id)
+                         ->where('status', 'active')
+                         ->where('classe_id', $classe->id); // ← Ce filtre manquait !
+    });
+```
+
+**Corrections appliquées**
+
+**Fichier** : `app/Http/Controllers/ESBTPAttendanceController.php`
+
+1. **Méthode `loadStudents()`** (ligne 700-706)
+   ```diff
+   $etudiants = $classe->etudiants()
+   -    ->whereHas('inscriptions', function($q) use ($anneeUniversitaire) {
+   +    ->whereHas('inscriptions', function($q) use ($anneeUniversitaire, $classe) {
+           $q->where('annee_universitaire_id', $anneeUniversitaire->id)
+   -         ->where('status', 'active');
+   +         ->where('status', 'active')
+   +         ->where('classe_id', $classe->id);
+       })
+       ->get();
+   ```
+
+2. **Méthode `create()` - Premier endroit** (ligne 476-482)
+   ```diff
+   $etudiants = $classe->etudiants()
+   -    ->whereHas('inscriptions', function($q) use ($anneeUniversitaire) {
+   +    ->whereHas('inscriptions', function($q) use ($anneeUniversitaire, $classe) {
+           $q->where('annee_universitaire_id', $anneeUniversitaire->id)
+   -         ->where('status', 'active');
+   +         ->where('status', 'active')
+   +         ->where('classe_id', $classe->id);
+       })
+       ->get();
+   ```
+
+3. **Méthode `create()` - Deuxième endroit** (ligne 542-548)
+   ```diff
+   $etudiants = $classe->etudiants()
+   -    ->whereHas('inscriptions', function($q) use ($anneeUniversitaire) {
+   +    ->whereHas('inscriptions', function($q) use ($anneeUniversitaire, $classe) {
+           $q->where('annee_universitaire_id', $anneeUniversitaire->id)
+   -         ->where('status', 'active');
+   +         ->where('status', 'active')
+   +         ->where('classe_id', $classe->id);
+       })
+       ->get();
+   ```
+
+**Impact**
+
+- ✅ **Cohérence** : Les étudiants affichés dans `attendances.create` sont maintenant **identiques** à ceux de `classes.show`
+- ✅ **Précision** : Seuls les étudiants avec une **inscription active** pour **cette classe** dans l'année courante sont retournés
+- ✅ **Évite les doublons** : Un étudiant avec plusieurs inscriptions n'apparaît que dans la bonne classe
+
+**Règle métier**
+
+> Pour récupérer les étudiants d'une classe, **TOUJOURS** filtrer par :
+> - `annee_universitaire_id = année_courante`
+> - `status = 'active'`
+> - `classe_id = classe_selectionnee` ← **Crucial !**
+
+### Fix filtrage étudiants roll-call enseignant (17 octobre 2025)
+
+**Problème** : Le même problème de filtrage existait dans `TeacherDashboardController::showRollCall()` - les étudiants affichés lors de l'appel par l'enseignant n'étaient **pas les mêmes** que dans `classes.show`.
+
+**Symptôme** : Lors de l'appel (start/end) via la route `teacher.roll-call`, les étudiants retournés incluaient potentiellement des étudiants avec des inscriptions actives dans **d'autres classes**, car le filtre `classe_id` manquait.
+
+**Fichier** : `app/Http/Controllers/TeacherDashboardController.php`
+
+**Correction appliquée** (ligne 193-201)
+
+```diff
+$etudiants = $seance->classe->etudiants()
+    ->with('user')
+-    ->whereHas('inscriptions', function($query) use ($anneeUniversitaire) {
++    ->whereHas('inscriptions', function($query) use ($anneeUniversitaire, $seance) {
+        $query->where('annee_universitaire_id', $anneeUniversitaire->id)
+-             ->where('status', 'active');
++             ->where('status', 'active')
++             ->where('classe_id', $seance->classe_id); // ← FIX: Filter par classe_id
+    })
+    ->get();
+```
+
+**Impact**
+
+- ✅ **Cohérence totale** : Les étudiants dans l'appel enseignant = ceux de `classes.show` = ceux de `attendances.create`
+- ✅ **Workflow complet** : Fix appliqué à tous les points d'entrée du système d'attendance
+- ✅ **Évite erreurs** : Plus de confusion entre étudiants de différentes classes
+
+**Routes concernées**
+
+```php
+GET  /dashboard/teacher/roll-call/{seance}?type=start|end
+POST /dashboard/teacher/roll-call/{seance}
+```
+
+**Vues utilisées**
+
+- `dashboard.teacher-roll-call` : Interface d'appel avec liste des étudiants
+- `teacher.select-call-type` : Sélection type d'appel (redirects vers roll-call)
+
+**Règle métier réaffirmée**
+
+> **Filtrage étudiants : Pattern obligatoire dans TOUT le système**
+> ```php
+> $classe->etudiants()
+>     ->whereHas('inscriptions', function($q) use ($anneeUniversitaire, $classe) {
+>         $q->where('annee_universitaire_id', $anneeUniversitaire->id)
+>           ->where('status', 'active')
+>           ->where('classe_id', $classe->id); // ← TOUJOURS !
+>     });
+> ```
+
+**Fichiers corrigés au total** (même problème dans 4 endroits)
+
+1. ✅ `ESBTPAttendanceController::loadStudents()` (L700-706)
+2. ✅ `ESBTPAttendanceController::create()` - location 1 (L476-482)
+3. ✅ `ESBTPAttendanceController::create()` - location 2 (L542-548)
+4. ✅ `TeacherDashboardController::showRollCall()` (L193-201) ← **Nouveau fix**
 
 ---
 

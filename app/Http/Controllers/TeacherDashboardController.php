@@ -190,11 +190,13 @@ class TeacherDashboardController extends Controller
 
         // Récupérer les étudiants de la classe inscrits pour l'année universitaire courante
         // ET avec un statut d'inscription 'active' uniquement
+        // ET qui sont inscrits dans CETTE classe spécifiquement (pas une autre classe)
         $etudiants = $seance->classe->etudiants()
             ->with('user')
-            ->whereHas('inscriptions', function($query) use ($anneeUniversitaire) {
+            ->whereHas('inscriptions', function($query) use ($anneeUniversitaire, $seance) {
                 $query->where('annee_universitaire_id', $anneeUniversitaire->id)
-                      ->where('status', 'active');
+                      ->where('status', 'active')
+                      ->where('classe_id', $seance->classe_id); // ← FIX: Filter par classe_id
             })
             ->get();
 
