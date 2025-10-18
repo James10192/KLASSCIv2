@@ -432,7 +432,12 @@ class ESBTPAttendanceController extends Controller
                 // Ajouter des informations supplémentaires pour l'affichage
                 $seances->each(function($seance) {
                     $seance->jour_nom = $seance->getNomJour();
-                    $seance->date_calculee = $seance->getDateSeance() ? $seance->getDateSeance()->format('Y-m-d') : null;
+                    // Utiliser date_seance de la base si disponible, sinon calculer
+                    if (!empty($seance->date_seance)) {
+                        $seance->date_calculee = \Carbon\Carbon::parse($seance->date_seance)->format('Y-m-d');
+                    } else {
+                        $seance->date_calculee = $seance->getDateSeance() ? $seance->getDateSeance()->format('Y-m-d') : null;
+                    }
                 });
 
                 // Si aucune séance n'est trouvée, afficher un message
@@ -491,15 +496,25 @@ class ESBTPAttendanceController extends Controller
                             $debug['erreur'] = 'aucun_etudiant';
                         }
 
-                        // Calculer la date de la séance
-                        $dateCalculee = $seance->getDateSeance();
-                        if ($dateCalculee) {
-                            $dateSeance = $dateCalculee->format('Y-m-d');
+                        // Utiliser la date de la séance stockée en base (date_seance)
+                        // au lieu de calculer via getDateSeance() qui peut donner une date incorrecte
+                        if (!empty($seance->date_seance)) {
+                            $dateSeance = \Carbon\Carbon::parse($seance->date_seance)->format('Y-m-d');
                             $debug['date_seance'] = $dateSeance;
+                            $debug['date_source'] = 'database_date_seance';
                         } else {
-                            $messageErreur = 'Impossible de calculer la date de cette séance. Veuillez vérifier les dates de l\'emploi du temps.';
-                            $debug['erreur'] = 'date_calcul_impossible';
-                            $dateSeance = now()->format('Y-m-d'); // Date par défaut
+                            // Fallback: calculer si date_seance n'est pas définie
+                            $dateCalculee = $seance->getDateSeance();
+                            if ($dateCalculee) {
+                                $dateSeance = $dateCalculee->format('Y-m-d');
+                                $debug['date_seance'] = $dateSeance;
+                                $debug['date_source'] = 'calculated_via_emploi_temps';
+                            } else {
+                                $messageErreur = 'Impossible de calculer la date de cette séance. Veuillez vérifier les dates de l\'emploi du temps.';
+                                $debug['erreur'] = 'date_calcul_impossible';
+                                $dateSeance = now()->format('Y-m-d'); // Date par défaut
+                                $debug['date_source'] = 'fallback_now';
+                            }
                         }
 
                         // NOUVEAU: Vérifier si des présences existent déjà pour cette séance
@@ -599,7 +614,12 @@ class ESBTPAttendanceController extends Controller
             $options = '<option value="">Sélectionner une séance</option>';
             foreach ($seances as $seance) {
                 $seance->jour_nom = $seance->getNomJour();
-                $seance->date_calculee = $seance->getDateSeance() ? $seance->getDateSeance()->format('Y-m-d') : null;
+                // Utiliser date_seance de la base si disponible, sinon calculer
+                if (!empty($seance->date_seance)) {
+                    $seance->date_calculee = \Carbon\Carbon::parse($seance->date_seance)->format('Y-m-d');
+                } else {
+                    $seance->date_calculee = $seance->getDateSeance() ? $seance->getDateSeance()->format('Y-m-d') : null;
+                }
 
                 $matiere = $seance->matiere->name ?? 'Matière inconnue';
                 $heureDebut = $seance->heure_debut->format('H:i');
@@ -608,8 +628,10 @@ class ESBTPAttendanceController extends Controller
                 $dateCalculee = $seance->date_calculee ? \Carbon\Carbon::parse($seance->date_calculee)->format('d/m/Y') : '';
 
                 // Vérifier si des présences existent déjà pour cette séance
-                // Utiliser la date calculée ou aujourd'hui comme fallback
-                $dateRecherche = $seance->date_calculee ?: now()->format('Y-m-d');
+                // Utiliser la date stockée en base (date_seance) ou la date calculée comme fallback
+                $dateRecherche = !empty($seance->date_seance)
+                    ? \Carbon\Carbon::parse($seance->date_seance)->format('Y-m-d')
+                    : ($seance->date_calculee ?: now()->format('Y-m-d'));
 
                 $hasAttendances = ESBTPAttendance::where('seance_cours_id', $seance->id)
                     ->where('date', $dateRecherche)
@@ -716,9 +738,17 @@ class ESBTPAttendanceController extends Controller
                 ], 404);
             }
 
-            // Calculer la date de la séance
-            $dateCalculee = $seance->getDateSeance();
-            $dateSeance = $dateCalculee ? $dateCalculee->format('Y-m-d') : now()->format('Y-m-d');
+            // Utiliser la date de la séance stockée en base (date_seance)
+            // au lieu de calculer via getDateSeance() qui peut donner une date incorrecte
+            if (!empty($seance->date_seance)) {
+                $dateSeance = \Carbon\Carbon::parse($seance->date_seance)->format('Y-m-d');
+                \Log::info('📅 [AJAX] Date from database', ['date_seance' => $dateSeance]);
+            } else {
+                // Fallback: calculer si date_seance n'est pas définie
+                $dateCalculee = $seance->getDateSeance();
+                $dateSeance = $dateCalculee ? $dateCalculee->format('Y-m-d') : now()->format('Y-m-d');
+                \Log::info('📅 [AJAX] Date calculated', ['date_seance' => $dateSeance, 'calculated' => (bool)$dateCalculee]);
+            }
 
             // Charger les présences existantes (uniquement 'merged' ou sans call_type)
             $existingAttendances = [];

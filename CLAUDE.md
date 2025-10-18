@@ -252,6 +252,7 @@ MAIL_FROM_NAME="KLASSCI"
 - **17/10** : Fix filtrage étudiants attendances.create/loadStudents → ajout classe_id dans whereHas inscriptions (cohérence avec classes.show)
 - **17/10** : Fix filtrage étudiants roll-call enseignant → ajout classe_id dans TeacherDashboardController::showRollCall()
 - **17/10** : Fix filtrage attendances.index + rapport + rapportPdf → ajout status='active' + classe_id conditionnels sur inscriptions
+- **18/10** : Fix calcul date séance attendances.create → utilisation date_seance BDD au lieu de getDateSeance() calculé (badge + date affichée corrects)
 
 ## ✨ Fonctionnalités récentes
 
@@ -746,6 +747,170 @@ POST /dashboard/teacher/roll-call/{seance}
 2. ✅ `ESBTPAttendanceController::create()` - location 1 (L476-482)
 3. ✅ `ESBTPAttendanceController::create()` - location 2 (L542-548)
 4. ✅ `TeacherDashboardController::showRollCall()` (L193-201) ← **Nouveau fix**
+
+### Fix calcul date séance attendances.create (18 octobre 2025)
+
+**Problème** : La date affichée pour une séance et la détection de badge "Présence marquée" étaient incorrectes car le code utilisait `getDateSeance()` (méthode qui calcule la prochaine occurrence du jour de la semaine) au lieu de la date stockée en base de données (`date_seance`).
+
+**Symptômes** :
+
+1. **Date incorrecte affichée** : Une séance du vendredi 17/10/2025 affichait "18/10/2025" (samedi) car aujourd'hui c'est samedi à 00h28 et `getDateSeance()` cherche le "prochain vendredi"
+2. **Badge "Non marquée" erroné** : Le système cherchait des attendances pour le 18/10 alors qu'elles existaient pour le 17/10, donc affichait "Non marquée" au lieu de "Présence marquée"
+3. **Mode "Nouveau marquage" incorrect** : ACHILLE avait 2 attendances merged pour la séance mais le système affichait "Nouveau marquage" au lieu de "Modification"
+
+**Contexte** :
+
+- Séance #12 (Chimie) : `date_seance = 2025-10-17` (vendredi) stockée en base
+- Attendances existantes : 4 enregistrements avec `date = 2025-10-17` et `call_type = 'merged'`
+- Date du jour : Samedi 18/10/2025 à 00h28
+- Problème : `getDateSeance()` retourne le prochain vendredi OU utilise `now()` comme fallback
+
+**Cause technique** :
+
+Le modèle `ESBTPSeanceCours` a deux champs pour la date :
+- `date_seance` : Date réelle stockée en base (ex: `2025-10-17`)
+- Méthode `getDateSeance()` : Calcule la date basée sur `emploi_temps.date_debut` + `jour` (numéro du jour de semaine)
+
+La méthode `getDateSeance()` (lignes 320-365 dans `ESBTPSeanceCours.php`) était utilisée partout alors qu'elle est conçue pour calculer des dates futures, pas pour afficher des séances passées/planifiées.
+
+**Fichier** : `app/Http/Controllers/ESBTPAttendanceController.php`
+
+**Corrections appliquées**
+
+1. **Méthode `create()`** - Détection date pour affichage et chargement attendances (lignes 494-513)
+
+   ```diff
+   - // Calculer la date de la séance
+   - $dateCalculee = $seance->getDateSeance();
+   - if ($dateCalculee) {
+   -     $dateSeance = $dateCalculee->format('Y-m-d');
+   - } else {
+   -     $dateSeance = now()->format('Y-m-d');
+   - }
+
+   + // Utiliser la date de la séance stockée en base (date_seance)
+   + // au lieu de calculer via getDateSeance() qui peut donner une date incorrecte
+   + if (!empty($seance->date_seance)) {
+   +     $dateSeance = \Carbon\Carbon::parse($seance->date_seance)->format('Y-m-d');
+   +     $debug['date_source'] = 'database_date_seance';
+   + } else {
+   +     // Fallback: calculer si date_seance n'est pas définie
+   +     $dateCalculee = $seance->getDateSeance();
+   +     if ($dateCalculee) {
+   +         $dateSeance = $dateCalculee->format('Y-m-d');
+   +         $debug['date_source'] = 'calculated_via_emploi_temps';
+   +     } else {
+   +         $dateSeance = now()->format('Y-m-d');
+   +         $debug['date_source'] = 'fallback_now';
+   +     }
+   + }
+   ```
+
+2. **Méthode `create()` - Enrichissement séances (lignes 433-441)**
+
+   ```diff
+   $seances->each(function($seance) {
+       $seance->jour_nom = $seance->getNomJour();
+   -    $seance->date_calculee = $seance->getDateSeance() ? $seance->getDateSeance()->format('Y-m-d') : null;
+   +    // Utiliser date_seance de la base si disponible, sinon calculer
+   +    if (!empty($seance->date_seance)) {
+   +        $seance->date_calculee = \Carbon\Carbon::parse($seance->date_seance)->format('Y-m-d');
+   +    } else {
+   +        $seance->date_calculee = $seance->getDateSeance() ? $seance->getDateSeance()->format('Y-m-d') : null;
+   +    }
+   });
+   ```
+
+3. **Méthode `loadSeances()` AJAX** - Badge détection (lignes 616-624)
+
+   ```diff
+   foreach ($seances as $seance) {
+       $seance->jour_nom = $seance->getNomJour();
+   -    $seance->date_calculee = $seance->getDateSeance() ? $seance->getDateSeance()->format('Y-m-d') : null;
+   +    if (!empty($seance->date_seance)) {
+   +        $seance->date_calculee = \Carbon\Carbon::parse($seance->date_seance)->format('Y-m-d');
+   +    } else {
+   +        $seance->date_calculee = $seance->getDateSeance() ? $seance->getDateSeance()->format('Y-m-d') : null;
+   +    }
+   ```
+
+   Et pour la détection de badge (lignes 620-644):
+
+   ```diff
+   - // Utiliser la date calculée ou aujourd'hui comme fallback
+   - $dateRecherche = $seance->date_calculee ?: now()->format('Y-m-d');
+
+   + // Utiliser la date stockée en base (date_seance) ou la date calculée comme fallback
+   + $dateRecherche = !empty($seance->date_seance)
+   +     ? \Carbon\Carbon::parse($seance->date_seance)->format('Y-m-d')
+   +     : ($seance->date_calculee ?: now()->format('Y-m-d'));
+   ```
+
+4. **Méthode `loadStudents()` AJAX** - Date pour chargement attendances (lignes 729-739)
+
+   ```diff
+   - // Calculer la date de la séance
+   - $dateCalculee = $seance->getDateSeance();
+   - $dateSeance = $dateCalculee ? $dateCalculee->format('Y-m-d') : now()->format('Y-m-d');
+
+   + // Utiliser la date de la séance stockée en base (date_seance)
+   + // au lieu de calculer via getDateSeance() qui peut donner une date incorrecte
+   + if (!empty($seance->date_seance)) {
+   +     $dateSeance = \Carbon\Carbon::parse($seance->date_seance)->format('Y-m-d');
+   +     \Log::info('📅 [AJAX] Date from database', ['date_seance' => $dateSeance]);
+   + } else {
+   +     $dateCalculee = $seance->getDateSeance();
+   +     $dateSeance = $dateCalculee ? $dateCalculee->format('Y-m-d') : now()->format('Y-m-d');
+   +     \Log::info('📅 [AJAX] Date calculated', ['date_seance' => $dateSeance, 'calculated' => (bool)$dateCalculee]);
+   + }
+   ```
+
+**Logique de priorité**
+
+```
+1. Si date_seance existe en BDD → utiliser cette valeur (source fiable)
+2. Sinon calculer via getDateSeance() → basé sur emploi_temps.date_debut + jour
+3. Sinon fallback now() → dernier recours (séances sans emploi temps)
+```
+
+**Impact**
+
+- ✅ **Date affichée correcte** : Séance du 17/10 affiche "17/10/2025" au lieu de "18/10/2025"
+- ✅ **Badge précis** : Détecte correctement les attendances existantes (cherche au 17/10, pas au 18/10)
+- ✅ **Mode correct** : Affiche "Modification" quand attendances existent, "Nouveau marquage" sinon
+- ✅ **Chargement AJAX** : Remplit la liste d'étudiants avec les bonnes attendances existantes
+
+**Logs de débogage**
+
+```
+📅 [AJAX] Date from database | date_seance: 2025-10-17
+✅ [BADGE] Séance 12 (Chimie) a 4 attendances pour 2025-10-17
+```
+
+**Règle technique**
+
+> **Pour afficher/utiliser la date d'une séance** :
+> 1. Toujours vérifier si `$seance->date_seance` existe (champ BDD)
+> 2. Utiliser `date_seance` en priorité (date réelle planifiée)
+> 3. `getDateSeance()` sert uniquement pour CALCULER des dates futures lors de la création d'emplois du temps
+
+**Fichiers modifiés** : 1 fichier, 4 méthodes corrigées
+
+- ✅ `ESBTPAttendanceController::create()` - 2 locations (date + enrichissement)
+- ✅ `ESBTPAttendanceController::loadSeances()` - badge detection + enrichissement
+- ✅ `ESBTPAttendanceController::loadStudents()` - chargement attendances
+
+**Exemple concret**
+
+```php
+// AVANT (incorrect)
+$dateSeance = $seance->getDateSeance()->format('Y-m-d'); // → "2025-10-18" (samedi)
+// Badge cherche attendances au 18/10 → aucune trouvée → "Non marquée"
+
+// APRÈS (correct)
+$dateSeance = \Carbon\Carbon::parse($seance->date_seance)->format('Y-m-d'); // → "2025-10-17" (vendredi)
+// Badge cherche attendances au 17/10 → 4 trouvées → "Présence marquée"
+```
 
 ### Fix filtrage attendances.index + rapport + rapportPdf (17 octobre 2025)
 
