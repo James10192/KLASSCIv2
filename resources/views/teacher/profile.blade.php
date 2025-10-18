@@ -1,3 +1,7 @@
+@php
+use Illuminate\Support\Facades\Storage;
+@endphp
+
 @extends('layouts.app')
 
 @section('title', 'Mon Profil - Enseignant')
@@ -260,8 +264,8 @@
                         </div>
                     </div>
                     <div class="main-card-body" style="text-align: center;">
-                        <img class="rounded-circle mb-3" 
-                             src="{{ $teacher->user->profile_image ? asset('storage/'.$teacher->user->profile_image) : asset('images/default-avatar.png') }}" 
+                        <img class="rounded-circle mb-3"
+                             src="{{ $teacher->user->profile_photo_path ? Storage::url($teacher->user->profile_photo_path) : 'https://ui-avatars.com/api/?name=' . urlencode($teacher->user->name) . '&size=120&background=0D6EFD&color=fff' }}"
                              alt="Photo de profil" style="width: 120px; height: 120px; object-fit: cover;">
                         <h5 class="my-3">{{ $teacher->user->name }}</h5>
                         <p class="text-muted mb-1">{{ $teacher->user->email }}</p>
@@ -395,48 +399,115 @@
 
 <!-- Modal de modification du profil -->
 <div class="modal fade" id="editProfileModal" tabindex="-1" aria-labelledby="editProfileModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <form action="#" method="POST" onsubmit="alert('Fonctionnalité de modification en cours de développement'); return false;">
+            <form action="{{ route('teacher.profile.update') }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
-                
+
                 <div class="modal-header">
                     <h5 class="modal-title" id="editProfileModalLabel">Modifier mon profil</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="name" class="form-label">Nom complet</label>
-                        <input type="text" class="form-control" id="name" name="name" value="{{ $teacher->user->name }}" required>
+                    <!-- Affichage des erreurs de validation -->
+                    @if ($errors->any())
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <strong>Erreur :</strong>
+                            <ul class="mb-0">
+                                @foreach ($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    @endif
+
+                    <!-- Photo de profil -->
+                    <div class="mb-4 text-center">
+                        <div class="mb-3">
+                            <img id="preview-image" class="rounded-circle"
+                                 src="{{ $teacher->user->profile_photo_path ? Storage::url($teacher->user->profile_photo_path) : 'https://ui-avatars.com/api/?name=' . urlencode($teacher->user->name) . '&size=120&background=0D6EFD&color=fff' }}"
+                                 alt="Photo de profil"
+                                 style="width: 120px; height: 120px; object-fit: cover; border: 3px solid #e9ecef;">
+                        </div>
+                        <div class="mb-2">
+                            <label for="profile_photo" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-camera"></i> Changer la photo
+                            </label>
+                            <input type="file" class="d-none" id="profile_photo" name="profile_photo"
+                                   accept="image/jpeg,image/png,image/jpg,image/gif"
+                                   onchange="previewProfilePhoto(event)">
+                        </div>
+                        <small class="text-muted">Format: JPG, PNG, GIF (max 2MB)</small>
                     </div>
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Adresse email</label>
-                        <input type="email" class="form-control" id="email" name="email" value="{{ $teacher->user->email }}" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="phone" class="form-label">Téléphone</label>
-                        <input type="text" class="form-control" id="phone" name="phone" value="{{ $teacher->user->phone }}">
-                    </div>
-                    
+
                     <hr>
-                    <h6>Informations professionnelles</h6>
-                    <div class="mb-3">
-                        <label for="qualification" class="form-label">Qualification</label>
-                        <input type="text" class="form-control" id="qualification" name="qualification" value="{{ $teacher->qualification }}">
+
+                    <!-- Informations personnelles -->
+                    <h6 class="mb-3"><i class="fas fa-user"></i> Informations personnelles</h6>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-12">
+                            <label for="name" class="form-label">Nom complet <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="name" name="name" value="{{ $teacher->user->name }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="email" class="form-label">Adresse email <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control" id="email" name="email" value="{{ $teacher->user->email }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="phone" class="form-label">Téléphone</label>
+                            <input type="text" class="form-control" id="phone" name="phone" value="{{ $teacher->user->phone }}">
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label for="experience" class="form-label">Expérience</label>
-                        <input type="text" class="form-control" id="experience" name="experience" value="{{ $teacher->experience }}">
+
+                    <hr>
+
+                    <!-- Informations professionnelles -->
+                    <h6 class="mb-3"><i class="fas fa-briefcase"></i> Informations professionnelles</h6>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="qualification" class="form-label">Qualification</label>
+                            <input type="text" class="form-control" id="qualification" name="qualification" value="{{ $teacher->qualification }}" placeholder="Ex: Master en Informatique">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="experience" class="form-label">Expérience</label>
+                            <input type="text" class="form-control" id="experience" name="experience" value="{{ $teacher->experience }}" placeholder="Ex: 5 ans">
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn btn-primary">Enregistrer les modifications</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Annuler
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Enregistrer les modifications
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+<script>
+function previewProfilePhoto(event) {
+    const file = event.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('preview-image').src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+// Rouvrir le modal s'il y a des erreurs de validation
+@if ($errors->any())
+    document.addEventListener('DOMContentLoaded', function() {
+        var modal = new bootstrap.Modal(document.getElementById('editProfileModal'));
+        modal.show();
+    });
+@endif
+</script>
 
 @endsection 

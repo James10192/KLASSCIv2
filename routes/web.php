@@ -209,6 +209,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         Route::post('/dashboard/teacher/roll-call/{seance}', [TeacherDashboardController::class, 'storeRollCall'])->name('teacher.roll-call.store');
         Route::post('/dashboard/teacher/close-course/{seance}', [TeacherDashboardController::class, 'closeCourse'])->name('teacher.close-course');
         Route::get('/teacher/profile', [TeacherController::class, 'profile'])->name('teacher.profile');
+        Route::put('/teacher/profile', [TeacherController::class, 'updateProfile'])->name('teacher.profile.update');
         Route::get('/teacher/select-call-type/{seance}', [App\Http\Controllers\ESBTP\TeacherAttendanceController::class, 'selectCallType'])->name('teacher.select-call-type');
         
         // Routes pour les rapports de séance

@@ -374,11 +374,16 @@ class TeacherController extends Controller
      */
     public function profile()
     {
-        $teacher = Auth::user()->teacher;
-        
+        // Essayer d'abord ESBTPTeacher, puis Teacher
+        $teacher = \App\Models\ESBTPTeacher::where('user_id', Auth::id())->first();
+
+        if (!$teacher) {
+            $teacher = Auth::user()->teacher;
+        }
+
         if (!$teacher) {
             // Create a temporary teacher object with user data for display
-            $teacher = new Teacher();
+            $teacher = new \App\Models\ESBTPTeacher();
             $teacher->user = Auth::user();
             $teacher->employee_id = 'N/A';
             $teacher->qualification = null;
@@ -388,9 +393,89 @@ class TeacherController extends Controller
             $teacher->designation = null;
             $teacher->subjects = collect();
         } else {
-            $teacher->load(['user', 'department', 'designation', 'subjects']);
+            // Charger les relations selon le type de teacher
+            if ($teacher instanceof \App\Models\ESBTPTeacher) {
+                $teacher->load(['user', 'department']);
+                // ESBTPTeacher n'a pas de designation ni subjects, les initialiser
+                $teacher->designation = null;
+                $teacher->subjects = collect();
+            } else {
+                $teacher->load(['user', 'department', 'designation', 'subjects']);
+            }
         }
-        
+
         return view('teacher.profile', compact('teacher'));
+    }
+
+    /**
+     * Update the authenticated teacher's profile.
+     */
+    public function updateProfile(Request $request)
+    {
+        $user = Auth::user();
+
+        // Essayer d'abord ESBTPTeacher, puis Teacher
+        $teacher = \App\Models\ESBTPTeacher::where('user_id', $user->id)->first();
+
+        if (!$teacher) {
+            $teacher = $user->teacher;
+        }
+
+        if (!$teacher) {
+            return redirect()->back()->with('error', 'Profil enseignant introuvable.');
+        }
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => [
+                'required',
+                'string',
+                'email',
+                'max:255',
+                Rule::unique('users')->ignore($user->id),
+            ],
+            'phone' => 'nullable|string|max:20',
+            'profile_photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'qualification' => 'nullable|string|max:255',
+            'experience' => 'nullable|string|max:255',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            // Mettre à jour l'utilisateur
+            $user->name = $request->name;
+            $user->email = $request->email;
+            $user->phone = $request->phone;
+
+            // Gérer la photo de profil
+            if ($request->hasFile('profile_photo')) {
+                // Supprimer l'ancienne photo si elle existe
+                if ($user->profile_photo_path) {
+                    Storage::disk('public')->delete($user->profile_photo_path);
+                }
+
+                $path = $request->file('profile_photo')->store('profile-photos', 'public');
+                $user->profile_photo_path = $path;
+            }
+
+            $user->save();
+
+            // Mettre à jour les informations professionnelles de l'enseignant
+            $teacher->update([
+                'qualification' => $request->qualification,
+                'experience' => $request->experience,
+            ]);
+
+            DB::commit();
+
+            return redirect()->route('teacher.profile')
+                ->with('success', 'Profil mis à jour avec succès.');
+        } catch (\Exception $e) {
+            DB::rollback();
+            return redirect()->back()
+                ->with('error', 'Une erreur est survenue lors de la mise à jour du profil: ' . $e->getMessage())
+                ->withInput();
+        }
     }
 }
