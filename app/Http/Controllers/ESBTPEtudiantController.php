@@ -961,31 +961,35 @@ class ESBTPEtudiantController extends Controller
                     ->with('error', 'Compte utilisateur introuvable.');
             }
 
-            // Générer un nouveau mot de passe simple
-            // 6 caractères: 4 lettres majuscules + 2 chiffres
-            $lettres = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // Lettres sans I et O pour éviter la confusion
-            $chiffres = '23456789'; // Chiffres sans 0 et 1 pour éviter la confusion
+            // Default password: Bonjour@2025 (same as teachers)
+            $defaultPassword = 'Bonjour@2025';
 
-            $newPassword = '';
-            // Ajouter 4 lettres aléatoires
-            for ($i = 0; $i < 4; $i++) {
-                $newPassword .= $lettres[rand(0, strlen($lettres) - 1)];
-            }
-            // Ajouter 2 chiffres aléatoires
-            for ($i = 0; $i < 2; $i++) {
-                $newPassword .= $chiffres[rand(0, strlen($chiffres) - 1)];
-            }
-
-            // Mettre à jour le mot de passe
-            $user->password = Hash::make($newPassword);
+            // Update password AND force password change on first login
+            $user->password = Hash::make($defaultPassword);
+            $user->must_change_password = true; // Force password change
             $user->save();
+
+            // Log action
+            \Log::info('🔑 Password reset for student to default', [
+                'etudiant_id' => $etudiant->id,
+                'user_id' => $etudiant->user_id,
+                'student_name' => $user->name,
+                'reset_by' => auth()->user()->name,
+                'timestamp' => now(),
+                'must_change_password' => true
+            ]);
 
             return redirect()
                 ->back()
-                ->with('success', 'Mot de passe réinitialisé avec succès!')
-                ->with('new_password', $newPassword);
+                ->with('success', 'Mot de passe réinitialisé à Bonjour@2025 avec succès! L\'étudiant devra changer son mot de passe à la première connexion.')
+                ->with('new_password', $defaultPassword);
 
         } catch (\Exception $e) {
+            \Log::error('❌ Password reset failed for student', [
+                'etudiant_id' => $etudiant->id,
+                'error' => $e->getMessage()
+            ]);
+
             return redirect()
                 ->back()
                 ->with('error', 'Erreur lors de la réinitialisation du mot de passe: ' . $e->getMessage());

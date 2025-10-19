@@ -66,7 +66,23 @@
         <div class="p-lg">
                     @if(session('success'))
                         <div class="alert alert-success alert-dismissible fade show" role="alert">
-                            {{ session('success') }}
+                            <div class="d-flex align-items-start">
+                                <i class="fas fa-check-circle me-2 mt-1"></i>
+                                <div class="flex-grow-1">
+                                    {{ session('success') }}
+                                    @if(session('new_password'))
+                                        <hr class="my-2">
+                                        <p class="mb-0">
+                                            <strong>Nouveau mot de passe:</strong>
+                                            <code class="text-dark bg-white px-2 py-1 rounded">{{ session('new_password') }}</code>
+                                        </p>
+                                        <p class="mb-0 mt-2 small">
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            L'étudiant devra changer ce mot de passe lors de sa première connexion.
+                                        </p>
+                                    @endif
+                                </div>
+                            </div>
                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                         </div>
                     @endif
