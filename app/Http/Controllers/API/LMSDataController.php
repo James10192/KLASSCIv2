@@ -1259,4 +1259,459 @@ class LMSDataController extends BaseApiController
             ]
         ]);
     }
+
+    /**
+     * Détails complets d'une classe spécifique
+     *
+     * Endpoint: GET /api/lms/classes/{id}
+     *
+     * Retourne toutes les informations détaillées d'une classe:
+     * - Informations de base (nom, filière, niveau)
+     * - Liste complète des étudiants inscrits
+     * - Matières disponibles (via combinaison filière+niveau)
+     * - Emploi du temps de la semaine
+     * - Évaluations programmées
+     * - Statistiques (taux présence, moyennes)
+     *
+     * @param int $classeId
+     * @return JsonResponse
+     */
+    public function classeDetails(int $classeId): JsonResponse
+    {
+        $startTime = microtime(true);
+        \Log::info('🚀 LMS Classe Details API - Starting request', ['classe_id' => $classeId]);
+
+        $annee = $this->getAnneeCouraante();
+        if (!$annee) {
+            return $this->errorResponse('Aucune année universitaire courante trouvée');
+        }
+
+        // Récupérer la classe avec relations
+        $classe = ESBTPClasse::with(['filiere', 'niveau'])
+            ->where('id', $classeId)
+            ->where('is_active', true)
+            ->first();
+
+        if (!$classe) {
+            return $this->errorResponse('Classe introuvable', [], 404);
+        }
+
+        // Récupérer les étudiants inscrits (année courante, status active, classe spécifique)
+        $etudiants = ESBTPEtudiant::whereHas('inscriptions', function($q) use ($classeId, $annee) {
+            $q->where('classe_id', $classeId)
+              ->where('annee_universitaire_id', $annee->id)
+              ->where('status', 'active');
+        })->with(['user'])->get();
+
+        // Récupérer les matières disponibles via combinaison (filière + niveau)
+        // IMPORTANT: Utilise les tables pivot globales, PAS esbtp_classe_matiere
+        $matieres = ESBTPMatiere::where('is_active', true)
+            ->whereHas('filieres', function ($q) use ($classe) {
+                $q->where('esbtp_filieres.id', $classe->filiere_id);
+            })
+            ->whereHas('niveaux', function ($q) use ($classe) {
+                $q->where('esbtp_niveau_etudes.id', $classe->niveau_etude_id);
+            })
+            ->with(['filieres', 'niveaux'])
+            ->get();
+
+        // Récupérer les séances de la semaine courante
+        $dateDebut = now()->startOfWeek()->format('Y-m-d');
+        $dateFin = now()->endOfWeek()->format('Y-m-d');
+
+        $seances = \App\Models\ESBTPSeanceCours::with(['matiere', 'emploiTemps'])
+            ->where('classe_id', $classeId)
+            ->whereBetween('date_seance', [$dateDebut, $dateFin])
+            ->whereHas('emploiTemps', function($q) use ($annee) {
+                $q->where('annee_universitaire_id', $annee->id)
+                  ->where('is_active', true);
+            })
+            ->orderBy('date_seance')
+            ->orderBy('heure_debut')
+            ->get();
+
+        // Récupérer les évaluations programmées
+        $evaluations = ESBTPEvaluation::with(['matiere'])
+            ->where('classe_id', $classeId)
+            ->where('annee_universitaire_id', $annee->id)
+            ->orderBy('date_evaluation', 'desc')
+            ->get();
+
+        // Calculer statistiques de la classe
+        $dateDebutAnnee = $annee->date_debut ?? now()->startOfYear();
+        $dateFinAnnee = $annee->date_fin ?? now();
+
+        $etudiantIds = $etudiants->pluck('id');
+
+        $statistiques = [
+            'presences' => [
+                'total_presences' => \App\Models\ESBTPAttendance::whereIn('etudiant_id', $etudiantIds)
+                    ->where('classe_id', $classeId)
+                    ->where('date', '>=', $dateDebutAnnee)
+                    ->where('date', '<=', $dateFinAnnee)
+                    ->whereIn('statut', ['present', 'retard'])
+                    ->count(),
+                'total_absences' => \App\Models\ESBTPAttendance::whereIn('etudiant_id', $etudiantIds)
+                    ->where('classe_id', $classeId)
+                    ->where('date', '>=', $dateDebutAnnee)
+                    ->where('date', '<=', $dateFinAnnee)
+                    ->where('statut', 'absent')
+                    ->count(),
+                'taux_presence' => 0 // Calculé après
+            ],
+            'evaluations' => [
+                'total_programmees' => $evaluations->count(),
+                'total_terminees' => $evaluations->where('status', 'terminee')->count(),
+                'moyenne_classe' => null // Calculé si des notes existent
+            ]
+        ];
+
+        // Calculer taux de présence
+        $totalAppels = $statistiques['presences']['total_presences'] + $statistiques['presences']['total_absences'];
+        if ($totalAppels > 0) {
+            $statistiques['presences']['taux_presence'] = round(
+                ($statistiques['presences']['total_presences'] / $totalAppels) * 100,
+                1
+            );
+        }
+
+        // Calculer moyenne générale de la classe si des notes existent
+        $moyenneClasse = \App\Models\ESBTPNote::whereIn('etudiant_id', $etudiantIds)
+            ->whereHas('evaluation', function($q) use ($annee) {
+                $q->where('annee_universitaire_id', $annee->id);
+            })
+            ->avg('note');
+
+        if ($moyenneClasse) {
+            $statistiques['evaluations']['moyenne_classe'] = round($moyenneClasse, 2);
+        }
+
+        $queryTime = microtime(true);
+        \Log::info('📊 Classe details data collected in: ' . round(($queryTime - $startTime) * 1000, 2) . 'ms');
+
+        // Formater les données
+        $data = [
+            'classe' => [
+                'id' => $classe->id,
+                'name' => $classe->name,
+                'libelle' => $classe->libelle,
+                'places_totales' => $classe->places_totales,
+                'places_occupees' => $etudiants->count(),
+                'is_active' => $classe->is_active,
+                'filiere' => $classe->filiere ? [
+                    'id' => $classe->filiere->id,
+                    'nom' => $classe->filiere->name ?? $classe->filiere->nom,
+                    'code' => $classe->filiere->code,
+                    'description' => $classe->filiere->description
+                ] : null,
+                'niveau' => $classe->niveau ? [
+                    'id' => $classe->niveau->id,
+                    'nom' => $classe->niveau->name ?? $classe->niveau->nom,
+                    'code' => $classe->niveau->code,
+                    'type' => $classe->niveau->type,
+                    'year' => $classe->niveau->year
+                ] : null
+            ],
+            'etudiants' => $etudiants->map(function($etudiant) {
+                return [
+                    'id' => $etudiant->id,
+                    'matricule' => $etudiant->matricule,
+                    'nom_complet' => $etudiant->user->name ?? 'N/A',
+                    'email' => $etudiant->user->email ?? null,
+                    'telephone' => $etudiant->telephone,
+                    'photo_url' => $etudiant->user->profile_photo_url ?? null
+                ];
+            }),
+            'matieres' => $matieres->map(function($matiere) {
+                return [
+                    'id' => $matiere->id,
+                    'nom' => $matiere->name ?? $matiere->nom,
+                    'code' => $matiere->code,
+                    'coefficient' => $matiere->coefficient,
+                    'couleur' => $matiere->couleur,
+                    'heures' => [
+                        'cm' => $matiere->heures_cm,
+                        'td' => $matiere->heures_td,
+                        'tp' => $matiere->heures_tp,
+                        'total' => $matiere->heures_cm + $matiere->heures_td + $matiere->heures_tp
+                    ],
+                    'source' => 'catalogue_global' // Via combinaison filière+niveau
+                ];
+            }),
+            'emploi_temps_semaine' => $seances->map(function($seance) {
+                return [
+                    'id' => $seance->id,
+                    'matiere' => [
+                        'id' => $seance->matiere->id,
+                        'nom' => $seance->matiere->name ?? $seance->matiere->nom,
+                        'code' => $seance->matiere->code,
+                        'couleur' => $seance->matiere->couleur
+                    ],
+                    'programmation' => [
+                        'date' => $seance->date_seance,
+                        'jour' => $seance->jour,
+                        'heure_debut' => $seance->heure_debut,
+                        'heure_fin' => $seance->heure_fin,
+                        'salle' => $seance->salle
+                    ]
+                ];
+            }),
+            'evaluations' => $evaluations->map(function($evaluation) {
+                return [
+                    'id' => $evaluation->id,
+                    'titre' => $evaluation->titre,
+                    'description' => $evaluation->description,
+                    'type' => $evaluation->type,
+                    'status' => $evaluation->status,
+                    'matiere' => [
+                        'id' => $evaluation->matiere->id,
+                        'nom' => $evaluation->matiere->name ?? $evaluation->matiere->nom,
+                        'code' => $evaluation->matiere->code
+                    ],
+                    'programmation' => [
+                        'date_evaluation' => $evaluation->date_evaluation,
+                        'duree_minutes' => $evaluation->duree_minutes,
+                        'coefficient' => $evaluation->coefficient,
+                        'bareme' => $evaluation->bareme
+                    ],
+                    'publication' => [
+                        'is_published' => $evaluation->is_published,
+                        'notes_published' => $evaluation->notes_published
+                    ]
+                ];
+            }),
+            'statistiques' => $statistiques
+        ];
+
+        $mapTime = microtime(true);
+        \Log::info('🔄 Classe details formatting completed in: ' . round(($mapTime - $queryTime) * 1000, 2) . 'ms');
+
+        $totalTime = microtime(true);
+        \Log::info('✅ LMS Classe Details API - Total time: ' . round(($totalTime - $startTime) * 1000, 2) . 'ms');
+
+        return $this->successResponse($data, 'Détails de la classe récupérés avec succès', [
+            'annee_universitaire' => [
+                'id' => $annee->id,
+                'nom' => $annee->nom,
+                'is_current' => true
+            ],
+            'counts' => [
+                'etudiants_total' => $data['etudiants']->count(),
+                'matieres_total' => $data['matieres']->count(),
+                'seances_semaine' => $data['emploi_temps_semaine']->count(),
+                'evaluations_total' => $data['evaluations']->count()
+            ],
+            'performance' => [
+                'total_time_ms' => round(($totalTime - $startTime) * 1000, 2),
+                'query_time_ms' => round(($queryTime - $startTime) * 1000, 2),
+                'mapping_time_ms' => round(($mapTime - $queryTime) * 1000, 2)
+            ]
+        ]);
+    }
+
+    /**
+     * Détails complets d'une matière spécifique
+     *
+     * Endpoint: GET /api/lms/matieres/{id}
+     *
+     * Retourne toutes les informations détaillées d'une matière:
+     * - Informations de base (nom, code, coefficient, heures)
+     * - Combinaisons disponibles (filières + niveaux)
+     * - Enseignants assignés pour l'année courante
+     * - Séances programmées (30 prochains jours)
+     * - Évaluations programmées
+     * - Statistiques (nb séances, taux réalisation)
+     *
+     * @param int $matiereId
+     * @return JsonResponse
+     */
+    public function matiereDetails(int $matiereId): JsonResponse
+    {
+        $startTime = microtime(true);
+        \Log::info('🚀 LMS Matiere Details API - Starting request', ['matiere_id' => $matiereId]);
+
+        $annee = $this->getAnneeCouraante();
+        if (!$annee) {
+            return $this->errorResponse('Aucune année universitaire courante trouvée');
+        }
+
+        // Récupérer la matière avec relations
+        $matiere = ESBTPMatiere::with([
+            'filieres',  // Relation BelongsToMany (plusieurs via pivot global)
+            'niveaux',   // Relation BelongsToMany (plusieurs via pivot global)
+            'enseignants' => function ($q) use ($annee) {
+                $q->where('esbtp_enseignant_matiere.annee_universitaire_id', $annee->id)
+                  ->where('esbtp_enseignant_matiere.is_active', true);
+            }
+        ])
+        ->where('id', $matiereId)
+        ->where('is_active', true)
+        ->first();
+
+        if (!$matiere) {
+            return $this->errorResponse('Matière introuvable', [], 404);
+        }
+
+        // Récupérer les séances programmées (30 prochains jours)
+        $seances = \App\Models\ESBTPSeanceCours::with(['classe', 'emploiTemps'])
+            ->where('matiere_id', $matiereId)
+            ->where('date_seance', '>=', now()->format('Y-m-d'))
+            ->where('date_seance', '<=', now()->addDays(30)->format('Y-m-d'))
+            ->whereHas('emploiTemps', function($q) use ($annee) {
+                $q->where('annee_universitaire_id', $annee->id)
+                  ->where('is_active', true);
+            })
+            ->orderBy('date_seance')
+            ->orderBy('heure_debut')
+            ->get();
+
+        // Récupérer les évaluations programmées
+        $evaluations = ESBTPEvaluation::with(['classe'])
+            ->where('matiere_id', $matiereId)
+            ->where('annee_universitaire_id', $annee->id)
+            ->orderBy('date_evaluation', 'desc')
+            ->get();
+
+        // Calculer statistiques
+        $totalSeances = \App\Models\ESBTPSeanceCours::where('matiere_id', $matiereId)
+            ->whereHas('emploiTemps', function($q) use ($annee) {
+                $q->where('annee_universitaire_id', $annee->id);
+            })
+            ->count();
+
+        $seancesPassees = \App\Models\ESBTPSeanceCours::where('matiere_id', $matiereId)
+            ->where('date_seance', '<', now()->format('Y-m-d'))
+            ->whereHas('emploiTemps', function($q) use ($annee) {
+                $q->where('annee_universitaire_id', $annee->id);
+            })
+            ->count();
+
+        $statistiques = [
+            'seances' => [
+                'total_programmees' => $totalSeances,
+                'total_passees' => $seancesPassees,
+                'total_a_venir' => $totalSeances - $seancesPassees,
+                'taux_realisation' => $totalSeances > 0
+                    ? round(($seancesPassees / $totalSeances) * 100, 1)
+                    : 0
+            ],
+            'evaluations' => [
+                'total_programmees' => $evaluations->count(),
+                'total_terminees' => $evaluations->where('status', 'terminee')->count(),
+                'total_brouillons' => $evaluations->where('status', 'brouillon')->count()
+            ]
+        ];
+
+        $queryTime = microtime(true);
+        \Log::info('📊 Matiere details data collected in: ' . round(($queryTime - $startTime) * 1000, 2) . 'ms');
+
+        // Formater les données
+        $data = [
+            'matiere' => [
+                'id' => $matiere->id,
+                'nom' => $matiere->name ?? $matiere->nom,
+                'code' => $matiere->code,
+                'description' => $matiere->description,
+                'coefficient' => $matiere->coefficient,
+                'couleur' => $matiere->couleur,
+                'type_formation' => $matiere->type_formation,
+                'heures' => [
+                    'cm' => $matiere->heures_cm,
+                    'td' => $matiere->heures_td,
+                    'tp' => $matiere->heures_tp,
+                    'stage' => $matiere->heures_stage ?? 0,
+                    'total' => $matiere->heures_cm + $matiere->heures_td + $matiere->heures_tp + ($matiere->heures_stage ?? 0)
+                ]
+            ],
+            'combinaisons' => $matiere->filieres->flatMap(function($filiere) use ($matiere) {
+                return $matiere->niveaux->map(function($niveau) use ($filiere) {
+                    return [
+                        'filiere' => [
+                            'id' => $filiere->id,
+                            'nom' => $filiere->name ?? $filiere->nom,
+                            'code' => $filiere->code
+                        ],
+                        'niveau' => [
+                            'id' => $niveau->id,
+                            'nom' => $niveau->name ?? $niveau->nom,
+                            'code' => $niveau->code
+                        ]
+                    ];
+                });
+            }),
+            'enseignants' => $matiere->enseignants->map(function($enseignant) {
+                return [
+                    'id' => $enseignant->id,
+                    'nom_complet' => $enseignant->name,
+                    'email' => $enseignant->email,
+                    'photo_url' => $enseignant->profile_photo_url ?? null
+                ];
+            }),
+            'seances_programmees' => $seances->map(function($seance) {
+                return [
+                    'id' => $seance->id,
+                    'classe' => [
+                        'id' => $seance->classe->id,
+                        'nom' => $seance->classe->name ?? $seance->classe->nom
+                    ],
+                    'programmation' => [
+                        'date' => $seance->date_seance,
+                        'jour' => $seance->jour,
+                        'heure_debut' => $seance->heure_debut,
+                        'heure_fin' => $seance->heure_fin,
+                        'salle' => $seance->salle
+                    ]
+                ];
+            }),
+            'evaluations' => $evaluations->map(function($evaluation) {
+                return [
+                    'id' => $evaluation->id,
+                    'titre' => $evaluation->titre,
+                    'description' => $evaluation->description,
+                    'type' => $evaluation->type,
+                    'status' => $evaluation->status,
+                    'classe' => [
+                        'id' => $evaluation->classe->id,
+                        'nom' => $evaluation->classe->name ?? $evaluation->classe->nom
+                    ],
+                    'programmation' => [
+                        'date_evaluation' => $evaluation->date_evaluation,
+                        'duree_minutes' => $evaluation->duree_minutes,
+                        'coefficient' => $evaluation->coefficient,
+                        'bareme' => $evaluation->bareme
+                    ],
+                    'publication' => [
+                        'is_published' => $evaluation->is_published,
+                        'notes_published' => $evaluation->notes_published
+                    ]
+                ];
+            }),
+            'statistiques' => $statistiques
+        ];
+
+        $mapTime = microtime(true);
+        \Log::info('🔄 Matiere details formatting completed in: ' . round(($mapTime - $queryTime) * 1000, 2) . 'ms');
+
+        $totalTime = microtime(true);
+        \Log::info('✅ LMS Matiere Details API - Total time: ' . round(($totalTime - $startTime) * 1000, 2) . 'ms');
+
+        return $this->successResponse($data, 'Détails de la matière récupérés avec succès', [
+            'annee_universitaire' => [
+                'id' => $annee->id,
+                'nom' => $annee->nom,
+                'is_current' => true
+            ],
+            'counts' => [
+                'combinaisons_total' => $data['combinaisons']->count(),
+                'enseignants_total' => $data['enseignants']->count(),
+                'seances_a_venir' => $data['seances_programmees']->count(),
+                'evaluations_total' => $data['evaluations']->count()
+            ],
+            'performance' => [
+                'total_time_ms' => round(($totalTime - $startTime) * 1000, 2),
+                'query_time_ms' => round(($queryTime - $startTime) * 1000, 2),
+                'mapping_time_ms' => round(($mapTime - $queryTime) * 1000, 2)
+            ]
+        ]);
+    }
 }

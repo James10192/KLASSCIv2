@@ -265,6 +265,7 @@ MAIL_FROM_NAME="KLASSCI"
 - **19/10** : Ajout endpoint GET /api/lms/me/dashboard pour étudiants → dashboard complet avec classe, cours, quiz, stats personnelles
 - **19/10** : Ajout endpoint GET /api/lms/me/teacher-dashboard pour enseignants → matières (dual-source: pivot+séances via esbtp_seance_cours), classes, séances à venir (30j), évaluations avec progression correction, stats heures effectuées (accepte roles 'teacher'|'enseignant', mapping correct teacher_id via esbtp_teachers.id, gestion date_debut nullable)
 - **19/10** : Fix API LMS dashboard étudiant → fallback dates année universitaire nulles (date_debut/date_fin) pour éviter "Illegal operator and value combination"
+- **19/10** : Ajout endpoints GET /api/lms/classes/{id} et GET /api/lms/matieres/{id} → détails complets d'une classe (étudiants, matières via combinaison filière+niveau, emploi temps semaine, évaluations, stats présences/moyennes) et d'une matière (combinaisons disponibles, enseignants, séances 30j, évaluations, stats réalisation)
 
 ## ✨ Fonctionnalités récentes
 

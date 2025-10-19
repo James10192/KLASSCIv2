@@ -134,10 +134,14 @@ Route::middleware(['auth:sanctum'])->prefix('lms')->name('api.lms.')->group(func
     // Matières et cours
     Route::get('/matieres', [App\Http\Controllers\API\LMSDataController::class, 'matieres'])
         ->name('matieres');
+    Route::get('/matieres/{matiereId}', [App\Http\Controllers\API\LMSDataController::class, 'matiereDetails'])
+        ->name('matieres.details');
 
     // Classes et étudiants
     Route::get('/classes', [App\Http\Controllers\API\LMSDataController::class, 'classes'])
         ->name('classes');
+    Route::get('/classes/{classeId}', [App\Http\Controllers\API\LMSDataController::class, 'classeDetails'])
+        ->name('classes.details');
     Route::get('/classes/{classeId}/etudiants', [App\Http\Controllers\API\LMSDataController::class, 'etudiantsClasse'])
         ->name('classes.etudiants');
 
