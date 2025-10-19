@@ -607,6 +607,26 @@ class LMSDataController extends BaseApiController
                 $classeNom = $evaluation->classe->nom ?: $evaluation->classe->name;
             }
 
+            $startAt = $evaluation->date_evaluation ? \Carbon\Carbon::parse($evaluation->date_evaluation) : null;
+            $endAt = null;
+
+            if ($startAt) {
+                $duration = $evaluation->duree_minutes ?? 0;
+                if ($duration > 0) {
+                    $endAt = $startAt->copy()->addMinutes((int) $duration);
+                } else {
+                    $endAt = $startAt->copy()->endOfDay();
+                }
+            }
+
+            $now = now();
+            $hasStarted = $startAt ? $now->greaterThanOrEqualTo($startAt) : false;
+            $hasEnded = $endAt ? $now->greaterThan($endAt) : false;
+            $isOpen = $hasStarted && !$hasEnded;
+            $timeLeftMinutes = ($isOpen && $endAt)
+                ? max(0, $now->diffInMinutes($endAt, false))
+                : 0;
+
             return [
                 'id' => $evaluation->id,
                 'titre' => $evaluation->titre,
@@ -623,10 +643,18 @@ class LMSDataController extends BaseApiController
                     'nom' => $classeNom
                 ],
                 'programmation' => [
-                    'date_evaluation' => $evaluation->date_evaluation,
+                    'date_evaluation' => $startAt ? $startAt->toIso8601String() : null,
                     'duree_minutes' => $evaluation->duree_minutes,
                     'coefficient' => $evaluation->coefficient,
-                    'bareme' => $evaluation->bareme
+                    'bareme' => $evaluation->bareme,
+                    'window' => [
+                        'start_at' => $startAt ? $startAt->toIso8601String() : null,
+                        'end_at' => $endAt ? $endAt->toIso8601String() : null,
+                        'has_started' => $hasStarted,
+                        'has_ended' => $hasEnded,
+                        'is_open' => $isOpen,
+                        'time_left_minutes' => $timeLeftMinutes
+                    ]
                 ],
                 'publication' => [
                     'is_published' => $evaluation->is_published,
@@ -941,6 +969,26 @@ class LMSDataController extends BaseApiController
                     ->where('etudiant_id', $etudiant->id)
                     ->first();
 
+                $startAt = $evaluation->date_evaluation ? \Carbon\Carbon::parse($evaluation->date_evaluation) : null;
+                $endAt = null;
+
+                if ($startAt) {
+                    $duration = $evaluation->duree_minutes ?? 0;
+                    if ($duration > 0) {
+                        $endAt = $startAt->copy()->addMinutes((int) $duration);
+                    } else {
+                        $endAt = $startAt->copy()->endOfDay();
+                    }
+                }
+
+                $now = now();
+                $hasStarted = $startAt ? $now->greaterThanOrEqualTo($startAt) : false;
+                $hasEnded = $endAt ? $now->greaterThan($endAt) : false;
+                $isOpen = $hasStarted && !$hasEnded;
+                $timeLeftMinutes = ($isOpen && $endAt)
+                    ? max(0, $now->diffInMinutes($endAt, false))
+                    : 0;
+
                 return [
                     'id' => $evaluation->id,
                     'titre' => $evaluation->titre,
@@ -953,9 +1001,17 @@ class LMSDataController extends BaseApiController
                         'code' => $evaluation->matiere->code
                     ],
                     'programmation' => [
-                        'date_evaluation' => $evaluation->date_evaluation,
+                        'date_evaluation' => $startAt ? $startAt->toIso8601String() : null,
                         'duree_minutes' => $evaluation->duree_minutes,
-                        'bareme' => $evaluation->bareme
+                        'bareme' => $evaluation->bareme,
+                        'window' => [
+                            'start_at' => $startAt ? $startAt->toIso8601String() : null,
+                            'end_at' => $endAt ? $endAt->toIso8601String() : null,
+                            'has_started' => $hasStarted,
+                            'has_ended' => $hasEnded,
+                            'is_open' => $isOpen,
+                            'time_left_minutes' => $timeLeftMinutes
+                        ]
                     ],
                     'mon_resultat' => $note ? [
                         'note' => $note->note,
@@ -964,7 +1020,14 @@ class LMSDataController extends BaseApiController
                         'appreciation' => $note->appreciation
                     ] : null,
                     'lms_integration' => [
-                        'can_take_online' => !$note && in_array($evaluation->status, ['planifiee', 'en_cours']),
+                        'can_take_online' => !$note
+                            && $isOpen
+                            && in_array($evaluation->status, [
+                                'planifiee',
+                                'en_cours',
+                                'scheduled',
+                                'in_progress'
+                            ]),
                         'is_completed' => $note !== null
                     ]
                 ];
@@ -1207,6 +1270,26 @@ class LMSDataController extends BaseApiController
                 $nbEtudiantsClasse = $evaluation->classe->inscriptions()
                     ->where('status', 'active')->count();
 
+                $startAt = $evaluation->date_evaluation ? \Carbon\Carbon::parse($evaluation->date_evaluation) : null;
+                $endAt = null;
+
+                if ($startAt) {
+                    $duration = $evaluation->duree_minutes ?? 0;
+                    if ($duration > 0) {
+                        $endAt = $startAt->copy()->addMinutes((int) $duration);
+                    } else {
+                        $endAt = $startAt->copy()->endOfDay();
+                    }
+                }
+
+                $now = now();
+                $hasStarted = $startAt ? $now->greaterThanOrEqualTo($startAt) : false;
+                $hasEnded = $endAt ? $now->greaterThan($endAt) : false;
+                $isOpen = $hasStarted && !$hasEnded;
+                $timeLeftMinutes = ($isOpen && $endAt)
+                    ? max(0, $now->diffInMinutes($endAt, false))
+                    : 0;
+
                 return [
                     'id' => $evaluation->id,
                     'titre' => $evaluation->titre,
@@ -1223,10 +1306,18 @@ class LMSDataController extends BaseApiController
                         'nom' => $evaluation->classe->name
                     ],
                     'programmation' => [
-                        'date_evaluation' => $evaluation->date_evaluation,
+                        'date_evaluation' => $startAt ? $startAt->toIso8601String() : null,
                         'duree_minutes' => $evaluation->duree_minutes,
                         'coefficient' => $evaluation->coefficient,
-                        'bareme' => $evaluation->bareme
+                        'bareme' => $evaluation->bareme,
+                        'window' => [
+                            'start_at' => $startAt ? $startAt->toIso8601String() : null,
+                            'end_at' => $endAt ? $endAt->toIso8601String() : null,
+                            'has_started' => $hasStarted,
+                            'has_ended' => $hasEnded,
+                            'is_open' => $isOpen,
+                            'time_left_minutes' => $timeLeftMinutes
+                        ]
                     ],
                     'correction' => [
                         'notes_saisies' => $nbNotes,
