@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use App\Models\ESBTPAnneeUniversitaire;
+use App\Models\ESBTPTeacher;
 
 /**
  * Contrôleur de base pour toutes les APIs LMS
@@ -224,11 +225,40 @@ class BaseApiController extends Controller
                 });
 
             case 'evaluations':
-                // Seulement les évaluations des matières de l'enseignant
-                return $query->whereHas('matiere.enseignants', function ($q) use ($user, $annee) {
-                    $q->where('enseignant_id', $user->id)
-                      ->where('esbtp_enseignant_matiere.annee_universitaire_id', $annee->id)
-                      ->where('esbtp_enseignant_matiere.is_active', true);
+                // Autoriser plusieurs chemins pour retrouver les évaluations de l'enseignant
+                $teacher = ESBTPTeacher::where('user_id', $user->id)->first();
+                $teacherId = $teacher ? $teacher->id : null;
+
+                return $query->where(function ($subQuery) use ($user, $annee, $teacherId) {
+                    // 1) Assignation directe (colonne enseignant_id)
+                    $subQuery->where('enseignant_id', $user->id);
+
+                    // 2) Table pivot esbtp_enseignant_matiere (assignations officielles)
+                    $subQuery->orWhereHas('matiere.enseignants', function ($q) use ($user, $annee) {
+                        $q->where('enseignant_id', $user->id)
+                          ->where('esbtp_enseignant_matiere.annee_universitaire_id', $annee->id)
+                          ->where('esbtp_enseignant_matiere.is_active', true);
+                    });
+
+                    if ($teacherId) {
+                        // 3) Séances planifiées (planning général) sur la même matière
+                        $subQuery->orWhereExists(function ($q) use ($teacherId, $annee) {
+                            $q->selectRaw('1')
+                              ->from('esbtp_seance_cours as sc_matiere')
+                              ->whereColumn('sc_matiere.matiere_id', 'esbtp_evaluations.matiere_id')
+                              ->where('sc_matiere.teacher_id', $teacherId)
+                              ->where('sc_matiere.annee_universitaire_id', $annee->id);
+                        });
+
+                        // 4) Séances planifiées sur la même classe
+                        $subQuery->orWhereExists(function ($q) use ($teacherId, $annee) {
+                            $q->selectRaw('1')
+                              ->from('esbtp_seance_cours as sc_classe')
+                              ->whereColumn('sc_classe.classe_id', 'esbtp_evaluations.classe_id')
+                              ->where('sc_classe.teacher_id', $teacherId)
+                              ->where('sc_classe.annee_universitaire_id', $annee->id);
+                        });
+                    }
                 });
 
             default:

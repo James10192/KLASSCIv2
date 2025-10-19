@@ -596,6 +596,17 @@ class LMSDataController extends BaseApiController
         $evaluations = $query->orderBy('date_evaluation', 'desc')->get();
 
         $data = $evaluations->map(function ($evaluation) {
+            $matiereNom = null;
+            $classeNom = null;
+
+            if ($evaluation->matiere) {
+                $matiereNom = $evaluation->matiere->nom ?: $evaluation->matiere->name;
+            }
+
+            if ($evaluation->classe) {
+                $classeNom = $evaluation->classe->nom ?: $evaluation->classe->name;
+            }
+
             return [
                 'id' => $evaluation->id,
                 'titre' => $evaluation->titre,
@@ -603,13 +614,13 @@ class LMSDataController extends BaseApiController
                 'type' => $evaluation->type,
                 'status' => $evaluation->status,
                 'matiere' => [
-                    'id' => $evaluation->matiere->id,
-                    'nom' => $evaluation->matiere->nom,
-                    'code' => $evaluation->matiere->code
+                    'id' => $evaluation->matiere->id ?? null,
+                    'nom' => $matiereNom,
+                    'code' => $evaluation->matiere->code ?? null
                 ],
                 'classe' => [
-                    'id' => $evaluation->classe->id,
-                    'nom' => $evaluation->classe->nom
+                    'id' => $evaluation->classe->id ?? null,
+                    'nom' => $classeNom
                 ],
                 'programmation' => [
                     'date_evaluation' => $evaluation->date_evaluation,
