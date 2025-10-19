@@ -261,6 +261,7 @@ MAIL_FROM_NAME="KLASSCI"
 - **19/10** : Fix 404 route AJAX load-matieres → repositionnement AVANT routes /{evaluation} (Laravel route matching order)
 - **19/10** : Fix 500 erreur SQL load-matieres → colonne 'name' au lieu de 'nom' dans orderBy + génération HTML options
 - **19/10** : Fix double spinner load-matieres → suppression de TOUS les spinners existants avant création nouveau (querySelectorAll + forEach remove)
+- **19/10** : Ajout évaluations programmées dans API LMS endpoint /api/lms/classes → permet au LMS de créer formulaires en ligne et soumettre notes
 
 ## ✨ Fonctionnalités récentes
 

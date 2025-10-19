@@ -218,6 +218,13 @@ class LMSDataController extends BaseApiController
                 })
                 ->get();
 
+            // Récupérer les évaluations programmées pour cette classe
+            $evaluations = ESBTPEvaluation::with('matiere')
+                ->where('classe_id', $classe->id)
+                ->where('annee_universitaire_id', $annee->id)
+                ->orderBy('date_evaluation', 'desc')
+                ->get();
+
             return [
                 'id' => $classe->id,
                 'name' => $classe->name,
@@ -248,6 +255,36 @@ class LMSDataController extends BaseApiController
                         'code' => $matiere->code,
                         'coefficient' => $matiere->coefficient,  // Coefficient par défaut
                         'source' => 'catalogue_global'  // Via combinaison filiere+niveau
+                    ];
+                }),
+                'evaluations_programmees' => $evaluations->map(function ($evaluation) {
+                    return [
+                        'id' => $evaluation->id,
+                        'titre' => $evaluation->titre,
+                        'description' => $evaluation->description,
+                        'type' => $evaluation->type,
+                        'status' => $evaluation->status,
+                        'matiere' => [
+                            'id' => $evaluation->matiere->id,
+                            'nom' => $evaluation->matiere->name ?? $evaluation->matiere->nom,
+                            'code' => $evaluation->matiere->code
+                        ],
+                        'programmation' => [
+                            'date_evaluation' => $evaluation->date_evaluation,
+                            'duree_minutes' => $evaluation->duree_minutes,
+                            'coefficient' => $evaluation->coefficient,
+                            'bareme' => $evaluation->bareme
+                        ],
+                        'publication' => [
+                            'is_published' => $evaluation->is_published,
+                            'notes_published' => $evaluation->notes_published
+                        ],
+                        'lms_integration' => [
+                            'can_execute_online' => in_array($evaluation->status, ['planifiee', 'en_cours', 'brouillon']),
+                            'has_online_version' => false, // À définir par le LMS
+                            'notes_count' => $evaluation->notes()->count(),
+                            'can_submit_notes' => true // Le LMS peut envoyer des notes via API
+                        ]
                     ];
                 })
             ];
