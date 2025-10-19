@@ -831,6 +831,10 @@ class LMSDataController extends BaseApiController
 
         $classe = $inscription->classe;
 
+        // Sécuriser les dates éventuelles de l'année universitaire (certaines colonnes peuvent être nulles)
+        $dateDebutAnnee = $annee->date_debut ?? now()->startOfYear();
+        $dateFinAnnee = $annee->date_fin ?? now();
+
         // Récupérer les matières (cours) disponibles pour la classe
         $matieres = ESBTPMatiere::where('is_active', true)
             ->whereHas('filieres', function ($q) use ($classe) {
@@ -853,13 +857,13 @@ class LMSDataController extends BaseApiController
         $statistiques = [
             'attendances' => [
                 'total_presences' => \App\Models\ESBTPAttendance::where('etudiant_id', $etudiant->id)
-                    ->where('date', '>=', $annee->date_debut)
-                    ->where('date', '<=', $annee->date_fin ?? now())
+                    ->where('date', '>=', $dateDebutAnnee)
+                    ->where('date', '<=', $dateFinAnnee)
                     ->whereIn('statut', ['present', 'retard'])
                     ->count(),
                 'total_absences' => \App\Models\ESBTPAttendance::where('etudiant_id', $etudiant->id)
-                    ->where('date', '>=', $annee->date_debut)
-                    ->where('date', '<=', $annee->date_fin ?? now())
+                    ->where('date', '>=', $dateDebutAnnee)
+                    ->where('date', '<=', $dateFinAnnee)
                     ->where('statut', 'absent')
                     ->count()
             ],
@@ -973,6 +977,280 @@ class LMSDataController extends BaseApiController
                 'cours_total' => $data['cours']->count(),
                 'quiz_total' => $data['quiz']->count(),
                 'quiz_completed' => $data['quiz']->where('lms_integration.is_completed', true)->count()
+            ],
+            'performance' => [
+                'total_time_ms' => round(($totalTime - $startTime) * 1000, 2),
+                'query_time_ms' => round(($queryTime - $startTime) * 1000, 2),
+                'mapping_time_ms' => round(($mapTime - $queryTime) * 1000, 2)
+            ]
+        ]);
+    }
+
+    /**
+     * Dashboard de l'enseignant connecté
+     *
+     * Endpoint: GET /api/lms/me/teacher-dashboard
+     *
+     * Retourne toutes les données nécessaires pour l'enseignant:
+     * - Ses matières assignées (via planning ou table pivot)
+     * - Ses classes où il enseigne
+     * - Ses séances de cours programmées
+     * - Statistiques personnelles (heures, présences)
+     *
+     * @return JsonResponse
+     */
+    public function teacherDashboard(): JsonResponse
+    {
+        $startTime = microtime(true);
+        \Log::info('🚀 LMS Teacher Dashboard API - Starting request', ['user_id' => auth()->id()]);
+
+        // Vérifier que l'utilisateur est un enseignant (accepter 'teacher' OU 'enseignant')
+        $user = auth()->user();
+        if (!$user->hasAnyRole(['teacher', 'enseignant'])) {
+            return $this->errorResponse('Cet endpoint est réservé aux enseignants', [], 403);
+        }
+
+        $annee = $this->getAnneeCouraante();
+        if (!$annee) {
+            return $this->errorResponse('Aucune année universitaire courante trouvée');
+        }
+
+        // Récupérer le teacher associé à l'utilisateur connecté (table esbtp_teachers)
+        // IMPORTANT: teacher_id dans les séances référence esbtp_teachers.id, PAS users.id
+        $teacher = \App\Models\ESBTPTeacher::where('user_id', $user->id)->first();
+        $teacherId = $teacher ? $teacher->id : null;
+
+        if (!$teacherId) {
+            return $this->errorResponse('Profil enseignant introuvable dans la table esbtp_teachers', [], 404);
+        }
+
+        \Log::info('🔍 LMS Teacher Dashboard - Teacher mapping', [
+            'user_id' => $user->id,
+            'teacher_id' => $teacherId,
+            'user_name' => $user->name
+        ]);
+
+        // Récupérer les matières de l'enseignant via 2 sources:
+        // 1. Table pivot esbtp_enseignant_matiere (assignations officielles)
+        // 2. Séances de cours (teacher_id dans esbtp_seance_cours)
+
+        // Source 1: Table pivot (assignations officielles)
+        $matieresPivot = ESBTPMatiere::whereHas('enseignants', function($q) use ($user, $annee) {
+            $q->where('enseignant_id', $user->id)
+              ->where('esbtp_enseignant_matiere.annee_universitaire_id', $annee->id)
+              ->where('esbtp_enseignant_matiere.is_active', true);
+        })->with(['filieres', 'niveaux'])->get();
+
+        // Source 2: Séances de cours (via planning général)
+        // IMPORTANT: Utiliser $teacherId (esbtp_teachers.id), PAS $user->id
+        // IMPORTANT: Requêter directement via la table esbtp_seance_cours
+        $matiereIdsFromSeances = \App\Models\ESBTPSeanceCours::where('teacher_id', $teacherId)
+            ->where('annee_universitaire_id', $annee->id)
+            ->distinct()
+            ->pluck('matiere_id');
+
+        $matieresSeances = ESBTPMatiere::whereIn('id', $matiereIdsFromSeances)
+            ->with(['filieres', 'niveaux'])
+            ->get();
+
+        // Fusionner les deux sources (unique par ID)
+        $matieres = $matieresPivot->merge($matieresSeances)->unique('id');
+
+        // Récupérer les classes où l'enseignant enseigne
+        $classeIdsFromSeances = \App\Models\ESBTPSeanceCours::where('teacher_id', $teacherId)
+            ->where('annee_universitaire_id', $annee->id)
+            ->distinct()
+            ->pluck('classe_id');
+
+        $classes = ESBTPClasse::whereIn('id', $classeIdsFromSeances)
+            ->with(['filiere', 'niveau'])
+            ->get();
+
+        // Récupérer les séances programmées (prochaines 30 jours)
+        $seances = \App\Models\ESBTPSeanceCours::with(['matiere', 'classe', 'emploiTemps'])
+            ->where('teacher_id', $teacherId)
+            ->where('date_seance', '>=', now()->format('Y-m-d'))
+            ->where('date_seance', '<=', now()->addDays(30)->format('Y-m-d'))
+            ->orderBy('date_seance')
+            ->orderBy('heure_debut')
+            ->get();
+
+        // Récupérer les évaluations dont l'enseignant est responsable
+        // (évaluations des matières qu'il enseigne)
+        $matiereIds = $matieres->pluck('id');
+        $evaluations = ESBTPEvaluation::with(['matiere', 'classe'])
+            ->whereIn('matiere_id', $matiereIds)
+            ->where('annee_universitaire_id', $annee->id)
+            ->orderBy('date_evaluation', 'desc')
+            ->get();
+
+        // Calculer statistiques personnelles
+        // IMPORTANT: Utiliser $teacherId pour les requêtes sur teacher_attendances
+        $statistiques = [
+            'heures' => [
+                'total_seances' => \App\Models\ESBTPSeanceCours::where('teacher_id', $teacherId)
+                    ->whereHas('emploiTemps', function($q) use ($annee) {
+                        $q->where('annee_universitaire_id', $annee->id);
+                    })
+                    ->count(),
+                'seances_effectuees' => \App\Models\ESBTPTeacherAttendance::where('teacher_id', $teacherId)
+                    ->whereYear('date', $annee->date_debut ? $annee->date_debut->year : now()->year)
+                    ->whereIn('status', ['present', 'late'])
+                    ->where('type', 'start')
+                    ->count()
+            ],
+            'evaluations' => [
+                'total_programmees' => $evaluations->count(),
+                'a_corriger' => $evaluations->where('status', 'terminee')
+                    ->filter(function($eval) {
+                        return $eval->notes()->count() < $eval->classe->inscriptions()
+                            ->where('status', 'active')->count();
+                    })->count()
+            ]
+        ];
+
+        $queryTime = microtime(true);
+        \Log::info('📊 Teacher Dashboard data collected in: ' . round(($queryTime - $startTime) * 1000, 2) . 'ms');
+
+        // Formater les données
+        $data = [
+            'enseignant' => [
+                'id' => $user->id,
+                'nom_complet' => $user->name,
+                'email' => $user->email,
+                'photo_url' => $user->profile_photo_url ?? null
+            ],
+            'matieres' => $matieres->map(function ($matiere) use ($teacherId, $annee) {
+                // Récupérer les combinaisons (filieres+niveaux) pour cette matière
+                $combinaisons = [];
+                foreach ($matiere->filieres as $filiere) {
+                    foreach ($matiere->niveaux as $niveau) {
+                        $combinaisons[] = [
+                            'filiere' => $filiere->name,
+                            'niveau' => $niveau->name
+                        ];
+                    }
+                }
+
+                // Compter les séances pour cette matière
+                $nbSeances = \App\Models\ESBTPSeanceCours::where('teacher_id', $teacherId)
+                    ->where('matiere_id', $matiere->id)
+                    ->where('annee_universitaire_id', $annee->id)
+                    ->count();
+
+                return [
+                    'id' => $matiere->id,
+                    'nom' => $matiere->name,
+                    'code' => $matiere->code,
+                    'description' => $matiere->description,
+                    'coefficient' => $matiere->coefficient,
+                    'couleur' => $matiere->couleur,
+                    'heures_total' => $matiere->heures_cm + $matiere->heures_td + $matiere->heures_tp,
+                    'combinaisons' => $combinaisons,
+                    'nb_seances_programmees' => $nbSeances
+                ];
+            }),
+            'classes' => $classes->map(function ($classe) {
+                return [
+                    'id' => $classe->id,
+                    'name' => $classe->name,
+                    'libelle' => $classe->libelle,
+                    'filiere' => $classe->filiere ? [
+                        'id' => $classe->filiere->id,
+                        'nom' => $classe->filiere->name,
+                        'code' => $classe->filiere->code
+                    ] : null,
+                    'niveau' => $classe->niveau ? [
+                        'id' => $classe->niveau->id,
+                        'nom' => $classe->niveau->name,
+                        'code' => $classe->niveau->code
+                    ] : null
+                ];
+            }),
+            'prochaines_seances' => $seances->map(function ($seance) {
+                return [
+                    'id' => $seance->id,
+                    'matiere' => [
+                        'id' => $seance->matiere->id,
+                        'nom' => $seance->matiere->name,
+                        'code' => $seance->matiere->code
+                    ],
+                    'classe' => [
+                        'id' => $seance->classe->id,
+                        'nom' => $seance->classe->name
+                    ],
+                    'programmation' => [
+                        'date' => $seance->date_seance,
+                        'heure_debut' => $seance->heure_debut,
+                        'heure_fin' => $seance->heure_fin,
+                        'salle' => $seance->salle
+                    ],
+                    'lms_integration' => [
+                        'can_start_visio' => $seance->date_seance == now()->format('Y-m-d'),
+                        'can_mark_attendance' => true
+                    ]
+                ];
+            }),
+            'evaluations' => $evaluations->map(function ($evaluation) {
+                $nbNotes = $evaluation->notes()->count();
+                $nbEtudiantsClasse = $evaluation->classe->inscriptions()
+                    ->where('status', 'active')->count();
+
+                return [
+                    'id' => $evaluation->id,
+                    'titre' => $evaluation->titre,
+                    'description' => $evaluation->description,
+                    'type' => $evaluation->type,
+                    'status' => $evaluation->status,
+                    'matiere' => [
+                        'id' => $evaluation->matiere->id,
+                        'nom' => $evaluation->matiere->name,
+                        'code' => $evaluation->matiere->code
+                    ],
+                    'classe' => [
+                        'id' => $evaluation->classe->id,
+                        'nom' => $evaluation->classe->name
+                    ],
+                    'programmation' => [
+                        'date_evaluation' => $evaluation->date_evaluation,
+                        'duree_minutes' => $evaluation->duree_minutes,
+                        'coefficient' => $evaluation->coefficient,
+                        'bareme' => $evaluation->bareme
+                    ],
+                    'correction' => [
+                        'notes_saisies' => $nbNotes,
+                        'notes_attendues' => $nbEtudiantsClasse,
+                        'progression' => $nbEtudiantsClasse > 0
+                            ? round(($nbNotes / $nbEtudiantsClasse) * 100, 1)
+                            : 0,
+                        'is_complete' => $nbNotes >= $nbEtudiantsClasse
+                    ],
+                    'lms_integration' => [
+                        'can_create_online' => in_array($evaluation->status, ['brouillon', 'planifiee']),
+                        'can_submit_notes' => true
+                    ]
+                ];
+            }),
+            'statistiques' => $statistiques
+        ];
+
+        $mapTime = microtime(true);
+        \Log::info('🔄 Teacher Dashboard formatting completed in: ' . round(($mapTime - $queryTime) * 1000, 2) . 'ms');
+
+        $totalTime = microtime(true);
+        \Log::info('✅ LMS Teacher Dashboard API - Total time: ' . round(($totalTime - $startTime) * 1000, 2) . 'ms');
+
+        return $this->successResponse($data, 'Dashboard enseignant récupéré avec succès', [
+            'annee_universitaire' => [
+                'id' => $annee->id,
+                'nom' => $annee->nom,
+                'is_current' => true
+            ],
+            'counts' => [
+                'matieres_total' => $data['matieres']->count(),
+                'classes_total' => $data['classes']->count(),
+                'seances_a_venir' => $data['prochaines_seances']->count(),
+                'evaluations_total' => $data['evaluations']->count()
             ],
             'performance' => [
                 'total_time_ms' => round(($totalTime - $startTime) * 1000, 2),

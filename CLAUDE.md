@@ -263,6 +263,8 @@ MAIL_FROM_NAME="KLASSCI"
 - **19/10** : Fix double spinner load-matieres → suppression de TOUS les spinners existants avant création nouveau (querySelectorAll + forEach remove)
 - **19/10** : Ajout évaluations programmées dans API LMS endpoint /api/lms/classes → permet au LMS de créer formulaires en ligne et soumettre notes
 - **19/10** : Ajout endpoint GET /api/lms/me/dashboard pour étudiants → dashboard complet avec classe, cours, quiz, stats personnelles
+- **19/10** : Ajout endpoint GET /api/lms/me/teacher-dashboard pour enseignants → matières (dual-source: pivot+séances via esbtp_seance_cours), classes, séances à venir (30j), évaluations avec progression correction, stats heures effectuées (accepte roles 'teacher'|'enseignant', mapping correct teacher_id via esbtp_teachers.id, gestion date_debut nullable)
+- **19/10** : Fix API LMS dashboard étudiant → fallback dates année universitaire nulles (date_debut/date_fin) pour éviter "Illegal operator and value combination"
 
 ## ✨ Fonctionnalités récentes
 
