@@ -247,12 +247,75 @@ class ESBTPCoordinateurController extends Controller
     }
 
     /**
+     * Reset password for a coordinator
+     */
+    public function resetPassword(User $coordinateur)
+    {
+        $this->authorize('manage-users');
+
+        // Vérifier que l'utilisateur est bien un coordinateur
+        if (!$coordinateur->hasRole('coordinateur')) {
+            abort(404, 'Coordinateur non trouvé.');
+        }
+
+        try {
+            // Default password: Bonjour@2025 (same as teachers and students)
+            $defaultPassword = 'Bonjour@2025';
+
+            // Update password AND force password change on first login
+            $coordinateur->password = Hash::make($defaultPassword);
+            $coordinateur->must_change_password = true; // Force password change
+            $coordinateur->save();
+
+            // Log action
+            \Log::info('🔑 Password reset for coordinator to default', [
+                'coordinateur_id' => $coordinateur->id,
+                'coordinateur_name' => $coordinateur->name,
+                'reset_by' => auth()->user()->name,
+                'timestamp' => now(),
+                'must_change_password' => true
+            ]);
+
+            // Handle AJAX request
+            if (request()->wantsJson() || request()->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'password' => $defaultPassword,
+                    'message' => 'Mot de passe réinitialisé avec succès!'
+                ]);
+            }
+
+            return redirect()
+                ->back()
+                ->with('success', 'Mot de passe réinitialisé à Bonjour@2025 avec succès! Le coordinateur devra changer son mot de passe à la première connexion.')
+                ->with('new_password', $defaultPassword);
+
+        } catch (\Exception $e) {
+            \Log::error('❌ Password reset failed for coordinator', [
+                'coordinateur_id' => $coordinateur->id,
+                'error' => $e->getMessage()
+            ]);
+
+            if (request()->wantsJson() || request()->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erreur lors de la réinitialisation du mot de passe: ' . $e->getMessage()
+                ], 500);
+            }
+
+            return redirect()
+                ->back()
+                ->with('error', 'Erreur lors de la réinitialisation du mot de passe: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Toggle active status of coordinator
      */
     public function toggleStatus(User $coordinateur)
     {
         $this->authorize('manage-users');
-        
+
         if (!$coordinateur->hasRole('coordinateur')) {
             abort(404, 'Coordinateur non trouvé.');
         }
@@ -262,7 +325,7 @@ class ESBTPCoordinateurController extends Controller
         ]);
 
         $status = $coordinateur->is_active ? 'activé' : 'désactivé';
-        
+
         return back()->with('success', "Coordinateur {$status} avec succès.");
     }
 }

@@ -1851,6 +1851,7 @@ Route::middleware(['auth', 'role:superAdmin|secretaire|coordinateur', 'paywall']
     // Routes pour les coordinateurs (maintien de la compatibilité)
     Route::resource('coordinateurs', \App\Http\Controllers\ESBTPCoordinateurController::class);
     Route::patch('coordinateurs/{coordinateur}/toggle-status', [\App\Http\Controllers\ESBTPCoordinateurController::class, 'toggleStatus'])->name('coordinateurs.toggle-status');
+    Route::post('coordinateurs/{coordinateur}/reset-password', [\App\Http\Controllers\ESBTPCoordinateurController::class, 'resetPassword'])->name('coordinateurs.reset-password');
 });
 
 // Routes pour les coordinateurs avec permissions spécifiques
