@@ -1208,4 +1208,304 @@ Schema::create('esbtp_honoraires', function (Blueprint $table) {
 
 ---
 
-*Dernière mise à jour: 17 octobre 2025*
+## 🌐 API LMS-KLASSCI Integration (19 octobre 2025)
+
+### Vue d'ensemble
+
+API REST permettant l'intégration d'un Learning Management System (LMS) externe avec KLASSCI via Laravel Sanctum.
+
+**Endpoints base** : `http://domain/api/lms`
+
+**Authentification** : Bearer Token (Laravel Sanctum)
+
+### Corrections majeures appliquées
+
+**Problèmes initiaux** :
+1. ❌ Utilisation table obsolète `esbtp_classe_matiere` pour relations matières-classes
+2. ❌ Pas de validation inscription active pour connexion étudiants
+3. ❌ Filtrage incomplet des étudiants (manque `status='active'`)
+4. ❌ Logique incorrecte pour récupérer matières disponibles par classe
+
+**Solutions implémentées** :
+
+#### 1. AuthController - Validation inscription étudiante (lignes 125-138)
+
+```php
+// Blocage connexion étudiants sans inscription active
+if ($user->hasRole('etudiant')) {
+    $etudiantData = $this->getEtudiantData($user);
+
+    if (empty($etudiantData)) {
+        Auth::logout();
+        return $this->errorResponse(
+            'Vous n\'êtes pas encore réinscrit pour l\'année universitaire en cours...',
+            ['code' => 'NO_ACTIVE_ENROLLMENT'],
+            403
+        );
+    }
+}
+```
+
+**Impact** :
+- ✅ Étudiants DOIVENT avoir `status='active'` dans année `is_current=true`
+- ✅ Message clair avec code erreur `NO_ACTIVE_ENROLLMENT`
+- ✅ HTTP 403 au lieu de 200 avec données vides
+
+#### 2. LMSDataController::matieres() - Combinaisons globales (lignes 52-138)
+
+```php
+// Utilisation pivot tables globales (NOT obsolete esbtp_classe_matiere)
+$query = ESBTPMatiere::with([
+    'filieres',  // BelongsToMany via esbtp_matiere_filiere
+    'niveaux',   // BelongsToMany via esbtp_matiere_niveau
+    'enseignants' => function ($q) use ($annee) {
+        $q->where('esbtp_enseignant_matiere.annee_universitaire_id', $annee->id)
+          ->where('esbtp_enseignant_matiere.is_active', true);
+    }
+])->where('esbtp_matieres.is_active', true);
+
+// Calculer TOUTES les combinaisons (filiere_id, niveau_id)
+$combinaisons = [];
+foreach ($matiere->filieres as $filiere) {
+    foreach ($matiere->niveaux as $niveau) {
+        $combinaisons[] = [
+            'filiere_id' => $filiere->id,
+            'filiere_nom' => $filiere->name,
+            'niveau_id' => $niveau->id,
+            'niveau_nom' => $niveau->name,
+        ];
+    }
+}
+```
+
+**Impact** :
+- ✅ Chaque matière retourne tableau `combinaisons` avec paires `(filiere_id, niveau_id)`
+- ✅ LMS peut filtrer matières pour classe via combinaison
+- ✅ Plus besoin de `esbtp_classe_matiere` (obsolète)
+
+#### 3. LMSDataController::classes() - Matières via combinaisons (lignes 207-220)
+
+```php
+// Récupérer matières via combinaisons globales (NOT obsolete table)
+$matieres = ESBTPMatiere::where('is_active', true)
+    ->whereHas('filieres', function ($q) use ($classe) {
+        $q->where('esbtp_filieres.id', $classe->filiere_id);
+    })
+    ->whereHas('niveaux', function ($q) use ($classe) {
+        $q->where('esbtp_niveau_etudes.id', $classe->niveau_etude_id);
+    })
+    ->get();
+```
+
+**Impact** :
+- ✅ Matières disponibles = celles avec combinaison `(classe.filiere_id, classe.niveau_id)`
+- ✅ Cohérence avec `ESBTPClasseController::show()` et `::matieres()`
+- ✅ Coefficient identique pour toutes classes même filière+niveau
+
+#### 4. LMSDataController::etudiantsClasse() - Filtrage complet (lignes 318-330)
+
+```php
+// Filtrage complet: année courante + status active + classe spécifique
+$etudiants = ESBTPEtudiant::whereHas('inscriptions', function ($q) use ($classeId, $annee) {
+    $q->where('classe_id', $classeId)
+      ->where('annee_universitaire_id', $annee->id)
+      ->where('status', 'active');  // ← AJOUTÉ
+})->with(['user', 'inscriptions' => function ($q) use ($annee, $classeId) {
+    $q->where('annee_universitaire_id', $annee->id)
+      ->where('classe_id', $classeId)
+      ->where('status', 'active');  // ← AJOUTÉ
+}])->get();
+```
+
+**Impact** :
+- ✅ Seuls étudiants avec inscription **active** année **courante**
+- ✅ Cohérence avec `ESBTPClasseController::show()`
+- ✅ Évite étudiants transférés/suspendus
+
+### Règles métier clés
+
+#### Relations matières-classes
+
+```php
+// ✅ CORRECT - Pivot tables globales
+'filieres' => BelongsToMany (esbtp_matiere_filiere)
+'niveaux'  => BelongsToMany (esbtp_matiere_niveau)
+
+// ❌ OBSOLÈTE - Ne JAMAIS utiliser
+'classes' => BelongsToMany (esbtp_classe_matiere)
+```
+
+#### Filtrage étudiants - Pattern obligatoire
+
+```php
+$classe->etudiants()
+    ->whereHas('inscriptions', function($q) use ($anneeUniversitaire, $classe) {
+        $q->where('annee_universitaire_id', $anneeUniversitaire->id)
+          ->where('status', 'active')
+          ->where('classe_id', $classe->id); // ← TOUJOURS !
+    });
+```
+
+### Endpoints principaux
+
+#### POST `/api/lms/auth/login`
+
+**Paramètres** :
+```json
+{
+  "username": "email@example.com",
+  "password": "mot_de_passe",
+  "remember": false
+}
+```
+
+**Réponse succès (200)** :
+```json
+{
+  "success": true,
+  "message": "Connexion réussie",
+  "data": {
+    "token": "1|abc123...",
+    "token_type": "Bearer",
+    "user": {
+      "id": 42,
+      "role": "etudiant",
+      "etudiant_data": {
+        "matricule": "ESB2024001",
+        "classe": { "id": 15, "nom": "L3 GC - 2024/2025" },
+        "statut_inscription": "active"
+      }
+    }
+  }
+}
+```
+
+**Erreur - Pas d'inscription (403)** :
+```json
+{
+  "success": false,
+  "message": "Vous n'êtes pas encore réinscrit...",
+  "errors": { "code": "NO_ACTIVE_ENROLLMENT" }
+}
+```
+
+#### GET `/api/lms/matieres`
+
+**Headers** : `Authorization: Bearer {token}`
+
+**Réponse** :
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 42,
+      "nom": "Mathématiques",
+      "code": "MATH101",
+      "coefficient": 3.0,
+      "combinaisons": [
+        {
+          "filiere_id": 1,
+          "filiere_nom": "Génie Civil",
+          "niveau_id": 3,
+          "niveau_nom": "Licence 3"
+        }
+      ],
+      "enseignants": [{ "id": 5, "nom": "Prof. KOUASSI" }]
+    }
+  ]
+}
+```
+
+#### GET `/api/lms/classes`
+
+**Filtres optionnels** : `?filiere_id=1&niveau_id=3&search=GC`
+
+**Réponse** :
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 15,
+      "nom": "L3 GC - 2024/2025",
+      "filiere": { "id": 1, "nom": "Génie Civil" },
+      "niveau": { "id": 3, "nom": "Licence 3" },
+      "matieres_disponibles": [
+        {
+          "id": 42,
+          "nom": "Mathématiques",
+          "coefficient": 3.0
+        }
+      ],
+      "nb_etudiants": 25,
+      "nb_matieres": 8
+    }
+  ]
+}
+```
+
+#### GET `/api/lms/classes/{classeId}/etudiants`
+
+**Réponse** :
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 15,
+      "matricule": "ESB2024001",
+      "nom_complet": "Jean DUPONT",
+      "user": { "email": "jean@example.com" },
+      "inscription": {
+        "status": "active",
+        "date_inscription": "2024-09-01"
+      }
+    }
+  ]
+}
+```
+
+### Sécurité
+
+**Authentification** :
+- Type : Bearer Token (Laravel Sanctum)
+- Header : `Authorization: Bearer {token}`
+- Scope : `lms:access`
+
+**Roles autorisés** :
+- ✅ `enseignant` - Accès classes enseignées
+- ✅ `coordinateur` - Accès complet
+- ✅ `superAdmin` - Accès complet
+- ✅ `etudiant` - Données personnelles uniquement
+
+**Restrictions** :
+- ❌ `secretaire` n'a PAS accès au LMS
+- ❌ Étudiants sans inscription active bloqués
+- ❌ Utilisateurs inactifs bloqués
+
+### Tables clés
+
+| Table | Type | Status | Usage |
+|-------|------|--------|-------|
+| `esbtp_matiere_filiere` | Pivot | ✅ Actuelle | Matières par filière |
+| `esbtp_matiere_niveau` | Pivot | ✅ Actuelle | Matières par niveau |
+| `esbtp_classe_matiere` | Pivot | ❌ OBSOLÈTE | Ne plus utiliser |
+| `esbtp_config_matieres` | Config | ✅ Actuelle | Bulletins seulement |
+| `esbtp_inscriptions` | Data | ✅ Actuelle | Inscriptions étudiants |
+
+### Fichiers modifiés
+
+1. ✅ `app/Http/Controllers/API/AuthController.php` (L125-138)
+2. ✅ `app/Http/Controllers/API/LMSDataController.php` :
+   - `matieres()` (L52-138) - Pivot tables globales
+   - `classes()` (L207-220) - Combinaisons globales
+   - `etudiantsClasse()` (L318-330) - Filtrage complet
+
+### Documentation complète
+
+Voir : [API_LMS_CORRECTIONS_SUMMARY.md](API_LMS_CORRECTIONS_SUMMARY.md)
+
+---
+
+*Dernière mise à jour: 19 octobre 2025*

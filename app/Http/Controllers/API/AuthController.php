@@ -123,7 +123,19 @@ class AuthController extends BaseApiController
         if ($user->hasRole('enseignant')) {
             $userData['enseignant_data'] = $this->getEnseignantData($user);
         } elseif ($user->hasRole('etudiant')) {
-            $userData['etudiant_data'] = $this->getEtudiantData($user);
+            // VÉRIFIER que l'étudiant a une inscription active pour l'année courante
+            $etudiantData = $this->getEtudiantData($user);
+
+            if (empty($etudiantData)) {
+                Auth::logout();
+                return $this->errorResponse(
+                    'Vous n\'êtes pas encore réinscrit pour l\'année universitaire en cours. Veuillez contacter le secrétariat pour procéder à votre réinscription.',
+                    ['code' => 'NO_ACTIVE_ENROLLMENT'],
+                    403
+                );
+            }
+
+            $userData['etudiant_data'] = $etudiantData;
         } elseif (RoleHelper::isCoordinatorEquivalent($userRole)) {
             // Les coordinateurs et superAdmin ont accès aux mêmes données d'administration
             $userData['admin_data'] = $this->getAdminData($user);

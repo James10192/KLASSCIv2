@@ -49,16 +49,12 @@ class LMSDataController extends BaseApiController
             return $this->errorResponse('Aucune année universitaire courante trouvée');
         }
 
-        // Base query avec relations
+        // Base query avec relations - Utilise les tables pivot globales (filiere + niveau)
         $query = ESBTPMatiere::with([
-            'filiere',
-            'niveauEtude',
-            'classes' => function ($q) use ($annee) {
-                $q->whereHas('inscriptions', function ($inscriptionQuery) use ($annee) {
-                    $inscriptionQuery->where('annee_universitaire_id', $annee->id)
-                                   ->where('status', 'active');
-                });
-            },
+            'filiere',  // Relation BelongsTo (unique)
+            'niveauEtude',  // Relation BelongsTo (unique)
+            'filieres',  // Relation BelongsToMany (plusieurs via pivot)
+            'niveaux',   // Relation BelongsToMany (plusieurs via pivot)
             'enseignants' => function ($q) use ($annee) {
                 $q->where('esbtp_enseignant_matiere.annee_universitaire_id', $annee->id)
                   ->where('esbtp_enseignant_matiere.is_active', true);
@@ -88,31 +84,43 @@ class LMSDataController extends BaseApiController
         $queryTime = microtime(true);
         \Log::info('📊 Query executed in: ' . round(($queryTime - $anneeTime) * 1000, 2) . 'ms - Found ' . $matieres->count() . ' matieres');
 
-        // Formater les données pour le LMS
+        // Formater les données pour le LMS - UTILISE LES TABLES PIVOT GLOBALES
         $data = $matieres->map(function ($matiere) use ($annee) {
+            // Combinaisons disponibles (filière + niveau) via tables pivot
+            $combinaisons = [];
+            foreach ($matiere->filieres as $filiere) {
+                foreach ($matiere->niveaux as $niveau) {
+                    $combinaisons[] = [
+                        'filiere' => [
+                            'id' => $filiere->id,
+                            'nom' => $filiere->name ?? $filiere->nom,
+                            'code' => $filiere->code
+                        ],
+                        'niveau' => [
+                            'id' => $niveau->id,
+                            'nom' => $niveau->name ?? $niveau->nom,
+                            'code' => $niveau->code
+                        ]
+                    ];
+                }
+            }
+
             return [
                 'id' => $matiere->id,
-                'nom' => $matiere->nom,
+                'nom' => $matiere->name ?? $matiere->nom,
                 'code' => $matiere->code,
                 'description' => $matiere->description,
                 'coefficient' => $matiere->coefficient,
                 'couleur' => $matiere->couleur,
+                'type_formation' => $matiere->type_formation,
                 'heures' => [
                     'cm' => $matiere->heures_cm,
                     'td' => $matiere->heures_td,
                     'tp' => $matiere->heures_tp,
-                    'total' => $matiere->heures_cm + $matiere->heures_td + $matiere->heures_tp
+                    'stage' => $matiere->heures_stage ?? 0,
+                    'total' => $matiere->heures_cm + $matiere->heures_td + $matiere->heures_tp + ($matiere->heures_stage ?? 0)
                 ],
-                'filiere' => $matiere->filiere ? [
-                    'id' => $matiere->filiere->id,
-                    'nom' => $matiere->filiere->nom,
-                    'code' => $matiere->filiere->code
-                ] : null,
-                'niveau_etude' => $matiere->niveauEtude ? [
-                    'id' => $matiere->niveauEtude->id,
-                    'nom' => $matiere->niveauEtude->nom,
-                    'code' => $matiere->niveauEtude->code
-                ] : null,
+                'combinaisons' => $combinaisons,  // TOUTES les combinaisons possibles
                 'enseignants' => $matiere->enseignants->map(function ($enseignant) {
                     return [
                         'id' => $enseignant->id,
@@ -120,19 +128,9 @@ class LMSDataController extends BaseApiController
                         'email' => $enseignant->email
                     ];
                 }),
-                'classes' => $matiere->classes->map(function ($classe) {
-                    return [
-                        'id' => $classe->id,
-                        'nom' => $classe->nom,
-                        'nb_etudiants' => $classe->inscriptions()
-                            ->where('annee_universitaire_id', $this->getAnneeCouraante()->id)
-                            ->where('status', 'active')
-                            ->count()
-                    ];
-                }),
                 'lms_metadata' => [
-                    'has_online_courses' => false, // À définir selon la logique LMS
-                    'last_course_date' => null,    // À définir selon les données LMS
+                    'has_online_courses' => false,
+                    'last_course_date' => null,
                     'total_evaluations' => $matiere->evaluations()
                         ->where('annee_universitaire_id', $annee->id)->count()
                 ]
@@ -206,9 +204,19 @@ class LMSDataController extends BaseApiController
         $queryTime = microtime(true);
         \Log::info('📊 Query executed in: ' . round(($queryTime - $anneeTime) * 1000, 2) . 'ms - Found ' . $classes->count() . ' classes');
 
-        $data = $classes->map(function ($classe) {
+        $data = $classes->map(function ($classe) use ($annee) {
             // Compter les inscriptions actives pour l'année courante
             $nbEtudiants = $classe->inscriptions->count();
+
+            // Récupérer les matières disponibles via combinaison (filiere_id + niveau_id)
+            $matieres = ESBTPMatiere::where('is_active', true)
+                ->whereHas('filieres', function ($q) use ($classe) {
+                    $q->where('esbtp_filieres.id', $classe->filiere_id);
+                })
+                ->whereHas('niveaux', function ($q) use ($classe) {
+                    $q->where('esbtp_niveau_etudes.id', $classe->niveau_etude_id);
+                })
+                ->get();
 
             return [
                 'id' => $classe->id,
@@ -233,12 +241,13 @@ class LMSDataController extends BaseApiController
                     'type' => $classe->niveau->type,
                     'year' => $classe->niveau->year
                 ] : null,
-                'matieres' => $classe->matieres->map(function ($matiere) use ($classe) {
+                'matieres_disponibles' => $matieres->map(function ($matiere) {
                     return [
                         'id' => $matiere->id,
-                        'nom' => $matiere->nom,
+                        'nom' => $matiere->name ?? $matiere->nom,
                         'code' => $matiere->code,
-                        'coefficient' => $matiere->pivot->coefficient ?? null
+                        'coefficient' => $matiere->coefficient,  // Coefficient par défaut
+                        'source' => 'catalogue_global'  // Via combinaison filiere+niveau
                     ];
                 })
             ];
@@ -266,6 +275,9 @@ class LMSDataController extends BaseApiController
      *
      * Endpoint: GET /api/lms/classes/{classeId}/etudiants
      *
+     * Retourne UNIQUEMENT les étudiants avec une inscription active
+     * dans l'année universitaire courante (is_current=true)
+     *
      * @param Request $request
      * @param int $classeId
      * @return JsonResponse
@@ -273,7 +285,7 @@ class LMSDataController extends BaseApiController
     public function etudiantsClasse(Request $request, int $classeId): JsonResponse
     {
         // Vérifier les permissions
-        $roleCheck = $this->checkRoleAccess(['enseignant', 'coordinateur']);
+        $roleCheck = $this->checkRoleAccess(['enseignant', 'coordinateur', 'superAdmin']);
         if ($roleCheck) {
             return $roleCheck;
         }
@@ -294,9 +306,12 @@ class LMSDataController extends BaseApiController
         if (auth()->user()->hasRole('enseignant')) {
             $hasAccess = ESBTPMatiere::whereHas('enseignants', function ($q) use ($annee) {
                 $q->where('enseignant_id', auth()->id())
-                  ->where('esbtp_enseignant_matiere.annee_universitaire_id', $annee->id);
-            })->whereHas('classes', function ($q) use ($classeId) {
-                $q->where('esbtp_classe.id', $classeId);
+                  ->where('esbtp_enseignant_matiere.annee_universitaire_id', $annee->id)
+                  ->where('esbtp_enseignant_matiere.is_active', true);
+            })->whereHas('filieres', function ($q) use ($classe) {
+                $q->where('esbtp_filieres.id', $classe->filiere_id);
+            })->whereHas('niveaux', function ($q) use ($classe) {
+                $q->where('esbtp_niveau_etudes.id', $classe->niveau_etude_id);
             })->exists();
 
             if (!$hasAccess) {
@@ -304,27 +319,33 @@ class LMSDataController extends BaseApiController
             }
         }
 
+        // FILTRE CORRECT: année courante + status active + classe spécifique
         $etudiants = ESBTPEtudiant::whereHas('inscriptions', function ($q) use ($classeId, $annee) {
             $q->where('classe_id', $classeId)
               ->where('annee_universitaire_id', $annee->id)
               ->where('status', 'active');
-        })->with(['user', 'inscriptions' => function ($q) use ($annee) {
-            $q->where('annee_universitaire_id', $annee->id);
+        })->with(['user', 'inscriptions' => function ($q) use ($annee, $classeId) {
+            $q->where('annee_universitaire_id', $annee->id)
+              ->where('classe_id', $classeId)
+              ->where('status', 'active');
         }])->get();
 
-        $data = $etudiants->map(function ($etudiant) {
+        $data = $etudiants->map(function ($etudiant) use ($annee) {
             $inscription = $etudiant->inscriptions->first();
 
             return [
                 'id' => $etudiant->id,
                 'matricule' => $etudiant->matricule,
                 'nom_complet' => $etudiant->user->name ?? 'N/A',
+                'prenom' => $etudiant->user->first_name ?? null,
+                'nom' => $etudiant->user->last_name ?? null,
                 'email' => $etudiant->user->email ?? null,
                 'telephone' => $etudiant->telephone,
                 'date_naissance' => $etudiant->date_naissance,
                 'sexe' => $etudiant->sexe,
                 'inscription' => $inscription ? [
                     'id' => $inscription->id,
+                    'annee_universitaire_id' => $inscription->annee_universitaire_id,
                     'date_inscription' => $inscription->created_at->format('Y-m-d'),
                     'status' => $inscription->status
                 ] : null,
@@ -339,7 +360,14 @@ class LMSDataController extends BaseApiController
         return $this->successResponse($data, 'Étudiants de la classe récupérés', [
             'classe' => [
                 'id' => $classe->id,
-                'nom' => $classe->nom
+                'nom' => $classe->name ?? $classe->nom,
+                'filiere' => $classe->filiere->nom ?? null,
+                'niveau' => $classe->niveau->nom ?? null
+            ],
+            'annee_universitaire' => [
+                'id' => $annee->id,
+                'nom' => $annee->nom,
+                'is_current' => true
             ],
             'total_etudiants' => $data->count()
         ]);
