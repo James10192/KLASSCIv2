@@ -1113,7 +1113,7 @@ class ESBTPEvaluationController extends Controller
                 ->whereHas('niveaux', function ($q) use ($classe) {
                     $q->where('esbtp_niveau_etudes.id', $classe->niveau_etude_id);
                 })
-                ->orderBy('nom')
+                ->orderBy('name')
                 ->get();
 
             \Log::info('✅ [AJAX] loadMatieres - Matières trouvées', [
@@ -1127,7 +1127,7 @@ class ESBTPEvaluationController extends Controller
             // Générer les options HTML pour le select
             $options = '<option value="">-- Sélectionner une matière --</option>';
             foreach ($matieres as $matiere) {
-                $matiereNom = $matiere->nom ?? $matiere->name ?? 'Matière ' . $matiere->id;
+                $matiereNom = $matiere->name ?? 'Matière ' . $matiere->id;
                 $matiereCode = $matiere->code ? ' (' . $matiere->code . ')' : '';
                 $options .= '<option value="' . $matiere->id . '">' . $matiereNom . $matiereCode . '</option>';
             }
