@@ -2351,7 +2351,7 @@ class LMSDataController extends BaseApiController
 
         // Validation
         $validated = $request->validate([
-            'seance_id' => 'required|integer|exists:esbtp_seances_cours,id',
+            'seance_id' => 'required|integer|exists:esbtp_seance_cours,id',
             'minutes_before' => 'integer|min:5|max:1440', // 5min à 24h
             'channels' => 'array',
             'channels.*' => 'in:whatsapp,email,sms,app'
