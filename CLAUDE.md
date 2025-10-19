@@ -1801,4 +1801,475 @@ Accept: application/json
 
 ---
 
+## 📹 Support Visioconférences LMS (19 octobre 2025)
+
+### Vue d'ensemble
+
+4 endpoints API ajoutés pour permettre au LMS de gérer les visioconférences (Jitsi/Zoom/etc) en utilisant les données KLASSCI. Le LMS gère ses propres rooms, KLASSCI fournit les données et reçoit les attendances.
+
+**Architecture** : LMS stocke rooms → KLASSCI fournit données séances/participants → LMS sync attendances → KLASSCI crée attendances merged
+
+### Endpoints créés
+
+#### 1. GET `/api/lms/seances/upcoming`
+
+**Usage** : Le LMS récupère les séances à venir pour pré-créer les rooms de visio
+
+**Paramètres** :
+- `days` (optionnel, défaut 7) : Nombre de jours à récupérer
+- `teacher_id` (optionnel) : Filtrer par enseignant
+- `classe_id` (optionnel) : Filtrer par classe
+
+**Réponse** :
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "seance_id": 123,
+      "matiere": { "id": 42, "nom": "Mathématiques", "code": "MATH101" },
+      "classe": { "id": 15, "nom": "L3 GC", "code": "L3GC" },
+      "teacher": {
+        "id": 5,              // user_id pour le LMS
+        "teacher_id": 12,     // teacher_id pour référence
+        "nom": "KOUASSI Jean",
+        "prenom": "Jean",
+        "email": "jean@example.com"
+      },
+      "date_seance": "2025-10-25",
+      "heure_debut": "08:00:00",
+      "heure_fin": "10:00:00",
+      "duree_minutes": 120,
+      "salle": "A101"
+    }
+  ],
+  "meta": {
+    "periode": { "date_debut": "2025-10-19", "date_fin": "2025-10-26", "days": 7 },
+    "total_seances": 15
+  }
+}
+```
+
+**Logique** :
+- Requête sur `esbtp_seances_cours` avec `date_seance BETWEEN date_debut AND date_fin`
+- Filtre emploi temps actif (`annee_universitaire_id` courante)
+- Mapping `teacher_id` (esbtp_teachers.id) vers `user_id` pour le LMS
+
+#### 2. GET `/api/lms/seances/{id}/participants`
+
+**Usage** : Le LMS récupère la liste des participants autorisés pour une séance (pour pré-remplir les participants ou vérifier les autorisations)
+
+**Réponse** :
+```json
+{
+  "success": true,
+  "data": {
+    "seance": {
+      "id": 123,
+      "matiere": { "id": 42, "nom": "Mathématiques", "code": "MATH101" },
+      "classe": { "id": 15, "nom": "L3 GC" },
+      "date_seance": "2025-10-25",
+      "heure_debut": "08:00:00",
+      "heure_fin": "10:00:00"
+    },
+    "teacher": {
+      "id": 5,
+      "nom": "KOUASSI Jean",
+      "prenom": "Jean",
+      "email": "jean@example.com"
+    },
+    "students": [
+      {
+        "id": 150,
+        "user_id": 200,
+        "nom": "ABAKA",
+        "prenom": "Ange",
+        "nom_complet": "ABAKA Ange",
+        "email": "ange@example.com",
+        "matricule": "ESB2024001"
+      }
+    ],
+    "total_students": 25
+  }
+}
+```
+
+**Logique** :
+- Récupère étudiants avec **inscription active** dans la classe de la séance
+- Filtrage identique au reste du système : `annee_universitaire_id` + `status='active'` + `classe_id`
+
+#### 3. POST `/api/lms/seances/{id}/validate-participant`
+
+**Usage** : Le LMS vérifie qu'un utilisateur a le droit de rejoindre la visio AVANT de générer le token Jitsi
+
+**Body** :
+```json
+{
+  "user_id": 200
+}
+```
+
+**Réponse succès** :
+```json
+{
+  "success": true,
+  "data": {
+    "authorized": true,
+    "role": "student",  // ou "teacher" ou "moderator"
+    "reason": null,
+    "user_info": {
+      "id": 200,
+      "nom": "ABAKA Ange",
+      "email": "ange@example.com"
+    }
+  }
+}
+```
+
+**Réponse échec** :
+```json
+{
+  "success": true,
+  "data": {
+    "authorized": false,
+    "role": null,
+    "reason": "not_enrolled_in_class",  // ou "not_teacher_of_this_seance", "student_profile_not_found", "invalid_role"
+    "user_info": { ... }
+  }
+}
+```
+
+**Logique de validation** :
+1. **Enseignant** : Vérifie que `user.teacher.id == seance.teacher_id`
+2. **Étudiant** : Vérifie inscription active dans `seance.classe_id` pour année courante
+3. **Admin/Coordinateur** : Autorisé automatiquement (role = "moderator")
+4. **Autres** : Refusé
+
+#### 4. POST `/api/lms/attendances/from-video-session`
+
+**Usage** : Le LMS envoie les données de présence après la fin de la visio
+
+**Body** :
+```json
+{
+  "seance_cours_id": 123,
+  "date": "2025-10-25",
+  "attendances": [
+    {
+      "etudiant_id": 150,
+      "statut": "present",  // ou "absent", "retard", "late"
+      "joined_at": "2025-10-25 08:05:00",
+      "left_at": "2025-10-25 09:55:00",
+      "duration_minutes": 110
+    },
+    {
+      "etudiant_id": 151,
+      "statut": "retard",
+      "joined_at": "2025-10-25 08:35:00",
+      "left_at": "2025-10-25 10:00:00",
+      "duration_minutes": 85
+    }
+  ]
+}
+```
+
+**Réponse** :
+```json
+{
+  "success": true,
+  "data": {
+    "created": 20,   // Nouvelles attendances créées
+    "updated": 3,    // Attendances existantes mises à jour avec infos visio
+    "errors": []
+  },
+  "meta": {
+    "seance": {
+      "id": 123,
+      "matiere": "Mathématiques",
+      "classe": "L3 GC",
+      "date": "2025-10-25"
+    }
+  }
+}
+```
+
+**Logique de création** :
+
+1. **Vérifie si attendance existe** (même `seance_cours_id` + `etudiant_id` + `date` avec `call_type IN ('merged', NULL)`)
+2. **Si existe** :
+   - Update avec `video_joined_at`, `video_left_at`, `video_duration_minutes`
+   - Ajoute info visio au `commentaire` existant
+3. **Si n'existe pas** :
+   - Crée nouvelle attendance avec `call_type='merged'` (**IMPORTANT**)
+   - Remplit toutes les colonnes video
+   - `commentaire` = "Présence enregistrée via visioconférence LMS - Connexion: {joined_at} - Déconnexion: {left_at} - Durée: {duration} min"
+
+**Pourquoi `call_type='merged'` ?**
+- Pour que `finalOnly()` scope les inclue dans les stats d'`attendances.index`
+- Les attendances visio DOIVENT compter comme attendances normales
+- Distinction via colonnes `video_*` et `commentaire`
+
+### Migration BDD
+
+**Fichier** : `database/migrations/2025_10_19_180254_add_video_columns_to_esbtp_attendances_table.php`
+
+**Colonnes ajoutées à `esbtp_attendances`** :
+```php
+$table->dateTime('video_joined_at')->nullable()
+      ->comment('Heure de connexion à la visio');
+$table->dateTime('video_left_at')->nullable()
+      ->comment('Heure de déconnexion');
+$table->integer('video_duration_minutes')->nullable()
+      ->comment('Durée de présence en visio (minutes)');
+```
+
+**Rollback** :
+```php
+$table->dropColumn(['video_joined_at', 'video_left_at', 'video_duration_minutes']);
+```
+
+### Workflow complet
+
+```
+┌─────────┐                                    ┌──────────┐
+│   LMS   │                                    │ KLASSCI  │
+└────┬────┘                                    └────┬─────┘
+     │                                              │
+     │ 1. GET /api/lms/seances/upcoming?days=7     │
+     │─────────────────────────────────────────────>│
+     │                                              │
+     │ [{seance_id, matiere, classe, teacher,...}] │
+     │<─────────────────────────────────────────────│
+     │                                              │
+     │ (LMS crée rooms Jitsi dans sa BDD)          │
+     │                                              │
+     │ 2. Étudiant clique "Rejoindre"              │
+     │                                              │
+     │ POST /api/lms/seances/123/validate-participant
+     │─────────────────────────────────────────────>│
+     │ { user_id: 200 }                            │
+     │                                              │
+     │ { authorized: true, role: 'student' }       │
+     │<─────────────────────────────────────────────│
+     │                                              │
+     │ (LMS génère token Jitsi + redirige)         │
+     │                                              │
+     │ (Visio en cours - tracking dans BDD LMS)    │
+     │                                              │
+     │ 3. Fin de visio                              │
+     │                                              │
+     │ POST /api/lms/attendances/from-video-session│
+     │─────────────────────────────────────────────>│
+     │ { seance_id, date, attendances: [...] }     │
+     │                                              │
+     │                    (KLASSCI crée attendances merged)
+     │                    (Remplit colonnes video_*)
+     │                                              │
+     │ { created: 20, updated: 0 }                 │
+     │<─────────────────────────────────────────────│
+```
+
+### Règles métier
+
+#### Attendances visio dans KLASSCI
+
+**Stockage** :
+- `call_type = 'merged'` : Pour que `finalOnly()` les inclue dans les stats
+- `commentaire` : Info complète de la visio (connexion/déconnexion/durée)
+- `video_joined_at`, `video_left_at`, `video_duration_minutes` : Données techniques
+- Tous les autres champs standards remplis (classe_id, matiere_id, teacher_id, etc.)
+
+**Détection doublon** :
+- Recherche par `seance_cours_id` + `etudiant_id` + `date` + `call_type IN ('merged', NULL)`
+- Si existe déjà : UPDATE avec ajout info visio
+- Si pas existe : CREATE nouvelle attendance
+
+**Visibilité** :
+- ✅ Comptabilisées dans `attendances.index` (via `finalOnly()`)
+- ✅ Incluses dans rapports de présence
+- ✅ Incluses dans statistiques classe/étudiant
+
+### TODO : Modification attendances.index
+
+**À faire** : Afficher les informations visio dans la page `attendances.index` pour distinguer les attendances manuelles des attendances visio.
+
+**Proposition d'implémentation** :
+
+1. **Détection attendance visio** :
+```blade
+@if($attendance->video_joined_at)
+    <span class="badge badge-info" title="{{ $attendance->commentaire }}">
+        <i class="fas fa-video"></i> Visio
+    </span>
+@else
+    <span class="badge badge-secondary">
+        <i class="fas fa-clipboard-check"></i> Manuel
+    </span>
+@endif
+```
+
+2. **Modal détail avec infos visio** :
+```blade
+@if($attendance->video_joined_at)
+<div class="video-details mt-2">
+    <small class="text-muted">
+        <i class="fas fa-video"></i>
+        Connexion: {{ \Carbon\Carbon::parse($attendance->video_joined_at)->format('H:i') }}
+        - Déconnexion: {{ \Carbon\Carbon::parse($attendance->video_left_at)->format('H:i') }}
+        - Durée: {{ $attendance->video_duration_minutes }} min
+    </small>
+</div>
+@endif
+```
+
+3. **Filtre optionnel** :
+```blade
+<select name="source" class="form-control">
+    <option value="">Toutes sources</option>
+    <option value="visio">Visioconférences uniquement</option>
+    <option value="manual">Manuelles uniquement</option>
+</select>
+```
+
+**Controller update** :
+```php
+// Dans ESBTPAttendanceController::index()
+if ($request->has('source')) {
+    if ($request->source == 'visio') {
+        $query->whereNotNull('video_joined_at');
+    } elseif ($request->source == 'manual') {
+        $query->whereNull('video_joined_at');
+    }
+}
+```
+
+### Sécurité
+
+**Authentication** :
+- Tous les endpoints nécessitent `auth:sanctum`
+- Vérification rôle approprié pour chaque action
+
+**Validation stricte** :
+- `seance_cours_id` : Existe dans `esbtp_seances_cours`
+- `etudiant_id` : Existe dans `esbtp_etudiants`
+- `statut` : IN ('present', 'absent', 'retard', 'late')
+- Formats date/time : `Y-m-d H:i:s`
+- `duration_minutes` : Integer >= 0
+
+**Protection données** :
+- Étudiants ne voient QUE leurs propres données
+- Enseignants voient UNIQUEMENT leurs séances
+- Coordinateurs/Admins accès complet
+
+### Logs de débogage
+
+```
+🚀 LMS Upcoming Seances API - Starting request
+📊 Upcoming seances query executed in: 45ms - Found 15 seances
+✅ LMS Upcoming Seances API - Total time: 87ms
+
+🚀 LMS Seance Participants API - Starting request | seance_id: 123
+📊 Seance participants data collected in: 32ms
+✅ LMS Seance Participants API - Total time: 65ms
+
+🚀 LMS Validate Participant API - Starting request | seance_id: 123 | user_id: 200
+✅ Validation completed | authorized: true | role: student | time_ms: 18ms
+
+🚀 LMS Sync Video Attendances API - Starting request | seance_id: 123
+🔄 Updated existing attendance with video data | attendance_id: 456 | etudiant_id: 150
+✅ Created new attendance from video session | etudiant_id: 151 | statut: retard
+✅ LMS Sync Video Attendances API - Completed | created: 20 | updated: 3 | errors: 0 | total_time_ms: 245ms
+```
+
+### Fichiers modifiés
+
+1. ✅ `database/migrations/2025_10_19_180254_add_video_columns_to_esbtp_attendances_table.php` - Migration
+2. ✅ `app/Http/Controllers/API/LMSDataController.php` :
+   - `upcomingSeances()` (L1749-1866)
+   - `seanceParticipants()` (L1879-1966)
+   - `validateParticipant()` (L1980-2081)
+   - `syncVideoAttendances()` (L2094-2230)
+3. ✅ `routes/api.php` (L178-192) - 4 routes ajoutées dans groupe `/api/lms`
+
+### Routes créées
+
+```php
+// Groupe: Route::middleware(['auth:sanctum'])->prefix('lms')->name('api.lms.')
+
+GET  /api/lms/seances/upcoming
+     → LMSDataController@upcomingSeances
+
+GET  /api/lms/seances/{seanceId}/participants
+     → LMSDataController@seanceParticipants
+
+POST /api/lms/seances/{seanceId}/validate-participant
+     → LMSDataController@validateParticipant
+
+POST /api/lms/attendances/from-video-session
+     → LMSDataController@syncVideoAttendances
+```
+
+### Providers de visio recommandés
+
+1. **Jitsi Meet** (Open Source) ⭐ **Recommandé**
+   - Gratuit et self-hosted
+   - API REST + Webhooks
+   - Pas de limite participants
+   - Enregistrement natif
+   - Integration Jitsi External API
+
+2. **BigBlueButton** (Éducation)
+   - Open source spécialisé LMS
+   - Tableau blanc, sondages, breakout rooms
+   - Enregistrement automatique
+
+3. **Zoom API** (Commercial)
+   - Payant (~15$/mois/host)
+   - Très stable
+   - Limite 100 participants (plan Pro)
+
+### Exemple d'intégration Jitsi
+
+```javascript
+// Côté LMS - Création room après validation KLASSCI
+fetch('/api/lms/seances/123/validate-participant', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + token },
+    body: JSON.stringify({ user_id: 200 })
+})
+.then(response => response.json())
+.then(data => {
+    if (data.data.authorized) {
+        // Générer room Jitsi
+        const roomName = 'klassci_seance_123_' + Date.now();
+        const jitsiDomain = 'meet.jit.si';
+
+        const api = new JitsiMeetExternalAPI(jitsiDomain, {
+            roomName: roomName,
+            width: '100%',
+            height: 700,
+            userInfo: {
+                displayName: data.data.user_info.nom,
+                email: data.data.user_info.email
+            },
+            configOverwrite: {
+                startWithAudioMuted: true,
+                enableWelcomePage: false
+            }
+        });
+
+        // Tracker les participants
+        api.addEventListener('participantJoined', (event) => {
+            // Stocker dans BDD LMS
+        });
+
+        api.addEventListener('participantLeft', (event) => {
+            // Calculer durée + sync vers KLASSCI
+        });
+    }
+});
+```
+
+---
+
 *Dernière mise à jour: 19 octobre 2025*

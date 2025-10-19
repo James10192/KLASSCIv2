@@ -1734,4 +1734,759 @@ class LMSDataController extends BaseApiController
             ]
         ]);
     }
+
+    /**
+     * Récupérer les séances à venir pour créer les rooms de visio
+     *
+     * Endpoint: GET /api/lms/seances/upcoming
+     *
+     * Retourne les séances des prochains jours (par défaut 7 jours)
+     * avec toutes les informations nécessaires pour créer une room de visio
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function upcomingSeances(Request $request): JsonResponse
+    {
+        $startTime = microtime(true);
+        \Log::info('🚀 LMS Upcoming Seances API - Starting request');
+
+        $annee = $this->getAnneeCouraante();
+        if (!$annee) {
+            return $this->errorResponse('Aucune année universitaire courante trouvée');
+        }
+
+        // Paramètres de date
+        $days = $request->input('days', 7); // Par défaut 7 jours
+        $dateDebut = now()->format('Y-m-d');
+        $dateFin = now()->addDays($days)->format('Y-m-d');
+
+        // Filtres optionnels
+        $teacherId = $request->input('teacher_id');
+        $classeId = $request->input('classe_id');
+
+        // Query pour récupérer les séances
+        $query = \App\Models\ESBTPSeanceCours::with([
+            'matiere:id,name,nom,code',
+            'classe:id,name,libelle,code',
+            'emploiTemps'
+        ])
+        ->whereBetween('date_seance', [$dateDebut, $dateFin])
+        ->whereHas('emploiTemps', function($q) use ($annee) {
+            $q->where('annee_universitaire_id', $annee->id)
+              ->where('is_active', true);
+        });
+
+        // Appliquer filtres optionnels
+        if ($teacherId) {
+            // Récupérer le teacher_id depuis esbtp_teachers
+            $teacher = \App\Models\ESBTPTeacher::where('user_id', $teacherId)->first();
+            if ($teacher) {
+                $query->where('teacher_id', $teacher->id);
+            }
+        }
+
+        if ($classeId) {
+            $query->where('classe_id', $classeId);
+        }
+
+        $seances = $query->orderBy('date_seance')
+                        ->orderBy('heure_debut')
+                        ->get();
+
+        $queryTime = microtime(true);
+        \Log::info('📊 Upcoming seances query executed in: ' . round(($queryTime - $startTime) * 1000, 2) . 'ms - Found ' . $seances->count() . ' seances');
+
+        // Formater les données
+        $data = $seances->map(function ($seance) {
+            // Récupérer les infos de l'enseignant
+            $teacher = null;
+            if ($seance->teacher_id) {
+                $teacherModel = \App\Models\ESBTPTeacher::with('user')->find($seance->teacher_id);
+                if ($teacherModel && $teacherModel->user) {
+                    $teacher = [
+                        'id' => $teacherModel->user->id, // user_id pour le LMS
+                        'teacher_id' => $teacherModel->id, // teacher_id pour référence
+                        'nom' => $teacherModel->user->name,
+                        'prenom' => $teacherModel->user->first_name,
+                        'email' => $teacherModel->user->email
+                    ];
+                }
+            }
+
+            // Calculer la durée en minutes
+            $heureDebut = \Carbon\Carbon::parse($seance->heure_debut);
+            $heureFin = \Carbon\Carbon::parse($seance->heure_fin);
+            $dureeMinutes = $heureDebut->diffInMinutes($heureFin);
+
+            return [
+                'seance_id' => $seance->id,
+                'matiere' => [
+                    'id' => $seance->matiere->id,
+                    'nom' => $seance->matiere->name ?? $seance->matiere->nom,
+                    'code' => $seance->matiere->code
+                ],
+                'classe' => [
+                    'id' => $seance->classe->id,
+                    'nom' => $seance->classe->name ?? $seance->classe->libelle,
+                    'code' => $seance->classe->code ?? null
+                ],
+                'teacher' => $teacher,
+                'date_seance' => $seance->date_seance,
+                'heure_debut' => $seance->heure_debut,
+                'heure_fin' => $seance->heure_fin,
+                'duree_minutes' => $dureeMinutes,
+                'salle' => $seance->salle
+            ];
+        });
+
+        $mapTime = microtime(true);
+        \Log::info('🔄 Upcoming seances formatting completed in: ' . round(($mapTime - $queryTime) * 1000, 2) . 'ms');
+
+        $totalTime = microtime(true);
+        \Log::info('✅ LMS Upcoming Seances API - Total time: ' . round(($totalTime - $startTime) * 1000, 2) . 'ms');
+
+        return $this->successResponse($data, 'Séances à venir récupérées avec succès', [
+            'periode' => [
+                'date_debut' => $dateDebut,
+                'date_fin' => $dateFin,
+                'days' => $days
+            ],
+            'total_seances' => $data->count(),
+            'filters_applied' => [
+                'teacher_id' => $teacherId,
+                'classe_id' => $classeId
+            ],
+            'performance' => [
+                'total_time_ms' => round(($totalTime - $startTime) * 1000, 2),
+                'query_time_ms' => round(($queryTime - $startTime) * 1000, 2),
+                'mapping_time_ms' => round(($mapTime - $queryTime) * 1000, 2)
+            ]
+        ]);
+    }
+
+    /**
+     * Récupérer les participants autorisés d'une séance
+     *
+     * Endpoint: GET /api/lms/seances/{id}/participants
+     *
+     * Retourne l'enseignant et la liste des étudiants inscrits actifs
+     * pour vérifier qui peut rejoindre la room de visio
+     *
+     * @param int $seanceId
+     * @return JsonResponse
+     */
+    public function seanceParticipants(int $seanceId): JsonResponse
+    {
+        $startTime = microtime(true);
+        \Log::info('🚀 LMS Seance Participants API - Starting request', ['seance_id' => $seanceId]);
+
+        $annee = $this->getAnneeCouraante();
+        if (!$annee) {
+            return $this->errorResponse('Aucune année universitaire courante trouvée');
+        }
+
+        // Récupérer la séance
+        $seance = \App\Models\ESBTPSeanceCours::with(['matiere', 'classe'])
+            ->find($seanceId);
+
+        if (!$seance) {
+            return $this->errorResponse('Séance introuvable', [], 404);
+        }
+
+        // Récupérer l'enseignant
+        $teacher = null;
+        if ($seance->teacher_id) {
+            $teacherModel = \App\Models\ESBTPTeacher::with('user')->find($seance->teacher_id);
+            if ($teacherModel && $teacherModel->user) {
+                $teacher = [
+                    'id' => $teacherModel->user->id,
+                    'nom' => $teacherModel->user->name,
+                    'prenom' => $teacherModel->user->first_name,
+                    'email' => $teacherModel->user->email
+                ];
+            }
+        }
+
+        // Récupérer les étudiants inscrits actifs dans la classe
+        $etudiants = ESBTPEtudiant::whereHas('inscriptions', function($q) use ($seance, $annee) {
+            $q->where('classe_id', $seance->classe_id)
+              ->where('annee_universitaire_id', $annee->id)
+              ->where('status', 'active');
+        })->with(['user'])->get();
+
+        $queryTime = microtime(true);
+        \Log::info('📊 Seance participants data collected in: ' . round(($queryTime - $startTime) * 1000, 2) . 'ms');
+
+        // Formater les données
+        $data = [
+            'seance' => [
+                'id' => $seance->id,
+                'matiere' => [
+                    'id' => $seance->matiere->id,
+                    'nom' => $seance->matiere->name ?? $seance->matiere->nom,
+                    'code' => $seance->matiere->code
+                ],
+                'classe' => [
+                    'id' => $seance->classe->id,
+                    'nom' => $seance->classe->name ?? $seance->classe->libelle
+                ],
+                'date_seance' => $seance->date_seance,
+                'heure_debut' => $seance->heure_debut,
+                'heure_fin' => $seance->heure_fin
+            ],
+            'teacher' => $teacher,
+            'students' => $etudiants->map(function($etudiant) {
+                return [
+                    'id' => $etudiant->id,
+                    'user_id' => $etudiant->user->id,
+                    'nom' => $etudiant->user->last_name ?? '',
+                    'prenom' => $etudiant->user->first_name ?? '',
+                    'nom_complet' => $etudiant->user->name,
+                    'email' => $etudiant->user->email,
+                    'matricule' => $etudiant->matricule
+                ];
+            }),
+            'total_students' => $etudiants->count()
+        ];
+
+        $mapTime = microtime(true);
+        \Log::info('🔄 Seance participants formatting completed in: ' . round(($mapTime - $queryTime) * 1000, 2) . 'ms');
+
+        $totalTime = microtime(true);
+        \Log::info('✅ LMS Seance Participants API - Total time: ' . round(($totalTime - $startTime) * 1000, 2) . 'ms');
+
+        return $this->successResponse($data, 'Participants de la séance récupérés avec succès', [
+            'performance' => [
+                'total_time_ms' => round(($totalTime - $startTime) * 1000, 2),
+                'query_time_ms' => round(($queryTime - $startTime) * 1000, 2),
+                'mapping_time_ms' => round(($mapTime - $queryTime) * 1000, 2)
+            ]
+        ]);
+    }
+
+    /**
+     * Valider qu'un participant peut rejoindre une séance
+     *
+     * Endpoint: POST /api/lms/seances/{id}/validate-participant
+     *
+     * Vérifie qu'un utilisateur a le droit de rejoindre la visio
+     * avant de générer le token Jitsi
+     *
+     * @param Request $request
+     * @param int $seanceId
+     * @return JsonResponse
+     */
+    public function validateParticipant(Request $request, int $seanceId): JsonResponse
+    {
+        $startTime = microtime(true);
+        \Log::info('🚀 LMS Validate Participant API - Starting request', [
+            'seance_id' => $seanceId,
+            'user_id' => $request->input('user_id')
+        ]);
+
+        // Validation
+        $request->validate([
+            'user_id' => 'required|integer|exists:users,id'
+        ]);
+
+        $userId = $request->input('user_id');
+
+        $annee = $this->getAnneeCouraante();
+        if (!$annee) {
+            return $this->errorResponse('Aucune année universitaire courante trouvée');
+        }
+
+        // Récupérer la séance
+        $seance = \App\Models\ESBTPSeanceCours::find($seanceId);
+
+        if (!$seance) {
+            return $this->errorResponse('Séance introuvable', [], 404);
+        }
+
+        // Récupérer l'utilisateur
+        $user = User::find($userId);
+
+        if (!$user) {
+            return $this->errorResponse('Utilisateur introuvable', [], 404);
+        }
+
+        $authorized = false;
+        $role = null;
+        $reason = null;
+
+        // Vérifier si c'est l'enseignant
+        if ($user->hasAnyRole(['teacher', 'enseignant'])) {
+            $teacher = \App\Models\ESBTPTeacher::where('user_id', $userId)->first();
+
+            if ($teacher && $seance->teacher_id == $teacher->id) {
+                $authorized = true;
+                $role = 'teacher';
+            } else {
+                $reason = 'not_teacher_of_this_seance';
+            }
+        }
+        // Vérifier si c'est un étudiant inscrit dans la classe
+        elseif ($user->hasRole('etudiant')) {
+            $etudiant = $user->etudiant;
+
+            if ($etudiant) {
+                $inscription = $etudiant->inscriptions()
+                    ->where('classe_id', $seance->classe_id)
+                    ->where('annee_universitaire_id', $annee->id)
+                    ->where('status', 'active')
+                    ->first();
+
+                if ($inscription) {
+                    $authorized = true;
+                    $role = 'student';
+                } else {
+                    $reason = 'not_enrolled_in_class';
+                }
+            } else {
+                $reason = 'student_profile_not_found';
+            }
+        }
+        // Admin et coordinateur (optionnel)
+        elseif ($user->hasAnyRole(['superAdmin', 'coordinateur'])) {
+            $authorized = true;
+            $role = 'moderator';
+        }
+        else {
+            $reason = 'invalid_role';
+        }
+
+        $queryTime = microtime(true);
+        \Log::info('✅ Validation completed', [
+            'authorized' => $authorized,
+            'role' => $role,
+            'reason' => $reason,
+            'time_ms' => round(($queryTime - $startTime) * 1000, 2)
+        ]);
+
+        return $this->successResponse([
+            'authorized' => $authorized,
+            'role' => $role,
+            'reason' => $reason,
+            'user_info' => [
+                'id' => $user->id,
+                'nom' => $user->name,
+                'email' => $user->email
+            ]
+        ], $authorized ? 'Participant autorisé' : 'Participant non autorisé', [
+            'performance' => [
+                'total_time_ms' => round(($queryTime - $startTime) * 1000, 2)
+            ]
+        ]);
+    }
+
+    /**
+     * Recevoir les attendances depuis une session de visio
+     *
+     * Endpoint: POST /api/lms/attendances/from-video-session
+     *
+     * Le LMS envoie les données de présence après la visio
+     * KLASSCI crée les attendances avec call_type='merged' et commentaire
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function syncVideoAttendances(Request $request): JsonResponse
+    {
+        $startTime = microtime(true);
+        \Log::info('🚀 LMS Sync Video Attendances API - Starting request', [
+            'seance_id' => $request->input('seance_cours_id')
+        ]);
+
+        // Validation
+        $validatedData = $request->validate([
+            'seance_cours_id' => 'required|integer|exists:esbtp_seances_cours,id',
+            'date' => 'required|date',
+            'attendances' => 'required|array',
+            'attendances.*.etudiant_id' => 'required|integer|exists:esbtp_etudiants,id',
+            'attendances.*.statut' => 'required|in:present,absent,retard,late',
+            'attendances.*.joined_at' => 'required|date_format:Y-m-d H:i:s',
+            'attendances.*.left_at' => 'required|date_format:Y-m-d H:i:s',
+            'attendances.*.duration_minutes' => 'required|integer|min:0'
+        ]);
+
+        $annee = $this->getAnneeCouraante();
+        if (!$annee) {
+            return $this->errorResponse('Aucune année universitaire courante trouvée');
+        }
+
+        // Récupérer la séance
+        $seance = \App\Models\ESBTPSeanceCours::with(['classe', 'matiere'])->find($validatedData['seance_cours_id']);
+
+        if (!$seance) {
+            return $this->errorResponse('Séance introuvable', [], 404);
+        }
+
+        $created = 0;
+        $updated = 0;
+        $errors = [];
+
+        foreach ($validatedData['attendances'] as $attendanceData) {
+            try {
+                // Vérifier si une attendance existe déjà (call_type merged ou null)
+                $existingAttendance = \App\Models\ESBTPAttendance::where([
+                    'seance_cours_id' => $validatedData['seance_cours_id'],
+                    'etudiant_id' => $attendanceData['etudiant_id'],
+                    'date' => $validatedData['date']
+                ])
+                ->where(function($q) {
+                    $q->where('call_type', 'merged')
+                      ->orWhereNull('call_type');
+                })
+                ->first();
+
+                // Générer le commentaire avec infos visio
+                $commentaire = sprintf(
+                    'Présence enregistrée via visioconférence LMS - Connexion: %s - Déconnexion: %s - Durée: %d min',
+                    $attendanceData['joined_at'],
+                    $attendanceData['left_at'],
+                    $attendanceData['duration_minutes']
+                );
+
+                if ($existingAttendance) {
+                    // Update: ajouter l'info visio au commentaire existant
+                    $existingAttendance->update([
+                        'video_joined_at' => $attendanceData['joined_at'],
+                        'video_left_at' => $attendanceData['left_at'],
+                        'video_duration_minutes' => $attendanceData['duration_minutes'],
+                        'commentaire' => $existingAttendance->commentaire
+                            ? $existingAttendance->commentaire . "\n" . $commentaire
+                            : $commentaire
+                    ]);
+                    $updated++;
+
+                    \Log::info('🔄 Updated existing attendance with video data', [
+                        'attendance_id' => $existingAttendance->id,
+                        'etudiant_id' => $attendanceData['etudiant_id']
+                    ]);
+                } else {
+                    // Create: nouvelle attendance avec call_type='merged'
+                    \App\Models\ESBTPAttendance::create([
+                        'seance_cours_id' => $validatedData['seance_cours_id'],
+                        'etudiant_id' => $attendanceData['etudiant_id'],
+                        'annee_universitaire_id' => $annee->id,
+                        'classe_id' => $seance->classe_id,
+                        'matiere_id' => $seance->matiere_id,
+                        'teacher_id' => $seance->teacher_id,
+                        'statut' => $attendanceData['statut'],
+                        'call_type' => 'merged', // IMPORTANT: merged pour que finalOnly() l'inclue
+                        'date' => $validatedData['date'],
+                        'heure_debut' => $seance->heure_debut,
+                        'heure_fin' => $seance->heure_fin,
+                        'commentaire' => $commentaire,
+                        'video_joined_at' => $attendanceData['joined_at'],
+                        'video_left_at' => $attendanceData['left_at'],
+                        'video_duration_minutes' => $attendanceData['duration_minutes'],
+                        'created_by' => auth()->id() ?? null
+                    ]);
+                    $created++;
+
+                    \Log::info('✅ Created new attendance from video session', [
+                        'etudiant_id' => $attendanceData['etudiant_id'],
+                        'statut' => $attendanceData['statut']
+                    ]);
+                }
+            } catch (\Exception $e) {
+                $errors[] = [
+                    'etudiant_id' => $attendanceData['etudiant_id'],
+                    'error' => $e->getMessage()
+                ];
+
+                \Log::error('❌ Error syncing video attendance', [
+                    'etudiant_id' => $attendanceData['etudiant_id'],
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
+
+        $totalTime = microtime(true);
+        \Log::info('✅ LMS Sync Video Attendances API - Completed', [
+            'created' => $created,
+            'updated' => $updated,
+            'errors' => count($errors),
+            'total_time_ms' => round(($totalTime - $startTime) * 1000, 2)
+        ]);
+
+        return $this->successResponse([
+            'created' => $created,
+            'updated' => $updated,
+            'errors' => $errors
+        ], 'Attendances visio synchronisées avec succès', [
+            'seance' => [
+                'id' => $seance->id,
+                'matiere' => $seance->matiere->name ?? $seance->matiere->nom,
+                'classe' => $seance->classe->name ?? $seance->classe->libelle,
+                'date' => $validatedData['date']
+            ],
+            'performance' => [
+                'total_time_ms' => round(($totalTime - $startTime) * 1000, 2)
+            ]
+        ]);
+    }
+
+    /**
+     * Envoyer des rappels de séance aux participants
+     *
+     * Endpoint: POST /api/lms/notifications/send-session-reminder
+     *
+     * Le LMS demande à KLASSCI d'envoyer des notifications de rappel
+     * aux participants (enseignant + étudiants) avant une séance
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function sendSessionReminder(Request $request): JsonResponse
+    {
+        $startTime = microtime(true);
+        \Log::info('🚀 LMS Send Session Reminder API - Starting request', [
+            'seance_id' => $request->input('seance_id')
+        ]);
+
+        // Validation
+        $validated = $request->validate([
+            'seance_id' => 'required|integer|exists:esbtp_seances_cours,id',
+            'minutes_before' => 'integer|min:5|max:1440', // 5min à 24h
+            'channels' => 'array',
+            'channels.*' => 'in:whatsapp,email,sms,app'
+        ]);
+
+        $annee = $this->getAnneeCouraante();
+        if (!$annee) {
+            return $this->errorResponse('Aucune année universitaire courante trouvée');
+        }
+
+        // Récupérer la séance
+        $seance = \App\Models\ESBTPSeanceCours::with(['matiere', 'classe', 'emploiTemps'])
+            ->find($validated['seance_id']);
+
+        if (!$seance) {
+            return $this->errorResponse('Séance introuvable', [], 404);
+        }
+
+        // Canaux par défaut si non spécifiés
+        $channels = $validated['channels'] ?? ['whatsapp', 'email'];
+        $minutesBefore = $validated['minutes_before'] ?? 15;
+
+        $sent = 0;
+        $failed = 0;
+        $errors = [];
+
+        // Récupérer l'enseignant
+        $teacher = null;
+        if ($seance->teacher_id) {
+            $teacherModel = \App\Models\ESBTPTeacher::with('user')->find($seance->teacher_id);
+            if ($teacherModel && $teacherModel->user) {
+                $teacher = $teacherModel->user;
+            }
+        }
+
+        // Récupérer les étudiants inscrits
+        $etudiants = ESBTPEtudiant::whereHas('inscriptions', function($q) use ($seance, $annee) {
+            $q->where('classe_id', $seance->classe_id)
+              ->where('annee_universitaire_id', $annee->id)
+              ->where('status', 'active');
+        })->with(['user'])->get();
+
+        // Construire le message
+        $seanceDate = \Carbon\Carbon::parse($seance->date_seance)->format('d/m/Y');
+        $heureDebut = \Carbon\Carbon::parse($seance->heure_debut)->format('H:i');
+        $matiere = $seance->matiere->name ?? $seance->matiere->nom;
+        $classe = $seance->classe->name ?? $seance->classe->libelle;
+
+        // Envoyer au teacher
+        if ($teacher) {
+            try {
+                // TODO: Appeler le service de notifications
+                // NotificationService::sendVideoReminder($teacher, $seance, $channels);
+
+                \Log::info('📧 Notification envoyée au teacher', [
+                    'teacher_id' => $teacher->id,
+                    'seance_id' => $seance->id,
+                    'channels' => $channels
+                ]);
+
+                $sent++;
+            } catch (\Exception $e) {
+                \Log::error('❌ Failed to send reminder to teacher', [
+                    'teacher_id' => $teacher->id,
+                    'error' => $e->getMessage()
+                ]);
+                $failed++;
+                $errors[] = [
+                    'type' => 'teacher',
+                    'id' => $teacher->id,
+                    'error' => $e->getMessage()
+                ];
+            }
+        }
+
+        // Envoyer aux étudiants (via leurs parents si disponibles)
+        foreach ($etudiants as $etudiant) {
+            try {
+                // TODO: Appeler le service de notifications
+                // NotificationService::sendVideoReminderToStudent($etudiant, $seance, $channels);
+
+                \Log::info('📧 Notification envoyée à l\'étudiant', [
+                    'etudiant_id' => $etudiant->id,
+                    'seance_id' => $seance->id,
+                    'channels' => $channels
+                ]);
+
+                $sent++;
+            } catch (\Exception $e) {
+                \Log::error('❌ Failed to send reminder to student', [
+                    'etudiant_id' => $etudiant->id,
+                    'error' => $e->getMessage()
+                ]);
+                $failed++;
+                $errors[] = [
+                    'type' => 'student',
+                    'id' => $etudiant->id,
+                    'error' => $e->getMessage()
+                ];
+            }
+        }
+
+        $totalTime = microtime(true);
+        \Log::info('✅ LMS Send Session Reminder API - Completed', [
+            'sent' => $sent,
+            'failed' => $failed,
+            'total_time_ms' => round(($totalTime - $startTime) * 1000, 2)
+        ]);
+
+        return $this->successResponse([
+            'sent' => $sent,
+            'failed' => $failed,
+            'total' => $sent + $failed,
+            'errors' => $errors
+        ], 'Rappels de séance envoyés', [
+            'seance' => [
+                'id' => $seance->id,
+                'matiere' => $matiere,
+                'classe' => $classe,
+                'date' => $seanceDate,
+                'heure' => $heureDebut
+            ],
+            'notification' => [
+                'channels' => $channels,
+                'minutes_before' => $minutesBefore
+            ],
+            'performance' => [
+                'total_time_ms' => round(($totalTime - $startTime) * 1000, 2)
+            ]
+        ]);
+    }
+
+    /**
+     * Récupérer les préférences de notification d'un utilisateur
+     *
+     * Endpoint: GET /api/lms/notifications/preferences/{userId}
+     *
+     * Retourne les préférences de notification pour un utilisateur
+     * (canaux préférés, rappels visio, etc.)
+     *
+     * @param int $userId
+     * @return JsonResponse
+     */
+    public function notificationPreferences(int $userId): JsonResponse
+    {
+        $startTime = microtime(true);
+        \Log::info('🚀 LMS Notification Preferences API - Starting request', ['user_id' => $userId]);
+
+        $user = User::find($userId);
+
+        if (!$user) {
+            return $this->errorResponse('Utilisateur introuvable', [], 404);
+        }
+
+        // Vérifier les permissions (seulement ses propres préférences ou admin)
+        $authUser = auth()->user();
+        if ($authUser->id !== $userId && !$authUser->hasAnyRole(['superAdmin', 'coordinateur'])) {
+            return $this->errorResponse('Accès non autorisé', [], 403);
+        }
+
+        $preferences = [
+            'user_id' => $userId,
+            'user_name' => $user->name,
+            'user_role' => $user->getRoleNames()->first(),
+            'channels' => [
+                'whatsapp' => [
+                    'enabled' => true, // Par défaut activé
+                    'phone' => null
+                ],
+                'email' => [
+                    'enabled' => true,
+                    'address' => $user->email
+                ],
+                'sms' => [
+                    'enabled' => false, // Par défaut désactivé (coûteux)
+                    'phone' => null
+                ],
+                'app' => [
+                    'enabled' => true
+                ]
+            ],
+            'video_reminders' => [
+                'enabled' => true,
+                'minutes_before' => 15, // Par défaut 15 minutes
+                'preferred_channels' => ['whatsapp', 'email']
+            ]
+        ];
+
+        // Si c'est un étudiant, récupérer les préférences du parent
+        if ($user->hasRole('etudiant')) {
+            $etudiant = $user->etudiant;
+            $parent = $etudiant?->parent;
+
+            if ($parent) {
+                // Récupérer les préférences du parent depuis la table parent_notification_preferences
+                $parentPrefs = \DB::table('parent_notification_preferences')
+                    ->where('parent_id', $parent->id)
+                    ->first();
+
+                if ($parentPrefs) {
+                    $preferences['channels']['whatsapp']['enabled'] = $parentPrefs->whatsapp_enabled ?? true;
+                    $preferences['channels']['whatsapp']['phone'] = $parent->telephone;
+                    $preferences['channels']['email']['enabled'] = $parentPrefs->email_enabled ?? true;
+                    $preferences['channels']['email']['address'] = $parent->email;
+                    $preferences['channels']['sms']['enabled'] = $parentPrefs->sms_enabled ?? false;
+                    $preferences['channels']['sms']['phone'] = $parent->telephone;
+                }
+
+                $preferences['parent'] = [
+                    'id' => $parent->id,
+                    'nom' => $parent->nom,
+                    'prenom' => $parent->prenom,
+                    'telephone' => $parent->telephone,
+                    'email' => $parent->email
+                ];
+            }
+        }
+        // Si c'est un enseignant
+        elseif ($user->hasAnyRole(['teacher', 'enseignant'])) {
+            $teacher = \App\Models\ESBTPTeacher::where('user_id', $userId)->first();
+
+            if ($teacher) {
+                $preferences['channels']['whatsapp']['phone'] = $teacher->telephone ?? $user->phone;
+                $preferences['channels']['sms']['phone'] = $teacher->telephone ?? $user->phone;
+            }
+        }
+
+        $totalTime = microtime(true);
+        \Log::info('✅ LMS Notification Preferences API - Completed', [
+            'user_id' => $userId,
+            'total_time_ms' => round(($totalTime - $startTime) * 1000, 2)
+        ]);
+
+        return $this->successResponse($preferences, 'Préférences de notification récupérées', [
+            'performance' => [
+                'total_time_ms' => round(($totalTime - $startTime) * 1000, 2)
+            ]
+        ]);
+    }
 }

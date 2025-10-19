@@ -172,6 +172,38 @@ Route::middleware(['auth:sanctum'])->prefix('lms')->name('api.lms.')->group(func
         ->name('me.teacher-dashboard');
 
     // ================================
+    // VISIOCONFÉRENCES (SUPPORT LMS)
+    // ================================
+
+    // Séances à venir pour créer les rooms
+    Route::get('/seances/upcoming', [App\Http\Controllers\API\LMSDataController::class, 'upcomingSeances'])
+        ->name('seances.upcoming');
+
+    // Participants d'une séance
+    Route::get('/seances/{seanceId}/participants', [App\Http\Controllers\API\LMSDataController::class, 'seanceParticipants'])
+        ->name('seances.participants');
+
+    // Valider un participant
+    Route::post('/seances/{seanceId}/validate-participant', [App\Http\Controllers\API\LMSDataController::class, 'validateParticipant'])
+        ->name('seances.validate-participant');
+
+    // Sync attendances depuis visio (LMS → KLASSCI)
+    Route::post('/attendances/from-video-session', [App\Http\Controllers\API\LMSDataController::class, 'syncVideoAttendances'])
+        ->name('attendances.from-video-session');
+
+    // ================================
+    // NOTIFICATIONS
+    // ================================
+
+    // Envoyer rappels de séance
+    Route::post('/notifications/send-session-reminder', [App\Http\Controllers\API\LMSDataController::class, 'sendSessionReminder'])
+        ->name('notifications.send-session-reminder');
+
+    // Récupérer préférences de notification
+    Route::get('/notifications/preferences/{userId}', [App\Http\Controllers\API\LMSDataController::class, 'notificationPreferences'])
+        ->name('notifications.preferences');
+
+    // ================================
     // DONNÉES EN ÉCRITURE (LMS → KLASSCI)
     // ================================
 
