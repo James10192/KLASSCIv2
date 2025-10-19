@@ -258,6 +258,7 @@ MAIL_FROM_NAME="KLASSCI"
 - **18/10** : Fix stats par classe + graphique attendances.index → ajout filtre classe_id + fusion affichage Présences (present+retard) dans vue
 - **18/10** : Fix graphique Chart.js attendances.index → fusion datasets Présences+Retards en un seul "Présences (incl. retards)" utilisant present_with_retards
 - **18/10** : Fix KPI cards attendances.index affichaient zéro → variable `$stats` écrasée par boucle foreach (renommage en `$dailyStats`)
+- **19/10** : Fix 404 route AJAX load-matieres → repositionnement AVANT routes /{evaluation} (Laravel route matching order)
 
 ## ✨ Fonctionnalités récentes
 
@@ -1505,6 +1506,291 @@ $classe->etudiants()
 ### Documentation complète
 
 Voir : [API_LMS_CORRECTIONS_SUMMARY.md](API_LMS_CORRECTIONS_SUMMARY.md)
+
+---
+
+## 📝 Pattern AJAX - Chargement Matières par Classe (19 octobre 2025)
+
+### Vue d'ensemble
+
+Implémentation du pattern AJAX pour le chargement dynamique des matières disponibles lors de la création d'évaluations, identique au pattern utilisé dans `attendances.create` pour cohérence UX.
+
+**Page concernée** : `/esbtp/evaluations/create` - Création d'une nouvelle évaluation
+
+**Workflow** : Sélection classe → AJAX charge matières → Sélection matière
+
+### Problème initial
+
+**Avant** : Système statique avec toutes les matières chargées via JSON côté client
+- ❌ Affichait TOUTES les matières indépendamment de la classe sélectionnée
+- ❌ Pas de filtrage par combinaisons globales (filière + niveau)
+- ❌ Incohérent avec le reste du système (classes.show, API LMS)
+
+### Solution implémentée
+
+**Après** : Chargement AJAX des matières via combinaisons globales
+- ✅ Charge UNIQUEMENT les matières disponibles pour la classe sélectionnée
+- ✅ Utilise les pivot tables `esbtp_matiere_filiere` + `esbtp_matiere_niveau`
+- ✅ Pattern identique à `attendances.create` (cohérence UX)
+- ✅ Cohérence avec logique API LMS et `classes.matieres`
+
+### Architecture technique
+
+#### 1. Route AJAX
+
+**Fichier** : `routes/web.php` (ligne 1223)
+
+```php
+// AJAX: Charger matières disponibles pour une classe (via combinaisons globales)
+Route::get('/load-matieres', [ESBTPEvaluationController::class, 'loadMatieres'])
+    ->name('esbtp.evaluations.load-matieres');
+```
+
+**Middleware** : `auth` (hérité du groupe parent)
+
+#### 2. Méthode Controller
+
+**Fichier** : `app/Http/Controllers/ESBTPEvaluationController.php` (lignes 1088-1157)
+
+```php
+public function loadMatieres(Request $request)
+{
+    $classeId = $request->input('classe_id');
+    $classe = ESBTPClasse::findOrFail($classeId);
+
+    // Récupérer matières via combinaisons globales (filière + niveau)
+    $matieres = ESBTPMatiere::where('is_active', true)
+        ->whereHas('filieres', function ($q) use ($classe) {
+            $q->where('esbtp_filieres.id', $classe->filiere_id);
+        })
+        ->whereHas('niveaux', function ($q) use ($classe) {
+            $q->where('esbtp_niveau_etudes.id', $classe->niveau_etude_id);
+        })
+        ->orderBy('nom')
+        ->get();
+
+    // Générer options HTML pour select
+    $options = '<option value="">-- Sélectionner une matière --</option>';
+    foreach ($matieres as $matiere) {
+        $matiereNom = $matiere->nom ?? $matiere->name;
+        $matiereCode = $matiere->code ? ' (' . $matiere->code . ')' : '';
+        $options .= '<option value="' . $matiere->id . '">' . $matiereNom . $matiereCode . '</option>';
+    }
+
+    return response()->json([
+        'success' => true,
+        'options' => $options,
+        'count' => $matieres->count(),
+        'classe' => [
+            'id' => $classe->id,
+            'nom' => $classe->name,
+            'filiere' => $classe->filiere->name ?? 'N/A',
+            'niveau' => $classe->niveau->name ?? 'N/A'
+        ]
+    ]);
+}
+```
+
+**Logique métier** :
+- Même requête que API LMS (`LMSDataController::classes()`)
+- Même requête que `classes.matieres` (page gestion matières)
+- **AUCUNE utilisation** de `esbtp_classe_matiere` (obsolète)
+
+#### 3. JavaScript Frontend
+
+**Fichier** : `resources/views/esbtp/evaluations/create.blade.php` (lignes 517-621)
+
+```javascript
+document.addEventListener('DOMContentLoaded', function() {
+    const classeSelect = document.getElementById('classe_id');
+    const matiereSelect = document.getElementById('matiere_id');
+
+    if (classeSelect && matiereSelect) {
+        classeSelect.addEventListener('change', function(e) {
+            e.preventDefault();
+            const classeId = this.value;
+
+            // Reset matière select
+            matiereSelect.innerHTML = '<option value="">-- Sélectionner une matière --</option>';
+            matiereSelect.disabled = true;
+
+            if (classeId) {
+                loadMatieres(classeId);
+            }
+
+            return false;
+        });
+    }
+
+    function loadMatieres(classeId) {
+        // Afficher spinner sur label
+        const label = document.querySelector('label[for="matiere_id"]');
+        const spinner = document.createElement('span');
+        spinner.className = 'loading-spinner';
+        spinner.innerHTML = ' <i class="fas fa-spinner fa-spin text-primary"></i>';
+        label.appendChild(spinner);
+
+        const url = '{{ route("esbtp.evaluations.load-matieres") }}?classe_id=' + classeId;
+
+        fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            spinner.remove();
+
+            if (data.success) {
+                // Mettre à jour select avec options HTML
+                matiereSelect.innerHTML = data.options;
+                matiereSelect.disabled = false;
+
+                // Alert si aucune matière
+                if (data.count === 0) {
+                    matiereSelect.innerHTML = '<option value="">Aucune matière disponible</option>';
+                    alert('Attention: Aucune matière pour ' + data.classe.filiere +
+                          ' / ' + data.classe.niveau);
+                }
+            } else {
+                alert('Erreur: ' + data.message);
+                matiereSelect.disabled = false;
+            }
+        })
+        .catch(error => {
+            spinner.remove();
+            alert('Erreur AJAX: ' + error.message);
+            matiereSelect.disabled = false;
+        });
+    }
+});
+```
+
+**Caractéristiques** :
+- Pattern identique à `attendances.create` (loadSeances → loadStudents)
+- Spinner visuel pendant chargement
+- Désactivation du select matière pendant AJAX
+- Alert utilisateur si aucune matière disponible
+- Gestion erreurs complète
+
+### Règle métier
+
+> **Matières disponibles pour une classe** = Matières avec combinaison `(classe.filiere_id, classe.niveau_id)` dans les pivot tables globales
+
+**Tables utilisées** :
+- ✅ `esbtp_matiere_filiere` - Pivot filière → matière
+- ✅ `esbtp_matiere_niveau` - Pivot niveau → matière
+- ❌ `esbtp_classe_matiere` - **OBSOLÈTE, ne jamais utiliser**
+
+**Exemple** :
+- Classe : L3 Génie Civil (`filiere_id=1`, `niveau_id=3`)
+- Matières retournées : TOUTES les matières ayant `filiere_id=1` ET `niveau_id=3` dans les pivots
+
+### Logs de débogage
+
+```
+📚 [AJAX] loadMatieres - Début | classe_id: 15 | user_id: 1
+✅ [AJAX] loadMatieres - Matières trouvées | classe: L3 GC | filiere_id: 1 | niveau_id: 3 | nb_matieres: 8
+```
+
+### Comportement UX
+
+1. **Page charge** : Select matière désactivé, affiche "-- Sélectionner une matière --"
+2. **Utilisateur sélectionne classe** :
+   - Événement `change` déclenché
+   - Select matière reset + désactivé
+   - Spinner apparaît sur le label
+   - Requête AJAX envoyée
+3. **Réponse AJAX reçue** :
+   - Spinner disparaît
+   - Select matière rempli avec options
+   - Select matière réactivé
+4. **Si aucune matière** :
+   - Alert utilisateur avec message explicatif
+   - Suggestion d'ajouter des matières via "Matières de classe"
+
+### Cohérence système
+
+**Pattern appliqué dans** :
+- ✅ `attendances.create` - Classe → Séances → Étudiants (AJAX double)
+- ✅ `evaluations.create` - Classe → Matières (AJAX simple)
+
+**Logique matières identique à** :
+- ✅ API LMS (`LMSDataController::classes()`)
+- ✅ Page classes/matieres (`ESBTPClasseController::matieres()`)
+- ✅ Édition résultats classe (`ESBTPBulletinController::classeEdit()`)
+
+### Impact
+
+- ✅ **UX cohérente** : Pattern AJAX identique partout dans l'application
+- ✅ **Performance** : Charge uniquement les matières nécessaires (pas tout le catalogue)
+- ✅ **Précision** : Affiche EXACTEMENT les matières disponibles pour la combinaison
+- ✅ **Maintenance** : Logique centralisée dans controller, pas JS statique
+
+### Problème 404 et solution (19 octobre 2025)
+
+**Problème initial** : Route retournait HTTP 404
+
+**Cause** : La route `/load-matieres` était placée APRÈS les routes avec paramètre `/{evaluation}`, donc Laravel matchait "load-matieres" comme une valeur du paramètre `{evaluation}` au lieu de la route spécifique.
+
+```php
+// ❌ INCORRECT - 404 Error
+Route::get('/{evaluation}', ...)->name('show');           // Ligne 1213
+Route::get('/load-matieres', ...)->name('load-matieres'); // Ligne 1223
+// Laravel matche "load-matieres" avec {evaluation} !
+```
+
+**Solution** : Déplacer la route `/load-matieres` AVANT toutes les routes avec paramètres wildcards
+
+```php
+// ✅ CORRECT - Fonctionne
+Route::get('/load-matieres', ...)->name('load-matieres'); // Ligne 1213
+Route::get('/{evaluation}', ...)->name('show');           // Ligne 1218
+// Laravel matche d'abord la route spécifique
+```
+
+**Règle Laravel** :
+> Les routes spécifiques DOIVENT être déclarées AVANT les routes avec paramètres wildcards `{param}` pour éviter les conflits de matching.
+
+### Fichiers modifiés
+
+1. ✅ `routes/web.php` (L1213) - Route AJAX **repositionnée AVANT /{evaluation}**
+2. ✅ `app/Http/Controllers/ESBTPEvaluationController.php` (L1088-1157) - Méthode `loadMatieres()`
+3. ✅ `resources/views/esbtp/evaluations/create.blade.php` (L517-621) - Pattern AJAX
+4. ✅ Suppression ligne 31 - JSON statique `data-matieres` (plus nécessaire)
+
+### Exemple requête/réponse
+
+**Requête** :
+```http
+GET /esbtp/evaluations/load-matieres?classe_id=15
+X-Requested-With: XMLHttpRequest
+Accept: application/json
+```
+
+**Réponse succès** :
+```json
+{
+  "success": true,
+  "options": "<option value=\"\">-- Sélectionner une matière --</option><option value=\"42\">Mathématiques (MATH101)</option><option value=\"43\">Physique (PHY102)</option>",
+  "count": 2,
+  "classe": {
+    "id": 15,
+    "nom": "L3 GC - 2024/2025",
+    "filiere": "Génie Civil",
+    "niveau": "Licence 3"
+  }
+}
+```
+
+**Réponse erreur** :
+```json
+{
+  "success": false,
+  "message": "Erreur lors du chargement des matières: Classe introuvable"
+}
+```
 
 ---
 

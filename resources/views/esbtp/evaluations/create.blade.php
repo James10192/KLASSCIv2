@@ -27,8 +27,6 @@
                 @endif
             </div>
         </div>
-        <!-- Matières statiques (fallback) -->
-        <div id="matiere-data" data-matieres="{{ json_encode($matieres) }}" style="display: none;"></div>
 
         @if ($errors->any())
             <div class="alert alert-danger border-start border-danger border-4 mb-4">
@@ -516,30 +514,106 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Simple classe/matière interaction
+    // Pattern AJAX classe → matières (identique à attendances.create pour cohérence)
     const classeSelect = document.getElementById('classe_id');
     const matiereSelect = document.getElementById('matiere_id');
-    const staticMatieres = JSON.parse(document.getElementById('matiere-data').getAttribute('data-matieres') || '[]');
 
     if (classeSelect && matiereSelect) {
-        classeSelect.addEventListener('change', function() {
+        classeSelect.addEventListener('change', function(e) {
+            e.preventDefault();
             const classeId = this.value;
-            
+
+            console.log('📚 [AJAX] Classe sélectionnée:', classeId);
+
             // Reset matière select
             matiereSelect.innerHTML = '<option value="">-- Sélectionner une matière --</option>';
-            
+            matiereSelect.disabled = true;
+
             if (classeId) {
-                // Load matieres for selected class
-                if (staticMatieres && staticMatieres.length > 0) {
-                    staticMatieres.forEach(function(matiere) {
-                        const option = document.createElement('option');
-                        option.value = matiere.id;
-                        option.textContent = matiere.nom || matiere.name || 'Matière ' + matiere.id;
-                        matiereSelect.appendChild(option);
-                    });
-                }
+                loadMatieres(classeId);
             }
+
+            return false;
+        });
+    }
+
+    /**
+     * Charge les matières disponibles pour une classe via AJAX
+     * Utilise les combinaisons globales (filière + niveau)
+     */
+    function loadMatieres(classeId) {
+        console.log('🔄 [AJAX] Chargement matières pour classe:', classeId);
+
+        // Afficher un loader sur le label
+        const label = document.querySelector('label[for="matiere_id"]');
+        const existingSpinner = label.querySelector('.loading-spinner');
+        let spinner = existingSpinner;
+
+        if (!existingSpinner) {
+            spinner = document.createElement('span');
+            spinner.className = 'loading-spinner';
+            spinner.innerHTML = ' <i class="fas fa-spinner fa-spin text-primary"></i>';
+            label.appendChild(spinner);
+        }
+
+        const url = '{{ route("esbtp.evaluations.load-matieres") }}?classe_id=' + classeId;
+
+        fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('HTTP error! status: ' + response.status);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (spinner) spinner.remove();
+
+            if (data.success) {
+                console.log('✅ [AJAX] Matières reçues:', data.count, 'pour', data.classe.nom);
+
+                // Mettre à jour le select avec les options HTML
+                matiereSelect.innerHTML = data.options;
+                matiereSelect.disabled = false;
+
+                // Message si aucune matière
+                if (data.count === 0) {
+                    matiereSelect.innerHTML = '<option value="">Aucune matière disponible pour cette classe</option>';
+
+                    // Alert utilisateur
+                    alert('Attention: Aucune matière n\'est configurée pour la combinaison ' +
+                          data.classe.filiere + ' / ' + data.classe.niveau + '. ' +
+                          'Veuillez d\'abord ajouter des matières via la page "Matières de classe".');
+                }
+            } else {
+                console.error('❌ Erreur:', data.message);
+                alert('Erreur: ' + data.message);
+                matiereSelect.disabled = false;
+            }
+        })
+        .catch(error => {
+            if (spinner) spinner.remove();
+            console.error('❌ Erreur AJAX:', error);
+            alert('Une erreur est survenue lors du chargement des matières: ' + error.message);
+            matiereSelect.disabled = false;
         });
     }
 });
 </script>
+
+<style>
+.loading-spinner {
+    margin-left: 8px;
+    display: inline-block;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+</style>

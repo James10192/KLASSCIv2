@@ -1077,4 +1077,82 @@ class ESBTPEvaluationController extends Controller
 
         return response()->json($evaluations);
     }
+
+    /**
+     * Charge les matières disponibles pour une classe via AJAX (combinaisons globales).
+     * Pattern identique à attendances.create pour cohérence UX.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function loadMatieres(Request $request)
+    {
+        \Log::info('📚 [AJAX] loadMatieres - Début', [
+            'classe_id' => $request->input('classe_id'),
+            'user_id' => \Auth::id()
+        ]);
+
+        try {
+            $classeId = $request->input('classe_id');
+
+            if (!$classeId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'ID de classe manquant'
+                ], 400);
+            }
+
+            $classe = ESBTPClasse::findOrFail($classeId);
+
+            // Récupérer les matières disponibles via combinaisons globales (filière + niveau)
+            // Même logique que API LMS et classes/matieres.blade.php
+            $matieres = ESBTPMatiere::where('is_active', true)
+                ->whereHas('filieres', function ($q) use ($classe) {
+                    $q->where('esbtp_filieres.id', $classe->filiere_id);
+                })
+                ->whereHas('niveaux', function ($q) use ($classe) {
+                    $q->where('esbtp_niveau_etudes.id', $classe->niveau_etude_id);
+                })
+                ->orderBy('nom')
+                ->get();
+
+            \Log::info('✅ [AJAX] loadMatieres - Matières trouvées', [
+                'classe_id' => $classeId,
+                'classe_nom' => $classe->name,
+                'filiere_id' => $classe->filiere_id,
+                'niveau_id' => $classe->niveau_etude_id,
+                'nb_matieres' => $matieres->count()
+            ]);
+
+            // Générer les options HTML pour le select
+            $options = '<option value="">-- Sélectionner une matière --</option>';
+            foreach ($matieres as $matiere) {
+                $matiereNom = $matiere->nom ?? $matiere->name ?? 'Matière ' . $matiere->id;
+                $matiereCode = $matiere->code ? ' (' . $matiere->code . ')' : '';
+                $options .= '<option value="' . $matiere->id . '">' . $matiereNom . $matiereCode . '</option>';
+            }
+
+            return response()->json([
+                'success' => true,
+                'options' => $options,
+                'count' => $matieres->count(),
+                'classe' => [
+                    'id' => $classe->id,
+                    'nom' => $classe->name,
+                    'filiere' => $classe->filiere->name ?? 'N/A',
+                    'niveau' => $classe->niveau->name ?? 'N/A'
+                ]
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('❌ [AJAX] loadMatieres - Erreur', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors du chargement des matières: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

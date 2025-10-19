@@ -14,7 +14,8 @@
       "Bash(php artisan filament:cache-components:*)",
       "Bash(git push:*)",
       "Bash(mysql:*)",
-      "Bash(php:*)"
+      "Bash(php:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": [],
