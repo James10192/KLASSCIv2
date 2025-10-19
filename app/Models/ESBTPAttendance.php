@@ -34,13 +34,17 @@ class ESBTPAttendance extends Model
         'heure_fin',
         'statut', // 'present', 'absent', 'retard', 'excuse'
         'status', // Alias for statut (for backward compatibility)
-        'call_type', // 'start', 'end'
+        'call_type', // 'start', 'end', 'merged'
         'is_justified',
         'commentaire',
         'document_path',
         'justified_at',
         'created_by',
-        'updated_by'
+        'updated_by',
+        // Video conference tracking columns
+        'video_joined_at',
+        'video_left_at',
+        'video_duration_minutes'
     ];
 
     /**
@@ -51,6 +55,8 @@ class ESBTPAttendance extends Model
     protected $casts = [
         'date' => 'date',
         'justified_at' => 'datetime',
+        'video_joined_at' => 'datetime',
+        'video_left_at' => 'datetime',
     ];
 
     /**

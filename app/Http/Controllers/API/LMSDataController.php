@@ -2100,7 +2100,7 @@ class LMSDataController extends BaseApiController
 
         // Validation
         $validatedData = $request->validate([
-            'seance_cours_id' => 'required|integer|exists:esbtp_seances_cours,id',
+            'seance_cours_id' => 'required|integer|exists:esbtp_seance_cours,id',
             'date' => 'required|date',
             'attendances' => 'required|array',
             'attendances.*.etudiant_id' => 'required|integer|exists:esbtp_etudiants,id',
