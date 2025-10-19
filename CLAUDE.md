@@ -262,6 +262,7 @@ MAIL_FROM_NAME="KLASSCI"
 - **19/10** : Fix 500 erreur SQL load-matieres → colonne 'name' au lieu de 'nom' dans orderBy + génération HTML options
 - **19/10** : Fix double spinner load-matieres → suppression de TOUS les spinners existants avant création nouveau (querySelectorAll + forEach remove)
 - **19/10** : Ajout évaluations programmées dans API LMS endpoint /api/lms/classes → permet au LMS de créer formulaires en ligne et soumettre notes
+- **19/10** : Ajout endpoint GET /api/lms/me/dashboard pour étudiants → dashboard complet avec classe, cours, quiz, stats personnelles
 
 ## ✨ Fonctionnalités récentes
 

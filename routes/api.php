@@ -159,6 +159,10 @@ Route::middleware(['auth:sanctum'])->prefix('lms')->name('api.lms.')->group(func
     Route::get('/evaluations', [App\Http\Controllers\API\LMSDataController::class, 'evaluations'])
         ->name('evaluations');
 
+    // Dashboard étudiant (réservé aux étudiants)
+    Route::get('/me/dashboard', [App\Http\Controllers\API\LMSDataController::class, 'studentDashboard'])
+        ->name('me.dashboard');
+
     // ================================
     // DONNÉES EN ÉCRITURE (LMS → KLASSCI)
     // ================================

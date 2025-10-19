@@ -782,4 +782,203 @@ class LMSDataController extends BaseApiController
             ]
         ]);
     }
+
+    /**
+     * Dashboard de l'étudiant connecté
+     *
+     * Endpoint: GET /api/lms/me/dashboard
+     *
+     * Retourne toutes les données nécessaires pour l'étudiant:
+     * - Sa classe avec inscription active
+     * - Ses cours (matières disponibles)
+     * - Ses évaluations (quiz) programmées
+     * - Statistiques personnelles
+     *
+     * @return JsonResponse
+     */
+    public function studentDashboard(): JsonResponse
+    {
+        $startTime = microtime(true);
+        \Log::info('🚀 LMS Student Dashboard API - Starting request', ['user_id' => auth()->id()]);
+
+        // Vérifier que l'utilisateur est un étudiant
+        $user = auth()->user();
+        if (!$user->hasRole('etudiant')) {
+            return $this->errorResponse('Cet endpoint est réservé aux étudiants', [], 403);
+        }
+
+        $annee = $this->getAnneeCouraante();
+        if (!$annee) {
+            return $this->errorResponse('Aucune année universitaire courante trouvée');
+        }
+
+        // Récupérer l'étudiant
+        $etudiant = $user->etudiant;
+        if (!$etudiant) {
+            return $this->errorResponse('Profil étudiant introuvable', [], 404);
+        }
+
+        // Récupérer l'inscription active de l'année courante
+        $inscription = $etudiant->inscriptions()
+            ->with(['classe.filiere', 'classe.niveau'])
+            ->where('annee_universitaire_id', $annee->id)
+            ->where('status', 'active')
+            ->first();
+
+        if (!$inscription) {
+            return $this->errorResponse('Aucune inscription active trouvée pour l\'année courante', [], 404);
+        }
+
+        $classe = $inscription->classe;
+
+        // Récupérer les matières (cours) disponibles pour la classe
+        $matieres = ESBTPMatiere::where('is_active', true)
+            ->whereHas('filieres', function ($q) use ($classe) {
+                $q->where('esbtp_filieres.id', $classe->filiere_id);
+            })
+            ->whereHas('niveaux', function ($q) use ($classe) {
+                $q->where('esbtp_niveau_etudes.id', $classe->niveau_etude_id);
+            })
+            ->get();
+
+        // Récupérer les évaluations (quiz) programmées pour la classe
+        $evaluations = ESBTPEvaluation::with('matiere')
+            ->where('classe_id', $classe->id)
+            ->where('annee_universitaire_id', $annee->id)
+            ->where('is_published', true) // Seulement les évaluations publiées
+            ->orderBy('date_evaluation', 'desc')
+            ->get();
+
+        // Calculer statistiques personnelles de l'étudiant
+        $statistiques = [
+            'attendances' => [
+                'total_presences' => \App\Models\ESBTPAttendance::where('etudiant_id', $etudiant->id)
+                    ->where('date', '>=', $annee->date_debut)
+                    ->where('date', '<=', $annee->date_fin ?? now())
+                    ->whereIn('statut', ['present', 'retard'])
+                    ->count(),
+                'total_absences' => \App\Models\ESBTPAttendance::where('etudiant_id', $etudiant->id)
+                    ->where('date', '>=', $annee->date_debut)
+                    ->where('date', '<=', $annee->date_fin ?? now())
+                    ->where('statut', 'absent')
+                    ->count()
+            ],
+            'evaluations' => [
+                'total_passees' => \App\Models\ESBTPNote::where('etudiant_id', $etudiant->id)
+                    ->whereHas('evaluation', function($q) use ($annee) {
+                        $q->where('annee_universitaire_id', $annee->id);
+                    })
+                    ->count(),
+                'moyenne_generale' => \App\Models\ESBTPNote::where('etudiant_id', $etudiant->id)
+                    ->whereHas('evaluation', function($q) use ($annee) {
+                        $q->where('annee_universitaire_id', $annee->id);
+                    })
+                    ->avg('note')
+            ]
+        ];
+
+        $queryTime = microtime(true);
+        \Log::info('📊 Dashboard data collected in: ' . round(($queryTime - $startTime) * 1000, 2) . 'ms');
+
+        // Formater les données
+        $data = [
+            'etudiant' => [
+                'id' => $etudiant->id,
+                'matricule' => $etudiant->matricule,
+                'nom_complet' => $user->name,
+                'email' => $user->email,
+                'photo_url' => $user->profile_photo_url ?? null
+            ],
+            'inscription' => [
+                'id' => $inscription->id,
+                'date_inscription' => $inscription->created_at->format('Y-m-d'),
+                'status' => $inscription->status
+            ],
+            'classe' => [
+                'id' => $classe->id,
+                'name' => $classe->name,
+                'libelle' => $classe->libelle,
+                'filiere' => $classe->filiere ? [
+                    'id' => $classe->filiere->id,
+                    'nom' => $classe->filiere->name,
+                    'code' => $classe->filiere->code
+                ] : null,
+                'niveau' => $classe->niveau ? [
+                    'id' => $classe->niveau->id,
+                    'nom' => $classe->niveau->name,
+                    'code' => $classe->niveau->code
+                ] : null
+            ],
+            'cours' => $matieres->map(function ($matiere) {
+                return [
+                    'id' => $matiere->id,
+                    'nom' => $matiere->name,
+                    'code' => $matiere->code,
+                    'description' => $matiere->description,
+                    'coefficient' => $matiere->coefficient,
+                    'couleur' => $matiere->couleur,
+                    'heures_total' => $matiere->heures_cm + $matiere->heures_td + $matiere->heures_tp
+                ];
+            }),
+            'quiz' => $evaluations->map(function ($evaluation) use ($etudiant) {
+                // Vérifier si l'étudiant a déjà une note pour cette évaluation
+                $note = \App\Models\ESBTPNote::where('evaluation_id', $evaluation->id)
+                    ->where('etudiant_id', $etudiant->id)
+                    ->first();
+
+                return [
+                    'id' => $evaluation->id,
+                    'titre' => $evaluation->titre,
+                    'description' => $evaluation->description,
+                    'type' => $evaluation->type,
+                    'status' => $evaluation->status,
+                    'matiere' => [
+                        'id' => $evaluation->matiere->id,
+                        'nom' => $evaluation->matiere->name,
+                        'code' => $evaluation->matiere->code
+                    ],
+                    'programmation' => [
+                        'date_evaluation' => $evaluation->date_evaluation,
+                        'duree_minutes' => $evaluation->duree_minutes,
+                        'bareme' => $evaluation->bareme
+                    ],
+                    'mon_resultat' => $note ? [
+                        'note' => $note->note,
+                        'sur' => $note->bareme,
+                        'date_obtention' => $note->created_at->format('Y-m-d'),
+                        'appreciation' => $note->appreciation
+                    ] : null,
+                    'lms_integration' => [
+                        'can_take_online' => !$note && in_array($evaluation->status, ['planifiee', 'en_cours']),
+                        'is_completed' => $note !== null
+                    ]
+                ];
+            }),
+            'statistiques' => $statistiques
+        ];
+
+        $mapTime = microtime(true);
+        \Log::info('🔄 Data formatting completed in: ' . round(($mapTime - $queryTime) * 1000, 2) . 'ms');
+
+        $totalTime = microtime(true);
+        \Log::info('✅ LMS Student Dashboard API - Total time: ' . round(($totalTime - $startTime) * 1000, 2) . 'ms');
+
+        return $this->successResponse($data, 'Dashboard étudiant récupéré avec succès', [
+            'annee_universitaire' => [
+                'id' => $annee->id,
+                'nom' => $annee->nom,
+                'is_current' => true
+            ],
+            'counts' => [
+                'cours_total' => $data['cours']->count(),
+                'quiz_total' => $data['quiz']->count(),
+                'quiz_completed' => $data['quiz']->where('lms_integration.is_completed', true)->count()
+            ],
+            'performance' => [
+                'total_time_ms' => round(($totalTime - $startTime) * 1000, 2),
+                'query_time_ms' => round(($queryTime - $startTime) * 1000, 2),
+                'mapping_time_ms' => round(($mapTime - $queryTime) * 1000, 2)
+            ]
+        ]);
+    }
 }
