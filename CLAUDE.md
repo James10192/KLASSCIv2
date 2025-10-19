@@ -261,7 +261,7 @@ MAIL_FROM_NAME="KLASSCI"
 - **19/10** : Fix 404 route AJAX load-matieres → repositionnement AVANT routes /{evaluation} (Laravel route matching order)
 - **19/10** : Fix 500 erreur SQL load-matieres → colonne 'name' au lieu de 'nom' dans orderBy + génération HTML options
 - **19/10** : Fix double spinner load-matieres → suppression de TOUS les spinners existants avant création nouveau (querySelectorAll + forEach remove)
-- **19/10** : Ajout évaluations programmées dans API LMS endpoint /api/lms/classes → permet au LMS de créer formulaires en ligne et soumettre notes
+- **19/10** : Ajout évaluations programmées dans API LMS endpoint /api/lms/classes → permet au LMS de récupérer les évaluations créées dans KLASSCI et proposer aux étudiants de les passer en ligne (mode présentiel vs en ligne choisi dans KLASSCI)
 - **19/10** : Ajout endpoint GET /api/lms/me/dashboard pour étudiants → dashboard complet avec classe, cours, quiz, stats personnelles
 - **19/10** : Ajout endpoint GET /api/lms/me/teacher-dashboard pour enseignants → matières (dual-source: pivot+séances via esbtp_seance_cours), classes, séances à venir (30j), évaluations avec progression correction, stats heures effectuées (accepte roles 'teacher'|'enseignant', mapping correct teacher_id via esbtp_teachers.id, gestion date_debut nullable)
 - **19/10** : Fix API LMS dashboard étudiant → fallback dates année universitaire nulles (date_debut/date_fin) pour éviter "Illegal operator and value combination"
@@ -1805,9 +1805,33 @@ Accept: application/json
 
 ### Vue d'ensemble
 
-4 endpoints API ajoutés pour permettre au LMS de gérer les visioconférences (Jitsi/Zoom/etc) en utilisant les données KLASSCI. Le LMS gère ses propres rooms, KLASSCI fournit les données et reçoit les attendances.
+6 endpoints API ajoutés pour permettre au LMS de gérer les visioconférences (Jitsi/Zoom/etc) en utilisant les données KLASSCI. Le LMS gère ses propres rooms, KLASSCI fournit les données et reçoit les attendances.
 
 **Architecture** : LMS stocke rooms → KLASSCI fournit données séances/participants → LMS sync attendances → KLASSCI crée attendances merged
+
+### ⚠️ Clarification importante : Rôle du LMS
+
+**Le LMS ne CRÉE PAS les données métier (séances, évaluations, étudiants, etc.)**
+
+Le LMS est une **interface de présentation et d'exécution** qui :
+- ✅ **Récupère** les données créées dans KLASSCI (séances, évaluations, participants)
+- ✅ **Présente** ces données aux utilisateurs via une interface moderne
+- ✅ **Exécute** les activités en ligne (visioconférences, évaluations en ligne)
+- ✅ **Synchronise** les résultats vers KLASSCI (attendances, notes)
+
+**KLASSCI reste la source de vérité** pour :
+- ❌ Création des séances de cours
+- ❌ Création des évaluations
+- ❌ Gestion des inscriptions étudiants
+- ❌ Configuration des matières et classes
+- ❌ Choix du mode d'évaluation (présentiel vs en ligne)
+
+**Workflow typique** :
+1. **KLASSCI** : Admin/coordinateur crée une évaluation et choisit "mode en ligne"
+2. **LMS** : Récupère cette évaluation via API
+3. **LMS** : Présente l'évaluation aux étudiants avec interface interactive
+4. **LMS** : Soumet les notes/réponses à KLASSCI via API
+5. **KLASSCI** : Enregistre les notes et permet leur consultation
 
 ### Endpoints créés
 
