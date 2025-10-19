@@ -260,6 +260,7 @@ MAIL_FROM_NAME="KLASSCI"
 - **18/10** : Fix KPI cards attendances.index affichaient zéro → variable `$stats` écrasée par boucle foreach (renommage en `$dailyStats`)
 - **19/10** : Fix 404 route AJAX load-matieres → repositionnement AVANT routes /{evaluation} (Laravel route matching order)
 - **19/10** : Fix 500 erreur SQL load-matieres → colonne 'name' au lieu de 'nom' dans orderBy + génération HTML options
+- **19/10** : Fix double spinner load-matieres → suppression de TOUS les spinners existants avant création nouveau (querySelectorAll + forEach remove)
 
 ## ✨ Fonctionnalités récentes
 

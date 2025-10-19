@@ -544,17 +544,16 @@ document.addEventListener('DOMContentLoaded', function() {
     function loadMatieres(classeId) {
         console.log('🔄 [AJAX] Chargement matières pour classe:', classeId);
 
-        // Afficher un loader sur le label
+        // Supprimer tous les spinners existants pour éviter les doublons
         const label = document.querySelector('label[for="matiere_id"]');
-        const existingSpinner = label.querySelector('.loading-spinner');
-        let spinner = existingSpinner;
+        const existingSpinners = label.querySelectorAll('.loading-spinner');
+        existingSpinners.forEach(s => s.remove());
 
-        if (!existingSpinner) {
-            spinner = document.createElement('span');
-            spinner.className = 'loading-spinner';
-            spinner.innerHTML = ' <i class="fas fa-spinner fa-spin text-primary"></i>';
-            label.appendChild(spinner);
-        }
+        // Créer un nouveau spinner
+        const spinner = document.createElement('span');
+        spinner.className = 'loading-spinner';
+        spinner.innerHTML = ' <i class="fas fa-spinner fa-spin text-primary"></i>';
+        label.appendChild(spinner);
 
         const url = '{{ route("esbtp.evaluations.load-matieres") }}?classe_id=' + classeId;
 
@@ -612,8 +611,20 @@ document.addEventListener('DOMContentLoaded', function() {
     animation: fadeIn 0.3s ease;
 }
 
+.loading-spinner i {
+    font-size: 1rem;
+    color: var(--primary, #01632f);
+}
+
 @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
+}
+
+/* Désactiver visuellement le select pendant le chargement */
+#matiere_id:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: #f5f5f5;
 }
 </style>
