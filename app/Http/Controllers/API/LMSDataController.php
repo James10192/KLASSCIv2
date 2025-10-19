@@ -1343,20 +1343,40 @@ class LMSDataController extends BaseApiController
 
         $etudiantIds = $etudiants->pluck('id');
 
+        // Compter séparément (comme attendances.index) pour cohérence
+        $presentCount = \App\Models\ESBTPAttendance::finalOnly()
+            ->whereIn('etudiant_id', $etudiantIds)
+            ->where('classe_id', $classeId)
+            ->where('date', '>=', $dateDebutAnnee)
+            ->where('date', '<=', $dateFinAnnee)
+            ->where('statut', 'present')
+            ->count();
+
+        $retardCount = \App\Models\ESBTPAttendance::finalOnly()
+            ->whereIn('etudiant_id', $etudiantIds)
+            ->where('classe_id', $classeId)
+            ->where('date', '>=', $dateDebutAnnee)
+            ->where('date', '<=', $dateFinAnnee)
+            ->whereIn('statut', ['retard', 'late'])
+            ->count();
+
+        $absentCount = \App\Models\ESBTPAttendance::finalOnly()
+            ->whereIn('etudiant_id', $etudiantIds)
+            ->where('classe_id', $classeId)
+            ->where('date', '>=', $dateDebutAnnee)
+            ->where('date', '<=', $dateFinAnnee)
+            ->where('statut', 'absent')
+            ->count();
+
+        // IMPORTANT: Les retards comptent comme présence (attendances.index ligne 273)
+        $totalPresenceWithRetards = $presentCount + $retardCount;
+
         $statistiques = [
             'presences' => [
-                'total_presences' => \App\Models\ESBTPAttendance::whereIn('etudiant_id', $etudiantIds)
-                    ->where('classe_id', $classeId)
-                    ->where('date', '>=', $dateDebutAnnee)
-                    ->where('date', '<=', $dateFinAnnee)
-                    ->whereIn('statut', ['present', 'retard'])
-                    ->count(),
-                'total_absences' => \App\Models\ESBTPAttendance::whereIn('etudiant_id', $etudiantIds)
-                    ->where('classe_id', $classeId)
-                    ->where('date', '>=', $dateDebutAnnee)
-                    ->where('date', '<=', $dateFinAnnee)
-                    ->where('statut', 'absent')
-                    ->count(),
+                'present' => $presentCount,  // Présents uniquement
+                'retard' => $retardCount,    // Retards uniquement
+                'total_presences' => $totalPresenceWithRetards,  // Présents + retards (métier)
+                'total_absences' => $absentCount,
                 'taux_presence' => 0 // Calculé après
             ],
             'evaluations' => [
