@@ -207,11 +207,9 @@ Route::middleware(['auth:sanctum'])->prefix('lms')->name('api.lms.')->group(func
     // DONNÉES EN ÉCRITURE (LMS → KLASSCI)
     // ================================
 
-    // Notes d'évaluations
-    Route::post('/evaluations/{evaluationId}/notes', [App\Http\Controllers\API\LMSWriteController::class, 'saveEvaluationNotes'])
-        ->name('evaluations.notes.save');
-    Route::post('/evaluations/{evaluationId}/notes/preview', [App\Http\Controllers\API\LMSWriteController::class, 'previewEvaluationNotes'])
-        ->name('evaluations.notes.preview');
+    // Soumettre notes d'évaluations passées en ligne
+    Route::post('/evaluations/{evaluationId}/notes', [App\Http\Controllers\API\LMSDataController::class, 'submitEvaluationNotes'])
+        ->name('evaluations.notes.submit');
 
     // Présences cours en ligne
     Route::post('/cours/{coursId}/presences', [App\Http\Controllers\API\LMSWriteController::class, 'saveCourseAttendance'])

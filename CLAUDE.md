@@ -266,6 +266,7 @@ MAIL_FROM_NAME="KLASSCI"
 - **19/10** : Ajout endpoint GET /api/lms/me/teacher-dashboard pour enseignants → matières (dual-source: pivot+séances via esbtp_seance_cours), classes, séances à venir (30j), évaluations avec progression correction, stats heures effectuées (accepte roles 'teacher'|'enseignant', mapping correct teacher_id via esbtp_teachers.id, gestion date_debut nullable)
 - **19/10** : Fix API LMS dashboard étudiant → fallback dates année universitaire nulles (date_debut/date_fin) pour éviter "Illegal operator and value combination"
 - **19/10** : Ajout endpoints GET /api/lms/classes/{id} et GET /api/lms/matieres/{id} → détails complets d'une classe (étudiants, matières via combinaison filière+niveau, emploi temps semaine, évaluations, stats présences/moyennes) et d'une matière (combinaisons disponibles, enseignants, séances 30j, évaluations, stats réalisation)
+- **19/10** : Ajout endpoint POST /api/lms/evaluations/{id}/notes → permet au LMS de soumettre les notes d'évaluations passées en ligne (création + mise à jour, validation barème, vérification inscription active, commentaire enrichi "Note soumise via LMS")
 
 ## ✨ Fonctionnalités récentes
 
@@ -2292,6 +2293,175 @@ fetch('/api/lms/seances/123/validate-participant', {
         });
     }
 });
+```
+
+---
+
+## 📝 Soumission notes évaluations en ligne (19 octobre 2025)
+
+### Vue d'ensemble
+
+Endpoint API permettant au LMS de soumettre les notes d'évaluations passées en ligne par les étudiants. Le LMS gère l'interface interactive (QCM, questions ouvertes, etc.) et KLASSCI enregistre les notes finales.
+
+### Endpoint créé
+
+**POST `/api/lms/evaluations/{evaluationId}/notes`**
+
+### Workflow complet
+
+1. **KLASSCI** : Admin crée une évaluation (titre, matière, classe, date, durée, barème, coefficient)
+2. **LMS** : Admin récupère l'évaluation via `GET /api/lms/classes` (dans `evaluations_programmees`)
+3. **LMS** : Admin active "mode en ligne" dans l'interface LMS et crée les questions/QCM
+4. **LMS** : Les étudiants passent l'évaluation en ligne sur le LMS
+5. **LMS** : Calcule les notes et les soumet via `POST /api/lms/evaluations/{id}/notes`
+6. **KLASSCI** : Enregistre les notes dans la table `esbtp_notes`
+
+### Requête
+
+```json
+POST /api/lms/evaluations/1/notes
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "notes": [
+    {
+      "etudiant_id": 2683,
+      "note": 15.5,
+      "is_absent": false,
+      "commentaire": "Bon travail sur le QCM",
+      "appreciation": "Bien"
+    },
+    {
+      "etudiant_id": 2684,
+      "note": 12,
+      "is_absent": false,
+      "commentaire": "Quelques erreurs mais effort notable"
+    }
+  ]
+}
+```
+
+### Réponse succès
+
+```json
+{
+  "success": true,
+  "data": {
+    "created": 2,
+    "updated": 0,
+    "errors": [],
+    "total_submitted": 2,
+    "total_failed": 0
+  },
+  "meta": {
+    "evaluation": {
+      "id": 1,
+      "titre": "Quiz de math",
+      "matiere": "Mathématiques",
+      "classe": "L3 GC",
+      "bareme": "20.00",
+      "date_evaluation": "2025-11-10"
+    },
+    "performance": {
+      "total_time_ms": 65.19
+    }
+  },
+  "message": "Notes soumises avec succès"
+}
+```
+
+### Validations effectuées
+
+1. ✅ **Évaluation existe** : L'évaluation doit exister dans KLASSCI
+2. ✅ **Année universitaire courante** : L'évaluation doit appartenir à l'année courante
+3. ✅ **Étudiant inscrit** : L'étudiant doit avoir une inscription active dans la classe de l'évaluation
+4. ✅ **Respect du barème** : La note ne peut pas dépasser le barème (ex: note ≤ 20 si barème = 20)
+5. ✅ **Format note** : Note doit être un nombre positif
+
+### Comportement
+
+- **Création** : Si aucune note n'existe pour cet étudiant/évaluation → crée une nouvelle note
+- **Mise à jour** : Si une note existe déjà → met à jour la note existante
+- **Commentaire enrichi** : Le commentaire est préfixé par "Note soumise via LMS - "
+- **Gestion erreurs** : Si un étudiant pose problème, les autres notes sont quand même traitées
+
+### Cas d'erreur
+
+**Note supérieure au barème** :
+```json
+{
+  "success": false,
+  "message": "Note supérieure au barème",
+  "data": {
+    "etudiant_id": 2683,
+    "note": 25,
+    "bareme_max": 20
+  }
+}
+```
+
+**Étudiant non inscrit** :
+```json
+{
+  "success": true,
+  "data": {
+    "created": 0,
+    "updated": 0,
+    "errors": [
+      {
+        "etudiant_id": 231,
+        "error": "Étudiant non inscrit dans cette classe"
+      }
+    ],
+    "total_submitted": 0,
+    "total_failed": 1
+  }
+}
+```
+
+### Données enregistrées
+
+Table `esbtp_notes` :
+- `evaluation_id` : ID de l'évaluation
+- `matiere_id` : ID de la matière
+- `etudiant_id` : ID de l'étudiant
+- `classe_id` : ID de la classe
+- `note` : Note sur le barème
+- `is_absent` : Boolean (absent = true)
+- `commentaire` : "Note soumise via LMS - {commentaire_lms}"
+- `appreciation` : Optionnel (ex: "Bien", "Très bien")
+- `type_evaluation` : Type de l'évaluation (ex: "quiz", "devoir")
+- `annee_universitaire` : Nom de l'année universitaire
+- `created_by` / `updated_by` : ID du user authentifié
+
+### Tests validés
+
+✅ **Création** : 2 notes créées avec succès
+✅ **Mise à jour** : 1 note mise à jour (updated=1, created=0)
+✅ **Validation barème** : Rejette note=25 quand barème=20
+✅ **Validation inscription** : Rejette étudiant non inscrit
+✅ **Performance** : ~65ms pour 2 notes
+
+### Fichiers modifiés
+
+- `app/Http/Controllers/API/LMSDataController.php` (L2493-2664) : Méthode `submitEvaluationNotes()`
+- `routes/api.php` (L211-212) : Route POST `/api/lms/evaluations/{evaluationId}/notes`
+
+### Route créée
+
+```php
+Route::post('/evaluations/{evaluationId}/notes', [LMSDataController::class, 'submitEvaluationNotes'])
+    ->name('evaluations.notes.submit');
+```
+
+### Logs de débogage
+
+```
+🚀 LMS Submit Evaluation Notes API - Starting request | evaluation_id: 1, notes_count: 2
+✅ Note created from LMS | etudiant_id: 2683, note: 15.5
+✅ Note created from LMS | etudiant_id: 2684, note: 12
+✅ LMS Submit Evaluation Notes API - Completed | created: 2, updated: 0, errors_count: 0, total_time_ms: 65.19
 ```
 
 ---

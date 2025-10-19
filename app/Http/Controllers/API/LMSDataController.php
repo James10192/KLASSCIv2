@@ -2489,4 +2489,177 @@ class LMSDataController extends BaseApiController
             ]
         ]);
     }
+
+    /**
+     * Soumettre les notes d'une évaluation passée en ligne sur le LMS
+     *
+     * Le LMS envoie les notes calculées après que les étudiants ont terminé l'évaluation en ligne.
+     * KLASSCI enregistre ces notes dans sa base de données.
+     *
+     * POST /api/lms/evaluations/{evaluationId}/notes
+     *
+     * @param int $evaluationId
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function submitEvaluationNotes(Request $request, int $evaluationId): JsonResponse
+    {
+        $startTime = microtime(true);
+        \Log::info('🚀 LMS Submit Evaluation Notes API - Starting request', [
+            'evaluation_id' => $evaluationId,
+            'notes_count' => count($request->input('notes', []))
+        ]);
+
+        // Validation
+        $validatedData = $request->validate([
+            'notes' => 'required|array|min:1',
+            'notes.*.etudiant_id' => 'required|integer|exists:esbtp_etudiants,id',
+            'notes.*.note' => 'required|numeric|min:0',
+            'notes.*.is_absent' => 'boolean',
+            'notes.*.commentaire' => 'nullable|string|max:1000',
+            'notes.*.appreciation' => 'nullable|string|max:500'
+        ]);
+
+        // Récupérer l'évaluation
+        $evaluation = \App\Models\ESBTPEvaluation::with(['matiere', 'classe'])
+            ->find($evaluationId);
+
+        if (!$evaluation) {
+            return $this->errorResponse('Évaluation introuvable', [], 404);
+        }
+
+        // Vérifier que l'évaluation appartient à l'année universitaire courante
+        $annee = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        if (!$annee) {
+            return $this->errorResponse('Aucune année universitaire active', [], 400);
+        }
+
+        if ($evaluation->annee_universitaire_id !== $annee->id) {
+            return $this->errorResponse('L\'évaluation n\'appartient pas à l\'année universitaire courante', [], 400);
+        }
+
+        // Vérifier que le barème est respecté
+        if ($evaluation->bareme) {
+            foreach ($validatedData['notes'] as $noteData) {
+                if (!($noteData['is_absent'] ?? false) && $noteData['note'] > $evaluation->bareme) {
+                    return $this->errorResponse(
+                        'Note supérieure au barème',
+                        [
+                            'etudiant_id' => $noteData['etudiant_id'],
+                            'note' => $noteData['note'],
+                            'bareme_max' => $evaluation->bareme
+                        ],
+                        422
+                    );
+                }
+            }
+        }
+
+        $created = 0;
+        $updated = 0;
+        $errors = [];
+
+        foreach ($validatedData['notes'] as $noteData) {
+            try {
+                // Vérifier que l'étudiant est bien inscrit dans la classe de l'évaluation
+                $inscription = \DB::table('esbtp_inscriptions')
+                    ->where('etudiant_id', $noteData['etudiant_id'])
+                    ->where('classe_id', $evaluation->classe_id)
+                    ->where('annee_universitaire_id', $annee->id)
+                    ->where('status', 'active')
+                    ->first();
+
+                if (!$inscription) {
+                    $errors[] = [
+                        'etudiant_id' => $noteData['etudiant_id'],
+                        'error' => 'Étudiant non inscrit dans cette classe'
+                    ];
+                    continue;
+                }
+
+                // Vérifier si une note existe déjà
+                $existingNote = \App\Models\ESBTPNote::where([
+                    'evaluation_id' => $evaluationId,
+                    'etudiant_id' => $noteData['etudiant_id']
+                ])->first();
+
+                $notePayload = [
+                    'evaluation_id' => $evaluationId,
+                    'matiere_id' => $evaluation->matiere_id,
+                    'etudiant_id' => $noteData['etudiant_id'],
+                    'classe_id' => $evaluation->classe_id,
+                    'note' => $noteData['note'],
+                    'is_absent' => $noteData['is_absent'] ?? false,
+                    'commentaire' => isset($noteData['commentaire'])
+                        ? 'Note soumise via LMS - ' . $noteData['commentaire']
+                        : 'Note soumise via LMS',
+                    'appreciation' => $noteData['appreciation'] ?? null,
+                    'type_evaluation' => $evaluation->type,
+                    'annee_universitaire' => $annee->nom ?? null,
+                    'updated_by' => auth()->id() ?? null
+                ];
+
+                if ($existingNote) {
+                    // Mise à jour
+                    $existingNote->update($notePayload);
+                    $updated++;
+
+                    \Log::info('🔄 Note updated from LMS', [
+                        'note_id' => $existingNote->id,
+                        'etudiant_id' => $noteData['etudiant_id'],
+                        'note' => $noteData['note']
+                    ]);
+                } else {
+                    // Création
+                    $notePayload['created_by'] = auth()->id() ?? null;
+                    \App\Models\ESBTPNote::create($notePayload);
+                    $created++;
+
+                    \Log::info('✅ Note created from LMS', [
+                        'etudiant_id' => $noteData['etudiant_id'],
+                        'note' => $noteData['note']
+                    ]);
+                }
+            } catch (\Exception $e) {
+                $errors[] = [
+                    'etudiant_id' => $noteData['etudiant_id'],
+                    'error' => $e->getMessage()
+                ];
+
+                \Log::error('❌ Error saving note from LMS', [
+                    'etudiant_id' => $noteData['etudiant_id'],
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
+
+        $totalTime = (microtime(true) - $startTime) * 1000;
+
+        \Log::info('✅ LMS Submit Evaluation Notes API - Completed', [
+            'created' => $created,
+            'updated' => $updated,
+            'errors_count' => count($errors),
+            'total_time_ms' => round($totalTime, 2)
+        ]);
+
+        return $this->successResponse([
+            'created' => $created,
+            'updated' => $updated,
+            'errors' => $errors,
+            'total_submitted' => $created + $updated,
+            'total_failed' => count($errors)
+        ], 'Notes soumises avec succès', [
+            'evaluation' => [
+                'id' => $evaluation->id,
+                'titre' => $evaluation->titre,
+                'matiere' => $evaluation->matiere->name ?? 'N/A',
+                'classe' => $evaluation->classe->name ?? 'N/A',
+                'bareme' => $evaluation->bareme,
+                'date_evaluation' => $evaluation->date_evaluation
+            ],
+            'performance' => [
+                'total_time_ms' => round($totalTime, 2)
+            ]
+        ]);
+    }
 }
