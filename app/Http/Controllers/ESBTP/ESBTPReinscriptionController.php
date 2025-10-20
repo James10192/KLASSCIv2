@@ -917,7 +917,8 @@ class ESBTPReinscriptionController extends Controller
 
     public function storeRegle(Request $request)
     {
-        $request->validate([
+        // Capturer les données validées pour éviter la vulnérabilité mass assignment
+        $validated = $request->validate([
             'niveau' => 'required|string',
             'filiere' => 'required|string',
             'moyenne_passage' => 'required|numeric|min:0|max:20',
@@ -929,12 +930,13 @@ class ESBTPReinscriptionController extends Controller
         ]);
 
         try {
+            // Utiliser uniquement les données validées
             ESBTPRegleAcademique::updateOrCreate(
                 [
-                    'niveau' => $request->niveau,
-                    'filiere' => $request->filiere
+                    'niveau' => $validated['niveau'],
+                    'filiere' => $validated['filiere']
                 ],
-                $request->all()
+                $validated
             );
 
             return back()->with('success', 'Règle académique enregistrée avec succès');
@@ -945,7 +947,8 @@ class ESBTPReinscriptionController extends Controller
 
     public function updateRegle(Request $request, $id)
     {
-        $request->validate([
+        // Capturer les données validées pour éviter la vulnérabilité mass assignment
+        $validated = $request->validate([
             'moyenne_passage' => 'required|numeric|min:0|max:20',
             'moyenne_rattrapage' => 'required|numeric|min:0|max:20',
             'max_matieres_rattrapage' => 'required|integer|min:1',
@@ -957,7 +960,8 @@ class ESBTPReinscriptionController extends Controller
 
         try {
             $regle = ESBTPRegleAcademique::findOrFail($id);
-            $regle->update($request->all());
+            // Utiliser uniquement les données validées
+            $regle->update($validated);
 
             return back()->with('success', 'Règle académique mise à jour avec succès');
         } catch (\Exception $e) {
