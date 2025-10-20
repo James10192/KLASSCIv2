@@ -219,9 +219,11 @@
                         <div class="col-md-6">
                             <div class="form-group-moderne">
                                 <label for="nouvelle_classe_id" class="form-label-moderne">Nouvelle Classe pour {{ $anneeDestinationName }} *</label>
-                                <select name="nouvelle_classe_id" id="nouvelle_classe_id" class="form-select-moderne" required>
+                                <select name="nouvelle_classe_id" id="nouvelle_classe_id" class="form-select-moderne" required
+                                        data-initial-value="{{ old('nouvelle_classe_id') }}">
                                     <option value="">Sélectionnez d'abord une décision...</option>
                                 </select>
+                                <div id="nouvelleClassePlacesInfo" class="mt-2"></div>
                                 <small class="form-text text-muted" id="classes-help">
                                     Les classes dépendent de votre décision académique
                                 </small>
@@ -288,7 +290,20 @@ document.addEventListener('DOMContentLoaded', function() {
     const affectationSelect = document.getElementById('affectation_status');
     const fraisContainer = document.getElementById('fraisContainer');
     const btnConfirmer = document.getElementById('btnConfirmer');
+    const placesInfo = document.getElementById('nouvelleClassePlacesInfo');
     // Variables pour la gestion des reliquats gérées directement dans validateReliquat()
+
+    function setReinscriptionButtonState(enabled, message = '') {
+        if (!btnConfirmer) {
+            return;
+        }
+        btnConfirmer.disabled = !enabled;
+        if (message) {
+            btnConfirmer.setAttribute('title', message);
+        } else {
+            btnConfirmer.removeAttribute('title');
+        }
+    }
 
     // Champs cachés pour transmission finale
     const decisionFinale = document.getElementById('decisionFinale');
@@ -327,6 +342,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     @endif
 
+    setReinscriptionButtonState(false, 'Sélectionnez une classe disponible pour finaliser la réinscription.');
+
     // Fonction pour mettre à jour les classes selon la décision
     function updateClassesParDecision() {
         const decision = decisionSelect.value;
@@ -336,6 +353,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Réinitialiser le select des classes
         classeSelect.innerHTML = '<option value="">Chargement...</option>';
         fraisContainer.innerHTML = '<div class="text-center py-4"><p class="text-muted">Sélectionnez une classe pour voir les frais applicables</p></div>';
+        if (placesInfo) {
+            placesInfo.innerHTML = '';
+        }
+        setReinscriptionButtonState(false, 'Sélectionnez une classe disponible pour finaliser la réinscription.');
 
         if (decision && classesParDecision[decision]) {
             let options = '<option value="">Sélectionner une classe...</option>';
@@ -349,9 +370,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
             classeSelect.innerHTML = options;
             document.getElementById('classes-help').textContent = `${classes.length} classe(s) disponible(s) pour ${decision}`;
+
+            const initialValue = classeSelect.dataset.initialValue;
+            if (initialValue) {
+                const hasMatch = classes.some(function(classe) {
+                    return String(classe.id) === String(initialValue);
+                });
+
+                if (hasMatch) {
+                    classeSelect.value = initialValue;
+                    classeSelect.dataset.initialValue = '';
+                    fetchAvailablePlaces(initialValue);
+                    loadFraisForClasse(initialValue);
+                }
+            }
         } else {
             classeSelect.innerHTML = '<option value="">Aucune classe disponible</option>';
             document.getElementById('classes-help').textContent = 'Aucune classe trouvée pour cette décision';
+            setReinscriptionButtonState(false, 'Aucune classe disponible pour cette décision.');
         }
     }
 
@@ -368,7 +404,11 @@ document.addEventListener('DOMContentLoaded', function() {
             updateClassesParDecision();
             // Recharger les frais si une classe est sélectionnée
             if (classeSelect.value) {
+                fetchAvailablePlaces(classeSelect.value);
                 loadFraisForClasse(classeSelect.value);
+            } else if (placesInfo) {
+                placesInfo.innerHTML = '';
+                setReinscriptionButtonState(false, 'Sélectionnez une classe disponible pour finaliser la réinscription.');
             }
         });
     }
@@ -380,11 +420,97 @@ document.addEventListener('DOMContentLoaded', function() {
     if (classeSelect && fraisContainer) {
         classeSelect.addEventListener('change', function() {
             if (this.value) {
+                fetchAvailablePlaces(this.value);
                 loadFraisForClasse(this.value);
             } else {
                 fraisContainer.innerHTML = '<div class="text-center py-4"><p class="text-muted">Sélectionnez une classe pour voir les frais applicables</p></div>';
+                if (placesInfo) {
+                    placesInfo.innerHTML = '';
+                }
+                setReinscriptionButtonState(false, 'Sélectionnez une classe disponible pour finaliser la réinscription.');
             }
         });
+    }
+
+    function fetchAvailablePlaces(classeId) {
+        if (!placesInfo) {
+            return;
+        }
+
+        if (!classeId) {
+            placesInfo.innerHTML = '';
+            setReinscriptionButtonState(false, 'Sélectionnez une classe disponible pour finaliser la réinscription.');
+            return;
+        }
+
+        placesInfo.innerHTML = `
+            <div class="d-flex align-items-center text-muted small mt-2">
+                <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                Vérification des places...
+            </div>
+        `;
+        setReinscriptionButtonState(false, 'Vérification des places disponibles en cours...');
+
+        fetch(`/esbtp/classes/${classeId}/available-places`)
+            .then(function(response) {
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status);
+                }
+                return response.json();
+            })
+            .then(function(data) {
+                if (typeof data.available_places === 'undefined') {
+                    placesInfo.innerHTML = '<div class="alert alert-danger p-2 mt-2">Réponse invalide du serveur.</div>';
+                    setReinscriptionButtonState(false, 'Impossible de vérifier les places disponibles pour cette classe.');
+                    return;
+                }
+
+                const available = Number(data.available_places);
+                const capacity = data.capacity !== undefined ? Number(data.capacity) : null;
+
+                if (Number.isNaN(available)) {
+                    placesInfo.innerHTML = '<div class="alert alert-danger p-2 mt-2">Places disponibles non communiquées.</div>';
+                    setReinscriptionButtonState(false, 'Impossible de vérifier les places disponibles pour cette classe.');
+                    return;
+                }
+
+                const capacityText = capacity !== null && !Number.isNaN(capacity) ? ` / ${capacity}` : '';
+                let message = `Places disponibles: <strong>${Math.max(available, 0)}</strong>${capacityText}`;
+                let alertClass = 'alert-success';
+                let buttonMessage = '';
+
+                if (available <= 5) {
+                    alertClass = 'alert-warning';
+                    buttonMessage = available > 0
+                        ? `Il reste ${available} place(s).`
+                        : buttonMessage;
+                    if (available > 0) {
+                        message += `<br><small class="text-warning">Il ne reste que ${available} place(s) disponibles.</small>`;
+                    }
+                }
+
+                if (available <= 0) {
+                    alertClass = 'alert-danger';
+                    message = capacityText
+                        ? `<strong>Aucune place disponible !</strong> (0${capacityText})`
+                        : '<strong>Aucune place disponible !</strong>';
+                    message += '<br><small class="text-danger">Veuillez sélectionner une autre classe avant de poursuivre.</small>';
+                    setReinscriptionButtonState(false, 'Classe complète. Choisissez une autre classe pour finaliser la réinscription.');
+                } else {
+                    if (buttonMessage) {
+                        setReinscriptionButtonState(true, buttonMessage);
+                    } else {
+                        setReinscriptionButtonState(true);
+                    }
+                }
+
+                placesInfo.innerHTML = `<div class="alert ${alertClass} p-2 mt-2">${message}</div>`;
+            })
+            .catch(function(error) {
+                console.error('Erreur de vérification des places:', error);
+                placesInfo.innerHTML = '<div class="alert alert-danger p-2 mt-2">Erreur lors de la récupération des places.</div>';
+                setReinscriptionButtonState(false, 'Erreur lors de la récupération des places. Réessayez ou sélectionnez une autre classe.');
+            });
     }
 
     function loadFraisForClasse(classeId) {
