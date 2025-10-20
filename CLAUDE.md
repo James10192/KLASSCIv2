@@ -268,6 +268,7 @@ MAIL_FROM_NAME="KLASSCI"
 - **19/10** : Fix API LMS évaluations → fallback nom matière/classe (nom/name) + filtrage enseignants via enseignant_id et planning général (esbtp_seance_cours) pour exposer leurs évaluations
 - **19/10** : Fix API LMS dashboard étudiant → `can_take_online` accepte désormais les statuts `scheduled`/`in_progress` (alignement valeurs BDD pour déclencher les QCM en ligne)
 - **19/10** : Fix API LMS évaluations/dashboard → ajout fenêtre temporelle (start/end/time_left) et `can_take_online` seulement pendant le créneau actif (date + durée)
+- **20/10** : Horodatage complet évaluations → `date_evaluation` en DATETIME (migration), formulaires create/edit avec heures début/fin, durée auto-calculée, preview créneau devoir dans seances-cours.create, API LMS expose fenêtres basées sur horaires réels
 - **19/10** : Ajout endpoints GET /api/lms/classes/{id} et GET /api/lms/matieres/{id} → détails complets d'une classe (étudiants, matières via combinaison filière+niveau, emploi temps semaine, évaluations, stats présences/moyennes) et d'une matière (combinaisons disponibles, enseignants, séances 30j, évaluations, stats réalisation)
 - **19/10** : Ajout endpoint POST /api/lms/evaluations/{id}/notes → permet au LMS de soumettre les notes d'évaluations passées en ligne (création + mise à jour, validation barème, vérification inscription active, commentaire enrichi "Note soumise via LMS")
 
@@ -2318,6 +2319,27 @@ Endpoint API permettant au LMS de soumettre les notes d'évaluations passées en
 4. **LMS** : Les étudiants passent l'évaluation en ligne sur le LMS
 5. **LMS** : Calcule les notes et les soumet via `POST /api/lms/evaluations/{id}/notes`
 6. **KLASSCI** : Enregistre les notes dans la table `esbtp_notes`
+
+> ℹ️ Depuis le 20/10, les évaluations stockent **date + heure** (`date_evaluation` en DATETIME) ainsi que la durée calculée automatiquement. L'API LMS expose dans `programmation.window` les champs `start_at`, `end_at`, `is_open` et `time_left_minutes` basés sur ces horaires. Les formulaires de création/édition demandent désormais l'heure de début et de fin, et les séances de type “devoir” affichent le créneau retenu pour l'évaluation automatique.
+
+### Détails champs `programmation.window`
+
+| Champ | Description | Source côté KLASSCI | Conso côté LMS |
+|-------|-------------|---------------------|----------------|
+| `start_at` | Horodatage ISO8601 début d'évaluation | `date_evaluation` (DATETIME) | Ouvre le QCM exactement à H0 |
+| `end_at` | Horodatage fin d'évaluation | `date_evaluation + duree_minutes` (fallback fin de journée si durée manquante) | Ferme la room, stoppe submissions |
+| `has_started` | `true` si `now() ≥ start_at` | Calcul runtime | Permet d'afficher “En cours” |
+| `has_ended` | `true` si `now() > end_at` | Calcul runtime | Blocage tardif + past state |
+| `is_open` | `has_started && !has_ended` | Calcul runtime | Condition primaire pour activer le bouton “Commencer” |
+| `time_left_minutes` | Minutes restantes avant la fermeture (0 si fermé) | `diffInMinutes(end_at, now)` | Affichage compte à rebours côté LMS |
+
+### Règles `lms_integration.can_take_online`
+
+1. **Pas de note existante** : l'étudiant ne doit pas avoir de note dans `esbtp_notes` pour l'évaluation.
+2. **Statut compatible** : `status` ∈ `planifiee`, `en_cours`, `scheduled`, `in_progress`.
+3. **Fenêtre ouverte** : `is_open` doit être `true`. Si le créneau n'a pas débuté ou est déjà terminé, la valeur passe à `false`.
+
+> Résultat : l'étudiant voit l'évaluation planifiée en avance, mais le bouton reste désactivé tant que `start_at` n'est pas atteint. À l'heure H, `can_take_online` bascule à `true`, puis retombe à `false` dès que `end_at` est franchi.
 
 ### Requête
 

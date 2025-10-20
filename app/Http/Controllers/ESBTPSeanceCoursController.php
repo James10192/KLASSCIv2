@@ -496,13 +496,20 @@ class ESBTPSeanceCoursController extends Controller
                             $periode = 'semestre2';
                         }
                         
+                        $evaluationStartAt = Carbon::parse($seance->date_seance . ' ' . $seance->heure_debut);
+                        $evaluationEndAt = Carbon::parse($seance->date_seance . ' ' . $seance->heure_fin);
+                        if ($evaluationEndAt->lessThanOrEqualTo($evaluationStartAt)) {
+                            $evaluationEndAt = $evaluationEndAt->addDay();
+                        }
+                        $dureeMinutes = $evaluationEndAt->diffInMinutes($evaluationStartAt);
+
                         $evaluationData = [
                             'titre' => $seance->homework_description ?: 'Devoir - ' . ($seance->matiere->name ?? 'Matière'),
                             'description' => $seance->homework_description,
                             'matiere_id' => $seance->matiere_id,
                             'classe_id' => $seance->classe_id,
                             'type' => 'devoir',
-                            'date_evaluation' => $seance->date_seance,
+                            'date_evaluation' => $evaluationStartAt,
                             'coefficient' => 1.0,
                             'bareme' => 20.00,
                             'duree_minutes' => $dureeMinutes,
@@ -521,7 +528,7 @@ class ESBTPSeanceCoursController extends Controller
                         \Log::info('Évaluation créée automatiquement', [
                             'evaluation_id' => $evaluation->id, 
                             'seance_id' => $sessionId,
-                            'date_evaluation' => $seance->date_seance,
+                            'date_evaluation' => $evaluationStartAt->toDateTimeString(),
                             'titre' => $evaluation->titre
                         ]);
                     }

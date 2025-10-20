@@ -379,6 +379,27 @@
                                 @enderror
                             </div>
                         </div>
+
+                        <div class="evaluation-slot-card" id="homeworkTimingInfo" style="display: none;">
+                            <div class="slot-icon">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="slot-content">
+                                <div class="slot-title">Créneau de l'évaluation générée</div>
+                                <div class="slot-times">
+                                    <span class="slot-label">Début</span>
+                                    <span class="slot-time" id="homeworkStartTime">--:--</span>
+                                    <span class="slot-separator">•</span>
+                                    <span class="slot-label">Fin</span>
+                                    <span class="slot-time" id="homeworkEndTime">--:--</span>
+                                </div>
+                                <div class="slot-duration">
+                                    <i class="fas fa-hourglass-half"></i>
+                                    Durée calculée : <span id="homeworkDuration">0</span> minutes
+                                    <small>(utilisée pour l'évaluation automatique)</small>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -437,9 +458,24 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Écouter les changements d'horaires et de jour pour mettre à jour la grille
-    document.getElementById('heure_debut').addEventListener('change', updateSelectedTimeInGrid);
-    document.getElementById('heure_fin').addEventListener('change', updateSelectedTimeInGrid);
+    const heureDebutInput = document.getElementById('heure_debut');
+    const heureFinInput = document.getElementById('heure_fin');
+
+    heureDebutInput.addEventListener('change', () => {
+        updateSelectedTimeInGrid();
+        updateHomeworkTimingInfo();
+    });
+    heureFinInput.addEventListener('change', () => {
+        updateSelectedTimeInGrid();
+        updateHomeworkTimingInfo();
+    });
     document.getElementById('jour').addEventListener('change', updateSelectedTimeInGrid);
+
+    const initialType = "{{ old('type', $request->type ?? 'course') }}";
+    if (initialType) {
+        selectSessionType(initialType);
+    }
+    updateHomeworkTimingInfo();
 });
 
 function selectSessionType(type) {
@@ -487,6 +523,8 @@ function selectSessionType(type) {
         homeworkDescField.required = false;
         homeworkDueDateField.required = false;
     }
+
+    updateHomeworkTimingInfo();
 }
 
 // Fonction pour mettre à jour les créneaux sélectionnés dans la grille
@@ -533,6 +571,44 @@ function updateSelectedTimeInGrid() {
             }
         }
     }
+
+    updateHomeworkTimingInfo();
+}
+
+function updateHomeworkTimingInfo() {
+    const infoBox = document.getElementById('homeworkTimingInfo');
+    if (!infoBox) {
+        return;
+    }
+
+    const currentType = document.getElementById('sessionType').value;
+    if (currentType !== 'homework') {
+        infoBox.style.display = 'none';
+        return;
+    }
+
+    const heureDebut = document.getElementById('heure_debut').value;
+    const heureFin = document.getElementById('heure_fin').value;
+
+    if (!heureDebut || !heureFin) {
+        infoBox.style.display = 'none';
+        return;
+    }
+
+    const [startHour, startMinute] = heureDebut.split(':').map(Number);
+    const [endHour, endMinute] = heureFin.split(':').map(Number);
+
+    let startTotal = startHour * 60 + startMinute;
+    let endTotal = endHour * 60 + endMinute;
+    if (endTotal <= startTotal) {
+        endTotal += 24 * 60;
+    }
+
+    const duration = endTotal - startTotal;
+    document.getElementById('homeworkStartTime').textContent = heureDebut;
+    document.getElementById('homeworkEndTime').textContent = heureFin;
+    document.getElementById('homeworkDuration').textContent = duration;
+    infoBox.style.display = 'flex';
 }
 
 // Form validation
@@ -800,6 +876,78 @@ function showTeacherAvailability() {
 .session-type-card.selected .session-type-icon,
 .session-type-card.selected .session-type-label {
     color: white;
+}
+
+.evaluation-slot-card {
+    display: flex;
+    align-items: center;
+    gap: var(--space-lg);
+    padding: var(--space-lg);
+    border: 1px solid rgba(30, 64, 175, 0.12);
+    border-radius: var(--radius-medium);
+    background: linear-gradient(135deg, rgba(30, 64, 175, 0.06), rgba(59, 130, 246, 0.08));
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+    margin-top: var(--space-lg);
+}
+
+.slot-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: var(--radius-circle);
+    background: rgba(59, 130, 246, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: var(--primary);
+}
+
+.slot-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+}
+
+.slot-title {
+    font-weight: 700;
+    color: var(--text-primary);
+    font-size: 1.05rem;
+}
+
+.slot-times {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-sm);
+    font-size: 0.95rem;
+}
+
+.slot-label {
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.slot-time {
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: var(--text-primary);
+}
+
+.slot-separator {
+    color: rgba(15, 23, 42, 0.4);
+    font-weight: 600;
+}
+
+.slot-duration {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    color: rgba(15, 23, 42, 0.7);
+    font-size: 0.9rem;
+}
+
+.slot-duration small {
+    color: rgba(15, 23, 42, 0.6);
+    font-style: italic;
 }
 
 .session-type-icon {

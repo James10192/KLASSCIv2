@@ -117,12 +117,35 @@
                                     <div class="form-group-moderne">
                                         <label class="form-label-moderne">
                                             <i class="fas fa-clock"></i>
+                                            Heure de début <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="time" class="form-input-moderne @error('heure_debut') is-invalid @enderror" id="heure_debut" name="heure_debut" value="{{ old('heure_debut', $heureDebut) }}" required>
+                                        @error('heure_debut')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+
+                                    <div class="form-group-moderne">
+                                        <label class="form-label-moderne">
+                                            <i class="fas fa-hourglass-end"></i>
+                                            Heure de fin <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="time" class="form-input-moderne @error('heure_fin') is-invalid @enderror" id="heure_fin" name="heure_fin" value="{{ old('heure_fin', $heureFin) }}" required>
+                                        @error('heure_fin')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+
+                                    <div class="form-group-moderne">
+                                        <label class="form-label-moderne">
+                                            <i class="fas fa-clock"></i>
                                             Durée (en minutes)
                                         </label>
-                                        <input type="number" class="form-input-moderne @error('duree_minutes') is-invalid @enderror" id="duree_minutes" name="duree_minutes" value="{{ old('duree_minutes', $evaluation->duree_minutes) }}" min="1">
+                                        <input type="number" class="form-input-moderne @error('duree_minutes') is-invalid @enderror" id="duree_minutes" name="duree_minutes" value="{{ old('duree_minutes', $evaluation->duree_minutes) }}" min="1" placeholder="Calculée automatiquement si vide">
                                         @error('duree_minutes')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
+                                        <small class="text-muted">La durée est recalculée à partir des horaires si ce champ est laissé vide.</small>
                                     </div>
                                 </div>
                             </div>

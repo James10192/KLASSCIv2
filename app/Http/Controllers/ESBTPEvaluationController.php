@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Services\ESBTPPDFService;
+use Carbon\Carbon;
 use Illuminate\Support\Str;
 
 class ESBTPEvaluationController extends Controller
@@ -340,6 +341,8 @@ class ESBTPEvaluationController extends Controller
             'description' => 'nullable|string',
             'type' => 'required|string|in:devoir,examen,projet,tp,controle,quiz',
             'date_evaluation' => 'required|date',
+            'heure_debut' => 'required|date_format:H:i',
+            'heure_fin' => 'required|date_format:H:i|after:heure_debut',
             'classe_id' => 'required|exists:esbtp_classes,id',
             'matiere_id' => 'required|exists:esbtp_matieres,id',
             'coefficient' => 'required|numeric|min:0',
@@ -384,14 +387,26 @@ class ESBTPEvaluationController extends Controller
                     ->withInput();
             }
 
+            $startAt = Carbon::createFromFormat('Y-m-d H:i', $request->date_evaluation . ' ' . $request->heure_debut);
+            $endAt = Carbon::createFromFormat('Y-m-d H:i', $request->date_evaluation . ' ' . $request->heure_fin);
+            if ($endAt->lessThanOrEqualTo($startAt)) {
+                $endAt = $endAt->addDay();
+            }
+            $calculatedDuration = $endAt->diffInMinutes($startAt);
+
             $evaluation = new ESBTPEvaluation();
             $evaluation->titre = $request->titre;
             $evaluation->description = $request->description;
             $evaluation->type = $request->type;
-            $evaluation->date_evaluation = $request->date_evaluation;
+            $evaluation->date_evaluation = $startAt;
             $evaluation->coefficient = $request->coefficient;
             $evaluation->bareme = $request->bareme;
-            $evaluation->duree_minutes = $request->duree_minutes;
+            $evaluation->duree_minutes = $request->filled('duree_minutes')
+                ? (int) $request->duree_minutes
+                : $calculatedDuration;
+            if ($evaluation->duree_minutes <= 0) {
+                $evaluation->duree_minutes = $calculatedDuration;
+            }
             $evaluation->classe_id = $request->classe_id;
             $evaluation->matiere_id = $request->matiere_id;
             $evaluation->created_by = \Auth::id();
@@ -520,8 +535,18 @@ class ESBTPEvaluationController extends Controller
         $classes = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
         $matieres = ESBTPMatiere::orderBy('name')->get();
         $types = ESBTPEvaluation::getTypes();
+        $dateEval = $evaluation->date_evaluation ? Carbon::parse($evaluation->date_evaluation) : null;
+        $heureDebut = $dateEval?->format('H:i');
+        $heureFin = null;
+        if ($dateEval) {
+            $minutes = $evaluation->duree_minutes ?? 0;
+            if ($minutes <= 0) {
+                $minutes = 120;
+            }
+            $heureFin = $dateEval->copy()->addMinutes($minutes)->format('H:i');
+        }
 
-        return view('esbtp.evaluations.edit', compact('evaluation', 'classes', 'matieres', 'types'));
+        return view('esbtp.evaluations.edit', compact('evaluation', 'classes', 'matieres', 'types', 'heureDebut', 'heureFin'));
     }
 
     /**
@@ -548,8 +573,10 @@ class ESBTPEvaluationController extends Controller
             $request->validate([
                 'titre' => 'required|string|max:255',
                 'description' => 'nullable|string',
-                'type' => 'required|in:devoir,examen,projet,tp,controle',
+                'type' => 'required|in:devoir,examen,projet,tp,controle,quiz',
                 'date_evaluation' => 'required|date',
+                'heure_debut' => 'required|date_format:H:i',
+                'heure_fin' => 'required|date_format:H:i|after:heure_debut',
                 'classe_id' => 'required|exists:esbtp_classes,id',
                 'matiere_id' => 'required|exists:esbtp_matieres,id',
                 'coefficient' => 'required|numeric|min:0',
@@ -585,13 +612,25 @@ class ESBTPEvaluationController extends Controller
                     ->withInput();
             }
 
+            $startAt = Carbon::createFromFormat('Y-m-d H:i', $request->date_evaluation . ' ' . $request->heure_debut);
+            $endAt = Carbon::createFromFormat('Y-m-d H:i', $request->date_evaluation . ' ' . $request->heure_fin);
+            if ($endAt->lessThanOrEqualTo($startAt)) {
+                $endAt = $endAt->addDay();
+            }
+            $calculatedDuration = $endAt->diffInMinutes($startAt);
+
             $evaluation->titre = $request->titre;
             $evaluation->description = $request->description;
             $evaluation->type = $request->type;
-            $evaluation->date_evaluation = $request->date_evaluation;
+            $evaluation->date_evaluation = $startAt;
             $evaluation->coefficient = $request->coefficient;
             $evaluation->bareme = $request->bareme;
-            $evaluation->duree_minutes = $request->duree_minutes;
+            $evaluation->duree_minutes = $request->filled('duree_minutes')
+                ? (int) $request->duree_minutes
+                : $calculatedDuration;
+            if ($evaluation->duree_minutes <= 0) {
+                $evaluation->duree_minutes = $calculatedDuration;
+            }
 
             // Mettre à jour la classe et la matière uniquement s'il n'y a pas de notes
             if (!$hasNotes) {

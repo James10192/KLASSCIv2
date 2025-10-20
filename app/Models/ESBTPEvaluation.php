@@ -52,7 +52,7 @@ class ESBTPEvaluation extends Model
      * @var array
      */
     protected $casts = [
-        'date_evaluation' => 'date',
+        'date_evaluation' => 'datetime',
         'token_expire_at' => 'datetime'
     ];
 

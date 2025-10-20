@@ -108,13 +108,34 @@
                             </div>
 
                             <div class="form-group">
+                                <label for="heure_debut" class="form-label">Heure de début <span class="text-danger">*</span></label>
+                                <input type="time" class="form-input @error('heure_debut') error @enderror"
+                                       id="heure_debut" name="heure_debut"
+                                       value="{{ old('heure_debut', '08:00') }}" required>
+                                @error('heure_debut')
+                                    <div class="form-error">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="form-group">
+                                <label for="heure_fin" class="form-label">Heure de fin <span class="text-danger">*</span></label>
+                                <input type="time" class="form-input @error('heure_fin') error @enderror"
+                                       id="heure_fin" name="heure_fin"
+                                       value="{{ old('heure_fin', '10:00') }}" required>
+                                @error('heure_fin')
+                                    <div class="form-error">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="form-group">
                                 <label for="duree_minutes" class="form-label">Durée (en minutes)</label>
                                 <input type="number" class="form-input @error('duree_minutes') error @enderror" 
-                                       id="duree_minutes" name="duree_minutes" value="{{ old('duree_minutes', 120) }}" 
-                                       min="15" max="300" placeholder="Ex: 120">
+                                       id="duree_minutes" name="duree_minutes" value="{{ old('duree_minutes') }}" 
+                                       min="15" max="720" placeholder="Ex: 120 (calculée automatiquement si vide)">
                                 @error('duree_minutes')
                                     <div class="form-error">{{ $message }}</div>
                                 @enderror
+                                <small class="form-hint">Laissez vide pour calculer automatiquement la durée à partir des horaires.</small>
                             </div>
                         </div>
                     </div>
