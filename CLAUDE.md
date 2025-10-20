@@ -2511,6 +2511,7 @@ Suite à l'audit de sécurité et performance, mise en œuvre du **refactoring P
 
 **Controllers corrigés**:
 - ✅ `ESBTPExamenController.php` (store + update) - Commit `aa5d9d8`
+- ✅ `ESBTPSecretaireController.php` (store + update) - Commit `9a4d90e`
 
 **Pattern appliqué**:
 ```php
@@ -2534,7 +2535,6 @@ public function store(Request $request) {
 - 🛡️ Sécurité: Renforcée contre mass assignment
 
 **Controllers restant à corriger**:
-- ⏳ `ESBTPSecretaireController.php` (2 occurrences)
 - ⏳ `ESBTPReinscriptionController.php` (3 occurrences)
 
 #### 2. Vérification Protection Modèles - $fillable/$guarded
@@ -2589,7 +2589,7 @@ APRÈS: 0 INSERT audit + requête = ~0.5 secondes
 - [x] Fix PDF export pagination (tous paiements)
 - [x] Fix PDF export colonnes (17 → 10 colonnes)
 - [x] Correction ESBTPExamenController (request->all)
-- [ ] Correction ESBTPSecretaireController
+- [x] Correction ESBTPSecretaireController (request->all) - Commit `9a4d90e`
 - [ ] Correction ESBTPReinscriptionController
 - [ ] Audit 84 raw queries (SQL injection)
 - [ ] Ajouter indexes colonnes critiques
@@ -2674,7 +2674,7 @@ Si **NON n'importe où**: 🔴 Utiliser versioning
 | ESBTPEtudiantController | 2023 | 4.0x | 🔴 Critique |
 
 **Problèmes sécurité**:
-- $request->all() sans validation: 10+ occurrences (2 corrigées)
+- $request->all() sans validation: 10+ occurrences (4 corrigées - ESBTPExamenController + ESBTPSecretaireController)
 - Raw queries ($DB::raw, whereRaw): 84 occurrences à auditer
 - Sorties non échappées ({!! !!}): 61 occurrences
 
