@@ -41,7 +41,7 @@ class ESBTPExamenController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'classe_id' => 'required|exists:e_s_b_t_p_classes,id',
             'matiere_id' => 'required|exists:e_s_b_t_p_matieres,id',
             'type' => 'required|string',
@@ -51,7 +51,7 @@ class ESBTPExamenController extends Controller
             'description' => 'nullable|string',
         ]);
 
-        ESBTPExamen::create($request->all());
+        ESBTPExamen::create($validated);
 
         return redirect()->route('examens.index')
             ->with('success', 'Examen créé avec succès.');
@@ -92,7 +92,7 @@ class ESBTPExamenController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $request->validate([
+        $validated = $request->validate([
             'classe_id' => 'required|exists:e_s_b_t_p_classes,id',
             'matiere_id' => 'required|exists:e_s_b_t_p_matieres,id',
             'type' => 'required|string',
@@ -103,7 +103,7 @@ class ESBTPExamenController extends Controller
         ]);
 
         $examen = ESBTPExamen::findOrFail($id);
-        $examen->update($request->all());
+        $examen->update($validated);
 
         return redirect()->route('examens.index')
             ->with('success', 'Examen mis à jour avec succès.');
