@@ -268,7 +268,7 @@ MAIL_FROM_NAME="KLASSCI"
 - **19/10** : Fix API LMS évaluations → fallback nom matière/classe (nom/name) + filtrage enseignants via enseignant_id et planning général (esbtp_seance_cours) pour exposer leurs évaluations
 - **19/10** : Fix API LMS dashboard étudiant → `can_take_online` accepte désormais les statuts `scheduled`/`in_progress` (alignement valeurs BDD pour déclencher les QCM en ligne)
 - **19/10** : Fix API LMS évaluations/dashboard → ajout fenêtre temporelle (start/end/time_left) et `can_take_online` seulement pendant le créneau actif (date + durée)
-- **20/10** : Horodatage complet évaluations → `date_evaluation` en DATETIME (migration), formulaires create/edit avec heures début/fin, durée auto-calculée, preview créneau devoir dans seances-cours.create, API LMS expose fenêtres basées sur horaires réels
+- **20/10** : Horodatage complet évaluations → `date_evaluation` en DATETIME (migration), formulaires create/edit avec heures début/fin, durée auto-calculée, preview créneau devoir dans seances-cours.create, API LMS expose fenêtres basées sur horaires réels, refonte `evaluations.show` (design dashboard-moderne + heures début/fin)
 - **19/10** : Ajout endpoints GET /api/lms/classes/{id} et GET /api/lms/matieres/{id} → détails complets d'une classe (étudiants, matières via combinaison filière+niveau, emploi temps semaine, évaluations, stats présences/moyennes) et d'une matière (combinaisons disponibles, enseignants, séances 30j, évaluations, stats réalisation)
 - **19/10** : Ajout endpoint POST /api/lms/evaluations/{id}/notes → permet au LMS de soumettre les notes d'évaluations passées en ligne (création + mise à jour, validation barème, vérification inscription active, commentaire enrichi "Note soumise via LMS")
 
