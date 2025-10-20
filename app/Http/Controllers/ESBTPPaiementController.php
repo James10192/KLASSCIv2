@@ -369,33 +369,37 @@ class ESBTPPaiementController extends Controller
             }
         }
 
-        $categoriesStats = $this->calculateCategoryStats(null);
+        // ===================================================================
+        // IMPORTANT: Calculer les stats UNIQUEMENT sur les paiements filtrés
+        // ===================================================================
 
-        $totalAttendu = $categoriesStats['academic_total'] + $categoriesStats['service_total'] + $categoriesStats['administrative_total'];
-        $totalPaye = $categoriesStats['academic_paid'] + $categoriesStats['service_paid'] + $categoriesStats['administrative_paid'];
-        $totalEnAttente = $categoriesStats['academic_pending'] + $categoriesStats['service_pending'] + $categoriesStats['administrative_pending'];
-
+        // Compter les paiements filtrés
         $stats = [
             'total' => (clone $statsQueryBase)->count(),
-            'montant_total' => $totalAttendu,
             'valides' => (clone $statsQueryBase)->where('status', 'validé')->count(),
-            'montant_valide' => $totalPaye,
             'en_attente' => (clone $statsQueryBase)->where('status', 'en_attente')->count(),
-            'montant_en_attente' => $totalEnAttente,
+            'rejetes' => (clone $statsQueryBase)->where('status', 'rejeté')->count(),
         ];
 
-        $stats = array_merge($stats, $categoriesStats);
-        $stats['recovery_rate'] = $totalAttendu > 0
-            ? round(($totalPaye / $totalAttendu) * 100, 1)
+        // Calculer les montants sur les paiements filtrés
+        $montantTotal = (clone $statsQueryBase)->sum('montant') ?? 0;
+        $montantValide = (clone $statsQueryBase)->where('status', 'validé')->sum('montant') ?? 0;
+        $montantEnAttente = (clone $statsQueryBase)->where('status', 'en_attente')->sum('montant') ?? 0;
+        $montantRejete = (clone $statsQueryBase)->where('status', 'rejeté')->sum('montant') ?? 0;
+
+        $stats['montant_total'] = $montantTotal;
+        $stats['montant_valide'] = $montantValide;
+        $stats['montant_en_attente'] = $montantEnAttente;
+        $stats['montant_rejete'] = $montantRejete;
+
+        // Calculer le taux de recouvrement sur les paiements filtrés
+        $stats['recovery_rate'] = $montantTotal > 0
+            ? round(($montantValide / $montantTotal) * 100, 1)
             : 0;
 
-        $inscriptions = ESBTPInscription::where('annee_universitaire_id', $anneeId)
-            ->whereIn('status', ['active', 'en_attente', 'validée'])
-            ->get();
-        $reliquatsStats = $this->calculateReliquatsStats($inscriptions);
-        $stats['reliquats_total'] = $reliquatsStats['academic_pending']
-            + $reliquatsStats['service_pending']
-            + $reliquatsStats['administrative_pending'];
+        // Calculer les stats par catégorie sur les paiements filtrés
+        $statsParCategorie = $this->calculateFilteredCategoryStats(clone $statsQueryBase);
+        $stats = array_merge($stats, $statsParCategorie);
 
         $lastUpdatedAt = null;
 
@@ -427,6 +431,57 @@ class ESBTPPaiementController extends Controller
                 'per_page' => $paiements->perPage(),
             ],
         ];
+    }
+
+    /**
+     * Calcule les statistiques par catégorie UNIQUEMENT sur les paiements filtrés
+     */
+    private function calculateFilteredCategoryStats($filteredQuery)
+    {
+        // Initialiser les stats
+        $stats = [
+            'academic_total' => 0,
+            'academic_paid' => 0,
+            'academic_pending' => 0,
+            'service_total' => 0,
+            'service_paid' => 0,
+            'service_pending' => 0,
+            'administrative_total' => 0,
+            'administrative_paid' => 0,
+            'administrative_pending' => 0,
+        ];
+
+        // Récupérer les catégories de frais
+        $categories = \App\Models\ESBTPFraisCategory::all()->keyBy('id');
+
+        // Calculer les montants par catégorie sur les paiements filtrés
+        $paiementsParCategorie = (clone $filteredQuery)
+            ->selectRaw('frais_category_id, status, SUM(montant) as total_montant')
+            ->whereNotNull('frais_category_id')
+            ->groupBy('frais_category_id', 'status')
+            ->get();
+
+        foreach ($paiementsParCategorie as $stat) {
+            $category = $categories->get($stat->frais_category_id);
+            if (!$category) continue;
+
+            $montant = (float) $stat->total_montant;
+            $type = strtolower($category->type); // academic, service, administrative
+
+            // Ajouter au total de la catégorie
+            if (isset($stats["{$type}_total"])) {
+                $stats["{$type}_total"] += $montant;
+            }
+
+            // Répartir selon le statut
+            if ($stat->status === 'validé' && isset($stats["{$type}_paid"])) {
+                $stats["{$type}_paid"] += $montant;
+            } elseif ($stat->status === 'en_attente' && isset($stats["{$type}_pending"])) {
+                $stats["{$type}_pending"] += $montant;
+            }
+        }
+
+        return $stats;
     }
 
     /**
@@ -2676,25 +2731,170 @@ class ESBTPPaiementController extends Controller
     }
 
     /**
+     * Endpoint de test pour déboguer les filtres et l'export
+     */
+    public function testFilters(Request $request)
+    {
+        $filters = [
+            'search' => $request->input('search'),
+            'status' => $request->input('status'),
+            'date_debut' => $request->input('date_debut'),
+            'date_fin' => $request->input('date_fin'),
+        ];
+
+        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        $query = ESBTPPaiement::query();
+
+        // Appliquer les filtres
+        if ($filters['status']) {
+            $query->where('status', $filters['status']);
+        }
+
+        if ($filters['date_debut']) {
+            $query->whereDate('date_paiement', '>=', $filters['date_debut']);
+        }
+
+        if ($filters['date_fin']) {
+            $query->whereDate('date_paiement', '<=', $filters['date_fin']);
+        }
+
+        if ($anneeEnCours) {
+            $query->whereHas('inscription', function ($q) use ($anneeEnCours) {
+                $q->where('annee_universitaire_id', $anneeEnCours->id);
+            });
+        }
+
+        // Calculer les statistiques sur les paiements filtrés
+        $stats = [
+            'total' => (clone $query)->count(),
+            'valides' => (clone $query)->where('status', 'validé')->count(),
+            'en_attente' => (clone $query)->where('status', 'en_attente')->count(),
+            'rejetes' => (clone $query)->where('status', 'rejeté')->count(),
+            'montant_total' => (clone $query)->sum('montant') ?? 0,
+            'montant_valide' => (clone $query)->where('status', 'validé')->sum('montant') ?? 0,
+            'montant_en_attente' => (clone $query)->where('status', 'en_attente')->sum('montant') ?? 0,
+        ];
+
+        // Récupérer un échantillon
+        $paiements = $query->with(['etudiant', 'inscription'])->limit(5)->get();
+
+        return response()->json([
+            'success' => true,
+            'filters_received' => $filters,
+            'annee_en_cours' => $anneeEnCours ? $anneeEnCours->name : 'Aucune',
+            'statistics' => [
+                'total_count' => $stats['total'],
+                'valides' => $stats['valides'],
+                'en_attente' => $stats['en_attente'],
+                'rejetes' => $stats['rejetes'],
+                'montant_total' => number_format($stats['montant_total'], 0, ',', ' ') . ' FCFA',
+                'montant_valide' => number_format($stats['montant_valide'], 0, ',', ' ') . ' FCFA',
+                'montant_en_attente' => number_format($stats['montant_en_attente'], 0, ',', ' ') . ' FCFA',
+                'recovery_rate' => $stats['montant_total'] > 0
+                    ? round(($stats['montant_valide'] / $stats['montant_total']) * 100, 1) . '%'
+                    : '0%',
+            ],
+            'sample_data' => $paiements->map(function($p) {
+                return [
+                    'id' => $p->id,
+                    'date_paiement' => $p->date_paiement ? $p->date_paiement->format('Y-m-d') : null,
+                    'montant' => number_format($p->montant, 0, ',', ' ') . ' FCFA',
+                    'status' => $p->status,
+                    'etudiant' => $p->etudiant ? $p->etudiant->nom : 'N/A',
+                    'matricule' => $p->etudiant ? $p->etudiant->matricule : 'N/A',
+                ];
+            }),
+        ]);
+    }
+
+    /**
+     * Récupère TOUS les paiements filtrés (sans pagination) pour les exports
+     */
+    private function getAllFilteredPaiements(Request $request, FuzzyNameMatcher $matcher)
+    {
+        $search = trim((string) $request->input('search'));
+        $status = $request->input('status');
+        $dateDebut = $request->input('date_debut');
+        $dateFin = $request->input('date_fin');
+
+        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $anneeId = $anneeEnCours?->id;
+
+        // Construire la requête de base avec les mêmes filtres que preparePaiementListing
+        $query = ESBTPPaiement::with([
+            'etudiant.user',
+            'inscription.classe',
+            'inscription.anneeUniversitaire',
+            'inscription.filiere',
+            'inscription.niveauEtude',
+            'validatedBy',
+            'fraisCategory',
+            'categorie',
+        ])->orderByDesc('created_at');
+
+        // Appliquer les filtres
+        if ($status) {
+            $query->where('status', $status);
+        }
+
+        if ($dateDebut) {
+            $query->whereDate('date_paiement', '>=', $dateDebut);
+        }
+
+        if ($dateFin) {
+            $query->whereDate('date_paiement', '<=', $dateFin);
+        }
+
+        if ($anneeId) {
+            $query->whereHas('inscription', function ($q) use ($anneeId) {
+                $q->where('annee_universitaire_id', $anneeId);
+            });
+        } else {
+            $query->anneeEnCours();
+        }
+
+        // Appliquer le filtre de recherche si présent
+        if ($search !== '') {
+            $escapeLike = static function (string $value): string {
+                return str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $value);
+            };
+
+            $escapedSearch = $escapeLike($search);
+            $likeSearch = "%{$escapedSearch}%";
+
+            $query->where(function ($q) use ($likeSearch) {
+                $q->whereHas('etudiant', function ($etudiantQuery) use ($likeSearch) {
+                    $etudiantQuery->where('matricule', 'like', $likeSearch)
+                        ->orWhere('nom', 'like', $likeSearch)
+                        ->orWhere('prenoms', 'like', $likeSearch)
+                        ->orWhereHas('user', function ($userQuery) use ($likeSearch) {
+                            $userQuery->where('name', 'like', $likeSearch)
+                                ->orWhere('email', 'like', $likeSearch);
+                        })
+                        ->orWhereRaw("CONCAT_WS(' ', prenoms, nom) LIKE ?", [$likeSearch])
+                        ->orWhereRaw("CONCAT_WS(' ', nom, prenoms) LIKE ?", [$likeSearch]);
+                })
+                ->orWhere('numero_recu', 'like', $likeSearch)
+                ->orWhere('reference_paiement', 'like', $likeSearch);
+            });
+        }
+
+        // Récupérer TOUS les résultats (pas de pagination)
+        return $query->get();
+    }
+
+    /**
      * Exporter les paiements au format Excel (XLSX)
      */
     public function exportExcel(Request $request, FuzzyNameMatcher $matcher)
     {
         try {
-            // Récupérer les données filtrées (même logique que index)
+            // Récupérer les données filtrées pour les stats
             $data = $this->preparePaiementListing($request, $matcher, [], microtime(true), 'ESBTPPaiementController@exportExcel');
 
-            // Charger toutes les relations nécessaires pour l'export
-            $paiements = $data['paiements']->getCollection()->load([
-                'etudiant',
-                'inscription.classe',
-                'inscription.filiere',
-                'inscription.niveauEtude',
-                'inscription.anneeUniversitaire',
-                'fraisCategory',
-                'categorie',
-                'validatedBy'
-            ]);
+            // Récupérer TOUS les paiements filtrés (sans pagination)
+            $paiements = $this->getAllFilteredPaiements($request, $matcher);
 
             // Préparer les filtres pour l'export
             $filters = [
@@ -2733,20 +2933,11 @@ class ESBTPPaiementController extends Controller
     public function exportCsv(Request $request, FuzzyNameMatcher $matcher)
     {
         try {
-            // Récupérer les données filtrées
+            // Récupérer les données filtrées pour les stats
             $data = $this->preparePaiementListing($request, $matcher, [], microtime(true), 'ESBTPPaiementController@exportCsv');
 
-            // Charger toutes les relations nécessaires
-            $paiements = $data['paiements']->getCollection()->load([
-                'etudiant',
-                'inscription.classe',
-                'inscription.filiere',
-                'inscription.niveauEtude',
-                'inscription.anneeUniversitaire',
-                'fraisCategory',
-                'categorie',
-                'validatedBy'
-            ]);
+            // Récupérer TOUS les paiements filtrés (sans pagination)
+            $paiements = $this->getAllFilteredPaiements($request, $matcher);
 
             // Préparer les filtres
             $filters = [
@@ -2787,20 +2978,11 @@ class ESBTPPaiementController extends Controller
     public function exportPdf(Request $request, FuzzyNameMatcher $matcher)
     {
         try {
-            // Récupérer les données filtrées
+            // Récupérer les données filtrées pour les stats
             $data = $this->preparePaiementListing($request, $matcher, [], microtime(true), 'ESBTPPaiementController@exportPdf');
 
-            // Charger toutes les relations nécessaires
-            $paiements = $data['paiements']->getCollection()->load([
-                'etudiant',
-                'inscription.classe',
-                'inscription.filiere',
-                'inscription.niveauEtude',
-                'inscription.anneeUniversitaire',
-                'fraisCategory',
-                'categorie',
-                'validatedBy'
-            ]);
+            // Récupérer TOUS les paiements filtrés (sans pagination)
+            $paiements = $this->getAllFilteredPaiements($request, $matcher);
 
             // Préparer les filtres
             $filters = [

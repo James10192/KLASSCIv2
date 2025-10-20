@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Filtres Paiements</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .result-box {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 20px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .export-buttons {
+            margin-top: 20px;
+        }
+        .btn-export {
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1 class="mb-4">🧪 Test des Filtres et Exports de Paiements</h1>
+
+        <div class="alert alert-info">
+            <strong>Instructions :</strong>
+            <ol>
+                <li>Remplissez les filtres ci-dessous</li>
+                <li>Cliquez sur "Tester les filtres" pour voir les résultats</li>
+                <li>Si les résultats sont corrects, testez l'export</li>
+            </ol>
+        </div>
+
+        <form id="filterForm">
+            <div class="row">
+                <div class="col-md-3">
+                    <label class="form-label">Recherche</label>
+                    <input type="text" class="form-control" id="search" name="search" placeholder="Matricule, nom...">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Statut</label>
+                    <select class="form-select" id="status" name="status">
+                        <option value="">Tous</option>
+                        <option value="en_attente">En attente</option>
+                        <option value="validé">Validé</option>
+                        <option value="rejeté">Rejeté</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Date début</label>
+                    <input type="date" class="form-control" id="date_debut" name="date_debut">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Date fin</label>
+                    <input type="date" class="form-control" id="date_fin" name="date_fin">
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <button type="button" class="btn btn-primary" onclick="testFilters()">
+                    🔍 Tester les filtres
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="resetFilters()">
+                    🔄 Réinitialiser
+                </button>
+            </div>
+        </form>
+
+        <div class="result-box" id="results" style="display: none;">
+            <h5>Résultats du test :</h5>
+            <pre id="resultsContent"></pre>
+        </div>
+
+        <div class="export-buttons" id="exportButtons" style="display: none;">
+            <h5>Tester les exports avec ces filtres :</h5>
+            <button class="btn btn-success btn-export" onclick="testExport('excel')">
+                📊 Export Excel
+            </button>
+            <button class="btn btn-info btn-export" onclick="testExport('csv')">
+                📄 Export CSV
+            </button>
+            <button class="btn btn-danger btn-export" onclick="testExport('pdf')">
+                📕 Export PDF
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const baseUrl = window.location.origin + '/esbtp/paiements';
+
+        function getFormData() {
+            const formData = new FormData(document.getElementById('filterForm'));
+            const params = new URLSearchParams();
+
+            for (const [key, value] of formData.entries()) {
+                if (value) {
+                    params.append(key, value);
+                }
+            }
+
+            return params;
+        }
+
+        function testFilters() {
+            const params = getFormData();
+            const url = `${baseUrl}/test-filters?${params.toString()}`;
+
+            console.log('Testing filters with URL:', url);
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('results').style.display = 'block';
+                    document.getElementById('exportButtons').style.display = 'block';
+                    document.getElementById('resultsContent').textContent = JSON.stringify(data, null, 2);
+
+                    // Afficher un résumé
+                    alert(`✅ Test réussi!\n\nTotal trouvé: ${data.total_count} paiements\nÉchantillon: ${data.sample_data.length} paiements affichés`);
+                })
+                .catch(error => {
+                    alert('❌ Erreur: ' + error.message);
+                    console.error('Error:', error);
+                });
+        }
+
+        function testExport(format) {
+            const params = getFormData();
+            const url = `${baseUrl}/export/${format}?${params.toString()}`;
+
+            console.log('Exporting with URL:', url);
+            alert(`🚀 Téléchargement de l'export ${format.toUpperCase()}...\n\nVérifiez que le fichier téléchargé contient bien les ${document.getElementById('resultsContent').textContent.match(/"total_count":\s*(\d+)/)?.[1] || 'X'} paiements filtrés.`);
+
+            window.location.href = url;
+        }
+
+        function resetFilters() {
+            document.getElementById('filterForm').reset();
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('exportButtons').style.display = 'none';
+        }
+
+        // Pré-remplir avec la date d'aujourd'hui pour test rapide
+        window.onload = function() {
+            const today = new Date().toISOString().split('T')[0];
+            const oneMonthAgo = new Date();
+            oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+            const oneMonthAgoStr = oneMonthAgo.toISOString().split('T')[0];
+
+            // Suggestion de dates
+            console.log('Suggestion: Date début =', oneMonthAgoStr, ', Date fin =', today);
+        };
+    </script>
+</body>
+</html>

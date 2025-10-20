@@ -1,124 +1,110 @@
 <div class="kpi-grid">
+    {{-- KPI 1: Paiements VALIDÉS (statut validé) --}}
     <div class="card-moderne kpi-card">
-        <div class="kpi-title">Frais Académiques Payés</div>
-        <div class="kpi-value color-success">{{ number_format($stats['academic_paid'], 0, ',', ' ') }} FCFA</div>
+        <div class="kpi-title">Paiements Validés</div>
+        <div class="kpi-value color-success">{{ number_format($stats['montant_valide'], 0, ',', ' ') }} FCFA</div>
         <div class="kpi-trend positive">
-            <i class="fas fa-graduation-cap"></i>
-            @if($stats['academic_total'] > 0)
-                {{ number_format(($stats['academic_paid'] / $stats['academic_total']) * 100, 1) }}% payé
-            @else
-                Aucun frais
-            @endif
-        </div>
-    </div>
-    
-    <div class="card-moderne kpi-card">
-        <div class="kpi-title">Services Optionnels</div>
-        <div class="kpi-value color-warning">{{ number_format($stats['service_paid'], 0, ',', ' ') }} FCFA</div>
-        <div class="kpi-trend">
-            <i class="fas fa-cogs"></i>
-            @if($stats['service_total'] > 0)
-                {{ number_format(($stats['service_paid'] / $stats['service_total']) * 100, 1) }}% payé
-            @else
-                Aucun service
-            @endif
-        </div>
-    </div>
-    
-    <div class="card-moderne kpi-card">
-        <div class="kpi-title">Frais Administratifs</div>
-        <div class="kpi-value color-info">{{ number_format($stats['administrative_paid'], 0, ',', ' ') }} FCFA</div>
-        <div class="kpi-trend">
-            <i class="fas fa-file-alt"></i>
-            @if($stats['administrative_total'] > 0)
-                {{ number_format(($stats['administrative_paid'] / $stats['administrative_total']) * 100, 1) }}% payé
-            @else
-                Aucun frais
-            @endif
+            <i class="fas fa-check-circle"></i>
+            {{ $stats['valides'] ?? 0 }} paiement(s)
         </div>
     </div>
 
+    {{-- KPI 2: Paiements EN ATTENTE de validation (statut en_attente) --}}
     <div class="card-moderne kpi-card">
-        <div class="kpi-title">Taux de Recouvrement Global</div>
-        <div class="kpi-value color-primary">{{ $stats['recovery_rate'] }}%</div>
-        <div class="kpi-trend {{ $stats['recovery_rate'] >= 75 ? 'positive' : ($stats['recovery_rate'] >= 50 ? '' : 'negative') }}">
-            <i class="fas fa-chart-line"></i>
-            {{ number_format($stats['montant_valide'], 0, ',', ' ') }} / {{ number_format($stats['montant_total'], 0, ',', ' ') }} FCFA
+        <div class="kpi-title">En Attente de Validation</div>
+        <div class="kpi-value color-warning">{{ number_format($stats['montant_en_attente'], 0, ',', ' ') }} FCFA</div>
+        <div class="kpi-trend">
+            <i class="fas fa-clock"></i>
+            {{ $stats['en_attente'] ?? 0 }} paiement(s)
         </div>
     </div>
 
-    @if($stats['reliquats_total'] > 0)
+    {{-- KPI 3: Paiements REJETÉS (statut rejeté) --}}
     <div class="card-moderne kpi-card">
-        <div class="kpi-title">Reliquats à Recouvrer</div>
-        <div class="kpi-value color-danger">{{ number_format($stats['reliquats_total'], 0, ',', ' ') }} FCFA</div>
-        <div class="kpi-trend">
-            <i class="fas fa-history"></i>
-            Années précédentes
+        <div class="kpi-title">Paiements Rejetés</div>
+        <div class="kpi-value color-danger">{{ number_format($stats['montant_rejete'] ?? 0, 0, ',', ' ') }} FCFA</div>
+        <div class="kpi-trend negative">
+            <i class="fas fa-times-circle"></i>
+            {{ $stats['rejetes'] ?? 0 }} paiement(s)
         </div>
     </div>
-    @endif
+
+    {{-- KPI 4: TOTAL des paiements (tous statuts confondus) --}}
+    <div class="card-moderne kpi-card">
+        <div class="kpi-title">Total Paiements</div>
+        <div class="kpi-value color-primary">{{ number_format($stats['montant_total'], 0, ',', ' ') }} FCFA</div>
+        <div class="kpi-trend">
+            <i class="fas fa-wallet"></i>
+            {{ $stats['total'] ?? 0 }} paiement(s)
+        </div>
+    </div>
 </div>
 
+{{-- Section explicative --}}
+<div class="alert alert-info alert-sm mb-lg">
+    <i class="fas fa-info-circle me-2"></i>
+    <strong>Note :</strong> Ces chiffres représentent les paiements <u>enregistrés dans le système</u> selon leur statut de validation.
+    Pour voir les montants attendus vs payés par catégorie de frais, consultez le
+    <a href="{{ route('esbtp.paiements.suivi-categories') }}" class="alert-link">Suivi par Catégorie</a>.
+</div>
+
+{{-- Répartition par catégorie (sur les paiements filtrés) --}}
+@if(isset($stats['academic_total']) && ($stats['academic_total'] > 0 || $stats['service_total'] > 0 || $stats['administrative_total'] > 0))
 <div class="card-moderne mb-lg">
     <div class="p-lg">
         <div class="d-flex justify-content-between align-items-center mb-md">
             <div class="section-title mb-0">
                 <i class="fas fa-chart-pie me-2"></i>
-                Répartition des Paiements par Catégorie
+                Répartition par Type de Frais (paiements filtrés)
             </div>
-            <a href="{{ route('esbtp.paiements.suivi-categories') }}" class="btn-acasi secondary small">
-                <i class="fas fa-chart-bar me-1"></i>Vue détaillée
-            </a>
         </div>
-        
+
         <div class="row">
+            @if($stats['academic_total'] > 0)
             <div class="col-md-4">
                 <div class="resultat-card border-start border-success border-3">
                     <div class="resultat-title">Frais Académiques</div>
-                    <div class="resultat-montant color-success">{{ number_format($stats['academic_paid'], 0, ',', ' ') }} FCFA</div>
+                    <div class="resultat-montant color-success">{{ number_format($stats['academic_total'], 0, ',', ' ') }} FCFA</div>
                     <div class="progress mb-2" style="height: 8px;">
                         <div class="progress-bar bg-success" style="width: {{ $stats['academic_total'] > 0 ? ($stats['academic_paid'] / $stats['academic_total']) * 100 : 0 }}%"></div>
                     </div>
                     <small class="text-muted">
-                        En attente: {{ number_format($stats['academic_pending'], 0, ',', ' ') }} FCFA
+                        Validés: {{ number_format($stats['academic_paid'], 0, ',', ' ') }} FCFA
                     </small>
                 </div>
             </div>
-            
+            @endif
+
+            @if($stats['service_total'] > 0)
             <div class="col-md-4">
                 <div class="resultat-card border-start border-warning border-3">
                     <div class="resultat-title">Services Optionnels</div>
-                    <div class="resultat-montant color-warning">{{ number_format($stats['service_paid'], 0, ',', ' ') }} FCFA</div>
+                    <div class="resultat-montant color-warning">{{ number_format($stats['service_total'], 0, ',', ' ') }} FCFA</div>
                     <div class="progress mb-2" style="height: 8px;">
                         <div class="progress-bar bg-warning" style="width: {{ $stats['service_total'] > 0 ? ($stats['service_paid'] / $stats['service_total']) * 100 : 0 }}%"></div>
                     </div>
                     <small class="text-muted">
-                        En attente: {{ number_format($stats['service_pending'], 0, ',', ' ') }} FCFA
+                        Validés: {{ number_format($stats['service_paid'], 0, ',', ' ') }} FCFA
                     </small>
                 </div>
             </div>
-            
+            @endif
+
+            @if($stats['administrative_total'] > 0)
             <div class="col-md-4">
                 <div class="resultat-card border-start border-info border-3">
                     <div class="resultat-title">Frais Administratifs</div>
-                    <div class="resultat-montant color-info">{{ number_format($stats['administrative_paid'], 0, ',', ' ') }} FCFA</div>
+                    <div class="resultat-montant color-info">{{ number_format($stats['administrative_total'], 0, ',', ' ') }} FCFA</div>
                     <div class="progress mb-2" style="height: 8px;">
                         <div class="progress-bar bg-info" style="width: {{ $stats['administrative_total'] > 0 ? ($stats['administrative_paid'] / $stats['administrative_total']) * 100 : 0 }}%"></div>
                     </div>
                     <small class="text-muted">
-                        En attente: {{ number_format($stats['administrative_pending'], 0, ',', ' ') }} FCFA
+                        Validés: {{ number_format($stats['administrative_paid'], 0, ',', ' ') }} FCFA
                     </small>
                 </div>
             </div>
+            @endif
         </div>
-
-        @if($stats['reliquats_total'] > 0)
-        <div class="mt-3">
-            <div class="alert alert-info alert-sm">
-                <i class="fas fa-info-circle me-2"></i>
-                <strong>Note :</strong> Les montants « En attente » incluent les reliquats des années précédentes ({{ number_format($stats['reliquats_total'], 0, ',', ' ') }} FCFA).
-            </div>
-        </div>
-        @endif
     </div>
 </div>
+@endif
