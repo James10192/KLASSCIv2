@@ -65,14 +65,18 @@
         }
 
         .kpi-grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
+            text-align: center;
+            font-size: 0;
             margin-bottom: 12px;
         }
 
         .kpi-card {
-            flex: 1 1 160px;
+            display: inline-block;
+            vertical-align: top;
+            width: 19%;
+            min-width: 140px;
+            margin: 0 0.5% 8px;
+            font-size: 10px;
             background: #ffffff;
             border: 1px solid #e2e8f0;
             border-radius: 10px;
