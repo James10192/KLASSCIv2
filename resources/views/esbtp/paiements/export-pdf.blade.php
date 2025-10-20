@@ -127,9 +127,9 @@
             color: #ffffff;
             font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 0.4px;
-            font-size: 8px;
-            padding: 6px 4px;
+            letter-spacing: 0.3px;
+            font-size: 9px;
+            padding: 8px 5px;
             text-align: center;
             border-right: 1px solid rgba(255, 255, 255, 0.2);
             -webkit-print-color-adjust: exact;
@@ -141,10 +141,10 @@
         }
 
         .payments-table tbody td {
-            padding: 6px 4px;
+            padding: 7px 5px;
             border-bottom: 1px solid #e5e7eb;
             vertical-align: middle;
-            font-size: 8.5px;
+            font-size: 9px;
         }
 
         .payments-table tbody tr:nth-child(even) {
@@ -155,34 +155,74 @@
             border-bottom: none;
         }
 
+        /* Colonne N° */
         .payments-table td:nth-child(1),
         .payments-table th:nth-child(1) {
-            width: 28px;
+            width: 30px;
             text-align: center;
         }
 
+        /* Colonne Date */
         .payments-table td:nth-child(2),
         .payments-table th:nth-child(2) {
-            width: 60px;
+            width: 70px;
             text-align: center;
         }
 
+        /* Colonne Matricule */
         .payments-table td:nth-child(3),
         .payments-table th:nth-child(3) {
-            width: 70px;
+            width: 85px;
             font-family: 'Courier New', monospace;
+            text-align: center;
         }
 
-        .payments-table td:nth-child(10),
-        .payments-table th:nth-child(10) {
+        /* Colonne Nom complet */
+        .payments-table td:nth-child(4),
+        .payments-table th:nth-child(4) {
+            width: 140px;
+        }
+
+        /* Colonne Classe */
+        .payments-table td:nth-child(5),
+        .payments-table th:nth-child(5) {
+            width: 90px;
+        }
+
+        /* Colonne Catégorie */
+        .payments-table td:nth-child(6),
+        .payments-table th:nth-child(6) {
+            width: 100px;
+        }
+
+        /* Colonne Montant */
+        .payments-table td:nth-child(7),
+        .payments-table th:nth-child(7) {
+            width: 80px;
             text-align: right;
-            width: 70px;
+            font-weight: 600;
         }
 
-        .payments-table td:nth-child(12),
-        .payments-table th:nth-child(12) {
+        /* Colonne Mode */
+        .payments-table td:nth-child(8),
+        .payments-table th:nth-child(8) {
             width: 70px;
             text-align: center;
+        }
+
+        /* Colonne Statut */
+        .payments-table td:nth-child(9),
+        .payments-table th:nth-child(9) {
+            width: 75px;
+            text-align: center;
+        }
+
+        /* Colonne N° reçu */
+        .payments-table td:nth-child(10),
+        .payments-table th:nth-child(10) {
+            width: 80px;
+            text-align: center;
+            font-family: 'Courier New', monospace;
         }
 
         .status-badge {
@@ -429,20 +469,13 @@
                         <th>N°</th>
                         <th>Date</th>
                         <th>Matricule</th>
-                        <th>Nom</th>
-                        <th>Prénoms</th>
+                        <th>Nom complet</th>
                         <th>Classe</th>
-                        <th>Filière</th>
-                        <th>Niveau</th>
                         <th>Catégorie</th>
                         <th>Montant</th>
                         <th>Mode</th>
                         <th>Statut</th>
                         <th>N° reçu</th>
-                        <th>Validé par</th>
-                        <th>Date validation</th>
-                        <th>Commentaire</th>
-                        <th>Année univ.</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -479,20 +512,13 @@
                             <td>{{ $index + 1 }}</td>
                             <td>{{ $formatDate($paiement->date_paiement ?? null) }}</td>
                             <td>{{ $paiement->etudiant->matricule ?? 'N/A' }}</td>
-                            <td>{{ $paiement->etudiant->nom ?? '' }}</td>
-                            <td>{{ $paiement->etudiant->prenoms ?? '' }}</td>
+                            <td>{{ trim(($paiement->etudiant->prenoms ?? '') . ' ' . ($paiement->etudiant->nom ?? '')) ?: 'N/A' }}</td>
                             <td>{{ optional(optional($paiement->inscription)->classe)->name ?? 'N/A' }}</td>
-                            <td>{{ optional(optional($paiement->inscription)->filiere)->name ?? 'N/A' }}</td>
-                            <td>{{ optional(optional($paiement->inscription)->niveauEtude)->name ?? 'N/A' }}</td>
                             <td>{{ $paiement->fraisCategory->name ?? ($paiement->categorie->nom ?? ($paiement->motif ?? 'N/A')) }}</td>
                             <td>{{ $formatMontant($paiement->montant ?? 0) }}</td>
                             <td>{{ $paiement->mode_paiement ?? 'N/A' }}</td>
                             <td><span class="status-badge {{ $statusClass }}">{{ $statusLabel }}</span></td>
-                            <td>{{ $paiement->numero_recu ?? 'N/A' }}</td>
-                            <td>{{ optional($paiement->validatedBy)->name ?? 'N/A' }}</td>
-                            <td>{{ $formatDate($paiement->date_validation ?? null, true) }}</td>
-                            <td>{{ $paiement->commentaire ?? '-' }}</td>
-                            <td>{{ optional(optional($paiement->inscription)->anneeUniversitaire)->name ?? 'N/A' }}</td>
+                            <td>{{ $paiement->numero_recu ?? '-' }}</td>
                         </tr>
                     @endforeach
                 </tbody>
