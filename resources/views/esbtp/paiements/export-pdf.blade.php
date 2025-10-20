@@ -21,7 +21,7 @@
         .container {
             background: #ffffff;
             border-radius: 12px;
-            padding: 14px;
+            padding: 10px;
             box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
         }
 
@@ -73,14 +73,14 @@
         .kpi-card {
             display: inline-block;
             vertical-align: top;
-            width: 19%;
-            min-width: 140px;
-            margin: 0 0.5% 8px;
+            width: 18%;
+            min-width: 130px;
+            margin: 0 0.5% 6px;
             font-size: 10px;
             background: #ffffff;
             border: 1px solid #e2e8f0;
             border-radius: 10px;
-            padding: 10px 12px;
+            padding: 8px 10px;
             box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
         }
 
@@ -120,6 +120,7 @@
             border-radius: 10px;
             overflow: hidden;
             box-shadow: 0 6px 14px rgba(15, 23, 42, 0.05);
+            table-layout: fixed;
         }
 
         .payments-table thead th {
@@ -127,9 +128,9 @@
             color: #ffffff;
             font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 0.3px;
-            font-size: 9px;
-            padding: 8px 5px;
+            letter-spacing: 0.2px;
+            font-size: 7.5px;
+            padding: 4px 3px;
             text-align: center;
             border-right: 1px solid rgba(255, 255, 255, 0.2);
             -webkit-print-color-adjust: exact;
@@ -141,10 +142,11 @@
         }
 
         .payments-table tbody td {
-            padding: 7px 5px;
+            padding: 4px 3px;
             border-bottom: 1px solid #e5e7eb;
             vertical-align: middle;
-            font-size: 9px;
+            font-size: 8px;
+            word-break: break-word;
         }
 
         .payments-table tbody tr:nth-child(even) {
@@ -165,14 +167,14 @@
         /* Colonne Date */
         .payments-table td:nth-child(2),
         .payments-table th:nth-child(2) {
-            width: 70px;
+            width: 58px;
             text-align: center;
         }
 
         /* Colonne Matricule */
         .payments-table td:nth-child(3),
         .payments-table th:nth-child(3) {
-            width: 85px;
+            width: 72px;
             font-family: 'Courier New', monospace;
             text-align: center;
         }
@@ -180,25 +182,25 @@
         /* Colonne Nom complet */
         .payments-table td:nth-child(4),
         .payments-table th:nth-child(4) {
-            width: 140px;
+            width: 118px;
         }
 
         /* Colonne Classe */
         .payments-table td:nth-child(5),
         .payments-table th:nth-child(5) {
-            width: 90px;
+            width: 82px;
         }
 
         /* Colonne Catégorie */
         .payments-table td:nth-child(6),
         .payments-table th:nth-child(6) {
-            width: 100px;
+            width: 88px;
         }
 
         /* Colonne Montant */
         .payments-table td:nth-child(7),
         .payments-table th:nth-child(7) {
-            width: 80px;
+            width: 68px;
             text-align: right;
             font-weight: 600;
         }
@@ -206,31 +208,31 @@
         /* Colonne Mode */
         .payments-table td:nth-child(8),
         .payments-table th:nth-child(8) {
-            width: 70px;
+            width: 60px;
             text-align: center;
         }
 
         /* Colonne Statut */
         .payments-table td:nth-child(9),
         .payments-table th:nth-child(9) {
-            width: 75px;
+            width: 64px;
             text-align: center;
         }
 
         /* Colonne N° reçu */
         .payments-table td:nth-child(10),
         .payments-table th:nth-child(10) {
-            width: 80px;
+            width: 68px;
             text-align: center;
             font-family: 'Courier New', monospace;
         }
 
         .status-badge {
             display: inline-block;
-            padding: 3px 8px;
+            padding: 2px 6px;
             border-radius: 999px;
             font-weight: 600;
-            font-size: 8px;
+            font-size: 7.5px;
             color: #ffffff;
             text-transform: uppercase;
             letter-spacing: 0.4px;
