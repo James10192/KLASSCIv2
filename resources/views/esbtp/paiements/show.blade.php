@@ -627,10 +627,8 @@ $(function() {
             }, 2000);
         });
     }).attr('title', 'Cliquer pour copier').css('cursor', 'pointer');
-});
-</script>
     // Validation/Rejet des paiements
-    $('#validerBtn').click(function() {
+    $('#validerBtn').on('click', function() {
         if (confirm('Êtes-vous sûr de vouloir valider ce paiement ?')) {
             $('#validerForm').submit();
         }
