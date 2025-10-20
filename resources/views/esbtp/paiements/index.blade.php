@@ -48,6 +48,28 @@
                 <button type="button" class="btn-acasi secondary" id="paiements-refresh-btn" title="Rafraîchir les données">
                     <i class="fas fa-sync-alt"></i>Rafraîchir
                 </button>
+                <div class="dropdown" style="display: inline-block;">
+                    <button type="button" class="btn-acasi secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-download"></i>Exporter
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li>
+                            <a class="dropdown-item" href="#" onclick="exportPaiements('excel'); return false;">
+                                <i class="fas fa-file-excel text-success me-2"></i>Excel (.xlsx)
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="#" onclick="exportPaiements('csv'); return false;">
+                                <i class="fas fa-file-csv text-info me-2"></i>CSV
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="#" onclick="exportPaiements('pdf'); return false;">
+                                <i class="fas fa-file-pdf text-danger me-2"></i>PDF
+                            </a>
+                        </li>
+                    </ul>
+                </div>
                 <a href="{{ route('esbtp.paiements.suivi-categories') }}" class="btn-acasi secondary">
                     <i class="fas fa-chart-bar"></i>Suivi par Catégorie
                 </a>
@@ -882,6 +904,44 @@ function showYearChangeInfo() {
             setPaiementRowLoadingState(paiementId, false);
             alert('Erreur lors de la mise à jour: ' + error.message);
         });
+    };
+
+    /**
+     * Fonction pour exporter les paiements avec les filtres actifs
+     * @param {string} format - Format d'export: 'excel', 'csv', ou 'pdf'
+     */
+    window.exportPaiements = function(format) {
+        console.log('📤 Export paiements format:', format);
+
+        // Récupérer les paramètres de filtres actuels
+        const params = new URLSearchParams(window.location.search);
+
+        // Construire l'URL d'export avec les filtres
+        let exportUrl = '';
+        switch(format) {
+            case 'excel':
+                exportUrl = '{{ route('esbtp.paiements.export.excel') }}';
+                break;
+            case 'csv':
+                exportUrl = '{{ route('esbtp.paiements.export.csv') }}';
+                break;
+            case 'pdf':
+                exportUrl = '{{ route('esbtp.paiements.export.pdf') }}';
+                break;
+            default:
+                console.error('❌ Format d\'export inconnu:', format);
+                return;
+        }
+
+        // Ajouter les paramètres de filtres
+        if (params.toString()) {
+            exportUrl += '?' + params.toString();
+        }
+
+        console.log('🔗 URL d\'export:', exportUrl);
+
+        // Rediriger vers l'URL d'export (le téléchargement démarrera automatiquement)
+        window.location.href = exportUrl;
     };
 
     /**

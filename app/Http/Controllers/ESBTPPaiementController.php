@@ -2674,4 +2674,169 @@ class ESBTPPaiementController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Exporter les paiements au format Excel (XLSX)
+     */
+    public function exportExcel(Request $request, FuzzyNameMatcher $matcher)
+    {
+        try {
+            // Récupérer les données filtrées (même logique que index)
+            $data = $this->preparePaiementListing($request, $matcher, [], microtime(true), 'ESBTPPaiementController@exportExcel');
+
+            // Charger toutes les relations nécessaires pour l'export
+            $paiements = $data['paiements']->getCollection()->load([
+                'etudiant',
+                'inscription.classe',
+                'inscription.filiere',
+                'inscription.niveauEtude',
+                'inscription.anneeUniversitaire',
+                'fraisCategory',
+                'categorie',
+                'validatedBy'
+            ]);
+
+            // Préparer les filtres pour l'export
+            $filters = [
+                'search' => $request->input('search'),
+                'status' => $request->input('status'),
+                'date_debut' => $request->input('date_debut'),
+                'date_fin' => $request->input('date_fin'),
+            ];
+
+            // Créer l'export
+            $export = new \App\Exports\PaiementsExport($paiements, $data['stats'], $filters);
+
+            // Générer le nom du fichier
+            $filename = 'paiements_' . now()->format('Y-m-d_His') . '.xlsx';
+
+            Log::info('Export Excel paiements généré', [
+                'user_id' => auth()->id(),
+                'total_paiements' => $paiements->count(),
+                'filename' => $filename
+            ]);
+
+            return \Maatwebsite\Excel\Facades\Excel::download($export, $filename);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur export Excel paiements: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->back()->with('error', 'Erreur lors de l\'export Excel: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Exporter les paiements au format CSV
+     */
+    public function exportCsv(Request $request, FuzzyNameMatcher $matcher)
+    {
+        try {
+            // Récupérer les données filtrées
+            $data = $this->preparePaiementListing($request, $matcher, [], microtime(true), 'ESBTPPaiementController@exportCsv');
+
+            // Charger toutes les relations nécessaires
+            $paiements = $data['paiements']->getCollection()->load([
+                'etudiant',
+                'inscription.classe',
+                'inscription.filiere',
+                'inscription.niveauEtude',
+                'inscription.anneeUniversitaire',
+                'fraisCategory',
+                'categorie',
+                'validatedBy'
+            ]);
+
+            // Préparer les filtres
+            $filters = [
+                'search' => $request->input('search'),
+                'status' => $request->input('status'),
+                'date_debut' => $request->input('date_debut'),
+                'date_fin' => $request->input('date_fin'),
+            ];
+
+            // Créer l'export
+            $export = new \App\Exports\PaiementsExport($paiements, $data['stats'], $filters);
+
+            // Générer le nom du fichier
+            $filename = 'paiements_' . now()->format('Y-m-d_His') . '.csv';
+
+            Log::info('Export CSV paiements généré', [
+                'user_id' => auth()->id(),
+                'total_paiements' => $paiements->count(),
+                'filename' => $filename
+            ]);
+
+            return \Maatwebsite\Excel\Facades\Excel::download($export, $filename, \Maatwebsite\Excel\Excel::CSV, [
+                'Content-Type' => 'text/csv',
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur export CSV paiements: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->back()->with('error', 'Erreur lors de l\'export CSV: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Exporter les paiements au format PDF
+     */
+    public function exportPdf(Request $request, FuzzyNameMatcher $matcher)
+    {
+        try {
+            // Récupérer les données filtrées
+            $data = $this->preparePaiementListing($request, $matcher, [], microtime(true), 'ESBTPPaiementController@exportPdf');
+
+            // Charger toutes les relations nécessaires
+            $paiements = $data['paiements']->getCollection()->load([
+                'etudiant',
+                'inscription.classe',
+                'inscription.filiere',
+                'inscription.niveauEtude',
+                'inscription.anneeUniversitaire',
+                'fraisCategory',
+                'categorie',
+                'validatedBy'
+            ]);
+
+            // Préparer les filtres
+            $filters = [
+                'search' => $request->input('search'),
+                'status' => $request->input('status'),
+                'date_debut' => $request->input('date_debut'),
+                'date_fin' => $request->input('date_fin'),
+            ];
+
+            // Récupérer les paramètres de l'école
+            $settings = $this->getReceiptSettings();
+
+            Log::info('Export PDF paiements généré', [
+                'user_id' => auth()->id(),
+                'total_paiements' => $paiements->count(),
+            ]);
+
+            // Générer le PDF
+            $pdf = PDF::loadView('esbtp.paiements.export-pdf', [
+                'paiements' => $paiements,
+                'stats' => $data['stats'],
+                'filters' => $filters,
+                'settings' => $settings,
+                'dateExport' => now()
+            ]);
+
+            // Télécharger le PDF
+            $filename = 'paiements_' . now()->format('Y-m-d_His') . '.pdf';
+            return $pdf->download($filename);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur export PDF paiements: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->back()->with('error', 'Erreur lors de l\'export PDF: ' . $e->getMessage());
+        }
+    }
 }

@@ -7,9 +7,9 @@
     <style>
         body {
             font-family: 'Arial', sans-serif;
-            font-size: 7px;
+            font-size: 10px;
             margin: 0;
-            padding: 2px;
+            padding: 0.5px;
             color: #333;
             line-height: 1.2;
             background: white;
@@ -18,57 +18,57 @@
         .container {
             max-width: 100%;
             background: white;
-            padding: 6px;
+            padding: 3px;
         }
 
         /* Header principal */
         .header-section {
             background: #007bff;
             color: white;
-            padding: 8px;
-            border-radius: 8px;
+            padding: 4px;
+            border-radius: 6px;
             text-align: center;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
             -webkit-print-color-adjust: exact;
             color-adjust: exact;
         }
 
         .header-logo {
-            max-height: 28px;
-            max-width: 70px;
-            margin-bottom: 4px;
+            max-height: 24px;
+            max-width: 60px;
+            margin-bottom: 2px;
             filter: brightness(0) invert(1);
         }
 
         .school-name {
-            font-size: 9px;
+            font-size: 12px;
             font-weight: 700;
-            margin-bottom: 3px;
+            margin-bottom: 2px;
         }
 
         .school-info {
-            font-size: 5px;
-            margin-bottom: 4px;
+            font-size: 8px;
+            margin-bottom: 2px;
             opacity: 0.9;
         }
 
         .document-title-section {
             background: rgba(255,255,255,0.2);
-            padding: 4px;
-            border-radius: 6px;
-            margin-top: 4px;
+            padding: 2px 3px;
+            border-radius: 4px;
+            margin-top: 2px;
         }
 
         .document-title {
-            font-size: 7px;
+            font-size: 10px;
             font-weight: 600;
-            margin-bottom: 3px;
+            margin-bottom: 2px;
         }
 
         .class-info-grid {
             display: table;
             width: 100%;
-            font-size: 5.5px;
+            font-size: 8.5px;
         }
 
         .class-info-row {
@@ -79,29 +79,29 @@
             display: table-cell;
             width: 33.33%;
             text-align: center;
-            padding: 1px;
+            padding: 0.5px;
         }
 
         .info-badge {
             background: rgba(255,255,255,0.3);
-            padding: 1px 3px;
-            border-radius: 8px;
+            padding: 0.5px 2px;
+            border-radius: 6px;
             display: inline-block;
-            margin-top: 1px;
+            margin-top: 0.5px;
         }
 
         .date-line, .teacher-line {
             border-bottom: 1px solid rgba(255,255,255,0.7);
-            padding: 1px 4px;
+            padding: 0.5px 3px;
             display: inline-block;
-            min-width: 45px;
+            min-width: 40px;
         }
 
         /* KPI Section */
         .kpi-section {
             display: table;
             width: 100%;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
         }
 
         .kpi-row {
@@ -111,41 +111,41 @@
         .kpi-card {
             display: table-cell;
             width: 25%;
-            padding: 1px;
+            padding: 0.5px;
             text-align: center;
             background: #f8f9fa;
             border: 1px solid #e9ecef;
             vertical-align: top;
-            font-size: 5px;
+            font-size: 8px;
         }
 
         .kpi-card:first-child {
-            border-radius: 6px 0 0 6px;
+            border-radius: 4px 0 0 4px;
         }
 
         .kpi-card:last-child {
-            border-radius: 0 6px 6px 0;
+            border-radius: 0 4px 4px 0;
         }
 
         .kpi-title {
-            font-size: 4.5px;
+            font-size: 7.5px;
             font-weight: 600;
             color: #6b7280;
             text-transform: uppercase;
             letter-spacing: 0.2px;
-            margin-bottom: 2px;
+            margin-bottom: 1px;
         }
 
         .kpi-value {
-            font-size: 7px;
+            font-size: 10px;
             font-weight: bold;
             color: #007bff;
-            margin-bottom: 1px;
+            margin-bottom: 0.5px;
             line-height: 1.1;
         }
 
         .kpi-desc {
-            font-size: 4px;
+            font-size: 7px;
             color: #9ca3af;
         }
 
@@ -153,11 +153,11 @@
         .attendance-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
+            margin-top: 5px;
             background: white;
-            border-radius: 6px;
+            border-radius: 4px;
             overflow: hidden;
-            font-size: 6px;
+            font-size: 9px;
         }
 
         .attendance-table th {
@@ -166,19 +166,19 @@
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.3px;
-            font-size: 5.5px;
-            padding: 2px 2px;
+            font-size: 8.5px;
+            padding: 1px 1px;
             text-align: center;
             -webkit-print-color-adjust: exact;
             color-adjust: exact;
         }
 
         .attendance-table td {
-            padding: 2px 1px;
+            padding: 1px 0.5px;
             border-bottom: 1px solid #e5e7eb;
             text-align: center;
             vertical-align: middle;
-            font-size: 5.5px;
+            font-size: 8.5px;
         }
 
         .attendance-table tbody tr:nth-child(even) {
@@ -188,39 +188,39 @@
         .student-number {
             background: #007bff;
             color: white;
-            padding: 1px 2px;
+            padding: 0.5px 1.5px;
             border-radius: 50%;
             font-weight: bold;
-            font-size: 5.5px;
-            min-width: 12px;
+            font-size: 8.5px;
+            min-width: 10px;
             display: inline-block;
         }
 
         .student-matricule {
             font-family: 'Courier New', monospace;
             background: #f3f4f6;
-            padding: 1px 2px;
+            padding: 0.5px 1.5px;
             border-radius: 3px;
-            font-size: 5px;
+            font-size: 8px;
             color: #374151;
         }
 
         .student-info-cell {
             text-align: left !important;
-            padding-left: 3px !important;
+            padding-left: 2px !important;
         }
 
         .student-name {
             font-weight: 600;
-            font-size: 6px;
+            font-size: 9px;
             color: #1f2937;
             line-height: 1.2;
         }
 
         .student-gender {
-            font-size: 4px;
+            font-size: 7px;
             color: #6b7280;
-            margin-top: 1px;
+            margin-top: 0.5px;
         }
 
         .checkbox-box {
@@ -240,7 +240,7 @@
 
         /* Footer section */
         .footer-section {
-            margin-top: 8px;
+            margin-top: 4px;
             display: table;
             width: 100%;
         }
@@ -249,21 +249,21 @@
             display: table-cell;
             width: 50%;
             vertical-align: top;
-            padding: 2px;
+            padding: 1px;
         }
 
         .summary-card {
             background: #f8f9fa;
             border: 1px solid #e5e7eb;
-            border-radius: 6px;
-            padding: 5px;
+            border-radius: 4px;
+            padding: 3px;
         }
 
         .summary-title {
-            font-size: 6px;
+            font-size: 9px;
             font-weight: 600;
             color: #374151;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
             text-transform: uppercase;
             letter-spacing: 0.3px;
         }
@@ -281,74 +281,74 @@
             display: table-cell;
             width: 33.33%;
             text-align: center;
-            padding: 1px;
+            padding: 0.5px;
         }
 
         .summary-value {
-            font-size: 9px;
+            font-size: 12px;
             font-weight: bold;
             color: #007bff;
         }
 
         .summary-label {
-            font-size: 5px;
+            font-size: 8px;
             color: #6b7280;
-            margin-top: 1px;
+            margin-top: 0.5px;
         }
 
         .signature-card {
             background: #f8f9fa;
             border: 1px solid #e5e7eb;
-            border-radius: 6px;
-            padding: 5px;
-            margin-left: 3px;
+            border-radius: 4px;
+            padding: 3px;
+            margin-left: 2px;
         }
 
         .signature-field {
-            margin-bottom: 5px;
+            margin-bottom: 3px;
         }
 
         .signature-label {
-            font-size: 5.5px;
+            font-size: 8.5px;
             font-weight: 600;
             color: #374151;
-            margin-bottom: 2px;
+            margin-bottom: 1px;
         }
 
         .signature-line {
             border-bottom: 1px solid #d1d5db;
-            padding: 2px 0;
-            min-height: 9px;
+            padding: 1px 0;
+            min-height: 8px;
         }
 
         .signature-box {
             border: 1px solid #d1d5db;
             border-radius: 4px;
-            padding: 5px;
-            min-height: 20px;
+            padding: 3px;
+            min-height: 16px;
             background: white;
         }
 
         /* Informations de génération */
         .generation-info {
             text-align: center;
-            font-size: 5px;
+            font-size: 8px;
             color: #6b7280;
-            margin-top: 8px;
-            padding-top: 6px;
+            margin-top: 4px;
+            padding-top: 3px;
             border-top: 1px solid #e5e7eb;
         }
 
         /* Empty state */
         .empty-state {
             text-align: center;
-            padding: 30px 15px;
+            padding: 15px 10px;
             color: #6b7280;
         }
 
         .empty-icon {
-            font-size: 18px;
-            margin-bottom: 10px;
+            font-size: 21px;
+            margin-bottom: 6px;
             color: #d1d5db;
         }
 
@@ -428,17 +428,17 @@
                 </div>
                 <div class="kpi-card">
                     <div class="kpi-title">Filiere</div>
-                    <div class="kpi-value" style="font-size: 6px; line-height: 1.1;">{{ $classe->filiere->name ?? 'N/A' }}</div>
+                    <div class="kpi-value" style="font-size: 9px; line-height: 1.1;">{{ $classe->filiere->name ?? 'N/A' }}</div>
                     <div class="kpi-desc">Specialisation</div>
                 </div>
                 <div class="kpi-card">
                     <div class="kpi-title">Niveau</div>
-                    <div class="kpi-value" style="font-size: 6px; line-height: 1.1;">{{ $classe->niveau->name ?? 'N/A' }}</div>
+                    <div class="kpi-value" style="font-size: 9px; line-height: 1.1;">{{ $classe->niveau->name ?? 'N/A' }}</div>
                     <div class="kpi-desc">Annee d'etudes</div>
                 </div>
                 <div class="kpi-card">
                     <div class="kpi-title">Annee</div>
-                    <div class="kpi-value" style="font-size: 6px; line-height: 1.1;">{{ $anneeCourante->name ?? 'Courante' }}</div>
+                    <div class="kpi-value" style="font-size: 9px; line-height: 1.1;">{{ $anneeCourante->name ?? 'Courante' }}</div>
                     <div class="kpi-desc">Universitaire</div>
                 </div>
             </div>
