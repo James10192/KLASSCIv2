@@ -69,7 +69,11 @@ class ESBTPDepense extends Model implements Auditable
         'updated',
         'deleted',
         'restored',
-        'retrieved', // Important pour tracer l'accès aux données financières
+        // NOTE: 'retrieved' est volontairement désactivé pour:
+        // 1. Éviter une charge massive d'audits (chaque lecture = 1 audit)
+        // 2. Éviter le cycle infini avec UserResolver
+        // 3. Les old_values et new_values d'un retrieved sont toujours vides
+        // Les événements create/update/delete suffisent pour la traçabilité financière
     ];
 
     /**
