@@ -41,6 +41,7 @@ class ESBTPSecretaireController extends Controller
      */
     public function store(Request $request)
     {
+        // Capturer les données validées pour éviter la vulnérabilité mass assignment
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
@@ -56,14 +57,17 @@ class ESBTPSecretaireController extends Controller
                 ->withInput();
         }
 
-        // Créer l'utilisateur
+        // Récupérer uniquement les données validées
+        $validated = $validator->validated();
+
+        // Créer l'utilisateur avec les données validées uniquement
         $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'username' => $request->username,
-            'password' => Hash::make($request->password),
-            'telephone' => $request->telephone,
-            'adresse' => $request->adresse,
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'username' => $validated['username'],
+            'password' => Hash::make($validated['password']),
+            'telephone' => $validated['telephone'] ?? null,
+            'adresse' => $validated['adresse'] ?? null,
             'is_active' => true,
         ]);
 
@@ -100,6 +104,7 @@ class ESBTPSecretaireController extends Controller
     {
         $secretaire = User::role('secretaire')->findOrFail($id);
 
+        // Capturer les données validées pour éviter la vulnérabilité mass assignment
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $id,
@@ -115,15 +120,18 @@ class ESBTPSecretaireController extends Controller
                 ->withInput();
         }
 
-        // Mettre à jour l'utilisateur
-        $secretaire->name = $request->name;
-        $secretaire->email = $request->email;
-        $secretaire->username = $request->username;
-        if ($request->filled('password')) {
-            $secretaire->password = Hash::make($request->password);
+        // Récupérer uniquement les données validées
+        $validated = $validator->validated();
+
+        // Mettre à jour l'utilisateur avec les données validées uniquement
+        $secretaire->name = $validated['name'];
+        $secretaire->email = $validated['email'];
+        $secretaire->username = $validated['username'];
+        if (isset($validated['password']) && !empty($validated['password'])) {
+            $secretaire->password = Hash::make($validated['password']);
         }
-        $secretaire->telephone = $request->telephone;
-        $secretaire->adresse = $request->adresse;
+        $secretaire->telephone = $validated['telephone'] ?? null;
+        $secretaire->adresse = $validated['adresse'] ?? null;
         $secretaire->save();
 
         return redirect()->route('secretaires.index')
