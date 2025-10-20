@@ -259,6 +259,14 @@
                             <a href="{{ route('esbtp.paiements.edit', $paiement->id) }}" class="btn-action warning mb-2">
                                 <i class="fas fa-edit me-1"></i>Modifier
                             </a>
+
+                            <form action="{{ route('esbtp.paiements.destroy', $paiement->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Supprimer définitivement ce paiement ? Cette action est irréversible.');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn-action danger mb-2">
+                                    <i class="fas fa-trash-alt me-1"></i>Supprimer
+                                </button>
+                            </form>
                         @endif
 
                         @if($paiement->status === 'en_attente')

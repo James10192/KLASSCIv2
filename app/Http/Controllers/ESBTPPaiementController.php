@@ -2363,6 +2363,71 @@ class ESBTPPaiementController extends Controller
     }
 
     /**
+     * Supprimer définitivement un paiement (réservé au superAdmin)
+     */
+    public function destroy(Request $request, ESBTPPaiement $paiement)
+    {
+        $user = $request->user();
+        if (!$user || !$user->hasRole('superAdmin')) {
+            abort(403, 'Cette action est réservée au super administrateur.');
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $paiementId = $paiement->id;
+            $numeroRecu = $paiement->numero_recu;
+
+            // Désactiver les éventuels rappels associés
+            try {
+                $reminder = \App\Models\NotificationReminder::where('remindable_type', ESBTPPaiement::class)
+                    ->where('remindable_id', $paiementId)
+                    ->first();
+                if ($reminder) {
+                    $reminder->deactivate();
+                }
+            } catch (\Exception $inner) {
+                Log::warning('Impossible de désactiver le rappel du paiement avant suppression', [
+                    'paiement_id' => $paiementId,
+                    'error' => $inner->getMessage()
+                ]);
+            }
+
+            $paiement->delete();
+
+            DB::commit();
+
+            $message = "Le paiement {$numeroRecu} a été supprimé définitivement.";
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $message
+                ]);
+            }
+
+            return redirect()->route('esbtp.paiements.index')->with('success', $message);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Erreur lors de la suppression définitive du paiement', [
+                'paiement_id' => $paiement->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erreur lors de la suppression: ' . $e->getMessage()
+                ], 500);
+            }
+
+            return redirect()->back()->with('error', 'Erreur lors de la suppression: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Valider plusieurs paiements en une fois
      */
     public function bulkValider(Request $request)
