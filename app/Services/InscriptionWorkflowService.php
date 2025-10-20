@@ -37,10 +37,20 @@ class InscriptionWorkflowService
             } else {
                 // Pour les premières inscriptions, vérifier le status
                 if ($inscription->status !== 'en_attente') {
-                    return [
-                        'success' => false,
-                        'message' => 'Seules les inscriptions en attente peuvent être validées.'
-                    ];
+                    if ($inscription->status === 'active') {
+                        if ($inscription->workflow_step === 'etudiant_cree') {
+                            return [
+                                'success' => false,
+                                'message' => 'Cette inscription a déjà été validée.'
+                            ];
+                        }
+                        // Statut active mais workflow incomplet : autoriser la reprise du workflow
+                    } else {
+                        return [
+                            'success' => false,
+                            'message' => 'Seules les inscriptions en attente peuvent être validées.'
+                        ];
+                    }
                 }
             }
 
