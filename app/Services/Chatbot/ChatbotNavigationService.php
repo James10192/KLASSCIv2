@@ -191,11 +191,11 @@ class ChatbotNavigationService
             ->select('c.*')
             ->where('c.is_active', true);
 
-        // Filtre par filière - Extraction flexible des mots-clés
+        // Filtre par filière - Recherche exacte sur la chaîne complète
         if (!empty($filters['filiere']) || !empty($filters['formation'])) {
             $filiereSearch = $filters['filiere'] ?? $filters['formation'];
 
-            // Extraire les mots-clés pertinents (ignorer BTS, Année, etc.)
+            // Extraire le mot-clé principal (ignorer BTS, Année, etc.)
             $keywords = explode(' ', $filiereSearch);
             $filiereKeywords = array_filter($keywords, function($word) {
                 return !in_array(strtolower($word), ['bts', 'année', 'année', '1ère', '2ème', 'première', 'deuxième']);
@@ -203,34 +203,20 @@ class ChatbotNavigationService
 
             if (!empty($filiereKeywords)) {
                 $query->join('esbtp_filieres as f', 'c.filiere_id', '=', 'f.id');
-                $query->where(function($q) use ($filiereKeywords) {
-                    foreach ($filiereKeywords as $keyword) {
-                        $q->orWhere('f.name', 'LIKE', "%{$keyword}%");
-                    }
-                });
+                // Tous les mots-clés doivent être présents (AND)
+                foreach ($filiereKeywords as $keyword) {
+                    $query->where('f.name', 'LIKE', "%{$keyword}%");
+                }
             }
         }
 
-        // Filtre par niveau - Recherche flexible
+        // Filtre par niveau - Recherche exacte sur la chaîne complète
         if (!empty($filters['niveau'])) {
             $niveauSearch = $filters['niveau'];
 
-            // Extraire les mots-clés pertinents
-            $keywords = explode(' ', $niveauSearch);
-            $niveauKeywords = array_filter($keywords, function($word) {
-                $lower = strtolower($word);
-                // Garder: Première, 1ère, BTS, Année, etc.
-                return strlen($word) > 2;
-            });
-
-            if (!empty($niveauKeywords)) {
-                $query->join('esbtp_niveau_etudes as n', 'c.niveau_etude_id', '=', 'n.id');
-                $query->where(function($q) use ($niveauKeywords) {
-                    foreach ($niveauKeywords as $keyword) {
-                        $q->orWhere('n.name', 'LIKE', "%{$keyword}%");
-                    }
-                });
-            }
+            $query->join('esbtp_niveau_etudes as n', 'c.niveau_etude_id', '=', 'n.id');
+            // Recherche directe sur la chaîne complète du niveau
+            $query->where('n.name', 'LIKE', "%{$niveauSearch}%");
         }
 
         return collect($query->get());

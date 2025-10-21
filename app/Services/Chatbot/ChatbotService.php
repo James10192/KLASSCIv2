@@ -384,33 +384,70 @@ class ChatbotService
             // Cas spécial pour get_frais : utiliser les configurations trouvées
             $configurations = $verification['data']['configurations'];
 
-            // Convertir les configurations en objets pour uniformité
-            $allConfigs = collect($configurations)->map(function($config) {
-                return (object) [
-                    'id' => $config['config']->id,
-                    'categorie_id' => $config['config']->frais_category_id,
-                    'categorie_name' => $config['config']->frais_category_id ?
-                        \DB::table('esbtp_frais_categories')->where('id', $config['config']->frais_category_id)->value('name') : 'N/A',
-                    'classe_name' => $config['classe']->name ?? 'N/A',
-                    'filiere_id' => $config['config']->filiere_id,
-                    'niveau_id' => $config['config']->niveau_id,
-                    'amount' => $config['config']->amount,
-                    'effective_date' => $config['config']->effective_date,
-                    'is_active' => $config['config']->is_active,
-                ];
+            // Regrouper par combinaison unique (filiere_id, niveau_id, categorie_id)
+            // Une combinaison = 1 configuration avec 3 types de tarifs (affecté, réaffecté, non affecté)
+            $grouped = collect($configurations)->groupBy(function($config) {
+                return implode('|', [
+                    $config['config']->filiere_id,
+                    $config['config']->niveau_id,
+                    $config['config']->frais_category_id,
+                ]);
             });
 
-            // DÉDUPLICATION : Grouper par (filiere_id, niveau_id, categorie_id, amount)
-            // L'utilisateur demande pour UNE combinaison (filière + niveau) → montants UNIQUES seulement
-            $results = $allConfigs->unique(function($config) {
-                return implode('|', [
-                    $config->filiere_id,
-                    $config->niveau_id,
-                    $config->categorie_id,
-                    $config->amount,
-                    $config->effective_date
-                ]);
-            })->values();
+            // Pour chaque combinaison unique, prendre la première configuration
+            // (toutes les configurations d'une même combinaison ont les mêmes montants affecté/réaffecté/non-affecté)
+            $results = collect();
+            foreach ($grouped as $key => $group) {
+                $firstConfig = $group->first();
+                $config = $firstConfig['config'];
+
+                $categorieName = \DB::table('esbtp_frais_categories')
+                    ->where('id', $config->frais_category_id)
+                    ->value('name');
+
+                // Créer 3 objets pour les 3 types de tarifs (si montant > 0)
+                if ($config->amount_affecte > 0) {
+                    $results->push((object) [
+                        'id' => $config->id . '_affecte',
+                        'categorie_id' => $config->frais_category_id,
+                        'categorie_name' => $categorieName,
+                        'type_tarif' => 'Affectés',
+                        'filiere_id' => $config->filiere_id,
+                        'niveau_id' => $config->niveau_id,
+                        'amount' => $config->amount_affecte,
+                        'effective_date' => $config->effective_date,
+                        'is_active' => $config->is_active,
+                    ]);
+                }
+
+                if ($config->amount_reaffecte > 0) {
+                    $results->push((object) [
+                        'id' => $config->id . '_reaffecte',
+                        'categorie_id' => $config->frais_category_id,
+                        'categorie_name' => $categorieName,
+                        'type_tarif' => 'Réaffectés',
+                        'filiere_id' => $config->filiere_id,
+                        'niveau_id' => $config->niveau_id,
+                        'amount' => $config->amount_reaffecte,
+                        'effective_date' => $config->effective_date,
+                        'is_active' => $config->is_active,
+                    ]);
+                }
+
+                if ($config->amount_non_affecte > 0) {
+                    $results->push((object) [
+                        'id' => $config->id . '_non_affecte',
+                        'categorie_id' => $config->frais_category_id,
+                        'categorie_name' => $categorieName,
+                        'type_tarif' => 'Non affectés',
+                        'filiere_id' => $config->filiere_id,
+                        'niveau_id' => $config->niveau_id,
+                        'amount' => $config->amount_non_affecte,
+                        'effective_date' => $config->effective_date,
+                        'is_active' => $config->is_active,
+                    ]);
+                }
+            }
 
             return [
                 'results' => $results,
@@ -722,8 +759,8 @@ class ChatbotService
         if ($knowledge->intent === 'get_frais' && $results->isNotEmpty() && isset($results->first()->categorie_id)) {
             $columns = [
                 ['label' => 'Catégorie'],
+                ['label' => 'Type de tarif'],
                 ['label' => 'Montant'],
-                ['label' => 'Date effet'],
                 ['label' => 'Statut'],
             ];
 
@@ -731,8 +768,8 @@ class ChatbotService
                 $rows[] = [
                     'cells' => [
                         ['value' => $result->categorie_name ?? 'N/A'],
+                        ['value' => $result->type_tarif ?? 'Standard'],
                         ['value' => isset($result->amount) ? number_format($result->amount, 0, ',', ' ') . ' FCFA' : 'N/A'],
-                        ['value' => $result->effective_date ?? 'N/A'],
                         ['value' => $result->is_active ? 'Actif' : 'Inactif', 'badge' => $result->is_active ? 'success' : 'secondary'],
                     ],
                     'column_count' => count($columns),
