@@ -27,11 +27,16 @@ class ChatbotService
 {
     protected ChatbotExplorerService $explorer;
     protected ChatbotLLMService $llm;
+    protected ChatbotNavigationService $navigation;
 
-    public function __construct(ChatbotExplorerService $explorer, ChatbotLLMService $llm)
-    {
+    public function __construct(
+        ChatbotExplorerService $explorer,
+        ChatbotLLMService $llm,
+        ChatbotNavigationService $navigation
+    ) {
         $this->explorer = $explorer;
         $this->llm = $llm;
+        $this->navigation = $navigation;
     }
 
     /**
@@ -105,8 +110,41 @@ class ChatbotService
             $llmFilters = $llmDecision['filters'] ?? [];
             $requestedLimit = $llmDecision['limit'] ?? null;
 
-            // 6. Exécuter la requête pour récupérer les données
-            $data = $this->executeDataRetrieval($knowledge, $message, $user, $llmFilters, $requestedLimit);
+            // 6. Vérification anti-hallucination : vérifier que les données existent réellement
+            $verification = $this->navigation->verifyDataExists($intent, $llmFilters, $knowledge);
+
+            if (!$verification['exists']) {
+                // Données n'existent pas → réponse contextuelle avec suggestion
+                $responseText = $verification['suggestion'];
+                $actionLabel = $verification['action_label'] ?? 'En savoir plus';
+                $deepLink = $verification['deep_link'];
+
+                $assistantMessage = ChatbotMessage::create([
+                    'conversation_id' => $conversation->id,
+                    'role' => 'assistant',
+                    'content' => $responseText,
+                    'display_type' => 'text',
+                    'deep_link' => $deepLink,
+                    'metadata' => [
+                        'intent' => $intent,
+                        'verification_level' => $verification['level'],
+                        'action_label' => $actionLabel,
+                        'partial_data' => $verification['data'] ?? null,
+                    ],
+                ]);
+
+                return [
+                    'success' => true,
+                    'message' => $assistantMessage->content,
+                    'display_type' => 'text',
+                    'deep_link' => $deepLink,
+                    'action_label' => $actionLabel,
+                    'conversation_id' => $conversation->session_id,
+                ];
+            }
+
+            // 7. Exécuter la requête pour récupérer les données vérifiées
+            $data = $this->executeDataRetrieval($knowledge, $message, $user, $llmFilters, $requestedLimit, $verification);
 
             if (empty($data['results'])) {
                 $assistantMessage = ChatbotMessage::create([
@@ -337,9 +375,39 @@ class ChatbotService
         string $message,
         $user,
         array $llmFilters = [],
-        ?int $requestedLimit = null
+        ?int $requestedLimit = null,
+        ?array $verification = null
     ): array
     {
+        // Si la vérification a retourné des données directement, les utiliser
+        if ($verification && isset($verification['data']['configurations'])) {
+            // Cas spécial pour get_frais : utiliser les configurations trouvées
+            $configurations = $verification['data']['configurations'];
+
+            // Convertir les configurations en objets pour uniformité
+            $results = collect($configurations)->map(function($config) {
+                return (object) [
+                    'id' => $config['config']->id,
+                    'categorie_id' => $config['config']->frais_category_id,
+                    'categorie_name' => $config['config']->frais_category_id ?
+                        \DB::table('esbtp_frais_categories')->where('id', $config['config']->frais_category_id)->value('name') : 'N/A',
+                    'classe_name' => $config['classe']->name ?? 'N/A',
+                    'filiere_id' => $config['config']->filiere_id,
+                    'niveau_id' => $config['config']->niveau_id,
+                    'amount' => $config['config']->amount,
+                    'effective_date' => $config['config']->effective_date,
+                    'is_active' => $config['config']->is_active,
+                ];
+            });
+
+            return [
+                'results' => $results,
+                'total_count' => $results->count(),
+                'filters' => $llmFilters,
+                'from_verification' => true,
+            ];
+        }
+
         $modelClass = "App\\Models\\{$knowledge->model}";
 
         if (!class_exists($modelClass)) {
@@ -637,6 +705,34 @@ class ChatbotService
     {
         $columns = [];
         $rows = [];
+
+        // Cas spécial pour get_frais (données de verification, pas de modèle)
+        if ($knowledge->intent === 'get_frais' && $results->isNotEmpty() && isset($results->first()->categorie_id)) {
+            $columns = [
+                ['label' => 'Catégorie'],
+                ['label' => 'Montant'],
+                ['label' => 'Date effet'],
+                ['label' => 'Statut'],
+            ];
+
+            foreach ($results as $result) {
+                $rows[] = [
+                    'cells' => [
+                        ['value' => $result->categorie_name ?? 'N/A'],
+                        ['value' => isset($result->amount) ? number_format($result->amount, 0, ',', ' ') . ' FCFA' : 'N/A'],
+                        ['value' => $result->effective_date ?? 'N/A'],
+                        ['value' => $result->is_active ? 'Actif' : 'Inactif', 'badge' => $result->is_active ? 'success' : 'secondary'],
+                    ],
+                    'column_count' => count($columns),
+                ];
+            }
+
+            return [
+                'columns' => $columns,
+                'rows' => $rows,
+                'column_count' => count($columns),
+            ];
+        }
 
         if ($knowledge->model === 'ESBTPPaiement') {
             $columns = [
