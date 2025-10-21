@@ -2692,3 +2692,221 @@ Si **NON n'importe où**: 🔴 Utiliser versioning
 ---
 
 *Dernière mise à jour: 20 octobre 2025*
+
+---
+
+## 🤖 Chatbot IA avec Gemini - Exploration Autonome (21 Octobre 2025)
+
+### Vue d'ensemble
+
+Chatbot intelligent intégré utilisant **Google Gemini API** avec capacité d'**exploration autonome** du code source KLASSCI pour apprendre comment récupérer les données.
+
+**Principe** : Le chatbot ne dispose pas d'une liste figée de fonctions. Il explore le code (sidebar, routes, controllers, modèles) pour comprendre comment récupérer les données, puis stocke cette connaissance dans `chatbot_knowledge_base` pour ne pas re-explorer.
+
+### Architecture
+
+#### 📊 Tables BDD (6 tables)
+
+1. **chatbot_conversations** - Sessions utilisateur
+   - `user_id`, `session_id`, `title`, `context`, `last_activity_at`
+   - SoftDeletes pour historique
+   - Relations: `user`, `messages`, `actions`
+
+2. **chatbot_messages** - Historique messages
+   - `conversation_id`, `role` (user/assistant/system), `content`
+   - `display_type` (text/table/card/kpi), `display_data`, `deep_link`
+   - Metadata JSON pour fonction calling
+
+3. **chatbot_actions_log** - Audit trail CRUD
+   - `action_type` (retrieve/create/update/delete)
+   - `model_type`, `model_id`, `status`, `error_message`
+   - Tracking complet des actions chatbot
+
+4. **chatbot_system_prompts** - Pre-prompts configurables par rôle
+   - `name`, `prompt`, `allowed_roles` (Spatie), `priority`
+   - Prompts spécifiques : default, enseignant, coordinateur
+   - Gestion `is_active`, `is_default`
+
+5. **chatbot_display_templates** - Templates HTML affichage
+   - `name`, `type` (table/card/kpi/chart), `html_template`
+   - Placeholders Handlebars-like `{{field}}`
+   - Templates: `paiements_table`, `kpi_card`
+
+6. **chatbot_knowledge_base** ⭐ **CŒUR DU SYSTÈME**
+   - `intent` (get_paiements, get_etudiants, etc.)
+   - `route`, `controller`, `model`, `table_name` (découverts automatiquement)
+   - `columns_mapping` (filtres : statut, month, etc.)
+   - `deep_link_pattern` (URL avec query params)
+   - `required_permissions`, `allowed_roles` (Spatie - depuis sidebar)
+   - `exploration_log` (comment le chatbot a trouvé l'info)
+   - `usage_count`, `last_used_at` (cache intelligent)
+
+#### 🔍 Service : ChatbotExplorerService
+
+**Rôle** : Explorer le code source KLASSCI pour apprendre autonomiquement comment récupérer les données.
+
+**Workflow d'exploration** :
+
+```
+User: "Montre-moi les paiements en attente"
+  ↓
+1. extractKeywordFromIntent('get_paiements') → 'paiements'
+  ↓
+2. findRouteInSidebar('paiements') → 'esbtp.paiements.index'
+   - Parse resources/views/layouts/app.blade.php
+   - Regex: route('esbtp.paiements.index')
+  ↓
+3. findControllerFromRoute('esbtp.paiements.index')
+   - Analyse routes Laravel via Route::getRoutes()
+   - Résultat: 'ESBTPPaiementController@index'
+  ↓
+4. analyzeController('ESBTPPaiementController', 'index')
+   - Lit app/Http/Controllers/ESBTPPaiementController.php
+   - Extraction model: 'ESBTPPaiement' (via regex use App\Models\...)
+   - Extraction filtres: ['statut' => 'column', 'month' => 'date_paiement']
+   - Extraction vue: 'esbtp.paiements.index'
+  ↓
+5. analyzeModel('ESBTPPaiement')
+   - Instantiation du modèle
+   - Récupération: table, fillable, casts
+   - Résultat: table = 'esbtp_paiements'
+  ↓
+6. extractPermissionsForRoute('esbtp.paiements.index')
+   - Parse sidebar pour @can('view_paiements')
+  ↓
+7. extractAllowedRolesForRoute('esbtp.paiements.index')
+   - Parse sidebar pour @hasRole('superAdmin') ou @role('coordinateur')
+  ↓
+8. buildDeepLinkPattern('esbtp.paiements.index', filters)
+   - Résultat: '/esbtp/paiements?status={status}&month={month}'
+  ↓
+9. saveKnowledge() → Stocke dans chatbot_knowledge_base
+  ↓
+10. Prochaine fois : getKnowledge('get_paiements') → Utilise le cache ! (10x plus rapide)
+```
+
+**Methods publiques** :
+- `explore(intent, userInput, userRoles): ?array` - Explorer et apprendre
+- `saveKnowledge(array): ChatbotKnowledgeBase` - Sauvegarder connaissance
+- `getKnowledge(intent): ?ChatbotKnowledgeBase` - Récupérer du cache
+- `hasKnowledge(intent): bool` - Vérifier existence
+
+**Logging complet** :
+```
+🔍 ChatbotExplorer - START exploration | intent: get_paiements
+✅ Route found: esbtp.paiements.index
+✅ Controller: ESBTPPaiementController@index
+✅ Model found: ESBTPPaiement
+✅ Table: esbtp_paiements
+✅ Completed in 45.23ms
+```
+
+### Intégration Permissions Spatie
+
+Le chatbot respecte automatiquement les permissions et rôles définis dans la sidebar :
+
+1. **Détection depuis sidebar** :
+   - `@can('view_paiements')` → Stocké dans `required_permissions`
+   - `@hasRole('superAdmin')` → Stocké dans `allowed_roles`
+   - `@role('coordinateur')` → Stocké dans `allowed_roles`
+
+2. **Vérification au runtime** :
+   ```php
+   $knowledge = ChatbotKnowledgeBase::byIntent('get_paiements')->first();
+   
+   if (!$knowledge->isRoleAllowed($userRole)) {
+       return "Vous n'avez pas accès à cette information";
+   }
+   
+   if (!$knowledge->hasRequiredPermissions($userPermissions)) {
+       return "Permission insuffisante";
+   }
+   ```
+
+3. **Filtrage données** :
+   - Enseignant : voit uniquement ses classes
+   - Coordinateur : voit tout son établissement
+   - Secrétaire : voit inscriptions + paiements
+   - Étudiant : voit uniquement ses propres données
+
+### Technologie
+
+**Google Gemini API** :
+- Package : `google-gemini-php/laravel` v2.0.1
+- Modèle : `gemini-1.5-flash`
+- Gratuit : 1500 requêtes/jour, 1M tokens/mois
+- Function calling natif
+- Pas de carte bancaire requise
+- Coût après limite : ~750 FCFA/mois (~$1.13)
+
+**Config .env** :
+```env
+GEMINI_API_KEY=AIzaSyCBVTrL8oez9_IHvR2fWDTcWDfVU8J4ubo
+GEMINI_MODEL=gemini-1.5-flash
+```
+
+### Scope Initial (Phase 1)
+
+5 fonctionnalités prioritaires :
+1. **Inscriptions** - Consulter inscriptions (avec filtres classe, année, statut)
+2. **Étudiants** - Liste étudiants (avec recherche, classe)
+3. **Paiements** - Consulter paiements (statut, mois, montant)
+4. **Catégories Frais** - Liste frais configurés
+5. **Classes** - Voir étudiants d'une classe, stats (effectif, places restantes)
+
+### Fichiers Créés
+
+```
+database/migrations/
+  └── 2025_10_21_034757_create_chatbot_tables.php
+
+app/Models/
+  ├── ChatbotConversation.php
+  ├── ChatbotMessage.php
+  ├── ChatbotActionLog.php
+  ├── ChatbotSystemPrompt.php
+  ├── ChatbotDisplayTemplate.php
+  └── ChatbotKnowledgeBase.php
+
+app/Services/Chatbot/
+  └── ChatbotExplorerService.php
+
+config/
+  └── gemini.php
+```
+
+### Commits
+
+1. **feat(chatbot): installation Gemini API + migrations BDD (6 tables)** - `eddb4a5`
+   - Package google-gemini-php/laravel v2.0.1
+   - 6 tables créées avec indexes
+
+2. **feat(chatbot): création modèles Eloquent (6 models)** - `55b642a`
+   - Relations, scopes, casts
+   - ChatbotKnowledgeBase avec incrementUsage(), isRoleAllowed()
+
+3. **feat(chatbot): création ChatbotExplorerService - exploration autonome code** - `9e733cb`
+   - Parsing sidebar, routes, controllers, modèles
+   - Extraction permissions Spatie
+   - Génération deep links
+   - Stockage mémoire persistante
+
+### Prochaines Étapes
+
+1. ✅ Installation Gemini + Migrations + Modèles + ExplorerService
+2. ⏳ **ChatbotService** (logique principale + Gemini function calling)
+3. ⏳ **ChatbotController** + routes API
+4. ⏳ **Widget frontend** (HTML/CSS/JS)
+5. ⏳ **Tests** + documentation complète
+
+### Sécurité
+
+- ✅ **Lecture seule** : Phase 1 = retrieve uniquement (pas de create/update/delete)
+- ✅ **Eloquent uniquement** : Pas de SQL brut
+- ✅ **Permissions Spatie** : Respect des rôles et permissions
+- ✅ **Validation** : Aucune exécution de code arbitraire
+- ✅ **Audit trail** : Toutes les actions loguées dans `chatbot_actions_log`
+
+---
+
+*Dernière mise à jour: 21 octobre 2025 - Chatbot Phase 1 en cours*
