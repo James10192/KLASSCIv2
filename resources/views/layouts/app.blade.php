@@ -47,6 +47,8 @@
     <link href="{{ asset('css/form-interaction-fix.css') }}" rel="stylesheet">
     <!-- Modal Force Fix - DEBUG MODE -->
     <link href="{{ asset('css/modal-force-fix.css') }}" rel="stylesheet">
+    <!-- Chatbot Widget -->
+    <link href="{{ asset('css/chatbot-widget.css') }}" rel="stylesheet">
 
     <!-- Styles supplémentaires -->
     <style>
@@ -2298,6 +2300,8 @@
         </div>
         </main>
     </div>
+
+    @include('components.chatbot.widget')
 
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>

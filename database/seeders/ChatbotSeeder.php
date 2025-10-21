@@ -88,6 +88,113 @@ Propose régulièrement des insights et recommandations basées sur les données
     {
         $templates = [
             [
+                'name' => 'table_generic',
+                'type' => 'table',
+                'description' => 'Template générique pour affichage tabulaire',
+                'html_template' => '<div class="chatbot-data-table">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                {{#each columns}}
+                <th>{{label}}</th>
+                {{/each}}
+            </tr>
+        </thead>
+        <tbody>
+            {{#each rows}}
+            <tr>
+                {{#each cells}}
+                <td>
+                    {{#if badge}}
+                        <span class="badge badge-{{badge}}">{{value}}</span>
+                    {{else}}
+                        {{value}}
+                    {{/if}}
+                </td>
+                {{/each}}
+            </tr>
+            {{#if actions}}
+            <tr class="chatbot-row-actions">
+                <td colspan="{{column_count}}">
+                    {{#each actions}}
+                    <a href="{{url}}" class="btn-acasi secondary btn-xs" target="_blank" rel="noopener noreferrer">
+                        {{#if icon}}<i class="{{icon}}"></i> {{/if}}{{label}}
+                    </a>
+                    {{/each}}
+                </td>
+            </tr>
+            {{/if}}
+            {{/each}}
+        </tbody>
+    </table>
+    <div class="chatbot-table-footer">
+        <p class="text-muted">{{total_count}} résultat(s) affiché(s) sur {{total_available}}</p>
+        {{#if deep_link}}
+        <a href="{{deep_link}}" class="btn-acasi secondary btn-sm" target="_blank" rel="noopener noreferrer">
+            <i class="fas fa-external-link-alt"></i> Ouvrir la page
+        </a>
+        {{/if}}
+    </div>
+</div>',
+                'required_fields' => json_encode(['rows', 'columns', 'total_count']),
+                'optional_fields' => json_encode(['deep_link', 'total_available']),
+                'is_active' => true,
+            ],
+            [
+                'name' => 'cards_generic',
+                'type' => 'cards',
+                'description' => 'Template générique pour affichage sous forme de cartes',
+                'html_template' => '<div class="chatbot-card-grid">
+    {{#each cards}}
+    <div class="chatbot-card">
+        <div class="chatbot-card-header">
+            <div>
+                <h5>{{title}}</h5>
+                <p class="chatbot-card-subtitle">{{subtitle}}</p>
+            </div>
+            {{#if badges}}
+            <div class="chatbot-card-badges">
+                {{#each badges}}
+                <span class="badge badge-{{style}}">{{label}}</span>
+                {{/each}}
+            </div>
+            {{/if}}
+        </div>
+        {{#if meta}}
+        <div class="chatbot-card-body">
+            {{#each meta}}
+            <div class="chatbot-card-row">
+                <span class="chatbot-card-label">{{label}}</span>
+                <span class="chatbot-card-value">{{value}}</span>
+            </div>
+            {{/each}}
+        </div>
+        {{/if}}
+        {{#if actions}}
+        <div class="chatbot-card-actions">
+            {{#each actions}}
+            <a href="{{url}}" class="btn-acasi secondary btn-xs" target="_blank" rel="noopener noreferrer">
+                {{#if icon}}<i class="{{icon}}"></i> {{/if}}{{label}}
+            </a>
+            {{/each}}
+        </div>
+        {{/if}}
+    </div>
+    {{/each}}
+    <div class="chatbot-table-footer">
+        <p class="text-muted">{{total_count}} élément(s) affiché(s) sur {{total_available}}</p>
+        {{#if deep_link}}
+        <a href="{{deep_link}}" class="btn-acasi secondary btn-sm" target="_blank" rel="noopener noreferrer">
+            <i class="fas fa-external-link-alt"></i> Ouvrir la page
+        </a>
+        {{/if}}
+    </div>
+</div>',
+                'required_fields' => json_encode(['cards', 'total_count']),
+                'optional_fields' => json_encode(['deep_link', 'total_available']),
+                'is_active' => true,
+            ],
+            [
                 'name' => 'paiements_table',
                 'type' => 'table',
                 'description' => 'Template pour afficher liste de paiements',
@@ -117,6 +224,46 @@ Propose régulièrement des insights et recommandations basées sur les données
         {{#if deep_link}}
         <a href="{{deep_link}}" class="btn-acasi secondary btn-sm">
             <i class="fas fa-external-link-alt"></i> Voir tous les paiements
+        </a>
+        {{/if}}
+    </div>
+</div>',
+                'required_fields' => json_encode(['rows', 'total_count']),
+                'optional_fields' => json_encode(['deep_link', 'total_available']),
+                'is_active' => true,
+            ],
+            [
+                'name' => 'inscriptions_table',
+                'type' => 'table',
+                'description' => 'Template pour afficher liste inscriptions',
+                'html_template' => '<div class="chatbot-data-table">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>Étudiant</th>
+                <th>Classe</th>
+                <th>Type</th>
+                <th>Statut</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{#each rows}}
+            <tr>
+                <td>{{etudiant_nom}}</td>
+                <td>{{classe}}</td>
+                <td>{{type_inscription}}</td>
+                <td><span class="badge badge-{{statut_class}}">{{statut}}</span></td>
+                <td>{{date_inscription}}</td>
+            </tr>
+            {{/each}}
+        </tbody>
+    </table>
+    <div class="chatbot-table-footer">
+        <p class="text-muted">{{total_count}} inscription(s) affichée(s) sur {{total_available}}</p>
+        {{#if deep_link}}
+        <a href="{{deep_link}}" class="btn-acasi secondary btn-sm">
+            <i class="fas fa-external-link-alt"></i> Voir toutes les inscriptions
         </a>
         {{/if}}
     </div>

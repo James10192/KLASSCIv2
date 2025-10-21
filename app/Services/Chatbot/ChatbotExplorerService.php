@@ -44,11 +44,18 @@ class ChatbotExplorerService
             $explorationLog[] = "Keyword extracted: {$keyword}";
 
             // Étape 2: Chercher la route dans la sidebar
-            $route = $this->findRouteInSidebar($keyword);
-            if (!$route) {
+            $routeCandidates = $this->findRouteCandidatesInSidebar($keyword);
+            if (empty($routeCandidates)) {
                 $explorationLog[] = "❌ Route not found for keyword: {$keyword}";
                 return null;
             }
+            $selectedRoute = $this->selectRouteCandidate($routeCandidates, $userRoles);
+            if (!$selectedRoute) {
+                $explorationLog[] = "❌ No route candidate matched user roles";
+                return null;
+            }
+
+            $route = $selectedRoute['route'];
             $explorationLog[] = "✅ Route found: {$route}";
 
             // Étape 3: Trouver le controller
@@ -83,8 +90,8 @@ class ChatbotExplorerService
             $explorationLog[] = "Deep link: {$deepLinkPattern}";
 
             // Étape 7: Extraire permissions et rôles
-            $permissions = $this->extractPermissionsForRoute($route);
-            $allowedRoles = $this->extractAllowedRolesForRoute($route);
+            $permissions = $selectedRoute['permissions'] ?? [];
+            $allowedRoles = $selectedRoute['roles'] ?? [];
 
             $duration = round((microtime(true) - $startTime) * 1000, 2);
             $explorationLog[] = "✅ Completed in {$duration}ms";
@@ -98,8 +105,8 @@ class ChatbotExplorerService
                 'columns_mapping' => $controllerAnalysis['filters'] ?? [],
                 'display_columns' => $modelAnalysis['fillable'] ?? [],
                 'deep_link_pattern' => $deepLinkPattern,
-                'required_permissions' => $permissions,
-                'allowed_roles' => $allowedRoles,
+                'required_permissions' => array_values($permissions),
+                'allowed_roles' => array_values($allowedRoles),
                 'exploration_log' => implode("\n", $explorationLog),
             ];
 
@@ -123,26 +130,95 @@ class ChatbotExplorerService
         return $keyword;
     }
 
-    protected function findRouteInSidebar(string $keyword): ?string
+    protected function findRouteCandidatesInSidebar(string $keyword): array
     {
         $sidebarPath = resource_path('views/layouts/app.blade.php');
 
         if (!File::exists($sidebarPath)) {
-            return null;
+            return [];
         }
 
         $content = File::get($sidebarPath);
+        $lines = preg_split('/\R/', $content);
 
-        // Regex: route('esbtp.paiements.index')
-        preg_match_all('/route\([\'"]([^\'"]+)[\'"]\)/', $content, $matches);
+        $pattern = '/(@role\([^\)]+\)|@hasRole\([^\)]+\)|@hasAnyRole\([^\)]+\)|@elserole\([^\)]+\)|@endrole|@endhasrole|@endhasanyrole|@can\([^\)]+\)|@canany\([^\)]+\)|@endcan|@endcanany|@else|route\([\'"][^\'"]+[\'"]\))/i';
 
-        foreach ($matches[1] as $routeName) {
-            if (Str::contains($routeName, $keyword)) {
-                return $routeName;
+        $roleStack = [];
+        $permissionStack = [];
+        $candidates = [];
+
+        foreach ($lines as $line) {
+            if (!preg_match_all($pattern, $line, $tokens, PREG_SET_ORDER)) {
+                continue;
+            }
+
+            foreach ($tokens as $tokenMatch) {
+                $token = $tokenMatch[0];
+                $lowerToken = strtolower($token);
+
+                if (Str::startsWith($lowerToken, '@role(') || Str::startsWith($lowerToken, '@hasrole(') || Str::startsWith($lowerToken, '@hasanyrole(')) {
+                    $roles = $this->extractRolesFromDirective($token);
+                    $roleStack[] = $roles;
+                } elseif (Str::startsWith($lowerToken, '@elserole(')) {
+                    if (!empty($roleStack)) {
+                        array_pop($roleStack);
+                    }
+                    $roleStack[] = $this->extractRolesFromDirective($token);
+                } elseif (preg_match('/@end(role|hasrole|hasanyrole)/i', $token)) {
+                    if (!empty($roleStack)) {
+                        array_pop($roleStack);
+                    }
+                } elseif (Str::startsWith($lowerToken, '@can(') || Str::startsWith($lowerToken, '@canany(')) {
+                    $permissionStack[] = $this->extractPermissionsFromDirective($token);
+                } elseif (preg_match('/@endcan(any)?/i', $token)) {
+                    if (!empty($permissionStack)) {
+                        array_pop($permissionStack);
+                    }
+                } elseif ($lowerToken === '@else') {
+                    if (!empty($roleStack)) {
+                        array_pop($roleStack);
+                        $roleStack[] = [];
+                    }
+                } elseif (Str::startsWith($lowerToken, 'route(')) {
+                    if (preg_match('/route\([\'"]([^\'"]+)[\'"]/', $token, $routeMatch)) {
+                        $routeName = $routeMatch[1];
+                        if (Str::contains($routeName, $keyword)) {
+                            $candidates[] = [
+                                'route' => $routeName,
+                                'roles' => $this->flattenRoleStack($roleStack),
+                                'permissions' => $this->flattenPermissionStack($permissionStack),
+                            ];
+                        }
+                    }
+                }
             }
         }
 
-        return null;
+        return $candidates;
+    }
+
+    protected function selectRouteCandidate(array $candidates, array $userRoles): ?array
+    {
+        if (empty($candidates)) {
+            return null;
+        }
+
+        if (!empty($userRoles)) {
+            foreach ($candidates as $candidate) {
+                $candidateRoles = $candidate['roles'] ?? [];
+                if (empty($candidateRoles) || array_intersect($candidateRoles, $userRoles)) {
+                    return $candidate;
+                }
+            }
+        }
+
+        foreach ($candidates as $candidate) {
+            if (empty($candidate['roles'])) {
+                return $candidate;
+            }
+        }
+
+        return $candidates[0] ?? null;
     }
 
     protected function findControllerFromRoute(string $routeName): ?array
@@ -220,25 +296,64 @@ class ChatbotExplorerService
     {
         $filters = [];
 
-        // Trouver la méthode
-        $methodPattern = '/public\s+function\s+' . $methodName . '\s*\([^)]*\)\s*{([^}]*(?:{[^}]*}[^}]*)*)}/s';
-        if (!preg_match($methodPattern, $source, $methodMatch)) {
+        // Trouver la méthode et tout le fichier pour les méthodes privées appelées
+        $methodPattern = '/(?:public|private|protected)\s+function\s+' . $methodName . '\s*\([^)]*\)\s*{/s';
+        if (!preg_match($methodPattern, $source)) {
             return $filters;
         }
 
-        $methodBody = $methodMatch[1];
+        // Liste des filtres communs et utiles pour les utilisateurs finaux
+        $allowedQueryParams = [
+            'status', 'statut',           // Statut (paiements, inscriptions, etc.)
+            'date_debut', 'date_fin',     // Plage de dates
+            'month', 'year',              // Période mensuelle/annuelle
+            'classe_id', 'filiere_id', 'niveau_id',  // Filtres académiques
+            'etudiant_id', 'matricule',   // Étudiant spécifique
+            'mode_paiement',              // Mode de paiement
+            'category_id', 'type',        // Catégorie/type
+        ];
 
-        // where('column', ...)
-        if (preg_match_all('/->where\([\'"](\w+)[\'"]/', $methodBody, $matches)) {
-            foreach ($matches[1] as $column) {
-                $filters[$column] = 'column';
+        // Pattern: $request->input('filter_name')
+        if (preg_match_all('/\$request->input\([\'"](\w+)[\'"]\)/', $source, $matches)) {
+            foreach ($matches[1] as $paramName) {
+                // Garder uniquement les filtres utiles
+                if (in_array($paramName, $allowedQueryParams, true)) {
+                    $filters[$paramName] = 'query_param';
+                }
             }
         }
 
-        // whereMonth('column', ...)
-        if (preg_match_all('/->whereMonth\([\'"](\w+)[\'"]/', $methodBody, $matches)) {
+        // Pattern: $request->query('filter_name')
+        if (preg_match_all('/\$request->query\([\'"](\w+)[\'"]\)/', $source, $matches)) {
+            foreach ($matches[1] as $paramName) {
+                if (in_array($paramName, $allowedQueryParams, true)) {
+                    $filters[$paramName] = 'query_param';
+                }
+            }
+        }
+
+        // Pattern: whereMonth('column', ...) - important pour les dates
+        if (preg_match_all('/->whereMonth\([\'"](\w+)[\'"]/', $source, $matches)) {
             foreach ($matches[1] as $column) {
                 $filters['month'] = $column;
+            }
+        }
+
+        // Pattern: whereDate('column', '>=', ...) - date de début
+        if (preg_match_all('/->whereDate\([\'"](\w+)[\'"],\s*[\'"]>=[\'"]]/', $source, $matches)) {
+            foreach ($matches[1] as $column) {
+                if (!isset($filters['date_debut'])) {
+                    $filters['date_debut'] = $column;
+                }
+            }
+        }
+
+        // Pattern: whereDate('column', '<=', ...) - date de fin
+        if (preg_match_all('/->whereDate\([\'"](\w+)[\'"],\s*[\'"]<=[\'"]]/', $source, $matches)) {
+            foreach ($matches[1] as $column) {
+                if (!isset($filters['date_fin'])) {
+                    $filters['date_fin'] = $column;
+                }
             }
         }
 
@@ -273,12 +388,11 @@ class ChatbotExplorerService
         try {
             $model = new $modelClass();
 
-            return [
-                'table' => $model->getTable(),
-                'fillable' => $model->getFillable(),
-                'casts' => $model->getCasts(),
-            ];
-
+        return [
+            'table' => $model->getTable(),
+            'fillable' => $model->getFillable(),
+            'casts' => $model->getCasts(),
+        ];
         } catch (\Exception $e) {
             return null;
         }
@@ -362,5 +476,59 @@ class ChatbotExplorerService
     public function hasKnowledge(string $intent): bool
     {
         return ChatbotKnowledgeBase::byIntent($intent)->exists();
+    }
+
+    protected function extractRolesFromDirective(string $directive): array
+    {
+        if (preg_match('/\(([^)]+)\)/', $directive, $match)) {
+            $raw = $match[1];
+            $raw = str_replace(['"', "'"], '', $raw);
+            $parts = preg_split('/[|,]/', $raw);
+            $roles = [];
+            foreach ($parts as $part) {
+                $role = trim($part);
+                if ($role !== '') {
+                    $roles[] = $role;
+                }
+            }
+            return $roles;
+        }
+        return [];
+    }
+
+    protected function extractPermissionsFromDirective(string $directive): array
+    {
+        if (preg_match('/\(([^)]+)\)/', $directive, $match)) {
+            $raw = $match[1];
+            $raw = str_replace(['"', "'"], '', $raw);
+            $parts = preg_split('/[|,]/', $raw);
+            $permissions = [];
+            foreach ($parts as $part) {
+                $permission = trim($part);
+                if ($permission !== '') {
+                    $permissions[] = $permission;
+                }
+            }
+            return $permissions;
+        }
+        return [];
+    }
+
+    protected function flattenRoleStack(array $stack): array
+    {
+        $roles = [];
+        foreach ($stack as $entry) {
+            $roles = array_merge($roles, $entry);
+        }
+        return array_values(array_unique(array_filter($roles)));
+    }
+
+    protected function flattenPermissionStack(array $stack): array
+    {
+        $permissions = [];
+        foreach ($stack as $entry) {
+            $permissions = array_merge($permissions, $entry);
+        }
+        return array_values(array_unique(array_filter($permissions)));
     }
 }

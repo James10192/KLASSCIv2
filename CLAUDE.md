@@ -3040,6 +3040,15 @@ config/
   └── GEMINI_API_KEY + GEMINI_MODEL
 ```
 
+#### 🆕 Améliorations (21 octobre 2025)
+
+- **Orchestration Gemini complète** : `ChatbotLLMService` résume l’historique, interroge le modèle `gemini-1.5-flash-latest` en demandant un JSON structuré (`intent`, `filters`, `display`, `limit`, `follow_up`). Les logs `ChatbotLLMService: appel Gemini` puis `… réponse Gemini reçue` permettent de tracer chaque requête et d’ajuster les filtres.
+- **Connaissance contextuelle** : les conversations mémorisent `last_intent`, `last_filters`, `last_display` et `follow_up`. Les messages assistant conservent ces métadonnées dans `metadata` pour enchaîner les requêtes (ex : “montre-les”, “filtre septembre”).
+- **Exploration sidebar multi-rôle** : le service d’exploration parcourt toutes les occurrences de routes, prend en compte les blocs `@role/@hasRole/@can` et ne stocke plus d’intents inaccessibles au rôle courant.
+- **Templates génériques & rendu dynamique** : `table_generic` et `cards_generic` couvrent tous les intents. Le backend fournit colonnes/cartes/actions/badges. Le widget reconstruit le DOM (table, cards, follow-up chips) sans Handlebars résiduels.
+- **Filtrage harmonisé** : les valeurs “pending/validated/…” sont converties en statut interne (`status = en_attente` etc.), respectant les requêtes “en attente uniquement”.
+- **Widget enrichi** : fenêtre redimensionnable avec poignée (desktop), plein écran, conservation de la taille, design aligné sur `matieres.index`, badges lisibles et actions regroupées.
+
 #### 📝 Routes API Disponibles
 
 ```php
@@ -3079,3 +3088,179 @@ Couleurs KLASSCI:
 ---
 
 *État: Backend 100% terminé | Frontend 0% | Tokens: 120k/200k*
+
+---
+
+### 🔧 Fix: Erreur Gemini API "Invalid JSON payload - Unknown name 'tools'" (21 octobre 2025)
+
+#### Problème Initial
+
+```
+[2025-10-21 14:07:07] local.ERROR: ChatbotLLMService: Gemini call failed
+{"message":"Invalid JSON payload received. Unknown name \"tools\": Cannot find field.
+Invalid JSON payload received. Unknown name \"toolConfig\": Cannot find field.
+Invalid JSON payload received. Unknown name \"systemInstruction\": Cannot find field.
+Invalid JSON payload received. Unknown name \"cachedContent\": Cannot find field."}
+```
+
+#### Causes Identifiées
+
+1. **Modèle obsolète** : `gemini-1.5-flash` n'est plus supporté (modèle retiré)
+2. **Préfixe incorrect** : `models/gemini-1.5-flash-latest` n'existe pas dans l'API v1beta
+3. **Base URL forcée** : `.env` spécifiait `/v1` au lieu de laisser le package gérer automatiquement v1beta
+4. **Format de réponse** : Gemini 2.0 renvoie le JSON entouré de backticks markdown (` ```json ... ``` `)
+
+#### Solutions Appliquées
+
+**1. Migration vers Gemini 2.0 Flash**
+
+**Fichiers modifiés** :
+- `.env`
+- `.env.production`
+- `config/gemini.php`
+
+```diff
+# ❌ AVANT (ne fonctionne plus)
+- GEMINI_MODEL=gemini-1.5-flash
+- GEMINI_MODEL=models/gemini-1.5-flash-latest
+- GEMINI_BASE_URL=https://generativelanguage.googleapis.com/v1
+
+# ✅ APRÈS (fonctionne avec v1beta)
++ GEMINI_MODEL=gemini-2.0-flash-exp
+# Pas de GEMINI_BASE_URL - le package gère automatiquement v1beta
+```
+
+**Pourquoi Gemini 2.0 ?**
+- Gemini 1.5 Flash est **déprécié et retiré** (fin 2024)
+- Gemini 2.0 Flash est le nouveau modèle rapide et gratuit
+- Quota gratuit : **1500 requêtes/jour**, **1M tokens/mois**
+- Plus rapide et plus précis que 1.5
+
+**2. Fix parsing JSON avec backticks markdown**
+
+**Problème** : Gemini 2.0 renvoie le JSON entouré de ` ```json ... ``` ` au lieu de JSON pur
+
+**Fichier** : `app/Services/Chatbot/ChatbotLLMService.php` (lignes 218-255)
+
+```php
+protected function parseDecision(GenerateContentResponse $response): array
+{
+    try {
+        // Récupérer le texte brut
+        $text = $response->text();
+
+        // ✨ FIX: Nettoyer les backticks markdown ajoutés par Gemini 2.0
+        $text = preg_replace('/^```json\s*/m', '', $text);
+        $text = preg_replace('/```\s*$/m', '', $text);
+        $text = trim($text);
+
+        // Parser le JSON nettoyé
+        $decoded = json_decode($text, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new \Exception('JSON decode error: ' . json_last_error_msg());
+        }
+    } catch (\Throwable $exception) {
+        Log::warning('ChatbotLLMService: réponse non JSON', [
+            'error' => $exception->getMessage(),
+            'raw_text' => substr($text ?? '', 0, 200), // Debug: premiers 200 chars
+        ]);
+        return [];
+    }
+
+    if (! is_array($decoded)) {
+        return [];
+    }
+
+    return [
+        'intent' => $decoded['intent'] ?? null,
+        'filters' => $decoded['filters'] ?? [],
+        'display' => $decoded['display'] ?? null,
+        'response_text' => $decoded['response_text'] ?? null,
+        'limit' => $decoded['limit'] ?? null,
+        'follow_up' => $decoded['follow_up'] ?? null,
+    ];
+}
+```
+
+**3. Configuration finale recommandée**
+
+```env
+# .env / .env.production
+GEMINI_API_KEY=your_api_key_here
+GEMINI_MODEL=gemini-2.0-flash-exp
+
+# ⚠️ IMPORTANT: Ne PAS spécifier GEMINI_BASE_URL
+# Le package google-gemini-php/laravel v2.0 gère automatiquement v1beta
+```
+
+#### Résultat
+
+**Test avec requête réelle** :
+
+```json
+{
+    "intent": "get_paiements",
+    "filters": {
+        "status": "en_attente",
+        "limit": 5
+    },
+    "display": "table",
+    "response_text": "Voici les 5 derniers paiements en attente :",
+    "limit": 5,
+    "follow_up": []
+}
+```
+
+**Logs de succès** :
+
+```
+[2025-10-21 14:21:50] local.INFO: ChatbotLLMService: appel Gemini
+{"conversation_id":7,"user_message":"Montre-moi les 5 derniers paiements en attente"}
+
+[2025-10-21 14:21:52] local.INFO: ChatbotLLMService: réponse Gemini reçue
+{"conversation_id":7,"prompt_tokens":368,"candidates":1}
+```
+
+#### Performances
+
+- **Tokens utilisés** : ~368 tokens/requête
+- **Temps de réponse** : ~2 secondes
+- **Quota gratuit** : 1500 requêtes/jour, 1M tokens/mois (~33k tokens/jour)
+- **Coût après limite** : ~750 FCFA/mois (~$1.13) - très abordable
+
+#### Références
+
+**Package utilisé** : `google-gemini-php/laravel` v2.0.1
+- Repo : https://github.com/google-gemini-php/laravel
+- Documentation : https://ai.google.dev/gemini-api/docs
+
+**Modèles disponibles (octobre 2025)** :
+- ✅ **Gemini 2.0 Flash** (rapide, gratuit) ← **Recommandé**
+- ✅ Gemini 2.5 Flash (plus de contexte)
+- ✅ Gemini 2.5 Pro (plus puissant)
+- ❌ Gemini 1.5 Flash (déprécié, retiré)
+- ❌ Gemini 1.0 Pro (déprécié, retiré)
+
+#### Points Clés à Retenir
+
+1. **Toujours utiliser Gemini 2.x** (1.5 est obsolète)
+2. **Ne jamais forcer GEMINI_BASE_URL** (laisser le package gérer)
+3. **Nettoyer les backticks markdown** de la réponse avant parsing JSON
+4. **Utiliser le nom court du modèle** : `gemini-2.0-flash-exp` (pas de préfixe `models/`)
+5. **Le package v2.0+ gère automatiquement v1beta** (avec systemInstruction, tools, etc.)
+
+#### Fichiers Modifiés
+
+1. ✅ `.env` (L130) - Modèle + suppression BASE_URL
+2. ✅ `.env.production` (L102) - Modèle + suppression BASE_URL
+3. ✅ `config/gemini.php` (L28) - Défaut `gemini-2.0-flash-exp`
+4. ✅ `app/Services/Chatbot/ChatbotLLMService.php` (L218-255) - Fix parsing JSON
+
+#### Commits
+
+- `fix(chatbot): migration Gemini 1.5 → 2.0 Flash + fix parsing JSON markdown`
+
+---
+
+*Dernière mise à jour: 21 octobre 2025 - Chatbot Phase 1 en cours*

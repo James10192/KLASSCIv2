@@ -18,13 +18,26 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Gemini Default Model
+    |--------------------------------------------------------------------------
+    |
+    | Modèle utilisé par défaut pour les requêtes generateContent. Vous pouvez
+    | l'écraser dans votre fichier .env via GEMINI_MODEL.
+    */
+
+    'model' => env('GEMINI_MODEL', 'gemini-2.0-flash-exp'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Gemini Base URL
     |--------------------------------------------------------------------------
     |
     | If you need a specific base URL for the Gemini API, you can provide it here.
     | Otherwise, leave empty to use the default value.
     */
-    'base_url' => env('GEMINI_BASE_URL'),
+    'base_url' => env('GEMINI_BASE_URL')
+        ? rtrim(env('GEMINI_BASE_URL'), '/').'/'
+        : null,
 
     /*
     |--------------------------------------------------------------------------

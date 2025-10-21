@@ -5,15 +5,11 @@ namespace App\Services\Chatbot;
 use App\Models\ChatbotConversation;
 use App\Models\ChatbotMessage;
 use App\Models\ChatbotActionLog;
-use App\Models\ChatbotSystemPrompt;
 use App\Models\ChatbotDisplayTemplate;
 use App\Models\ChatbotKnowledgeBase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\DB;
-use Gemini\Laravel\Facades\Gemini;
-use Gemini\Data\Content;
-use Gemini\Enums\Role;
+use Illuminate\Support\Facades\Route;
 
 /**
  * Service principal du Chatbot KLASSCI
@@ -30,10 +26,12 @@ use Gemini\Enums\Role;
 class ChatbotService
 {
     protected ChatbotExplorerService $explorer;
+    protected ChatbotLLMService $llm;
 
-    public function __construct(ChatbotExplorerService $explorer)
+    public function __construct(ChatbotExplorerService $explorer, ChatbotLLMService $llm)
     {
         $this->explorer = $explorer;
+        $this->llm = $llm;
     }
 
     /**
@@ -62,11 +60,28 @@ class ChatbotService
                 'display_type' => 'text',
             ]);
 
-            // 3. Détecter l'intent depuis le message
-            $intent = $this->detectIntent($message);
+            // 3. Décision LLM (intent, filtres, affichage)
+            $llmDecision = $this->llm->decide($conversation, $message);
+
+            // 4. Déterminer l'intent
+            $intent = $llmDecision['intent'] ?? $this->detectIntent($message, $conversation);
             Log::info('🎯 Intent detected', ['intent' => $intent]);
 
-            // 4. Récupérer la connaissance (cache ou exploration)
+            // Répondre immédiatement aux salutations pour éviter une exploration inutile
+            if ($intent === 'greeting' && empty($llmDecision['intent'])) {
+                return $this->respondWithSimpleMessage(
+                    $conversation,
+                    "Bonjour ! Comment puis-je vous aider aujourd'hui ? 😊"
+                );
+            }
+
+            // Réponse textuelle directe (pas de récupération de données)
+            if (($llmDecision['display'] ?? null) === 'text' && empty($llmDecision['intent'])) {
+                $textResponse = $llmDecision['response_text'] ?? "Compris.";
+                return $this->respondWithSimpleMessage($conversation, $textResponse);
+            }
+
+            // 5. Récupérer la connaissance (cache ou exploration)
             $knowledge = $this->getOrExploreKnowledge($intent, $message, $user);
 
             if (!$knowledge) {
@@ -87,8 +102,11 @@ class ChatbotService
                 );
             }
 
+            $llmFilters = $llmDecision['filters'] ?? [];
+            $requestedLimit = $llmDecision['limit'] ?? null;
+
             // 6. Exécuter la requête pour récupérer les données
-            $data = $this->executeDataRetrieval($knowledge, $message, $user);
+            $data = $this->executeDataRetrieval($knowledge, $message, $user, $llmFilters, $requestedLimit);
 
             if (empty($data['results'])) {
                 $assistantMessage = ChatbotMessage::create([
@@ -107,7 +125,7 @@ class ChatbotService
             }
 
             // 7. Formater la réponse avec template
-            $formattedResponse = $this->formatResponse($data, $knowledge);
+            $formattedResponse = $this->formatResponse($data, $knowledge, $llmDecision);
 
             // 8. Enregistrer le message assistant
             $assistantMessage = ChatbotMessage::create([
@@ -121,6 +139,9 @@ class ChatbotService
                     'intent' => $intent,
                     'knowledge_id' => $knowledge->id,
                     'results_count' => count($data['results']),
+                    'filters' => $data['filters'] ?? [],
+                    'display' => $formattedResponse['display_type'],
+                    'follow_up' => $formattedResponse['follow_up'] ?? null,
                 ],
             ]);
 
@@ -142,7 +163,14 @@ class ChatbotService
             $knowledge->incrementUsage();
 
             // 11. Mettre à jour la conversation
-            $conversation->update(['last_activity_at' => now()]);
+            $conversation->update([
+                'last_activity_at' => now(),
+                'context' => array_filter([
+                    'last_intent' => $intent,
+                    'last_filters' => $data['filters'] ?? [],
+                    'last_display' => $formattedResponse['display_type'] ?? null,
+                ]),
+            ]);
 
             $duration = round((microtime(true) - $startTime) * 1000, 2);
             Log::info('✅ ChatbotService - SUCCESS', [
@@ -178,9 +206,24 @@ class ChatbotService
     /**
      * Détecter l'intent depuis le message utilisateur
      */
-    protected function detectIntent(string $message): string
+    protected function detectIntent(string $message, ChatbotConversation $conversation): string
     {
         $messageLower = strtolower($message);
+
+        // Gestion des salutations basiques
+        $normalized = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $messageLower);
+        $words = array_filter(explode(' ', $normalized));
+        $greetingWords = ['salut', 'bonjour', 'bonsoir', 'coucou', 'hello', 'hi', 'yo'];
+
+        if (!empty($words) && count($words) <= 3) {
+            $allGreetings = collect($words)->every(function ($word) use ($greetingWords) {
+                return in_array($word, $greetingWords, true);
+            });
+
+            if ($allGreetings) {
+                return 'greeting';
+            }
+        }
 
         // Mapping mots-clés → intents
         $intentMap = [
@@ -203,6 +246,15 @@ class ChatbotService
             if (str_contains($messageLower, $keyword)) {
                 return $intent;
             }
+        }
+
+        $lastAssistantIntent = $conversation->messages()
+            ->where('role', 'assistant')
+            ->latest()
+            ->value('metadata->intent');
+
+        if ($lastAssistantIntent) {
+            return $lastAssistantIntent;
         }
 
         // Par défaut
@@ -280,7 +332,13 @@ class ChatbotService
     /**
      * Exécuter la récupération des données
      */
-    protected function executeDataRetrieval(ChatbotKnowledgeBase $knowledge, string $message, $user): array
+    protected function executeDataRetrieval(
+        ChatbotKnowledgeBase $knowledge,
+        string $message,
+        $user,
+        array $llmFilters = [],
+        ?int $requestedLimit = null
+    ): array
     {
         $modelClass = "App\\Models\\{$knowledge->model}";
 
@@ -290,37 +348,36 @@ class ChatbotService
 
         $query = $modelClass::query();
 
-        // Extraire les filtres depuis le message
-        $filters = $this->extractFiltersFromMessage($message, $knowledge->columns_mapping ?? []);
-
-        // Appliquer les filtres
-        foreach ($filters as $column => $value) {
-            if ($column === 'month') {
-                $query->whereMonth($value['column'], $value['value']);
-            } else {
-                $query->where($column, $value);
-            }
+        if ($knowledge->model === 'ESBTPPaiement') {
+            $query->with(['etudiant']);
+        } elseif ($knowledge->model === 'ESBTPInscription') {
+            $query->with(['etudiant', 'classe']);
+        } elseif ($knowledge->model === 'ESBTPEtudiant') {
+            $query->with(['inscriptions.classe']);
         }
 
+        // Extraire les filtres depuis le message
+        $messageFilters = $this->extractFiltersFromMessage($message, $knowledge->columns_mapping ?? []);
+        $filters = $this->mergeFilters($llmFilters, $messageFilters);
+
+        $appliedFilters = $this->applyFiltersToQuery($query, $knowledge->model, $filters);
+
         // Limiter les résultats (pour le chat)
-        $limit = 5;
+        $limit = $filters['limit'] ?? $requestedLimit ?? 5;
+        $limit = max(1, min((int) $limit, 25));
+
         $results = $query->limit($limit)->get();
+        $appliedFilters['limit'] = $limit;
 
         // Compter le total disponible (pour "X sur Y résultats")
         $totalQuery = $modelClass::query();
-        foreach ($filters as $column => $value) {
-            if ($column === 'month') {
-                $totalQuery->whereMonth($value['column'], $value['value']);
-            } else {
-                $totalQuery->where($column, $value);
-            }
-        }
+        $this->applyFiltersToQuery($totalQuery, $knowledge->model, $filters);
         $totalCount = $totalQuery->count();
 
         return [
             'results' => $results,
             'total_count' => $totalCount,
-            'filters' => $filters,
+            'filters' => $appliedFilters,
         ];
     }
 
@@ -334,16 +391,16 @@ class ChatbotService
 
         // Extraire statut
         if (str_contains($messageLower, 'en attente') || str_contains($messageLower, 'attente')) {
-            if (isset($columnsMapping['statut'])) {
-                $filters['statut'] = 'en_attente';
+            if (isset($columnsMapping['statut']) || isset($columnsMapping['status'])) {
+                $filters['status'] = 'en_attente';
             }
         } elseif (str_contains($messageLower, 'validé') || str_contains($messageLower, 'valide')) {
-            if (isset($columnsMapping['statut'])) {
-                $filters['statut'] = 'validé';
+            if (isset($columnsMapping['statut']) || isset($columnsMapping['status'])) {
+                $filters['status'] = 'validé';
             }
         } elseif (str_contains($messageLower, 'rejeté') || str_contains($messageLower, 'rejete')) {
-            if (isset($columnsMapping['statut'])) {
-                $filters['statut'] = 'rejeté';
+            if (isset($columnsMapping['statut']) || isset($columnsMapping['status'])) {
+                $filters['status'] = 'rejeté';
             }
         }
 
@@ -380,107 +437,456 @@ class ChatbotService
         return $filters;
     }
 
+    protected function mergeFilters(array $primary, array $secondary): array
+    {
+        $merged = array_replace_recursive($secondary, $primary);
+
+        if (isset($merged['statut']) && !isset($merged['status'])) {
+            $merged['status'] = $merged['statut'];
+            unset($merged['statut']);
+        }
+
+        if (isset($merged['status']) && is_string($merged['status'])) {
+            $merged['status'] = strtolower($merged['status']);
+        }
+
+        return $merged;
+    }
+
+    protected function applyFiltersToQuery($query, string $model, array $filters): array
+    {
+        $applied = [];
+
+        if (isset($filters['status'])) {
+            $status = $filters['status'];
+            if ($status === 'pending') {
+                $status = 'en_attente';
+            } elseif (in_array($status, ['validated', 'valide', 'validée', 'validee'], true)) {
+                $status = 'validé';
+            } elseif (in_array($status, ['cancelled', 'canceled', 'annule', 'annulée', 'annulee'], true)) {
+                $status = 'annulé';
+            }
+            $query->where('status', $status);
+            $applied['status'] = $status;
+        }
+
+        if (isset($filters['type_inscription'])) {
+            $type = $filters['type_inscription'];
+            $query->where('type_inscription', $type);
+            $applied['type_inscription'] = $type;
+        }
+
+        if (isset($filters['classe_id'])) {
+            $classeId = $filters['classe_id'];
+            $query->where('classe_id', $classeId);
+            $applied['classe_id'] = $classeId;
+        }
+
+        if (isset($filters['etudiant_id'])) {
+            $studentId = $filters['etudiant_id'];
+            $query->where('etudiant_id', $studentId);
+            $applied['etudiant_id'] = $studentId;
+        }
+
+        if (isset($filters['payment_status'])) {
+            $status = $filters['payment_status'];
+            $query->where('status', $status);
+            $applied['payment_status'] = $status;
+        }
+
+        if (isset($filters['month']) && is_array($filters['month'])) {
+            $monthFilter = $filters['month'];
+            if (isset($monthFilter['column'], $monthFilter['value'])) {
+                $query->whereMonth($monthFilter['column'], $monthFilter['value']);
+                $applied['month'] = $monthFilter;
+            }
+        }
+
+        if (isset($filters['date_from'])) {
+            $query->whereDate('date_inscription', '>=', $filters['date_from']);
+            $applied['date_from'] = $filters['date_from'];
+        }
+
+        if (isset($filters['date_to'])) {
+            $query->whereDate('date_inscription', '<=', $filters['date_to']);
+            $applied['date_to'] = $filters['date_to'];
+        }
+
+        if (isset($filters['order_by']) && is_array($filters['order_by'])) {
+            $column = $filters['order_by']['column'] ?? null;
+            $direction = strtolower($filters['order_by']['direction'] ?? 'desc');
+            if ($column) {
+                $direction = in_array($direction, ['asc', 'desc'], true) ? $direction : 'desc';
+                $query->orderBy($column, $direction);
+                $applied['order_by'] = compact('column', 'direction');
+            }
+        } else {
+            // Ordre par défaut selon le modèle
+            if ($model === 'ESBTPInscription') {
+                $query->orderByDesc('date_inscription');
+                $applied['order_by'] = ['column' => 'date_inscription', 'direction' => 'desc'];
+            } elseif ($model === 'ESBTPPaiement') {
+                $query->orderByDesc('date_paiement');
+                $applied['order_by'] = ['column' => 'date_paiement', 'direction' => 'desc'];
+            } else {
+                $query->latest();
+            }
+        }
+
+        if (isset($filters['limit'])) {
+            $applied['limit'] = (int) $filters['limit'];
+        }
+
+        return $applied;
+    }
+
     /**
      * Formater la réponse avec template
      */
-    protected function formatResponse(array $data, ChatbotKnowledgeBase $knowledge): array
+    protected function formatResponse(array $data, ChatbotKnowledgeBase $knowledge, array $decision): array
     {
-        // Déterminer le template à utiliser
-        $templateName = $this->getTemplateName($knowledge->intent);
+        $displayPreference = $decision['display'] ?? null;
+        $text = $decision['response_text'] ?? null;
+        $followUp = $decision['follow_up'] ?? null;
+
+        $templateName = $this->getTemplateName($knowledge->intent, $displayPreference);
         $template = ChatbotDisplayTemplate::byName($templateName)->active()->first();
 
         if (!$template) {
             // Fallback: réponse texte simple
-            $text = "J'ai trouvé " . count($data['results']) . " résultat(s) sur " . $data['total_count'] . " disponible(s).";
+            $fallbackText = $text ?? ("J'ai trouvé " . count($data['results']) . " résultat(s) sur " . $data['total_count'] . " disponible(s).");
             return [
-                'text' => $text,
+                'text' => $fallbackText,
                 'display_type' => 'text',
             ];
         }
 
         // Formater les données pour le template
-        $rows = $this->formatDataForTemplate($data['results'], $knowledge);
+        $formatted = $this->formatDataForTemplate(
+            $data['results'],
+            $knowledge,
+            $template->type,
+            $decision
+        );
 
         // Construire le deep link avec les filtres
-        $deepLink = $this->buildDeepLink($knowledge->deep_link_pattern, $data['filters']);
+        $deepLinkFilters = $this->sanitizeFiltersForDeepLink($data['filters'] ?? []);
+        $deepLink = $this->buildDeepLink($knowledge->deep_link_pattern, $deepLinkFilters);
 
-        $text = "Voici les " . count($data['results']) . " premiers résultats :";
+        $introText = $text ?? "Voici les " . count($data['results']) . " premiers résultats :";
 
         return [
-            'text' => $text,
+            'text' => $introText,
             'display_type' => $template->type,
             'display_data' => [
                 'template_name' => $template->name,
                 'template_html' => $template->html_template,
-                'rows' => $rows,
+                'rows' => $formatted['rows'] ?? null,
+                'cards' => $formatted['cards'] ?? null,
+                'columns' => $formatted['columns'] ?? null,
+                'column_count' => $formatted['column_count'] ?? null,
                 'total_count' => count($data['results']),
                 'total_available' => $data['total_count'],
                 'deep_link' => $deepLink,
+                'follow_up' => $followUp,
             ],
             'deep_link' => $deepLink,
+            'follow_up' => $followUp,
         ];
     }
 
     /**
      * Déterminer le nom du template depuis l'intent
      */
-    protected function getTemplateName(string $intent): string
+    protected function getTemplateName(string $intent, ?string $display = null): string
     {
+        if ($display === 'cards') {
+            return 'cards_generic';
+        }
+
+        if ($display === 'kpi') {
+            return 'cards_generic';
+        }
+
+        if ($display === 'table') {
+            return 'table_generic';
+        }
+
         $templateMap = [
-            'get_paiements' => 'paiements_table',
-            'get_etudiants' => 'etudiants_table',
-            'get_inscriptions' => 'inscriptions_table',
-            'get_classes' => 'classes_table',
-            'get_frais' => 'frais_table',
+            'get_paiements' => 'table_generic',
+            'get_etudiants' => 'table_generic',
+            'get_inscriptions' => $display === 'table' ? 'table_generic' : 'cards_generic',
         ];
 
-        return $templateMap[$intent] ?? 'default_table';
+        return $templateMap[$intent] ?? 'table_generic';
     }
 
     /**
      * Formater les données pour le template
      */
-    protected function formatDataForTemplate($results, ChatbotKnowledgeBase $knowledge): array
+    protected function formatDataForTemplate($results, ChatbotKnowledgeBase $knowledge, string $displayType, array $decision): array
     {
+        return match ($displayType) {
+            'cards' => $this->formatCardData($results, $knowledge),
+            'kpi' => $this->formatCardData($results, $knowledge),
+            default => $this->formatTableData($results, $knowledge, $decision),
+        };
+    }
+
+    protected function formatTableData($results, ChatbotKnowledgeBase $knowledge, array $decision): array
+    {
+        $columns = [];
         $rows = [];
 
-        foreach ($results as $result) {
-            $row = [];
+        if ($knowledge->model === 'ESBTPPaiement') {
+            $columns = [
+                ['label' => 'Étudiant'],
+                ['label' => 'Montant'],
+                ['label' => 'Statut'],
+                ['label' => 'Date'],
+            ];
 
-            // Formater selon le modèle
-            if ($knowledge->model === 'ESBTPPaiement') {
+            foreach ($results as $result) {
+                $etudiant = $result->etudiant ?? null;
+                $statut = $result->status ?? null;
+
                 $row = [
-                    'etudiant_nom' => $result->etudiant->nom . ' ' . $result->etudiant->prenom,
-                    'montant_formatte' => number_format($result->montant, 0, ',', ' ') . ' FCFA',
-                    'statut' => ucfirst($result->statut),
-                    'statut_class' => $this->getStatutBadgeClass($result->statut),
-                    'date_paiement' => $result->date_paiement ? $result->date_paiement->format('d/m/Y') : 'N/A',
+                    'cells' => [
+                        ['value' => $etudiant ? trim(($etudiant->nom ?? '') . ' ' . ($etudiant->prenom ?? '')) : 'Étudiant inconnu'],
+                        ['value' => isset($result->montant) ? number_format($result->montant, 0, ',', ' ') . ' FCFA' : 'N/A'],
+                        ['value' => $statut ? ucfirst(str_replace('_', ' ', $statut)) : 'Inconnu', 'badge' => $this->getStatutBadgeClass($statut)],
+                        ['value' => $result->date_paiement ? $result->date_paiement->format('d/m/Y') : 'N/A'],
+                    ],
+                    'column_count' => count($columns),
                 ];
-            } elseif ($knowledge->model === 'ESBTPEtudiant') {
+
+                $actions = $this->buildPaymentActions($result);
+                if (!empty($actions)) {
+                    $row['actions'] = $actions;
+                }
+
+                $rows[] = $row;
+            }
+        } elseif ($knowledge->model === 'ESBTPInscription') {
+            $columns = [
+                ['label' => 'Étudiant'],
+                ['label' => 'Classe'],
+                ['label' => 'Type'],
+                ['label' => 'Statut'],
+                ['label' => 'Date'],
+            ];
+
+            foreach ($results as $result) {
+                $etudiant = $result->etudiant ?? null;
+                $classe = $result->classe ?? null;
+                $statut = $result->status ?? null;
+                $typeInscription = $result->type_inscription ?? null;
+
                 $row = [
-                    'nom_complet' => $result->nom . ' ' . $result->prenom,
-                    'matricule' => $result->matricule ?? 'N/A',
-                    'classe' => $result->inscriptions->first()->classe->name ?? 'N/A',
-                    'statut' => $result->inscriptions->first()->status ?? 'N/A',
+                    'cells' => [
+                        ['value' => $etudiant ? trim(($etudiant->nom ?? '') . ' ' . ($etudiant->prenom ?? '')) : 'Étudiant inconnu'],
+                        ['value' => $classe->name ?? 'Non affectée'],
+                        ['value' => $typeInscription ? ucfirst(str_replace('_', ' ', $typeInscription)) : 'N/A'],
+                        ['value' => $statut ? ucfirst(str_replace('_', ' ', $statut)) : 'N/A', 'badge' => $this->getInscriptionBadgeClass($statut)],
+                        ['value' => $result->date_inscription ? $result->date_inscription->format('d/m/Y') : 'N/A'],
+                    ],
+                    'column_count' => count($columns),
+                ];
+
+                $actions = $this->buildInscriptionActions($result);
+                if (!empty($actions)) {
+                    $row['actions'] = $actions;
+                }
+
+                $rows[] = $row;
+            }
+        } elseif ($knowledge->model === 'ESBTPEtudiant') {
+            $columns = [
+                ['label' => 'Nom complet'],
+                ['label' => 'Matricule'],
+                ['label' => 'Classe'],
+                ['label' => 'Statut'],
+            ];
+
+            foreach ($results as $result) {
+                $firstInscription = $result->inscriptions->first();
+                $rows[] = [
+                    'cells' => [
+                        ['value' => trim(($result->nom ?? '') . ' ' . ($result->prenom ?? ''))],
+                        ['value' => $result->matricule ?? 'N/A'],
+                        ['value' => $firstInscription?->classe->name ?? 'N/A'],
+                        ['value' => $firstInscription?->status ?? 'N/A'],
+                    ],
+                    'column_count' => count($columns),
                 ];
             }
-
-            $rows[] = $row;
         }
 
-        return $rows;
+        return [
+            'columns' => $columns,
+            'rows' => $rows,
+            'column_count' => max(1, count($columns)),
+        ];
+    }
+
+    protected function formatCardData($results, ChatbotKnowledgeBase $knowledge): array
+    {
+        $cards = [];
+
+        foreach ($results as $result) {
+            if ($knowledge->model === 'ESBTPInscription') {
+                $etudiant = $result->etudiant ?? null;
+                $classe = $result->classe ?? null;
+                $statut = $result->status ?? null;
+                $typeInscription = $result->type_inscription ?? null;
+
+                $cards[] = [
+                    'title' => $etudiant ? trim(($etudiant->nom ?? '') . ' ' . ($etudiant->prenom ?? '')) : 'Étudiant inconnu',
+                    'subtitle' => $classe->name ?? 'Classe non affectée',
+                    'meta' => [
+                        ['label' => 'Type', 'value' => $typeInscription ? ucfirst(str_replace('_', ' ', $typeInscription)) : 'N/A'],
+                        ['label' => 'Statut', 'value' => $statut ? ucfirst(str_replace('_', ' ', $statut)) : 'N/A'],
+                        ['label' => 'Inscription', 'value' => $result->date_inscription ? $result->date_inscription->format('d/m/Y') : 'N/A'],
+                    ],
+                    'badges' => [
+                        ['label' => $statut ? ucfirst(str_replace('_', ' ', $statut)) : '—', 'style' => $this->getInscriptionBadgeClass($statut)],
+                    ],
+                ];
+
+                $actions = $this->buildInscriptionActions($result);
+                if (!empty($actions)) {
+                    $cards[array_key_last($cards)]['actions'] = $actions;
+                }
+            } elseif ($knowledge->model === 'ESBTPPaiement') {
+                $etudiant = $result->etudiant ?? null;
+                $statut = $result->status ?? null;
+
+                $cards[] = [
+                    'title' => $etudiant ? trim(($etudiant->nom ?? '') . ' ' . ($etudiant->prenom ?? '')) : 'Étudiant inconnu',
+                    'subtitle' => $result->date_paiement ? $result->date_paiement->format('d/m/Y') : 'Date inconnue',
+                    'meta' => [
+                        ['label' => 'Montant', 'value' => isset($result->montant) ? number_format($result->montant, 0, ',', ' ') . ' FCFA' : 'N/A'],
+                        ['label' => 'Statut', 'value' => $statut ? ucfirst(str_replace('_', ' ', $statut)) : 'Inconnu'],
+                    ],
+                    'badges' => [
+                        ['label' => isset($result->mode_paiement) ? ucfirst($result->mode_paiement) : 'Paiement', 'style' => 'secondary'],
+                        ['label' => $statut ? ucfirst(str_replace('_', ' ', $statut)) : '—', 'style' => $this->getStatutBadgeClass($statut)],
+                    ],
+                ];
+
+                $actions = $this->buildPaymentActions($result);
+                if (!empty($actions)) {
+                    $cards[array_key_last($cards)]['actions'] = $actions;
+                }
+            }
+        }
+
+        return ['cards' => $cards];
+    }
+
+    protected function buildInscriptionActions($inscription): array
+    {
+        $actions = [];
+
+        if ($url = $this->buildRouteUrl('esbtp.inscriptions.show', $inscription->id)) {
+            $actions[] = [
+                'label' => 'Voir inscription',
+                'url' => $url,
+                'icon' => 'fas fa-id-card',
+            ];
+        }
+
+        if ($inscription->etudiant && ($url = $this->buildRouteUrl('esbtp.etudiants.show', $inscription->etudiant->id))) {
+            $actions[] = [
+                'label' => 'Voir étudiant',
+                'url' => $url,
+                'icon' => 'fas fa-user-graduate',
+            ];
+        }
+
+        return $actions;
+    }
+
+    protected function buildPaymentActions($paiement): array
+    {
+        $actions = [];
+
+        if ($paiement->inscription_id && ($url = $this->buildRouteUrl('esbtp.inscriptions.show', $paiement->inscription_id))) {
+            $actions[] = [
+                'label' => 'Voir inscription',
+                'url' => $url,
+                'icon' => 'fas fa-file-invoice',
+            ];
+        }
+
+        if ($paiement->etudiant && ($url = $this->buildRouteUrl('esbtp.etudiants.show', $paiement->etudiant->id))) {
+            $actions[] = [
+                'label' => 'Voir étudiant',
+                'url' => $url,
+                'icon' => 'fas fa-user-graduate',
+            ];
+        }
+
+        return $actions;
+    }
+
+    protected function buildRouteUrl(string $routeName, mixed $identifier): ?string
+    {
+        if (! Route::has($routeName)) {
+            return null;
+        }
+
+        $route = Route::getRoutes()->getByName($routeName);
+
+        if (! $route) {
+            return null;
+        }
+
+        $parameterNames = method_exists($route, 'parameterNames') ? $route->parameterNames() : [];
+
+        if (! empty($parameterNames)) {
+            return route($routeName, [$parameterNames[0] => $identifier]);
+        }
+
+        return route($routeName, $identifier);
     }
 
     /**
      * Badge class pour statut
      */
-    protected function getStatutBadgeClass(string $statut): string
+    protected function getStatutBadgeClass(?string $statut): string
     {
-        return match($statut) {
-            'validé' => 'success',
+        if (!$statut) {
+            return 'info';
+        }
+
+        $normalized = mb_strtolower($statut, 'UTF-8');
+
+        return match($normalized) {
+            'validé', 'valide' => 'success',
             'en_attente' => 'warning',
-            'rejeté' => 'danger',
-            'annulé' => 'secondary',
+            'rejeté', 'rejete' => 'danger',
+            'annulé', 'annule' => 'secondary',
+            default => 'info',
+        };
+    }
+
+    /**
+     * Badge class pour statut d'inscription
+     */
+    protected function getInscriptionBadgeClass(?string $status): string
+    {
+        if (!$status) {
+            return 'info';
+        }
+
+        $normalized = mb_strtolower($status, 'UTF-8');
+
+        return match ($normalized) {
+            'en_attente', 'pending' => 'warning',
+            'active', 'validée', 'validee', 'valide' => 'success',
+            'annulée', 'annulee', 'annule' => 'danger',
+            'suspendue', 'suspendu' => 'secondary',
             default => 'info',
         };
     }
@@ -507,6 +913,24 @@ class ChatbotService
         return $link;
     }
 
+    protected function sanitizeFiltersForDeepLink(array $filters): array
+    {
+        $sanitized = [];
+
+        foreach ($filters as $key => $value) {
+            if (is_scalar($value) || $value === null) {
+                $sanitized[$key] = $value;
+                continue;
+            }
+
+            if ($key === 'month' && is_array($value) && isset($value['column'], $value['value'])) {
+                $sanitized[$key] = $value;
+            }
+        }
+
+        return $sanitized;
+    }
+
     /**
      * Créer une réponse d'erreur
      */
@@ -517,6 +941,35 @@ class ChatbotService
             'role' => 'assistant',
             'content' => $errorMessage,
             'display_type' => 'text',
+        ]);
+
+        return [
+            'success' => true,
+            'message' => $assistantMessage->content,
+            'display_type' => 'text',
+            'conversation_id' => $conversation->session_id,
+        ];
+    }
+
+    /**
+     * Réponse texte simple (sans récupération).
+     */
+    protected function respondWithSimpleMessage(ChatbotConversation $conversation, string $content): array
+    {
+        $assistantMessage = ChatbotMessage::create([
+            'conversation_id' => $conversation->id,
+            'role' => 'assistant',
+            'content' => $content,
+            'display_type' => 'text',
+        ]);
+
+        $conversation->update([
+            'last_activity_at' => now(),
+            'context' => array_filter([
+                'last_intent' => 'conversation_smalltalk',
+                'last_filters' => [],
+                'last_display' => 'text',
+            ]),
         ]);
 
         return [
