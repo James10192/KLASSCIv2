@@ -385,7 +385,7 @@ class ChatbotService
             $configurations = $verification['data']['configurations'];
 
             // Convertir les configurations en objets pour uniformité
-            $results = collect($configurations)->map(function($config) {
+            $allConfigs = collect($configurations)->map(function($config) {
                 return (object) [
                     'id' => $config['config']->id,
                     'categorie_id' => $config['config']->frais_category_id,
@@ -399,6 +399,18 @@ class ChatbotService
                     'is_active' => $config['config']->is_active,
                 ];
             });
+
+            // DÉDUPLICATION : Grouper par (filiere_id, niveau_id, categorie_id, amount)
+            // L'utilisateur demande pour UNE combinaison (filière + niveau) → montants UNIQUES seulement
+            $results = $allConfigs->unique(function($config) {
+                return implode('|', [
+                    $config->filiere_id,
+                    $config->niveau_id,
+                    $config->categorie_id,
+                    $config->amount,
+                    $config->effective_date
+                ]);
+            })->values();
 
             return [
                 'results' => $results,
