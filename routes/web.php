@@ -1953,3 +1953,11 @@ Route::prefix('external-grading')->name('external-grading.')->group(function () 
     Route::get('/{token}', [App\Http\Controllers\ExternalGradingController::class, 'show'])->name('show');
     Route::post('/{token}', [App\Http\Controllers\ExternalGradingController::class, 'store'])->name('store');
 });
+
+// Routes Chatbot IA - Accessible à tous les utilisateurs authentifiés
+Route::middleware(['auth'])->prefix('chatbot')->name('chatbot.')->group(function () {
+    Route::post('/message', [App\Http\Controllers\ChatbotController::class, 'sendMessage'])->name('message');
+    Route::get('/conversations', [App\Http\Controllers\ChatbotController::class, 'listConversations'])->name('conversations');
+    Route::get('/conversations/{conversationId}/history', [App\Http\Controllers\ChatbotController::class, 'getHistory'])->name('history');
+    Route::delete('/conversations/{conversationId}', [App\Http\Controllers\ChatbotController::class, 'deleteConversation'])->name('delete');
+});
