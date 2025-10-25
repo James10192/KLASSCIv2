@@ -3595,16 +3595,31 @@ class ESBTPBulletinController extends Controller
                     // array_replace pour que les nouvelles valeurs écrasent les anciennes
                     $professeursFusionnes = array_replace($professeursExistants, $professeursMap);
 
+                    // Encoder en JSON - préserver format objet même si toutes les clés sont nulles
+                    $professeursJson = json_encode($professeursFusionnes);
+                    // Si c'est un tableau vide [], le forcer en objet {}
+                    if ($professeursJson === '[]') {
+                        $professeursJson = '{}';
+                    }
+
                     \Log::info('📝 Updating bulletin', [
                         'bulletin_id' => $bulletin->id,
                         'etudiant_id' => $etudiant->id,
                         'before' => $bulletin->professeurs,
-                        'after' => json_encode($professeursFusionnes, JSON_FORCE_OBJECT)
+                        'after' => $professeursJson,
+                        'before_type' => gettype(json_decode($bulletin->professeurs)),
+                        'after_type' => gettype(json_decode($professeursJson))
                     ]);
 
-                    $bulletin->update([
-                        'professeurs' => json_encode($professeursFusionnes, JSON_FORCE_OBJECT),
+                    $result = $bulletin->update([
+                        'professeurs' => $professeursJson,
                         'updated_by' => auth()->id()
+                    ]);
+
+                    \Log::info('📝 Update result', [
+                        'bulletin_id' => $bulletin->id,
+                        'success' => $result,
+                        'affected' => $bulletin->wasChanged()
                     ]);
 
                     $updated++;
