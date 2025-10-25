@@ -628,7 +628,20 @@ class ChatbotService
             $applied['type_inscription'] = $type;
         }
 
-        if (isset($filters['classe_id'])) {
+        // Gérer le filtre "classe" (nom de classe → classe_id)
+        if (isset($filters['classe'])) {
+            $classeName = $filters['classe'];
+            $classe = \DB::table('esbtp_classes')
+                ->where('name', 'like', '%' . $classeName . '%')
+                ->orWhere('code', 'like', '%' . $classeName . '%')
+                ->first();
+
+            if ($classe) {
+                $query->where('classe_id', $classe->id);
+                $applied['classe'] = $classeName;
+                $applied['classe_id'] = $classe->id;
+            }
+        } elseif (isset($filters['classe_id'])) {
             $classeId = $filters['classe_id'];
             $query->where('classe_id', $classeId);
             $applied['classe_id'] = $classeId;
@@ -1242,6 +1255,9 @@ class ChatbotService
                     default => $filters['status']
                 };
                 $parts[] = "statut : $statusLabel";
+            }
+            if (isset($filters['classe'])) {
+                $parts[] = "classe : " . $filters['classe'];
             }
         }
 
