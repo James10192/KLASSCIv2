@@ -5363,4 +5363,238 @@ Cette modification **complète le workflow planning général** :
 
 ---
 
-*Dernière mise à jour: 25 octobre 2025 - Assignation Professeurs - Intégration Planning Général*
+## 🔧 Fix: Modal Professeurs - Validation & Persistence JSON (25 Octobre 2025)
+
+### Problématique
+
+Après l'intégration du planning général, plusieurs bugs bloquants empêchaient l'assignation des professeurs:
+
+1. **❌ Erreur validation**: "Le champ periode est obligatoire" même après sélection du semestre
+2. **❌ Erreur SQL**: `Table 'esbtp_enseignants' doesn't exist`
+3. **❌ Modal non réinitialisé**: Données persistaient à la réouverture
+4. **❌ Format données incorrect**: Backend attendait array mais recevait objet
+5. **❌ Table inexistante**: Code tentait d'update `esbtp_resultats.enseignant_id` (colonne n'existe pas)
+
+### Solutions Appliquées
+
+#### 1. Validation Semestre (commit `9716cb7`)
+
+**Problème**: Modal s'ouvrait sans vérifier si le semestre était sélectionné
+
+```javascript
+// resources/views/esbtp/resultats/classe-edit.blade.php (L830-834)
+function openProfesseursModal() {
+    // Validation obligatoire du semestre
+    if (!semestre || semestre === null || semestre === '') {
+        showToast('⚠️ Veuillez sélectionner un semestre avant d\'assigner les professeurs', 'error');
+        return;
+    }
+
+    $('#modalEditProfesseurs').modal('show');
+}
+```
+
+#### 2. Réinitialisation Modal (commit `74bc77e`)
+
+**Problème**: Contenu modal persistait après fermeture
+
+```javascript
+// resources/views/esbtp/resultats/classe-edit.blade.php (L334-339)
+$('#modalEditProfesseurs').on('hidden.bs.modal', function() {
+    // Vider le tableau des professeurs
+    $('#professeursTableBody').empty();
+    console.log('✅ Modal professeurs nettoyé');
+});
+```
+
+#### 3. Format Données Backend (commit `fc673a0`)
+
+**Problème 1**: JavaScript envoyait `semestre: 1` mais backend attend `periode: 'semestre1'`
+
+```javascript
+// resources/views/esbtp/resultats/classe-edit.blade.php (L1161)
+data: {
+    periode: 'semestre' + semestre,  // ✅ Backend attend 'semestre1' ou 'semestre2'
+    professeurs: professeurs
+}
+```
+
+**Problème 2**: JavaScript créait objet `{matiereId: enseignantId}` mais backend attend array
+
+```javascript
+// resources/views/esbtp/resultats/classe-edit.blade.php (L1139-1155)
+const professeurs = [];  // ✅ Array au lieu d'objet
+$('select[name^="professeur_"]').each(function() {
+    const matiereId = $(this).data('matiere-id');
+    const enseignantId = $(this).val();
+    if (enseignantId) {
+        professeurs.push({
+            matiere_id: matiereId,       // ✅ Format backend
+            enseignant_id: enseignantId
+        });
+    }
+});
+```
+
+#### 4. Correction Nom Table (commit `e567bff` - partie 1)
+
+**Problème**: Validation référençait `esbtp_enseignants` au lieu de `esbtp_teachers`
+
+```php
+// app/Http/Controllers/ESBTPBulletinController.php (L3463)
+'professeurs.*.enseignant_id' => 'nullable|exists:esbtp_teachers,id'  // ✅ Table correcte
+```
+
+#### 5. Persistence JSON Bulletins (commit `e567bff` - partie 2)
+
+**Problème**: Code tentait d'update colonne inexistante `esbtp_resultats.enseignant_id`
+
+**Réalité architecture**:
+- Professeurs stockés dans `esbtp_bulletins.professeurs` (JSON)
+- Format: `{"matiere_id": "Nom Enseignant"}`
+- Chaque bulletin = 1 étudiant (pas 1 classe)
+
+**Solution**:
+
+```php
+// app/Http/Controllers/ESBTPBulletinController.php (L3466-3513)
+public function bulkUpdateProfesseurs(Request $request)
+{
+    \DB::beginTransaction();
+    try {
+        // 1. Créer map matiere_id => teacher_name
+        $professeursMap = [];
+        foreach ($request->professeurs as $profData) {
+            if (isset($profData['enseignant_id']) && $profData['enseignant_id']) {
+                // Récupérer le nom depuis esbtp_teachers
+                $teacher = \App\Models\ESBTPTeacher::with('user')->find($profData['enseignant_id']);
+                if ($teacher && $teacher->user) {
+                    $professeursMap[$profData['matiere_id']] = $teacher->user->name;
+                }
+            }
+        }
+
+        // 2. Récupérer TOUS les bulletins étudiants de cette classe/periode/annee
+        $bulletins = \App\Models\ESBTPBulletin::where('classe_id', $request->classe_id)
+            ->where('periode', $request->periode)
+            ->where('annee_universitaire_id', $request->annee_universitaire_id)
+            ->whereNotNull('etudiant_id')  // Bulletins étudiants seulement
+            ->get();
+
+        // 3. Mettre à jour chaque bulletin avec fusion JSON
+        $updated = 0;
+        foreach ($bulletins as $bulletin) {
+            $professeursExistants = json_decode($bulletin->professeurs, true) ?: [];
+            $professeursFusionnes = array_merge($professeursExistants, $professeursMap);
+
+            $bulletin->update([
+                'professeurs' => json_encode($professeursFusionnes),
+                'updated_by' => auth()->id()
+            ]);
+            $updated++;
+        }
+
+        \DB::commit();
+        return response()->json([
+            'success' => true,
+            'message' => "✅ Professeurs assignés avec succès pour " . count($professeursMap) . " matière(s) sur $updated bulletin(s)"
+        ]);
+    }
+}
+```
+
+### Architecture Stockage Professeurs
+
+**Table**: `esbtp_bulletins`
+
+**Colonne**: `professeurs` (LONGTEXT - JSON)
+
+**Format JSON**:
+```json
+{
+  "2": "KOUASSI Jean",
+  "5": "BAMBA Marie",
+  "7": "GNON EPSE SERY"
+}
+```
+
+**Clés**: `matiere_id`
+
+**Valeurs**: Nom complet enseignant (`users.name` via `esbtp_teachers.user_id`)
+
+**Caractéristiques**:
+- 1 bulletin = 1 étudiant
+- JSON permet plusieurs professeurs par bulletin
+- Fusion avec existants = pas de perte données
+- Propagation classe = update tous bulletins étudiants
+
+### Workflow Complet
+
+1. **Chargement page**: `editResultatsClasse()` récupère enseignants depuis planning général
+2. **Modal données**: `$enseignantsParMatiere` indexé par matiere_id, dropdown affiche teachers filtrés
+3. **Validation ouverture**: Vérifie semestre sélectionné
+4. **Sélection enseignants**: User choisit teacher par matière
+5. **Submit**: JavaScript construit array `[{matiere_id, enseignant_id}]` + `periode: 'semestre1'`
+6. **Backend validation**: Vérifie `esbtp_teachers.id` existe
+7. **Persistence**:
+   - Fetch teacher names depuis `esbtp_teachers.user.name`
+   - Update tous bulletins étudiants de la classe
+   - Merge JSON professeurs existants
+8. **Refresh AJAX**: Page se met à jour sans reload
+
+### Fichiers Modifiés
+
+1. **app/Http/Controllers/ESBTPBulletinController.php**
+   - `bulkUpdateProfesseurs()` (L3463, L3466-3513): Refonte complète logique persistence
+   - `editResultatsClasse()` (L3063-3076, L3177-3180): Fix model ESBTPTeacher au lieu de ESBTPEnseignantProfile
+
+2. **resources/views/esbtp/resultats/classe-edit.blade.php**
+   - `openProfesseursModal()` (L830-834): Ajout validation semestre
+   - `initializeModalCleanup()` (L334-339): Ajout nettoyage modal professeurs
+   - `saveProfesseurs()` (L1139-1163): Fix format données (array + periode)
+
+3. **resources/views/esbtp/resultats/modals/edit-professeurs.blade.php**
+   - Ligne 102: Utilisation `$enseignantsParMatiere[$matiere->id]` au lieu de `$enseignants`
+
+### Tests de Validation
+
+✅ **Test 1**: Ouvrir modal sans semestre → Toast erreur affiché
+✅ **Test 2**: Sélectionner semestre → Modal s'ouvre
+✅ **Test 3**: Assigner professeurs → Dropdown affiche teachers du planning général
+✅ **Test 4**: Sauvegarder →
+  - Validation passe (periode='semestre1', esbtp_teachers existe)
+  - Bulletins mis à jour avec noms enseignants
+  - Message succès: "X matière(s) sur Y bulletin(s)"
+✅ **Test 5**: Réouvrir modal → Contenu vide (nettoyé)
+✅ **Test 6**: Refresh page → Assignations persistent dans BDD
+
+### Logs Utiles
+
+```bash
+# Vérifier JSON professeurs dans bulletins
+php artisan tinker --execute="
+\$bulletin = \App\Models\ESBTPBulletin::find(1);
+print_r(json_decode(\$bulletin->professeurs, true));
+"
+
+# Vérifier nombre bulletins mis à jour
+php artisan tinker --execute="
+\$count = \App\Models\ESBTPBulletin::where('classe_id', 5)
+    ->where('periode', 'semestre1')
+    ->whereNotNull('professeurs')
+    ->count();
+echo \"Bulletins avec professeurs: \$count\";
+"
+```
+
+### Commits
+
+1. `fb44b5f` - fix: use ESBTPTeacher model instead of ESBTPEnseignantProfile
+2. `74bc77e` - fix: reset modal professeurs content on close
+3. `9716cb7` - fix: add semestre validation in openProfesseursModal
+4. `fc673a0` - fix: saveProfesseurs data format (array + periode)
+5. `e567bff` - fix: implement bulkUpdateProfesseurs JSON persistence
+
+---
+
+*Dernière mise à jour: 25 octobre 2025 - Fix Modal Professeurs - Validation & Persistence JSON*
