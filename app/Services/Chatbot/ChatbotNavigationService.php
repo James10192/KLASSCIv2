@@ -257,6 +257,7 @@ class ChatbotNavigationService
                     $q->where('name', 'like', '%' . $classeName . '%')
                       ->orWhere('code', 'like', '%' . $classeName . '%');
                 })
+                ->whereNull('deleted_at')  // Exclure classes supprimées
                 ->first();
 
             if ($classe) {

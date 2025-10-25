@@ -4125,4 +4125,172 @@ ESBTPInscription::whereDoesntHave('paiements', function($q) {
 
 ---
 
-*Dernière mise à jour: 25 octobre 2025 - Chatbot support relations manquantes*
+## 🔧 Chatbot - Fixes Deep Link & Fuzzy Search Classe (25 Octobre 2025)
+
+### Vue d'ensemble
+
+Suite au développement du support "sans paiements", plusieurs bugs critiques ont été identifiés et corrigés concernant :
+1. **Fuzzy search classe** : WHERE clause incorrecte retournant toutes les classes
+2. **Deep link placeholders** : Non-remplacement des placeholders `{filiere}` et `{niveau}`
+3. **Widget CSS** : Éléments cliquables même quand fenêtre fermée
+
+### Problème 1 : WHERE Clause Classe Fuzzy Search
+
+**Symptôme** : Question "Les inscriptions sans paiements pour la classe BATIMENT A" retournait "aucun résultat" alors que la classe existe et a des inscriptions.
+
+**Cause** : WHERE clause sans grouping des conditions OR
+```php
+// ❌ INCORRECT
+$classe = \DB::table('esbtp_classes')
+    ->where('name', 'like', '%BATIMENT A%')
+    ->orWhere('code', 'like', '%BATIMENT A%')  // OR sans grouping !
+    ->first();
+
+// SQL généré: WHERE name LIKE '%BATIMENT A%' OR code LIKE '%BATIMENT A%'
+// Retourne TOUTES les classes car OR n'est pas groupé avec d'autres conditions
+```
+
+**Solution** : Wrapper les OR dans une closure `where(function)`
+```php
+// ✅ CORRECT
+$classe = \DB::table('esbtp_classes')
+    ->where(function ($q) use ($classeName) {
+        $q->where('name', 'like', '%' . $classeName . '%')
+          ->orWhere('code', 'like', '%' . $classeName . '%');
+    })
+    ->first();
+
+// SQL généré: WHERE (name LIKE '%BATIMENT A%' OR code LIKE '%BATIMENT A%')
+// Retourne seulement classe BATIMENT A
+```
+
+**Fichiers corrigés** :
+1. `app/Services/Chatbot/ChatbotNavigationService.php` (L256-259) - `verifyInscriptionsHierarchy()`
+2. `app/Services/Chatbot/ChatbotService.php` (L635-638) - `applyFiltersToQuery()`
+3. `app/Services/Chatbot/ChatbotService.php` (L1109-1112) - `buildDeepLink()`
+4. `app/Services/Chatbot/ChatbotService.php` (L1329-1332) - `buildDeepLinkLabel()`
+
+**Commit** : `04cf562` - fix(chatbot): WHERE clause classe fuzzy search - grouper OR conditions
+
+### Problème 2 : Deep Link Pattern Inscriptions
+
+**Symptôme** : Deep link généré comme `?filiere_id={filiere_id}&niveau_id={niveau_id}` au lieu de `?filiere=8&niveau=2`
+
+**Cause 1** : Pattern en BDD utilisait `filiere_id` et `niveau_id` mais URL réelle utilise `filiere` et `niveau`
+```
+Pattern BDD (incorrect): ?filiere_id={filiere_id}&niveau_id={niveau_id}
+URL réelle attendue:     ?filiere=8&niveau=2
+```
+
+**Solution 1** : Corriger le pattern en BDD + dans seeder
+```php
+// database/seeders/ChatbotSeeder.php
+'deep_link_pattern' => 'http://localhost:8000/esbtp/inscriptions?annee=&filiere={filiere}&niveau={niveau}&search=&status={status}'
+```
+
+**Fichiers modifiés** :
+- `database/seeders/ChatbotSeeder.php` - Nouvelle méthode `seedKnowledgeBase()`
+- Pattern mis à jour via tinker pour BDD existante
+
+**Commit** : `9c1df41` - feat(chatbot): ajout seedKnowledgeBase() pour deep link patterns
+
+### Problème 3 : Placeholder Replacement PHP Interpolation
+
+**Symptôme** : Même après fix du pattern, placeholders restaient non remplacés : `?8={filiere}&2={niveau}`
+
+**Cause technique** : Interpolation PHP de `"{$key}"` s'évalue à la valeur de `$key`, pas au placeholder littéral
+```php
+// ❌ INCORRECT
+$key = 'filiere';
+$value = 8;
+$link = '?filiere={filiere}';
+str_replace("{$key}", $value, $link);  // "{$key}" → "filiere" (string)
+// Résultat: ?8={filiere}  (remplace "filiere" au lieu de "{filiere}")
+
+// ✅ CORRECT
+$placeholder = '{' . $key . '}';  // Littéral: "{filiere}"
+str_replace($placeholder, $value, $link);
+// Résultat: ?filiere=8
+```
+
+**Solution** : Utiliser concat au lieu d'interpolation
+```php
+// app/Services/Chatbot/ChatbotService.php (L1121-1129)
+foreach ($filters as $key => $value) {
+    $placeholder = '{' . $key . '}';  // Littéral {filiere}
+    if (is_array($value)) {
+        $link = str_replace($placeholder, $value['value'], $link);
+    } else {
+        $link = str_replace($placeholder, $value, $link);
+    }
+}
+
+// Supprimer placeholders non remplacés
+$link = preg_replace('/[?&]\w+={[^}]+}/', '', $link);  // Aussi corrigé regex
+```
+
+**Fichiers modifiés** :
+- `app/Services/Chatbot/ChatbotService.php` (L1121-1132) - `buildDeepLink()`
+
+**Commit** : `0c7b355` - fix(chatbot): placeholder replacement deep link - use concat au lieu d'interpolation
+
+### Problème 4 : Widget CSS Cliquable Quand Fermé
+
+**Symptôme** : Même quand le chatbot est fermé, on peut cliquer sur l'input textarea et le bouton send (cursor change en text/pointer)
+
+**Cause** : `.chatbot-window` a `pointer-events: none` mais les enfants n'héritent pas de cette propriété si ils ont explicitement `cursor: pointer` ou autres styles
+
+**Solution** : Bloquer TOUS les événements pointer sur les enfants quand fenêtre fermée
+```css
+/* public/css/chatbot-widget.css */
+.chatbot-window {
+    pointer-events: none;  /* Bloque la fenêtre */
+}
+
+/* Nouveau - Bloquer TOUS les enfants */
+.chatbot-window:not(.is-open) * {
+    pointer-events: none !important;  /* Force sur tous les enfants */
+    cursor: default !important;       /* Retire cursors custom */
+}
+
+.chatbot-window.is-open {
+    pointer-events: auto;  /* Réactive quand ouvert */
+}
+```
+
+**Fichiers modifiés** :
+- `public/css/chatbot-widget.css` (L82-86) - Règle CSS wildcard `*`
+
+**Commit** : À venir
+
+### Résultat Final
+
+**Workflow complet fonctionnel** :
+
+Question utilisateur : "Les inscriptions sans paiements pour la classe BATIMENT A"
+
+1. ✅ **LLM extraction** : `{"classe": "BATIMENT A", "without_paiements": true}`
+2. ✅ **Fuzzy search classe** : Trouve classe ID 1 (filiere_id=8, niveau_id=2)
+3. ✅ **Vérification données** : 0 inscriptions sans paiements (correct)
+4. ✅ **Message utilisateur** : "Je n'ai trouvé aucun résultat pour votre recherche : inscriptions sans aucun paiement, classe : BATIMENT A."
+5. ✅ **Deep link généré** : `http://localhost:8000/esbtp/inscriptions?annee=&filiere=8&niveau=2&search=&status=`
+6. ✅ **Label bouton** : "Voir la page (Filière : BTS Bâtiment, Niveau : Deuxième Année)"
+7. ✅ **Widget UX** : Éléments non cliquables quand fenêtre fermée
+
+**Tests validés** :
+- ✅ BATIMENT A : 0 résultats (correct - pas d'inscriptions sans paiements)
+- ✅ BATIMENT F : 5/35 résultats (correct)
+- ✅ BATIMENT C : 5/51 résultats (correct)
+- ✅ Deep link ouvre page avec bons filtres appliqués
+
+### Commits
+
+1. ✅ `277b03c` - fix(chatbot): deep link inscriptions - utiliser filiere/niveau au lieu de filiere_id/niveau_id
+2. ✅ `9c1df41` - feat(chatbot): ajout seedKnowledgeBase() pour deep link patterns
+3. ✅ `04cf562` - fix(chatbot): WHERE clause classe fuzzy search - grouper OR conditions
+4. ✅ `0c7b355` - fix(chatbot): placeholder replacement deep link - use concat au lieu d'interpolation
+5. ⏳ À venir - fix(chatbot): bloquer pointer-events enfants widget quand fermé
+
+---
+
+*Dernière mise à jour: 25 octobre 2025 - Chatbot Deep Link & Fuzzy Search fixes*

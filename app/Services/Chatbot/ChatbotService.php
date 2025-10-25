@@ -636,6 +636,7 @@ class ChatbotService
                     $q->where('name', 'like', '%' . $classeName . '%')
                       ->orWhere('code', 'like', '%' . $classeName . '%');
                 })
+                ->whereNull('deleted_at')  // Exclure classes supprimées
                 ->first();
 
             if ($classe) {
@@ -1110,6 +1111,7 @@ class ChatbotService
                     $q->where('name', 'like', '%' . $filters['classe'] . '%')
                       ->orWhere('code', 'like', '%' . $filters['classe'] . '%');
                 })
+                ->whereNull('deleted_at')  // Exclure classes supprimées
                 ->first();
 
             if ($classe) {
@@ -1333,6 +1335,7 @@ class ChatbotService
                     $q->where('esbtp_classes.name', 'like', '%' . $filters['classe'] . '%')
                       ->orWhere('esbtp_classes.code', 'like', '%' . $filters['classe'] . '%');
                 })
+                ->whereNull('esbtp_classes.deleted_at')  // Exclure classes supprimées
                 ->first();
 
             if ($classe && $classe->filiere_name && $classe->niveau_name) {

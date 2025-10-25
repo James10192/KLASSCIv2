@@ -79,6 +79,12 @@
     overflow: hidden;
 }
 
+/* Bloquer TOUS les événements pointer sur les enfants quand fenêtre fermée */
+.chatbot-window:not(.is-open) * {
+    pointer-events: none !important;
+    cursor: default !important;
+}
+
 .chatbot-window.is-resizing {
     transition: none;
     user-select: none;
