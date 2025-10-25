@@ -259,11 +259,36 @@ class ChatbotNavigationService
 
         $count = $query->count();
 
+        // Construire message explicite si aucun résultat
+        $suggestion = null;
+        if ($count === 0) {
+            $criteriaParts = [];
+            if (isset($filters['without_paiements']) && $filters['without_paiements'] === true) {
+                $criteriaParts[] = "inscriptions sans aucun paiement";
+            }
+            if (isset($filters['status'])) {
+                $statusLabel = match($filters['status']) {
+                    'en_attente' => 'en attente',
+                    'validé' => 'validées',
+                    'rejeté' => 'rejetées',
+                    'active' => 'actives',
+                    default => $filters['status']
+                };
+                $criteriaParts[] = "statut : $statusLabel";
+            }
+
+            if (!empty($criteriaParts)) {
+                $suggestion = "Je n'ai trouvé aucun résultat pour votre recherche : " . implode(', ', $criteriaParts) . ".";
+            } else {
+                $suggestion = "Aucune inscription trouvée pour ces critères.";
+            }
+        }
+
         return [
             'exists' => $count > 0,
             'level' => 1,
             'data' => $count > 0 ? $query->limit(5)->get() : null,
-            'suggestion' => $count === 0 ? "Aucune inscription trouvée pour ces critères." : null,
+            'suggestion' => $suggestion,
             'deep_link' => $knowledge->deep_link_pattern,
         ];
     }
