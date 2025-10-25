@@ -100,7 +100,8 @@
                                                     onblur="this.style.borderColor='#bee5eb'; this.style.boxShadow='none'">
                                                 <option value="">-- Sélectionner un enseignant --</option>
                                                 @foreach(($enseignantsParMatiere[$matiere->id] ?? []) as $enseignant)
-                                                    <option value="{{ $enseignant->id }}">
+                                                    <option value="{{ $enseignant->id }}"
+                                                        {{ (isset($professeursGroupes[$matiere->id]) && $professeursGroupes[$matiere->id] == $enseignant->id) ? 'selected' : '' }}>
                                                         {{ $enseignant->user->name ?? 'Enseignant #' . $enseignant->id }}
                                                         @if($enseignant->specialites_string)
                                                             - {{ Str::limit($enseignant->specialites_string, 25) }}

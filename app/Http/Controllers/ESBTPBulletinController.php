@@ -3186,12 +3186,69 @@ class ESBTPBulletinController extends Controller
             }
         }
 
+        // Récupérer les professeurs déjà assignés depuis les bulletins pour pré-remplir le modal
+        $professeursGroupes = [];
+
+        // Prendre un bulletin exemple pour cette classe/période (peu importe l'étudiant car professeurs identiques)
+        $sampleBulletin = ESBTPBulletin::where('classe_id', $classe_id)
+            ->when($periode, function($query) use ($periode) {
+                return $query->where('periode', $periode);
+            })
+            ->when($annee_universitaire_id, function($query) use ($annee_universitaire_id) {
+                return $query->where('annee_universitaire_id', $annee_universitaire_id);
+            })
+            ->whereNotNull('professeurs')
+            ->first();
+
+        if ($sampleBulletin && $sampleBulletin->professeurs) {
+            // Décode le JSON: {"matiere_id": "Teacher Name", ...}
+            $professeursJson = json_decode($sampleBulletin->professeurs, true) ?: [];
+
+            \Log::info('📋 Professeurs déjà assignés récupérés depuis bulletin', [
+                'bulletin_id' => $sampleBulletin->id,
+                'professeurs_json' => $professeursJson
+            ]);
+
+            // Mapper les noms vers les IDs des enseignants
+            foreach ($professeursJson as $matiereId => $teacherName) {
+                // Ignorer les valeurs null ou vides
+                if (empty($teacherName)) {
+                    continue;
+                }
+
+                // Chercher l'enseignant par nom dans la liste des enseignants disponibles pour cette matière
+                $enseignantsDeMatiere = $enseignantsParMatiere[$matiereId] ?? collect();
+
+                $foundTeacher = $enseignantsDeMatiere->first(function($enseignant) use ($teacherName) {
+                    return $enseignant->user && $enseignant->user->name === $teacherName;
+                });
+
+                if ($foundTeacher) {
+                    $professeursGroupes[$matiereId] = $foundTeacher->id;
+                    \Log::debug("✅ Mapped matiere {$matiereId}: '{$teacherName}' → teacher_id {$foundTeacher->id}");
+                } else {
+                    \Log::warning("⚠️ Could not find teacher_id for matiere {$matiereId}: '{$teacherName}'");
+                }
+            }
+
+            \Log::info('🔄 Mapping professeurs groupés final', [
+                'professeursGroupes' => $professeursGroupes
+            ]);
+        } else {
+            \Log::info('ℹ️ Aucun bulletin avec professeurs trouvé pour pré-remplir le modal', [
+                'classe_id' => $classe_id,
+                'periode' => $periode,
+                'annee_universitaire_id' => $annee_universitaire_id
+            ]);
+        }
+
         return view('esbtp.resultats.classe-edit', compact(
             'classe',
             'students',
             'matieres',
             'enseignants',
             'enseignantsParMatiere',
+            'professeursGroupes',
             'resultats',
             'absences',
             'semestre',
