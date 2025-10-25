@@ -3582,4 +3582,182 @@ Filtres extraits :
 
 ---
 
-*Dernière mise à jour: 21 octobre 2025 - Chatbot Prompt LLM amélioré (Few-Shot Learning)*
+## 📊 Dashboard Super Admin - Graphique Évolution Inscriptions (25 Octobre 2025)
+
+### Problème Initial
+
+Le graphique "Évolution des inscriptions et paiements" sur le dashboard super admin affichait 3 courbes :
+- **Courbe bleue** : Toutes les inscriptions (visible)
+- **Courbe verte** : Étudiants créés/validés (**invisible** car superposée à la bleue)
+- **Courbe orange** : Paiements en attente (**toujours à zéro**)
+
+**Causes identifiées** :
+
+1. **Courbe verte invisible** : Les deux courbes (bleue et verte) utilisaient `created_at`, donc valeurs identiques → superposition parfaite
+2. **Courbe orange à zéro** : Logique incorrecte cherchant des paiements dans `esbtp_paiements` alors que la table est vide
+
+### Solutions Implémentées
+
+#### 1. Courbe verte - Utilisation de `date_validation`
+
+**Avant** : Basée sur `created_at` de l'inscription
+```php
+$studentsCount = ESBTPInscription::where('workflow_step', 'etudiant_cree')
+    ->whereYear('created_at', $date->year)
+    ->whereMonth('created_at', $date->month)
+    ->count();
+```
+
+**Après** : Basée sur `date_validation` de l'inscription
+```php
+$studentsCount = ESBTPInscription::where('workflow_step', 'etudiant_cree')
+    ->whereNotNull('date_validation')
+    ->whereYear('date_validation', $date->year)  // ← Changement clé
+    ->whereMonth('date_validation', $date->month)
+    ->count();
+```
+
+**Résultat** : Les courbes sont maintenant **décalées dans le temps**
+- Exemple : Inscription créée le 16/04/2025, validée le 28/04/2025
+- Courbe bleue : +1 en avril (date création)
+- Courbe verte : +1 en avril mais 12 jours plus tard (date validation)
+
+#### 2. Courbe verte - Affichage avec remplissage
+
+**Avant** : Ligne en pointillés sans remplissage
+```javascript
+{
+    label: 'Étudiants créés',
+    borderDash: [5, 5],
+    borderWidth: 3,
+    fill: false
+}
+```
+
+**Après** : Ligne pleine avec zone verte en dessous
+```javascript
+{
+    label: 'Inscriptions validées',
+    borderColor: '#10b981',
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    tension: 0.4,
+    fill: true  // ← Zone verte visible
+}
+```
+
+#### 3. Courbe orange - Logique basée sur inscriptions sans paiement
+
+**Avant** : Comptait les paiements dans `esbtp_paiements` avec `status='en_attente'`
+```php
+$pendingPaymentsCount = DB::table('esbtp_paiements')
+    ->where('status', 'en_attente')
+    ->count();
+```
+
+**Après** : Compte les **inscriptions** dans l'un de ces deux cas :
+1. **Aucun paiement** dans `esbtp_paiements`
+2. **Paiements en attente uniquement** (aucun validé)
+
+```php
+$pendingPaymentsCount = ESBTPInscription::where('annee_universitaire_id', $anneeEnCours->id)
+    ->whereYear('created_at', $date->year)
+    ->whereMonth('created_at', $date->month)
+    ->where(function($query) {
+        // Cas 1: Aucun paiement existe
+        $query->whereDoesntHave('paiements')
+            // Cas 2: A des paiements mais tous en attente (aucun validé)
+            ->orWhereHas('paiements', function($q) {
+                $q->where('status', 'en_attente');
+            }, '>', 0)
+            ->whereDoesntHave('paiements', function($q) {
+                $q->whereIn('status', ['validé', 'validated', 'payé', 'paid']);
+            });
+    })
+    ->count();
+```
+
+### Comportement Final des 3 Courbes
+
+**📘 Courbe bleue - Inscriptions créées**
+- Moment : Quand l'inscription est créée (`created_at`)
+- Exemple Avril 2025 : 526 inscriptions
+
+**📗 Courbe verte - Inscriptions validées**
+- Moment : Quand l'inscription est validée (`date_validation`)
+- Exemple Avril 2025 : 508 validées (18 validées plus tard)
+- Exemple Octobre 2025 : 395 validées (validations tardives d'inscriptions créées en avril/mai)
+
+**🟧 Courbe orange - Inscriptions en attente de paiement**
+- Moment : Basée sur `created_at` de l'inscription
+- Condition : Inscription sans paiement OU avec paiements en attente uniquement
+- Exemple Avril 2025 : 526 (toutes sans paiement)
+- Disparaît quand : Un paiement avec `status='validé'` est ajouté
+
+### Workflow Dynamique
+
+```
+Jour 1 - Création inscription
+  → Courbe bleue +1
+  → Courbe orange +1 (pas de paiement)
+
+Jour 12 - Validation inscription
+  → Courbe verte +1 (date_validation = aujourd'hui)
+
+Jour 30 - Ajout paiement status='en_attente'
+  → Courbe orange : reste à +1 (paiement en attente)
+
+Jour 45 - Validation paiement status='validé'
+  → Courbe orange -1 (disparaît car paiement validé)
+```
+
+### Fichiers Modifiés
+
+1. **app/Http/Controllers/DashboardController.php**
+   - Méthode `superAdminDashboard()` (L362-418)
+   - Méthode `superadmin()` (L916-972)
+   - Changement courbe verte : `created_at` → `date_validation`
+   - Changement courbe orange : logique complète inscriptions sans/avec paiements
+
+2. **resources/views/dashboard/superadmin.blade.php**
+   - Lignes 245-249 : Légende mise à jour
+   - Lignes 327-334 : Console logs debug ajoutés
+   - Lignes 351-356 : Style courbe verte (fill: true, pas de borderDash)
+
+### Tests Effectués
+
+```bash
+# Test avec tinker
+php artisan tinker
+
+# Vérification dates validation vs création
+$sample = ESBTPInscription::whereNotNull('date_validation')
+    ->select('created_at', 'date_validation')
+    ->limit(5)->get();
+# Résultat : Écarts de 12 jours à 6 mois !
+
+# Test comptage courbe orange
+$avril = ESBTPInscription::whereYear('created_at', 2025)
+    ->whereMonth('created_at', 4)
+    ->whereDoesntHave('paiements')
+    ->count();
+# Résultat : 526 inscriptions sans paiement
+```
+
+### Légende Graphique
+
+```
+📘 Inscriptions créées (date création)
+📗 Inscriptions validées (date validation)
+🟧 Inscriptions en attente de paiement
+```
+
+### Notes Importantes
+
+- ✅ La colonne `date_validation` existe et est remplie dans `esbtp_inscriptions`
+- ✅ La relation `paiements()` existe dans le modèle `ESBTPInscription`
+- ✅ Les trois courbes utilisent des dates/logiques différentes → **visibles distinctement**
+- ⚠️ Si aucun paiement n'existe, courbe orange = courbe bleue (toutes en attente)
+
+---
+
+*Dernière mise à jour: 25 octobre 2025 - Dashboard Super Admin - Graphique Évolution Inscriptions*

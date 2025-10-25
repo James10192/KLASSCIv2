@@ -245,7 +245,7 @@
                 <p style="color: var(--text-secondary); margin-bottom: var(--space-lg);">
                     <span style="color: #0453cb;">■</span> Inscriptions créées
                     <span style="margin-left: 1rem; color: #10b981;">■</span> Inscriptions validées
-                    <span style="margin-left: 1rem; color: #f59e0b;">■</span> Paiements en attente ajoutés
+                    <span style="margin-left: 1rem; color: #f59e0b;">■</span> Inscriptions en attente de paiement
                 </p>
                 
                 <div class="chart-container">
