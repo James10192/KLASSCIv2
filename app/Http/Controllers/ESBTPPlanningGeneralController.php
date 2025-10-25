@@ -305,13 +305,16 @@ class ESBTPPlanningGeneralController extends Controller
             $html .= '</div>';
             $html .= '</div>';
             
-            // Section assignation de professeurs
+            // Section assignation de professeurs avec checkboxes (plus intuitif que select multiple)
             $html .= '<div class="config-section teacher-config-section">';
-            $html .= '<label class="config-label"><i class="fas fa-user-tie"></i>Professeur(s) assigné(s)</label>';
-            $html .= '<div class="teacher-config">';
-            $html .= '<select name="teachers[' . $matiere->id . '][]" class="form-select teacher-select" multiple>';
-            $html .= '<option value="">Sélectionner un professeur</option>';
-            
+            $html .= '<div class="d-flex justify-content-between align-items-center mb-2">';
+            $html .= '<label class="config-label mb-0"><i class="fas fa-users"></i>Professeur(s) assigné(s)</label>';
+            $html .= '<button type="button" class="btn btn-sm btn-outline-primary toggle-all-teachers" data-matiere-id="' . $matiere->id . '">';
+            $html .= '<i class="fas fa-check-double me-1"></i>Tout sélectionner';
+            $html .= '</button>';
+            $html .= '</div>';
+            $html .= '<div class="teacher-config teacher-checkboxes-container" data-matiere-id="' . $matiere->id . '">';
+
             // Récupérer les professeurs déjà assignés à cette matière
             $assignedTeachers = [];
             if (!$modeAssociation && $planificationExistante) {
@@ -327,15 +330,36 @@ class ESBTPPlanningGeneralController extends Controller
                 ->with('user')
                 ->orderBy('user_id')
                 ->get();
-                
-            foreach ($teachers as $teacher) {
-                $teacherName = $teacher->user ? $teacher->user->name : $teacher->matricule;
-                $specialization = $teacher->specialization ? ' (' . $teacher->specialization . ')' : '';
-                $selected = in_array($teacher->id, $assignedTeachers) ? ' selected' : '';
-                $html .= '<option value="' . $teacher->id . '"' . $selected . '>' . htmlspecialchars($teacherName . $specialization) . '</option>';
+
+            if ($teachers->isEmpty()) {
+                $html .= '<div class="text-muted text-center py-3">';
+                $html .= '<i class="fas fa-info-circle me-2"></i>Aucun enseignant disponible';
+                $html .= '</div>';
+            } else {
+                foreach ($teachers as $teacher) {
+                    $teacherName = $teacher->user ? $teacher->user->name : $teacher->matricule;
+                    $specialization = $teacher->specialization ? ' (' . $teacher->specialization . ')' : '';
+                    $checked = in_array($teacher->id, $assignedTeachers) ? ' checked' : '';
+
+                    $html .= '<div class="teacher-checkbox-item">';
+                    $html .= '<label class="teacher-checkbox-label">';
+                    $html .= '<input type="checkbox" name="teachers[' . $matiere->id . '][]" value="' . $teacher->id . '"' . $checked . ' class="teacher-checkbox">';
+                    $html .= '<span class="teacher-checkbox-custom"></span>';
+                    $html .= '<span class="teacher-name">' . htmlspecialchars($teacherName) . '</span>';
+                    if ($specialization) {
+                        $html .= '<span class="teacher-spec">' . htmlspecialchars($specialization) . '</span>';
+                    }
+                    $html .= '</label>';
+                    $html .= '</div>';
+                }
             }
-            
-            $html .= '</select>';
+
+            // Compteur dynamique
+            $html .= '<div class="teacher-selection-count" style="margin-top: 10px; padding: 8px; background: #f0f8ff; border-radius: 6px; text-align: center; font-size: 13px;">';
+            $html .= '<i class="fas fa-info-circle text-primary"></i> ';
+            $html .= '<span class="count-text">Sélectionnez un ou plusieurs enseignants</span>';
+            $html .= '</div>';
+
             $html .= '</div>';
             $html .= '</div>';
             

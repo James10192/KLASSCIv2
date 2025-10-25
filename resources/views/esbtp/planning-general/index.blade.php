@@ -1233,7 +1233,121 @@
     .teacher-config-section {
         padding-top: var(--space-sm);
     }
-    
+
+    /* Conteneur des checkboxes enseignants */
+    .teacher-checkboxes-container {
+        max-height: 250px;
+        overflow-y: auto;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 8px;
+        background-color: #fafafa;
+    }
+
+    /* Item checkbox individuel */
+    .teacher-checkbox-item {
+        margin-bottom: 4px;
+    }
+
+    /* Label cliquable entier */
+    .teacher-checkbox-label {
+        display: flex;
+        align-items: center;
+        padding: 10px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        background: white;
+        border: 1px solid #e0e0e0;
+        margin: 0;
+    }
+
+    .teacher-checkbox-label:hover {
+        background: #f8f9fa;
+        border-color: var(--primary);
+        transform: translateX(3px);
+    }
+
+    /* Checkbox input caché */
+    .teacher-checkbox {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    /* Checkbox custom visuel */
+    .teacher-checkbox-custom {
+        width: 20px;
+        height: 20px;
+        border: 2px solid #d0d0d0;
+        border-radius: 4px;
+        margin-right: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        transition: all 0.2s ease;
+        background: white;
+    }
+
+    /* Checkmark quand coché - Carré plein avec coche blanche */
+    .teacher-checkbox:checked ~ .teacher-checkbox-custom {
+        background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+        border-color: #0d6efd;
+        box-shadow: 0 2px 8px rgba(13, 110, 253, 0.3);
+    }
+
+    .teacher-checkbox:checked ~ .teacher-checkbox-custom::after {
+        content: '\f00c';  /* FontAwesome check icon */
+        font-family: 'Font Awesome 5 Free';
+        font-weight: 900;
+        color: white;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+    }
+
+    /* Highlight du label quand coché */
+    .teacher-checkbox:checked ~ .teacher-name {
+        font-weight: 600;
+        color: var(--primary);
+    }
+
+    /* Nom de l'enseignant */
+    .teacher-name {
+        flex: 1;
+        font-size: 14px;
+        color: #333;
+        font-weight: 500;
+    }
+
+    /* Spécialisation */
+    .teacher-spec {
+        font-size: 12px;
+        color: #666;
+        font-style: italic;
+        margin-left: 8px;
+    }
+
+    /* Compteur de sélection */
+    .teacher-selection-count {
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+    .teacher-selection-count.has-selection {
+        background: #d4edda !important;
+        border: 1px solid #c3e6cb;
+    }
+
+    .teacher-selection-count.has-selection .count-text {
+        color: #155724;
+        font-weight: 600;
+    }
+
     .volume-input {
         width: 80px;
         text-align: center;
@@ -2215,17 +2329,81 @@ $(function() {
                 
                 if (response.success) {
                     $('#matieres-container').html(response.html).show();
-                    
+
                     // Ajouter les event listeners sur les inputs
                     $('.volume-input').on('input', function() {
                         const $card = $(this).closest('.config-matiere-card');
                         const value = parseInt($(this).val()) || 0;
-                        
+
                         if (value > 0) {
                             $card.addClass('configured');
                         } else {
                             $card.removeClass('configured');
                         }
+                    });
+
+                    // Gérer les checkboxes enseignants avec compteur dynamique
+                    console.log('🔍 Initialisation teacher-checkboxes...');
+
+                    // Fonction pour mettre à jour le compteur et le bouton toggle
+                    function updateTeacherCount($container) {
+                        const $checkboxes = $container.find('.teacher-checkbox');
+                        const $countDiv = $container.find('.teacher-selection-count');
+                        const $countText = $countDiv.find('.count-text');
+                        const matiereId = $container.data('matiere-id');
+                        const $toggleBtn = $('.toggle-all-teachers[data-matiere-id="' + matiereId + '"]');
+
+                        const totalCount = $checkboxes.length;
+                        const selectedCount = $checkboxes.filter(':checked').length;
+
+                        // Mettre à jour le compteur
+                        if (selectedCount > 0) {
+                            $countDiv.addClass('has-selection');
+                            $countText.html('<i class="fas fa-check-circle"></i> ' + selectedCount + ' enseignant(s) sélectionné(s) sur ' + totalCount);
+                        } else {
+                            $countDiv.removeClass('has-selection');
+                            $countText.html('Sélectionnez un ou plusieurs enseignants');
+                        }
+
+                        // Mettre à jour le bouton toggle
+                        if (selectedCount === totalCount && totalCount > 0) {
+                            $toggleBtn.html('<i class="fas fa-times-circle me-1"></i>Tout désélectionner');
+                            $toggleBtn.removeClass('btn-outline-primary').addClass('btn-outline-danger');
+                        } else {
+                            $toggleBtn.html('<i class="fas fa-check-double me-1"></i>Tout sélectionner');
+                            $toggleBtn.removeClass('btn-outline-danger').addClass('btn-outline-primary');
+                        }
+                    }
+
+                    // Initialiser tous les conteneurs de checkboxes
+                    $('.teacher-checkboxes-container').each(function() {
+                        const $container = $(this);
+
+                        // Mettre à jour le compteur initial
+                        updateTeacherCount($container);
+
+                        // Écouter les changements sur les checkboxes
+                        $container.on('change', '.teacher-checkbox', function() {
+                            updateTeacherCount($container);
+                        });
+                    });
+
+                    // Gérer les boutons "Tout sélectionner / Tout désélectionner"
+                    $(document).on('click', '.toggle-all-teachers', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        const matiereId = $(this).data('matiere-id');
+                        const $container = $('.teacher-checkboxes-container[data-matiere-id="' + matiereId + '"]');
+                        const $checkboxes = $container.find('.teacher-checkbox');
+                        const checkedCount = $checkboxes.filter(':checked').length;
+                        const allChecked = $checkboxes.length === checkedCount;
+
+                        // Toggle all checkboxes
+                        $checkboxes.prop('checked', !allChecked);
+
+                        // Mettre à jour le compteur
+                        updateTeacherCount($container);
                     });
                 } else {
                     showAlert('error', response.message || 'Erreur lors du chargement des matières');
@@ -2262,11 +2440,26 @@ $(function() {
             formData.volumes[matiereId] = volume;
         });
         
-        // Collecter toutes les assignations de professeurs
-        $('.teacher-select').each(function() {
-            const matiereId = $(this).attr('name').match(/teachers\[(\d+)\]/)[1];
-            const selectedTeachers = $(this).val() || [];
-            formData.teachers[matiereId] = selectedTeachers;
+        // Collecter toutes les assignations de professeurs (checkboxes)
+        $('.teacher-checkboxes-container').each(function() {
+            const $container = $(this);
+            const $checkedBoxes = $container.find('.teacher-checkbox:checked');
+
+            if ($checkedBoxes.length > 0) {
+                // Récupérer le matiere_id depuis le name du premier checkbox
+                const firstName = $checkedBoxes.first().attr('name');
+                const matiereId = firstName.match(/teachers\[(\d+)\]/)[1];
+
+                // Collecter tous les teacher_id cochés pour cette matière
+                const selectedTeachers = [];
+                $checkedBoxes.each(function() {
+                    selectedTeachers.push($(this).val());
+                });
+
+                formData.teachers[matiereId] = selectedTeachers;
+
+                console.log('📝 Matière ' + matiereId + ': ' + selectedTeachers.length + ' enseignants sélectionnés', selectedTeachers);
+            }
         });
         
         // Validation

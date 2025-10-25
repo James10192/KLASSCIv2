@@ -4428,4 +4428,254 @@ Question utilisateur : "Les inscriptions sans paiements pour la classe BATIMENT 
 
 ---
 
-*Dernière mise à jour: 25 octobre 2025 - Chatbot Deep Link & Fuzzy Search fixes*
+## 🎓 Amélioration Sélection Multiple Enseignants - Planning Général (25 Octobre 2025)
+
+### Problématique
+
+Dans la page [/esbtp/planning-general](http://localhost:8000/esbtp/planning-general), lors de la configuration des volumes horaires par matière, l'interface ne permettait de sélectionner qu'**un seul enseignant visuellement** alors que le backend et la base de données supportaient déjà **plusieurs enseignants**.
+
+### Diagnostic
+
+**✅ Ce qui fonctionnait déjà**:
+- Table `esbtp_planification_teachers` (many-to-many) avec contrainte unique
+- Controller génère `<select multiple>`
+- JavaScript collecte correctement les valeurs multiples
+- Backend sauvegarde via boucle dans la table pivot
+
+**❌ Problèmes UX**:
+- Select affiché comme dropdown simple (taille = 1)
+- Aucune indication visuelle de multi-sélection
+- Pas de helper text (comment utiliser Ctrl/Cmd)
+- Icône `fa-user-tie` (singulier) au lieu de `fa-users`
+- Pas de compteur d'enseignants sélectionnés
+
+### Solutions Implémentées
+
+#### 1. CSS Amélioré (index.blade.php L1237-1275)
+
+```css
+.teacher-select {
+    width: 100%;
+    min-height: 150px;        /* Affiche 5-6 options */
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 8px;
+    background-color: #fafafa;
+    transition: all 0.3s ease;
+}
+
+.teacher-select option:checked {
+    background: linear-gradient(135deg, var(--primary) 0%, rgba(var(--primary-rgb), 0.8) 100%);
+    color: white;
+    font-weight: 500;
+}
+```
+
+#### 2. JavaScript UX (index.blade.php L2231-2257)
+
+Après injection AJAX du HTML:
+- **Augmente la taille**: `attr('size', '5')` pour afficher 5 options
+- **Helper text dynamique**: Instructions Ctrl/Cmd pour multi-sélection
+- **Compteur en temps réel**: "X professeur(s) sélectionné(s)" avec icône ✓
+
+```javascript
+$('.teacher-select').each(function() {
+    const $select = $(this);
+
+    // Ajouter helper text
+    $select.after('<small class="teacher-select-help text-muted d-block mt-1"><i class="fas fa-info-circle"></i> Maintenez Ctrl (Windows) ou Cmd (Mac) pour sélectionner plusieurs professeurs</small>');
+
+    // Augmenter taille
+    $select.attr('size', '5');
+
+    // Compteur dynamique
+    $select.on('change', function() {
+        const selectedCount = $(this).val() ? $(this).val().length : 0;
+        const $help = $(this).next('.teacher-select-help');
+
+        if (selectedCount > 0) {
+            $help.html('<i class="fas fa-check-circle text-success"></i> ' + selectedCount + ' professeur(s) sélectionné(s)');
+        } else {
+            $help.html('<i class="fas fa-info-circle"></i> Maintenez Ctrl (Windows) ou Cmd (Mac) pour sélectionner plusieurs professeurs');
+        }
+    });
+
+    $select.trigger('change');
+});
+```
+
+#### 3. Label Amélioré (ESBTPPlanningGeneralController.php L310)
+
+```php
+// AVANT
+'<i class="fas fa-user-tie"></i>Professeur(s) assigné(s)'
+
+// APRÈS
+'<i class="fas fa-users"></i>Professeur(s) assigné(s) <span class="badge bg-info ms-2">Multi-sélection</span>'
+```
+
+#### 4. Suppression Option Vide (ESBTPPlanningGeneralController.php L313)
+
+Pas d'option vide pour un select multiple (inutile).
+
+### Structure Base de Données
+
+**Table `esbtp_planification_teachers`**:
+```
+┌──────────────────┬─────────────┬─────────────────────┐
+│ planification_id │ teacher_id  │ created_at          │
+├──────────────────┼─────────────┼─────────────────────┤
+│ 1                │ 1 (KOUASSI) │ 2025-10-25 10:30:00 │
+│ 1                │ 2 (BAMBA)   │ 2025-10-25 10:30:00 │
+└──────────────────┴─────────────┴─────────────────────┘
+```
+
+Exemple: Planification #1 (Mathématiques - L3 GC) = **2 enseignants**.
+
+### Enseignants de Test Créés
+
+Script `create_test_teachers.php` créé pour générer 2 enseignants:
+
+1. **Prof. KOUASSI Jean**
+   - Matricule: ENS1634
+   - Email: kouassi.jean@esbtp.ci
+   - Spécialisation: Mathématiques et Physique
+   - Grade: Professeur
+
+2. **Prof. BAMBA Marie**
+   - Matricule: ENS1635
+   - Email: bamba.marie@esbtp.ci
+   - Spécialisation: Génie Civil et Construction
+   - Grade: Maître de Conférences
+
+**Mot de passe**: `password123`
+
+### Aperçu Visuel
+
+**Avant**:
+```
+👔 Professeur(s) assigné(s)
+┌─────────────────────────────┐
+│ Sélectionner un professeur ▼│  <- Dropdown simple
+└─────────────────────────────┘
+```
+
+**Après**:
+```
+👥 Professeur(s) assigné(s) [Multi-sélection]
+┌─────────────────────────────┐
+│ ☑ KOUASSI Jean (Math)      │  <- Options visibles
+│ ☑ BAMBA Marie (GC)         │     (sélectionnées)
+│ ☐ TRAORE Moussa (Physique) │
+│ ☐ KONE Fatou (Chimie)      │
+│ ☐ YAO Kofi (Informatique)  │
+└─────────────────────────────┘
+✓ 2 professeur(s) sélectionné(s)  <- Compteur
+```
+
+### Pourquoi Pas Select2 ?
+
+Select2 n'était pas chargé dans l'app. Solution retenue:
+- ✅ **HTML5 natif**: `<select multiple size="5">`
+- ✅ **CSS moderne**: Gradient sur options sélectionnées
+- ✅ **JavaScript vanilla**: Helper text + compteur dynamique
+- ✅ **Pas de dépendance externe**
+- ✅ **Performance optimale**
+
+### Solution Finale : Checkboxes au lieu de Select Multiple
+
+**Problème UX critique** : `<select multiple>` nécessitait Ctrl/Cmd → **pas intuitif**.
+
+**Solution** : Remplacement par **checkboxes cliquables** avec design moderne.
+
+#### Fonctionnalités Implémentées
+
+1. ✅ **Clic simple** : Chaque enseignant se sélectionne/désélectionne en 1 clic
+2. ✅ **Bouton "Tout sélectionner"** : Toggle tous les enseignants d'une matière
+3. ✅ **Compteur dynamique** : "X enseignant(s) sélectionné(s) sur Y"
+4. ✅ **Checkmark visuel** : Icône FontAwesome ✓ sur checkbox cochée (gradient bleu)
+5. ✅ **Highlight** : Nom de l'enseignant en gras et bleu quand sélectionné
+6. ✅ **Hover effect** : Légère translation à droite + bordure bleue au survol
+7. ✅ **Scrollbar** : Max-height 250px avec scroll si +5 enseignants
+
+#### HTML Généré (ESBTPPlanningGeneralController.php)
+
+```html
+<button class="btn btn-sm btn-outline-primary toggle-all-teachers">
+    <i class="fas fa-check-double"></i>Tout sélectionner
+</button>
+
+<div class="teacher-checkboxes-container" data-matiere-id="42">
+    <div class="teacher-checkbox-item">
+        <label class="teacher-checkbox-label">
+            <input type="checkbox" name="teachers[42][]" value="1" class="teacher-checkbox">
+            <span class="teacher-checkbox-custom"></span>
+            <span class="teacher-name">KOUASSI Jean</span>
+            <span class="teacher-spec">(Mathématiques)</span>
+        </label>
+    </div>
+    <!-- ... -->
+</div>
+```
+
+### Fichiers Modifiés
+
+1. ✅ `app/Http/Controllers/ESBTPPlanningGeneralController.php` (L308-360)
+   - Remplacement `<select multiple>` par checkboxes
+   - Bouton "Tout sélectionner / Tout désélectionner" dynamique
+   - Compteur de sélection inline
+
+2. ✅ `resources/views/esbtp/planning-general/index.blade.php`
+   - **CSS** (L1237-1343) :
+     - `.teacher-checkbox-custom` : Checkbox visuel avec gradient
+     - `:checked` states avec FontAwesome checkmark
+     - Hover effects (transform, border-color)
+     - Scrollbar sur max-height 250px
+   - **JavaScript** (L2339-2403) :
+     - `updateTeacherCount()` : Compteur + état bouton toggle
+     - Event listeners sur checkboxes
+     - Toggle all/none avec animation
+     - Collecte données pour sauvegarde (L2411-2431)
+
+3. ✅ Script utilitaire: `create_test_teachers.php` (2 enseignants de test)
+
+### ✅ Tests Validés - FONCTIONNEL
+
+- [x] Clic simple pour sélectionner/désélectionner
+- [x] Bouton "Tout sélectionner" → tous cochés
+- [x] Bouton "Tout désélectionner" → tous décochés
+- [x] Compteur dynamique "X enseignant(s) sélectionné(s) sur Y"
+- [x] Checkmark bleu sur checkbox cochée (carré plein bleu avec coche blanche FontAwesome)
+- [x] Collecte des données via `$('.teacher-checkbox:checked').val()`
+- [ ] Sauvegarde en BDD - À tester prochainement
+- [ ] Rechargement avec pré-sélection - À tester prochainement
+
+**Feedback utilisateur final** : "Le carré qui se fill et le selectionner qui selectionne tout" ✅
+
+### Commandes Test
+
+```bash
+# Vérifier assignations
+php artisan tinker --execute="
+\$plan = App\Models\ESBTPPlanificationAcademique::find(1);
+\$teachers = DB::table('esbtp_planification_teachers')
+    ->where('planification_id', \$plan->id)
+    ->get();
+print_r(\$teachers);
+"
+
+# Nettoyer test
+php artisan tinker --execute="
+DB::table('esbtp_planification_teachers')->truncate();
+"
+```
+
+### Références
+
+- **Migration**: `2025_08_20_115125_create_esbtp_planification_teachers_table.php`
+- **Route**: `POST /esbtp/planning-general/save-volume-configuration`
+- **Table pivot**: `esbtp_planification_teachers` (planification_id, teacher_id)
+
+---
+
+*Dernière mise à jour: 25 octobre 2025 - Multi-sélection Enseignants Planning Général*
