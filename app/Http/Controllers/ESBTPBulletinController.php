@@ -6078,12 +6078,37 @@ class ESBTPBulletinController extends Controller
             return back()->with('error', 'Données introuvables.');
         }
 
-        // Vérifier si la configuration des matières a été faite
+        // Récupérer le bulletin s'il existe
+        $bulletin = ESBTPBulletin::where([
+            'etudiant_id' => $etudiant_id,
+            'classe_id' => $classe_id,
+            'periode' => $periode,
+            'annee_universitaire_id' => $annee_universitaire_id
+        ])->first();
+
+        // Récupérer les matières basées sur la combinaison filière + niveau de la classe
+        $classeFiliereId = $classe->filiere_id;
+        $classeNiveauId = $classe->niveau_etude_id;
+
+        $matieresFiltrees = ESBTPMatiere::with(['filieres:id,name,code', 'niveaux:id,name,code'])
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get()
+            ->filter(function (ESBTPMatiere $matiere) use ($classeFiliereId, $classeNiveauId) {
+                if (!$classeFiliereId || !$classeNiveauId) {
+                    return false;
+                }
+                return $matiere->filieres->pluck('id')->contains($classeFiliereId)
+                    && $matiere->niveaux->pluck('id')->contains($classeNiveauId);
+            })
+            ->values();
+
+        // Vérifier si la configuration des matières a été faite pour ces matières
         $configsMatieres = ESBTPConfigMatiere::where([
             'classe_id' => $classe_id,
             'periode' => $periode,
             'annee_universitaire_id' => $annee_universitaire_id
-        ])->get();
+        ])->whereIn('matiere_id', $matieresFiltrees->pluck('id'))->get();
 
         if ($configsMatieres->isEmpty()) {
             // Rediriger vers la configuration des matières
@@ -6095,14 +6120,6 @@ class ESBTPBulletinController extends Controller
             ]);
             return redirect()->to($url)->with('error', 'Vous devez d\'abord configurer les types de matières.');
         }
-
-        // Récupérer le bulletin s'il existe
-        $bulletin = ESBTPBulletin::where([
-            'etudiant_id' => $etudiant_id,
-            'classe_id' => $classe_id,
-            'periode' => $periode,
-            'annee_universitaire_id' => $annee_universitaire_id
-        ])->first();
 
         // Récupérer les matières avec leur type de formation
         $matieres = [];
