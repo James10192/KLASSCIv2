@@ -41,6 +41,16 @@
                 <p class="header-subtitle">Configurer les matières par type d'enseignement pour le bulletin</p>
             </div>
             <div class="header-actions">
+                @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('coordinateur'))
+                <a href="{{ route('esbtp.classes.matieres', ['classe' => $classe['id'] ?? $classe->id]) }}" class="btn btn-outline-primary me-2" title="Gérer les matières de cette classe">
+                    <i class="fas fa-sliders-h me-1"></i>Gérer les matières de la classe
+                </a>
+                @endif
+                @role('superAdmin')
+                <a href="{{ route('esbtp.matieres.index') }}" class="btn btn-outline-info me-2" title="Gestion globale des matières">
+                    <i class="fas fa-cog me-1"></i>Gestion globale
+                </a>
+                @endrole
                 <span class="badge bg-primary fs-6">
                     <i class="fas fa-graduation-cap me-1"></i>
                     {{ $etudiant['nom'] ?? '' }} {{ $etudiant['prenoms'] ?? '' }}
