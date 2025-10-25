@@ -16,6 +16,11 @@
                 <p class="header-subtitle">Ajustez les moyennes et coefficients pour {{ $etudiant->nom }} {{ $etudiant->prenoms }}</p>
             </div>
             <div class="header-actions">
+                @role('superAdmin')
+                <a href="{{ route('esbtp.classes.matieres', $classe->id) }}" class="btn btn-info me-2" title="Gérer les matières de cette classe">
+                    <i class="fas fa-cog me-1"></i>Gérer les matières
+                </a>
+                @endrole
                 <a href="{{ route('esbtp.resultats.etudiant', $etudiant) }}?classe_id={{ $classe->id }}&periode={{ $periode == 'semestre1' ? '1' : ($periode == 'semestre2' ? '2' : $periode) }}&annee_universitaire_id={{ $anneeUniversitaire->id }}" class="btn btn-outline-secondary">
                     <i class="fas fa-times me-1"></i>Annuler
                 </a>

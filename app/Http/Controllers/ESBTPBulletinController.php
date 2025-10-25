@@ -5374,9 +5374,23 @@ class ESBTPBulletinController extends Controller
 
         }
 
-        // NOUVELLE LOGIQUE: Récupérer TOUTES les matières de la classe
+        // NOUVELLE LOGIQUE: Récupérer les matières basées sur la combinaison filière + niveau de la classe
         // même si l'étudiant n'a aucune évaluation/note
-        $toutesLesMatieres = $classe->matieres;
+        $classeFiliereId = $classe->filiere_id;
+        $classeNiveauId = $classe->niveau_etude_id;
+
+        $toutesLesMatieres = \App\Models\ESBTPMatiere::with(['filieres:id,name,code', 'niveaux:id,name,code'])
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get()
+            ->filter(function ($matiere) use ($classeFiliereId, $classeNiveauId) {
+                if (!$classeFiliereId || !$classeNiveauId) {
+                    return false;
+                }
+                return $matiere->filieres->pluck('id')->contains($classeFiliereId)
+                    && $matiere->niveaux->pluck('id')->contains($classeNiveauId);
+            })
+            ->values();
         
         // Ajouter les matières de la classe qui n'ont pas encore de résultats
         foreach ($toutesLesMatieres as $matiere) {
@@ -5765,12 +5779,29 @@ class ESBTPBulletinController extends Controller
             ]);
         }
 
-        // APPROCHE 2: Si aucune matière n'est trouvée, récupérer les matières de la classe
+        // APPROCHE 2: Si aucune matière n'est trouvée, récupérer les matières basées sur la combinaison filière + niveau de la classe
         if ($matieres->isEmpty()) {
             try {
-                $matieres = $classe->matieres;
-                \Log::info('Matières récupérées depuis la classe', [
-                    'count' => $matieres->count()
+                $classeFiliereId = $classe->filiere_id;
+                $classeNiveauId = $classe->niveau_etude_id;
+
+                $matieres = \App\Models\ESBTPMatiere::with(['filieres:id,name,code', 'niveaux:id,name,code'])
+                    ->where('is_active', true)
+                    ->orderBy('name')
+                    ->get()
+                    ->filter(function ($matiere) use ($classeFiliereId, $classeNiveauId) {
+                        if (!$classeFiliereId || !$classeNiveauId) {
+                            return false;
+                        }
+                        return $matiere->filieres->pluck('id')->contains($classeFiliereId)
+                            && $matiere->niveaux->pluck('id')->contains($classeNiveauId);
+                    })
+                    ->values();
+
+                \Log::info('Matières récupérées basées sur la combinaison filière + niveau de la classe', [
+                    'count' => $matieres->count(),
+                    'filiere_id' => $classeFiliereId,
+                    'niveau_id' => $classeNiveauId
                 ]);
 
                 if ($matieres->isEmpty()) {

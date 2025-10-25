@@ -5597,4 +5597,236 @@ echo \"Bulletins avec professeurs: \$count\";
 
 ---
 
-*Dernière mise à jour: 25 octobre 2025 - Fix Modal Professeurs - Validation & Persistence JSON*
+## 🎯 Fix: Filtrage Matières par Filière+Niveau dans Pages Individuelles Bulletin (25 Octobre 2025)
+
+### Problématique
+
+Trois pages du module bulletins affichaient **toutes les matières configurées** (34 matières) au lieu de filtrer uniquement par la combinaison filière+niveau de la classe (5 matières pour GENIE CIVIL OPTION TRAVAUX PUBLICS + Première année BTS).
+
+**Pages concernées** :
+1. ✅ `edit-professeurs` - http://localhost:8000/esbtp-special/bulletins/edit-professeurs
+2. ✅ `moyennes-preview` - http://localhost:8000/esbtp-special/bulletins/moyennes-preview
+3. ✅ `config-matieres` - http://localhost:8000/esbtp-special/bulletins/config-matieres
+
+**Utilisateur a rapporté** :
+> "Sur cette page on ne recupere pas uniquement les matieres qui sont lié à la combinaison filere et niveau d'etude de la classe en question de l'etudiant comme dans edition groupée"
+
+Puis confirmé que `edit-professeurs` est corrigé :
+> "Non ici c'est bon on voit bien les 5 matieres de GENIE CIVIL OPTION TRAVAUX PUBLICS Premiere année Mais pas sur les deux autres pages"
+
+### Cause Technique
+
+Les trois méthodes utilisaient `$classe->matieres` qui retourne **toutes les matières** liées à la classe via la table pivot `esbtp_classe_matiere`, sans filtrer par la combinaison `filiere_id` + `niveau_etude_id`.
+
+### Solution Appliquée
+
+Remplacement de `$classe->matieres` par un filtrage basé sur les **relations many-to-many** avec filieres et niveaux :
+
+```php
+// ❌ AVANT (affichait 34 matières)
+$matieres = $classe->matieres;
+
+// ✅ APRÈS (affiche 5 matières filtrées)
+$classeFiliereId = $classe->filiere_id;
+$classeNiveauId = $classe->niveau_etude_id;
+
+$matieres = \App\Models\ESBTPMatiere::with(['filieres:id,name,code', 'niveaux:id,name,code'])
+    ->where('is_active', true)
+    ->orderBy('name')
+    ->get()
+    ->filter(function ($matiere) use ($classeFiliereId, $classeNiveauId) {
+        if (!$classeFiliereId || !$classeNiveauId) {
+            return false;
+        }
+        return $matiere->filieres->pluck('id')->contains($classeFiliereId)
+            && $matiere->niveaux->pluck('id')->contains($classeNiveauId);
+    })
+    ->values();
+```
+
+### Fichiers Modifiés
+
+**1. `app/Http/Controllers/ESBTPBulletinController.php`**
+
+#### A. Méthode `editProfesseurs()` (L6081-6111)
+
+**Ligne modifiée** : L6081-6094
+
+**Changement** : Remplacé récupération brute des matières par filtrage filière+niveau
+
+```php
+// OLD:
+$matieres = ESBTPMatiere::where('is_active', true)->get();
+
+// NEW:
+$classeFiliereId = $classe->filiere_id;
+$classeNiveauId = $classe->niveau_etude_id;
+
+$matieresFiltrees = ESBTPMatiere::with(['filieres:id,name,code', 'niveaux:id,name,code'])
+    ->where('is_active', true)
+    ->orderBy('name')
+    ->get()
+    ->filter(function (ESBTPMatiere $matiere) use ($classeFiliereId, $classeNiveauId) {
+        if (!$classeFiliereId || !$classeNiveauId) {
+            return false;
+        }
+        return $matiere->filieres->pluck('id')->contains($classeFiliereId)
+            && $matiere->niveaux->pluck('id')->contains($classeNiveauId);
+    })
+    ->values();
+```
+
+#### B. Méthode `previewMoyennes()` (L5377-5393)
+
+**Ligne modifiée** : L5377-5393
+
+**Changement** : Remplacé `$classe->matieres` par filtrage filière+niveau
+
+```php
+// OLD:
+// NOUVELLE LOGIQUE: Récupérer TOUTES les matières de la classe
+// même si l'étudiant n'a aucune évaluation/note
+$toutesLesMatieres = $classe->matieres;
+
+// NEW:
+// NOUVELLE LOGIQUE: Récupérer les matières basées sur la combinaison filière + niveau de la classe
+// même si l'étudiant n'a aucune évaluation/note
+$classeFiliereId = $classe->filiere_id;
+$classeNiveauId = $classe->niveau_etude_id;
+
+$toutesLesMatieres = \App\Models\ESBTPMatiere::with(['filieres:id,name,code', 'niveaux:id,name,code'])
+    ->where('is_active', true)
+    ->orderBy('name')
+    ->get()
+    ->filter(function ($matiere) use ($classeFiliereId, $classeNiveauId) {
+        if (!$classeFiliereId || !$classeNiveauId) {
+            return false;
+        }
+        return $matiere->filieres->pluck('id')->contains($classeFiliereId)
+            && $matiere->niveaux->pluck('id')->contains($classeNiveauId);
+    })
+    ->values();
+```
+
+#### C. Méthode `configMatieresTypeFormation()` (L5782-5805)
+
+**Ligne modifiée** : L5782-5805
+
+**Changement** : Remplacé `$classe->matieres` par filtrage filière+niveau dans APPROCHE 2
+
+```php
+// OLD:
+// APPROCHE 2: Si aucune matière n'est trouvée, récupérer les matières de la classe
+if ($matieres->isEmpty()) {
+    try {
+        $matieres = $classe->matieres;
+        \Log::info('Matières récupérées depuis la classe', [
+            'count' => $matieres->count()
+        ]);
+
+// NEW:
+// APPROCHE 2: Si aucune matière n'est trouvée, récupérer les matières basées sur la combinaison filière + niveau de la classe
+if ($matieres->isEmpty()) {
+    try {
+        $classeFiliereId = $classe->filiere_id;
+        $classeNiveauId = $classe->niveau_etude_id;
+
+        $matieres = \App\Models\ESBTPMatiere::with(['filieres:id,name,code', 'niveaux:id,name,code'])
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get()
+            ->filter(function ($matiere) use ($classeFiliereId, $classeNiveauId) {
+                if (!$classeFiliereId || !$classeNiveauId) {
+                    return false;
+                }
+                return $matiere->filieres->pluck('id')->contains($classeFiliereId)
+                    && $matiere->niveaux->pluck('id')->contains($classeNiveauId);
+            })
+            ->values();
+
+        \Log::info('Matières récupérées basées sur la combinaison filière + niveau de la classe', [
+            'count' => $matieres->count(),
+            'filiere_id' => $classeFiliereId,
+            'niveau_id' => $classeNiveauId
+        ]);
+```
+
+### Validation Tests
+
+**Classe testée** : TRAVAUX PUBLICS C (ID: 5)
+- Filière : GENIE CIVIL OPTION TRAVAUX PUBLICS (ID: 9)
+- Niveau : Première année BTS (ID: 1)
+
+**Résultats** :
+
+```bash
+# Test avec ancienne méthode
+php artisan tinker --execute="
+\$classe = App\Models\ESBTPClasse::find(5);
+\$matieres = \$classe->matieres;
+echo 'Matières non filtrées: ' . \$matieres->count();
+"
+# Résultat: 34 matières
+
+# Test avec nouvelle méthode
+php artisan tinker --execute="
+use App\Models\ESBTPMatiere;
+\$matieres = ESBTPMatiere::with(['filieres', 'niveaux'])
+    ->where('is_active', true)
+    ->get()
+    ->filter(function (\$m) {
+        return \$m->filieres->pluck('id')->contains(9)
+            && \$m->niveaux->pluck('id')->contains(1);
+    });
+echo 'Matières filtrées: ' . \$matieres->count();
+"
+# Résultat: 5 matières
+```
+
+**Matières correctement filtrées** (5 matières) :
+1. Mathématiques (MATHEMATIQUES)
+2. Informatique (INFORMATIQUE)
+3. Anglais (ANGLAIS)
+4. Matériaux (MATERIAUX)
+5. GRV (GRV)
+
+**Matières incorrectement affichées avant** (29 matières supplémentaires) :
+- Dessin Bâtiment, Métré et Etude de prix, Archicad, Béton Armé, CAO-DAO, Droit, etc.
+
+### Impact
+
+**Avant** :
+- ❌ `edit-professeurs` : 34 matières affichées (toutes)
+- ❌ `moyennes-preview` : 34 matières affichées (toutes)
+- ❌ `config-matieres` : 34 matières affichées (toutes)
+
+**Après** :
+- ✅ `edit-professeurs` : 5 matières affichées (filière GENIE CIVIL TP + niveau Première année)
+- ✅ `moyennes-preview` : 5 matières affichées (filière GENIE CIVIL TP + niveau Première année)
+- ✅ `config-matieres` : 5 matières affichées (filière GENIE CIVIL TP + niveau Première année)
+
+### Cohérence Système
+
+Le filtrage est maintenant **identique** à celui de la page d'édition groupée :
+- `editResultatsClasse()` (édition groupée classe) : ✅ Filtre par filière+niveau
+- `editProfesseurs()` (individuelle) : ✅ Filtre par filière+niveau
+- `previewMoyennes()` (individuelle) : ✅ Filtre par filière+niveau
+- `configMatieresTypeFormation()` (individuelle) : ✅ Filtre par filière+niveau
+
+### Règle Métier
+
+> **Matières disponibles pour un bulletin** = Matières avec combinaison `(classe.filiere_id, classe.niveau_etude_id)` dans les relations many-to-many
+
+**Tables utilisées** :
+- ✅ `esbtp_matiere_filiere` - Pivot filière → matière
+- ✅ `esbtp_matiere_niveau` - Pivot niveau → matière
+
+### Commits
+
+1. `d9a8ec7` - docs(chatbot): ajout tableau récapitulatif état d'avancement intents
+2. [À créer] - fix(bulletins): filtrage matières par filière+niveau dans moyennes-preview
+3. [À créer] - fix(bulletins): filtrage matières par filière+niveau dans config-matieres
+
+---
+
+*Dernière mise à jour: 25 octobre 2025 - Fix Filtrage Matières Bulletins Individuels*
