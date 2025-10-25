@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Cache\DatabaseStore;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
 use Spatie\Permission\PermissionRegistrar;
@@ -117,9 +118,26 @@ class CreatePermissionTables extends Migration
             $table->primary(['permission_id', 'role_id'], 'role_has_permissions_permission_id_role_id_primary');
         });
 
-        app('cache')
-            ->store(config('permission.cache.store') != 'default' ? config('permission.cache.store') : null)
-            ->forget(config('permission.cache.key'));
+        $cacheKey = config('permission.cache.key');
+        $cacheStoreName = config('permission.cache.store') !== 'default'
+            ? config('permission.cache.store')
+            : null;
+
+        try {
+            $cacheRepository = app('cache')->store($cacheStoreName);
+            $store = $cacheRepository->getStore();
+
+            if (!($store instanceof DatabaseStore)) {
+                $cacheRepository->forget($cacheKey);
+            } else {
+                $table = config('cache.stores.database.table', 'cache');
+                if (Schema::hasTable($table)) {
+                    $cacheRepository->forget($cacheKey);
+                }
+            }
+        } catch (\Throwable $exception) {
+            // Ignore cache clearing failures during fresh schema creation
+        }
     }
 
     /**

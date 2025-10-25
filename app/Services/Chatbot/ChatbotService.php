@@ -110,6 +110,9 @@ class ChatbotService
             $llmFilters = $llmDecision['filters'] ?? [];
             $requestedLimit = $llmDecision['limit'] ?? null;
 
+            // Ajouter le message raw pour détecter type de frais
+            $llmFilters['_raw_message'] = $message;
+
             // 6. Vérification anti-hallucination : vérifier que les données existent réellement
             $verification = $this->navigation->verifyDataExists($intent, $llmFilters, $knowledge);
 
@@ -405,47 +408,76 @@ class ChatbotService
                     ->where('id', $config->frais_category_id)
                     ->value('name');
 
-                // Créer 3 objets pour les 3 types de tarifs (si montant > 0)
-                if ($config->amount_affecte > 0) {
-                    $results->push((object) [
-                        'id' => $config->id . '_affecte',
-                        'categorie_id' => $config->frais_category_id,
-                        'categorie_name' => $categorieName,
-                        'type_tarif' => 'Affectés',
-                        'filiere_id' => $config->filiere_id,
-                        'niveau_id' => $config->niveau_id,
-                        'amount' => $config->amount_affecte,
-                        'effective_date' => $config->effective_date,
-                        'is_active' => $config->is_active,
-                    ]);
+                // Vérifier si l'utilisateur a spécifié un type d'affectation
+                // Le LLM peut retourner dans différentes clés: 'type_affectation', 'affectation', ou 'status'
+                $typeAffectationFilter = null;
+                if (isset($llmFilters['type_affectation'])) {
+                    $typeAffectationFilter = strtolower($llmFilters['type_affectation']);
+                } elseif (isset($llmFilters['affectation'])) {
+                    $typeAffectationFilter = strtolower($llmFilters['affectation']);
+                } elseif (isset($llmFilters['status']) && str_contains(strtolower($llmFilters['status']), 'affecté')) {
+                    // Le LLM peut aussi mettre "non affectés" dans la clé 'status'
+                    $typeAffectationFilter = strtolower($llmFilters['status']);
                 }
 
-                if ($config->amount_reaffecte > 0) {
-                    $results->push((object) [
-                        'id' => $config->id . '_reaffecte',
-                        'categorie_id' => $config->frais_category_id,
-                        'categorie_name' => $categorieName,
-                        'type_tarif' => 'Réaffectés',
-                        'filiere_id' => $config->filiere_id,
-                        'niveau_id' => $config->niveau_id,
-                        'amount' => $config->amount_reaffecte,
-                        'effective_date' => $config->effective_date,
-                        'is_active' => $config->is_active,
-                    ]);
-                }
+                // Créer 3 objets pour les 3 types de tarifs
+                // Afficher TOUS les types si non spécifié, sinon filtrer
+                $affecteObj = (object) [
+                    'id' => $config->id . '_affecte',
+                    'categorie_id' => $config->frais_category_id,
+                    'categorie_name' => $categorieName,
+                    'type_tarif' => 'Affectés',
+                    'filiere_id' => $config->filiere_id,
+                    'niveau_id' => $config->niveau_id,
+                    'amount' => $config->amount_affecte,
+                    'effective_date' => $config->effective_date,
+                    'is_active' => $config->is_active,
+                ];
 
-                if ($config->amount_non_affecte > 0) {
-                    $results->push((object) [
-                        'id' => $config->id . '_non_affecte',
-                        'categorie_id' => $config->frais_category_id,
-                        'categorie_name' => $categorieName,
-                        'type_tarif' => 'Non affectés',
-                        'filiere_id' => $config->filiere_id,
-                        'niveau_id' => $config->niveau_id,
-                        'amount' => $config->amount_non_affecte,
-                        'effective_date' => $config->effective_date,
-                        'is_active' => $config->is_active,
-                    ]);
+                $reaffecteObj = (object) [
+                    'id' => $config->id . '_reaffecte',
+                    'categorie_id' => $config->frais_category_id,
+                    'categorie_name' => $categorieName,
+                    'type_tarif' => 'Réaffectés',
+                    'filiere_id' => $config->filiere_id,
+                    'niveau_id' => $config->niveau_id,
+                    'amount' => $config->amount_reaffecte,
+                    'effective_date' => $config->effective_date,
+                    'is_active' => $config->is_active,
+                ];
+
+                $nonAffecteObj = (object) [
+                    'id' => $config->id . '_non_affecte',
+                    'categorie_id' => $config->frais_category_id,
+                    'categorie_name' => $categorieName,
+                    'type_tarif' => 'Non affectés',
+                    'filiere_id' => $config->filiere_id,
+                    'niveau_id' => $config->niveau_id,
+                    'amount' => $config->amount_non_affecte,
+                    'effective_date' => $config->effective_date,
+                    'is_active' => $config->is_active,
+                ];
+
+                // Filtrer selon la demande utilisateur
+                if (!$typeAffectationFilter) {
+                    // Pas de filtre → afficher tous les types
+                    $results->push($affecteObj);
+                    $results->push($reaffecteObj);
+                    $results->push($nonAffecteObj);
+                } elseif (str_contains($typeAffectationFilter, 'affecté') && !str_contains($typeAffectationFilter, 'non')) {
+                    // "affectés" uniquement
+                    $results->push($affecteObj);
+                } elseif (str_contains($typeAffectationFilter, 'réaffecté') || str_contains($typeAffectationFilter, 'reaffecté')) {
+                    // "réaffectés" uniquement
+                    $results->push($reaffecteObj);
+                } elseif (str_contains($typeAffectationFilter, 'non affecté')) {
+                    // "non affectés" uniquement
+                    $results->push($nonAffecteObj);
+                } else {
+                    // Fallback : afficher tous
+                    $results->push($affecteObj);
+                    $results->push($reaffecteObj);
+                    $results->push($nonAffecteObj);
                 }
             }
 

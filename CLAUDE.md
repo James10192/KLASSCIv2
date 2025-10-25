@@ -3264,3 +3264,102 @@ GEMINI_MODEL=gemini-2.0-flash-exp
 ---
 
 *Dernière mise à jour: 21 octobre 2025 - Chatbot Phase 1 en cours*
+
+### 🎓 Amélioration Frais Multi-Tarifs (21 Octobre 2025)
+
+#### Problématique initiale
+
+Le chatbot affichait des résultats **incorrects et dupliqués** pour les requêtes de frais :
+- ❌ 40+ lignes identiques répétées (ex: "Frais de scolarité 640 000 FCFA" × 18 fois)
+- ❌ Affichait uniquement les tarifs > 0 FCFA (cachait les tarifs "Affectés: 0 FCFA")
+- ❌ Mauvaise détection de catégorie (retournait "scolarité" au lieu de "inscription")
+- ❌ Pas de filtrage par type d'affectation (affectés/réaffectés/non affectés)
+
+#### Solutions implémentées
+
+**1. Affichage des 3 types de tarifs** (`ChatbotService.php` L420-481)
+
+Au lieu d'afficher une seule ligne par configuration, le système crée maintenant **3 objets distincts** :
+- `affecteObj` : Tarif pour étudiants affectés
+- `reaffecteObj` : Tarif pour étudiants réaffectés
+- `nonAffecteObj` : Tarif pour étudiants non affectés
+
+```php
+// Filtrer selon la demande utilisateur
+if (!$typeAffectationFilter) {
+    // Pas de filtre → afficher tous les types
+    $results->push($affecteObj);
+    $results->push($reaffecteObj);
+    $results->push($nonAffecteObj);
+} elseif (str_contains($typeAffectationFilter, 'non affecté')) {
+    $results->push($nonAffecteObj);
+}
+```
+
+**Résultat** : Affiche systématiquement les 3 types, même avec montant 0 FCFA (transparence complète).
+
+**2. Détection robuste du type d'affectation** (`ChatbotService.php` L411-421)
+
+Le LLM peut retourner le filtre affectation dans **3 clés différentes** : `type_affectation`, `affectation`, ou `status`.
+
+```php
+$typeAffectationFilter = null;
+if (isset($llmFilters['type_affectation'])) {
+    $typeAffectationFilter = strtolower($llmFilters['type_affectation']);
+} elseif (isset($llmFilters['affectation'])) {
+    $typeAffectationFilter = strtolower($llmFilters['affectation']);
+} elseif (isset($llmFilters['status']) && str_contains(strtolower($llmFilters['status']), 'affecté')) {
+    $typeAffectationFilter = strtolower($llmFilters['status']);
+}
+```
+
+**3. Détection catégorie de frais via raw message** (`ChatbotNavigationService.php` L165-177)
+
+Fallback keyword-based quand le LLM ne détecte pas la catégorie :
+
+```php
+if (str_contains($message, 'inscription')) {
+    $searchTerms[] = 'inscription';
+} elseif (str_contains($message, 'scolarité')) {
+    $searchTerms[] = 'scolarité';
+}
+```
+
+Le message brut est passé via `ChatbotService.php` L114 : `$llmFilters['_raw_message'] = $message;`
+
+#### Rôle du LLM (Gemini) - État actuel
+
+Le LLM fait **3 tâches principales** :
+
+1. **Extraction d'intent** : "get_frais"
+2. **Extraction de filtres contextuels** : `{ "niveau": "Première Année", "filiere": "BTS Bâtiment" }`
+3. **Génération texte de réponse** : "Voici les frais de scolarité..."
+
+**Limitations actuelles** :
+- ❌ Extraction filtres incohérente (différentes clés pour même concept)
+- ❌ Ne détecte pas toujours la catégorie de frais
+- ❌ Pas de validation sémantique
+- ❌ Pas de gestion de contexte conversationnel
+- ❌ Pas de suggestions proactives
+- ❌ Pas de comparaisons
+- ❌ Pas de calculs/agrégations
+
+#### Améliorations prévues (Phase suivante)
+
+**Priorité 1** - Prompt LLM amélioré (10-15 min) : Schéma JSON strict, clés cohérentes
+**Priorité 2** - Contexte conversationnel (1-2h) : "Et pour la Deuxième Année ?"
+**Priorité 3** - Validation sémantique (2-3h) : Vérification existence filtres
+**Priorité 4** - Fonctionnalités avancées (1 semaine) : Suggestions, comparaisons, calculs
+
+#### Fichiers modifiés
+
+1. `app/Services/Chatbot/ChatbotService.php` (L114, L411-421, L420-481)
+2. `app/Services/Chatbot/ChatbotNavigationService.php` (L165-177)
+
+#### Tests effectués
+
+✅ Test 1 : SANS type affectation → 3 lignes (Affectés: 0, Réaffectés: 0, Non affectés: 525k)
+⚠️ Test 2 : AVEC type (non affectés) → Parfois 1 ligne, parfois 3 (clé LLM varie)
+✅ Test 3 : Autre catégorie (inscription) → 3 lignes (150k chacun)
+
+**Statut** : Détection catégorie ✅ | Filtrage affectation partiel ⚠️

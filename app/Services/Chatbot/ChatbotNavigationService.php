@@ -162,6 +162,20 @@ class ChatbotNavigationService
             $filters['nom'] ?? null,
         ];
 
+        // Si pas de filtre explicite, essayer de détecter depuis le message raw
+        if (empty(array_filter($searchTerms)) && isset($filters['_raw_message'])) {
+            $message = strtolower($filters['_raw_message']);
+
+            // Détection de mots-clés courants pour types de frais
+            if (str_contains($message, 'inscription')) {
+                $searchTerms[] = 'inscription';
+            } elseif (str_contains($message, 'scolarité') || str_contains($message, 'scolarite')) {
+                $searchTerms[] = 'scolarité';
+            } elseif (str_contains($message, 'frais scolaire')) {
+                $searchTerms[] = 'scolarité';
+            }
+        }
+
         $searchTerms = array_filter($searchTerms);
 
         if (empty($searchTerms)) {

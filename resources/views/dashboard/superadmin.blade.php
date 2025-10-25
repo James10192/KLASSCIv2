@@ -243,9 +243,9 @@
                     Évolution des inscriptions et paiements
                 </div>
                 <p style="color: var(--text-secondary); margin-bottom: var(--space-lg);">
-                    <span style="color: #0453cb;">■</span> Toutes inscriptions (tous workflow)
-                    <span style="margin-left: 1rem; color: #10b981;">■</span> Étudiants créés (validés)
-                    <span style="margin-left: 1rem; color: #f59e0b;">■</span> Inscriptions avec paiement en attente
+                    <span style="color: #0453cb;">■</span> Inscriptions créées
+                    <span style="margin-left: 1rem; color: #10b981;">■</span> Inscriptions validées
+                    <span style="margin-left: 1rem; color: #f59e0b;">■</span> Paiements en attente ajoutés
                 </p>
                 
                 <div class="chart-container">
@@ -324,6 +324,15 @@
     // Données pour le graphique des inscriptions
     const monthlyData = @json($monthlyStats);
 
+    // Debug: afficher les données dans la console
+    console.log('📊 Données mensuelles pour le graphique:', monthlyData);
+    console.log('📊 Vérification des étudiants créés (courbe verte):', monthlyData.map(item => ({
+        month: item.month + ' ' + item.year,
+        students: item.students,
+        inscriptions: item.inscriptions,
+        pending_payments: item.pending_payments
+    })));
+
     // Graphique des inscriptions
     const inscriptionsCtx = document.getElementById('inscriptionsChart');
     if (inscriptionsCtx) {
@@ -339,11 +348,11 @@
                         tension: 0.4,
                         fill: true
                 }, {
-                    label: 'Étudiants créés',
+                    label: 'Inscriptions validées',
                     data: monthlyData.map(item => item.students),
                     borderColor: '#10b981',
                     backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                        tension: 0.4,
+                    tension: 0.4,
                     fill: true
                 }, {
                     label: 'Inscriptions avec paiement en attente',
