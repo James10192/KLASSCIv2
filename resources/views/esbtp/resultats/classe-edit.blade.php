@@ -1136,16 +1136,19 @@
     function saveProfesseurs() {
         showLoading();
 
-        const professeurs = {};
+        const professeurs = [];
         $('select[name^="professeur_"]').each(function() {
             const matiereId = $(this).data('matiere-id');
             const enseignantId = $(this).val();
             if (enseignantId) {
-                professeurs[matiereId] = enseignantId;
+                professeurs.push({
+                    matiere_id: matiereId,
+                    enseignant_id: enseignantId
+                });
             }
         });
 
-        if (Object.keys(professeurs).length === 0) {
+        if (professeurs.length === 0) {
             hideLoading();
             showToast('Veuillez assigner au moins un enseignant', 'error');
             return;
@@ -1158,7 +1161,7 @@
                 _token: '{{ csrf_token() }}',
                 classe_id: classeId,
                 annee_universitaire_id: anneeUniversitaireId,
-                semestre: semestre,
+                periode: 'semestre' + semestre,  // Backend attend 'semestre1' ou 'semestre2'
                 professeurs: professeurs
             },
             success: function(response) {
