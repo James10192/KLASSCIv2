@@ -3611,15 +3611,19 @@ class ESBTPBulletinController extends Controller
                         'after_type' => gettype(json_decode($professeursJson))
                     ]);
 
-                    $result = $bulletin->update([
-                        'professeurs' => $professeursJson,
-                        'updated_by' => auth()->id()
-                    ]);
+                    // FORCE update avec Query Builder au lieu d'Eloquent pour éviter le cache
+                    $affected = \DB::table('esbtp_bulletins')
+                        ->where('id', $bulletin->id)
+                        ->update([
+                            'professeurs' => $professeursJson,
+                            'updated_by' => auth()->id(),
+                            'updated_at' => now()
+                        ]);
 
                     \Log::info('📝 Update result', [
                         'bulletin_id' => $bulletin->id,
-                        'success' => $result,
-                        'affected' => $bulletin->wasChanged()
+                        'affected_rows' => $affected,
+                        'professeurs_json_length' => strlen($professeursJson)
                     ]);
 
                     $updated++;
