@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\ChatbotSystemPrompt;
 use App\Models\ChatbotDisplayTemplate;
+use App\Models\ChatbotKnowledgeBase;
 use Illuminate\Support\Facades\DB;
 
 class ChatbotSeeder extends Seeder
@@ -16,6 +17,7 @@ class ChatbotSeeder extends Seeder
     {
         $this->seedSystemPrompts();
         $this->seedDisplayTemplates();
+        $this->seedKnowledgeBase();
     }
 
     /**
@@ -320,5 +322,43 @@ Propose régulièrement des insights et recommandations basées sur les données
         }
 
         $this->command->info('✅ Display templates seeded');
+    }
+
+    /**
+     * Seed knowledge base avec deep link patterns corrects
+     */
+    protected function seedKnowledgeBase(): void
+    {
+        $knowledgeEntries = [
+            [
+                'intent' => 'get_inscriptions',
+                'deep_link_pattern' => 'http://localhost:8000/esbtp/inscriptions?annee=&filiere={filiere}&niveau={niveau}&search=&status={status}',
+            ],
+            [
+                'intent' => 'get_paiements',
+                'deep_link_pattern' => 'http://localhost:8000/esbtp/paiements?status={status}&date_debut={date_debut}&date_fin={date_fin}&etudiant_id={etudiant_id}&filiere_id={filiere_id}&niveau_id={niveau_id}&category_id={category_id}&mode_paiement={mode_paiement}',
+            ],
+            [
+                'intent' => 'get_frais',
+                'deep_link_pattern' => 'http://localhost:8000/esbtp/frais',
+            ],
+        ];
+
+        foreach ($knowledgeEntries as $entry) {
+            // Mise à jour uniquement du deep_link_pattern si l'entrée existe déjà
+            $knowledge = ChatbotKnowledgeBase::where('intent', $entry['intent'])->first();
+
+            if ($knowledge) {
+                // Mettre à jour seulement le pattern (préserver les autres données explorées)
+                $knowledge->update(['deep_link_pattern' => $entry['deep_link_pattern']]);
+                $this->command->info("✅ Updated deep_link_pattern for intent: {$entry['intent']}");
+            } else {
+                // Créer une nouvelle entrée minimale (sera complétée par l'exploration)
+                ChatbotKnowledgeBase::create($entry);
+                $this->command->info("✅ Created knowledge base entry for intent: {$entry['intent']}");
+            }
+        }
+
+        $this->command->info('✅ Knowledge base patterns seeded');
     }
 }
