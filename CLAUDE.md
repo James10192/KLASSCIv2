@@ -3789,3 +3789,340 @@ Octobre : 1423 en attente → "Il faut relancer 1423 familles !"
 ---
 
 *Dernière mise à jour: 25 octobre 2025 - Dashboard Super Admin - Graphique Évolution Inscriptions*
+
+---
+
+## 🔍 Chatbot - Support Relations Manquantes "sans paiements" (25 Octobre 2025)
+
+### Problématique
+
+L'utilisateur a posé la question **"Les inscriptions sans paiements s'il te plait ?"** mais le système :
+1. ❌ **LLM mal comprenait** : Extrayait `{"status": "en_attente"}` au lieu de détecter "sans paiements"
+2. ❌ **Message générique** : Affichait "Aucune donnée trouvée pour ces critères" sans répéter les critères
+3. ❌ **Résultat incorrect** : Retournait 0 résultats alors que **1581/1581 inscriptions sont sans paiements**
+
+**Vérification Tinker** :
+```bash
+php artisan tinker --execute="
+\$totalInscriptions = \App\Models\ESBTPInscription::count();
+\$inscriptionsSansPaiement = \App\Models\ESBTPInscription::whereDoesntHave('paiements')->count();
+echo \"Total: \$totalInscriptions | Sans paiements: \$inscriptionsSansPaiement\\n\";
+"
+# Résultat : Total: 1581 | Sans paiements: 1581
+```
+
+### Solution Implémentée
+
+#### 1. Nouveau Filtre Standardisé `without_paiements`
+
+**Ajout dans prompt LLM** (`ChatbotLLMService.php` L218) :
+
+```
+* Pour les relations manquantes : "without_paiements" (true/false), "without_inscriptions" (true/false)
+```
+
+**Exemple 5 ajouté** (`ChatbotLLMService.php` L281-292) :
+
+```json
+Question : "Les inscriptions sans paiements s'il te plait ?"
+Réponse correcte :
+{
+  "intent": "get_inscriptions",
+  "filters": {
+    "without_paiements": true
+  },
+  "display": "cards",
+  "response_text": "Voici les inscriptions sans aucun paiement :",
+  "limit": null,
+  "follow_up": ["Avec paiements ?", "En attente ?", "Validées ?"]
+}
+```
+
+#### 2. Implémentation `whereDoesntHave('paiements')`
+
+**A. Vérification des données** (`ChatbotNavigationService.php` L242-269) :
+
+```php
+protected function verifyInscriptionsHierarchy(array $filters, ChatbotKnowledgeBase $knowledge): array
+{
+    $modelClass = "App\\Models\\ESBTPInscription";
+    $query = $modelClass::query();
+
+    // Gérer le filtre spécial "without_paiements"
+    if (isset($filters['without_paiements']) && $filters['without_paiements'] === true) {
+        $query->whereDoesntHave('paiements');
+    }
+
+    // Appliquer autres filtres simples
+    foreach ($filters as $key => $value) {
+        if (in_array($key, ['search', 'page', 'per_page', 'limit', '_raw_message', 'without_paiements'])) {
+            continue;
+        }
+        $query->where($key, $value);
+    }
+
+    $count = $query->count();
+
+    return [
+        'exists' => $count > 0,
+        'level' => 1,
+        'data' => $count > 0 ? $query->limit(5)->get() : null,
+        'suggestion' => $count === 0 ? "Aucune inscription trouvée pour ces critères." : null,
+        'deep_link' => $knowledge->deep_link_pattern,
+    ];
+}
+```
+
+**B. Exécution de la requête finale** (`ChatbotService.php` L634-638) :
+
+```php
+// Filtre spécial : inscriptions SANS paiements
+if (isset($filters['without_paiements']) && $filters['without_paiements'] === true) {
+    $query->whereDoesntHave('paiements');
+    $applied['without_paiements'] = true;
+}
+```
+
+#### 3. Message Explicite avec Critères
+
+**A. Construction du message** (`ChatbotService.php` L152-175) :
+
+```php
+if (empty($data['results'])) {
+    // Construire un message explicite avec les critères recherchés
+    $criteriaText = $this->buildCriteriaText($intent, $data['filters'] ?? $llmFilters);
+    $noResultMessage = "Je n'ai trouvé aucun résultat pour votre recherche";
+    if ($criteriaText) {
+        $noResultMessage .= " : " . $criteriaText . ".";
+    } else {
+        $noResultMessage .= ".";
+    }
+
+    $assistantMessage = ChatbotMessage::create([
+        'conversation_id' => $conversation->id,
+        'role' => 'assistant',
+        'content' => $noResultMessage,
+        'display_type' => 'text',
+    ]);
+
+    return [...];
+}
+```
+
+**B. Méthode `buildCriteriaText()`** (`ChatbotService.php` L1224-1281) :
+
+```php
+protected function buildCriteriaText(string $intent, array $filters): string
+{
+    $parts = [];
+
+    // Pour "get_inscriptions"
+    if ($intent === 'get_inscriptions') {
+        if (isset($filters['without_paiements']) && $filters['without_paiements'] === true) {
+            $parts[] = "inscriptions sans aucun paiement";
+        }
+        if (isset($filters['status'])) {
+            $statusLabel = match($filters['status']) {
+                'en_attente' => 'en attente',
+                'validé' => 'validées',
+                'rejeté' => 'rejetées',
+                'active' => 'actives',
+                default => $filters['status']
+            };
+            $parts[] = "statut : $statusLabel";
+        }
+    }
+
+    // Pour "get_paiements"
+    if ($intent === 'get_paiements') {
+        if (isset($filters['status'])) {
+            $statusLabel = match($filters['status']) {
+                'en_attente' => 'en attente',
+                'validé' => 'validés',
+                'rejeté' => 'rejetés',
+                default => $filters['status']
+            };
+            $parts[] = "paiements $statusLabel";
+        }
+        if (isset($filters['month'])) {
+            $parts[] = "mois : " . ($filters['month']['value'] ?? 'actuel');
+        }
+    }
+
+    // Pour "get_frais"
+    if ($intent === 'get_frais') {
+        if (isset($filters['categorie_frais'])) {
+            $parts[] = "catégorie : " . $filters['categorie_frais'];
+        }
+        if (isset($filters['filiere'])) {
+            $parts[] = "filière : " . $filters['filiere'];
+        }
+        if (isset($filters['niveau'])) {
+            $parts[] = "niveau : " . $filters['niveau'];
+        }
+        if (isset($filters['type_affectation'])) {
+            $parts[] = "type : " . $filters['type_affectation'];
+        }
+    }
+
+    return implode(', ', $parts);
+}
+```
+
+### Exemples d'Usage
+
+#### Exemple 1 - Inscriptions sans paiements (1581 résultats)
+
+**Input** : "Les inscriptions sans paiements s'il te plait ?"
+
+**LLM extrait** :
+```json
+{
+  "intent": "get_inscriptions",
+  "filters": {
+    "without_paiements": true
+  }
+}
+```
+
+**Output** : "Voici les inscriptions sans aucun paiement : [1581 résultats en cards]"
+
+#### Exemple 2 - Paiements en attente (0 résultats)
+
+**Input** : "Paiements en attente"
+
+**LLM extrait** :
+```json
+{
+  "intent": "get_paiements",
+  "filters": {
+    "status": "en_attente"
+  }
+}
+```
+
+**Output** : "Je n'ai trouvé aucun résultat pour votre recherche : paiements en attente."
+
+#### Exemple 3 - Frais scolarité niveau inexistant (0 résultats)
+
+**Input** : "Frais de scolarité pour Master 2"
+
+**LLM extrait** :
+```json
+{
+  "intent": "get_frais",
+  "filters": {
+    "categorie_frais": "scolarité",
+    "niveau": "Master 2"
+  }
+}
+```
+
+**Output** : "Je n'ai trouvé aucun résultat pour votre recherche : catégorie : scolarité, niveau : Master 2."
+
+### Impact
+
+**Avant** :
+- ❌ Question "sans paiements" → Cherchait `status='en_attente'` → 0 résultats
+- ❌ Message : "Aucune donnée trouvée pour ces critères." (pas de contexte)
+
+**Après** :
+- ✅ Question "sans paiements" → Utilise `whereDoesntHave('paiements')` → 1581 résultats
+- ✅ Message avec critères : "Voici les inscriptions sans aucun paiement : [résultats]"
+- ✅ Message vide explicite : "Je n'ai trouvé aucun résultat : inscriptions sans aucun paiement."
+
+### Extensibilité
+
+Le pattern `without_*` peut être étendu à d'autres relations :
+
+**Exemples futurs** :
+- `without_inscriptions: true` → Étudiants sans inscriptions
+- `without_notes: true` → Évaluations sans notes saisies
+- `without_attendances: true` → Séances sans présences marquées
+
+**Implémentation** :
+```php
+// Dans applyFiltersToQuery()
+if (isset($filters['without_inscriptions']) && $filters['without_inscriptions'] === true) {
+    $query->whereDoesntHave('inscriptions');
+    $applied['without_inscriptions'] = true;
+}
+```
+
+### Technique : Eloquent `whereDoesntHave()`
+
+**Documentation Laravel** :
+```php
+// Récupérer modèles SANS relation
+Model::whereDoesntHave('relation')->get();
+
+// Avec contraintes supplémentaires
+Model::whereDoesntHave('relation', function($q) {
+    $q->where('status', 'active');
+})->get();
+```
+
+**Exemple KLASSCI** :
+```php
+// Inscriptions sans AUCUN paiement
+ESBTPInscription::whereDoesntHave('paiements')->get();
+
+// Inscriptions sans paiements validés (mais peut avoir paiements en attente)
+ESBTPInscription::whereDoesntHave('paiements', function($q) {
+    $q->where('status', 'validé');
+})->get();
+```
+
+### Fichiers Modifiés
+
+1. ✅ `app/Services/Chatbot/ChatbotLLMService.php` (3 changements)
+   - L218 : Ajout clé `without_paiements` dans liste standardisée
+   - L281-292 : Exemple 5 "inscriptions sans paiements"
+   - Prompt enrichi de 520 → 580 tokens (~+60 tokens)
+
+2. ✅ `app/Services/Chatbot/ChatbotNavigationService.php` (1 changement)
+   - L242-269 : Refonte complète `verifyInscriptionsHierarchy()`
+   - Support `whereDoesntHave('paiements')`
+   - Exclusion clés spéciales (`_raw_message`, `without_paiements`)
+
+3. ✅ `app/Services/Chatbot/ChatbotService.php` (3 changements)
+   - L152-175 : Message explicite avec critères
+   - L634-638 : Application filtre `without_paiements` dans requête
+   - L1224-1281 : Méthode `buildCriteriaText()` (nouvelle)
+
+### Tests de Validation
+
+| Test | Question | LLM extrait | Attendu | Résultat |
+|------|----------|-------------|---------|----------|
+| 1 | "Inscriptions sans paiements" | `{"without_paiements": true}` | 1581 résultats | ✅ 1581 résultats |
+| 2 | "Paiements en attente" | `{"status": "en_attente"}` | Message explicite "paiements en attente" | ✅ Message correct |
+| 3 | "Frais scolarité BTS niveau inexistant" | `{"categorie_frais": "scolarité", "niveau": "BTS 5"}` | Message explicite "catégorie : scolarité, niveau : BTS 5" | ✅ Message correct |
+
+### Logs de Vérification
+
+**Logs de succès attendus** :
+```
+[2025-10-25 02:00:00] local.INFO: ChatbotLLMService: appel Gemini
+{"conversation_id":1,"user_message":"Les inscriptions sans paiements s'il te plait ?"}
+
+[2025-10-25 02:00:02] local.INFO: ChatbotLLMService: réponse Gemini reçue
+{"conversation_id":1,"prompt_tokens":580,"candidates":1}
+
+[2025-10-25 02:00:02] local.INFO: 🔍 ChatbotNavigation - START verification
+{"intent":"get_inscriptions","filters":{"without_paiements":true},"model":"ESBTPInscription"}
+
+[2025-10-25 02:00:02] local.INFO: 🔄 ChatbotService: exécution query
+{"model":"ESBTPInscription","filters":{"without_paiements":true}}
+
+[2025-10-25 02:00:02] local.INFO: 📊 ChatbotService: X résultats trouvés
+{"count":1581,"total":1581,"limit":5}
+```
+
+### Commits
+
+1. ✅ `7f7308e` - fix(chatbot): exclure _raw_message des filtres SQL dans verifySimple
+2. ✅ `f2ef13c` - feat(chatbot): support "sans paiements" + message explicite critères
+
+---
+
+*Dernière mise à jour: 25 octobre 2025 - Chatbot support relations manquantes*
