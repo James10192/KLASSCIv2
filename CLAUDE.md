@@ -5849,4 +5849,174 @@ Le filtrage est maintenant **identique** à celui de la page d'édition groupée
 
 ---
 
-*Dernière mise à jour: 25 octobre 2025 - Fix Filtrage Matières Bulletins Individuels*
+## 🎓 Fix Pré-Sélection Professeurs dans Modal Edit-Professeurs (25 Octobre 2025)
+
+### Problème Initial
+
+L'utilisateur a signalé que :
+1. Les professeurs ne restaient pas pré-sélectionnés dans le modal après refresh de la page [classe/5/edit](http://localhost:8000/esbtp/resultats/classe/5/edit?annee_universitaire_id=5&semestre=1)
+2. Les professeurs n'étaient pas récupérés sur la page [edit-professeurs](http://localhost:8000/esbtp-special/bulletins/edit-professeurs?bulletin=415&classe_id=5&periode=semestre1&annee_universitaire_id=5)
+
+### Investigation
+
+**Test de persistance des données** :
+```bash
+# Vérification que bulkUpdateProfesseurs SAUVEGARDE correctement
+Bulletin 6 contient: {"2":"KOUASSI Jean","5":"BAMBA Marie"}
+Message utilisateur: "38 bulletin(s) mis à jour"
+→ ✅ La sauvegarde fonctionne correctement
+```
+
+**Test de récupération des données** :
+```bash
+# Vérification que editProfesseurs RÉCUPÈRE correctement
+Logs montrent: professeurs récupérés depuis bulletin
+→ ✅ La récupération fonctionne correctement
+```
+
+**Problème identifié** : Le modal ne PRÉ-SÉLECTIONNAIT pas les options avec les valeurs sauvegardées.
+
+### Solutions Implémentées
+
+#### 1. Modal dans classe-edit (Édition Groupée)
+
+**Fichier** : `app/Http/Controllers/ESBTPBulletinController.php` (méthode `editResultatsClasse()`)
+
+**Changements** (lignes 3189-3238) :
+```php
+// Récupérer les professeurs déjà assignés depuis les bulletins
+$professeursGroupes = [];
+
+// Prendre un bulletin exemple pour cette classe/période (professeurs identiques pour tous)
+$sampleBulletin = ESBTPBulletin::where('classe_id', $classe_id)
+    ->when($periode, function($query) use ($periode) {
+        return $query->where('periode', $periode);
+    })
+    ->when($annee_universitaire_id, function($query) use ($annee_universitaire_id) {
+        return $query->where('annee_universitaire_id', $annee_universitaire_id);
+    })
+    ->whereNotNull('professeurs')
+    ->first();
+
+if ($sampleBulletin && $sampleBulletin->professeurs) {
+    $professeursJson = json_decode($sampleBulletin->professeurs, true) ?: [];
+
+    // Mapper les noms vers les IDs des enseignants
+    foreach ($professeursJson as $matiereId => $teacherName) {
+        // Ignorer valeurs null/vides
+        if (empty($teacherName)) {
+            continue;
+        }
+
+        // Chercher enseignant par nom
+        $enseignantsDeMatiere = $enseignantsParMatiere[$matiereId] ?? collect();
+        $foundTeacher = $enseignantsDeMatiere->first(function($enseignant) use ($teacherName) {
+            return $enseignant->user && $enseignant->user->name === $teacherName;
+        });
+
+        if ($foundTeacher) {
+            $professeursGroupes[$matiereId] = $foundTeacher->id;
+        }
+    }
+}
+
+// Passer $professeursGroupes à la vue
+return view('esbtp.resultats.classe-edit', compact(
+    // ... autres variables ...
+    'professeursGroupes',
+    // ...
+));
+```
+
+**Fichier** : `resources/views/esbtp/resultats/modals/edit-professeurs.blade.php`
+
+**Changements** (ligne 103-104) :
+```blade
+<option value="{{ $enseignant->id }}"
+    {{ (isset($professeursGroupes[$matiere->id]) && $professeursGroupes[$matiere->id] == $enseignant->id) ? 'selected' : '' }}>
+    {{ $enseignant->user->name }}
+</option>
+```
+
+**Pourquoi ce mapping ?**
+- Les bulletins stockent : `{"matiere_id": "Teacher Name"}` (ex: `{"2": "BAMBA Marie"}`)
+- Le modal a besoin de : `teacher_id` pour matcher avec `<option value="{{ $enseignant->id }}">`
+- Solution : Mapper les noms vers les IDs en cherchant dans `$enseignantsParMatiere`
+
+**Résultat du test** :
+- Bulletin 4, Classe 5, Semestre 1, Année 5
+- 4 matières pré-sélectionnées : Mathématiques (BAMBA Marie), Anglais (BAMBA Marie), Informatique (KOUASSI Jean), Matériaux (KOUASSI Jean)
+- 1 matière non pré-sélectionnée : GRV (jamais assigné = normal)
+
+#### 2. Page edit-professeurs individuelle (Déjà Fonctionnel)
+
+**Constat** : La vue `bulletins/edit-professeurs.blade.php` utilisait déjà :
+```blade
+<input type="text"
+       name="professeurs[{{ $resultat->matiere_id }}]"
+       value="{{ $professeurs[$resultat->matiere_id] ?? '' }}"
+       placeholder="Nom qui apparaîtra sur le bulletin"
+/>
+```
+
+**Logs ajoutés** (ESBTPBulletinController.php L6334-6348) :
+```php
+$professeurs = [];
+if ($bulletin && $bulletin->professeurs) {
+    $professeurs = json_decode($bulletin->professeurs, true) ?: [];
+    \Log::info('📋 Professeurs from bulletin', [
+        'bulletin_id' => $bulletin->id,
+        'professeurs' => $professeurs
+    ]);
+} else {
+    \Log::warning('⚠️ No bulletin or professeurs found', [
+        'etudiant_id' => $etudiant_id,
+        'classe_id' => $classe_id,
+        'periode' => $periode
+    ]);
+}
+```
+
+**URL de test** : [http://localhost:8000/esbtp-special/bulletins/edit-professeurs?bulletin=4&classe_id=5&periode=semestre1&annee_universitaire_id=5](http://localhost:8000/esbtp-special/bulletins/edit-professeurs?bulletin=4&classe_id=5&periode=semestre1&annee_universitaire_id=5)
+
+### Impact
+
+**Avant** :
+- ❌ Modal vide après refresh (professeurs non pré-sélectionnés)
+- ❌ Pas de logs pour vérifier récupération
+- ❌ Expérience utilisateur dégradée (re-sélection manuelle nécessaire)
+
+**Après** :
+- ✅ Modal pré-remplit les professeurs assignés précédemment
+- ✅ Logs détaillés pour debugging
+- ✅ Workflow fluide (édition persistante)
+
+### Workflow Complet
+
+```
+1. Admin ouvre modal dans classe/5/edit
+2. Assigne professeurs via modal (ex: BAMBA Marie → Mathématiques)
+3. Clique "Enregistrer" → bulkUpdateProfesseurs()
+4. Refresh la page
+5. Modal se pré-remplit automatiquement avec BAMBA Marie pour Mathématiques ✅
+6. Admin peut modifier/compléter les assignations
+```
+
+### Fichiers Modifiés
+
+1. ✅ `app/Http/Controllers/ESBTPBulletinController.php` (3 changements)
+   - L3189-3238 : Récupération + mapping professeurs dans `editResultatsClasse()`
+   - L6334-6348 : Logs détaillés dans `editProfesseurs()`
+
+2. ✅ `resources/views/esbtp/resultats/modals/edit-professeurs.blade.php`
+   - L103-104 : Ajout attribut `selected` basé sur `$professeursGroupes`
+
+### Commit
+
+```bash
+git commit -m "fix(bulletins): pré-sélection professeurs dans modal edit-professeurs après refresh"
+```
+
+---
+
+*Dernière mise à jour: 25 octobre 2025 - Fix Pré-Sélection Professeurs Modal*

@@ -3578,17 +3578,32 @@ class ESBTPBulletinController extends Controller
                 // Si le bulletin existait déjà, fusionner les professeurs
                 if (!$bulletin->wasRecentlyCreated) {
                     $professeursExistants = json_decode($bulletin->professeurs, true) ?: [];
-                    $professeursFusionnes = array_merge($professeursExistants, $professeursMap);
+
+                    // FIX: S'assurer que c'est un tableau associatif (objet JSON), pas un tableau indexé
+                    // Si $professeursExistants est un tableau indexé [0=>val1, 1=>val2], le convertir en objet vide
+                    if (array_keys($professeursExistants) === range(0, count($professeursExistants) - 1)) {
+                        // C'est un tableau indexé, réinitialiser
+                        \Log::warning('⚠️ Professeurs existants était un tableau indexé, réinitialisation', [
+                            'bulletin_id' => $bulletin->id,
+                            'before' => $professeursExistants
+                        ]);
+                        $professeursExistants = [];
+                    }
+
+                    // Fusion en préservant les clés matiere_id
+                    $professeursFusionnes = $professeursExistants + $professeursMap;
+                    // array_replace pour que les nouvelles valeurs écrasent les anciennes
+                    $professeursFusionnes = array_replace($professeursExistants, $professeursMap);
 
                     \Log::info('📝 Updating bulletin', [
                         'bulletin_id' => $bulletin->id,
                         'etudiant_id' => $etudiant->id,
                         'before' => $bulletin->professeurs,
-                        'after' => json_encode($professeursFusionnes)
+                        'after' => json_encode($professeursFusionnes, JSON_FORCE_OBJECT)
                     ]);
 
                     $bulletin->update([
-                        'professeurs' => json_encode($professeursFusionnes),
+                        'professeurs' => json_encode($professeursFusionnes, JSON_FORCE_OBJECT),
                         'updated_by' => auth()->id()
                     ]);
 
