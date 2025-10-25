@@ -4779,3 +4779,228 @@ Si besoin de coefficient dans planning général → à discuter selon les besoi
 ---
 
 *Dernière mise à jour: 25 octobre 2025 - Page Détails Matières*
+
+---
+
+## 📊 Résultats Classe - Calcul Automatique des Moyennes (25 Octobre 2025)
+
+### Vue d'ensemble
+
+La page d'édition groupée des résultats de classe (`/esbtp/resultats/classe/{id}/edit`) a été améliorée pour calculer automatiquement les moyennes depuis les évaluations/notes existantes, identique au comportement de la page de preview des moyennes individuelles.
+
+**Problème initial** : La page permettait uniquement la saisie manuelle des moyennes, sans récupérer les moyennes calculées automatiquement depuis les notes des évaluations.
+
+**Solution implémentée** : Calcul automatique des moyennes pour tous les étudiants avec affichage de badges "Auto"/"Manuel" et colonne dédiée "Moyenne calculée".
+
+### Fonctionnalités Ajoutées
+
+#### 1. Calcul Automatique des Moyennes
+
+**Nouvelle méthode helper** : `calculateMoyennesForStudent()` (ESBTPBulletinController.php L6877-6961)
+
+**Logique de calcul** :
+```php
+// Pour chaque matière
+$moyenne = Σ(note/bareme × 20 × coefficient) / Σ(coefficient)
+
+// Exemple : Math (coef 3)
+// - Devoir 1 : 15/20 (bareme 20, coef 1)
+// - Devoir 2 : 18/25 (bareme 25, coef 2)
+// Moyenne = ((15/20 × 20 × 1) + (18/25 × 20 × 2)) / (1 + 2)
+//         = (15 + 14.4 × 2) / 3
+//         = (15 + 28.8) / 3
+//         = 14.6/20
+```
+
+**Paramètres** :
+- `$etudiantId` : ID de l'étudiant
+- `$classeId` : ID de la classe
+- `$periode` : Période (semestre1/semestre2 ou 1/2)
+- `$anneeUniversitaireId` : ID de l'année universitaire
+- `$matieres` : Collection des matières
+
+**Retour** :
+```php
+[
+    matiere_id => [
+        'moyenne' => 14.6,
+        'source' => 'calculee'  // ou 'manuelle' si aucune note
+    ]
+]
+```
+
+#### 2. Affichage avec Badges Auto/Manuel
+
+**Frontend** : Tableau avec 4 colonnes
+
+| Matricule | Nom complet | Moyenne calculée | Moyenne à enregistrer |
+|-----------|-------------|------------------|-----------------------|
+| ESB001 | DUPONT Jean<br/>**Auto** | **14.60/20** | `<input value="14.60">` |
+| ESB002 | MARTIN Marie<br/>**Manuel** | *- Aucune évaluation* | `<input value="">` |
+
+**Badges** :
+- **Auto** (vert) : Moyenne calculée depuis les évaluations
+- **Manuel** (orange) : Aucune évaluation, saisie manuelle requise
+
+#### 3. Enrichissement Données Backend
+
+**Modifications dans `editResultatsClasse()`** (L3086-3096) :
+```php
+// Calculer moyennes pour tous les étudiants
+$moyennesCalculees = [];
+foreach ($students as $student) {
+    $moyennesCalculees[$student->id] = $this->calculateMoyennesForStudent(
+        $student->id,
+        $classe_id,
+        $periode,
+        $annee_universitaire_id,
+        $matieres
+    );
+}
+
+// Passer à la vue
+return view('...', compact(..., 'moyennesCalculees'));
+```
+
+**Modifications dans `getMoyennes()` API** (L3184-3260) :
+```php
+// Enrichir résultats avec moyenne calculée + source
+foreach ($resultats as $resultat) {
+    $resultatArray = $resultat->toArray();
+    if (isset($moyennesCalculees[$etudiantId][$matiereId])) {
+        $resultatArray['moyenne_calculee'] = $moyennesCalculees[$etudiantId][$matiereId]['moyenne'];
+        $resultatArray['source'] = $moyennesCalculees[$etudiantId][$matiereId]['source'];
+    }
+    $resultatsEnriched[] = $resultatArray;
+}
+
+// Créer résultats virtuels pour matières avec moyenne calculée mais sans résultat BDD
+foreach ($matieres as $matiere) {
+    if (!$resultatExiste && $moyenneCalculee !== null) {
+        $resultatsEnriched[] = [
+            'id' => null,
+            'etudiant_id' => $etudiantId,
+            'matiere_id' => $matiere->id,
+            'moyenne' => null,
+            'moyenne_calculee' => $moyenneCalculee,
+            'source' => 'calculee'
+        ];
+    }
+}
+```
+
+#### 4. Interface Utilisateur
+
+**Modal "Édition Groupée des Moyennes"** :
+
+**Mode Par Matière** :
+- Sélection d'une matière
+- Tableau des étudiants avec :
+  - Badge Auto/Manuel selon source
+  - Colonne "Moyenne calculée" (badge coloré ou "- Aucune évaluation")
+  - Input pré-rempli avec moyenne calculée
+
+**JavaScript** (`classe-edit.blade.php` L618-661) :
+```javascript
+selectedStudents.forEach(student => {
+    const resultat = response.resultats.find(r => r.etudiant_id == student.id);
+    const moyenneCalculee = resultat ? resultat.moyenne_calculee : null;
+    const source = resultat ? resultat.source : 'manuelle';
+
+    // Badge Auto/Manuel
+    let badgeHtml = '';
+    if (source === 'calculee' && moyenneCalculee !== null) {
+        badgeHtml = '<span class="badge bg-success ..."><i class="fas fa-calculator"></i>Auto</span>';
+    } else {
+        badgeHtml = '<span class="badge bg-warning ..."><i class="fas fa-edit"></i>Manuel</span>';
+    }
+
+    // Moyenne calculée
+    let moyenneCalculeeHtml = '';
+    if (moyenneCalculee !== null) {
+        const badgeClass = moyenneCalculee >= 10 ? 'bg-success' : 'bg-danger';
+        moyenneCalculeeHtml = `<span class="badge ${badgeClass}">${parseFloat(moyenneCalculee).toFixed(2)}/20</span>`;
+    } else {
+        moyenneCalculeeHtml = '<span class="text-muted"><i class="fas fa-minus"></i> Aucune évaluation</span>';
+    }
+
+    // Input pré-rempli
+    const inputValue = moyenne || moyenneCalculee || '';
+});
+```
+
+### Workflow Utilisateur
+
+1. **Sélectionner étudiants** : Cocher checkboxes dans tableau principal
+2. **Ouvrir modal moyennes** : Clic bouton "Éditer moyennes"
+3. **Choisir mode** : "Par Matière" (par défaut)
+4. **Sélectionner matière** : Dropdown avec liste des matières
+5. **Voir moyennes calculées** :
+   - Badge "Auto" si notes existent
+   - Moyenne affichée dans colonne dédiée
+   - Input pré-rempli avec moyenne calculée
+6. **Modifier si nécessaire** : Éditer input si correction nécessaire
+7. **Enregistrer** : Bouton "Enregistrer les moyennes"
+
+### Cohérence avec Preview Moyennes
+
+**Page individuelle** : `/esbtp-special/bulletins/moyennes-preview`
+- Calcul moyennes pour 1 étudiant
+- Affichage badges Auto/Manuel
+- 2 colonnes : Moyenne calculée + Moyenne éditable
+
+**Page groupée** : `/esbtp/resultats/classe/{id}/edit`
+- Calcul moyennes pour N étudiants ✅
+- Affichage badges Auto/Manuel ✅
+- 2 colonnes : Moyenne calculée + Moyenne éditable ✅
+- **Même logique de calcul** via `calculateMoyennesForStudent()` ✅
+
+### Fichiers Modifiés
+
+1. **app/Http/Controllers/ESBTPBulletinController.php**
+   - L6877-6961 : Nouvelle méthode `calculateMoyennesForStudent()`
+   - L3086-3096 : Modification `editResultatsClasse()` - calcul moyennes
+   - L3145 : Ajout `'moyennesCalculees'` dans compact
+   - L3184-3260 : Modification `getMoyennes()` - enrichissement résultats
+
+2. **resources/views/esbtp/resultats/classe-edit.blade.php**
+   - L618-661 : Modification `populateGradesTable()` - badges + colonne calculée
+
+3. **resources/views/esbtp/resultats/modals/edit-moyennes.blade.php**
+   - L175-188 : Ajout header colonne "Moyenne calculée"
+   - L185 : Changement label "Moyenne /20" → "Moyenne à enregistrer"
+
+### Règle Métier
+
+**Source de la moyenne** :
+- `source = 'calculee'` : Moyenne calculée depuis ≥1 note d'évaluation
+- `source = 'manuelle'` : Aucune note d'évaluation, saisie manuelle requise
+
+**Priorité d'affichage** :
+1. Moyenne enregistrée dans `esbtp_resultats` (si existe)
+2. Moyenne calculée depuis évaluations (si notes existent)
+3. Input vide (si aucune note)
+
+**Normalisation période** :
+```php
+if ($periode == '1') $periodePourBDD = 'semestre1';
+if ($periode == '2') $periodePourBDD = 'semestre2';
+```
+
+### Tests Recommandés
+
+- [ ] Classe avec étudiants ayant des notes → Badge "Auto", moyenne affichée
+- [ ] Classe avec étudiants sans notes → Badge "Manuel", input vide
+- [ ] Classe mixte (certains avec notes, d'autres sans) → Badges corrects
+- [ ] Modification manuelle de moyenne calculée → Sauvegarde correcte
+- [ ] Mode "Par Étudiant" → À implémenter (TODO)
+
+### TODO : Mode "Par Étudiant"
+
+Le mode "Par Étudiant" (accordion avec toutes les matières par étudiant) doit être modifié de la même manière dans `populateStudentAccordion()` (ligne 656).
+
+**Pattern à appliquer** : Identique à `populateGradesTable()` mais avec structure accordion.
+
+---
+
+*Dernière mise à jour: 25 octobre 2025 - Résultats Classe - Calcul Automatique des Moyennes*

@@ -179,11 +179,11 @@
                                         <th style="padding: 1rem; font-weight: 600; color: #495057;">
                                             <i class="fas fa-user me-2"></i>Nom complet
                                         </th>
-                                        <th style="width: 180px; padding: 1rem; font-weight: 600; color: #495057;">
-                                            <i class="fas fa-chart-line me-2"></i>Moyenne /20
+                                        <th class="text-center" style="width: 150px; padding: 1rem; font-weight: 600; color: #495057;">
+                                            <i class="fas fa-calculator me-2"></i>Moyenne calculée
                                         </th>
-                                        <th style="width: 120px; padding: 1rem; font-weight: 600; color: #495057;">
-                                            <i class="fas fa-flag me-2"></i>Statut
+                                        <th style="width: 180px; padding: 1rem; font-weight: 600; color: #495057;">
+                                            <i class="fas fa-chart-line me-2"></i>Moyenne à enregistrer
                                         </th>
                                     </tr>
                                 </thead>

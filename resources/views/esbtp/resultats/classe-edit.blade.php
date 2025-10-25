@@ -618,27 +618,43 @@
                 selectedStudents.forEach(student => {
                     const resultat = response.resultats.find(r => r.etudiant_id == student.id);
                     const moyenne = resultat ? resultat.moyenne : '';
+                    const moyenneCalculee = resultat ? resultat.moyenne_calculee : null;
+                    const source = resultat ? resultat.source : 'manuelle';
 
-                    // Pas de champ 'type' en BDD - détecter via existence résultat
-                    let badgeHtml = '<span class="badge bg-secondary">Non saisi</span>';
-                    if (resultat && resultat.moyenne != null) {
-                        badgeHtml = '<span class="badge bg-success">Saisi</span>';
+                    // Badge Auto/Manuel basé sur la source
+                    let badgeHtml = '';
+                    if (source === 'calculee' && moyenneCalculee !== null) {
+                        badgeHtml = '<span class="badge bg-success bg-opacity-10 text-success" style="font-size: 0.7rem;"><i class="fas fa-calculator me-1"></i>Auto</span>';
+                    } else {
+                        badgeHtml = '<span class="badge bg-warning bg-opacity-10 text-warning" style="font-size: 0.7rem;"><i class="fas fa-edit me-1"></i>Manuel</span>';
+                    }
+
+                    // Affichage moyenne calculée
+                    let moyenneCalculeeHtml = '';
+                    if (moyenneCalculee !== null) {
+                        const badgeClass = moyenneCalculee >= 10 ? 'bg-success' : 'bg-danger';
+                        moyenneCalculeeHtml = `<span class="badge rounded-pill ${badgeClass} px-3 py-2">${parseFloat(moyenneCalculee).toFixed(2)}/20</span>`;
+                    } else {
+                        moyenneCalculeeHtml = '<span class="text-muted fst-italic"><i class="fas fa-minus"></i> Aucune évaluation</span>';
                     }
 
                     tbody.append(`
                         <tr>
                             <td><strong>${student.matricule}</strong></td>
-                            <td>${student.name}</td>
+                            <td>
+                                <div>${student.name}</div>
+                                ${badgeHtml}
+                            </td>
+                            <td class="text-center">
+                                ${moyenneCalculeeHtml}
+                            </td>
                             <td>
                                 <input type="number" class="form-control" min="0" max="20" step="0.01"
                                        name="moyenne_${student.id}"
                                        data-student-id="${student.id}"
                                        data-matiere-id="${matiereId}"
-                                       value="${moyenne}"
+                                       value="${moyenne || moyenneCalculee || ''}"
                                        placeholder="0.00">
-                            </td>
-                            <td>
-                                ${badgeHtml}
                             </td>
                         </tr>
                     `);

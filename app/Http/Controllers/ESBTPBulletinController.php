@@ -3083,6 +3083,18 @@ class ESBTPBulletinController extends Controller
             ->get()
             ->groupBy('etudiant_id');
 
+        // NOUVELLE LOGIQUE: Calculer les moyennes automatiques depuis les évaluations pour chaque étudiant
+        $moyennesCalculees = [];
+        foreach ($students as $student) {
+            $moyennesCalculees[$student->id] = $this->calculateMoyennesForStudent(
+                $student->id,
+                $classe_id,
+                $periode,
+                $annee_universitaire_id,
+                $matieres
+            );
+        }
+
         // Get absences from bulletins table (not esbtp_absences which is for cours tracking)
         $absences = ESBTPBulletin::whereIn('etudiant_id', $students->pluck('id'))
             ->where('classe_id', $classe_id)
@@ -3129,7 +3141,8 @@ class ESBTPBulletinController extends Controller
             'annees_universitaires',
             'anneeUniversitaire',
             'include_all_statuses',
-            'kpis'
+            'kpis',
+            'moyennesCalculees'
         ));
     }
 
@@ -3168,9 +3181,82 @@ class ESBTPBulletinController extends Controller
 
         $resultats = $query->get();
 
+        // NOUVELLE LOGIQUE: Calculer les moyennes automatiques pour enrichir les résultats
+        // Récupérer les matières concernées
+        $matiereIds = $request->has('matiere_id') && $request->matiere_id
+            ? [$request->matiere_id]
+            : ($request->has('matiere_ids') ? $request->matiere_ids : []);
+
+        $matieres = !empty($matiereIds)
+            ? ESBTPMatiere::whereIn('id', $matiereIds)->get()
+            : ESBTPMatiere::where('is_active', true)->get();
+
+        // Calculer les moyennes pour chaque étudiant
+        $moyennesCalculees = [];
+        foreach ($request->etudiant_ids as $etudiantId) {
+            $moyennesCalculees[$etudiantId] = $this->calculateMoyennesForStudent(
+                $etudiantId,
+                $request->classe_id,
+                $periode,
+                $request->annee_universitaire_id,
+                $matieres
+            );
+        }
+
+        // Enrichir les résultats avec les moyennes calculées et la source
+        $resultatsEnriched = [];
+        foreach ($resultats as $resultat) {
+            $resultatArray = $resultat->toArray();
+            $matiereId = $resultat->matiere_id;
+            $etudiantId = $resultat->etudiant_id;
+
+            // Ajouter la moyenne calculée et la source
+            if (isset($moyennesCalculees[$etudiantId][$matiereId])) {
+                $resultatArray['moyenne_calculee'] = $moyennesCalculees[$etudiantId][$matiereId]['moyenne'];
+                $resultatArray['source'] = $moyennesCalculees[$etudiantId][$matiereId]['source'];
+            } else {
+                $resultatArray['moyenne_calculee'] = null;
+                $resultatArray['source'] = 'manuelle';
+            }
+
+            $resultatsEnriched[] = $resultatArray;
+        }
+
+        // Ajouter les moyennes calculées pour les matières sans résultat existant
+        foreach ($request->etudiant_ids as $etudiantId) {
+            if (!isset($moyennesCalculees[$etudiantId])) {
+                continue;
+            }
+
+            foreach ($moyennesCalculees[$etudiantId] as $matiereId => $moyenneData) {
+                // Vérifier si ce couple (etudiant, matiere) existe déjà dans les résultats
+                $exists = collect($resultatsEnriched)->contains(function($r) use ($etudiantId, $matiereId) {
+                    return $r['etudiant_id'] == $etudiantId && $r['matiere_id'] == $matiereId;
+                });
+
+                if (!$exists && $moyenneData['moyenne'] !== null) {
+                    // Ajouter un résultat virtuel avec moyenne calculée
+                    $resultatsEnriched[] = [
+                        'id' => null,
+                        'etudiant_id' => $etudiantId,
+                        'matiere_id' => $matiereId,
+                        'classe_id' => $request->classe_id,
+                        'annee_universitaire_id' => $request->annee_universitaire_id,
+                        'periode' => $periode,
+                        'moyenne' => $moyenneData['moyenne'], // Pré-remplir avec moyenne calculée
+                        'moyenne_calculee' => $moyenneData['moyenne'],
+                        'source' => $moyenneData['source'],
+                        'coefficient' => null,
+                        'rang' => null,
+                        'appreciation' => null
+                    ];
+                }
+            }
+        }
+
         return response()->json([
             'success' => true,
-            'resultats' => $resultats
+            'resultats' => $resultatsEnriched
         ]);
     }
 
@@ -6848,5 +6934,102 @@ class ESBTPBulletinController extends Controller
                 ->withInput()
                 ->with('error', 'Une erreur est survenue lors de l\'enregistrement des absences: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Calculer les moyennes automatiques depuis les évaluations pour un étudiant
+     * Logique identique à previewMoyennes() mais pour un seul étudiant
+     *
+     * @param int $etudiantId
+     * @param int $classeId
+     * @param string|null $periode
+     * @param int $anneeUniversitaireId
+     * @param \Illuminate\Support\Collection $matieres
+     * @return array
+     */
+    private function calculateMoyennesForStudent($etudiantId, $classeId, $periode, $anneeUniversitaireId, $matieres)
+    {
+        // Normaliser la période
+        $periodePourBDD = $periode;
+        if ($periode == '1') {
+            $periodePourBDD = 'semestre1';
+        } elseif ($periode == '2') {
+            $periodePourBDD = 'semestre2';
+        }
+
+        // Récupérer toutes les notes de l'étudiant
+        $notesQuery = \App\Models\ESBTPNote::where('etudiant_id', $etudiantId)
+            ->with(['evaluation.matiere', 'matiere']);
+
+        // Filtrer par période (semestre)
+        if ($periodePourBDD) {
+            $notesQuery->where(function ($q) use ($periodePourBDD) {
+                $q->where('semestre', $periodePourBDD)
+                  ->orWhereHas('evaluation', function ($query) use ($periodePourBDD) {
+                        $query->where('periode', $periodePourBDD);
+                    });
+            });
+        }
+
+        // Filtrer par classe
+        $notesQuery->byClasse($classeId);
+
+        // Filtrer par année universitaire (avec année précédente)
+        $notesQuery->byAnneeUniversitaireWithPrevious($anneeUniversitaireId);
+
+        $notes = $notesQuery->get();
+
+        // Organiser les notes par matière
+        $notesByMatiere = [];
+        foreach ($notes as $note) {
+            if (!$note->evaluation || !$note->evaluation->matiere) {
+                continue;
+            }
+
+            $matiereId = $note->evaluation->matiere->id;
+            if (!isset($notesByMatiere[$matiereId])) {
+                $notesByMatiere[$matiereId] = [
+                    'notes' => [],
+                    'total_points' => 0,
+                    'total_coefficients' => 0,
+                    'moyenne' => 0
+                ];
+            }
+
+            $notesByMatiere[$matiereId]['notes'][] = $note;
+        }
+
+        // Calculer la moyenne pour chaque matière
+        foreach ($notesByMatiere as $matiereId => &$matiereData) {
+            $totalPoints = 0;
+            $totalCoefficients = 0;
+
+            foreach ($matiereData['notes'] as $note) {
+                if ($note->evaluation && $note->evaluation->bareme > 0) {
+                    $noteValue = is_numeric($note->note) ? floatval($note->note) : (is_numeric($note->valeur) ? floatval($note->valeur) : 0);
+                    $bareme = floatval($note->evaluation->bareme);
+                    $coefficient = $note->evaluation->coefficient ? floatval($note->evaluation->coefficient) : 1;
+
+                    $normalized = ($noteValue / $bareme) * 20;
+                    $totalPoints += $normalized * $coefficient;
+                    $totalCoefficients += $coefficient;
+                }
+            }
+
+            $matiereData['total_points'] = $totalPoints;
+            $matiereData['total_coefficients'] = $totalCoefficients;
+            $matiereData['moyenne'] = $totalCoefficients > 0 ? $totalPoints / $totalCoefficients : null;
+        }
+
+        // Retourner les moyennes calculées indexées par matiere_id
+        $result = [];
+        foreach ($matieres as $matiere) {
+            $result[$matiere->id] = [
+                'moyenne' => isset($notesByMatiere[$matiere->id]) ? $notesByMatiere[$matiere->id]['moyenne'] : null,
+                'source' => isset($notesByMatiere[$matiere->id]) && $notesByMatiere[$matiere->id]['moyenne'] !== null ? 'calculee' : 'manuelle'
+            ];
+        }
+
+        return $result;
     }
 }
